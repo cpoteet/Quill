@@ -43,7 +43,15 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>NSHighResolutionCapable</key><true/>
   <key>NSAppTransportSecurity</key>
   <dict>
-    <key>NSAllowsArbitraryLoads</key><true/>
+    <key>NSAllowsLocalNetworking</key><true/>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>localhost</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key><true/>
+        <key>NSIncludesSubdomains</key><false/>
+      </dict>
+    </dict>
   </dict>
 </dict>
 </plist>
