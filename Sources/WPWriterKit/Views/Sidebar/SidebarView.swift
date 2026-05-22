@@ -67,6 +67,7 @@ public struct SidebarView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .accentColor(Color.wpAmber)
 
                 Divider()
                 HStack {
