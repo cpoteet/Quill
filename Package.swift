@@ -9,6 +9,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.3"),
+        .package(url: "https://github.com/apple/swift-testing.git", from: "0.10.0"),
     ],
     targets: [
         .executableTarget(
@@ -26,7 +27,10 @@ let package = Package(
         ),
         .testTarget(
             name: "WPWriterTests",
-            dependencies: ["WPWriterKit"],
+            dependencies: [
+                "WPWriterKit",
+                .product(name: "Testing", package: "swift-testing"),
+            ],
             path: "Tests/WPWriterTests"
         ),
     ]

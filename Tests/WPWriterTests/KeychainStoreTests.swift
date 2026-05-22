@@ -1,0 +1,37 @@
+import Foundation
+import Testing
+@testable import WPWriterKit
+
+@Suite(.serialized)
+struct KeychainStoreTests {
+    let testCredentials = Credentials(
+        siteURL: URL(string: "https://example.com")!,
+        username: "testuser",
+        appPassword: "xxxx yyyy zzzz"
+    )
+
+    init() throws {
+        try? KeychainStore.delete()
+    }
+
+    @Test func saveAndLoad() throws {
+        try KeychainStore.save(testCredentials)
+        let loaded = try KeychainStore.load()
+        #expect(loaded?.siteURL == testCredentials.siteURL)
+        #expect(loaded?.username == testCredentials.username)
+        #expect(loaded?.appPassword == testCredentials.appPassword)
+        try? KeychainStore.delete()
+    }
+
+    @Test func loadReturnsNilWhenEmpty() throws {
+        let result = try KeychainStore.load()
+        #expect(result == nil)
+    }
+
+    @Test func deleteRemovesCredentials() throws {
+        try KeychainStore.save(testCredentials)
+        try KeychainStore.delete()
+        let result = try KeychainStore.load()
+        #expect(result == nil)
+    }
+}
