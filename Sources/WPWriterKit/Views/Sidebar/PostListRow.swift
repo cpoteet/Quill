@@ -27,19 +27,20 @@ public struct PostListRow: View {
 
     private var statusColor: Color {
         switch item.statusBadge {
-        case "publish": return .green
-        case "draft":   return Color.wpAmber
-        case "future":  return .blue
-        case "local":   return .purple
-        default:        return Color(.tertiaryLabelColor)
+        case "publish":     return .green
+        case "draft":       return Color.wpAmber
+        case "future":      return .blue
+        case "local-post":  return .purple
+        case "local-page":  return Color(nsColor: .systemIndigo)
+        default:            return Color(.tertiaryLabelColor)
         }
     }
 
     private var subtitle: String {
-        if case .remote(let post) = item {
-            return formattedDate(post.date)
+        switch item {
+        case .remote(let post): return formattedDate(post.date)
+        case .local(let draft): return "\(draft.type) draft"
         }
-        return "local draft"
     }
 
     private func formattedDate(_ iso: String) -> String {

@@ -47,7 +47,7 @@ public enum PostItem: Identifiable, Hashable {
     public var statusBadge: String {
         switch self {
         case .remote(let p): return p.status
-        case .local: return "local"
+        case .local(let d): return "local-\(d.type)"
         }
     }
 }
