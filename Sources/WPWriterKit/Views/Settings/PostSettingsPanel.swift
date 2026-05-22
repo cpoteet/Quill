@@ -61,12 +61,15 @@ public struct PostSettingsPanel: View {
                 .foregroundStyle(.secondary)
             Toggle("Schedule", isOn: Binding(
                 get: { settings.publishDate != nil },
-                set: { settings.publishDate = $0 ? Date().addingTimeInterval(3600) : nil }
+                set: { settings.publishDate = $0 ? (settings.publishDate ?? Date().addingTimeInterval(3600)) : nil }
             ))
             .toggleStyle(.switch)
-            if let date = Binding($settings.publishDate) {
-                DatePicker("", selection: date, displayedComponents: [.date, .hourAndMinute])
-                    .labelsHidden()
+            if settings.publishDate != nil {
+                DatePicker("", selection: Binding(
+                    get: { settings.publishDate ?? Date() },
+                    set: { settings.publishDate = $0 }
+                ), displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
             }
         }
     }
