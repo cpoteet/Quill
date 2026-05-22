@@ -115,10 +115,12 @@ public struct SidebarView: View {
     }
 
     private func createNewDraft() {
+        let type = appState.selectedSection == .pages ? "page" : "post"
         guard let id = try? services.draftStore.create(
             title: "Untitled",
             content: "",
-            excerpt: ""
+            excerpt: "",
+            type: type
         ) else { return }
         if let updated = try? services.draftStore.fetchAll(),
            let newDraft = updated.first(where: { $0.id == id }) {
