@@ -200,7 +200,7 @@ public struct PostEditorView: View {
             settings.tagIDs = Set(post.tags)
             settings.featuredMediaID = post.featuredMedia
             if post.status == "future" {
-                settings.publishDate = parseWPDate(post.date)
+                settings.publishDate = parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             }
         case .local(let draft):
             title = draft.title
@@ -275,6 +275,16 @@ public struct PostEditorView: View {
                     ? try await client.updatePage(id: post.id, payload: payload)
                     : try await client.updatePost(id: post.id, payload: payload)
                 lastSavedServerModified = updated.modified
+                // Keep appState cache fresh so reopening the post loads the latest date/status
+                if post.type == "page" {
+                    if let idx = appState.pages.firstIndex(where: { $0.id == updated.id }) {
+                        appState.pages[idx] = updated
+                    }
+                } else {
+                    if let idx = appState.posts.firstIndex(where: { $0.id == updated.id }) {
+                        appState.posts[idx] = updated
+                    }
+                }
             case .local(let draft):
                 let created = draft.type == "page"
                     ? try await client.createPage(payload)
@@ -362,13 +372,15 @@ public struct PostEditorView: View {
     }
 
     private func parseWPDate(_ iso: String) -> Date? {
+        // Try ISO8601 with timezone first (handles date_gmt "2026-05-30T14:00:00Z")
+        let iso8601 = ISO8601DateFormatter()
+        if let date = iso8601.date(from: iso) { return date }
+        // Fallback: no timezone suffix — treat as UTC (date_gmt format on some WP versions)
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
-        for fmt in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"] {
-            df.dateFormat = fmt
-            if let date = df.date(from: iso) { return date }
-        }
-        return nil
+        df.timeZone = TimeZone(identifier: "UTC")
+        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return df.date(from: iso)
     }
 }
 
