@@ -134,7 +134,7 @@ public struct PostEditorView: View {
     private var breadcrumbSection: String {
         switch item {
         case .remote(let post): return post.type == "page" ? "Pages" : "Posts"
-        case .local: return "Drafts"
+        case .local(let draft): return draft.type == "page" ? "Pages" : "Posts"
         }
     }
 
@@ -172,9 +172,13 @@ public struct PostEditorView: View {
     }
 
     private var publishButtonTitle: String {
-        switch item {
-        case .remote(let p): return p.status == "publish" ? "Update" : "Publish"
-        case .local: return "Publish"
+        switch settings.status {
+        case "draft":  return "Save as Draft"
+        case "future": return "Schedule"
+        case "publish":
+            if case .remote(let p) = item, p.status == "publish" { return "Update" }
+            return "Publish"
+        default: return "Publish"
         }
     }
 
@@ -195,6 +199,9 @@ public struct PostEditorView: View {
             settings.categoryIDs = Set(post.categories)
             settings.tagIDs = Set(post.tags)
             settings.featuredMediaID = post.featuredMedia
+            if post.status == "future" {
+                settings.publishDate = parseWPDate(post.date)
+            }
         case .local(let draft):
             title = draft.title
             htmlContent = draft.content
@@ -231,7 +238,7 @@ public struct PostEditorView: View {
     }
 
     private func publish() async {
-        await save(status: settings.status == "future" ? "future" : "publish")
+        await save(status: settings.status)
     }
 
     private func save(status: String, force: Bool = false) async {
@@ -269,7 +276,9 @@ public struct PostEditorView: View {
                     : try await client.updatePost(id: post.id, payload: payload)
                 lastSavedServerModified = updated.modified
             case .local(let draft):
-                let created = try await client.createPost(payload)
+                let created = draft.type == "page"
+                    ? try await client.createPage(payload)
+                    : try await client.createPost(payload)
                 let db = try AppDatabase.production()
                 try DraftStore(db: db).delete(id: draft.id)
                 lastSavedServerModified = created.modified
@@ -348,6 +357,16 @@ public struct PostEditorView: View {
         if let autosave, let url = URL(string: autosave.link + "?preview=true") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    private func parseWPDate(_ iso: String) -> Date? {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for fmt in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"] {
+            df.dateFormat = fmt
+            if let date = df.date(from: iso) { return date }
+        }
+        return nil
     }
 }
 
