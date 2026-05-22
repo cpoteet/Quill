@@ -53,11 +53,13 @@ Sources/WPWriterKit/
 
 - **Pages endpoint** omits `categories` and `tags` fields — `WPPost` uses `decodeIfPresent` with `[]` defaults; do not make those fields required again
 - **`WPPost.type` field** — set to `"post"` or `"page"` by the API; used throughout `PostEditorView` and `WordPressClient` to route to the correct endpoint (`/posts/` vs `/pages/`). Do not remove this field.
+- **`WPPost.dateGmt` field** — decoded from `date_gmt` JSON key (UTC). Used in `PostEditorView.loadItem()` for scheduling round-trips. `PostPayload` sends scheduled dates as `dateGmt` (JSON key `date_gmt`) — never use `date` for scheduling; WordPress interprets `date` as site-local time and ignores timezone suffix.
 - **WKWebView editor loading** — `editor.html` must be loaded via `loadHTMLString(html, baseURL: URL(string: "https://app.wpwriter/"))`, NOT `loadFileURL`. The `file://` scheme gives the page a null origin; WebKit then blocks cross-origin ES module imports from esm.sh even with `Access-Control-Allow-Origin: *`. The fake HTTPS base URL gives a real origin so CDN imports succeed.
+- **WKWebView CDN cache clears on every binary rebuild** — Tiptap loads 12+ modules from esm.sh; after each rebuild the cache is cold. First launch after a rebuild needs a moment to re-fetch. This is expected, not a bug.
 - **Credential store** — `WordPressClient` must use ephemeral URLSession; switching to `.shared` will re-introduce keychain prompts during network calls
 - **Ad-hoc signing** — `build.sh` signs with `-`; "Always Allow" on keychain prompts won't persist across rebuilds (irrelevant now that credentials use file storage, but WKWebView may still prompt once per binary for its own internal keychain use)
 - **Layout uses `HSplitView`, not `NavigationSplitView`** — `ContentView` uses `HSplitView` to avoid macOS Tahoe's sidebar chrome (drop shadows, raised layer). Do NOT switch back to `NavigationSplitView` — it reinstates the layered appearance.
-- **Sidebar list style** — `SidebarView` uses `.listStyle(.plain)` + `.scrollContentBackground(.hidden)` + `.listRowBackground(Color.wpSidebarBg)` + `.listRowSeparator(.hidden)`. Do NOT switch to `.listStyle(.sidebar)` — vibrancy fights the custom warm background.
+- **Sidebar post list is `ScrollView+LazyVStack`, NOT `List`** — SwiftUI's `List` on macOS uses `NSTableRowView` which paints selection blue at the AppKit layer, overriding any SwiftUI modifier. `SidebarView` uses `ScrollView { LazyVStack { ForEach { Button } } }` for full control over selection appearance. Do NOT revert to `List` with a selection binding.
 - **Color tokens** — `Color.wpSidebarBg` (#F2F1EF light) and `Color.wpPanelBg` (#F4F3F1 light) are in `DesignSystem.swift` with `NSColor` dynamic providers for dark mode fallback. Use these instead of `NSColor.windowBackgroundColor` in sidebars/panels.
 
 ## Docs
