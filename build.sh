@@ -57,6 +57,9 @@ cat > "$APP_DIR/Info.plist" <<EOF
 </plist>
 EOF
 
+echo "▶ Signing $APP_BUNDLE..."
+codesign --force --deep --sign - "$APP_BUNDLE"
+
 echo "✓ Built: $APP_BUNDLE"
 echo "  Run with: open $APP_BUNDLE"
 echo "  Install:  cp -r $APP_BUNDLE /Applications/"

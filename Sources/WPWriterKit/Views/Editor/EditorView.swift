@@ -5,33 +5,42 @@ public struct EditorView: NSViewRepresentable {
     @Binding var html: String
     var onContentChange: (String) -> Void
     var onInsertImageAt: ((Int) -> Void)?
+    var onImageFilesDropped: (([URL]) -> Void)?
 
-    public init(html: Binding<String>, onContentChange: @escaping (String) -> Void, onInsertImageAt: ((Int) -> Void)? = nil) {
+    public init(
+        html: Binding<String>,
+        onContentChange: @escaping (String) -> Void,
+        onInsertImageAt: ((Int) -> Void)? = nil,
+        onImageFilesDropped: (([URL]) -> Void)? = nil
+    ) {
         self._html = html
         self.onContentChange = onContentChange
         self.onInsertImageAt = onInsertImageAt
+        self.onImageFilesDropped = onImageFilesDropped
     }
 
     public func makeCoordinator() -> EditorCoordinator {
         EditorCoordinator(onContentChange: onContentChange, onReady: {})
     }
 
-    public func makeNSView(context: Context) -> WKWebView {
+    public func makeNSView(context: Context) -> DroppableWebView {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "contentChanged")
         config.userContentController.add(context.coordinator, name: "editorReady")
         config.userContentController.add(context.coordinator, name: "insertImageAtIndex")
 
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
+        webView.onImageFilesDropped = onImageFilesDropped
         context.coordinator.webView = webView
         context.coordinator.onInsertImageAt = onInsertImageAt
         loadEditorHTML(in: webView)
         return webView
     }
 
-    public func updateNSView(_ nsView: WKWebView, context: Context) {
+    public func updateNSView(_ nsView: DroppableWebView, context: Context) {
         context.coordinator.setContent(html)
+        nsView.onImageFilesDropped = onImageFilesDropped
     }
 
     private func loadEditorHTML(in webView: WKWebView) {

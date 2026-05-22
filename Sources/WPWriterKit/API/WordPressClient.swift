@@ -4,20 +4,27 @@ public struct WordPressClient: Sendable {
     private let credentials: Credentials
     private let session: URLSession
 
-    public init(credentials: Credentials, session: URLSession = .shared) {
+    public init(credentials: Credentials, session: URLSession? = nil) {
         self.credentials = credentials
-        self.session = session
+        if let session {
+            self.session = session
+        } else {
+            // Use ephemeral configuration so URLSession never reads from or
+            // writes to the system keychain credential store.
+            let config = URLSessionConfiguration.ephemeral
+            self.session = URLSession(configuration: config)
+        }
     }
 
     // MARK: - Posts
 
     public func fetchPosts(page: Int = 1, perPage: Int = 100) async throws -> [WPPost] {
-        let url = try endpoint("posts", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"])
+        let url = try endpoint("posts", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit", "status": "publish,draft,private,future,pending"])
         return try await get(url)
     }
 
     public func fetchPages(page: Int = 1, perPage: Int = 100) async throws -> [WPPost] {
-        let url = try endpoint("pages", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"])
+        let url = try endpoint("pages", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit", "status": "publish,draft,private,future,pending"])
         return try await get(url)
     }
 

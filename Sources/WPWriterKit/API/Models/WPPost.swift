@@ -19,6 +19,22 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         case featuredMedia = "featured_media"
         case categories, tags
     }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id            = try c.decode(Int.self,            forKey: .id)
+        title         = try c.decode(RenderedString.self, forKey: .title)
+        content       = try c.decode(RenderedString.self, forKey: .content)
+        excerpt       = try c.decode(RenderedString.self, forKey: .excerpt)
+        status        = try c.decode(String.self,         forKey: .status)
+        date          = try c.decode(String.self,         forKey: .date)
+        modified      = try c.decode(String.self,         forKey: .modified)
+        slug          = try c.decode(String.self,         forKey: .slug)
+        link          = try c.decode(String.self,         forKey: .link)
+        featuredMedia = try c.decodeIfPresent(Int.self,   forKey: .featuredMedia) ?? 0
+        categories    = try c.decodeIfPresent([Int].self, forKey: .categories)    ?? []
+        tags          = try c.decodeIfPresent([Int].self, forKey: .tags)          ?? []
+    }
 }
 
 public struct RenderedString: Codable, Hashable, Sendable {

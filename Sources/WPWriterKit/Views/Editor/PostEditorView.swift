@@ -14,6 +14,7 @@ public struct PostEditorView: View {
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
     @State private var imageInsertIndex: Int? = nil
+    @State private var toastMessage: String? = nil
 
     public init(item: PostItem) {
         self.item = item
@@ -34,6 +35,9 @@ public struct PostEditorView: View {
                     },
                     onInsertImageAt: { index in
                         imageInsertIndex = index
+                    },
+                    onImageFilesDropped: { urls in
+                        Task { await handleDroppedImages(urls) }
                     }
                 )
                 .sheet(isPresented: Binding(
@@ -66,6 +70,7 @@ public struct PostEditorView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
+        .toast(message: $toastMessage)
         .alert("Conflict Detected", isPresented: Binding(
             get: { conflictAlert != nil },
             set: { if !$0 { conflictAlert = nil } }
@@ -98,10 +103,12 @@ public struct PostEditorView: View {
             }
             Spacer()
             Button("Save Draft") { Task { await saveDraft() } }
+                .keyboardShortcut("s", modifiers: .command)
                 .disabled(isSaving)
             Button("Preview") { Task { await openPreview() } }
                 .disabled(isSaving || !isRemote)
             Button(publishButtonTitle) { Task { await publish() } }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
                 .buttonStyle(.borderedProminent)
                 .disabled(isSaving)
             Divider().frame(height: 20)
@@ -224,6 +231,7 @@ public struct PostEditorView: View {
                 try DraftStore(db: db).delete(id: draft.id)
                 lastSavedServerModified = created.modified
             }
+            toastMessage = status == "publish" ? "Published" : status == "future" ? "Scheduled" : "Draft saved"
         } catch {
             saveError = error.localizedDescription
         }
@@ -242,6 +250,43 @@ public struct PostEditorView: View {
                 htmlContent = post.content.raw ?? post.content.rendered
                 lastSavedServerModified = post.modified
             }
+        }
+    }
+
+    // MARK: - Drag & Drop
+
+    private func handleDroppedImages(_ urls: [URL]) async {
+        guard let creds = appState.credentials else { return }
+        let client = WordPressClient(credentials: creds)
+        for url in urls {
+            guard url.isFileURL else { continue }
+            do {
+                let data = try Data(contentsOf: url)
+                let mime = imageMimeType(for: url.pathExtension.lowercased())
+                let media = try await client.uploadMedia(
+                    data: data, filename: url.lastPathComponent, mimeType: mime
+                )
+                NotificationCenter.default.post(
+                    name: .insertMediaURL,
+                    object: nil,
+                    userInfo: ["url": media.sourceURL, "index": 0]
+                )
+                toastMessage = "Image inserted"
+            } catch {
+                saveError = "Upload failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func imageMimeType(for ext: String) -> String {
+        switch ext {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "png":         return "image/png"
+        case "gif":         return "image/gif"
+        case "webp":        return "image/webp"
+        case "heic":        return "image/heic"
+        case "tiff", "tif": return "image/tiff"
+        default:            return "image/jpeg"
         }
     }
 

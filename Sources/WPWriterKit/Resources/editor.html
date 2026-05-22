@@ -155,6 +155,32 @@
       float: left;
       height: 0;
     }
+
+    /* ── Drop overlay ────────────────────────────────── */
+    #drop-overlay {
+      display: none;
+      position: fixed;
+      inset: 4px;
+      background: rgba(0, 122, 255, 0.06);
+      border: 2px dashed rgba(0, 122, 255, 0.45);
+      border-radius: 8px;
+      z-index: 100;
+      pointer-events: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #drop-overlay.active { display: flex; }
+    #drop-overlay span {
+      font-size: 14px;
+      font-weight: 500;
+      color: #007aff;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 8px 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    body.dark #drop-overlay { background: rgba(10, 132, 255, 0.08); border-color: rgba(10,132,255,0.45); }
+    body.dark #drop-overlay span { background: rgba(30,30,30,0.92); color: #0a84ff; }
   </style>
 </head>
 <body>
@@ -194,6 +220,7 @@
     <button data-cmd="undo" title="Undo (⌘Z)">&#8617; Undo</button>
     <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618; Redo</button>
   </div>
+  <div id="drop-overlay"><span>Drop to upload</span></div>
   <div id="editor-wrap"><div id="editor"></div></div>
 
   <script type="module">
@@ -326,6 +353,8 @@
     window.insertImageAt = (_index, url) => {
       editor.chain().focus().setImage({ src: url }).run()
     }
+    window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
+    window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
   </script>
 </body>
 </html>

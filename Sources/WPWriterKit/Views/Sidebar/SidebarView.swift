@@ -17,6 +17,33 @@ public struct SidebarView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
 
+                if appState.isLoadingList {
+                    HStack(spacing: 6) {
+                        ProgressView().scaleEffect(0.65)
+                        Text("Loading…")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 6)
+                }
+
+                if let error = appState.listError {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.08))
+                }
+
                 List(appState.filteredItems, selection: $appState.selectedItem) { item in
                     PostListRow(item: item)
                         .tag(item)
@@ -25,7 +52,20 @@ public struct SidebarView: View {
 
                 Divider()
                 HStack {
+                    Button {
+                        Task { await loadCurrentSection() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut("r", modifiers: .command)
+                    .help("Refresh (⌘R)")
+                    .padding(10)
+
                     Spacer()
+
                     Button {
                         createNewDraft()
                     } label: {
@@ -34,7 +74,8 @@ public struct SidebarView: View {
                             .foregroundStyle(Color.wpAmber)
                     }
                     .buttonStyle(.plain)
-                    .help("New Local Draft")
+                    .keyboardShortcut("n", modifiers: .command)
+                    .help("New Local Draft (⌘N)")
                     .padding(10)
                 }
             }
@@ -85,6 +126,7 @@ public struct SidebarView: View {
     private func loadCurrentSection() async {
         guard let creds = appState.credentials else { return }
         appState.isLoadingList = true
+        appState.listError = nil
         defer { appState.isLoadingList = false }
 
         let client = WordPressClient(credentials: creds)

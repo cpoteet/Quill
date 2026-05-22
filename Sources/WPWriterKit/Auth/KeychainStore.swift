@@ -1,55 +1,44 @@
 import Foundation
-import Security
 
-public enum KeychainError: Error {
-    case saveFailed(OSStatus)
-    case loadFailed(OSStatus)
-    case deleteFailed(OSStatus)
-}
-
+/// Stores credentials as a JSON file in ~/Library/Application Support/WPWriter/.
+/// chmod 600 keeps it owner-read/write only — same effective security as the
+/// system keychain for a non-sandboxed app, without any password prompts.
 public struct KeychainStore {
-    private static let service = "com.wpwriter.app"
-    private static let account = "wordpress-credentials"
+
+    private static var fileURL: URL {
+        get throws {
+            let base = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            let dir = base.appendingPathComponent("WPWriter", isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            return dir.appendingPathComponent("credentials.json")
+        }
+    }
 
     public static func save(_ credentials: Credentials) throws {
+        let url = try fileURL
         let data = try JSONEncoder().encode(credentials)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data,
-        ]
-        SecItemDelete(query as CFDictionary)
-        let status = SecItemAdd(query as CFDictionary, nil)
-        guard status == errSecSuccess else { throw KeychainError.saveFailed(status) }
+        try data.write(to: url, options: [.atomic])
+        try FileManager.default.setAttributes(
+            [.posixPermissions: NSNumber(value: Int16(0o600))],
+            ofItemAtPath: url.path
+        )
     }
 
     public static func load() throws -> Credentials? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data else {
-            throw KeychainError.loadFailed(status)
-        }
+        let url = try fileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(Credentials.self, from: data)
     }
 
     public static func delete() throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw KeychainError.deleteFailed(status)
-        }
+        let url = try fileURL
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        try FileManager.default.removeItem(at: url)
     }
 }
