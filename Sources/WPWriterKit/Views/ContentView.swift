@@ -24,12 +24,13 @@ public struct ContentView: View {
 
 struct EmptyEditorPlaceholder: View {
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: "doc.text")
-                .font(.system(size: 48))
-                .foregroundStyle(.quaternary)
-            Text("Select a post or create a new draft")
-                .foregroundStyle(.secondary)
+                .font(.system(size: 38, weight: .light))
+                .foregroundStyle(Color.wpAmber.opacity(0.5))
+            Text("Select a post to edit")
+                .font(.system(size: 13))
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -6,6 +6,24 @@ public enum SidebarSection: String, Hashable, CaseIterable {
     case pages = "Pages"
     case localDrafts = "Local Drafts"
     case media = "Media"
+
+    var icon: String {
+        switch self {
+        case .posts:       return "doc.text"
+        case .pages:       return "doc.plaintext"
+        case .localDrafts: return "pencil"
+        case .media:       return "photo"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .posts:       return "Posts"
+        case .pages:       return "Pages"
+        case .localDrafts: return "Drafts"
+        case .media:       return "Media"
+        }
+    }
 }
 
 public enum PostItem: Identifiable, Hashable {

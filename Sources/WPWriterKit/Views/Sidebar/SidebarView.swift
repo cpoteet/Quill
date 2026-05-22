@@ -8,18 +8,13 @@ public struct SidebarView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            Picker("Section", selection: $appState.selectedSection) {
-                ForEach(SidebarSection.allCases, id: \.self) { section in
-                    Text(section.rawValue).tag(section)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            sectionTabs
+            Divider()
 
             if appState.selectedSection != .media {
                 SearchField(text: $appState.searchText)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 8)
                     .padding(.bottom, 4)
 
                 List(appState.filteredItems, selection: $appState.selectedItem) { item in
@@ -35,21 +30,42 @@ public struct SidebarView: View {
                         createNewDraft()
                     } label: {
                         Image(systemName: "square.and.pencil")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.wpAmber)
                     }
                     .buttonStyle(.plain)
                     .help("New Local Draft")
-                    .padding(8)
+                    .padding(10)
                 }
-            } else {
-                Text("Media")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(minWidth: 220)
         .task(id: appState.selectedSection) {
             await loadCurrentSection()
         }
+    }
+
+    private var sectionTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(SidebarSection.allCases, id: \.self) { section in
+                let selected = appState.selectedSection == section
+                Button {
+                    appState.selectedSection = section
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: section.icon)
+                            .font(.system(size: 14, weight: selected ? .semibold : .regular))
+                        Text(section.shortTitle)
+                            .font(.system(size: 9.5, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(selected ? Color.wpAmber : Color.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 2)
     }
 
     private func createNewDraft() {
@@ -113,19 +129,25 @@ struct SearchField: View {
     @Binding var text: String
 
     var body: some View {
-        HStack {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
             TextField("Search", text: $text)
+                .font(.system(size: 13))
                 .textFieldStyle(.plain)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(6)
-        .background(.quinary)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(.quaternary.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 }

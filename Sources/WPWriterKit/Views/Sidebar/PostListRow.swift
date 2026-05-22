@@ -8,51 +8,49 @@ public struct PostListRow: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(item.title)
-                .font(.body)
+                .font(.system(size: 13, weight: .medium))
                 .lineLimit(2)
-            HStack(spacing: 6) {
-                StatusBadge(status: item.statusBadge)
-                if case .remote(let post) = item {
-                    Text(formattedDate(post.date))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                .foregroundStyle(.primary)
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 6, height: 6)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
+    }
+
+    private var statusColor: Color {
+        switch item.statusBadge {
+        case "publish": return .green
+        case "draft":   return Color.wpAmber
+        case "future":  return .blue
+        case "local":   return .purple
+        default:        return Color(.tertiaryLabelColor)
+        }
+    }
+
+    private var subtitle: String {
+        if case .remote(let post) = item {
+            return formattedDate(post.date)
+        }
+        return "local draft"
     }
 
     private func formattedDate(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate]
-        guard let date = formatter.date(from: iso) else { return iso }
-        return date.formatted(date: .abbreviated, time: .omitted)
-    }
-}
-
-struct StatusBadge: View {
-    let status: String
-
-    var body: some View {
-        Text(status)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(Capsule())
-    }
-
-    var color: Color {
-        switch status {
-        case "publish": return .green
-        case "draft":   return .orange
-        case "future":  return .blue
-        case "local":   return .purple
-        default:        return .secondary
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for fmt in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"] {
+            df.dateFormat = fmt
+            if let date = df.date(from: iso) {
+                return date.formatted(date: .abbreviated, time: .omitted)
+            }
         }
+        return String(iso.prefix(10))
     }
 }

@@ -11,6 +11,7 @@ public struct WPWriterApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)
+                .tint(Color.wpAmber)
                 .onAppear {
                     appState.credentials = try? KeychainStore.load()
                     if appState.credentials == nil {
