@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct WPWriterApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var appServices = AppServices()
 
     public init() {}
 
@@ -9,6 +10,7 @@ public struct WPWriterApp: App {
         WindowGroup("WPWriter") {
             ContentView()
                 .environmentObject(appState)
+                .environmentObject(appServices)
                 .onAppear {
                     appState.credentials = try? KeychainStore.load()
                     if appState.credentials == nil {
@@ -30,7 +32,6 @@ public struct WPWriterApp: App {
             PreferencesView { creds in
                 appState.credentials = creds
             }
-            .environmentObject(appState)
         }
     }
 }

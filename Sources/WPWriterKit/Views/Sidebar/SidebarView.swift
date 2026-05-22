@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var services: AppServices
 
     public init() {}
 
@@ -52,11 +53,59 @@ public struct SidebarView: View {
     }
 
     private func createNewDraft() {
-        // Implemented in Task 17 when AppServices is wired up
+        guard let id = try? services.draftStore.create(
+            title: "Untitled",
+            content: "",
+            excerpt: ""
+        ) else { return }
+        if let updated = try? services.draftStore.fetchAll(),
+           let newDraft = updated.first(where: { $0.id == id }) {
+            appState.localDrafts = updated
+            appState.selectedSection = .localDrafts
+            appState.selectedItem = .local(newDraft)
+        }
     }
 
     private func loadCurrentSection() async {
-        // Implemented in Task 17
+        guard let creds = appState.credentials else { return }
+        appState.isLoadingList = true
+        defer { appState.isLoadingList = false }
+
+        let client = WordPressClient(credentials: creds)
+        do {
+            switch appState.selectedSection {
+            case .posts:
+                appState.posts = try await client.fetchPosts()
+            case .pages:
+                appState.pages = try await client.fetchPages()
+            case .localDrafts:
+                appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
+            case .media:
+                break
+            }
+            await loadTaxonomiesIfNeeded(client: client)
+        } catch {
+            appState.listError = error.localizedDescription
+        }
+    }
+
+    private func loadTaxonomiesIfNeeded(client: WordPressClient) async {
+        if (try? services.taxonomyCache.isCategoryStale()) != false {
+            if let cats = try? await client.fetchCategories() {
+                try? services.taxonomyCache.saveCategories(cats)
+                appState.categories = cats
+            }
+        } else {
+            appState.categories = (try? services.taxonomyCache.loadCategories()) ?? []
+        }
+        if (try? services.taxonomyCache.isTagStale()) != false {
+            if let tags = try? await client.fetchTags() {
+                try? services.taxonomyCache.saveTags(tags)
+                appState.tags = tags
+            }
+        } else {
+            appState.tags = (try? services.taxonomyCache.loadTags()) ?? []
+        }
     }
 }
 
