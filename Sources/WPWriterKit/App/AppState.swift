@@ -1,0 +1,67 @@
+import Foundation
+import Combine
+
+public enum SidebarSection: String, Hashable, CaseIterable {
+    case posts = "Posts"
+    case pages = "Pages"
+    case localDrafts = "Local Drafts"
+    case media = "Media"
+}
+
+public enum PostItem: Identifiable, Hashable {
+    case remote(WPPost)
+    case local(LocalDraft)
+
+    public var id: String {
+        switch self {
+        case .remote(let p): return "remote-\(p.id)"
+        case .local(let d): return "local-\(d.id)"
+        }
+    }
+
+    public var title: String {
+        switch self {
+        case .remote(let p): return p.title.rendered.isEmpty ? "Untitled" : p.title.rendered
+        case .local(let d): return d.title.isEmpty ? "Untitled" : d.title
+        }
+    }
+
+    public var statusBadge: String {
+        switch self {
+        case .remote(let p): return p.status
+        case .local: return "local"
+        }
+    }
+}
+
+public final class AppState: ObservableObject {
+    @Published public var selectedSection: SidebarSection = .posts
+    @Published public var selectedItem: PostItem?
+    @Published public var searchText: String = ""
+    @Published public var isSettingsPanelOpen: Bool = false
+    @Published public var credentials: Credentials?
+    @Published public var isShowingPreferences: Bool = false
+
+    @Published public var posts: [WPPost] = []
+    @Published public var pages: [WPPost] = []
+    @Published public var localDrafts: [LocalDraft] = []
+    @Published public var categories: [WPCategory] = []
+    @Published public var tags: [WPTag] = []
+
+    @Published public var isLoadingList: Bool = false
+    @Published public var listError: String?
+
+    public init() {}
+
+    public var filteredItems: [PostItem] {
+        let items: [PostItem]
+        switch selectedSection {
+        case .posts:       items = posts.map { .remote($0) }
+        case .pages:       items = pages.map { .remote($0) }
+        case .localDrafts: items = localDrafts.map { .local($0) }
+        case .media:       return []
+        }
+        guard !searchText.isEmpty else { return items }
+        return items.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+    }
+}

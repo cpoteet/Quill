@@ -1,7 +1,7 @@
 import Foundation
 import SQLite
 
-public struct LocalDraft: Identifiable, Sendable {
+public struct LocalDraft: Identifiable, Hashable, Sendable {
     public let id: Int64
     public var title: String
     public var content: String

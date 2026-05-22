@@ -1,6 +1,6 @@
 import Foundation
 
-public struct WPPost: Identifiable, Codable, Sendable {
+public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public let id: Int
     public var title: RenderedString
     public var content: RenderedString
@@ -21,7 +21,7 @@ public struct WPPost: Identifiable, Codable, Sendable {
     }
 }
 
-public struct RenderedString: Codable, Sendable {
+public struct RenderedString: Codable, Hashable, Sendable {
     public var rendered: String
     public var raw: String?
 
