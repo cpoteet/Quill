@@ -174,7 +174,7 @@ To fully reset WPWriter, delete the `~/Library/Application Support/WPWriter/` di
 
 **Application Passwords require HTTPS.** WordPress disables Application Passwords on sites not served over HTTPS (unless you've explicitly enabled them via a filter). Make sure your site uses `https://`.
 
-**The editor loads from a CDN.** Tiptap is loaded from [esm.sh](https://esm.sh) at startup. The first launch (or first launch after clearing your browser cache) requires an internet connection to load the editor. Subsequent launches may use cached resources.
+**The editor requires an internet connection on first launch.** Tiptap is loaded from [esm.sh](https://esm.sh) at startup. The first launch after installing (or after a system update clears WebKit's cache) requires an internet connection. Subsequent launches use cached resources and work offline.
 
 **Pages don't have categories or tags.** This is a WordPress core behavior — the pages REST endpoint does not return category or tag fields. WPWriter handles this correctly; the post settings panel simply won't show category/tag controls for pages.
 

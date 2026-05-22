@@ -217,13 +217,17 @@ public struct PostEditorView: View {
             switch item {
             case .remote(let post):
                 if !force {
-                    let current = try await client.fetchPost(id: post.id)
+                    let current = post.type == "page"
+                        ? try await client.fetchPage(id: post.id)
+                        : try await client.fetchPost(id: post.id)
                     if current.modified != lastSavedServerModified {
                         conflictAlert = ConflictInfo(postID: post.id)
                         return
                     }
                 }
-                let updated = try await client.updatePost(id: post.id, payload: payload)
+                let updated = post.type == "page"
+                    ? try await client.updatePage(id: post.id, payload: payload)
+                    : try await client.updatePost(id: post.id, payload: payload)
                 lastSavedServerModified = updated.modified
             case .local(let draft):
                 let created = try await client.createPost(payload)
@@ -243,9 +247,13 @@ public struct PostEditorView: View {
 
     private func loadFromServer(postID: Int) {
         Task {
-            guard let creds = appState.credentials else { return }
+            guard let creds = appState.credentials,
+                  case .remote(let current) = item else { return }
             let client = WordPressClient(credentials: creds)
-            if let post = try? await client.fetchPost(id: postID) {
+            let fetched = current.type == "page"
+                ? try? await client.fetchPage(id: postID)
+                : try? await client.fetchPost(id: postID)
+            if let post = fetched {
                 title = post.title.rendered
                 htmlContent = post.content.raw ?? post.content.rendered
                 lastSavedServerModified = post.modified
@@ -295,8 +303,10 @@ public struct PostEditorView: View {
               case .remote(let post) = item else { return }
         let client = WordPressClient(credentials: creds)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: settings.excerpt, status: post.status)
-        if let autosave = try? await client.createAutosave(postID: post.id, payload: payload),
-           let url = URL(string: autosave.link + "?preview=true") {
+        let autosave = post.type == "page"
+            ? try? await client.createPageAutosave(postID: post.id, payload: payload)
+            : try? await client.createAutosave(postID: post.id, payload: payload)
+        if let autosave, let url = URL(string: autosave.link + "?preview=true") {
             NSWorkspace.shared.open(url)
         }
     }

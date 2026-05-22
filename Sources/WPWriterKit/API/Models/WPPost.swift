@@ -2,6 +2,7 @@ import Foundation
 
 public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public let id: Int
+    public var type: String             // "post" or "page"
     public var title: RenderedString
     public var content: RenderedString
     public var excerpt: RenderedString
@@ -15,7 +16,7 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public var tags: [Int]
 
     enum CodingKeys: String, CodingKey {
-        case id, title, content, excerpt, status, date, modified, slug, link
+        case id, type, title, content, excerpt, status, date, modified, slug, link
         case featuredMedia = "featured_media"
         case categories, tags
     }
@@ -23,6 +24,7 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id            = try c.decode(Int.self,            forKey: .id)
+        type          = try c.decodeIfPresent(String.self, forKey: .type)          ?? "post"
         title         = try c.decode(RenderedString.self, forKey: .title)
         content       = try c.decode(RenderedString.self, forKey: .content)
         excerpt       = try c.decode(RenderedString.self, forKey: .excerpt)

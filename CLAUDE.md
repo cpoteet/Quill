@@ -52,6 +52,8 @@ Sources/WPWriterKit/
 ## Known gotchas
 
 - **Pages endpoint** omits `categories` and `tags` fields — `WPPost` uses `decodeIfPresent` with `[]` defaults; do not make those fields required again
+- **`WPPost.type` field** — set to `"post"` or `"page"` by the API; used throughout `PostEditorView` and `WordPressClient` to route to the correct endpoint (`/posts/` vs `/pages/`). Do not remove this field.
+- **WKWebView editor loading** — `editor.html` must be loaded via `loadHTMLString(html, baseURL: URL(string: "https://app.wpwriter/"))`, NOT `loadFileURL`. The `file://` scheme gives the page a null origin; WebKit then blocks cross-origin ES module imports from esm.sh even with `Access-Control-Allow-Origin: *`. The fake HTTPS base URL gives a real origin so CDN imports succeed.
 - **Credential store** — `WordPressClient` must use ephemeral URLSession; switching to `.shared` will re-introduce keychain prompts during network calls
 - **Ad-hoc signing** — `build.sh` signs with `-`; "Always Allow" on keychain prompts won't persist across rebuilds (irrelevant now that credentials use file storage, but WKWebView may still prompt once per binary for its own internal keychain use)
 

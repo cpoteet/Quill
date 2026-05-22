@@ -44,10 +44,11 @@ public struct EditorView: NSViewRepresentable {
     }
 
     private func loadEditorHTML(in webView: WKWebView) {
-        guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") else {
-            return
-        }
-        let resourceDir = htmlURL.deletingLastPathComponent()
-        webView.loadFileURL(htmlURL, allowingReadAccessTo: resourceDir)
+        guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html"),
+              let html = try? String(contentsOf: htmlURL, encoding: .utf8) else { return }
+        // Use an https base URL so the page has a non-null origin, allowing
+        // CORS-enabled ES module imports from esm.sh to succeed (file:// is
+        // treated as a null origin and is blocked by WebKit's cross-origin policy).
+        webView.loadHTMLString(html, baseURL: URL(string: "https://app.wpwriter/"))
     }
 }

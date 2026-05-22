@@ -33,6 +33,11 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    public func fetchPage(id: Int) async throws -> WPPost {
+        let url = try endpoint("pages/\(id)", query: ["context": "edit"])
+        return try await get(url)
+    }
+
     public func createPost(_ payload: PostPayload) async throws -> WPPost {
         let url = try endpoint("posts")
         return try await post(url, body: payload)
@@ -89,6 +94,11 @@ public struct WordPressClient: Sendable {
 
     public func createAutosave(postID: Int, payload: PostPayload) async throws -> WPPost {
         let url = try endpoint("posts/\(postID)/autosaves")
+        return try await post(url, body: payload)
+    }
+
+    public func createPageAutosave(postID: Int, payload: PostPayload) async throws -> WPPost {
+        let url = try endpoint("pages/\(postID)/autosaves")
         return try await post(url, body: payload)
     }
 
