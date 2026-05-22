@@ -44,30 +44,28 @@ public struct SidebarView: View {
                     .background(Color.orange.opacity(0.08))
                 }
 
-                List(appState.filteredItems, selection: $appState.selectedItem) { item in
-                    let rowSelected = appState.selectedItem == item
-                    PostListRow(item: item, isSelected: rowSelected)
-                        .tag(item)
-                        .listRowBackground(
-                            Group {
-                                if rowSelected {
-                                    ZStack(alignment: .leading) {
-                                        Color.wpAmber.opacity(0.07)
-                                        Rectangle()
-                                            .fill(Color.wpAmber)
-                                            .frame(width: 2.5)
-                                    }
-                                } else {
-                                    Color.wpSidebarBg
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(appState.filteredItems) { item in
+                            let rowSelected = appState.selectedItem == item
+                            Button {
+                                appState.selectedItem = item
+                            } label: {
+                                HStack(spacing: 0) {
+                                    Rectangle()
+                                        .fill(rowSelected ? Color.wpAmber : Color.clear)
+                                        .frame(width: 2.5)
+                                    PostListRow(item: item, isSelected: rowSelected)
+                                        .padding(.leading, 9.5)
+                                        .padding(.trailing, 12)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
+                                .background(rowSelected ? Color.wpAmber.opacity(0.07) : Color.wpSidebarBg)
                             }
-                        )
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .accentColor(Color.wpAmber)
 
                 Divider()
                 HStack {
