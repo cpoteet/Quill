@@ -12,6 +12,7 @@ public struct MediaPickerView: View {
     @State private var isLoading = false
     @State private var loadError: String?
     @State private var isUploading = false
+    @State private var uploadError: String?
 
     public init(mode: MediaPickerMode, onSelect: ((WPMedia) -> Void)? = nil) {
         self.mode = mode
@@ -40,6 +41,14 @@ public struct MediaPickerView: View {
             }
         }
         .task { await loadMedia() }
+        .alert("Upload Failed", isPresented: Binding(
+            get: { uploadError != nil },
+            set: { if !$0 { uploadError = nil } }
+        )) {
+            Button("OK", role: .cancel) { uploadError = nil }
+        } message: {
+            Text(uploadError ?? "")
+        }
     }
 
     private var toolbar: some View {
@@ -99,7 +108,7 @@ public struct MediaPickerView: View {
                     .uploadMedia(data: data, filename: url.lastPathComponent, mimeType: mime)
                 mediaItems.insert(uploaded, at: 0)
             } catch {
-                // silently show nothing — production would surface this
+                uploadError = error.localizedDescription
             }
         }
     }

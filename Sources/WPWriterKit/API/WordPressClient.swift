@@ -57,7 +57,11 @@ public struct WordPressClient: Sendable {
         let url = try endpoint("media")
         var request = authorizedRequest(url: url, method: "POST")
         request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
-        request.setValue("attachment; filename=\"\(filename)\"", forHTTPHeaderField: "Content-Disposition")
+        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
+        request.setValue(
+            "attachment; filename=\"\(filename)\"; filename*=UTF-8''\(encoded)",
+            forHTTPHeaderField: "Content-Disposition"
+        )
         request.httpBody = data
         return try await perform(request)
     }

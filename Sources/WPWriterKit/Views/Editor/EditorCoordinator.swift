@@ -3,6 +3,7 @@ import WebKit
 public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     var isReady: Bool = false
     var pendingHTML: String?
+    private var lastPushedHTML: String = ""
     var onContentChange: (String) -> Void
     var onReady: () -> Void
     weak var webView: WKWebView?
@@ -32,7 +33,10 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         switch message.name {
         case "contentChanged":
             if let html = message.body as? String {
-                DispatchQueue.main.async { self.onContentChange(html) }
+                DispatchQueue.main.async {
+                    self.lastPushedHTML = html
+                    self.onContentChange(html)
+                }
             }
         case "editorReady":
             DispatchQueue.main.async {
@@ -67,6 +71,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     func setContent(_ html: String) {
         guard let wv = webView else { return }
         if isReady {
+            guard html != lastPushedHTML else { return }
+            lastPushedHTML = html
             guard let jsonHTML = try? JSONEncoder().encode(html),
                   let htmlStr = String(data: jsonHTML, encoding: .utf8) else { return }
             wv.evaluateJavaScript("setContent(\(htmlStr))", completionHandler: nil)
