@@ -45,9 +45,23 @@ public struct SidebarView: View {
                 }
 
                 List(appState.filteredItems, selection: $appState.selectedItem) { item in
-                    PostListRow(item: item)
+                    let rowSelected = appState.selectedItem == item
+                    PostListRow(item: item, isSelected: rowSelected)
                         .tag(item)
-                        .listRowBackground(Color.wpSidebarBg)
+                        .listRowBackground(
+                            Group {
+                                if rowSelected {
+                                    ZStack(alignment: .leading) {
+                                        Color.wpAmber.opacity(0.07)
+                                        Rectangle()
+                                            .fill(Color.wpAmber)
+                                            .frame(width: 2.5)
+                                    }
+                                } else {
+                                    Color.wpSidebarBg
+                                }
+                            }
+                        )
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
                 }
@@ -73,13 +87,13 @@ public struct SidebarView: View {
                     Button {
                         createNewDraft()
                     } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 14))
+                        Label(newButtonTitle, systemImage: "plus")
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.wpAmber)
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut("n", modifiers: .command)
-                    .help("New Local Draft (⌘N)")
+                    .help("\(newButtonTitle) (⌘N)")
                     .padding(10)
                 }
             }
@@ -92,7 +106,7 @@ public struct SidebarView: View {
     }
 
     private var sectionTabs: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(SidebarSection.allCases, id: \.self) { section in
                 let selected = appState.selectedSection == section
                 Button {
@@ -105,13 +119,29 @@ public struct SidebarView: View {
                             .font(.system(size: 9.5, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
+                    .background {
+                        if selected {
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(Color.primary.opacity(0.07))
+                        }
+                    }
                     .foregroundStyle(selected ? Color.wpAmber : Color.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+    }
+
+    private var newButtonTitle: String {
+        switch appState.selectedSection {
+        case .posts:       return "New Post"
+        case .pages:       return "New Page"
+        case .localDrafts: return "New Draft"
+        case .media:       return "New Media"
+        }
     }
 
     private func createNewDraft() {

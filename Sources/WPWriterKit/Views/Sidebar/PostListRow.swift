@@ -2,9 +2,11 @@ import SwiftUI
 
 public struct PostListRow: View {
     let item: PostItem
+    var isSelected: Bool
 
-    public init(item: PostItem) {
+    public init(item: PostItem, isSelected: Bool = false) {
         self.item = item
+        self.isSelected = isSelected
     }
 
     public var body: some View {
@@ -12,7 +14,7 @@ public struct PostListRow: View {
             Text(item.title)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(2)
-                .foregroundStyle(.primary)
+                .foregroundStyle(isSelected ? Color.wpAmber : Color.primary)
             HStack(spacing: 5) {
                 Circle()
                     .fill(statusColor)
@@ -22,7 +24,7 @@ public struct PostListRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, 6)
     }
 
     private var statusColor: Color {
