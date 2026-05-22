@@ -12,6 +12,7 @@ public final class AppDatabase: @unchecked Sendable {
     let draftExcerpt = Expression<String>("excerpt")
     let draftCreatedAt = Expression<Double>("created_at")
     let draftUpdatedAt = Expression<Double>("updated_at")
+    let draftType = Expression<String>("type")
 
     // autosaves columns
     let autosaves = Table("autosaves")
@@ -42,7 +43,10 @@ public final class AppDatabase: @unchecked Sendable {
             t.column(draftExcerpt)
             t.column(draftCreatedAt)
             t.column(draftUpdatedAt)
+            t.column(draftType, defaultValue: "post")
         })
+        // Migration for existing databases: silently ignored if column already exists
+        try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
 
         try db.run(autosaves.create(ifNotExists: true) { t in
             t.column(autosavePostID, primaryKey: true)

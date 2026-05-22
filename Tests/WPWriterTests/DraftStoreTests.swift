@@ -12,15 +12,32 @@ import Testing
     }
 
     @Test func createAndFetch() throws {
-        let id = try store.create(title: "Test", content: "<p>Hello</p>", excerpt: "")
+        let id = try store.create(title: "Test", content: "<p>Hello</p>", excerpt: "", type: "post")
         let drafts = try store.fetchAll()
         #expect(drafts.count == 1)
         #expect(drafts[0].id == id)
         #expect(drafts[0].title == "Test")
+        #expect(drafts[0].type == "post")
+    }
+
+    @Test func createPageDraft() throws {
+        let id = try store.create(title: "About", content: "", excerpt: "", type: "page")
+        let drafts = try store.fetchAll()
+        #expect(drafts[0].id == id)
+        #expect(drafts[0].type == "page")
+    }
+
+    @Test func fetchAllPreservesType() throws {
+        _ = try store.create(title: "Post Draft", content: "", excerpt: "", type: "post")
+        _ = try store.create(title: "Page Draft", content: "", excerpt: "", type: "page")
+        let drafts = try store.fetchAll()
+        #expect(drafts.count == 2)
+        let types = Set(drafts.map(\.type))
+        #expect(types == ["post", "page"])
     }
 
     @Test func update() throws {
-        let id = try store.create(title: "Original", content: "", excerpt: "")
+        let id = try store.create(title: "Original", content: "", excerpt: "", type: "post")
         try store.update(id: id, title: "Updated", content: "<p>New</p>", excerpt: "Excerpt")
         let drafts = try store.fetchAll()
         #expect(drafts[0].title == "Updated")
@@ -28,7 +45,7 @@ import Testing
     }
 
     @Test func delete() throws {
-        let id = try store.create(title: "ToDelete", content: "", excerpt: "")
+        let id = try store.create(title: "ToDelete", content: "", excerpt: "", type: "post")
         try store.delete(id: id)
         let drafts = try store.fetchAll()
         #expect(drafts.isEmpty)

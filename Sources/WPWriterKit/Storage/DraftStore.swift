@@ -6,6 +6,7 @@ public struct LocalDraft: Identifiable, Hashable, Sendable {
     public var title: String
     public var content: String
     public var excerpt: String
+    public var type: String          // "post" or "page"
     public var createdAt: Date
     public var updatedAt: Date
 }
@@ -18,12 +19,13 @@ public final class DraftStore: @unchecked Sendable {
     }
 
     @discardableResult
-    public func create(title: String, content: String, excerpt: String) throws -> Int64 {
+    public func create(title: String, content: String, excerpt: String, type: String = "post") throws -> Int64 {
         let now = Date().timeIntervalSince1970
         return try db.db.run(db.drafts.insert(
             db.draftTitle <- title,
             db.draftContent <- content,
             db.draftExcerpt <- excerpt,
+            db.draftType <- type,
             db.draftCreatedAt <- now,
             db.draftUpdatedAt <- now
         ))
@@ -36,6 +38,7 @@ public final class DraftStore: @unchecked Sendable {
                 title: row[db.draftTitle],
                 content: row[db.draftContent],
                 excerpt: row[db.draftExcerpt],
+                type: row[db.draftType],
                 createdAt: Date(timeIntervalSince1970: row[db.draftCreatedAt]),
                 updatedAt: Date(timeIntervalSince1970: row[db.draftUpdatedAt])
             )
