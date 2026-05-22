@@ -9,6 +9,16 @@ public struct PostSettings: Equatable {
     public var excerpt: String = ""
 
     public init() {}
+
+    public mutating func setScheduled(_ enabled: Bool) {
+        if enabled {
+            if publishDate == nil { publishDate = Date().addingTimeInterval(3600) }
+            status = "future"
+        } else {
+            publishDate = nil
+            if status == "future" { status = "draft" }
+        }
+    }
 }
 
 public struct PostSettingsPanel: View {
@@ -47,6 +57,15 @@ public struct PostSettingsPanel: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .onChange(of: settings.status) { _ in
+                if settings.status == "future" {
+                    if settings.publishDate == nil {
+                        settings.publishDate = Date().addingTimeInterval(3600)
+                    }
+                } else {
+                    settings.publishDate = nil
+                }
+            }
         }
     }
 
@@ -55,7 +74,7 @@ public struct PostSettingsPanel: View {
             sectionLabel("Publish Date")
             Toggle("Schedule", isOn: Binding(
                 get: { settings.publishDate != nil },
-                set: { settings.publishDate = $0 ? (settings.publishDate ?? Date().addingTimeInterval(3600)) : nil }
+                set: { settings.setScheduled($0) }
             ))
             .toggleStyle(.switch)
             if settings.publishDate != nil {
