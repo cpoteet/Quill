@@ -54,8 +54,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
     func insertImage(url: String, at index: Int) {
         guard let wv = webView else { return }
-        let escaped = url.replacingOccurrences(of: "\"", with: "\\\"")
-        wv.evaluateJavaScript("insertImageAt(\(index), \"\(escaped)\")", completionHandler: nil)
+        guard let jsonURL = try? JSONEncoder().encode(url),
+              let urlStr = String(data: jsonURL, encoding: .utf8) else { return }
+        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr))", completionHandler: nil)
     }
 
     // WKNavigationDelegate
@@ -66,10 +67,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     func setContent(_ html: String) {
         guard let wv = webView else { return }
         if isReady {
-            let escaped = html
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "`", with: "\\`")
-            wv.evaluateJavaScript("setContent(`\(escaped)`)", completionHandler: nil)
+            guard let jsonHTML = try? JSONEncoder().encode(html),
+                  let htmlStr = String(data: jsonHTML, encoding: .utf8) else { return }
+            wv.evaluateJavaScript("setContent(\(htmlStr))", completionHandler: nil)
         } else {
             pendingHTML = html
         }
