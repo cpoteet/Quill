@@ -56,6 +56,9 @@ Sources/WPWriterKit/
 - **WKWebView editor loading** — `editor.html` must be loaded via `loadHTMLString(html, baseURL: URL(string: "https://app.wpwriter/"))`, NOT `loadFileURL`. The `file://` scheme gives the page a null origin; WebKit then blocks cross-origin ES module imports from esm.sh even with `Access-Control-Allow-Origin: *`. The fake HTTPS base URL gives a real origin so CDN imports succeed.
 - **Credential store** — `WordPressClient` must use ephemeral URLSession; switching to `.shared` will re-introduce keychain prompts during network calls
 - **Ad-hoc signing** — `build.sh` signs with `-`; "Always Allow" on keychain prompts won't persist across rebuilds (irrelevant now that credentials use file storage, but WKWebView may still prompt once per binary for its own internal keychain use)
+- **Layout uses `HSplitView`, not `NavigationSplitView`** — `ContentView` uses `HSplitView` to avoid macOS Tahoe's sidebar chrome (drop shadows, raised layer). Do NOT switch back to `NavigationSplitView` — it reinstates the layered appearance.
+- **Sidebar list style** — `SidebarView` uses `.listStyle(.plain)` + `.scrollContentBackground(.hidden)` + `.listRowBackground(Color.wpSidebarBg)` + `.listRowSeparator(.hidden)`. Do NOT switch to `.listStyle(.sidebar)` — vibrancy fights the custom warm background.
+- **Color tokens** — `Color.wpSidebarBg` (#F2F1EF light) and `Color.wpPanelBg` (#F4F3F1 light) are in `DesignSystem.swift` with `NSColor` dynamic providers for dark mode fallback. Use these instead of `NSColor.windowBackgroundColor` in sidebars/panels.
 
 ## Docs
 

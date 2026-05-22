@@ -25,6 +25,7 @@ public struct PostEditorView: View {
             VStack(spacing: 0) {
                 toolbar
                 Divider()
+                if saveError != nil { errorBanner }
                 titleField
                 Divider()
                 EditorView(
@@ -93,19 +94,25 @@ public struct PostEditorView: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            if let error = saveError {
-                Image(systemName: "exclamationmark.circle")
-                    .foregroundStyle(.red)
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+            // #5 Breadcrumb
+            HStack(spacing: 4) {
+                Text(breadcrumbSection)
+                    .foregroundStyle(.tertiary)
+                Text("›")
+                    .foregroundStyle(.tertiary)
+                Text(title.isEmpty ? "Untitled" : title)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            .font(.system(size: 12))
             Spacer()
+            // #2 Button hierarchy
             Button("Save Draft") { Task { await saveDraft() } }
                 .keyboardShortcut("s", modifiers: .command)
+                .buttonStyle(.plain)
                 .disabled(isSaving)
             Button("Preview") { Task { await openPreview() } }
+                .buttonStyle(.bordered)
                 .disabled(isSaving || !isRemote)
             Button(publishButtonTitle) { Task { await publish() } }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
@@ -121,6 +128,38 @@ public struct PostEditorView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    // #5 Breadcrumb section label
+    private var breadcrumbSection: String {
+        switch item {
+        case .remote(let post): return post.type == "page" ? "Pages" : "Posts"
+        case .local: return "Drafts"
+        }
+    }
+
+    // #1 Dismissible amber error banner
+    private var errorBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(Color.wpAmber)
+                .font(.system(size: 13))
+            Text(saveError ?? "")
+                .font(.system(size: 12))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            Spacer()
+            Button { saveError = nil } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color.wpAmber.opacity(0.08))
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     private var titleField: some View {

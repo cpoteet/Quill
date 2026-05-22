@@ -6,18 +6,20 @@ public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
+        HSplitView {
             SidebarView()
-        } detail: {
-            if appState.selectedSection == .media {
-                MediaPickerView(mode: .browser)
-            } else if let item = appState.selectedItem {
-                PostEditorView(item: item)
-            } else {
-                EmptyEditorPlaceholder()
+                .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
+            Group {
+                if appState.selectedSection == .media {
+                    MediaPickerView(mode: .browser)
+                } else if let item = appState.selectedItem {
+                    PostEditorView(item: item)
+                } else {
+                    EmptyEditorPlaceholder()
+                }
             }
+            .frame(minWidth: 500)
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 900, minHeight: 600)
     }
 }

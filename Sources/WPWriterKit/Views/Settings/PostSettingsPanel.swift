@@ -34,15 +34,12 @@ public struct PostSettingsPanel: View {
             .padding(16)
         }
         .frame(width: 260)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.wpPanelBg)
     }
 
     private var statusSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Status", systemImage: "circle.fill")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            sectionLabel("Status")
             Picker("Status", selection: $settings.status) {
                 Text("Draft").tag("draft")
                 Text("Published").tag("publish")
@@ -55,10 +52,7 @@ public struct PostSettingsPanel: View {
 
     private var publishDateSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Publish Date", systemImage: "calendar")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            sectionLabel("Publish Date")
             Toggle("Schedule", isOn: Binding(
                 get: { settings.publishDate != nil },
                 set: { settings.publishDate = $0 ? (settings.publishDate ?? Date().addingTimeInterval(3600)) : nil }
@@ -76,56 +70,65 @@ public struct PostSettingsPanel: View {
 
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Categories", systemImage: "folder")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            sectionLabel("Categories")
             if categories.isEmpty {
                 Text("No categories").font(.caption).foregroundStyle(.tertiary)
             } else {
-                ForEach(categories) { cat in
-                    Toggle(cat.name, isOn: Binding(
-                        get: { settings.categoryIDs.contains(cat.id) },
-                        set: { checked in
-                            if checked { settings.categoryIDs.insert(cat.id) }
-                            else { settings.categoryIDs.remove(cat.id) }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(categories) { cat in
+                            Toggle(cat.name, isOn: Binding(
+                                get: { settings.categoryIDs.contains(cat.id) },
+                                set: { checked in
+                                    if checked { settings.categoryIDs.insert(cat.id) }
+                                    else { settings.categoryIDs.remove(cat.id) }
+                                }
+                            ))
+                            .toggleStyle(.checkbox)
                         }
-                    ))
-                    .toggleStyle(.checkbox)
+                    }
                 }
+                .frame(maxHeight: 210)
             }
         }
     }
 
     private var tagsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Tags", systemImage: "tag")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            sectionLabel("Tags")
             if tags.isEmpty {
                 Text("No tags").font(.caption).foregroundStyle(.tertiary)
             } else {
-                ForEach(tags) { tag in
-                    Toggle(tag.name, isOn: Binding(
-                        get: { settings.tagIDs.contains(tag.id) },
-                        set: { checked in
-                            if checked { settings.tagIDs.insert(tag.id) }
-                            else { settings.tagIDs.remove(tag.id) }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(tags) { tag in
+                            Toggle(tag.name, isOn: Binding(
+                                get: { settings.tagIDs.contains(tag.id) },
+                                set: { checked in
+                                    if checked { settings.tagIDs.insert(tag.id) }
+                                    else { settings.tagIDs.remove(tag.id) }
+                                }
+                            ))
+                            .toggleStyle(.checkbox)
                         }
-                    ))
-                    .toggleStyle(.checkbox)
+                    }
                 }
+                .frame(maxHeight: 160)
             }
         }
     }
 
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+            .tracking(1.0)
+    }
+
     private var excerptSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Excerpt", systemImage: "text.alignleft")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+            sectionLabel("Excerpt")
             TextEditor(text: $settings.excerpt)
                 .frame(height: 70)
                 .font(.body)

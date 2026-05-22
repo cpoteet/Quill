@@ -47,8 +47,12 @@ public struct SidebarView: View {
                 List(appState.filteredItems, selection: $appState.selectedItem) { item in
                     PostListRow(item: item)
                         .tag(item)
+                        .listRowBackground(Color.wpSidebarBg)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
                 }
-                .listStyle(.sidebar)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
 
                 Divider()
                 HStack {
@@ -81,6 +85,7 @@ public struct SidebarView: View {
             }
         }
         .frame(minWidth: 220)
+        .background(Color.wpSidebarBg.ignoresSafeArea())
         .task(id: appState.selectedSection) {
             await loadCurrentSection()
         }
