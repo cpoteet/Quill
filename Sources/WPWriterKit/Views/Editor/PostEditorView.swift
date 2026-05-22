@@ -253,7 +253,7 @@ public struct PostEditorView: View {
             content: htmlContent,
             excerpt: settings.excerpt,
             status: status,
-            date: settings.publishDate.map { ISO8601DateFormatter().string(from: $0) },
+            dateGmt: settings.publishDate.map { ISO8601DateFormatter().string(from: $0) },
             featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
             categories: Array(settings.categoryIDs),
             tags: Array(settings.tagIDs)

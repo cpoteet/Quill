@@ -57,13 +57,14 @@ public struct PostPayload: Encodable, Sendable {
     public var content: String
     public var excerpt: String
     public var status: String
-    public var date: String?
+    public var dateGmt: String?      // UTC — sent as date_gmt so WordPress treats it unambiguously as UTC
     public var featuredMedia: Int?
     public var categories: [Int]
     public var tags: [Int]
 
     enum CodingKeys: String, CodingKey {
-        case title, content, excerpt, status, date
+        case title, content, excerpt, status
+        case dateGmt = "date_gmt"
         case featuredMedia = "featured_media"
         case categories, tags
     }
@@ -73,7 +74,7 @@ public struct PostPayload: Encodable, Sendable {
         content: String,
         excerpt: String = "",
         status: String,
-        date: String? = nil,
+        dateGmt: String? = nil,
         featuredMedia: Int? = nil,
         categories: [Int] = [],
         tags: [Int] = []
@@ -82,7 +83,7 @@ public struct PostPayload: Encodable, Sendable {
         self.content = content
         self.excerpt = excerpt
         self.status = status
-        self.date = date
+        self.dateGmt = dateGmt
         self.featuredMedia = featuredMedia
         self.categories = categories
         self.tags = tags
