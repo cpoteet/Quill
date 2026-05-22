@@ -283,6 +283,8 @@ public struct PostEditorView: View {
                 try DraftStore(db: db).delete(id: draft.id)
                 lastSavedServerModified = created.modified
             }
+            settings.status = status
+            if status != "future" { settings.publishDate = nil }
             toastMessage = status == "publish" ? "Published" : status == "future" ? "Scheduled" : "Draft saved"
         } catch {
             saveError = error.localizedDescription
