@@ -16,6 +16,9 @@ public struct PostEditorView: View {
     @State private var lastSavedServerModified: String = ""
     @State private var imageInsertIndex: Int? = nil
     @State private var toastMessage: String? = nil
+    @State private var cleanTitle: String = ""
+    @State private var cleanContent: String = ""
+    @State private var loadedItem: PostItem? = nil
 
     public init(item: PostItem) {
         self.item = item
@@ -228,6 +231,10 @@ public struct PostEditorView: View {
         return appState.pages.filter { $0.id != post.id }
     }
 
+    private var isDirty: Bool {
+        title != cleanTitle || htmlContent != cleanContent
+    }
+
     // MARK: - Load
 
     private func loadItem() async {
@@ -256,11 +263,28 @@ public struct PostEditorView: View {
 
     // MARK: - Autosave
 
+    private func flushToDB(for oldItem: PostItem) async {
+        guard let db = try? AppDatabase.production() else { return }
+        switch oldItem {
+        case .remote(let post):
+            try? AutosaveStore(db: db).save(
+                postID: post.id, title: title, content: htmlContent,
+                serverModified: lastSavedServerModified)
+        case .local(let draft):
+            let store = DraftStore(db: db)
+            try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            if let updated = try? store.load(id: draft.id),
+               let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
+                appState.localDrafts[idx] = updated
+            }
+        }
+    }
+
     private func scheduleAutosave() {
         autosaveTask?.cancel()
         autosaveTask = Task {
             try? await Task.sleep(for: .seconds(30))
-            if !Task.isCancelled { await performAutosave() }
+            if !Task.isCancelled && isDirty { await performAutosave() }
         }
     }
 
