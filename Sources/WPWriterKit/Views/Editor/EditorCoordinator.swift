@@ -1,3 +1,5 @@
+import AppKit
+import SwiftUI
 import WebKit
 
 public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
@@ -7,8 +9,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onContentChange: (String) -> Void
     var onReady: () -> Void
     weak var webView: WKWebView?
-
     var onInsertImageAt: ((Int) -> Void)?
+    var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
+    private var linkPopover: NSPopover?
 
     init(onContentChange: @escaping (String) -> Void, onReady: @escaping () -> Void) {
         self.onContentChange = onContentChange
@@ -54,9 +57,56 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             if let index = message.body as? Int {
                 DispatchQueue.main.async { self.onInsertImageAt?(index) }
             }
+        case "showLinkPicker":
+            guard
+                let body    = message.body as? [String: Any],
+                let href    = body["href"] as? String,
+                let rectMap = body["rect"] as? [String: Any],
+                let x = rectMap["x"] as? Double,
+                let y = rectMap["y"] as? Double,
+                let w = rectMap["width"] as? Double,
+                let h = rectMap["height"] as? Double,
+                let wv = webView
+            else { return }
+            DispatchQueue.main.async { self.showLinkPicker(href: href, jsRect: (x, y, w, h), in: wv) }
         default:
             break
         }
+    }
+
+    private func showLinkPicker(href: String, jsRect: (x: Double, y: Double, w: Double, h: Double), in wv: WKWebView) {
+        linkPopover?.close()
+
+        // WKWebView is flipped (isFlipped == true): origin is top-left, Y increases downward —
+        // same as JS getBoundingClientRect(), so no coordinate conversion is needed.
+        let nsRect = NSRect(x: jsRect.x, y: jsRect.y, width: jsRect.w, height: jsRect.h)
+
+        let pickerView = LinkPickerView(
+            currentHref: href,
+            onApply: { [weak self] url in
+                self?.linkPopover?.close()
+                guard
+                    let jsonData = try? JSONEncoder().encode(url),
+                    let jsonStr  = String(data: jsonData, encoding: .utf8)
+                else { return }
+                self?.webView?.evaluateJavaScript("applyLink(\(jsonStr))", completionHandler: nil)
+            },
+            onRemove: { [weak self] in
+                self?.linkPopover?.close()
+                self?.webView?.evaluateJavaScript("removeLink()", completionHandler: nil)
+            },
+            onSearch: { [weak self] query in
+                guard let search = self?.onSearchLinks else { return [] }
+                return try await search(query)
+            }
+        )
+
+        let hosting = NSHostingController(rootView: pickerView)
+        let popover = NSPopover()
+        popover.contentViewController = hosting
+        popover.behavior = .transient
+        popover.show(relativeTo: nsRect, of: wv, preferredEdge: .maxY)
+        linkPopover = popover
     }
 
     func insertImage(url: String, at index: Int) {
