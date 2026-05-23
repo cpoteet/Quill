@@ -736,6 +736,72 @@
       if (!nv || nv.node.attrs.mediaId !== mediaId) return
       _updateNamedSizeButtons(sizes)
     }
+
+    // ── Image toolbar event handlers ──────────────────
+    ;(function () {
+      function commitDims(newW, newH) {
+        const tb = document.getElementById('image-toolbar')
+        const nv = tb?._activeNodeView
+        if (!nv) return
+        const pos = nv.getPos()
+        if (typeof pos !== 'number') return
+        const { state, dispatch } = nv.editor.view
+        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, width: newW, height: newH }))
+      }
+
+      document.getElementById('img-tb-w').addEventListener('change', e => {
+        const tb  = document.getElementById('image-toolbar')
+        const nv  = tb?._activeNodeView
+        const newW = Math.max(50, parseInt(e.target.value) || 50)
+        let newH = nv?.node.attrs.height ?? null
+        const attrs = nv?.node.attrs
+        if (attrs?.width && attrs?.height) {
+          newH = Math.round(newW * (attrs.height / attrs.width))
+          document.getElementById('img-tb-h').value = newH
+        }
+        commitDims(newW, newH)
+      })
+
+      document.getElementById('img-tb-h').addEventListener('change', e => {
+        const tb  = document.getElementById('image-toolbar')
+        const nv  = tb?._activeNodeView
+        const newH = Math.max(50, parseInt(e.target.value) || 50)
+        let newW = nv?.node.attrs.width ?? null
+        const attrs = nv?.node.attrs
+        if (attrs?.width && attrs?.height) {
+          newW = Math.round(newH * (attrs.width / attrs.height))
+          document.getElementById('img-tb-w').value = newW
+        }
+        commitDims(newW, newH)
+      })
+
+      document.getElementById('img-tb-reset').addEventListener('click', () => {
+        const tb = document.getElementById('image-toolbar')
+        const nv = tb?._activeNodeView
+        if (!nv) return
+        const pos = nv.getPos()
+        if (typeof pos !== 'number') return
+        const { state, dispatch } = nv.editor.view
+        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, width: null, height: null }))
+        document.getElementById('img-tb-w').value = ''
+        document.getElementById('img-tb-h').value = ''
+      })
+
+      document.querySelectorAll('#image-toolbar [data-size]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tb = document.getElementById('image-toolbar')
+          const nv = tb?._activeNodeView
+          if (!nv || !btn._sizeData) return
+          const { url, width, height } = btn._sizeData
+          const pos = nv.getPos()
+          if (typeof pos !== 'number') return
+          const { state, dispatch } = nv.editor.view
+          dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, src: url, width, height }))
+          document.getElementById('img-tb-w').value = width
+          document.getElementById('img-tb-h').value = height
+        })
+      })
+    })()
   </script>
 </body>
 </html>
