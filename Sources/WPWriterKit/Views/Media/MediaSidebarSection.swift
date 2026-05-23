@@ -311,6 +311,7 @@ private struct MediaSidebarCell: View {
                 Rectangle().fill(.quaternary)
             }
         }
+        .frame(maxWidth: .infinity)
         .frame(height: 80)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 6))
