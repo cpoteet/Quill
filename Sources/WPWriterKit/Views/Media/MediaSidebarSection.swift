@@ -187,7 +187,7 @@ struct MediaSidebarSection: View {
             Button {
                 uploadFromDisk()
             } label: {
-                Label("Upload", systemImage: "plus")
+                Label("New Media", systemImage: "plus")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.wpAmber)
             }
