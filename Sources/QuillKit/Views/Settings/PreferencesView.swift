@@ -13,12 +13,22 @@ private extension View {
 }
 
 public struct PreferencesView: View {
+    @EnvironmentObject private var appState: AppState
+
+    // WordPress credentials
     @State private var siteURL: String = ""
     @State private var username: String = ""
     @State private var appPassword: String = ""
     @State private var isSaving: Bool = false
     @State private var saveError: String?
     @State private var saveSuccess: Bool = false
+
+    // AI Writing settings
+    @State private var aiAPIKey: String = ""
+    @State private var aiSamplePostIDs: [Int] = []
+    @State private var aiWebSearchEnabled: Bool = true
+    @State private var isSamplePickerOpen: Bool = false
+    @State private var aiSaveSuccess: Bool = false
 
     var onSave: (Credentials) -> Void
 
@@ -76,10 +86,58 @@ public struct PreferencesView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isSaving || siteURL.isEmpty || username.isEmpty || appPassword.isEmpty)
             }
+
+            Divider()
+
+            settingSection(title: "AI Writing") {
+                formRow(label: "Anthropic API Key") {
+                    SecureField("sk-ant-…", text: $aiAPIKey)
+                        .textFieldStyle(.plain)
+                        .inputFieldStyle()
+                }
+                Divider().padding(.leading, 12)
+                formRow(label: "Writing Style") {
+                    HStack(spacing: 8) {
+                        Button("Choose Sample Posts…") { isSamplePickerOpen = true }
+                            .buttonStyle(.bordered)
+                            .disabled(appState.posts.isEmpty)
+                        Text(aiSamplePostIDs.isEmpty
+                             ? "No samples selected"
+                             : "\(aiSamplePostIDs.count) post\(aiSamplePostIDs.count == 1 ? "" : "s") selected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Divider().padding(.leading, 12)
+                formRow(label: "Web Search") {
+                    Toggle("Allow Claude to search the web", isOn: $aiWebSearchEnabled)
+                        .toggleStyle(.switch)
+                }
+            }
+            .sheet(isPresented: $isSamplePickerOpen) {
+                SamplePostPickerSheet(
+                    posts: appState.posts,
+                    selectedIDs: $aiSamplePostIDs,
+                    onDone: { isSamplePickerOpen = false }
+                )
+            }
+
+            HStack {
+                if aiSaveSuccess {
+                    Text("AI settings saved.").foregroundStyle(.green).font(.caption)
+                }
+                Spacer()
+                Button("Save AI Settings") { saveAISettings() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(aiAPIKey.isEmpty)
+            }
         }
         .padding(20)
         .frame(width: 440)
-        .onAppear(perform: loadExisting)
+        .onAppear {
+            loadExisting()
+            loadExistingAI()
+        }
     }
 
     @ViewBuilder
@@ -110,6 +168,25 @@ public struct PreferencesView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
+    }
+
+    private func loadExistingAI() {
+        guard let settings = try? AISettingsStore.load() else { return }
+        aiAPIKey = settings.apiKey
+        aiSamplePostIDs = settings.samplePostIDs
+        aiWebSearchEnabled = settings.webSearchEnabled
+    }
+
+    private func saveAISettings() {
+        let settings = AISettings(
+            apiKey: aiAPIKey,
+            samplePostIDs: aiSamplePostIDs,
+            webSearchEnabled: aiWebSearchEnabled
+        )
+        try? AISettingsStore.save(settings)
+        appState.aiSettings = settings
+        aiSaveSuccess = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { aiSaveSuccess = false }
     }
 
     private func loadExisting() {
