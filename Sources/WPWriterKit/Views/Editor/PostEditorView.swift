@@ -10,6 +10,7 @@ public struct PostEditorView: View {
     @State private var isSettingsOpen: Bool = false
     @State private var isSaving: Bool = false
     @State private var saveError: String?
+    @State private var previewError: String?
     @State private var conflictAlert: ConflictInfo?
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
@@ -88,6 +89,14 @@ public struct PostEditorView: View {
         } message: {
             Text("This post was modified on the server since you last fetched it.")
         }
+        .alert("Preview Failed", isPresented: Binding(
+            get: { previewError != nil },
+            set: { if !$0 { previewError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(previewError ?? "")
+        }
         .task(id: item.id) { await loadItem() }
         .onDisappear { autosaveTask?.cancel() }
     }
@@ -111,9 +120,11 @@ public struct PostEditorView: View {
                 .keyboardShortcut("s", modifiers: .command)
                 .buttonStyle(.plain)
                 .disabled(isSaving)
-            Button("Preview") { Task { await openPreview() } }
-                .buttonStyle(.bordered)
-                .disabled(isSaving || !isRemote)
+            if isRemote {
+                Button("Preview") { Task { await openPreview() } }
+                    .buttonStyle(.bordered)
+                    .disabled(isSaving)
+            }
             Button(publishButtonTitle) { Task { await publish() } }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .buttonStyle(.borderedProminent)
@@ -173,7 +184,7 @@ public struct PostEditorView: View {
 
     private var publishButtonTitle: String {
         switch settings.status {
-        case "draft":  return "Save as Draft"
+        case "draft":  return "Publish Draft"
         case "future": return "Schedule"
         case "publish":
             if case .remote(let p) = item, p.status == "publish" { return "Update" }
@@ -248,6 +259,27 @@ public struct PostEditorView: View {
         defer { isSaving = false }
 
         let client = WordPressClient(credentials: creds)
+
+        // Create any pending new categories/tags before building the payload
+        do {
+            for name in settings.newCategoryNames {
+                let cat = try await client.createCategory(name: name)
+                settings.categoryIDs.insert(cat.id)
+                appState.categories.append(cat)
+            }
+            settings.newCategoryNames = []
+
+            for name in settings.newTagNames {
+                let tag = try await client.createTag(name: name)
+                settings.tagIDs.insert(tag.id)
+                appState.tags.append(tag)
+            }
+            settings.newTagNames = []
+        } catch {
+            saveError = "Failed to create taxonomy: \(error.localizedDescription)"
+            return
+        }
+
         let payload = PostPayload(
             title: title,
             content: htmlContent,
@@ -363,11 +395,18 @@ public struct PostEditorView: View {
               case .remote(let post) = item else { return }
         let client = WordPressClient(credentials: creds)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: settings.excerpt, status: post.status)
-        let autosave = post.type == "page"
-            ? try? await client.createPageAutosave(postID: post.id, payload: payload)
-            : try? await client.createAutosave(postID: post.id, payload: payload)
-        if let autosave, let url = URL(string: autosave.link + "?preview=true") {
+        do {
+            let autosave = post.type == "page"
+                ? try await client.createPageAutosave(postID: post.id, payload: payload)
+                : try await client.createAutosave(postID: post.id, payload: payload)
+            let linkBase = autosave.link ?? post.link
+            guard let url = URL(string: linkBase + "?preview=true") else {
+                previewError = "WordPress returned an invalid preview URL: \(linkBase)"
+                return
+            }
             NSWorkspace.shared.open(url)
+        } catch {
+            previewError = error.localizedDescription
         }
     }
 

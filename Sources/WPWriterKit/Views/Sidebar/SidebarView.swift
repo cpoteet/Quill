@@ -113,12 +113,14 @@ public struct SidebarView: View {
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: section.icon)
-                            .font(.system(size: 14, weight: selected ? .semibold : .regular))
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(height: 18)
                         Text(section.shortTitle)
                             .font(.system(size: 9.5, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                     .background {
                         if selected {
                             RoundedRectangle(cornerRadius: 7)

@@ -6,9 +6,10 @@ public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
             SidebarView()
-                .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
+                .frame(width: 240)
+            Divider()
             Group {
                 if appState.selectedSection == .media {
                     MediaPickerView(mode: .browser)
@@ -18,7 +19,7 @@ public struct ContentView: View {
                     EmptyEditorPlaceholder()
                 }
             }
-            .frame(minWidth: 500)
+            .frame(minWidth: 500, maxWidth: .infinity)
         }
         .frame(minWidth: 900, minHeight: 600)
     }

@@ -90,14 +90,24 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    public func createTag(name: String) async throws -> WPTag {
+        let url = try endpoint("tags")
+        return try await post(url, body: TaxonomyPayload(name: name))
+    }
+
+    public func createCategory(name: String) async throws -> WPCategory {
+        let url = try endpoint("categories")
+        return try await post(url, body: TaxonomyPayload(name: name))
+    }
+
     // MARK: - Autosave (for Preview)
 
-    public func createAutosave(postID: Int, payload: PostPayload) async throws -> WPPost {
+    public func createAutosave(postID: Int, payload: PostPayload) async throws -> AutosaveResponse {
         let url = try endpoint("posts/\(postID)/autosaves")
         return try await post(url, body: payload)
     }
 
-    public func createPageAutosave(postID: Int, payload: PostPayload) async throws -> WPPost {
+    public func createPageAutosave(postID: Int, payload: PostPayload) async throws -> AutosaveResponse {
         let url = try endpoint("pages/\(postID)/autosaves")
         return try await post(url, body: payload)
     }
@@ -140,6 +150,10 @@ public struct WordPressClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
         return try await perform(request)
+    }
+
+    private struct TaxonomyPayload: Encodable {
+        let name: String
     }
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
