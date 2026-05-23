@@ -29,7 +29,7 @@ public struct ContentView: View {
                 } else if let item = appState.selectedItem {
                     PostEditorView(item: item)
                 } else {
-                    EmptyEditorPlaceholder()
+                    EmptyEditorPlaceholder(section: appState.selectedSection)
                 }
             }
             .frame(minWidth: 500, maxWidth: .infinity)
@@ -39,12 +39,23 @@ public struct ContentView: View {
 }
 
 struct EmptyEditorPlaceholder: View {
+    let section: SidebarSection
+
+    private var noun: String {
+        switch section {
+        case .posts: return "post"
+        case .pages: return "page"
+        case .localDrafts: return "draft"
+        default: return "post"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: "doc.text")
                 .font(.system(size: 38, weight: .light))
                 .foregroundStyle(Color.wpAmber.opacity(0.5))
-            Text("Select a post to edit")
+            Text("Select a \(noun) to edit")
                 .font(.system(size: 13))
                 .foregroundStyle(.tertiary)
         }
