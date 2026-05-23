@@ -1,8 +1,8 @@
-# WPWriter
+# Quill
 
 A native macOS app for writing and managing WordPress content — built entirely with Swift Package Manager, no Xcode required.
 
-WPWriter connects directly to any self-hosted WordPress site using the built-in REST API and Application Passwords. No plugins, no third-party services, no subscription.
+Quill connects directly to any self-hosted WordPress site using the built-in REST API and Application Passwords. No plugins, no third-party services, no subscription.
 
 ---
 
@@ -21,14 +21,14 @@ WPWriter connects directly to any self-hosted WordPress site using the built-in 
 
 ```bash
 git clone <repo-url>
-cd wp-mac-app
+cd quill
 ./build.sh
 ```
 
-This produces `WPWriter.app` in the project directory. Move it to `/Applications` if you like:
+This produces `Quill.app` in the project directory. Move it to `/Applications` if you like:
 
 ```bash
-cp -r WPWriter.app /Applications/
+cp -r Quill.app /Applications/
 ```
 
 The build script compiles the Swift package, assembles the app bundle, copies resources, and applies an ad-hoc code signature. No Xcode project file is needed.
@@ -42,12 +42,12 @@ The build script compiles the Swift package, assembles the app bundle, copies re
 1. Log in to your WordPress admin panel
 2. Go to **Users → Profile**
 3. Scroll down to **Application Passwords**
-4. Enter a name (e.g. "WPWriter Mac") and click **Add New Application Password**
+4. Enter a name (e.g. "Quill Mac") and click **Add New Application Password**
 5. Copy the generated password — you won't be able to see it again
 
-### 2. Connect WPWriter to your site
+### 2. Connect Quill to your site
 
-1. Launch WPWriter
+1. Launch Quill
 2. The preferences sheet opens automatically on first run
 3. Enter:
    - **Site URL** — e.g. `https://yoursite.com`
@@ -55,7 +55,7 @@ The build script compiles the Swift package, assembles the app bundle, copies re
    - **Application Password** — the password generated in step 1
 4. Click **Save**
 
-Your credentials are stored locally at `~/Library/Application Support/WPWriter/credentials.json` with owner-only read permissions. They are never sent anywhere except your own WordPress site.
+Your credentials are stored locally at `~/Library/Application Support/Quill/credentials.json` with owner-only read permissions. They are never sent anywhere except your own WordPress site.
 
 ---
 
@@ -110,6 +110,10 @@ The editor adapts to macOS light and dark mode automatically.
 
 A toast notification confirms every successful save, publish, or schedule action.
 
+### Unsaved changes
+
+An amber dot appears in the editor toolbar whenever the current post or page has changes that haven't been saved to WordPress yet. If you navigate to a different item before saving, Quill silently preserves your unsaved work to local storage. When you return, your changes are restored automatically and a brief "Unsaved changes restored" toast confirms the restore. Changes persist across app restarts.
+
 ### Post settings
 
 Click the sidebar-right icon in the editor toolbar to open the settings panel. Available fields differ by content type.
@@ -132,7 +136,7 @@ Click the sidebar-right icon in the editor toolbar to open the settings panel. A
 
 ### Drag and drop
 
-Drag any image file from Finder directly into the editor. WPWriter will:
+Drag any image file from Finder directly into the editor. Quill will:
 
 1. Upload the file to your WordPress media library
 2. Insert the image into the document at the current cursor position
@@ -174,7 +178,7 @@ A confirmation prompt appears before any delete action is executed. If a network
 Create drafts that live only on your Mac — useful for writing in progress that you're not ready to push to WordPress yet.
 
 - Press **⌘N** or click the pencil icon in the sidebar to create a new local draft
-- Local drafts autosave to a SQLite database in `~/Library/Application Support/WPWriter/`
+- Local drafts autosave to a SQLite database in `~/Library/Application Support/Quill/`
 - When you publish a local draft, it is uploaded to WordPress and removed from local storage
 
 ---
@@ -200,18 +204,18 @@ Create drafts that live only on your Mac — useful for writing in progress that
 
 ### Changing your site or credentials
 
-Open **WPWriter → Settings** (⌘,) and update any field, then click Save.
+Open **Quill → Settings** (⌘,) and update any field, then click Save.
 
 ### Data locations
 
 | Data | Location |
 |---|---|
-| Credentials | `~/Library/Application Support/WPWriter/credentials.json` |
-| Local drafts | `~/Library/Application Support/WPWriter/wpwriter.sqlite` |
+| Credentials | `~/Library/Application Support/Quill/credentials.json` |
+| Local drafts | `~/Library/Application Support/Quill/drafts.db` |
 | Autosaves | Same SQLite database |
 | Taxonomy cache | Same SQLite database |
 
-To fully reset WPWriter, delete the `~/Library/Application Support/WPWriter/` directory.
+To fully reset Quill, delete the `~/Library/Application Support/Quill/` directory.
 
 ---
 
@@ -223,11 +227,11 @@ To fully reset WPWriter, delete the `~/Library/Application Support/WPWriter/` di
 
 **The editor requires an internet connection on first launch.** Tiptap is loaded from [esm.sh](https://esm.sh) at startup. The first launch after installing (or after a system update clears WebKit's cache) requires an internet connection. Subsequent launches use cached resources and work offline.
 
-**Pages have different metadata than posts.** The pages REST endpoint does not support categories, tags, or excerpts. WPWriter shows a page-specific settings panel with Parent Page, Slug, and Discussion in place of those fields.
+**Pages have different metadata than posts.** The pages REST endpoint does not support categories, tags, or excerpts. Quill shows a page-specific settings panel with Parent Page, Slug, and Discussion in place of those fields.
 
-**Private posts.** WPWriter fetches posts and pages with `context=edit`, which requires authentication. Private posts are visible to authenticated users with edit permissions.
+**Private posts.** Quill fetches posts and pages with `context=edit`, which requires authentication. Private posts are visible to authenticated users with edit permissions.
 
-**Conflict detection.** WPWriter tracks the `modified` timestamp from WordPress. If you open a post, someone else edits it on the server, and you then try to save, WPWriter will warn you. You can choose to overwrite the server version or discard your local changes.
+**Conflict detection.** Quill tracks the `modified` timestamp from WordPress. If you open a post, someone else edits it on the server, and you then try to save, Quill will warn you. You can choose to overwrite the server version or discard your local changes.
 
 ---
 
@@ -235,7 +239,7 @@ To fully reset WPWriter, delete the `~/Library/Application Support/WPWriter/` di
 
 The included `build.sh` produces an ad-hoc signed app suitable for personal use. Ad-hoc signing means the app runs on your machine without Gatekeeper issues, but cannot be distributed to others via the Mac App Store or standard drag-install without triggering "unidentified developer" warnings.
 
-To distribute WPWriter:
+To distribute Quill:
 
 1. Obtain an **Apple Developer ID** certificate (requires the Apple Developer Program, $99/year)
 2. Replace `codesign --sign -` in `build.sh` with `codesign --sign "Developer ID Application: Your Name (TEAMID)"`
@@ -245,7 +249,7 @@ To distribute WPWriter:
 
 ## Contributing
 
-WPWriter is built with:
+Quill is built with:
 
 - **Swift 6** with strict concurrency
 - **SwiftUI** (macOS 13+) for all native UI
