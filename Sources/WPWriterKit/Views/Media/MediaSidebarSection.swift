@@ -16,7 +16,7 @@ struct MediaSidebarSection: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isLoadingMedia && appState.mediaItems.isEmpty {
+            if appState.isLoadingMedia {
                 HStack(spacing: 6) {
                     ProgressView().scaleEffect(0.65)
                     Text("Loading…")
