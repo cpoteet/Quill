@@ -410,6 +410,11 @@ public struct PostEditorView: View {
                     ? try await client.updatePage(id: post.id, payload: payload)
                     : try await client.updatePost(id: post.id, payload: payload)
                 lastSavedServerModified = updated.modified
+                cleanTitle = title
+                cleanContent = htmlContent
+                if let db = try? AppDatabase.production() {
+                    try? AutosaveStore(db: db).delete(postID: post.id)
+                }
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
                     if let idx = appState.pages.firstIndex(where: { $0.id == updated.id }) {
@@ -464,6 +469,8 @@ public struct PostEditorView: View {
                 title = post.title.rendered
                 htmlContent = post.content.raw ?? post.content.rendered
                 lastSavedServerModified = post.modified
+                cleanTitle = title
+                cleanContent = htmlContent
             }
         }
     }
