@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "WPWriter",
+    name: "Quill",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "WPWriter", targets: ["WPWriter"]),
+        .executable(name: "Quill", targets: ["Quill"]),
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.3"),
@@ -13,25 +13,25 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "WPWriter",
-            dependencies: ["WPWriterKit"],
-            path: "Sources/WPWriter"
+            name: "Quill",
+            dependencies: ["QuillKit"],
+            path: "Sources/Quill"
         ),
         .target(
-            name: "WPWriterKit",
+            name: "QuillKit",
             dependencies: [
                 .product(name: "SQLite", package: "SQLite.swift"),
             ],
-            path: "Sources/WPWriterKit",
+            path: "Sources/QuillKit",
             resources: [.copy("Resources")]
         ),
         .testTarget(
-            name: "WPWriterTests",
+            name: "QuillTests",
             dependencies: [
-                "WPWriterKit",
+                "QuillKit",
                 .product(name: "Testing", package: "swift-testing"),
             ],
-            path: "Tests/WPWriterTests"
+            path: "Tests/QuillTests"
         ),
     ]
 )

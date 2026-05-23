@@ -1,4 +1,4 @@
-# WPWriter
+# Quill
 
 Native macOS app for writing and managing WordPress content. Built with Swift Package Manager (no Xcode needed).
 
@@ -20,13 +20,13 @@ Implementation complete and running. Active polish/iteration phase.
 - [ ] Image resizing in the editor — ability to resize images inline, and respect sizes that come from WordPress
 - [ ] Fix styling and alignment on settings panel
 - [ ] Add application logo
-- [ ] Rename application to Quill
+- [x] Rename application to Quill
 
 ## Build & run
 
 ```bash
-./build.sh        # compiles, assembles WPWriter.app, ad-hoc signs
-open WPWriter.app
+./build.sh        # compiles, assembles Quill.app, ad-hoc signs
+open Quill.app
 ```
 
 **After every code change:** quit the app, run `./build.sh`, reopen. Always.
@@ -38,14 +38,14 @@ Requirements: Swift 6.3.1 (already installed), macOS 13+.
 - **Stack:** Swift 6, SwiftUI (macOS 13+), WKWebView, URLSession async/await
 - **Editor:** Tiptap 2.x inside WKWebView, loaded from esm.sh CDN (no npm needed)
 - **API:** WordPress REST API with Application Passwords (no plugin required)
-- **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/WPWriter/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
+- **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
 - **URLSession:** Always use `URLSessionConfiguration.ephemeral` (default in `WordPressClient`) — prevents URLSession from touching the system keychain credential store
 
 ## Architecture
 
 ```
-Sources/WPWriterKit/
-  App/              AppState, AppServices, WPWriterApp
+Sources/QuillKit/
+  App/              AppState, AppServices, QuillApp
   Auth/             KeychainStore (file-based, not system keychain)
   API/              WordPressClient, Models (WPPost, WPMedia, WPTaxonomy)
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
@@ -60,10 +60,10 @@ Sources/WPWriterKit/
 
 ## Key files to know
 
-- `Sources/WPWriterKit/Resources/editor.html` — entire Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals
-- `Sources/WPWriterKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles insert-image notification
-- `Sources/WPWriterKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
-- `Sources/WPWriterKit/API/WordPressClient.swift` — all REST API calls
+- `Sources/QuillKit/Resources/editor.html` — entire Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals
+- `Sources/QuillKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles insert-image notification
+- `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
+- `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
 
 ## Known gotchas
 
@@ -107,4 +107,4 @@ Sources/WPWriterKit/
 - Plan (media sidebar): `docs/superpowers/plans/2026-05-23-media-sidebar.md`
 - Spec (link picker): `docs/superpowers/specs/2026-05-23-link-picker-design.md`
 - Plan (link picker): `docs/superpowers/plans/2026-05-23-link-picker.md`
-- Public docs: `docs/WPWriter.md`
+- Public docs: `docs/Quill.md`

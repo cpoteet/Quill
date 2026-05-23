@@ -1,13 +1,13 @@
 import SwiftUI
 
-public struct WPWriterApp: App {
+public struct QuillApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var appServices = AppServices()
 
     public init() {}
 
     public var body: some Scene {
-        WindowGroup("WPWriter") {
+        WindowGroup("Quill") {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)

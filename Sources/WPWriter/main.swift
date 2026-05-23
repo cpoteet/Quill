@@ -1,3 +1,0 @@
-import WPWriterKit
-
-WPWriterApp.main()

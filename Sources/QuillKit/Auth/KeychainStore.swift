@@ -1,6 +1,6 @@
 import Foundation
 
-/// Stores credentials as a JSON file in ~/Library/Application Support/WPWriter/.
+/// Stores credentials as a JSON file in ~/Library/Application Support/Quill/.
 /// chmod 600 keeps it owner-read/write only — same effective security as the
 /// system keychain for a non-sandboxed app, without any password prompts.
 public struct KeychainStore {
@@ -13,7 +13,7 @@ public struct KeychainStore {
                 appropriateFor: nil,
                 create: true
             )
-            let dir = base.appendingPathComponent("WPWriter", isDirectory: true)
+            let dir = base.appendingPathComponent("Quill", isDirectory: true)
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             return dir.appendingPathComponent("credentials.json")
         }

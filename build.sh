@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="WPWriter"
-BUNDLE_ID="com.wpwriter.app"
+APP_NAME="Quill"
+BUNDLE_ID="com.quill.app"
 MIN_MACOS="13.0"
 
 echo "▶ Building $APP_NAME..."
@@ -23,7 +23,7 @@ cp "$BINARY" "$APP_DIR/MacOS/$APP_NAME"
 chmod +x "$APP_DIR/MacOS/$APP_NAME"
 
 # Resources
-cp "Sources/WPWriterKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
+cp "Sources/QuillKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
 
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF

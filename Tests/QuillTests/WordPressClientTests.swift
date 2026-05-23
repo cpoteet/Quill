@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import WPWriterKit
+@testable import QuillKit
 
 @Suite(.serialized) struct WordPressClientTests {
     var client: WordPressClient

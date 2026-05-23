@@ -1,0 +1,3 @@
+import QuillKit
+
+QuillApp.main()

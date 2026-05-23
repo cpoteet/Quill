@@ -145,5 +145,5 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 }
 
 extension Notification.Name {
-    static let insertMediaURL = Notification.Name("WPWriter.insertMediaURL")
+    static let insertMediaURL = Notification.Name("Quill.insertMediaURL")
 }
