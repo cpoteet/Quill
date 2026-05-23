@@ -6,17 +6,20 @@ public struct EditorView: NSViewRepresentable {
     var onContentChange: (String) -> Void
     var onInsertImageAt: ((Int) -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
+    var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
 
     public init(
         html: Binding<String>,
         onContentChange: @escaping (String) -> Void,
         onInsertImageAt: ((Int) -> Void)? = nil,
-        onImageFilesDropped: (([URL]) -> Void)? = nil
+        onImageFilesDropped: (([URL]) -> Void)? = nil,
+        onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil
     ) {
         self._html = html
         self.onContentChange = onContentChange
         self.onInsertImageAt = onInsertImageAt
         self.onImageFilesDropped = onImageFilesDropped
+        self.onSearchLinks = onSearchLinks
     }
 
     public func makeCoordinator() -> EditorCoordinator {
@@ -28,18 +31,21 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "contentChanged")
         config.userContentController.add(context.coordinator, name: "editorReady")
         config.userContentController.add(context.coordinator, name: "insertImageAtIndex")
+        config.userContentController.add(context.coordinator, name: "showLinkPicker")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.onImageFilesDropped = onImageFilesDropped
         context.coordinator.webView = webView
         context.coordinator.onInsertImageAt = onInsertImageAt
+        context.coordinator.onSearchLinks = onSearchLinks
         loadEditorHTML(in: webView)
         return webView
     }
 
     public func updateNSView(_ nsView: DroppableWebView, context: Context) {
         context.coordinator.setContent(html)
+        context.coordinator.onSearchLinks = onSearchLinks
         nsView.onImageFilesDropped = onImageFilesDropped
     }
 

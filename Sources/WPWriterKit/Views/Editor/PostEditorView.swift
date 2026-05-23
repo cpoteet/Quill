@@ -40,6 +40,10 @@ public struct PostEditorView: View {
                     },
                     onImageFilesDropped: { urls in
                         Task { await handleDroppedImages(urls) }
+                    },
+                    onSearchLinks: { query in
+                        guard let creds = appState.credentials else { return [] }
+                        return try await WordPressClient(credentials: creds).searchLinks(query: query)
                     }
                 )
                 .sheet(
