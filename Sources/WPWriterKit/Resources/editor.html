@@ -283,11 +283,12 @@
       undo:          () => editor.chain().focus().undo().run(),
       redo:          () => editor.chain().focus().redo().run(),
       link: () => {
-        const prev = editor.getAttributes('link').href || ''
-        const url  = prompt('URL (leave empty to remove):', prev)
-        if (url === null) return
-        if (url === '') { editor.chain().focus().unsetLink().run() }
-        else { editor.chain().focus().setLink({ href: url }).run() }
+        const href = editor.getAttributes('link').href || ''
+        const btn  = document.querySelector('[data-cmd="link"]').getBoundingClientRect()
+        const rect = { x: btn.x, y: btn.y, width: btn.width, height: btn.height }
+        if (window.webkit?.messageHandlers?.showLinkPicker) {
+          window.webkit.messageHandlers.showLinkPicker.postMessage({ href, rect })
+        }
       },
       image: () => {
         if (window.webkit?.messageHandlers?.insertImageAtIndex) {
@@ -355,6 +356,12 @@
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
+    window.applyLink = url => {
+      editor.chain().focus().setLink({ href: url }).run()
+    }
+    window.removeLink = () => {
+      editor.chain().focus().unsetLink().run()
+    }
   </script>
 </body>
 </html>
