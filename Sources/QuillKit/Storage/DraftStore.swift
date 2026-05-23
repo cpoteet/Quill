@@ -46,6 +46,20 @@ public final class DraftStore: @unchecked Sendable {
         }
     }
 
+    public func load(id: Int64) throws -> LocalDraft? {
+        let query = db.drafts.filter(db.draftID == id)
+        guard let row = try db.db.pluck(query) else { return nil }
+        return LocalDraft(
+            id: row[db.draftID],
+            title: row[db.draftTitle],
+            content: row[db.draftContent],
+            excerpt: row[db.draftExcerpt],
+            type: row[db.draftType],
+            createdAt: Date(timeIntervalSince1970: row[db.draftCreatedAt]),
+            updatedAt: Date(timeIntervalSince1970: row[db.draftUpdatedAt])
+        )
+    }
+
     public func update(id: Int64, title: String, content: String, excerpt: String) throws {
         let row = db.drafts.filter(db.draftID == id)
         try db.db.run(

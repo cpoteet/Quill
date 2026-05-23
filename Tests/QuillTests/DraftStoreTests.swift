@@ -50,4 +50,29 @@ import Testing
         let drafts = try store.fetchAll()
         #expect(drafts.isEmpty)
     }
+
+    @Test func loadByIdReturnsNilForUnknownId() throws {
+        let draft = try store.load(id: 999)
+        #expect(draft == nil)
+    }
+
+    @Test func loadByIdReturnsCorrectDraft() throws {
+        let id = try store.create(title: "Hello", content: "<p>World</p>", excerpt: "Ex", type: "post")
+        let draft = try store.load(id: id)
+        #expect(draft != nil)
+        #expect(draft?.id == id)
+        #expect(draft?.title == "Hello")
+        #expect(draft?.content == "<p>World</p>")
+        #expect(draft?.excerpt == "Ex")
+        #expect(draft?.type == "post")
+    }
+
+    @Test func loadByIdReflectsUpdates() throws {
+        let id = try store.create(title: "Old", content: "old", excerpt: "", type: "post")
+        try store.update(id: id, title: "New", content: "new", excerpt: "updated")
+        let draft = try store.load(id: id)
+        #expect(draft?.title == "New")
+        #expect(draft?.content == "new")
+        #expect(draft?.excerpt == "updated")
+    }
 }
