@@ -122,6 +122,15 @@ Supported formats: JPEG, PNG, GIF, WebP, HEIC, TIFF.
 
 A blue dashed overlay appears in the editor while you're dragging to confirm the drop zone is active.
 
+### Deleting content
+
+Right-click any item in the sidebar to reveal the delete option.
+
+- **Posts and pages** — "Move to Trash" sends the post to the WordPress Trash (reversible from WP Admin → Trash)
+- **Local drafts** — "Delete Draft" permanently removes the draft from local storage
+
+A confirmation prompt appears before any delete action is executed. If a network error occurs while trashing a remote post, an error alert is shown and the item remains in the list.
+
 ### Local drafts
 
 Create drafts that live only on your Mac — useful for writing in progress that you're not ready to push to WordPress yet.

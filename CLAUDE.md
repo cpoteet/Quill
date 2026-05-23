@@ -63,9 +63,15 @@ Sources/WPWriterKit/
 - **Color tokens** — `Color.wpSidebarBg` (#F2F1EF light) and `Color.wpPanelBg` (#F4F3F1 light) are in `DesignSystem.swift` with `NSColor` dynamic providers for dark mode fallback. Use these instead of `NSColor.windowBackgroundColor` in sidebars/panels.
 - **Inline taxonomy creation** — `PostSettings.newCategoryNames` / `newTagNames` hold names typed in the panel that don't exist on the server yet. On save/publish, `PostEditorView` calls `createCategory`/`createTag` for each pending name before building the payload, inserts the returned ID into `categoryIDs`/`tagIDs`, and appends the new item to `appState.categories`/`appState.tags`. Do not remove `newCategoryNames`/`newTagNames` — they are the mechanism for deferred creation.
 - **`AutosaveResponse` type** — the WordPress autosave endpoint (`/posts/{id}/autosaves`, `/pages/{id}/autosaves`) returns a partial object, not a full `WPPost`. Only `link?` and `parent?` are decoded into `AutosaveResponse`. The preview URL is built as `autosave.link ?? post.link` to handle sites that omit `link` from the autosave response.
+- **Trash vs. force-delete** — `WordPressClient.trashPost/trashPage` call `DELETE /posts/{id}?force=false`, which moves to WordPress Trash (recoverable). `force=true` would permanently delete. Do not change the `force` parameter unless permanent deletion is explicitly intended.
+- **`performVoid` helper** — `WordPressClient` has a private `performVoid(_:)` alongside `perform<T>(_:)`. Use `performVoid` for DELETE (and any future) calls that don't need to decode a response body. Do not use `perform<T>` with a dummy decodable type just to discard the result.
+- **Unicode curly quotes in Swift strings** — Swift treats `"` (U+201C) and `"` (U+201D) as string delimiters, identical to ASCII `"`. Do not use curly quotes inside string literals with interpolation — use escaped ASCII quotes `\"...\(value)...\"` instead.
+- **Delete state in SidebarView** — `itemPendingDelete: PostItem?` drives the confirmation alert; `deleteError: String?` drives the error alert. Both are `@State` locals in `SidebarView`. Setting `itemPendingDelete` non-nil triggers the alert; the confirm button clears it and calls `performDelete` in a `Task`.
 
 ## Docs
 
 - Spec: `docs/superpowers/specs/2026-05-21-wp-mac-app-design.md`
 - Plan: `docs/superpowers/plans/2026-05-21-wp-writer-implementation.md`
+- Spec (delete): `docs/superpowers/specs/2026-05-22-delete-post-draft-design.md`
+- Plan (delete): `docs/superpowers/plans/2026-05-22-delete-post-draft.md`
 - Public docs: `docs/WPWriter.md`
