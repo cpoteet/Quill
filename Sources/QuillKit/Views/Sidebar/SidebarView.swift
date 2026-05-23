@@ -215,6 +215,9 @@ public struct SidebarView: View {
         defer { appState.isLoadingList = false }
 
         let client = WordPressClient(credentials: creds)
+        try? services.taxonomyCache.clearAll()
+        appState.categories = []
+        appState.tags = []
         do {
             async let posts = client.fetchPosts()
             async let pages = client.fetchPages()

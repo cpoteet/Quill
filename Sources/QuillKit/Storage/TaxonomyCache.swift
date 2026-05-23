@@ -60,4 +60,8 @@ public final class TaxonomyCache: @unchecked Sendable {
         guard let row = try db.db.pluck(db.taxonomyCache.filter(db.taxType == "tag")) else { return true }
         return Date().timeIntervalSince1970 - row[db.taxFetchedAt] > ttl
     }
+
+    public func clearAll() throws {
+        try db.db.run(db.taxonomyCache.delete())
+    }
 }
