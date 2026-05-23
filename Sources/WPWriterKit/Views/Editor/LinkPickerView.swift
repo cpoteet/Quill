@@ -1,16 +1,22 @@
 import SwiftUI
 import AppKit
 
-struct LinkPickerView: View {
+final class LinkPickerModel: ObservableObject {
+    @Published var fieldText: String
+    @Published var results: [LinkSearchResult] = []
+    @Published var isSearching = false
+
     let currentHref: String
     let onApply: (String) -> Void
     let onRemove: () -> Void
     let onSearch: (String) async throws -> [LinkSearchResult]
 
-    @State private var fieldText: String
-    @State private var results: [LinkSearchResult] = []
-    @State private var isSearching = false
-    @State private var searchTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
+
+    var looksLikeURL: Bool {
+        fieldText.hasPrefix("http://") || fieldText.hasPrefix("https://")
+            || fieldText.hasPrefix("/") || fieldText.hasPrefix("#")
+    }
 
     init(
         currentHref: String,
@@ -22,47 +28,66 @@ struct LinkPickerView: View {
         self.onApply = onApply
         self.onRemove = onRemove
         self.onSearch = onSearch
-        self._fieldText = State(initialValue: currentHref)
+        self.fieldText = currentHref
     }
 
-    private var looksLikeURL: Bool {
-        fieldText.hasPrefix("http://") || fieldText.hasPrefix("https://")
-            || fieldText.hasPrefix("/") || fieldText.hasPrefix("#")
+    func scheduleSearch(_ text: String) {
+        searchTask?.cancel()
+        if text.isEmpty || looksLikeURL {
+            results = []
+            isSearching = false
+            return
+        }
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { self.isSearching = true }
+            let found = (try? await onSearch(text)) ?? []
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self.results = found
+                self.isSearching = false
+            }
+        }
     }
+}
+
+struct LinkPickerView: View {
+    @ObservedObject var model: LinkPickerModel
 
     var body: some View {
         VStack(spacing: 0) {
             // ── URL / search field ────────────────────────
             HStack(spacing: 6) {
-                TextField("Search or paste URL", text: $fieldText)
+                TextField("Search or paste URL", text: $model.fieldText)
                     .textFieldStyle(.plain)
-                    .onSubmit { if !fieldText.isEmpty { onApply(fieldText) } }
-                if !fieldText.isEmpty {
+                    .onSubmit { if !model.fieldText.isEmpty { model.onApply(model.fieldText) } }
+                if !model.fieldText.isEmpty {
                     Button {
-                        fieldText = ""
-                        results = []
+                        model.fieldText = ""
+                        model.results = []
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
-                if isSearching {
+                if model.isSearching {
                     ProgressView().controlSize(.small)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             // ── Results ───────────────────────────────────
-            if !results.isEmpty {
+            if !model.results.isEmpty {
                 Divider()
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(results) { result in
+                        ForEach(model.results) { result in
                             ResultRow(result: result) {
-                                fieldText = result.url
-                                results = []
+                                model.fieldText = result.url
+                                model.results = []
                             }
                         }
                     }
@@ -73,42 +98,22 @@ struct LinkPickerView: View {
             // ── Bottom buttons ────────────────────────────
             Divider()
             HStack {
-                if !currentHref.isEmpty {
-                    Button("Remove Link") { onRemove() }
+                if !model.currentHref.isEmpty {
+                    Button("Remove Link") { model.onRemove() }
                         .buttonStyle(.plain)
                         .foregroundStyle(.red)
                 }
                 Spacer()
-                Button("Apply Link") { onApply(fieldText) }
+                Button("Apply Link") { model.onApply(model.fieldText) }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .disabled(fieldText.isEmpty)
+                    .disabled(model.fieldText.isEmpty)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
         .frame(width: 320)
-        .onChange(of: fieldText, perform: scheduleSearch)
-    }
-
-    private func scheduleSearch(_ text: String) {
-        searchTask?.cancel()
-        if text.isEmpty || looksLikeURL {
-            results = []
-            isSearching = false
-            return
-        }
-        searchTask = Task {
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            await MainActor.run { isSearching = true }
-            let found = (try? await onSearch(text)) ?? []
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                results = found
-                isSearching = false
-            }
-        }
+        .onChange(of: model.fieldText, perform: model.scheduleSearch)
     }
 }
 

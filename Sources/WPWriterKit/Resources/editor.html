@@ -286,13 +286,40 @@
         const href = editor.getAttributes('link').href || ''
         const sel  = window.getSelection()
         let rect
+
         if (sel && sel.rangeCount > 0) {
-          const r = sel.getRangeAt(0).getBoundingClientRect()
-          rect = { x: r.x, y: r.y, width: r.width, height: r.height }
-        } else {
+          const range = sel.getRangeAt(0)
+          if (!range.collapsed) {
+            // Text is selected — anchor to the selection rect
+            const r = range.getBoundingClientRect()
+            rect = { x: r.x, y: r.y, width: r.width, height: r.height }
+          } else if (href) {
+            // Collapsed cursor on a link — sel.anchorNode is unreliable at node
+            // boundaries in ProseMirror; use domAtPos() and try adjacent offsets
+            // to find the <a> regardless of where in the link the cursor sits.
+            const from = editor.state.selection.from
+            let linkEl = null
+            for (const delta of [0, 1, -1, 2, -2]) {
+              try {
+                const dn = editor.view.domAtPos(from + delta).node
+                const el = dn.nodeType === Node.TEXT_NODE ? dn.parentElement : dn
+                const a  = el && el.closest('a')
+                if (a) { linkEl = a; break }
+              } catch (_) {}
+            }
+            if (linkEl) {
+              const lr = linkEl.getBoundingClientRect()
+              rect = { x: lr.x, y: lr.y, width: lr.width, height: lr.height }
+            }
+          }
+        }
+
+        // Fallback: toolbar button
+        if (!rect) {
           const btn = document.querySelector('[data-cmd="link"]').getBoundingClientRect()
           rect = { x: btn.x, y: btn.y, width: btn.width, height: btn.height }
         }
+
         if (window.webkit?.messageHandlers?.showLinkPicker) {
           window.webkit.messageHandlers.showLinkPicker.postMessage({ href, rect })
         }

@@ -81,7 +81,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         // same as JS getBoundingClientRect(), so no coordinate conversion is needed.
         let nsRect = NSRect(x: jsRect.x, y: jsRect.y, width: jsRect.w, height: jsRect.h)
 
-        let pickerView = LinkPickerView(
+        let model = LinkPickerModel(
             currentHref: href,
             onApply: { [weak self] url in
                 self?.linkPopover?.close()
@@ -101,7 +101,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         )
 
-        let hosting = NSHostingController(rootView: pickerView)
+        let hosting = NSHostingController(rootView: LinkPickerView(model: model))
+        hosting.sizingOptions = .preferredContentSize  // update size dynamically as results appear
         let popover = NSPopover()
         popover.contentViewController = hosting
         popover.behavior = .transient

@@ -10,7 +10,7 @@ Implementation complete and running. Active polish/iteration phase.
 
 - [x] Update the side panel for pages to reflect page-specific options (no categories/tags)
 - [x] Media capability is completely broken — investigate and fix
-- [ ] Link button in Tiptap toolbar does not work
+- [x] Link button in Tiptap toolbar does not work
 - [ ] Post/page title and breadcrumb bars should be white in dark mode
 - [ ] App title bar changes color when entering/exiting full screen
 
@@ -85,6 +85,9 @@ Sources/WPWriterKit/
 - **Media state lives in `AppState`** — `appState.mediaItems`, `appState.selectedMedia`, `appState.isLoadingMedia`, `appState.mediaError` are the single source of truth. `MediaSidebarSection` loads into and reads from these; `ContentView`/`MediaDetailView` observe `selectedMedia` to show the detail view. Pagination state (`currentPage`, `hasMore`) is local to `MediaSidebarSection` — no need to persist it in `AppState`.
 - **`deleteMedia` is permanent** — `WordPressClient.deleteMedia(id:)` calls `DELETE /media/{id}?force=true`. WordPress media items have no trash state — deletion is immediate and irreversible. Always show a confirmation alert before calling it.
 - **`MediaSidebarCell` uses `Color.clear` overlay, not `AsyncImage` directly** — `AsyncImage` participates in SwiftUI layout and reports its natural image dimensions when loaded, which breaks `LazyVGrid` column sizing (wide images span both columns, rows misalign). The fix: use `Color.clear.frame(minWidth: 0, maxWidth: .infinity, minHeight: 80, maxHeight: 80)` as the layout anchor and put `AsyncImage` inside `.overlay { }`. Overlays fill their parent's bounds without affecting layout, so every cell is always column-width × 80pt. Do not switch back to `AsyncImage` as the root view of the cell.
+- **Link picker uses `ObservableObject`, not `@State`, for async search results** — `LinkPickerView` is hosted in an `NSHostingController`/`NSPopover`. `@State` mutations from async `Task {}` closures do NOT trigger SwiftUI re-renders in this context. `LinkPickerModel: ObservableObject` with `@Published` properties uses Combine's `objectWillChange` which reliably triggers re-renders. Do not revert `LinkPickerModel` to `@State` properties on the view.
+- **`NSHostingController.sizingOptions = .preferredContentSize` required for dynamic popover resizing** — `NSHostingController` defaults to `sizingOptions = []`, which means `preferredContentSize` is set once at initial layout and never updated. When SwiftUI content grows (e.g. search results appear), the `NSPopover` stays locked at its original height and clips the new content. Set `hosting.sizingOptions = .preferredContentSize` after creating the controller so the popover resizes automatically as content changes.
+- **Link picker popover anchors to text selection rect, not toolbar button** — JS sends `showLinkPicker` with `window.getSelection().getRangeAt(0).getBoundingClientRect()` (falls back to the toolbar button rect when nothing is selected). WKWebView is flipped (Y-down, same as JS), so no coordinate conversion is needed — pass the JS rect directly to `NSPopover.show(relativeTo:of:preferredEdge:)` with `preferredEdge: .maxY`.
 
 ## Docs
 
@@ -94,4 +97,6 @@ Sources/WPWriterKit/
 - Plan (delete): `docs/superpowers/plans/2026-05-22-delete-post-draft.md`
 - Spec (media sidebar): `docs/superpowers/specs/2026-05-23-media-sidebar-design.md`
 - Plan (media sidebar): `docs/superpowers/plans/2026-05-23-media-sidebar.md`
+- Spec (link picker): `docs/superpowers/specs/2026-05-23-link-picker-design.md`
+- Plan (link picker): `docs/superpowers/plans/2026-05-23-link-picker.md`
 - Public docs: `docs/WPWriter.md`
