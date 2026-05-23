@@ -69,6 +69,11 @@ public final class AppState: ObservableObject {
     @Published public var isLoadingList: Bool = false
     @Published public var listError: String?
 
+    @Published public var mediaItems: [WPMedia] = []
+    @Published public var selectedMedia: WPMedia?
+    @Published public var isLoadingMedia: Bool = false
+    @Published public var mediaError: String?
+
     public init() {}
 
     public var filteredItems: [PostItem] {
