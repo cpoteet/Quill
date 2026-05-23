@@ -66,7 +66,9 @@ Layout (top to bottom):
 - `link: String` — the WordPress attachment page URL (for Open in Browser)
 - `date: String` — ISO8601 upload date (for the detail view)
 
-**Data loading:** `MediaSidebarSection` has a `.task` that calls `loadMedia()` on appear, same pattern as `SidebarView.loadAllSections()`. Refresh button re-fires the same task. Upload button opens `NSOpenPanel` and uses the existing upload logic extracted from the old `MediaPickerView`.
+**Data loading:** `MediaSidebarSection` has a `.task` that calls `loadMedia()` on appear, same pattern as `SidebarView.loadAllSections()`. Refresh button re-fires the same task (resets to page 1). Upload button opens `NSOpenPanel` and uses the existing upload logic extracted from the old `MediaPickerView`.
+
+**Pagination:** Load 30 items per page. A "Load more…" button appears at the bottom of the grid when the last fetch returned exactly 30 items (indicating more may exist). Tapping it appends the next page to `appState.mediaItems`. Refresh always resets to page 1 and replaces the array. Page state (`currentPage: Int`, `hasMore: Bool`) is local to `MediaSidebarSection` — no need to persist it in `AppState`. Detection strategy: if the response count equals `perPage`, show the button; if it's fewer, hide it (we've reached the end). This avoids requiring WordPress API response header parsing.
 
 **Delete flow:**
 - Context menu "Delete…" → sets `mediaPendingDelete: WPMedia?` state
@@ -119,7 +121,6 @@ if appState.selectedSection == .media {
 
 ## Non-Goals
 
-- Pagination (load more than 50 items) — not in scope
 - Search/filter within media — not in scope
 - Editing media metadata (alt text, caption) — not in scope
 - Multi-select — not in scope
