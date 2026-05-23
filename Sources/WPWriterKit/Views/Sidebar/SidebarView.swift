@@ -3,6 +3,8 @@ import SwiftUI
 public struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var services: AppServices
+    @State private var itemPendingDelete: PostItem? = nil
+    @State private var deleteError: String? = nil
 
     public init() {}
 
@@ -63,6 +65,16 @@ public struct SidebarView: View {
                                 .background(rowSelected ? Color.wpAmber.opacity(0.07) : Color.wpSidebarBg)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    itemPendingDelete = item
+                                } label: {
+                                    switch item {
+                                    case .remote: Label("Move to Trash", systemImage: "trash")
+                                    case .local:  Label("Delete Draft", systemImage: "trash")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -99,6 +111,34 @@ public struct SidebarView: View {
         }
         .frame(minWidth: 220)
         .background(Color.wpSidebarBg.ignoresSafeArea())
+        .alert(
+            "Confirm Delete",
+            isPresented: Binding(
+                get: { itemPendingDelete != nil },
+                set: { if !$0 { itemPendingDelete = nil } }
+            ),
+            presenting: itemPendingDelete
+        ) { item in
+            Button("Cancel", role: .cancel) { itemPendingDelete = nil }
+            Button(deleteActionLabel(for: item), role: .destructive) {
+                let target = item
+                itemPendingDelete = nil
+                Task { await performDelete(target) }
+            }
+        } message: { item in
+            Text(deleteMessage(for: item))
+        }
+        .alert(
+            "Delete Failed",
+            isPresented: Binding(
+                get: { deleteError != nil },
+                set: { if !$0 { deleteError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
+        }
         .task(id: appState.selectedSection) {
             await loadCurrentSection()
         }
@@ -182,6 +222,45 @@ public struct SidebarView: View {
             await loadTaxonomiesIfNeeded(client: client)
         } catch {
             appState.listError = error.localizedDescription
+        }
+    }
+
+    private func deleteActionLabel(for item: PostItem) -> String {
+        switch item {
+        case .remote: return "Move to Trash"
+        case .local:  return "Delete"
+        }
+    }
+
+    private func deleteMessage(for item: PostItem) -> String {
+        switch item {
+        case .remote: return "\"\(item.title)\" will be moved to the WordPress Trash."
+        case .local:  return "\"\(item.title)\" will be permanently deleted."
+        }
+    }
+
+    private func performDelete(_ item: PostItem) async {
+        do {
+            switch item {
+            case .remote(let post):
+                guard let creds = appState.credentials else { return }
+                let client = WordPressClient(credentials: creds)
+                if post.type == "page" {
+                    try await client.trashPage(id: post.id)
+                    appState.pages.removeAll { $0.id == post.id }
+                } else {
+                    try await client.trashPost(id: post.id)
+                    appState.posts.removeAll { $0.id == post.id }
+                }
+            case .local(let draft):
+                try services.draftStore.delete(id: draft.id)
+                appState.localDrafts.removeAll { $0.id == draft.id }
+            }
+            if appState.selectedItem == item {
+                appState.selectedItem = nil
+            }
+        } catch {
+            deleteError = error.localizedDescription
         }
     }
 
