@@ -364,6 +364,15 @@ public struct PostEditorView: View {
                 let db = try AppDatabase.production()
                 try DraftStore(db: db).delete(id: draft.id)
                 lastSavedServerModified = created.modified
+                appState.localDrafts.removeAll { $0.id == draft.id }
+                if draft.type == "page" {
+                    appState.pages.insert(created, at: 0)
+                    appState.selectedSection = .pages
+                } else {
+                    appState.posts.insert(created, at: 0)
+                    appState.selectedSection = .posts
+                }
+                appState.selectedItem = .remote(created)
             }
             settings.status = status
             if status != "future" { settings.publishDate = nil }
