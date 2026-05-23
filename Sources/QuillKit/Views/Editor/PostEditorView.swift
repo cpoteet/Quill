@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 public struct PostEditorView: View {
     @EnvironmentObject private var appState: AppState
@@ -19,6 +20,13 @@ public struct PostEditorView: View {
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
+
+    // AI state
+    @State private var isAISheetOpen: Bool = false
+    @State private var showAIReplaceAlert: Bool = false
+    @State private var currentSelectionRect: CGRect? = nil
+    private var selectionPill: SelectionPillPanel = SelectionPillPanel()
+    private var resultPanel: AIResultPanel = AIResultPanel()
 
     public init(item: PostItem) {
         self.item = item
@@ -50,6 +58,10 @@ public struct PostEditorView: View {
                     },
                     onRequestMediaSizes: { mediaId in
                         appState.mediaItems.first(where: { $0.id == mediaId })
+                    },
+                    onSelectionChanged: { rect in
+                        currentSelectionRect = rect
+                        handleSelectionChange(rect: rect)
                     }
                 )
                 .sheet(
@@ -90,6 +102,27 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .toast(message: $toastMessage)
+        .alert("Replace Content?", isPresented: $showAIReplaceAlert) {
+            Button("Continue") { isAISheetOpen = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will replace your current title and content. Continue?")
+        }
+        .sheet(isPresented: $isAISheetOpen) {
+            if let settings = appState.aiSettings {
+                GeneratePostSheet(
+                    aiSettings: settings,
+                    samplePosts: appState.posts
+                ) { generatedTitle, generatedHTML in
+                    title = generatedTitle
+                    htmlContent = generatedHTML
+                    isAISheetOpen = false
+                    scheduleAutosave()
+                } onCancel: {
+                    isAISheetOpen = false
+                }
+            }
+        }
         .alert(
             "Conflict Detected",
             isPresented: Binding(
@@ -163,6 +196,20 @@ public struct PostEditorView: View {
                 Image(systemName: "sidebar.right")
             }
             .help("Post Settings")
+            if appState.aiEnabled {
+                Divider().frame(height: 20)
+                Button {
+                    if title.isEmpty && htmlContent.isEmpty {
+                        isAISheetOpen = true
+                    } else {
+                        showAIReplaceAlert = true
+                    }
+                } label: {
+                    Text("✦")
+                        .font(.system(size: 13))
+                }
+                .help("Generate post with Claude")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -538,6 +585,49 @@ public struct PostEditorView: View {
         } catch {
             previewError = error.localizedDescription
         }
+    }
+
+    // MARK: - AI selection handling
+
+    private func handleSelectionChange(rect: CGRect?) {
+        guard appState.aiEnabled else { return }
+        if let rect = rect {
+            guard let webView = findWKWebView() else { return }
+            selectionPill.show(selectionRect: rect, in: webView) { operation in
+                Task { await executeAIOperation(operation) }
+            }
+        } else {
+            selectionPill.hide()
+        }
+    }
+
+    /// Execute an AI operation on the current editor selection.
+    /// Full implementation is added in the next task; this stub compiles the wiring.
+    @MainActor
+    private func executeAIOperation(_ operation: AIWritingOperation) async {
+        // Implemented in Task 12
+    }
+
+    /// Walks the AppKit view hierarchy of the key window to locate the WKWebView
+    /// (DroppableWebView subclass) used by EditorView.
+    private func findWKWebView() -> NSView? {
+        for window in NSApplication.shared.windows where window.isKeyWindow || window.isMainWindow {
+            if let found = findWKWebViewRecursive(in: window.contentView) { return found }
+        }
+        // Fallback: search all windows
+        for window in NSApplication.shared.windows {
+            if let found = findWKWebViewRecursive(in: window.contentView) { return found }
+        }
+        return nil
+    }
+
+    private func findWKWebViewRecursive(in view: NSView?) -> NSView? {
+        guard let view else { return nil }
+        if view is WKWebView { return view }
+        for sub in view.subviews {
+            if let found = findWKWebViewRecursive(in: sub) { return found }
+        }
+        return nil
     }
 
     private func parseWPDate(_ iso: String) -> Date? {
