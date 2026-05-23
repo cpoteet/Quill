@@ -601,11 +601,84 @@ public struct PostEditorView: View {
         }
     }
 
-    /// Execute an AI operation on the current editor selection.
-    /// Full implementation is added in the next task; this stub compiles the wiring.
+    // MARK: - AI operation execution
+
     @MainActor
     private func executeAIOperation(_ operation: AIWritingOperation) async {
-        // Implemented in Task 12
+        guard let settings = appState.aiSettings else { return }
+        guard let webView = findWKWebView() as? WKWebView else { return }
+
+        // 1. Tell JS to capture the selection and show the loading placeholder.
+        //    JS returns the selected plain text (used as prompt input), or null.
+        let selectedText: String = await withCheckedContinuation { continuation in
+            webView.evaluateJavaScript("beginAIOperation()") { result, _ in
+                continuation.resume(returning: (result as? String) ?? "")
+            }
+        }
+        guard !selectedText.isEmpty else { return }
+
+        // 2. Build style sample contents from loaded posts
+        let sampleContents: [String] = settings.samplePostIDs.compactMap { id in
+            guard let post = appState.posts.first(where: { $0.id == id }) else { return nil }
+            let stripped = post.content.rendered
+                .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return stripped.isEmpty ? nil : stripped
+        }
+
+        // 3. Call Claude (selection operations never use web search — faster + cheaper)
+        let client = AnthropicClient(apiKey: settings.apiKey)
+        let system = AIPromptBuilder.systemPrompt(samplePostContents: sampleContents)
+        let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: selectedText, operation: operation)
+
+        do {
+            let resultHTML = try await client.complete(
+                userMessage: userMsg,
+                systemPrompt: system,
+                useWebSearch: false
+            )
+
+            // 4. Show result in editor — JS replaces loading placeholder with result,
+            //    selects it, and returns a bounding rect for panel positioning.
+            guard let jsonData = try? JSONEncoder().encode(resultHTML),
+                  let jsonStr = String(data: jsonData, encoding: .utf8) else { return }
+
+            let resultRect: CGRect? = await withCheckedContinuation { continuation in
+                webView.evaluateJavaScript("showAIResult(\(jsonStr))") { result, _ in
+                    if let dict = result as? [String: Any],
+                       let x = dict["x"] as? Double,
+                       let y = dict["y"] as? Double,
+                       let w = dict["width"] as? Double,
+                       let h = dict["height"] as? Double {
+                        continuation.resume(returning: CGRect(x: x, y: y, width: w, height: h))
+                    } else {
+                        continuation.resume(returning: currentSelectionRect)
+                    }
+                }
+            }
+
+            // 5. Show accept/discard panel anchored below the result
+            let anchorRect = resultRect ?? currentSelectionRect ?? .zero
+            resultPanel.show(
+                belowRect: anchorRect,
+                in: webView,
+                onAccept: {
+                    webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)
+                    // Trigger contentChanged so Swift gets the accepted HTML
+                    webView.evaluateJavaScript(
+                        "window.webkit?.messageHandlers?.contentChanged?.postMessage(editor.getHTML())",
+                        completionHandler: nil
+                    )
+                },
+                onDiscard: {
+                    webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+                }
+            )
+        } catch {
+            // Restore original text and show a toast
+            webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+            toastMessage = "Claude couldn't complete that — please try again."
+        }
     }
 
     /// Walks the AppKit view hierarchy of the key window to locate the WKWebView
