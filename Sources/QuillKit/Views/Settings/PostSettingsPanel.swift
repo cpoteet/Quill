@@ -311,7 +311,7 @@ public struct PostSettingsPanel: View {
     private var slugSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Slug")
-            TextField("post-slug", text: $settings.slug)
+            TextField("", text: $settings.slug)
                 .textFieldStyle(.plain)
                 .font(.callout)
                 .padding(7)

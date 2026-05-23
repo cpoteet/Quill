@@ -21,6 +21,8 @@ Implementation complete and running. Active polish/iteration phase.
 - [ ] Fix styling and alignment on settings panel
 - [ ] Add application logo
 - [x] Rename application to Quill
+- [ ] Unsaved changes warning — what should happen when a user navigates away from an editor with unsaved changes (remote or local post/page)?
+- [x] New post/page slug field incorrectly inherits slug from the previously selected item — should be blank until the user types one
 
 ## Build & run
 

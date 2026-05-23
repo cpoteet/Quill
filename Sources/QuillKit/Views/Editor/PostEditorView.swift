@@ -249,6 +249,7 @@ public struct PostEditorView: View {
         case .local(let draft):
             title = draft.title
             htmlContent = draft.content
+            settings = PostSettings()
             settings.excerpt = draft.excerpt
         }
     }

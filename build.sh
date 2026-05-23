@@ -24,6 +24,7 @@ chmod +x "$APP_DIR/MacOS/$APP_NAME"
 
 # Resources
 cp "Sources/QuillKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
+cp "Sources/QuillKit/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF
@@ -38,6 +39,7 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSHighResolutionCapable</key><true/>
