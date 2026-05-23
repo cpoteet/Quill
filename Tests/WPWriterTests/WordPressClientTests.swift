@@ -100,6 +100,73 @@ import Testing
         #expect(capturedRequest?.url?.path.contains("pages/7") == true)
         #expect(capturedRequest?.url?.query?.contains("force=false") == true)
     }
+
+    @Test func searchLinksReturnsMergedResults() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200, httpVersion: nil, headerFields: nil
+            )!
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+
+            if path.contains("/search") && query.contains("type=post") {
+                let json = """
+                [{"id":1,"title":"Hello Post","url":"https://example.com/hello","type":"post","subtype":"post"},
+                 {"id":2,"title":"About Page","url":"https://example.com/about","type":"post","subtype":"page"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            } else if path.contains("/search") && query.contains("type=term") {
+                let json = """
+                [{"id":3,"title":"Tech","url":"https://example.com/category/tech","type":"term","subtype":"category"},
+                 {"id":4,"title":"swift","url":"https://example.com/tag/swift","type":"term","subtype":"tag"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            } else if path.contains("/media") {
+                let json = """
+                [{"id":5,"title":{"rendered":"photo.jpg"},"source_url":"https://example.com/wp-content/uploads/photo.jpg",
+                  "media_type":"image","mime_type":"image/jpeg","link":"https://example.com/?attachment_id=5","date":"2024-01-01T00:00:00"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            return (response, "[]".data(using: .utf8)!)
+        }
+
+        let results = try await client.searchLinks(query: "hello")
+        #expect(results.count == 5)
+        #expect(results[0].type == .post)
+        #expect(results[0].title == "Hello Post")
+        #expect(results[0].id == "post-1")
+        #expect(results[1].type == .page)
+        #expect(results[2].type == .category)
+        #expect(results[3].type == .tag)
+        #expect(results[4].type == .media)
+        #expect(results[4].url == "https://example.com/wp-content/uploads/photo.jpg")
+    }
+
+    @Test func searchLinksIgnoresSubrequestFailures() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/search") && query.contains("type=post") {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil
+                )!
+                let json = """
+                [{"id":1,"title":"Hello","url":"https://example.com/hello","type":"post","subtype":"post"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        let results = try await client.searchLinks(query: "hello")
+        #expect(results.count == 1)
+        #expect(results[0].type == .post)
+    }
 }
 
 // MARK: - Mock URLProtocol

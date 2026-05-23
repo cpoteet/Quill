@@ -143,6 +143,61 @@ public struct WordPressClient: Sendable {
         return try await post(url, body: payload)
     }
 
+    // MARK: - Search
+
+    private struct WPSearchItem: Decodable {
+        let id: Int
+        let title: String   // plain string in /wp/v2/search (not a rendered object)
+        let url: String
+        let type: String    // "post" or "term"
+        let subtype: String // "post", "page", "category", "tag"
+    }
+
+    public func searchLinks(query: String) async throws -> [LinkSearchResult] {
+        let postsURL = try endpoint("search", query: [
+            "search": query, "type": "post", "subtype": "post,page", "per_page": "5",
+        ])
+        let termsURL = try endpoint("search", query: [
+            "search": query, "type": "term", "subtype": "category,tag", "per_page": "5",
+        ])
+        let mediaURL = try endpoint("media", query: [
+            "search": query, "per_page": "3",
+        ])
+
+        async let postFetch: [WPSearchItem] = get(postsURL)
+        async let termFetch: [WPSearchItem] = get(termsURL)
+        async let mediaFetch: [WPMedia] = get(mediaURL)
+
+        let posts  = (try? await postFetch)  ?? []
+        let terms  = (try? await termFetch)  ?? []
+        let medias = (try? await mediaFetch) ?? []
+
+        var results: [LinkSearchResult] = []
+
+        for item in posts {
+            let type: LinkResultType = item.subtype == "page" ? .page : .post
+            results.append(LinkSearchResult(
+                id: "\(type.rawValue)-\(item.id)",
+                wpId: item.id, title: item.title, url: item.url, type: type
+            ))
+        }
+        for item in terms {
+            let type: LinkResultType = item.subtype == "tag" ? .tag : .category
+            results.append(LinkSearchResult(
+                id: "\(type.rawValue)-\(item.id)",
+                wpId: item.id, title: item.title, url: item.url, type: type
+            ))
+        }
+        for item in medias {
+            results.append(LinkSearchResult(
+                id: "media-\(item.id)",
+                wpId: item.id, title: item.title.rendered, url: item.sourceURL, type: .media
+            ))
+        }
+
+        return results
+    }
+
     // MARK: - Helpers
 
     private func endpoint(_ path: String, query: [String: String] = [:]) throws -> URL {
