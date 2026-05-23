@@ -105,8 +105,8 @@ Click the sidebar-right icon in the editor toolbar (or use the settings panel) t
 
 - **Status** — Draft, Published, or Scheduled
 - **Publish Date** — schedule a future publish with a date/time picker
-- **Categories** — toggle any categories from your site
-- **Tags** — toggle any tags from your site
+- **Categories** — filter existing categories with the search box, or type a new name and press Return to create it on your site when the post is saved
+- **Tags** — selected tags appear as chips at the top; search to add from existing tags, or type a new name and press Return to create it on your site when the post is saved
 - **Excerpt** — custom post excerpt
 - **Featured Image** — pick from your media library
 
