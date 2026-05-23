@@ -74,7 +74,16 @@ public final class AppState: ObservableObject {
     @Published public var isLoadingMedia: Bool = false
     @Published public var mediaError: String?
 
-    public init() {}
+    @Published public var aiSettings: AISettings?
+
+    public var aiEnabled: Bool {
+        guard let settings = aiSettings, !settings.apiKey.isEmpty else { return false }
+        return true
+    }
+
+    public init() {
+        aiSettings = try? AISettingsStore.load()
+    }
 
     public var filteredItems: [PostItem] {
         let items: [PostItem]
