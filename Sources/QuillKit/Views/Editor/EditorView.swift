@@ -7,19 +7,22 @@ public struct EditorView: NSViewRepresentable {
     var onInsertImageAt: ((Int) -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
+    var onRequestMediaSizes: ((Int) -> WPMedia?)?
 
     public init(
         html: Binding<String>,
         onContentChange: @escaping (String) -> Void,
         onInsertImageAt: ((Int) -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
-        onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil
+        onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
+        onRequestMediaSizes: ((Int) -> WPMedia?)? = nil
     ) {
         self._html = html
         self.onContentChange = onContentChange
         self.onInsertImageAt = onInsertImageAt
         self.onImageFilesDropped = onImageFilesDropped
         self.onSearchLinks = onSearchLinks
+        self.onRequestMediaSizes = onRequestMediaSizes
     }
 
     public func makeCoordinator() -> EditorCoordinator {
@@ -32,6 +35,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "editorReady")
         config.userContentController.add(context.coordinator, name: "insertImageAtIndex")
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
+        config.userContentController.add(context.coordinator, name: "requestMediaSizes")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -39,6 +43,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.webView = webView
         context.coordinator.onInsertImageAt = onInsertImageAt
         context.coordinator.onSearchLinks = onSearchLinks
+        context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         loadEditorHTML(in: webView)
         return webView
     }
@@ -46,6 +51,7 @@ public struct EditorView: NSViewRepresentable {
     public func updateNSView(_ nsView: DroppableWebView, context: Context) {
         context.coordinator.setContent(html)
         context.coordinator.onSearchLinks = onSearchLinks
+        context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         nsView.onImageFilesDropped = onImageFilesDropped
     }
 

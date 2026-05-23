@@ -11,6 +11,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     weak var webView: WKWebView?
     var onInsertImageAt: ((Int) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
+    var onRequestMediaSizes: ((Int) -> WPMedia?)?
     private var linkPopover: NSPopover?
 
     init(onContentChange: @escaping (String) -> Void, onReady: @escaping () -> Void) {
@@ -29,7 +30,10 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         guard let url = note.userInfo?["url"] as? String,
             let index = note.userInfo?["index"] as? Int
         else { return }
-        insertImage(url: url, at: index)
+        let width   = note.userInfo?["width"]   as? Int
+        let height  = note.userInfo?["height"]  as? Int
+        let mediaId = note.userInfo?["mediaId"] as? Int
+        insertImage(url: url, at: index, width: width, height: height, mediaId: mediaId)
     }
 
     // WKScriptMessageHandler
@@ -69,6 +73,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 let wv = webView
             else { return }
             DispatchQueue.main.async { self.showLinkPicker(href: href, jsRect: (x, y, w, h), in: wv) }
+        case "requestMediaSizes":
+            if let body = message.body as? [String: Any],
+               let mediaId = body["mediaId"] as? Int {
+                DispatchQueue.main.async { self.handleRequestMediaSizes(mediaId: mediaId) }
+            }
         default:
             break
         }
@@ -110,12 +119,34 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         linkPopover = popover
     }
 
-    func insertImage(url: String, at index: Int) {
+    private func handleRequestMediaSizes(mediaId: Int) {
+        guard let wv = webView else { return }
+        guard let media = onRequestMediaSizes?(mediaId),
+              let sizes = media.mediaDetails?.sizes,
+              !sizes.isEmpty
+        else {
+            wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)", completionHandler: nil)
+            return
+        }
+        var dict: [String: Any] = [:]
+        for (name, size) in sizes {
+            dict[name] = ["url": size.sourceURL, "width": size.width, "height": size.height]
+        }
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+              let jsonStr  = String(data: jsonData, encoding: .utf8)
+        else { return }
+        wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
+    }
+
+    func insertImage(url: String, at index: Int, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
             let urlStr = String(data: jsonURL, encoding: .utf8)
         else { return }
-        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr))", completionHandler: nil)
+        let wStr  = width.map   { String($0) } ?? "null"
+        let hStr  = height.map  { String($0) } ?? "null"
+        let idStr = mediaId.map { String($0) } ?? "null"
+        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr), \(wStr), \(hStr), \(idStr))", completionHandler: nil)
     }
 
     // WKNavigationDelegate
