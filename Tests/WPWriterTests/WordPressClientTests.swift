@@ -55,6 +55,51 @@ import Testing
             try await client.fetchPosts()
         }
     }
+
+    @Test func trashPostSendsDeleteRequest() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            let response = HTTPURLResponse(
+                url: URL(string: "https://example.com")!,
+                statusCode: 200, httpVersion: nil, headerFields: nil
+            )!
+            return (response, Data())
+        }
+        try await client.trashPost(id: 42)
+        #expect(capturedRequest?.httpMethod == "DELETE")
+        #expect(capturedRequest?.url?.path.contains("posts/42") == true)
+        #expect(capturedRequest?.url?.query?.contains("force=false") == true)
+    }
+
+    @Test func trashPostThrowsOnHTTPError() async throws {
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://example.com")!,
+                statusCode: 403, httpVersion: nil, headerFields: nil
+            )!
+            return (response, Data())
+        }
+        await #expect(throws: APIError.self) {
+            try await client.trashPost(id: 42)
+        }
+    }
+
+    @Test func trashPageSendsDeleteRequest() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            let response = HTTPURLResponse(
+                url: URL(string: "https://example.com")!,
+                statusCode: 200, httpVersion: nil, headerFields: nil
+            )!
+            return (response, Data())
+        }
+        try await client.trashPage(id: 7)
+        #expect(capturedRequest?.httpMethod == "DELETE")
+        #expect(capturedRequest?.url?.path.contains("pages/7") == true)
+        #expect(capturedRequest?.url?.query?.contains("force=false") == true)
+    }
 }
 
 // MARK: - Mock URLProtocol

@@ -58,6 +58,18 @@ public struct WordPressClient: Sendable {
         return try await put(url, body: payload)
     }
 
+    public func trashPost(id: Int) async throws {
+        let url = try endpoint("posts/\(id)", query: ["force": "false"])
+        let request = authorizedRequest(url: url, method: "DELETE")
+        try await performVoid(request)
+    }
+
+    public func trashPage(id: Int) async throws {
+        let url = try endpoint("pages/\(id)", query: ["force": "false"])
+        let request = authorizedRequest(url: url, method: "DELETE")
+        try await performVoid(request)
+    }
+
     // MARK: - Media
 
     public func fetchMedia(page: Int = 1, perPage: Int = 50) async throws -> [WPMedia] {
@@ -154,6 +166,19 @@ public struct WordPressClient: Sendable {
 
     private struct TaxonomyPayload: Encodable {
         let name: String
+    }
+
+    private func performVoid(_ request: URLRequest) async throws {
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.networkError(error)
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode >= 300 {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.httpError(statusCode: http.statusCode, body: body)
+        }
     }
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
