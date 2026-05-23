@@ -1,2 +1,3 @@
 import WPWriterKit
+
 WPWriterApp.main()

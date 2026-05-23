@@ -6,7 +6,7 @@ public struct LocalDraft: Identifiable, Hashable, Sendable {
     public var title: String
     public var content: String
     public var excerpt: String
-    public var type: String          // "post" or "page"
+    public var type: String  // "post" or "page"
     public var createdAt: Date
     public var updatedAt: Date
 }
@@ -21,14 +21,15 @@ public final class DraftStore: @unchecked Sendable {
     @discardableResult
     public func create(title: String, content: String, excerpt: String, type: String = "post") throws -> Int64 {
         let now = Date().timeIntervalSince1970
-        return try db.db.run(db.drafts.insert(
-            db.draftTitle <- title,
-            db.draftContent <- content,
-            db.draftExcerpt <- excerpt,
-            db.draftType <- type,
-            db.draftCreatedAt <- now,
-            db.draftUpdatedAt <- now
-        ))
+        return try db.db.run(
+            db.drafts.insert(
+                db.draftTitle <- title,
+                db.draftContent <- content,
+                db.draftExcerpt <- excerpt,
+                db.draftType <- type,
+                db.draftCreatedAt <- now,
+                db.draftUpdatedAt <- now
+            ))
     }
 
     public func fetchAll() throws -> [LocalDraft] {
@@ -47,12 +48,13 @@ public final class DraftStore: @unchecked Sendable {
 
     public func update(id: Int64, title: String, content: String, excerpt: String) throws {
         let row = db.drafts.filter(db.draftID == id)
-        try db.db.run(row.update(
-            db.draftTitle <- title,
-            db.draftContent <- content,
-            db.draftExcerpt <- excerpt,
-            db.draftUpdatedAt <- Date().timeIntervalSince1970
-        ))
+        try db.db.run(
+            row.update(
+                db.draftTitle <- title,
+                db.draftContent <- content,
+                db.draftExcerpt <- excerpt,
+                db.draftUpdatedAt <- Date().timeIntervalSince1970
+            ))
     }
 
     public func delete(id: Int64) throws {

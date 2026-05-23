@@ -71,7 +71,7 @@ public struct SidebarView: View {
                                 } label: {
                                     switch item {
                                     case .remote: Label("Move to Trash", systemImage: "trash")
-                                    case .local:  Label("Delete Draft", systemImage: "trash")
+                                    case .local: Label("Delete Draft", systemImage: "trash")
                                     }
                                 }
                             }
@@ -139,8 +139,8 @@ public struct SidebarView: View {
         } message: {
             Text(deleteError ?? "")
         }
-        .task(id: appState.selectedSection) {
-            await loadCurrentSection()
+        .task(id: appState.credentials) {
+            await loadAllSections()
         }
     }
 
@@ -178,26 +178,50 @@ public struct SidebarView: View {
 
     private var newButtonTitle: String {
         switch appState.selectedSection {
-        case .posts:       return "New Post"
-        case .pages:       return "New Page"
+        case .posts: return "New Post"
+        case .pages: return "New Page"
         case .localDrafts: return "New Draft"
-        case .media:       return "New Media"
+        case .media: return "New Media"
         }
     }
 
     private func createNewDraft() {
         let type = appState.selectedSection == .pages ? "page" : "post"
-        guard let id = try? services.draftStore.create(
-            title: "Untitled",
-            content: "",
-            excerpt: "",
-            type: type
-        ) else { return }
+        guard
+            let id = try? services.draftStore.create(
+                title: "Untitled",
+                content: "",
+                excerpt: "",
+                type: type
+            )
+        else { return }
         if let updated = try? services.draftStore.fetchAll(),
-           let newDraft = updated.first(where: { $0.id == id }) {
+            let newDraft = updated.first(where: { $0.id == id })
+        {
             appState.localDrafts = updated
             appState.selectedSection = .localDrafts
             appState.selectedItem = .local(newDraft)
+        }
+    }
+
+    private func loadAllSections() async {
+        guard let creds = appState.credentials else { return }
+        appState.isLoadingList = true
+        appState.listError = nil
+        defer { appState.isLoadingList = false }
+
+        let client = WordPressClient(credentials: creds)
+        do {
+            async let posts = client.fetchPosts()
+            async let pages = client.fetchPages()
+            appState.posts = try await posts
+            appState.pages = try await pages
+            appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
+            await loadTaxonomiesIfNeeded(client: client)
+        } catch is CancellationError {
+            // normal view lifecycle cancellation — not an error
+        } catch {
+            appState.listError = error.localizedDescription
         }
     }
 
@@ -220,6 +244,8 @@ public struct SidebarView: View {
                 break
             }
             await loadTaxonomiesIfNeeded(client: client)
+        } catch is CancellationError {
+            // normal view lifecycle cancellation — not an error
         } catch {
             appState.listError = error.localizedDescription
         }
@@ -228,14 +254,14 @@ public struct SidebarView: View {
     private func deleteActionLabel(for item: PostItem) -> String {
         switch item {
         case .remote: return "Move to Trash"
-        case .local:  return "Delete"
+        case .local: return "Delete"
         }
     }
 
     private func deleteMessage(for item: PostItem) -> String {
         switch item {
         case .remote: return "\"\(item.title)\" will be moved to the WordPress Trash."
-        case .local:  return "\"\(item.title)\" will be permanently deleted."
+        case .local: return "\"\(item.title)\" will be permanently deleted."
         }
     }
 
@@ -296,7 +322,9 @@ struct SearchField: View {
                 .font(.system(size: 13))
                 .textFieldStyle(.plain)
             if !text.isEmpty {
-                Button { text = "" } label: {
+                Button {
+                    text = ""
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(.tertiary)

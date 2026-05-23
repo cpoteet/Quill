@@ -42,10 +42,12 @@ public struct PostEditorView: View {
                         Task { await handleDroppedImages(urls) }
                     }
                 )
-                .sheet(isPresented: Binding(
-                    get: { imageInsertIndex != nil },
-                    set: { if !$0 { imageInsertIndex = nil } }
-                )) {
+                .sheet(
+                    isPresented: Binding(
+                        get: { imageInsertIndex != nil },
+                        set: { if !$0 { imageInsertIndex = nil } }
+                    )
+                ) {
                     if let idx = imageInsertIndex {
                         MediaPickerView(mode: .picker) { selected in
                             NotificationCenter.default.post(
@@ -73,10 +75,13 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .toast(message: $toastMessage)
-        .alert("Conflict Detected", isPresented: Binding(
-            get: { conflictAlert != nil },
-            set: { if !$0 { conflictAlert = nil } }
-        )) {
+        .alert(
+            "Conflict Detected",
+            isPresented: Binding(
+                get: { conflictAlert != nil },
+                set: { if !$0 { conflictAlert = nil } }
+            )
+        ) {
             if conflictAlert != nil {
                 Button("Keep Local") { saveToWordPress(force: true) }
                 Button("Use Server") {
@@ -89,10 +94,13 @@ public struct PostEditorView: View {
         } message: {
             Text("This post was modified on the server since you last fetched it.")
         }
-        .alert("Preview Failed", isPresented: Binding(
-            get: { previewError != nil },
-            set: { if !$0 { previewError = nil } }
-        )) {
+        .alert(
+            "Preview Failed",
+            isPresented: Binding(
+                get: { previewError != nil },
+                set: { if !$0 { previewError = nil } }
+            )
+        ) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(previewError ?? "")
@@ -160,7 +168,9 @@ public struct PostEditorView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(2)
             Spacer()
-            Button { saveError = nil } label: {
+            Button {
+                saveError = nil
+            } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
@@ -174,17 +184,19 @@ public struct PostEditorView: View {
     }
 
     private var titleField: some View {
-        TextField("Title", text: $title)
-            .font(.system(size: 22, weight: .semibold))
-            .textFieldStyle(.plain)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 10)
-            .onChange(of: title) { _ in scheduleAutosave() }
+        TitleTextField(
+            placeholder: "Title",
+            text: $title,
+            nsFont: .systemFont(ofSize: 22, weight: .semibold)
+        )
+        .frame(height: 44)
+        .padding(.horizontal, 24)
+        .onChange(of: title) { _ in scheduleAutosave() }
     }
 
     private var publishButtonTitle: String {
         switch settings.status {
-        case "draft":  return "Publish Draft"
+        case "draft": return "Publish Draft"
         case "future": return "Schedule"
         case "publish":
             if case .remote(let p) = item, p.status == "publish" { return "Update" }
@@ -235,7 +247,8 @@ public struct PostEditorView: View {
         switch item {
         case .remote(let post):
             let store = AutosaveStore(db: db)
-            try? store.save(postID: post.id, title: title, content: htmlContent, serverModified: lastSavedServerModified)
+            try? store.save(
+                postID: post.id, title: title, content: htmlContent, serverModified: lastSavedServerModified)
         case .local(let draft):
             let store = DraftStore(db: db)
             try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
@@ -295,7 +308,8 @@ public struct PostEditorView: View {
             switch item {
             case .remote(let post):
                 if !force {
-                    let current = post.type == "page"
+                    let current =
+                        post.type == "page"
                         ? try await client.fetchPage(id: post.id)
                         : try await client.fetchPost(id: post.id)
                     if current.modified != lastSavedServerModified {
@@ -303,7 +317,8 @@ public struct PostEditorView: View {
                         return
                     }
                 }
-                let updated = post.type == "page"
+                let updated =
+                    post.type == "page"
                     ? try await client.updatePage(id: post.id, payload: payload)
                     : try await client.updatePost(id: post.id, payload: payload)
                 lastSavedServerModified = updated.modified
@@ -318,7 +333,8 @@ public struct PostEditorView: View {
                     }
                 }
             case .local(let draft):
-                let created = draft.type == "page"
+                let created =
+                    draft.type == "page"
                     ? try await client.createPage(payload)
                     : try await client.createPost(payload)
                 let db = try AppDatabase.production()
@@ -340,9 +356,11 @@ public struct PostEditorView: View {
     private func loadFromServer(postID: Int) {
         Task {
             guard let creds = appState.credentials,
-                  case .remote(let current) = item else { return }
+                case .remote(let current) = item
+            else { return }
             let client = WordPressClient(credentials: creds)
-            let fetched = current.type == "page"
+            let fetched =
+                current.type == "page"
                 ? try? await client.fetchPage(id: postID)
                 : try? await client.fetchPost(id: postID)
             if let post = fetched {
@@ -381,22 +399,24 @@ public struct PostEditorView: View {
     private func imageMimeType(for ext: String) -> String {
         switch ext {
         case "jpg", "jpeg": return "image/jpeg"
-        case "png":         return "image/png"
-        case "gif":         return "image/gif"
-        case "webp":        return "image/webp"
-        case "heic":        return "image/heic"
+        case "png": return "image/png"
+        case "gif": return "image/gif"
+        case "webp": return "image/webp"
+        case "heic": return "image/heic"
         case "tiff", "tif": return "image/tiff"
-        default:            return "image/jpeg"
+        default: return "image/jpeg"
         }
     }
 
     private func openPreview() async {
         guard let creds = appState.credentials,
-              case .remote(let post) = item else { return }
+            case .remote(let post) = item
+        else { return }
         let client = WordPressClient(credentials: creds)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: settings.excerpt, status: post.status)
         do {
-            let autosave = post.type == "page"
+            let autosave =
+                post.type == "page"
                 ? try await client.createPageAutosave(postID: post.id, payload: payload)
                 : try await client.createAutosave(postID: post.id, payload: payload)
             let linkBase = autosave.link ?? post.link

@@ -24,12 +24,15 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
     @objc private func handleInsertMedia(_ note: Notification) {
         guard let url = note.userInfo?["url"] as? String,
-              let index = note.userInfo?["index"] as? Int else { return }
+            let index = note.userInfo?["index"] as? Int
+        else { return }
         insertImage(url: url, at: index)
     }
 
     // WKScriptMessageHandler
-    public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    public func userContentController(
+        _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
+    ) {
         switch message.name {
         case "contentChanged":
             if let html = message.body as? String {
@@ -59,7 +62,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     func insertImage(url: String, at index: Int) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
-              let urlStr = String(data: jsonURL, encoding: .utf8) else { return }
+            let urlStr = String(data: jsonURL, encoding: .utf8)
+        else { return }
         wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr))", completionHandler: nil)
     }
 
@@ -74,7 +78,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             guard html != lastPushedHTML else { return }
             lastPushedHTML = html
             guard let jsonHTML = try? JSONEncoder().encode(html),
-                  let htmlStr = String(data: jsonHTML, encoding: .utf8) else { return }
+                let htmlStr = String(data: jsonHTML, encoding: .utf8)
+            else { return }
             wv.evaluateJavaScript("setContent(\(htmlStr))", completionHandler: nil)
         } else {
             pendingHTML = html

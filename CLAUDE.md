@@ -6,6 +6,14 @@ Native macOS app for writing and managing WordPress content. Built with Swift Pa
 
 Implementation complete and running. Active polish/iteration phase.
 
+## TODO
+
+- [ ] Update the side panel for pages to reflect page-specific options (no categories/tags)
+- [ ] Media capability is completely broken — investigate and fix
+- [ ] Link button in Tiptap toolbar does not work
+- [ ] Post/page title and breadcrumb bars should be white in dark mode
+- [ ] App title bar changes color when entering/exiting full screen
+
 ## Build & run
 
 ```bash
@@ -67,6 +75,8 @@ Sources/WPWriterKit/
 - **`performVoid` helper** — `WordPressClient` has a private `performVoid(_:)` alongside `perform<T>(_:)`. Use `performVoid` for DELETE (and any future) calls that don't need to decode a response body. Do not use `perform<T>` with a dummy decodable type just to discard the result.
 - **Unicode curly quotes in Swift strings** — Swift treats `"` (U+201C) and `"` (U+201D) as string delimiters, identical to ASCII `"`. Do not use curly quotes inside string literals with interpolation — use escaped ASCII quotes `\"...\(value)...\"` instead.
 - **Delete state in SidebarView** — `itemPendingDelete: PostItem?` drives the confirmation alert; `deleteError: String?` drives the error alert. Both are `@State` locals in `SidebarView`. Setting `itemPendingDelete` non-nil triggers the alert; the confirm button clears it and calls `performDelete` in a `Task`.
+- **Context menu — WKWebView (`DroppableWebView`)** — WebKit's Cut/Copy/Paste items use private internal selectors, so filtering by `["cut:", "copy:", "paste:"]` removes them too. In `willOpenMenu`, replace `menu.items` entirely with fresh `NSMenuItem`s using `NSSelectorFromString("cut:")` etc. WKWebView handles these standard selectors through the responder chain with automatic enable/disable. Set `menu.delegate` to an `NSMenuDelegate` that re-filters in `menuWillOpen` to catch AutoFill/Services that macOS appends after `willOpenMenu` returns.
+- **Context menu — title field (`TitleTextField`)** — `NSTextField` uses a shared field editor (`NSTextView`); overriding `menu(for:)` on the NSTextField subclass is never called during editing. Use `NSTextView` directly via `NSViewRepresentable` (`RestrictedTextView`) — `menu(for:)` on the NSTextView subclass IS called on right-click. Build a fresh menu with only Cut/Copy/Paste items and set an `NSMenuDelegate` to catch late-appended items. Do NOT try the NSTextField field editor delegate wrapping approach — it is fragile and AutoFill leaks through regardless.
 
 ## Docs
 

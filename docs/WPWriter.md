@@ -70,6 +70,17 @@ Your credentials are stored locally at `~/Library/Application Support/WPWriter/c
 
 Switch between sections using the tab strip at the top of the sidebar. A loading indicator appears while content is fetching; errors surface inline with a warning banner.
 
+Each item in the sidebar shows a small colored dot indicating its status:
+
+| Dot | Status |
+|---|---|
+| Green | Published |
+| Amber | Draft |
+| Blue | Scheduled (future publish date) |
+| Purple | Local post draft (not yet on WordPress) |
+| Indigo | Local page draft (not yet on WordPress) |
+| Gray | Other / unknown status |
+
 ### Rich text editor
 
 The editor is powered by [Tiptap](https://tiptap.dev) running inside a WebView. It supports:

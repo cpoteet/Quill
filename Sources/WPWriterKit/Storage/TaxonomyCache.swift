@@ -3,7 +3,7 @@ import SQLite
 
 public final class TaxonomyCache: @unchecked Sendable {
     private let db: AppDatabase
-    private let ttl: TimeInterval = 24 * 3600   // 24 hours
+    private let ttl: TimeInterval = 24 * 3600  // 24 hours
 
     public init(db: AppDatabase) {
         self.db = db
@@ -12,13 +12,15 @@ public final class TaxonomyCache: @unchecked Sendable {
     public func saveCategories(_ categories: [WPCategory], fetchedAt: Date = .init()) throws {
         try db.db.run(db.taxonomyCache.filter(db.taxType == "category").delete())
         for cat in categories {
-            try db.db.run(db.taxonomyCache.insert(or: .replace,
-                db.taxType <- "category",
-                db.taxID <- cat.id,
-                db.taxName <- cat.name,
-                db.taxSlug <- cat.slug,
-                db.taxFetchedAt <- fetchedAt.timeIntervalSince1970
-            ))
+            try db.db.run(
+                db.taxonomyCache.insert(
+                    or: .replace,
+                    db.taxType <- "category",
+                    db.taxID <- cat.id,
+                    db.taxName <- cat.name,
+                    db.taxSlug <- cat.slug,
+                    db.taxFetchedAt <- fetchedAt.timeIntervalSince1970
+                ))
         }
     }
 
@@ -36,13 +38,15 @@ public final class TaxonomyCache: @unchecked Sendable {
     public func saveTags(_ tags: [WPTag], fetchedAt: Date = .init()) throws {
         try db.db.run(db.taxonomyCache.filter(db.taxType == "tag").delete())
         for tag in tags {
-            try db.db.run(db.taxonomyCache.insert(or: .replace,
-                db.taxType <- "tag",
-                db.taxID <- tag.id,
-                db.taxName <- tag.name,
-                db.taxSlug <- tag.slug,
-                db.taxFetchedAt <- fetchedAt.timeIntervalSince1970
-            ))
+            try db.db.run(
+                db.taxonomyCache.insert(
+                    or: .replace,
+                    db.taxType <- "tag",
+                    db.taxID <- tag.id,
+                    db.taxName <- tag.name,
+                    db.taxSlug <- tag.slug,
+                    db.taxFetchedAt <- fetchedAt.timeIntervalSince1970
+                ))
         }
     }
 

@@ -81,16 +81,22 @@ public struct PostSettingsPanel: View {
     private var publishDateSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Publish Date")
-            Toggle("Schedule", isOn: Binding(
-                get: { settings.publishDate != nil },
-                set: { settings.setScheduled($0) }
-            ))
+            Toggle(
+                "Schedule",
+                isOn: Binding(
+                    get: { settings.publishDate != nil },
+                    set: { settings.setScheduled($0) }
+                )
+            )
             .toggleStyle(.switch)
             if settings.publishDate != nil {
-                DatePicker("", selection: Binding(
-                    get: { settings.publishDate ?? Date() },
-                    set: { settings.publishDate = $0 }
-                ), displayedComponents: [.date, .hourAndMinute])
+                DatePicker(
+                    "",
+                    selection: Binding(
+                        get: { settings.publishDate ?? Date() },
+                        set: { settings.publishDate = $0 }
+                    ), displayedComponents: [.date, .hourAndMinute]
+                )
                 .labelsHidden()
             }
         }
@@ -126,20 +132,27 @@ public struct PostSettingsPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Categories")
             VStack(spacing: 0) {
-                searchBar(placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
+                searchBar(
+                    placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
 
                 Divider()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 1) {
                         ForEach(filteredCategories) { cat in
-                            Toggle(cat.name, isOn: Binding(
-                                get: { settings.categoryIDs.contains(cat.id) },
-                                set: { on in
-                                    if on { settings.categoryIDs.insert(cat.id) }
-                                    else { settings.categoryIDs.remove(cat.id) }
-                                }
-                            ))
+                            Toggle(
+                                cat.name,
+                                isOn: Binding(
+                                    get: { settings.categoryIDs.contains(cat.id) },
+                                    set: { on in
+                                        if on {
+                                            settings.categoryIDs.insert(cat.id)
+                                        } else {
+                                            settings.categoryIDs.remove(cat.id)
+                                        }
+                                    }
+                                )
+                            )
                             .toggleStyle(.checkbox)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 8)
@@ -158,7 +171,8 @@ public struct PostSettingsPanel: View {
                         }
 
                         if filteredCategories.isEmpty && settings.newCategoryNames.isEmpty
-                            && categorySearch.trimmingCharacters(in: .whitespaces).isEmpty {
+                            && categorySearch.trimmingCharacters(in: .whitespaces).isEmpty
+                        {
                             emptyLabel("No categories")
                         }
                     }
@@ -243,7 +257,8 @@ public struct PostSettingsPanel: View {
 
                         if filteredUnselectedTags.isEmpty
                             && tagSearch.trimmingCharacters(in: .whitespaces).isEmpty
-                            && tags.isEmpty {
+                            && tags.isEmpty
+                        {
                             emptyLabel("No tags")
                         }
                     }
@@ -356,7 +371,9 @@ private struct TagChipGrid: View {
                     Text(name)
                         .font(.system(size: 11))
                         .lineLimit(1)
-                    Button { onRemove(name) } label: {
+                    Button {
+                        onRemove(name)
+                    } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 8, weight: .semibold))
                             .foregroundStyle(.secondary)

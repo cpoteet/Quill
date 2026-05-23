@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Credentials: Codable, Sendable {
+public struct Credentials: Codable, Sendable, Equatable {
     public var siteURL: URL
     public var username: String
     public var appPassword: String

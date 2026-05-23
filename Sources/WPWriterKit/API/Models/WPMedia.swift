@@ -4,7 +4,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
     public let id: Int
     public var title: RenderedString
     public var sourceURL: String
-    public var mediaType: String         // "image", "file", etc.
+    public var mediaType: String  // "image", "file", etc.
     public var mimeType: String
     public var mediaDetails: MediaDetails?
 

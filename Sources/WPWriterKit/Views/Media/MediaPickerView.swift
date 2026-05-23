@@ -41,10 +41,13 @@ public struct MediaPickerView: View {
             }
         }
         .task { await loadMedia() }
-        .alert("Upload Failed", isPresented: Binding(
-            get: { uploadError != nil },
-            set: { if !$0 { uploadError = nil } }
-        )) {
+        .alert(
+            "Upload Failed",
+            isPresented: Binding(
+                get: { uploadError != nil },
+                set: { if !$0 { uploadError = nil } }
+            )
+        ) {
             Button("OK", role: .cancel) { uploadError = nil }
         } message: {
             Text(uploadError ?? "")

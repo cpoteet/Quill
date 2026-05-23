@@ -24,7 +24,7 @@ public final class AppDatabase: @unchecked Sendable {
 
     // taxonomy_cache columns
     let taxonomyCache = Table("taxonomy_cache")
-    let taxType = Expression<String>("type")       // "category" or "tag"
+    let taxType = Expression<String>("type")  // "category" or "tag"
     let taxID = Expression<Int>("wp_id")
     let taxName = Expression<String>("name")
     let taxSlug = Expression<String>("slug")
@@ -36,34 +36,37 @@ public final class AppDatabase: @unchecked Sendable {
     }
 
     private func migrate() throws {
-        try db.run(drafts.create(ifNotExists: true) { t in
-            t.column(draftID, primaryKey: .autoincrement)
-            t.column(draftTitle)
-            t.column(draftContent)
-            t.column(draftExcerpt)
-            t.column(draftCreatedAt)
-            t.column(draftUpdatedAt)
-            t.column(draftType, defaultValue: "post")
-        })
+        try db.run(
+            drafts.create(ifNotExists: true) { t in
+                t.column(draftID, primaryKey: .autoincrement)
+                t.column(draftTitle)
+                t.column(draftContent)
+                t.column(draftExcerpt)
+                t.column(draftCreatedAt)
+                t.column(draftUpdatedAt)
+                t.column(draftType, defaultValue: "post")
+            })
         // Migration for existing databases: silently ignored if column already exists
         try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
 
-        try db.run(autosaves.create(ifNotExists: true) { t in
-            t.column(autosavePostID, primaryKey: true)
-            t.column(autosaveTitle)
-            t.column(autosaveContent)
-            t.column(autosaveSavedAt)
-            t.column(autosaveServerModified)
-        })
+        try db.run(
+            autosaves.create(ifNotExists: true) { t in
+                t.column(autosavePostID, primaryKey: true)
+                t.column(autosaveTitle)
+                t.column(autosaveContent)
+                t.column(autosaveSavedAt)
+                t.column(autosaveServerModified)
+            })
 
-        try db.run(taxonomyCache.create(ifNotExists: true) { t in
-            t.column(taxType)
-            t.column(taxID)
-            t.column(taxName)
-            t.column(taxSlug)
-            t.column(taxFetchedAt)
-            t.primaryKey(taxType, taxID)
-        })
+        try db.run(
+            taxonomyCache.create(ifNotExists: true) { t in
+                t.column(taxType)
+                t.column(taxID)
+                t.column(taxName)
+                t.column(taxSlug)
+                t.column(taxFetchedAt)
+                t.primaryKey(taxType, taxID)
+            })
     }
 
     public static func production() throws -> AppDatabase {

@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 public enum SidebarSection: String, Hashable, CaseIterable {
     case posts = "Posts"
@@ -9,19 +9,19 @@ public enum SidebarSection: String, Hashable, CaseIterable {
 
     var icon: String {
         switch self {
-        case .posts:       return "doc.text"
-        case .pages:       return "doc.plaintext"
+        case .posts: return "doc.text"
+        case .pages: return "doc.plaintext"
         case .localDrafts: return "pencil"
-        case .media:       return "photo"
+        case .media: return "photo"
         }
     }
 
     var shortTitle: String {
         switch self {
-        case .posts:       return "Posts"
-        case .pages:       return "Pages"
+        case .posts: return "Posts"
+        case .pages: return "Pages"
         case .localDrafts: return "Drafts"
-        case .media:       return "Media"
+        case .media: return "Media"
         }
     }
 }
@@ -74,10 +74,10 @@ public final class AppState: ObservableObject {
     public var filteredItems: [PostItem] {
         let items: [PostItem]
         switch selectedSection {
-        case .posts:       items = posts.map { .remote($0) }
-        case .pages:       items = pages.map { .remote($0) }
+        case .posts: items = posts.map { .remote($0) }
+        case .pages: items = pages.map { .remote($0) }
         case .localDrafts: items = localDrafts.map { .local($0) }
-        case .media:       return []
+        case .media: return []
         }
         guard !searchText.isEmpty else { return items }
         return items.filter { $0.title.localizedCaseInsensitiveContains(searchText) }

@@ -17,13 +17,15 @@ public final class AutosaveStore: @unchecked Sendable {
     }
 
     public func save(postID: Int, title: String, content: String, serverModified: String) throws {
-        try db.db.run(db.autosaves.insert(or: .replace,
-            db.autosavePostID <- postID,
-            db.autosaveTitle <- title,
-            db.autosaveContent <- content,
-            db.autosaveSavedAt <- Date().timeIntervalSince1970,
-            db.autosaveServerModified <- serverModified
-        ))
+        try db.db.run(
+            db.autosaves.insert(
+                or: .replace,
+                db.autosavePostID <- postID,
+                db.autosaveTitle <- title,
+                db.autosaveContent <- content,
+                db.autosaveSavedAt <- Date().timeIntervalSince1970,
+                db.autosaveServerModified <- serverModified
+            ))
     }
 
     public func load(postID: Int) throws -> AutosaveSnapshot? {

@@ -19,12 +19,22 @@ public struct WordPressClient: Sendable {
     // MARK: - Posts
 
     public func fetchPosts(page: Int = 1, perPage: Int = 100) async throws -> [WPPost] {
-        let url = try endpoint("posts", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit", "status": "publish,draft,private,future,pending"])
+        let url = try endpoint(
+            "posts",
+            query: [
+                "per_page": "\(perPage)", "page": "\(page)", "context": "edit",
+                "status": "publish,draft,private,future,pending",
+            ])
         return try await get(url)
     }
 
     public func fetchPages(page: Int = 1, perPage: Int = 100) async throws -> [WPPost] {
-        let url = try endpoint("pages", query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit", "status": "publish,draft,private,future,pending"])
+        let url = try endpoint(
+            "pages",
+            query: [
+                "per_page": "\(perPage)", "page": "\(page)", "context": "edit",
+                "status": "publish,draft,private,future,pending",
+            ])
         return try await get(url)
     }
 
@@ -127,10 +137,12 @@ public struct WordPressClient: Sendable {
     // MARK: - Helpers
 
     private func endpoint(_ path: String, query: [String: String] = [:]) throws -> URL {
-        guard var components = URLComponents(
-            url: credentials.siteURL.appendingPathComponent("/wp-json/wp/v2/\(path)"),
-            resolvingAgainstBaseURL: false
-        ) else { throw APIError.invalidURL }
+        guard
+            var components = URLComponents(
+                url: credentials.siteURL.appendingPathComponent("/wp-json/wp/v2/\(path)"),
+                resolvingAgainstBaseURL: false
+            )
+        else { throw APIError.invalidURL }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
@@ -172,6 +184,10 @@ public struct WordPressClient: Sendable {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            throw CancellationError()
         } catch {
             throw APIError.networkError(error)
         }
@@ -185,6 +201,10 @@ public struct WordPressClient: Sendable {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            throw CancellationError()
         } catch {
             throw APIError.networkError(error)
         }
