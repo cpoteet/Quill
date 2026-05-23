@@ -9,7 +9,7 @@ Implementation complete and running. Active polish/iteration phase.
 ## TODO
 
 - [x] Update the side panel for pages to reflect page-specific options (no categories/tags)
-- [ ] Media capability is completely broken — investigate and fix
+- [x] Media capability is completely broken — investigate and fix
 - [ ] Link button in Tiptap toolbar does not work
 - [ ] Post/page title and breadcrumb bars should be white in dark mode
 - [ ] App title bar changes color when entering/exiting full screen
@@ -79,6 +79,11 @@ Sources/WPWriterKit/
 - **Delete state in SidebarView** — `itemPendingDelete: PostItem?` drives the confirmation alert; `deleteError: String?` drives the error alert. Both are `@State` locals in `SidebarView`. Setting `itemPendingDelete` non-nil triggers the alert; the confirm button clears it and calls `performDelete` in a `Task`.
 - **Context menu — WKWebView (`DroppableWebView`)** — WebKit's Cut/Copy/Paste items use private internal selectors, so filtering by `["cut:", "copy:", "paste:"]` removes them too. In `willOpenMenu`, replace `menu.items` entirely with fresh `NSMenuItem`s using `NSSelectorFromString("cut:")` etc. WKWebView handles these standard selectors through the responder chain with automatic enable/disable. Set `menu.delegate` to an `NSMenuDelegate` that re-filters in `menuWillOpen` to catch AutoFill/Services that macOS appends after `willOpenMenu` returns.
 - **Context menu — title field (`TitleTextField`)** — `NSTextField` uses a shared field editor (`NSTextView`); overriding `menu(for:)` on the NSTextField subclass is never called during editing. Use `NSTextView` directly via `NSViewRepresentable` (`RestrictedTextView`) — `menu(for:)` on the NSTextView subclass IS called on right-click. Build a fresh menu with only Cut/Copy/Paste items and set an `NSMenuDelegate` to catch late-appended items. Do NOT try the NSTextField field editor delegate wrapping approach — it is fragile and AutoFill leaks through regardless.
+- **`MediaDetails.width`/`height` as floats** — The WordPress REST API returns `media_details.width` and `height` as JSON floating-point numbers (e.g. `2560.0`) for some media items. Swift's `Int` decoder rejects these. `MediaDetails` and `MediaSize` use a try-Int-then-Double pattern in their `init(from:)` to accept both. Do not change these back to a bare `decodeIfPresent(Int.self, ...)` call.
+- **Media sidebar when Media tab active** — `SidebarView` hides the post list / search / toolbar when `selectedSection == .media`. The `else { MediaSidebarSection() }` branch fills the sidebar with the thumbnail grid. Do not remove that `else` branch or replace it with `Spacer()`.
+- **`MediaPickerView` is picker-only** — The `.browser` case and `MediaPickerMode` enum have been removed. `MediaPickerView` is now a sheet-only picker used for inserting images into the editor. The media sidebar (`MediaSidebarSection`) handles browsing. Do not add a `mode:` parameter back.
+- **Media state lives in `AppState`** — `appState.mediaItems`, `appState.selectedMedia`, `appState.isLoadingMedia`, `appState.mediaError` are the single source of truth. `MediaSidebarSection` loads into and reads from these; `ContentView`/`MediaDetailView` observe `selectedMedia` to show the detail view. Pagination state (`currentPage`, `hasMore`) is local to `MediaSidebarSection` — no need to persist it in `AppState`.
+- **`deleteMedia` is permanent** — `WordPressClient.deleteMedia(id:)` calls `DELETE /media/{id}?force=true`. WordPress media items have no trash state — deletion is immediate and irreversible. Always show a confirmation alert before calling it.
 
 ## Docs
 
@@ -86,4 +91,6 @@ Sources/WPWriterKit/
 - Plan: `docs/superpowers/plans/2026-05-21-wp-writer-implementation.md`
 - Spec (delete): `docs/superpowers/specs/2026-05-22-delete-post-draft-design.md`
 - Plan (delete): `docs/superpowers/plans/2026-05-22-delete-post-draft.md`
+- Spec (media sidebar): `docs/superpowers/specs/2026-05-23-media-sidebar-design.md`
+- Plan (media sidebar): `docs/superpowers/plans/2026-05-23-media-sidebar.md`
 - Public docs: `docs/WPWriter.md`
