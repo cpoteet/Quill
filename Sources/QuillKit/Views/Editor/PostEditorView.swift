@@ -47,6 +47,9 @@ public struct PostEditorView: View {
                     onSearchLinks: { query in
                         guard let creds = appState.credentials else { return [] }
                         return try await WordPressClient(credentials: creds).searchLinks(query: query)
+                    },
+                    onRequestMediaSizes: { mediaId in
+                        appState.mediaItems.first(where: { $0.id == mediaId })
                     }
                 )
                 .sheet(
@@ -57,11 +60,14 @@ public struct PostEditorView: View {
                 ) {
                     if let idx = imageInsertIndex {
                         MediaPickerView { selected in
-                            NotificationCenter.default.post(
-                                name: .insertMediaURL,
-                                object: nil,
-                                userInfo: ["url": selected.sourceURL, "index": idx]
-                            )
+                            var info: [String: Any] = [
+                                "url":     selected.sourceURL,
+                                "index":   idx,
+                                "mediaId": selected.id,
+                            ]
+                            if let w = selected.mediaDetails?.width  { info["width"]  = w }
+                            if let h = selected.mediaDetails?.height { info["height"] = h }
+                            NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                             imageInsertIndex = nil
                         }
                         .environmentObject(appState)
@@ -489,11 +495,10 @@ public struct PostEditorView: View {
                 let media = try await client.uploadMedia(
                     data: data, filename: url.lastPathComponent, mimeType: mime
                 )
-                NotificationCenter.default.post(
-                    name: .insertMediaURL,
-                    object: nil,
-                    userInfo: ["url": media.sourceURL, "index": 0]
-                )
+                var info: [String: Any] = ["url": media.sourceURL, "index": 0, "mediaId": media.id]
+                if let w = media.mediaDetails?.width  { info["width"]  = w }
+                if let h = media.mediaDetails?.height { info["height"] = h }
+                NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                 toastMessage = "Image inserted"
             } catch {
                 saveError = "Upload failed: \(error.localizedDescription)"
