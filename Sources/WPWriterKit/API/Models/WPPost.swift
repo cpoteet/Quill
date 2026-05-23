@@ -15,12 +15,15 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public var featuredMedia: Int  // media ID, 0 if none
     public var categories: [Int]
     public var tags: [Int]
+    public var parent: Int          // page parent ID, 0 = top-level
+    public var commentStatus: String  // "open" or "closed"
 
     enum CodingKeys: String, CodingKey {
-        case id, type, title, content, excerpt, status, date, modified, slug, link
+        case id, type, title, content, excerpt, status, date, modified, slug, link, parent
         case dateGmt = "date_gmt"
         case featuredMedia = "featured_media"
         case categories, tags
+        case commentStatus = "comment_status"
     }
 
     public init(from decoder: Decoder) throws {
@@ -39,6 +42,8 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         featuredMedia = try c.decodeIfPresent(Int.self, forKey: .featuredMedia) ?? 0
         categories = try c.decodeIfPresent([Int].self, forKey: .categories) ?? []
         tags = try c.decodeIfPresent([Int].self, forKey: .tags) ?? []
+        parent = try c.decodeIfPresent(Int.self, forKey: .parent) ?? 0
+        commentStatus = try c.decodeIfPresent(String.self, forKey: .commentStatus) ?? "open"
     }
 }
 
@@ -66,12 +71,16 @@ public struct PostPayload: Encodable, Sendable {
     public var featuredMedia: Int?
     public var categories: [Int]
     public var tags: [Int]
+    public var slug: String?
+    public var commentStatus: String?
+    public var parent: Int?
 
     enum CodingKeys: String, CodingKey {
-        case title, content, excerpt, status
+        case title, content, excerpt, status, slug, parent
         case dateGmt = "date_gmt"
         case featuredMedia = "featured_media"
         case categories, tags
+        case commentStatus = "comment_status"
     }
 
     public init(
@@ -82,7 +91,10 @@ public struct PostPayload: Encodable, Sendable {
         dateGmt: String? = nil,
         featuredMedia: Int? = nil,
         categories: [Int] = [],
-        tags: [Int] = []
+        tags: [Int] = [],
+        slug: String? = nil,
+        commentStatus: String? = nil,
+        parent: Int? = nil
     ) {
         self.title = title
         self.content = content
@@ -92,5 +104,8 @@ public struct PostPayload: Encodable, Sendable {
         self.featuredMedia = featuredMedia
         self.categories = categories
         self.tags = tags
+        self.slug = slug
+        self.commentStatus = commentStatus
+        self.parent = parent
     }
 }

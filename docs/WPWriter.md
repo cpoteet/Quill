@@ -112,14 +112,23 @@ A toast notification confirms every successful save, publish, or schedule action
 
 ### Post settings
 
-Click the sidebar-right icon in the editor toolbar (or use the settings panel) to open post settings:
+Click the sidebar-right icon in the editor toolbar to open the settings panel. Available fields differ by content type.
 
+**Posts:**
 - **Status** — Draft, Published, or Scheduled
 - **Publish Date** — schedule a future publish with a date/time picker
 - **Categories** — filter existing categories with the search box, or type a new name and press Return to create it on your site when the post is saved
 - **Tags** — selected tags appear as chips at the top; search to add from existing tags, or type a new name and press Return to create it on your site when the post is saved
+- **Slug** — the URL-friendly identifier for the post
 - **Excerpt** — custom post excerpt
-- **Featured Image** — pick from your media library
+- **Discussion** — toggle whether comments are allowed on the post
+
+**Pages:**
+- **Status** — Draft, Published, or Scheduled
+- **Publish Date** — schedule a future publish with a date/time picker
+- **Parent Page** — nest this page under another; defaults to top-level
+- **Slug** — the URL-friendly identifier for the page
+- **Discussion** — toggle whether comments are allowed on the page
 
 ### Drag and drop
 
@@ -196,7 +205,7 @@ To fully reset WPWriter, delete the `~/Library/Application Support/WPWriter/` di
 
 **The editor requires an internet connection on first launch.** Tiptap is loaded from [esm.sh](https://esm.sh) at startup. The first launch after installing (or after a system update clears WebKit's cache) requires an internet connection. Subsequent launches use cached resources and work offline.
 
-**Pages don't have categories or tags.** This is a WordPress core behavior — the pages REST endpoint does not return category or tag fields. WPWriter handles this correctly; the post settings panel simply won't show category/tag controls for pages.
+**Pages have different metadata than posts.** The pages REST endpoint does not support categories, tags, or excerpts. WPWriter shows a page-specific settings panel with Parent Page, Slug, and Discussion in place of those fields.
 
 **Private posts.** WPWriter fetches posts and pages with `context=edit`, which requires authentication. Private posts are visible to authenticated users with edit permissions.
 

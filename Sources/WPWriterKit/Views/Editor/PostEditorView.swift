@@ -67,8 +67,10 @@ public struct PostEditorView: View {
                 Divider()
                 PostSettingsPanel(
                     settings: $settings,
+                    postType: postType,
                     categories: appState.categories,
-                    tags: appState.tags
+                    tags: appState.tags,
+                    pages: availableParentPages
                 )
                 .transition(.move(edge: .trailing))
             }
@@ -210,6 +212,18 @@ public struct PostEditorView: View {
         return false
     }
 
+    private var postType: String {
+        switch item {
+        case .remote(let post): return post.type
+        case .local(let draft): return draft.type
+        }
+    }
+
+    private var availableParentPages: [WPPost] {
+        guard case .remote(let post) = item else { return appState.pages }
+        return appState.pages.filter { $0.id != post.id }
+    }
+
     // MARK: - Load
 
     private func loadItem() async {
@@ -222,6 +236,9 @@ public struct PostEditorView: View {
             settings.categoryIDs = Set(post.categories)
             settings.tagIDs = Set(post.tags)
             settings.featuredMediaID = post.featuredMedia
+            settings.slug = post.slug
+            settings.commentStatus = post.commentStatus
+            settings.parentID = post.parent
             if post.status == "future" {
                 settings.publishDate = parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             }
@@ -301,7 +318,10 @@ public struct PostEditorView: View {
             dateGmt: settings.publishDate.map { ISO8601DateFormatter().string(from: $0) },
             featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
             categories: Array(settings.categoryIDs),
-            tags: Array(settings.tagIDs)
+            tags: Array(settings.tagIDs),
+            slug: settings.slug.isEmpty ? nil : settings.slug,
+            commentStatus: settings.commentStatus,
+            parent: postType == "page" ? settings.parentID : nil
         )
 
         do {

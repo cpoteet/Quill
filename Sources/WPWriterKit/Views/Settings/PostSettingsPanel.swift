@@ -7,6 +7,9 @@ public struct PostSettings: Equatable {
     public var tagIDs: Set<Int> = []
     public var featuredMediaID: Int = 0
     public var excerpt: String = ""
+    public var slug: String = ""
+    public var commentStatus: String = "open"
+    public var parentID: Int = 0
     public var newTagNames: [String] = []
     public var newCategoryNames: [String] = []
 
@@ -25,26 +28,41 @@ public struct PostSettings: Equatable {
 
 public struct PostSettingsPanel: View {
     @Binding var settings: PostSettings
+    let postType: String
     let categories: [WPCategory]
     let tags: [WPTag]
+    let pages: [WPPost]
 
     @State private var categorySearch = ""
     @State private var tagSearch = ""
 
-    public init(settings: Binding<PostSettings>, categories: [WPCategory], tags: [WPTag]) {
+    public init(
+        settings: Binding<PostSettings>,
+        postType: String,
+        categories: [WPCategory],
+        tags: [WPTag],
+        pages: [WPPost] = []
+    ) {
         self._settings = settings
+        self.postType = postType
         self.categories = categories
         self.tags = tags
+        self.pages = pages
     }
+
+    private var isPage: Bool { postType == "page" }
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 statusSection
                 publishDateSection
-                categoriesSection
-                tagsSection
-                excerptSection
+                if isPage { parentSection }
+                if !isPage { categoriesSection }
+                if !isPage { tagsSection }
+                slugSection
+                if !isPage { excerptSection }
+                discussionSection
             }
             .padding(16)
         }
@@ -272,6 +290,35 @@ public struct PostSettingsPanel: View {
         }
     }
 
+    // MARK: - Parent Page
+
+    private var parentSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("Parent Page")
+            Picker("Parent", selection: $settings.parentID) {
+                Text("None (top-level)").tag(0)
+                ForEach(pages) { page in
+                    Text(page.title.rendered).tag(page.id)
+                }
+            }
+            .labelsHidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Slug
+
+    private var slugSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("Slug")
+            TextField("post-slug", text: $settings.slug)
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .padding(7)
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+        }
+    }
+
     // MARK: - Excerpt
 
     private var excerptSection: some View {
@@ -284,6 +331,22 @@ public struct PostSettingsPanel: View {
                     RoundedRectangle(cornerRadius: 5)
                         .stroke(.separator, lineWidth: 1)
                 )
+        }
+    }
+
+    // MARK: - Discussion
+
+    private var discussionSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("Discussion")
+            Toggle(
+                "Allow comments",
+                isOn: Binding(
+                    get: { settings.commentStatus == "open" },
+                    set: { settings.commentStatus = $0 ? "open" : "closed" }
+                )
+            )
+            .toggleStyle(.switch)
         }
     }
 
