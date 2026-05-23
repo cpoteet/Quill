@@ -12,6 +12,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onInsertImageAt: ((Int) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) -> WPMedia?)?
+    var onSelectionChanged: ((CGRect?) -> Void)?
     private var linkPopover: NSPopover?
 
     init(onContentChange: @escaping (String) -> Void, onReady: @escaping () -> Void) {
@@ -77,6 +78,19 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             if let body = message.body as? [String: Any],
                let mediaId = body["mediaId"] as? Int {
                 DispatchQueue.main.async { self.handleRequestMediaSizes(mediaId: mediaId) }
+            }
+        case "selectionChanged":
+            DispatchQueue.main.async {
+                if let body = message.body as? [String: Any],
+                   let rectMap = body["rect"] as? [String: Any],
+                   let x = rectMap["x"] as? Double,
+                   let y = rectMap["y"] as? Double,
+                   let w = rectMap["width"] as? Double,
+                   let h = rectMap["height"] as? Double {
+                    self.onSelectionChanged?(CGRect(x: x, y: y, width: w, height: h))
+                } else {
+                    self.onSelectionChanged?(nil)
+                }
             }
         default:
             break

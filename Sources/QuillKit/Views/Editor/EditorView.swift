@@ -8,6 +8,7 @@ public struct EditorView: NSViewRepresentable {
     var onImageFilesDropped: (([URL]) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) -> WPMedia?)?
+    var onSelectionChanged: ((CGRect?) -> Void)?
 
     public init(
         html: Binding<String>,
@@ -15,7 +16,8 @@ public struct EditorView: NSViewRepresentable {
         onInsertImageAt: ((Int) -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
-        onRequestMediaSizes: ((Int) -> WPMedia?)? = nil
+        onRequestMediaSizes: ((Int) -> WPMedia?)? = nil,
+        onSelectionChanged: ((CGRect?) -> Void)? = nil
     ) {
         self._html = html
         self.onContentChange = onContentChange
@@ -23,6 +25,7 @@ public struct EditorView: NSViewRepresentable {
         self.onImageFilesDropped = onImageFilesDropped
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
+        self.onSelectionChanged = onSelectionChanged
     }
 
     public func makeCoordinator() -> EditorCoordinator {
@@ -36,6 +39,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "insertImageAtIndex")
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
+        config.userContentController.add(context.coordinator, name: "selectionChanged")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -44,6 +48,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onInsertImageAt = onInsertImageAt
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
+        context.coordinator.onSelectionChanged = onSelectionChanged
         loadEditorHTML(in: webView)
         return webView
     }
@@ -52,6 +57,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.setContent(html)
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
+        context.coordinator.onSelectionChanged = onSelectionChanged
         nsView.onImageFilesDropped = onImageFilesDropped
     }
 
