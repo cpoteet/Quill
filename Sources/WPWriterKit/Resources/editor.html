@@ -284,8 +284,15 @@
       redo:          () => editor.chain().focus().redo().run(),
       link: () => {
         const href = editor.getAttributes('link').href || ''
-        const btn  = document.querySelector('[data-cmd="link"]').getBoundingClientRect()
-        const rect = { x: btn.x, y: btn.y, width: btn.width, height: btn.height }
+        const sel  = window.getSelection()
+        let rect
+        if (sel && sel.rangeCount > 0) {
+          const r = sel.getRangeAt(0).getBoundingClientRect()
+          rect = { x: r.x, y: r.y, width: r.width, height: r.height }
+        } else {
+          const btn = document.querySelector('[data-cmd="link"]').getBoundingClientRect()
+          rect = { x: btn.x, y: btn.y, width: btn.width, height: btn.height }
+        }
         if (window.webkit?.messageHandlers?.showLinkPicker) {
           window.webkit.messageHandlers.showLinkPicker.postMessage({ href, rect })
         }
