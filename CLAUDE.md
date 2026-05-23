@@ -18,7 +18,7 @@ Implementation complete and running. Active polish/iteration phase.
 - [x] Remove "New Draft" button from the bottom of the draft listing panel
 - [x] Empty state placeholder text should say "post", "page", or "draft" depending on which section is active (currently always says "Select a post to edit")
 - [ ] Image resizing in the editor — ability to resize images inline, and respect sizes that come from WordPress
-- [ ] Fix styling and alignment on settings panel
+- [x] Fix styling and alignment on settings panel
 - [ ] Add application logo
 - [x] Rename application to Quill
 - [x] Unsaved changes warning — what should happen when a user navigates away from an editor with unsaved changes (remote or local post/page)?
