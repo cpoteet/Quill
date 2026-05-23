@@ -415,7 +415,65 @@
 
       ignoreMutation() { return true }
 
-      _onHandleMousedown(_e, _pos) { /* filled in Task 3 */ }
+      _onHandleMousedown(e, handlePos) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const startX   = e.clientX
+        const startY   = e.clientY
+        const startW   = this.img.offsetWidth  || 300
+        const startH   = this.img.offsetHeight || 200
+        const ratio    = startW / startH
+        const isCorner = ['nw','ne','sw','se'].includes(handlePos)
+        const wSign    = handlePos.includes('e') ? 1 : handlePos.includes('w') ? -1 : 0
+        const hSign    = handlePos.includes('s') ? 1 : handlePos.includes('n') ? -1 : 0
+
+        const onMove = me => {
+          const dx = (me.clientX - startX) * wSign
+          const dy = (me.clientY - startY) * hSign
+          let newW = startW
+          let newH = startH
+
+          if (isCorner && !me.shiftKey) {
+            newW = Math.max(50, startW + dx)
+            newH = newW / ratio
+          } else {
+            if (wSign !== 0) newW = Math.max(50, startW + dx)
+            if (hSign !== 0) newH = Math.max(50, startH + dy)
+          }
+
+          newW = Math.round(newW)
+          newH = Math.round(newH)
+
+          this.img.style.width  = newW + 'px'
+          this.img.style.height = newH + 'px'
+          this.wrapper.style.width = newW + 'px'
+
+          const wIn = document.getElementById('img-tb-w')
+          const hIn = document.getElementById('img-tb-h')
+          if (wIn) wIn.value = newW
+          if (hIn) hIn.value = newH
+        }
+
+        const onUp = () => {
+          document.removeEventListener('mousemove', onMove)
+          document.removeEventListener('mouseup', onUp)
+
+          const newW = Math.round(parseFloat(this.img.style.width)  || this.img.offsetWidth)
+          const newH = Math.round(parseFloat(this.img.style.height) || this.img.offsetHeight)
+          this.img.style.width  = ''
+          this.img.style.height = ''
+
+          const pos = this.getPos()
+          if (typeof pos === 'number') {
+            const { state, dispatch } = this.editor.view
+            dispatch(state.tr.setNodeMarkup(pos, null, { ...this.node.attrs, width: newW, height: newH }))
+          }
+        }
+
+        document.addEventListener('mousemove', onMove)
+        document.addEventListener('mouseup', onUp)
+      }
     }
 
     // ── Image toolbar helpers ──────────────────────────
