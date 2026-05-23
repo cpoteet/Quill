@@ -132,7 +132,11 @@ public struct PostEditorView: View {
             }
             .font(.system(size: 12))
             Spacer()
-            // #2 Button hierarchy
+            if isDirty {
+                Circle()
+                    .fill(Color.wpAmber)
+                    .frame(width: 6, height: 6)
+            }
             Button("Save Draft") { Task { await saveDraft() } }
                 .keyboardShortcut("s", modifiers: .command)
                 .buttonStyle(.plain)
