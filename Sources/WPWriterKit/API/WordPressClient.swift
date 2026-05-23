@@ -83,7 +83,10 @@ public struct WordPressClient: Sendable {
     // MARK: - Media
 
     public func fetchMedia(page: Int = 1, perPage: Int = 50) async throws -> [WPMedia] {
-        let url = try endpoint("media", query: ["per_page": "\(perPage)", "page": "\(page)"])
+        let url = try endpoint(
+            "media",
+            query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"]
+        )
         return try await get(url)
     }
 
@@ -98,6 +101,12 @@ public struct WordPressClient: Sendable {
         )
         request.httpBody = data
         return try await perform(request)
+    }
+
+    public func deleteMedia(id: Int) async throws {
+        let url = try endpoint("media/\(id)", query: ["force": "true"])
+        let request = authorizedRequest(url: url, method: "DELETE")
+        try await performVoid(request)
     }
 
     // MARK: - Taxonomies
