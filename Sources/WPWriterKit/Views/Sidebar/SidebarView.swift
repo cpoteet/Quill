@@ -95,17 +95,19 @@ public struct SidebarView: View {
 
                     Spacer()
 
-                    Button {
-                        createNewDraft()
-                    } label: {
-                        Label(newButtonTitle, systemImage: "plus")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.wpAmber)
+                    if appState.selectedSection != .localDrafts {
+                        Button {
+                            createNewDraft()
+                        } label: {
+                            Label(newButtonTitle, systemImage: "plus")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.wpAmber)
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut("n", modifiers: .command)
+                        .help("\(newButtonTitle) (⌘N)")
+                        .padding(10)
                     }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut("n", modifiers: .command)
-                    .help("\(newButtonTitle) (⌘N)")
-                    .padding(10)
                 }
             } else {
                 MediaSidebarSection()

@@ -13,6 +13,12 @@ Implementation complete and running. Active polish/iteration phase.
 - [x] Link button in Tiptap toolbar does not work
 - [ ] Post/page title and breadcrumb bars should be white in dark mode
 - [ ] App title bar changes color when entering/exiting full screen
+- [ ] Fix page/post title spacing with top border
+- [x] After sending a local draft post to WordPress, the local copy should disappear immediately from the draft list
+- [x] Remove "New Draft" button from the bottom of the draft listing panel
+- [ ] Empty state placeholder text should say "post", "page", or "draft" depending on which section is active (currently always says "Select a post to edit")
+- [ ] Image resizing in the editor — ability to resize images inline, and respect sizes that come from WordPress
+- [ ] Fix styling and alignment on settings panel
 
 ## Build & run
 
