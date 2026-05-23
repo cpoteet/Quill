@@ -97,9 +97,21 @@ The editor is powered by [Tiptap](https://tiptap.dev) running inside a WebView. 
 | Task list | Checkable items |
 | Tables | Insert 3×3; add/remove rows and columns |
 | Links | Insert or remove |
-| Images | From media library or drag from Finder |
+| Images | From media library or drag from Finder; inline resize via drag handles |
 
 The editor adapts to macOS light and dark mode automatically.
+
+### Image resizing
+
+Click any image in the editor to select it. A blue outline and eight resize handles appear at the corners and edges.
+
+- **Drag a corner handle** to resize proportionally (aspect ratio is maintained by default). Hold **Shift** while dragging to resize width and height independently.
+- **Drag an edge handle** (top, bottom, left, right) to resize only that axis.
+- A small toolbar appears just below the selected image with **W** and **H** number fields. Type a new value and press Return — the other dimension adjusts automatically to preserve the ratio.
+- Click **Reset** to clear any explicit dimensions and return the image to its natural CSS size.
+- If the image was inserted from the WordPress media library, **Thumb**, **Medium**, **Large**, and **Full** buttons appear in the toolbar. Clicking one swaps the image source and dimensions to that WordPress-generated size.
+
+When a post is loaded from WordPress, any `<img width="..." height="...">` attributes are respected and the image renders at those exact dimensions. On save, dimensions are written back as standard `width`/`height` attributes for a clean round-trip with WordPress.
 
 ### Saving and publishing
 
