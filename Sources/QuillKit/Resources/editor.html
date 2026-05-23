@@ -231,11 +231,46 @@
     import TableRow     from 'https://esm.sh/@tiptap/extension-table-row@2'
     import TableCell    from 'https://esm.sh/@tiptap/extension-table-cell@2'
     import TableHeader  from 'https://esm.sh/@tiptap/extension-table-header@2'
-    import Image        from 'https://esm.sh/@tiptap/extension-image@2'
+    import { Image as TiptapImage } from 'https://esm.sh/@tiptap/extension-image@2'
     import Link         from 'https://esm.sh/@tiptap/extension-link@2'
     import TaskList     from 'https://esm.sh/@tiptap/extension-task-list@2'
     import TaskItem     from 'https://esm.sh/@tiptap/extension-task-item@2'
     import Placeholder  from 'https://esm.sh/@tiptap/extension-placeholder@2'
+
+    // ── ResizableImage extension ──────────────────────
+    const ResizableImage = TiptapImage.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          width: {
+            default: null,
+            parseHTML: el => {
+              const v = el.getAttribute('width')
+              return v ? parseInt(v, 10) : null
+            },
+            renderHTML: attrs => attrs.width != null ? { width: attrs.width } : {},
+          },
+          height: {
+            default: null,
+            parseHTML: el => {
+              const v = el.getAttribute('height')
+              return v ? parseInt(v, 10) : null
+            },
+            renderHTML: attrs => attrs.height != null ? { height: attrs.height } : {},
+          },
+          mediaId: {
+            default: null,
+            parseHTML: el => {
+              const dataId = el.getAttribute('data-media-id')
+              if (dataId) return parseInt(dataId, 10)
+              const m = (el.getAttribute('class') || '').match(/wp-image-(\d+)/)
+              return m ? parseInt(m[1], 10) : null
+            },
+            renderHTML: attrs => attrs.mediaId != null ? { 'data-media-id': attrs.mediaId } : {},
+          },
+        }
+      },
+    })
 
     const editor = new Editor({
       element: document.getElementById('editor'),
@@ -246,7 +281,7 @@
         TableRow,
         TableHeader,
         TableCell,
-        Image.configure({ inline: false }),
+        ResizableImage.configure({ inline: false }),
         Link.configure({ openOnClick: false }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -385,8 +420,12 @@
     window.getContent = () => editor.getHTML()
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
     window.focusEditor = () => editor.commands.focus()
-    window.insertImageAt = (_index, url) => {
-      editor.chain().focus().setImage({ src: url }).run()
+    window.insertImageAt = (_index, url, width, height, mediaId) => {
+      const attrs = { src: url }
+      if (width  != null) attrs.width   = width
+      if (height != null) attrs.height  = height
+      if (mediaId != null) attrs.mediaId = mediaId
+      editor.chain().focus().setImage(attrs).run()
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
