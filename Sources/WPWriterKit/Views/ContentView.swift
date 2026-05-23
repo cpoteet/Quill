@@ -12,7 +12,20 @@ public struct ContentView: View {
             Divider()
             Group {
                 if appState.selectedSection == .media {
-                    MediaPickerView(mode: .browser)
+                    if let media = appState.selectedMedia {
+                        MediaDetailView(media: media)
+                    } else {
+                        VStack(spacing: 10) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 38, weight: .light))
+                                .foregroundStyle(Color.wpAmber.opacity(0.5))
+                            Text("Select an image to preview")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.wpPanelBg)
+                    }
                 } else if let item = appState.selectedItem {
                     PostEditorView(item: item)
                 } else {
