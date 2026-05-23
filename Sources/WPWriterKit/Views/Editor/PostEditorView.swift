@@ -49,7 +49,7 @@ public struct PostEditorView: View {
                     )
                 ) {
                     if let idx = imageInsertIndex {
-                        MediaPickerView(mode: .picker) { selected in
+                        MediaPickerView { selected in
                             NotificationCenter.default.post(
                                 name: .insertMediaURL,
                                 object: nil,

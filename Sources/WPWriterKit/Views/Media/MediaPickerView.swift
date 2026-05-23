@@ -1,11 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-public enum MediaPickerMode { case browser, picker }
-
 public struct MediaPickerView: View {
-    let mode: MediaPickerMode
-    var onSelect: ((WPMedia) -> Void)?
+    var onSelect: (WPMedia) -> Void
 
     @EnvironmentObject private var appState: AppState
     @State private var mediaItems: [WPMedia] = []
@@ -14,8 +11,7 @@ public struct MediaPickerView: View {
     @State private var isUploading = false
     @State private var uploadError: String?
 
-    public init(mode: MediaPickerMode, onSelect: ((WPMedia) -> Void)? = nil) {
-        self.mode = mode
+    public init(onSelect: @escaping (WPMedia) -> Void) {
         self.onSelect = onSelect
     }
 
@@ -74,9 +70,7 @@ public struct MediaPickerView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 8) {
                 ForEach(mediaItems.filter { $0.mediaType == "image" }) { media in
                     MediaThumbnail(media: media)
-                        .onTapGesture {
-                            if let handler = onSelect { handler(media) }
-                        }
+                        .onTapGesture { onSelect(media) }
                 }
             }
             .padding(12)
@@ -105,7 +99,9 @@ public struct MediaPickerView: View {
         Task {
             defer { isUploading = false }
             do {
-                let data = try Data(contentsOf: url)
+                let data = try await Task.detached(priority: .userInitiated) {
+                    try Data(contentsOf: url)
+                }.value
                 let mime = mimeType(for: url)
                 let uploaded = try await WordPressClient(credentials: creds)
                     .uploadMedia(data: data, filename: url.lastPathComponent, mimeType: mime)
