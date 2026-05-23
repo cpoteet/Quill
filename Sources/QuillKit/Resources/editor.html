@@ -118,6 +118,89 @@
     .ProseMirror li { margin: 0.2em 0; }
     .ProseMirror img { max-width: 100%; border-radius: 4px; }
 
+    /* ── Image NodeView ─────────────────────────────── */
+    .image-wrapper {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      line-height: 0;
+    }
+    .image-wrapper img { display: block; max-width: 100%; border-radius: 4px; }
+    .image-wrapper.selected img {
+      outline: 2px solid #007aff;
+      border-radius: 4px;
+    }
+    body.dark .image-wrapper.selected img { outline-color: #0a84ff; }
+
+    .resize-handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #007aff;
+      border: 1.5px solid #fff;
+      border-radius: 2px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    body.dark .resize-handle { background: #0a84ff; }
+    .image-wrapper.selected .resize-handle { opacity: 1; pointer-events: auto; }
+
+    .resize-handle.nw { top: -4px; left: -4px; cursor: nwse-resize; }
+    .resize-handle.n  { top: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+    .resize-handle.ne { top: -4px; right: -4px; cursor: nesw-resize; }
+    .resize-handle.e  { top: calc(50% - 4px); right: -4px; cursor: ew-resize; }
+    .resize-handle.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+    .resize-handle.s  { bottom: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+    .resize-handle.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+    .resize-handle.w  { top: calc(50% - 4px); left: -4px; cursor: ew-resize; }
+
+    /* ── Image toolbar ──────────────────────────────── */
+    #image-toolbar {
+      display: none;
+      position: fixed;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 200;
+      user-select: none;
+    }
+    body.dark #image-toolbar { background: #2c2c2e; border-color: #444; color: #f0f0f0; }
+    #image-toolbar input[type="number"] {
+      width: 52px;
+      padding: 2px 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+      text-align: center;
+      background: transparent;
+      color: inherit;
+    }
+    body.dark #image-toolbar input[type="number"] { border-color: #555; }
+    #image-toolbar input[type="number"]::-webkit-inner-spin-button,
+    #image-toolbar input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    #image-toolbar button {
+      font-size: 12px;
+      padding: 2px 6px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      cursor: pointer;
+      background: transparent;
+      color: inherit;
+    }
+    #image-toolbar button:hover { background: rgba(0,0,0,0.07); }
+    body.dark #image-toolbar button:hover { background: rgba(255,255,255,0.1); }
+    #image-toolbar button:disabled { opacity: 0.4; cursor: default; }
+    #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: #ddd; margin: 0 2px; }
+    body.dark #image-toolbar .img-tb-sep { background: #444; }
+    #image-toolbar .img-tb-label { color: #999; }
+
     /* Task list */
     .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.5em; }
     .ProseMirror ul[data-type="taskList"] li {
@@ -221,6 +304,19 @@
     <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618; Redo</button>
   </div>
   <div id="drop-overlay"><span>Drop to upload</span></div>
+  <div id="image-toolbar">
+    <span class="img-tb-label">W</span>
+    <input type="number" id="img-tb-w" min="50" placeholder="—">
+    <span class="img-tb-label">H</span>
+    <input type="number" id="img-tb-h" min="50" placeholder="—">
+    <span class="img-tb-sep"></span>
+    <button data-size="thumbnail" style="display:none">Thumb</button>
+    <button data-size="medium"    style="display:none">Medium</button>
+    <button data-size="large"     style="display:none">Large</button>
+    <button data-size="full"      style="display:none">Full</button>
+    <span class="img-tb-sep"></span>
+    <button id="img-tb-reset">Reset</button>
+  </div>
   <div id="editor-wrap"><div id="editor"></div></div>
 
   <script type="module">
@@ -236,6 +332,143 @@
     import TaskList     from 'https://esm.sh/@tiptap/extension-task-list@2'
     import TaskItem     from 'https://esm.sh/@tiptap/extension-task-item@2'
     import Placeholder  from 'https://esm.sh/@tiptap/extension-placeholder@2'
+
+    // ── ImageNodeView ─────────────────────────────────
+    class ImageNodeView {
+      constructor(node, editor, getPos) {
+        this.node    = node
+        this.editor  = editor
+        this.getPos  = getPos
+
+        this.wrapper = document.createElement('div')
+        this.wrapper.className = 'image-wrapper'
+
+        this.img = document.createElement('img')
+        this._applyAttrs(node.attrs)
+        this.wrapper.appendChild(this.img)
+
+        for (const pos of ['nw','n','ne','e','se','s','sw','w']) {
+          const h = document.createElement('div')
+          h.className = `resize-handle ${pos}`
+          h.addEventListener('mousedown', e => this._onHandleMousedown(e, pos))
+          this.wrapper.appendChild(h)
+        }
+
+        this.dom = this.wrapper
+      }
+
+      _applyAttrs(attrs) {
+        this.img.src = attrs.src || ''
+        if (attrs.alt)   this.img.alt   = attrs.alt
+        if (attrs.title) this.img.title = attrs.title
+        if (attrs.width != null) {
+          this.img.width = attrs.width
+          this.wrapper.style.width = attrs.width + 'px'
+        } else {
+          this.img.removeAttribute('width')
+          this.wrapper.style.width = ''
+        }
+        if (attrs.height != null) {
+          this.img.height = attrs.height
+        } else {
+          this.img.removeAttribute('height')
+        }
+      }
+
+      update(node) {
+        if (node.type.name !== 'image') return false
+        this.node = node
+        this._applyAttrs(node.attrs)
+        // Sync toolbar inputs if this image is currently selected
+        const tb = document.getElementById('image-toolbar')
+        if (tb?._activeNodeView === this) {
+          document.getElementById('img-tb-w').value = node.attrs.width  ?? ''
+          document.getElementById('img-tb-h').value = node.attrs.height ?? ''
+        }
+        return true
+      }
+
+      selectNode() {
+        this.wrapper.classList.add('selected')
+        _showImageToolbar(this)
+      }
+
+      deselectNode() {
+        this.wrapper.classList.remove('selected')
+        // Delay so toolbar inputs can receive focus before we check
+        setTimeout(() => {
+          const tb = document.getElementById('image-toolbar')
+          if (tb && tb.contains(document.activeElement)) return
+          if (tb?._activeNodeView === this) _hideImageToolbar()
+        }, 80)
+      }
+
+      destroy() {
+        const tb = document.getElementById('image-toolbar')
+        if (tb?._activeNodeView === this) _hideImageToolbar()
+      }
+
+      stopEvent(e) {
+        // Prevent ProseMirror from stealing handle mousedown events
+        return e.type === 'mousedown' && e.target.classList.contains('resize-handle')
+      }
+
+      ignoreMutation() { return true }
+
+      _onHandleMousedown(_e, _pos) { /* filled in Task 3 */ }
+    }
+
+    // ── Image toolbar helpers ──────────────────────────
+    function _positionImageToolbar(tb, wrapper) {
+      const wRect = wrapper.getBoundingClientRect()
+      tb.style.left = wRect.left + 'px'
+      tb.style.top  = (wRect.bottom + 6) + 'px'
+    }
+
+    function _showImageToolbar(nv) {
+      const tb = document.getElementById('image-toolbar')
+      if (!tb) return
+      tb._activeNodeView = nv
+      document.getElementById('img-tb-w').value = nv.node.attrs.width  ?? ''
+      document.getElementById('img-tb-h').value = nv.node.attrs.height ?? ''
+      _updateNamedSizeButtons(null)
+
+      _positionImageToolbar(tb, nv.wrapper)
+      tb.style.display = 'flex'
+
+      // Reposition on scroll so the toolbar tracks the image
+      tb._scrollHandler = () => _positionImageToolbar(tb, nv.wrapper)
+      document.getElementById('editor-wrap').addEventListener('scroll', tb._scrollHandler)
+
+      if (nv.node.attrs.mediaId != null) {
+        window.webkit?.messageHandlers?.requestMediaSizes
+          ?.postMessage({ mediaId: nv.node.attrs.mediaId })
+      }
+    }
+
+    function _hideImageToolbar() {
+      const tb = document.getElementById('image-toolbar')
+      if (!tb) return
+      if (tb._scrollHandler) {
+        document.getElementById('editor-wrap').removeEventListener('scroll', tb._scrollHandler)
+        tb._scrollHandler = null
+      }
+      tb.style.display = 'none'
+      tb._activeNodeView = null
+    }
+
+    function _updateNamedSizeButtons(sizes) {
+      document.querySelectorAll('#image-toolbar [data-size]').forEach(btn => {
+        if (!sizes || !sizes[btn.dataset.size]) {
+          btn.style.display = 'none'
+          btn._sizeData = null
+        } else {
+          btn.style.display = ''
+          btn.disabled = false
+          btn._sizeData = sizes[btn.dataset.size]
+        }
+      })
+    }
 
     // ── ResizableImage extension ──────────────────────
     const ResizableImage = TiptapImage.extend({
@@ -269,6 +502,9 @@
             renderHTML: attrs => attrs.mediaId != null ? { 'data-media-id': attrs.mediaId } : {},
           },
         }
+      },
+      addNodeView() {
+        return ({ node, editor, getPos }) => new ImageNodeView(node, editor, getPos)
       },
     })
 
@@ -434,6 +670,13 @@
     }
     window.removeLink = () => {
       editor.chain().focus().unsetLink().run()
+    }
+    window.setMediaSizes = (mediaId, sizes) => {
+      const tb = document.getElementById('image-toolbar')
+      if (!tb || tb.style.display === 'none') return
+      const nv = tb._activeNodeView
+      if (!nv || nv.node.attrs.mediaId !== mediaId) return
+      _updateNamedSizeButtons(sizes)
     }
   </script>
 </body>
