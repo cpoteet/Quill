@@ -264,6 +264,18 @@
     }
     body.dark #drop-overlay { background: rgba(10, 132, 255, 0.08); border-color: rgba(10,132,255,0.45); }
     body.dark #drop-overlay span { background: rgba(30,30,30,0.92); color: #0a84ff; }
+
+    /* ── AI writing ─────────────────────────────────── */
+    .ai-loading {
+      font-style: italic;
+      color: #888;
+      animation: ai-pulse 1.1s ease-in-out infinite;
+    }
+    body.dark .ai-loading { color: #aaa; }
+    @keyframes ai-pulse {
+      0%, 100% { opacity: 0.3; }
+      50%       { opacity: 0.85; }
+    }
   </style>
 </head>
 <body>
@@ -802,6 +814,110 @@
         })
       })
     })()
+
+    // ── AI writing bridge ─────────────────────────────
+    let _aiOriginalHTML = null
+    let _aiFrom         = null
+    let _aiTo           = null
+    let _aiResultTo     = null
+    let _aiInProgress   = false
+
+    // Report selection changes to Swift so it can show/hide the operation pill.
+    // Debounced to avoid flooding during drag-selection.
+    let _selChangeTimer = null
+    document.addEventListener('selectionchange', () => {
+      clearTimeout(_selChangeTimer)
+      _selChangeTimer = setTimeout(() => {
+        if (_aiInProgress) return
+        const sel = window.getSelection()
+        if (!sel || sel.isCollapsed || sel.toString().length < 10) {
+          window.webkit?.messageHandlers?.selectionChanged?.postMessage(null)
+          return
+        }
+        const range = sel.getRangeAt(0)
+        const rect  = range.getBoundingClientRect()
+        window.webkit?.messageHandlers?.selectionChanged?.postMessage({
+          text: sel.toString(),
+          rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+        })
+      }, 150)
+    })
+
+    // Called by Swift when the user taps a pill button.
+    // Captures original HTML + selection positions, replaces selection with a loading
+    // placeholder, and returns the selected plain text for use as prompt input.
+    // Returns null if there is no valid selection (≥10 chars).
+    window.beginAIOperation = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) return null
+      const selectedText = sel.toString()
+      if (selectedText.length < 10) return null
+
+      const { from, to } = editor.state.selection
+      _aiFrom         = from
+      _aiTo           = to
+      _aiOriginalHTML = editor.getHTML()
+      _aiInProgress   = true
+
+      // Replace selected range with an animated loading placeholder
+      editor.chain().focus()
+        .setTextSelection({ from, to })
+        .insertContent('<em class="ai-loading">✶ Rewriting…</em>')
+        .run()
+
+      return selectedText
+    }
+
+    // Called by Swift with Claude's HTML result.
+    // Restores the original document (silently), inserts the result at the original
+    // range, selects it for visual feedback, and returns the bounding rect so Swift
+    // can position the accept/discard panel.
+    window.showAIResult = (html) => {
+      // Restore original without emitting a contentChanged event
+      editor.commands.setContent(_aiOriginalHTML, false)
+      // Insert the result — this DOES emit contentChanged (marks post dirty)
+      editor.chain().focus()
+        .setTextSelection({ from: _aiFrom, to: _aiTo })
+        .insertContent(html)
+        .run()
+      _aiResultTo = editor.state.selection.to
+
+      // Select the inserted range — browser selection acts as the visual highlight
+      editor.chain().setTextSelection({ from: _aiFrom, to: _aiResultTo }).run()
+      const s = window.getSelection()
+      if (s && !s.isCollapsed) {
+        const r = s.getRangeAt(0).getBoundingClientRect()
+        return { x: r.left, y: r.top, width: r.width, height: r.height }
+      }
+      return null
+    }
+
+    // Called by Swift when the user accepts the result.
+    // Collapses the selection to the end of the inserted content and clears AI state.
+    window.acceptAIResult = () => {
+      if (_aiResultTo !== null) {
+        editor.chain().focus().setTextSelection(_aiResultTo).run()
+      }
+      _aiOriginalHTML = null
+      _aiFrom         = null
+      _aiTo           = null
+      _aiResultTo     = null
+      _aiInProgress   = false
+    }
+
+    // Called by Swift when the user discards the result (or on error).
+    // Restores original HTML and clears AI state. Emits contentChanged so Swift's
+    // htmlContent is updated back to the pre-operation value.
+    window.discardAIResult = () => {
+      if (_aiOriginalHTML !== null) {
+        editor.commands.setContent(_aiOriginalHTML)
+        _aiOriginalHTML = null
+        _aiFrom         = null
+        _aiTo           = null
+        _aiResultTo     = null
+      }
+      _aiInProgress = false
+    }
   </script>
 </body>
 </html>
