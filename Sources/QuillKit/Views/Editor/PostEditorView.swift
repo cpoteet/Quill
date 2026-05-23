@@ -158,7 +158,7 @@ public struct PostEditorView: View {
             }
             .help("Post Settings")
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
 
@@ -202,8 +202,9 @@ public struct PostEditorView: View {
             text: $title,
             nsFont: .systemFont(ofSize: 22, weight: .semibold)
         )
-        .frame(height: 44)
-        .padding(.horizontal, 24)
+        .frame(height: 28)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .onChange(of: title) { _ in scheduleAutosave() }
     }
 

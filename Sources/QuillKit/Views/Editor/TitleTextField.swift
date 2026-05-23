@@ -14,7 +14,7 @@ struct TitleTextField: NSViewRepresentable {
         tv.allowsUndo = true
         tv.drawsBackground = false
         tv.focusRingType = .none
-        tv.textContainerInset = .zero
+        tv.textContainerInset = NSSize(width: 0, height: 1)
         tv.textContainer?.lineFragmentPadding = 0
         tv.textContainer?.maximumNumberOfLines = 1
         tv.textContainer?.lineBreakMode = .byClipping
@@ -73,7 +73,7 @@ final class RestrictedTextView: NSTextView {
             .foregroundColor: NSColor.placeholderTextColor,
             .font: f,
         ]
-        placeholder.draw(at: NSPoint(x: 0, y: 0), withAttributes: attrs)
+        placeholder.draw(at: NSPoint(x: 0, y: 1), withAttributes: attrs)
     }
 }
 
