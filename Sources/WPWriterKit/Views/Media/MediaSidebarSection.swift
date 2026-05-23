@@ -296,25 +296,27 @@ private struct MediaSidebarCell: View {
     let isSelected: Bool
 
     var body: some View {
-        AsyncImage(url: URL(string: media.sourceURL)) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: .fill)
-            case .failure, .empty:
-                Rectangle().fill(.quaternary)
-                    .overlay(
-                        Image(systemName: "photo")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.tertiary)
-                    )
-            @unknown default:
-                Rectangle().fill(.quaternary)
+        Color.clear
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
+            .overlay {
+                AsyncImage(url: URL(string: media.sourceURL)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    case .failure, .empty:
+                        Rectangle().fill(.quaternary)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(.tertiary)
+                            )
+                    @unknown default:
+                        Rectangle().fill(.quaternary)
+                    }
+                }
+                .clipped()
             }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 80)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(
