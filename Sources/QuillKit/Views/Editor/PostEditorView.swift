@@ -242,10 +242,21 @@ public struct PostEditorView: View {
     // MARK: - Load
 
     private func loadItem() async {
+        // Cancel any pending autosave for the old item — flushToDB handles persistence
+        autosaveTask?.cancel()
+
+        // Flush dirty state for the previously-loaded item before overwriting editor state
+        if let prev = loadedItem, prev.id != item.id, isDirty {
+            await flushToDB(for: prev)
+        }
+        loadedItem = item
+
         switch item {
         case .remote(let post):
-            title = post.title.rendered
-            htmlContent = post.content.raw ?? post.content.rendered
+            let wpTitle = post.title.rendered
+            let wpContent = post.content.raw ?? post.content.rendered
+            title = wpTitle
+            htmlContent = wpContent
             lastSavedServerModified = post.modified
             settings.status = post.status
             settings.categoryIDs = Set(post.categories)
@@ -257,11 +268,35 @@ public struct PostEditorView: View {
             if post.status == "future" {
                 settings.publishDate = parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             }
+            // Set clean baselines from WP data before checking for a stash
+            cleanTitle = wpTitle
+            cleanContent = wpContent
+            // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
+            if let db = try? AppDatabase.production(),
+               let snap = try? AutosaveStore(db: db).load(postID: post.id) {
+                title = snap.title
+                htmlContent = snap.content
+                toastMessage = "Unsaved changes restored"
+            }
+
         case .local(let draft):
-            title = draft.title
-            htmlContent = draft.content
-            settings = PostSettings()
-            settings.excerpt = draft.excerpt
+            // Read directly from SQLite to pick up any navigate-flush that updated the draft
+            if let db = try? AppDatabase.production(),
+               let fresh = try? DraftStore(db: db).load(id: draft.id) {
+                let showToast = fresh.title != draft.title || fresh.content != draft.content
+                title = fresh.title
+                htmlContent = fresh.content
+                settings = PostSettings()
+                settings.excerpt = fresh.excerpt
+                if showToast { toastMessage = "Unsaved changes restored" }
+            } else {
+                title = draft.title
+                htmlContent = draft.content
+                settings = PostSettings()
+                settings.excerpt = draft.excerpt
+            }
+            cleanTitle = title
+            cleanContent = htmlContent
         }
     }
 
