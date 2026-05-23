@@ -66,7 +66,7 @@ Your credentials are stored locally at `~/Library/Application Support/WPWriter/c
 - **Posts** — browse all posts across all statuses (published, draft, private, scheduled, pending)
 - **Pages** — browse all pages with the same status visibility
 - **Local Drafts** — write offline without a connection; publish when ready
-- **Media** — browse your WordPress media library
+- **Media** — browse your WordPress media library as a thumbnail grid
 
 Switch between sections using the tab strip at the top of the sidebar. A loading indicator appears while content is fetching; errors surface inline with a warning banner.
 
@@ -142,12 +142,30 @@ Supported formats: JPEG, PNG, GIF, WebP, HEIC, TIFF.
 
 A blue dashed overlay appears in the editor while you're dragging to confirm the drop zone is active.
 
+### Media library
+
+The Media tab shows a two-column thumbnail grid of your WordPress media library. Click any thumbnail to see a large preview in the main panel alongside metadata: filename, MIME type, dimensions, upload date, and source URL (with a one-click copy button).
+
+Right-click any thumbnail for quick actions:
+
+| Action | Result |
+|---|---|
+| Copy URL | Copies the direct file URL to the clipboard |
+| Copy as Markdown | Copies `![title](url)` ready to paste into a post |
+| Open in Browser | Opens the WordPress attachment page in your default browser |
+| Delete… | Permanently deletes the file from WordPress (with confirmation) |
+
+Use **⌘N** to upload a new file from disk, or **⌘R** to refresh the grid. If your library has more than 30 items, a "Load more…" button appears at the bottom of the grid.
+
+**Note:** Media deletion is permanent — WordPress media items have no Trash state.
+
 ### Deleting content
 
 Right-click any item in the sidebar to reveal the delete option.
 
 - **Posts and pages** — "Move to Trash" sends the post to the WordPress Trash (reversible from WP Admin → Trash)
 - **Local drafts** — "Delete Draft" permanently removes the draft from local storage
+- **Media** — "Delete…" permanently removes the file from WordPress (no Trash; cannot be undone)
 
 A confirmation prompt appears before any delete action is executed. If a network error occurs while trashing a remote post, an error alert is shown and the item remains in the list.
 
@@ -167,7 +185,7 @@ Create drafts that live only on your Mac — useful for writing in progress that
 |---|---|
 | **⌘S** | Save Draft |
 | **⌘⇧P** | Publish / Update |
-| **⌘N** | New Local Draft |
+| **⌘N** | New Local Draft (Posts/Pages/Drafts tabs) or Upload Media (Media tab) |
 | **⌘R** | Refresh current section |
 | **⌘,** | Open Preferences |
 | **⌘B** | Bold |
