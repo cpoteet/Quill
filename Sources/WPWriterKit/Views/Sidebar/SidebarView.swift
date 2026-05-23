@@ -107,6 +107,8 @@ public struct SidebarView: View {
                     .help("\(newButtonTitle) (⌘N)")
                     .padding(10)
                 }
+            } else {
+                MediaSidebarSection()
             }
         }
         .frame(minWidth: 220)
