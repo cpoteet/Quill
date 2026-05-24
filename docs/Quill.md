@@ -158,7 +158,7 @@ Quill includes an optional AI writing assistant powered by the Claude API. It wo
 
 The AI features activate immediately — no restart required. If no API key is saved, the AI controls stay hidden.
 
-Optionally, select one or more of your existing posts as **style samples**. When provided, Claude matches the tone, rhythm, and vocabulary of those posts when rewriting or expanding your content.
+Optionally, select one or more of your existing posts as **style samples**. When you save with samples selected, Quill sends them to Claude once to generate a compact writing style guide, then stores it locally. Claude uses that guide on every subsequent request to match your tone, rhythm, and vocabulary — no extra cost per call. If you change your sample selection and save again, the guide is regenerated automatically.
 
 #### Using the writing assistant
 
@@ -251,13 +251,14 @@ Create drafts that live only on your Mac — useful for writing in progress that
 
 ### Changing your site or credentials
 
-Open **Quill → Settings** (⌘,) and update any field, then click Save.
+Open **Quill → Settings** (⌘,) and update any field, then click Save. If you change the site URL, your writing style sample selections are cleared automatically — sample posts from one site have no meaning on another, and a fresh style guide will be generated the next time you choose samples on the new site.
 
 ### Data locations
 
 | Data | Location |
 |---|---|
 | Credentials | `~/Library/Application Support/Quill/credentials.json` |
+| AI settings | `~/Library/Application Support/Quill/ai_settings.json` |
 | Local drafts | `~/Library/Application Support/Quill/drafts.db` |
 | Autosaves | Same SQLite database |
 | Taxonomy cache | Same SQLite database |
