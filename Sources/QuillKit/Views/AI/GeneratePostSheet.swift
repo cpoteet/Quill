@@ -2,7 +2,6 @@ import SwiftUI
 
 struct GeneratePostSheet: View {
     let aiSettings: AISettings
-    let samplePosts: [WPPost]
     var onResult: (String, String) -> Void   // (title, html)
     var onCancel: () -> Void
 
@@ -67,28 +66,15 @@ struct GeneratePostSheet: View {
         .frame(width: 480)
     }
 
-    // MARK: - Generation
-
     @MainActor
     private func generate() async {
         isGenerating = true
         errorText = nil
         statusText = aiSettings.webSearchEnabled ? "Searching the web…" : "Writing…"
 
-        // Build style sample contents from already-loaded posts
-        let sampleContents: [String] = aiSettings.samplePostIDs.compactMap { id in
-            guard let post = samplePosts.first(where: { $0.id == id }) else { return nil }
-            let stripped = post.content.rendered
-                .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return stripped.isEmpty ? nil : stripped
-        }
-
-        statusText = "Writing…"
-
         do {
             let client = AnthropicClient(apiKey: aiSettings.apiKey)
-            let system = AIPromptBuilder.systemPrompt(samplePostContents: sampleContents)
+            let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
             let userMsg = AIPromptBuilder.generatePostPrompt(userPrompt: prompt)
             let response = try await client.complete(
                 userMessage: userMsg,

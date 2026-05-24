@@ -111,8 +111,7 @@ public struct PostEditorView: View {
         .sheet(isPresented: $isAISheetOpen) {
             if let settings = appState.aiSettings {
                 GeneratePostSheet(
-                    aiSettings: settings,
-                    samplePosts: appState.posts
+                    aiSettings: settings
                 ) { generatedTitle, generatedHTML in
                     title = generatedTitle
                     htmlContent = generatedHTML
@@ -617,18 +616,9 @@ public struct PostEditorView: View {
         }
         guard !selectedText.isEmpty else { return }
 
-        // 2. Build style sample contents from loaded posts
-        let sampleContents: [String] = settings.samplePostIDs.compactMap { id in
-            guard let post = appState.posts.first(where: { $0.id == id }) else { return nil }
-            let stripped = post.content.rendered
-                .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return stripped.isEmpty ? nil : stripped
-        }
-
-        // 3. Call Claude (selection operations never use web search — faster + cheaper)
+        // 2. Call Claude (selection operations never use web search — faster + cheaper)
         let client = AnthropicClient(apiKey: settings.apiKey)
-        let system = AIPromptBuilder.systemPrompt(samplePostContents: sampleContents)
+        let system = AIPromptBuilder.systemPrompt(styleGuide: settings.styleGuide)
         let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: selectedText, operation: operation)
 
         do {

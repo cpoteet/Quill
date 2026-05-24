@@ -9,26 +9,35 @@ public enum AIWritingOperation {
 
 public struct AIPromptBuilder {
 
-    /// System prompt, optionally incorporating style sample posts.
-    /// Pass stripped plain-text content of sample posts.
-    public static func systemPrompt(samplePostContents: [String]) -> String {
-        var parts: [String] = []
-        parts.append(
+    /// System prompt, optionally incorporating a pre-computed writing style guide.
+    public static func systemPrompt(styleGuide: String?) -> String {
+        var parts: [String] = [
             "You are a writing assistant embedded in a WordPress editor. " +
             "Always follow the output format specified in the user message exactly. " +
             "Do not wrap output in markdown code fences. " +
             "Produce clean, minimal HTML for any HTML content."
-        )
-        if !samplePostContents.isEmpty {
-            parts.append(
-                "The author's writing style is shown in these sample posts. " +
-                "Match their voice, tone, sentence rhythm, vocabulary, and personality:\n\n" +
-                samplePostContents.enumerated().map { i, c in
-                    "--- Sample \(i + 1) ---\n\(c)"
-                }.joined(separator: "\n\n")
-            )
+        ]
+        if let guide = styleGuide, !guide.isEmpty {
+            parts.append("Write in this author's style:\n\n\(guide)")
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    /// User-turn prompt that asks Claude to produce a compact writing style guide
+    /// from plain-text sample post contents. Used once when the user saves their
+    /// sample post selection in Settings.
+    public static func styleGuideGenerationPrompt(sampleContents: [String]) -> String {
+        let samples = sampleContents.enumerated().map { i, c in
+            "--- Sample \(i + 1) ---\n\(c)"
+        }.joined(separator: "\n\n")
+        return """
+        Analyze these blog post samples and write a concise style guide (150 words max) \
+        capturing this author's writing style. Cover: voice and tone, sentence rhythm, \
+        vocabulary level, use of humor or personality, and any distinctive patterns. \
+        Return only the style guide — no preamble, no labels.
+
+        \(samples)
+        """
     }
 
     /// User-turn prompt for generating a brand-new post.
