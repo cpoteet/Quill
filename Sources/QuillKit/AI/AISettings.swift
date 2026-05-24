@@ -4,11 +4,13 @@ public struct AISettings: Codable {
     public var apiKey: String
     public var samplePostIDs: [Int]
     public var webSearchEnabled: Bool
+    public var styleGuide: String?
 
-    public init(apiKey: String = "", samplePostIDs: [Int] = [], webSearchEnabled: Bool = true) {
+    public init(apiKey: String = "", samplePostIDs: [Int] = [], webSearchEnabled: Bool = true, styleGuide: String? = nil) {
         self.apiKey = apiKey
         self.samplePostIDs = samplePostIDs
         self.webSearchEnabled = webSearchEnabled
+        self.styleGuide = styleGuide
     }
 }
 
