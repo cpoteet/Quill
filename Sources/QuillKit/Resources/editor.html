@@ -789,6 +789,8 @@
     function toWordPressHTML(html) {
       const div = document.createElement('div')
       div.innerHTML = html
+
+      // Aligned images → Gutenberg figure wrapper
       div.querySelectorAll('img.alignleft, img.alignright, img.aligncenter').forEach(img => {
         const align = ['alignleft', 'alignright', 'aligncenter']
           .find(c => img.classList.contains(c))
@@ -799,6 +801,36 @@
         img.parentNode.insertBefore(figure, img)
         figure.appendChild(img)
       })
+
+      // Headings → wp-block-heading class
+      div.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(el => {
+        el.classList.add('wp-block-heading')
+      })
+
+      // Lists → wp-block-list class (task lists excluded — they use data-type)
+      div.querySelectorAll('ul:not([data-type="taskList"]), ol').forEach(el => {
+        el.classList.add('wp-block-list')
+      })
+
+      // Blockquotes → wp-block-quote class
+      div.querySelectorAll('blockquote').forEach(el => {
+        el.classList.add('wp-block-quote')
+      })
+
+      // Code blocks → wp-block-code class on the <pre> wrapper
+      div.querySelectorAll('pre').forEach(el => {
+        el.classList.add('wp-block-code')
+      })
+
+      // Tables → Gutenberg figure wrapper
+      div.querySelectorAll('table').forEach(table => {
+        if (table.parentElement?.classList.contains('wp-block-table')) return
+        const figure = document.createElement('figure')
+        figure.className = 'wp-block-table'
+        table.parentNode.insertBefore(figure, table)
+        figure.appendChild(table)
+      })
+
       return div.innerHTML
     }
 

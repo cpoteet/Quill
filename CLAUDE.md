@@ -91,6 +91,37 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
 
+## Maintaining Gutenberg HTML compatibility
+
+All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/QuillKit/Resources/editor.html`:
+
+1. **`toWordPressHTML(html)`** (~line 789) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. Edit this when WordPress changes expected output format.
+
+2. **`ResizableImage.parseHTML()`** (~line 599) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
+
+### What each element currently outputs (as of 2026-05-24)
+
+| Tiptap internal | `toWordPressHTML()` output |
+|---|---|
+| `<h1>`–`<h6>` | `+ class="wp-block-heading"` |
+| `<ul>` (non-task) | `+ class="wp-block-list"` |
+| `<ol>` | `+ class="wp-block-list"` |
+| `<blockquote>` | `+ class="wp-block-quote"` |
+| `<pre>` | `+ class="wp-block-code"` |
+| `<img class="alignleft/right/center">` | wrapped in `<figure class="wp-block-image alignXXX">` |
+| `<table>` | wrapped in `<figure class="wp-block-table">` |
+| Bold, italic, strike, inline code, links, paragraphs | unchanged — already match Gutenberg |
+
+### How to update when WordPress changes its HTML format
+
+1. Check the new format by inspecting a post in a live WordPress site: open a post in the WordPress block editor, add the element in question, save, then view the post's source HTML (or fetch it via the REST API: `GET /wp-json/wp/v2/posts/{id}?context=edit` and look at `content.raw`).
+
+2. Update `toWordPressHTML()` in `editor.html` to emit the new structure. All transforms are DOM operations (create element, add class, reparent) — no regex.
+
+3. If WordPress also changes how it *stores* the format (what the API sends back on load), check whether Tiptap still parses it correctly by loading an existing post. If not, add or update a `parseHTML()` rule on the relevant Tiptap extension. For block elements wrapped in a `<figure>` (like images and tables), add a `getAttrs` rule that extracts the inner element's attrs.
+
+4. Rebuild and test the round-trip: load a post with the affected element → verify it displays correctly in Quill → save → verify the API-stored HTML matches the new expected format.
+
 ## Known gotchas
 
 - **Pages endpoint** omits `categories` and `tags` fields — `WPPost` uses `decodeIfPresent` with `[]` defaults; do not make those fields required again
