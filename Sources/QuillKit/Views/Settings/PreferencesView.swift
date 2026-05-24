@@ -46,7 +46,7 @@ public struct PreferencesView: View {
         VStack(alignment: .leading, spacing: 20) {
             settingSection(title: "WordPress Site") {
                 formRow(label: "Site URL") {
-                    TextField("https://yoursite.com", text: $siteURL)
+                    TextField("", text: $siteURL)
                         .textFieldStyle(.plain)
                         .inputFieldStyle()
                 }
@@ -85,7 +85,7 @@ public struct PreferencesView: View {
 
             settingSection(title: "AI Writing") {
                 formRow(label: "Anthropic API Key") {
-                    SecureField("sk-ant-…", text: $aiAPIKey)
+                    SecureField("", text: $aiAPIKey)
                         .textFieldStyle(.plain)
                         .inputFieldStyle()
                 }
@@ -104,7 +104,7 @@ public struct PreferencesView: View {
                 }
                 Divider().padding(.leading, 12)
                 formRow(label: "Web Search") {
-                    Toggle("Allow Claude to search the web", isOn: $aiWebSearchEnabled)
+                    Toggle("", isOn: $aiWebSearchEnabled)
                         .toggleStyle(.switch)
                 }
             }

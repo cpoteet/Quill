@@ -20,8 +20,7 @@ final class AIResultPanel: NSPanel {
         becomesKeyOnlyIfNeeded = true
         backgroundColor = .clear
         isOpaque = false
-        hasShadow = true
-        level = .floating
+        hasShadow = false
         animationBehavior = .none
     }
 
@@ -45,6 +44,12 @@ final class AIResultPanel: NSPanel {
         let size = hc.view.fittingSize
         setContentSize(size)
         position(jsRect: jsRect, in: webView)
+
+        // Child window keeps the panel above the main window but NOT above other apps.
+        // Using level = .floating would float over every app system-wide.
+        if parent == nil, let mainWindow = webView.window {
+            mainWindow.addChildWindow(self, ordered: .above)
+        }
         orderFront(nil)
 
         // Local event monitor: Return = accept, Escape = discard, click outside = discard
@@ -74,6 +79,7 @@ final class AIResultPanel: NSPanel {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
+        parent?.removeChildWindow(self)
         orderOut(nil)
     }
 
@@ -118,16 +124,24 @@ private struct AIResultBarView: View {
             Button(action: onAccept) {
                 Label("Accept", systemImage: "checkmark")
                     .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.wpAmber, in: RoundedRectangle(cornerRadius: 5))
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            .buttonStyle(.plain)
 
             Button(action: onDiscard) {
                 Label("Discard", systemImage: "xmark")
                     .font(.system(size: 12))
+                    .foregroundStyle(Color(NSColor.labelColor))
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color(NSColor.controlColor), in: RoundedRectangle(cornerRadius: 5))
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)

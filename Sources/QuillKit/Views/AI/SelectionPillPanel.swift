@@ -20,8 +20,7 @@ final class SelectionPillPanel: NSPanel {
         becomesKeyOnlyIfNeeded = true
         backgroundColor = .clear
         isOpaque = false
-        hasShadow = true
-        level = .floating
+        hasShadow = false
         animationBehavior = .none
     }
 
@@ -48,6 +47,11 @@ final class SelectionPillPanel: NSPanel {
 
         position(jsRect: jsRect, in: webView)
 
+        // Child window keeps the pill above the main window but NOT above other apps.
+        if parent == nil, let mainWindow = webView.window {
+            mainWindow.addChildWindow(self, ordered: .above)
+        }
+
         alphaValue = 0
         orderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
@@ -57,6 +61,7 @@ final class SelectionPillPanel: NSPanel {
     }
 
     func hide() {
+        parent?.removeChildWindow(self)
         orderOut(nil)
     }
 
