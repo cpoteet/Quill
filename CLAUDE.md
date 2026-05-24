@@ -23,8 +23,8 @@ Implementation complete and running. Active polish/iteration phase.
 - [x] Rename application to Quill
 - [x] Unsaved changes warning — what should happen when a user navigates away from an editor with unsaved changes (remote or local post/page)?
 - [x] New post/page slug field incorrectly inherits slug from the previously selected item — should be blank until the user types one
-- [ ] Add image alignment buttons to the rich text editor toolbar
-- [ ] Investigate how the editor HTML output can match what the default WordPress editor (Gutenberg) produces
+- [x] Add image alignment buttons to the rich text editor toolbar
+- [x] Investigate how the editor HTML output can match what the default WordPress editor (Gutenberg) produces
 
 ## Build & run
 
