@@ -786,13 +786,29 @@
       }
     }
 
+    function toWordPressHTML(html) {
+      const div = document.createElement('div')
+      div.innerHTML = html
+      div.querySelectorAll('img.alignleft, img.alignright, img.aligncenter').forEach(img => {
+        const align = ['alignleft', 'alignright', 'aligncenter']
+          .find(c => img.classList.contains(c))
+        if (!align) return
+        const figure = document.createElement('figure')
+        figure.className = `wp-block-image ${align}`
+        img.classList.remove('alignleft', 'alignright', 'aligncenter')
+        img.parentNode.insertBefore(figure, img)
+        figure.appendChild(img)
+      })
+      return div.innerHTML
+    }
+
     // ── Content change → Swift ─────────────────────────
     let debounce
     editor.on('update', () => {
       clearTimeout(debounce)
       debounce = setTimeout(() => {
         if (window.webkit?.messageHandlers?.contentChanged) {
-          window.webkit.messageHandlers.contentChanged.postMessage(editor.getHTML())
+          window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
         }
       }, 500)
     })
@@ -801,7 +817,7 @@
     window.setContent = html => {
       editor.commands.setContent(html || '', false)
     }
-    window.getContent = () => editor.getHTML()
+    window.getContent = () => toWordPressHTML(editor.getHTML())
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
     window.focusEditor = () => editor.commands.focus()
     window.insertImageAt = (_index, url, width, height, mediaId) => {
