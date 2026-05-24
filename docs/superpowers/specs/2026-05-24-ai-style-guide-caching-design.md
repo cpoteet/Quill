@@ -37,13 +37,12 @@ The response is plain text — no preamble, no labels. This is what gets stored 
 
 `PreferencesView.saveAll()` becomes `async` and runs inside a `Task`. The sequence:
 
-1. Validate and save WordPress credentials (unchanged)
+1. Validate and save WordPress credentials. If the site URL has changed from the stored credentials, clear `samplePostIDs` and `styleGuide` from AI settings and reset the local state (`aiSamplePostIDs = []`). This prevents stale post IDs and a stale style guide from a previous site carrying over.
 2. Save AI settings with current `samplePostIDs` and existing `styleGuide` (immediate persistence)
 3. Call `onSaveAISettings` so `AppState` reflects the new API key / web search toggle right away
 4. If API key is non-empty and sample post IDs are non-empty:
-   - Set `isAnalyzing = true`, show "Analyzing writing style…" status label
-   - Strip HTML from each selected post's `content.rendered`
-   - Call `AnthropicClient.complete` with the style guide generation prompt (no web search, no caching needed — this is a one-shot call)
+   - Compare current `aiSamplePostIDs` against the IDs stored on disk before this save. If they are identical and a `styleGuide` already exists, skip regeneration — the style guide is still valid.
+   - Otherwise: set `isAnalyzing = true`, show "Analyzing writing style…" status label, strip HTML from each selected post's `content.rendered`, and call `AnthropicClient.complete` with the style guide generation prompt (no web search — this is a one-shot call)
    - On success: update `styleGuide` in settings, save again, call `onSaveAISettings` again
    - On failure: show error; existing style guide (if any) is preserved
    - Set `isAnalyzing = false`
