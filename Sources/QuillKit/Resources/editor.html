@@ -145,6 +145,9 @@
     }
     body.dark .resize-handle { background: #0a84ff; }
     .image-wrapper.selected .resize-handle { opacity: 1; pointer-events: auto; }
+    .image-wrapper.align-left   { float: left;  display: block; margin: 0 1em 0.5em 0; }
+    .image-wrapper.align-right  { float: right; display: block; margin: 0 0 0.5em 1em; }
+    .image-wrapper.align-center { display: block; margin: 0 auto; width: fit-content; }
 
     .resize-handle.nw { top: -4px; left: -4px; cursor: nwse-resize; }
     .resize-handle.n  { top: -4px; left: calc(50% - 4px); cursor: ns-resize; }
@@ -311,6 +314,11 @@
     <span class="tb-sep"></span>
     <button data-cmd="link"  title="Insert / remove link">&#128279; Link</button>
     <button data-cmd="image" title="Insert image from media library">&#128444; Image</button>
+    <span id="image-align-controls" style="display:none">
+      <button data-cmd="alignLeft"   title="Float image left (text wraps right)">&#8678; Left</button>
+      <button data-cmd="alignCenter" title="Center image">Center</button>
+      <button data-cmd="alignRight"  title="Float image right (text wraps left)">Right &#8680;</button>
+    </span>
     <span class="tb-sep"></span>
     <button data-cmd="undo" title="Undo (⌘Z)">&#8617; Undo</button>
     <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618; Redo</button>
