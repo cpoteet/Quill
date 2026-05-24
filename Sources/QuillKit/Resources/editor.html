@@ -650,6 +650,18 @@
       },
     })
 
+    function setImageAlignment(value) {
+      const { state } = editor
+      const node = state.selection.node
+      if (!node || node.type.name !== 'image') return
+      const pos = state.selection.from
+      const newAlignment = node.attrs.alignment === value ? null : value
+      editor.view.dispatch(
+        state.tr.setNodeMarkup(pos, null, { ...node.attrs, alignment: newAlignment })
+      )
+      editor.view.focus()
+    }
+
     // ── Toolbar commands ───────────────────────────────
     const COMMANDS = {
       bold:          () => editor.chain().focus().toggleBold().run(),
@@ -717,6 +729,9 @@
           window.webkit.messageHandlers.insertImageAtIndex.postMessage(0)
         }
       },
+      alignLeft:   () => setImageAlignment('left'),
+      alignCenter: () => setImageAlignment('center'),
+      alignRight:  () => setImageAlignment('right'),
     }
 
     document.querySelectorAll('[data-cmd]').forEach(btn => {
@@ -753,6 +768,22 @@
       // Undo / Redo
       document.querySelector('[data-cmd="undo"]').disabled = !editor.can().undo()
       document.querySelector('[data-cmd="redo"]').disabled = !editor.can().redo()
+      // Image alignment controls
+      const selNode = editor.state.selection.node
+      const selectedImage = selNode?.type.name === 'image' ? selNode : null
+      const alignControls = document.getElementById('image-align-controls')
+      if (selectedImage) {
+        alignControls.style.display = 'contents'
+        const alignCmdMap = { left: 'alignLeft', center: 'alignCenter', right: 'alignRight' }
+        document.querySelectorAll('#image-align-controls button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.cmd === alignCmdMap[selectedImage.attrs.alignment])
+        })
+      } else {
+        alignControls.style.display = 'none'
+        document.querySelectorAll('#image-align-controls button').forEach(btn => {
+          btn.classList.remove('active')
+        })
+      }
     }
 
     // ── Content change → Swift ─────────────────────────
