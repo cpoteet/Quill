@@ -50,12 +50,14 @@ Sources/QuillKit/
   App/              AppState, AppServices, QuillApp
   Auth/             KeychainStore (file-based, not system keychain)
   API/              WordPressClient, Models (WPPost, WPMedia, WPTaxonomy)
+  AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
     Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
     Sidebar/        SidebarView, PostListRow
     Settings/       PreferencesView, PostSettingsPanel
     Media/          MediaPickerView
+    AI/             GeneratePostSheet, SelectionPillPanel, AIResultPanel, SamplePostPickerSheet
   Resources/        editor.html (Tiptap)
   DesignSystem.swift
 ```
@@ -105,6 +107,11 @@ Sources/QuillKit/
 - **`tb._activeNodeView` stored on the toolbar DOM element** — the currently selected `ImageNodeView` instance is stored directly as a property on the `#image-toolbar` element (`tb._activeNodeView`). Toolbar event handlers read this to find the active node. Always null-check it; it is set to `null` by `_hideImageToolbar()`.
 - **80 ms delay in `deselectNode()`** — without the `setTimeout(..., 80)`, clicking a toolbar input deselects the image before the input receives focus, which would immediately trigger `_hideImageToolbar()` and close the toolbar. The delay lets the input's `focus` event fire first; the timeout body then re-checks `tb.contains(document.activeElement)` before hiding.
 - **`requestMediaSizes` / `setMediaSizes` round-trip** — when an image with a `mediaId` is selected, JS posts `{ mediaId }` to the `requestMediaSizes` WKWebView message handler. Swift's `EditorCoordinator` calls `onRequestMediaSizes?(mediaId)` (a closure wired in `PostEditorView` to `appState.mediaItems.first(where:)`), serializes the result's `mediaDetails.sizes` to JSON, and calls `window.setMediaSizes(id, JSON)` back into the webview. If the media item isn't loaded, `setMediaSizes(id, null)` is sent and named-size buttons stay hidden. Do not forget to register `"requestMediaSizes"` in `EditorView.makeNSView` via `config.userContentController.add(context.coordinator, name: "requestMediaSizes")`.
+- **AI feature is gated on API key** — `appState.aiEnabled` returns `false` when `aiSettings` is nil or the API key is empty; the ✦ toolbar button and selection pill are hidden in that state. Settings are stored in `~/Library/Application Support/Quill/ai_settings.json` (chmod 600) via `AISettingsStore`. `AppState.aiSettings` is the runtime source of truth; updating it (via `onSaveAISettings` callback in `PreferencesView`) enables the feature without relaunch.
+- **`PreferencesView` must not use `@EnvironmentObject`** — the SwiftUI `Settings` scene creates a separate window context that does not inherit the main app's environment objects. `PreferencesView` receives what it needs as explicit init parameters: `posts: [WPPost]` (for the sample post picker) and `onSaveAISettings: ((AISettings) -> Void)?` (to update `AppState` after saving). Both `QuillApp`'s `.sheet` and `Settings` scene pass these from `appState` at the call site where `AppState` is in scope.
+- **Anthropic web search fragments the response into many small text blocks** — when `web_search_20250305` is enabled, the API returns a `content` array with `server_tool_use`, `web_search_tool_result`, and multiple `text` blocks (one per inline citation span). `AnthropicClient` joins all `type == "text"` blocks with `joined()` to reconstruct the full response. Do NOT use `first` or `last` — only the joined string has the complete `TITLE:` … `CONTENT:` structure.
+- **Anthropic web search prepends a preamble to the `TITLE:` line** — Claude emits a preamble text block (e.g. "I'll search for…") as a separate fragment that gets joined directly to `TITLE:` without a newline. `AIPromptBuilder.parseGenerateResponse` therefore uses `range(of: "TITLE:", options: .caseInsensitive)` to find the marker anywhere in the joined string, not `hasPrefix` on individual lines.
+- **AI generate prompt must specify HTML structure explicitly** — the `generatePostPrompt` template must name the HTML elements to use (`<h2>`, `<h3>`, `<p>`, `<ul>/<li>`). Using vague descriptions like "HTML paragraphs" causes Claude to emit only `<p>` tags and omit headings entirely, even when web search is active and the content is clearly structured.
 
 ## Docs
 
@@ -118,4 +125,6 @@ Sources/QuillKit/
 - Plan (link picker): `docs/superpowers/plans/2026-05-23-link-picker.md`
 - Spec (image resize): `docs/superpowers/specs/2026-05-23-image-resize-design.md`
 - Plan (image resize): `docs/superpowers/plans/2026-05-23-image-resize.md`
+- Spec (AI writing): `docs/superpowers/specs/2026-05-23-ai-writing-design.md`
+- Plan (AI writing): `docs/superpowers/plans/2026-05-23-ai-writing.md`
 - Public docs: `docs/Quill.md`

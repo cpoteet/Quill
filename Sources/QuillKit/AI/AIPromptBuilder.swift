@@ -15,8 +15,9 @@ public struct AIPromptBuilder {
         var parts: [String] = []
         parts.append(
             "You are a writing assistant embedded in a WordPress editor. " +
-            "Respond with valid HTML only — no markdown, no code fences, no explanation text. " +
-            "Produce clean, minimal HTML suitable for a WordPress post body."
+            "Always follow the output format specified in the user message exactly. " +
+            "Do not wrap output in markdown code fences. " +
+            "Produce clean, minimal HTML for any HTML content."
         )
         if !samplePostContents.isEmpty {
             parts.append(
@@ -40,18 +41,38 @@ public struct AIPromptBuilder {
         TITLE: <the post title, plain text, no HTML>
 
         CONTENT:
-        <post body as HTML paragraphs>
+        <well-structured HTML using <h2> for major sections, <h3> for sub-sections, <p> for paragraphs, and <ul>/<li> for lists where appropriate. No markdown, no code fences, just clean HTML.>
         """
     }
 
     /// Parse Claude's generate-post response into (title, htmlContent).
     /// Returns nil if the format is not recognised.
     public static func parseGenerateResponse(_ text: String) -> (title: String, html: String)? {
-        let lines = text.components(separatedBy: "\n")
-        guard let titleLine = lines.first(where: { $0.hasPrefix("TITLE:") }) else { return nil }
-        let title = String(titleLine.dropFirst("TITLE:".count)).trimmingCharacters(in: .whitespaces)
-        guard let contentIdx = lines.firstIndex(where: { $0.hasPrefix("CONTENT:") }) else { return nil }
-        let html = lines[(contentIdx + 1)...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip any markdown code fences Claude might add despite instructions
+        var cleaned = text
+        if let fenceRange = cleaned.range(of: "```html", options: .caseInsensitive) {
+            cleaned.removeSubrange(fenceRange)
+        }
+        cleaned = cleaned.replacingOccurrences(of: "```", with: "")
+
+        // When web search is on, Claude emits a preamble text block that gets joined
+        // directly to the TITLE: line without a newline. Search for "TITLE:" anywhere.
+        guard let titleMarker = cleaned.range(of: "TITLE:", options: .caseInsensitive) else {
+            return nil
+        }
+        // Everything from the marker onward; grab the title up to the first newline
+        let afterTitle = cleaned[titleMarker.upperBound...]
+        let titleEnd = afterTitle.firstIndex(of: "\n") ?? afterTitle.endIndex
+        let title = afterTitle[..<titleEnd].trimmingCharacters(in: .whitespaces)
+
+        // Find CONTENT: after the title marker
+        guard let contentMarker = cleaned.range(of: "CONTENT:", options: .caseInsensitive,
+                                                range: titleMarker.upperBound..<cleaned.endIndex) else {
+            return nil
+        }
+        let html = String(cleaned[contentMarker.upperBound...])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
         guard !title.isEmpty, !html.isEmpty else { return nil }
         return (title, html)
     }

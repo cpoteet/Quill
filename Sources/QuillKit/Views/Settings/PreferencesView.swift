@@ -13,7 +13,6 @@ private extension View {
 }
 
 public struct PreferencesView: View {
-    @EnvironmentObject private var appState: AppState
 
     // WordPress credentials
     @State private var siteURL: String = ""
@@ -31,9 +30,17 @@ public struct PreferencesView: View {
     @State private var aiSaveSuccess: Bool = false
 
     var onSave: (Credentials) -> Void
+    var posts: [WPPost]
+    var onSaveAISettings: ((AISettings) -> Void)?
 
-    public init(onSave: @escaping (Credentials) -> Void) {
+    public init(
+        posts: [WPPost] = [],
+        onSave: @escaping (Credentials) -> Void,
+        onSaveAISettings: ((AISettings) -> Void)? = nil
+    ) {
+        self.posts = posts
         self.onSave = onSave
+        self.onSaveAISettings = onSaveAISettings
     }
 
     public var body: some View {
@@ -100,7 +107,7 @@ public struct PreferencesView: View {
                     HStack(spacing: 8) {
                         Button("Choose Sample Posts…") { isSamplePickerOpen = true }
                             .buttonStyle(.bordered)
-                            .disabled(appState.posts.isEmpty)
+                            .disabled(posts.isEmpty)
                         Text(aiSamplePostIDs.isEmpty
                              ? "No samples selected"
                              : "\(aiSamplePostIDs.count) post\(aiSamplePostIDs.count == 1 ? "" : "s") selected")
@@ -116,7 +123,7 @@ public struct PreferencesView: View {
             }
             .sheet(isPresented: $isSamplePickerOpen) {
                 SamplePostPickerSheet(
-                    posts: appState.posts,
+                    posts: posts,
                     selectedIDs: $aiSamplePostIDs,
                     onDone: { isSamplePickerOpen = false }
                 )
@@ -184,7 +191,7 @@ public struct PreferencesView: View {
             webSearchEnabled: aiWebSearchEnabled
         )
         try? AISettingsStore.save(settings)
-        appState.aiSettings = settings
+        onSaveAISettings?(settings)
         aiSaveSuccess = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { aiSaveSuccess = false }
     }

@@ -19,10 +19,12 @@ public struct QuillApp: App {
                     }
                 }
                 .sheet(isPresented: $appState.isShowingPreferences) {
-                    PreferencesView { creds in
+                    PreferencesView(posts: appState.posts, onSave: { creds in
                         appState.credentials = creds
                         appState.isShowingPreferences = false
-                    }
+                    }, onSaveAISettings: { settings in
+                        appState.aiSettings = settings
+                    })
                 }
         }
         .commands {
@@ -30,9 +32,11 @@ public struct QuillApp: App {
         }
 
         Settings {
-            PreferencesView { creds in
+            PreferencesView(posts: appState.posts, onSave: { creds in
                 appState.credentials = creds
-            }
+            }, onSaveAISettings: { settings in
+                appState.aiSettings = settings
+            })
         }
     }
 }

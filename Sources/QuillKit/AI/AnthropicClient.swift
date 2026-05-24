@@ -124,7 +124,14 @@ public struct AnthropicClient {
         }
 
         let response = try JSONDecoder().decode(AnthropicResponse.self, from: data)
-        guard let text = response.content.first(where: { $0.type == "text" })?.text else {
+        // Web search fragments the reply across many small text blocks (one per citation span).
+        // Join them all — the first block starts with "TITLE: …\n\nCONTENT:\n" and subsequent
+        // blocks contain the inline cited text segments that make up the rest of the post body.
+        let text = response.content
+            .filter { $0.type == "text" }
+            .compactMap { $0.text }
+            .joined()
+        guard !text.isEmpty else {
             throw AnthropicError.noTextContent
         }
         return text
