@@ -40,7 +40,6 @@ final class AIResultPanel: NSPanel {
             onDiscard: { [weak self] in self?.finish(accepted: false) }
         )
         let hc = NSHostingController(rootView: barView)
-        hc.sizingOptions = .preferredContentSize
         contentViewController = hc
 
         let size = hc.view.fittingSize

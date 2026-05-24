@@ -23,6 +23,8 @@ Implementation complete and running. Active polish/iteration phase.
 - [x] Rename application to Quill
 - [x] Unsaved changes warning — what should happen when a user navigates away from an editor with unsaved changes (remote or local post/page)?
 - [x] New post/page slug field incorrectly inherits slug from the previously selected item — should be blank until the user types one
+- [ ] Add image alignment buttons to the rich text editor toolbar
+- [ ] Investigate how the editor HTML output can match what the default WordPress editor (Gutenberg) produces
 
 ## Build & run
 
@@ -112,6 +114,9 @@ Sources/QuillKit/
 - **Anthropic web search fragments the response into many small text blocks** — when `web_search_20250305` is enabled, the API returns a `content` array with `server_tool_use`, `web_search_tool_result`, and multiple `text` blocks (one per inline citation span). `AnthropicClient` joins all `type == "text"` blocks with `joined()` to reconstruct the full response. Do NOT use `first` or `last` — only the joined string has the complete `TITLE:` … `CONTENT:` structure.
 - **Anthropic web search prepends a preamble to the `TITLE:` line** — Claude emits a preamble text block (e.g. "I'll search for…") as a separate fragment that gets joined directly to `TITLE:` without a newline. `AIPromptBuilder.parseGenerateResponse` therefore uses `range(of: "TITLE:", options: .caseInsensitive)` to find the marker anywhere in the joined string, not `hasPrefix` on individual lines.
 - **AI generate prompt must specify HTML structure explicitly** — the `generatePostPrompt` template must name the HTML elements to use (`<h2>`, `<h3>`, `<p>`, `<ul>/<li>`). Using vague descriptions like "HTML paragraphs" causes Claude to emit only `<p>` tags and omit headings entirely, even when web search is active and the content is clearly structured.
+- **`AIResultPanel` must NOT use `sizingOptions = .preferredContentSize`** — `AIResultPanel` is a static two-button bar whose size is computed once via `fittingSize` and set with `setContentSize`. Adding `.preferredContentSize` makes `NSHostingController` fight AppKit's layout engine over the window size during the layout pass triggered by `setContentSize`, creating infinite recursive layout (6000+ levels deep, stack overflow crash). Use the default `sizingOptions = []` for any panel with static content. Only use `.preferredContentSize` for popovers with dynamically growing content (like `LinkPickerView`).
+- **`showAIResult` inserts at block-node boundaries, not text positions** — using `setTextSelection({ from, to }).insertContent(html)` with character positions inside a paragraph causes ProseMirror to split the paragraph at those points, leaving empty `<p>` fragments before and after the inserted content. Instead, expand to node boundaries: `$from.before($from.depth)` / `$to.after($to.depth)`, then call `insertContentAt({ from: nodeFrom, to: nodeTo }, html, { parseOptions: { preserveWhitespace: false } })`. The `preserveWhitespace: false` option is required — the default `'full'` causes ProseMirror to wrap the `\n` characters Claude emits between `<p>` tags into blank paragraph nodes.
+- **Strip inter-block whitespace text nodes before inserting AI HTML** — even with `preserveWhitespace: false`, ProseMirror can create a blank paragraph from the first whitespace text node at the start of a slice. Before calling `insertContentAt`, parse the HTML through a temporary `div`, remove whitespace-only `childNodes` (text nodes between block elements), and use the resulting `innerHTML`. This ensures zero inter-paragraph whitespace reaches ProseMirror's parser.
 
 ## Docs
 

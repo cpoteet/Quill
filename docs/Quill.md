@@ -146,6 +146,41 @@ Click the sidebar-right icon in the editor toolbar to open the settings panel. A
 - **Slug** — the URL-friendly identifier for the page
 - **Discussion** — toggle whether comments are allowed on the page
 
+### AI writing assistant
+
+Quill includes an optional AI writing assistant powered by the Claude API. It works directly on selected text in the editor.
+
+#### Setup
+
+1. Open **Quill → Settings** (⌘,) and go to the **AI** tab
+2. Paste your [Anthropic API key](https://console.anthropic.com/)
+3. Click **Save**
+
+The AI features activate immediately — no restart required. If no API key is saved, the AI controls stay hidden.
+
+Optionally, select one or more of your existing posts as **style samples**. When provided, Claude matches the tone, rhythm, and vocabulary of those posts when rewriting or expanding your content.
+
+#### Using the writing assistant
+
+Select at least 10 characters of text in the editor. A small pill button (✦) appears near the selection. Click it to choose an operation:
+
+| Operation | What it does |
+|---|---|
+| **Make longer** | Expands the selected content to roughly 2–3× its current length, adding detail and examples |
+| **Make shorter** | Condenses to the essential points while preserving meaning |
+| **Convert to table** | Restructures the content as an HTML table |
+| **Convert to list** | Restructures the content as a bullet list |
+
+While Claude processes the request, the selected text is replaced with a brief loading indicator. When the result arrives, it is inserted in place of your selection and highlighted.
+
+An **Accept / Discard** bar appears below the result:
+
+- Click **Accept** (or press **Return**) to keep the change
+- Click **Discard** (or press **Escape**) to restore your original text
+- Click anywhere outside the bar to discard
+
+If you navigate away or close the editor before accepting, the original text is restored automatically.
+
 ### Drag and drop
 
 Drag any image file from Finder directly into the editor. Quill will:

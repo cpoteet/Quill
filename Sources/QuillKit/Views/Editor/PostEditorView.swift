@@ -637,7 +637,6 @@ public struct PostEditorView: View {
                 systemPrompt: system,
                 useWebSearch: false
             )
-
             // 4. Show result in editor — JS replaces loading placeholder with result,
             //    selects it, and returns a bounding rect for panel positioning.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),

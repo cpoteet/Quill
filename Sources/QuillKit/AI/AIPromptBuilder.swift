@@ -82,7 +82,7 @@ public struct AIPromptBuilder {
         let instruction: String
         switch operation {
         case .makeLonger:
-            instruction = "Expand and elaborate on this content, adding more detail, examples, and explanation while preserving the author's voice. Return only the expanded version as HTML — no preamble, no explanation."
+            instruction = "Expand this content to roughly 2–3 times its current length by adding detail, examples, or explanation where it feels natural. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
         case .makeShorter:
             instruction = "Condense this content to its essential points, removing redundancy while preserving meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
         case .convertToTable:

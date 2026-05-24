@@ -873,17 +873,45 @@
     // range, selects it for visual feedback, and returns the bounding rect so Swift
     // can position the accept/discard panel.
     window.showAIResult = (html) => {
+      // Clean Claude's response through the DOM so regex edge-cases can't slip through
+      const _tmp = document.createElement('div')
+      _tmp.innerHTML = html
+      // Remove empty block elements (<p></p>, <p>&nbsp;</p>, etc.)
+      _tmp.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {
+        if (!el.textContent.trim() && !el.querySelector('img, table')) el.remove()
+      })
+      // Remove whitespace-only text nodes between block elements — ProseMirror
+      // treats the \n\n Claude emits between <p> tags as text and wraps the first
+      // one in a blank paragraph even with preserveWhitespace: false.
+      Array.from(_tmp.childNodes).forEach(n => {
+        if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n.remove()
+      })
+      const cleanHtml = _tmp.innerHTML.trim()
+      if (!cleanHtml) return null
+
       // Restore original without emitting a contentChanged event
       editor.commands.setContent(_aiOriginalHTML, false)
-      // Insert the result — this DOES emit contentChanged (marks post dirty)
+
+      // Expand to full block-node boundaries so we replace whole paragraphs rather
+      // than splitting them mid-text (which leaves empty <p> fragments at the top).
+      const { state } = editor
+      const $from   = state.doc.resolve(_aiFrom)
+      const $to     = state.doc.resolve(_aiTo)
+      const nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
+      const nodeTo   = $to.depth > 0   ? $to.after($to.depth)      : $to.end()
+
+      // Insert the result — this DOES emit contentChanged (marks post dirty).
+      // preserveWhitespace: false prevents ProseMirror from wrapping the \n
+      // characters Claude emits between <p> tags into blank paragraph nodes.
       editor.chain().focus()
-        .setTextSelection({ from: _aiFrom, to: _aiTo })
-        .insertContent(html)
+        .insertContentAt({ from: nodeFrom, to: nodeTo }, cleanHtml, {
+          parseOptions: { preserveWhitespace: false }
+        })
         .run()
       _aiResultTo = editor.state.selection.to
 
       // Select the inserted range — browser selection acts as the visual highlight
-      editor.chain().setTextSelection({ from: _aiFrom, to: _aiResultTo }).run()
+      editor.chain().setTextSelection({ from: nodeFrom, to: _aiResultTo }).run()
       const s = window.getSelection()
       if (s && !s.isCollapsed) {
         const r = s.getRangeAt(0).getBoundingClientRect()
