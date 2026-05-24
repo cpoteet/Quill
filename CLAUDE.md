@@ -12,7 +12,7 @@ Implementation complete and running. Active polish/iteration phase.
 - [x] Media capability is completely broken — investigate and fix
 - [x] Link button in Tiptap toolbar does not work
 - [ ] Post/page title and breadcrumb bars should be white in dark mode
-- [ ] App title bar changes color when entering/exiting full screen
+- [x] App title bar changes color when entering/exiting full screen
 - [x] Fix page/post title spacing with top border
 - [x] After sending a local draft post to WordPress, the local copy should disappear immediately from the draft list
 - [x] Remove "New Draft" button from the bottom of the draft listing panel
