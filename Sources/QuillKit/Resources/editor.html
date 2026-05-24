@@ -393,6 +393,9 @@
         } else {
           this.img.removeAttribute('height')
         }
+        // Alignment
+        this.wrapper.classList.remove('align-left', 'align-right', 'align-center')
+        if (attrs.alignment) this.wrapper.classList.add(`align-${attrs.alignment}`)
       }
 
       update(node) {
@@ -548,6 +551,13 @@
       })
     }
 
+    function extractAlignment(cls) {
+      if (cls.includes('alignleft'))   return 'left'
+      if (cls.includes('alignright'))  return 'right'
+      if (cls.includes('aligncenter')) return 'center'
+      return null
+    }
+
     // ── ResizableImage extension ──────────────────────
     const ResizableImage = TiptapImage.extend({
       addAttributes() {
@@ -579,7 +589,36 @@
             },
             renderHTML: attrs => attrs.mediaId != null ? { 'data-media-id': attrs.mediaId } : {},
           },
+          alignment: {
+            default: null,
+            parseHTML: el => extractAlignment(el.getAttribute('class') || ''),
+            renderHTML: attrs => attrs.alignment ? { class: `align${attrs.alignment}` } : {},
+          },
         }
+      },
+      parseHTML() {
+        return [
+          {
+            tag: 'figure.wp-block-image',
+            getAttrs: el => {
+              const img = el.querySelector('img')
+              if (!img) return false
+              const dataId = img.getAttribute('data-media-id')
+              const clsMatch = (img.getAttribute('class') || '').match(/wp-image-(\d+)/)
+              return {
+                src:       img.getAttribute('src'),
+                alt:       img.getAttribute('alt') ?? null,
+                title:     img.getAttribute('title') ?? null,
+                width:     parseInt(img.getAttribute('width'), 10) || null,
+                height:    parseInt(img.getAttribute('height'), 10) || null,
+                mediaId:   dataId ? parseInt(dataId, 10)
+                                  : (clsMatch ? parseInt(clsMatch[1], 10) : null),
+                alignment: extractAlignment(el.getAttribute('class') || ''),
+              }
+            },
+          },
+          { tag: 'img[src]' },
+        ]
       },
       addNodeView() {
         return ({ node, editor, getPos }) => new ImageNodeView(node, editor, getPos)
