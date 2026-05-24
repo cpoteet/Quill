@@ -27,8 +27,7 @@ public struct PreferencesView: View {
     @State private var aiSamplePostIDs: [Int] = []
     @State private var aiWebSearchEnabled: Bool = true
     @State private var isSamplePickerOpen: Bool = false
-    @State private var aiSaveSuccess: Bool = false
-
+    @State private var isAnalyzing: Bool = false
     var onSave: (Credentials) -> Void
     var posts: [WPPost]
     var onSaveAISettings: ((AISettings) -> Void)?
@@ -82,18 +81,6 @@ public struct PreferencesView: View {
                     .padding(.horizontal, 4)
             }
 
-            HStack {
-                if let error = saveError {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                } else if saveSuccess {
-                    Text("Saved successfully.").foregroundStyle(.green).font(.caption)
-                }
-                Spacer()
-                Button("Save") { save() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isSaving || siteURL.isEmpty || username.isEmpty || appPassword.isEmpty)
-            }
-
             Divider()
 
             settingSection(title: "AI Writing") {
@@ -130,13 +117,17 @@ public struct PreferencesView: View {
             }
 
             HStack {
-                if aiSaveSuccess {
-                    Text("AI settings saved.").foregroundStyle(.green).font(.caption)
+                if let error = saveError {
+                    Text(error).foregroundStyle(.red).font(.caption)
+                } else if isAnalyzing {
+                    Text("Analyzing writing style…").foregroundStyle(.secondary).font(.caption)
+                } else if saveSuccess {
+                    Text("Saved.").foregroundStyle(.green).font(.caption)
                 }
                 Spacer()
-                Button("Save AI Settings") { saveAISettings() }
+                Button("Save") { Task { await saveAll() } }
                     .buttonStyle(.borderedProminent)
-                    .disabled(aiAPIKey.isEmpty)
+                    .disabled(isSaving || isAnalyzing)
             }
         }
         .padding(20)
@@ -184,16 +175,107 @@ public struct PreferencesView: View {
         aiWebSearchEnabled = settings.webSearchEnabled
     }
 
-    private func saveAISettings() {
-        let settings = AISettings(
+    private func saveAll() async {
+        saveError = nil
+        saveSuccess = false
+
+        // Detect site URL change before saving — stale sample IDs and style guide
+        // from a previous site must be cleared when the user switches WordPress sites.
+        let previousCreds = try? KeychainStore.load()
+        let siteURLChanged = previousCreds != nil && previousCreds?.siteURL.absoluteString != siteURL
+        if siteURLChanged {
+            aiSamplePostIDs = []
+        }
+
+        // Save WordPress credentials if any field is filled
+        if !siteURL.isEmpty || !username.isEmpty || !appPassword.isEmpty {
+            guard let url = URL(string: siteURL), url.scheme != nil else {
+                saveError = "Invalid URL. Include https://"
+                return
+            }
+            isSaving = true
+            let creds = Credentials(siteURL: url, username: username, appPassword: appPassword)
+            do {
+                try KeychainStore.save(creds)
+                onSave(creds)
+            } catch {
+                saveError = error.localizedDescription
+                isSaving = false
+                return
+            }
+            isSaving = false
+        }
+
+        guard !aiAPIKey.isEmpty else {
+            saveSuccess = true
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            saveSuccess = false
+            return
+        }
+
+        // Determine whether the style guide needs regeneration:
+        // - Empty sample IDs                                  → clear guide, no regen
+        // - IDs unchanged + site unchanged + existing guide   → keep guide, skip regen
+        // - IDs changed OR site changed OR no existing guide  → regen
+        let previousSettings = try? AISettingsStore.load()
+        let idsUnchanged = Set(aiSamplePostIDs) == Set(previousSettings?.samplePostIDs ?? [])
+
+        let existingGuide: String?
+        if aiSamplePostIDs.isEmpty {
+            existingGuide = nil
+        } else if idsUnchanged && !siteURLChanged {
+            existingGuide = previousSettings?.styleGuide
+        } else {
+            existingGuide = nil
+        }
+
+        let shouldRegen = !aiSamplePostIDs.isEmpty && existingGuide == nil
+
+        // Persist immediately with whatever guide is valid right now
+        var current = AISettings(
             apiKey: aiAPIKey,
             samplePostIDs: aiSamplePostIDs,
-            webSearchEnabled: aiWebSearchEnabled
+            webSearchEnabled: aiWebSearchEnabled,
+            styleGuide: existingGuide
         )
-        try? AISettingsStore.save(settings)
-        onSaveAISettings?(settings)
-        aiSaveSuccess = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { aiSaveSuccess = false }
+        try? AISettingsStore.save(current)
+        onSaveAISettings?(current)
+
+        // Optionally regenerate the style guide
+        if shouldRegen {
+            let sampleContents: [String] = aiSamplePostIDs.compactMap { id in
+                guard let post = posts.first(where: { $0.id == id }) else { return nil }
+                let stripped = post.content.rendered
+                    .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return stripped.isEmpty ? nil : stripped
+            }
+
+            if !sampleContents.isEmpty {
+                isAnalyzing = true
+                do {
+                    let client = AnthropicClient(apiKey: aiAPIKey)
+                    let prompt = AIPromptBuilder.styleGuideGenerationPrompt(sampleContents: sampleContents)
+                    let guide = try await client.complete(
+                        userMessage: prompt,
+                        systemPrompt: "Return only the requested style guide with no preamble.",
+                        useWebSearch: false
+                    )
+                    current.styleGuide = guide
+                    try? AISettingsStore.save(current)
+                    onSaveAISettings?(current)
+                } catch {
+                    saveError = "Style analysis failed: \(error.localizedDescription)"
+                    isAnalyzing = false
+                    return
+                }
+                isAnalyzing = false
+            }
+        }
+
+        saveSuccess = true
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        saveSuccess = false
     }
 
     private func loadExisting() {
@@ -201,24 +283,5 @@ public struct PreferencesView: View {
         siteURL = creds.siteURL.absoluteString
         username = creds.username
         appPassword = creds.appPassword
-    }
-
-    private func save() {
-        saveError = nil
-        saveSuccess = false
-        guard let url = URL(string: siteURL), url.scheme != nil else {
-            saveError = "Invalid URL. Include https://"
-            return
-        }
-        isSaving = true
-        let creds = Credentials(siteURL: url, username: username, appPassword: appPassword)
-        do {
-            try KeychainStore.save(creds)
-            onSave(creds)
-            saveSuccess = true
-        } catch {
-            saveError = error.localizedDescription
-        }
-        isSaving = false
     }
 }
