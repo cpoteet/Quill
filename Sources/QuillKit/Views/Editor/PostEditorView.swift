@@ -396,7 +396,26 @@ public struct PostEditorView: View {
     // MARK: - Save / Publish
 
     private func saveDraft() async {
-        await save(status: "draft")
+        switch item {
+        case .local: await saveLocalOnly()
+        case .remote: await save(status: "draft")
+        }
+    }
+
+    private func saveLocalOnly() async {
+        guard case .local(let draft) = item else { return }
+        guard let db = try? AppDatabase.production() else { return }
+        isSaving = true
+        defer { isSaving = false }
+        let store = DraftStore(db: db)
+        try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+        if let updated = try? store.load(id: draft.id),
+           let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
+            appState.localDrafts[idx] = updated
+        }
+        cleanTitle = title
+        cleanContent = htmlContent
+        toastMessage = "Saved locally"
     }
 
     private func publish() async {
