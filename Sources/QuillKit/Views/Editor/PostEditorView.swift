@@ -175,10 +175,17 @@ public struct PostEditorView: View {
                     .fill(Color.wpAmber)
                     .frame(width: 6, height: 6)
             }
-            Button("Save Draft") { Task { await saveDraft() } }
-                .keyboardShortcut("s", modifiers: .command)
-                .buttonStyle(.plain)
-                .disabled(isSaving)
+            if !isRemote {
+                Button("Save Draft") { Task { await saveDraft() } }
+                    .keyboardShortcut("s", modifiers: .command)
+                    .buttonStyle(.plain)
+                    .disabled(isSaving)
+            } else {
+                // ⌘S updates WordPress when editing a remote post/page
+                Button("") { Task { await publish() } }
+                    .keyboardShortcut("s", modifiers: .command)
+                    .hidden()
+            }
             if isRemote {
                 Button("Preview") { Task { await openPreview() } }
                     .buttonStyle(.bordered)
