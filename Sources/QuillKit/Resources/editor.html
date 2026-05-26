@@ -85,6 +85,10 @@
       line-height: 1.75;
       caret-color: #007aff;
     }
+    .spell-error {
+      text-decoration: red wavy underline;
+      text-decoration-skip-ink: none;
+    }
     .ProseMirror p { margin: 0 0 0.8em; }
     .ProseMirror h1 { font-size: 2em;   font-weight: 700; margin: 1em 0 0.4em; }
     .ProseMirror h2 { font-size: 1.5em; font-weight: 600; margin: 0.9em 0 0.35em; }
@@ -319,6 +323,8 @@
       <button data-cmd="alignCenter" title="Center image">Center</button>
       <button data-cmd="alignRight"  title="Float image right (text wraps left)">Right &#8680;</button>
     </span>
+    <span class="tb-sep"></span>
+    <button id="btn-spell" title="Check Spelling"><span style="text-decoration: red wavy underline; text-underline-offset: 3px; text-decoration-skip-ink: none;">ABC</span></button>
     <span class="tb-sep"></span>
     <button data-cmd="undo" title="Undo (⌘Z)">&#8617; Undo</button>
     <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618; Redo</button>
@@ -770,6 +776,11 @@
       })
     })
 
+    document.getElementById('btn-spell').addEventListener('mousedown', e => {
+      e.preventDefault()
+      window.webkit.messageHandlers.checkSpelling.postMessage(editor.getText())
+    })
+
     document.getElementById('heading-select').addEventListener('change', e => {
       const level = parseInt(e.target.value)
       if (level === 0) editor.chain().focus().setParagraph().run()
@@ -875,6 +886,35 @@
     })
 
     // ── Swift → JS bridge (globals) ───────────────────
+    window.applySpellErrors = function(words) {
+      function escapeRegex(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      }
+      const { state, dispatch } = editor.view
+      const decos = []
+      if (Array.isArray(words) && words.length > 0) {
+        state.doc.descendants((node, pos) => {
+          if (!node.isText) return
+          const text = node.text
+          words.forEach(word => {
+            const re = new RegExp('\\b' + escapeRegex(word) + '\\b', 'gi')
+            let match
+            while ((match = re.exec(text)) !== null) {
+              decos.push(
+                Decoration.inline(
+                  pos + match.index,
+                  pos + match.index + match[0].length,
+                  { class: 'spell-error' }
+                )
+              )
+            }
+          })
+        })
+      }
+      const decoSet = DecorationSet.create(state.doc, decos)
+      dispatch(state.tr.setMeta(spellCheckKey, decoSet))
+    }
+
     window.setContent = html => {
       editor.commands.setContent(html || '', false)
     }
