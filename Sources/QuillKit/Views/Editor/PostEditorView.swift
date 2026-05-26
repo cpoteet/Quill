@@ -317,7 +317,7 @@ public struct PostEditorView: View {
             let wpContent = post.content.raw ?? post.content.rendered
             title = wpTitle
             htmlContent = wpContent
-            lastSavedServerModified = post.modified
+            lastSavedServerModified = post.modified  // initial value; refreshed below
             settings.status = post.status
             settings.categoryIDs = Set(post.categories)
             settings.tagIDs = Set(post.tags)
@@ -337,6 +337,19 @@ public struct PostEditorView: View {
                 title = snap.title
                 htmlContent = snap.content
                 toastMessage = "Unsaved changes restored"
+            }
+            // Refresh the conflict-detection baseline from the server. The sidebar cache can
+            // be stale (WordPress updates modified via plugins, cron, or other clients), which
+            // causes false conflicts on the first save. Setting lastSavedServerModified to the
+            // live value means the conflict check only fires when the post genuinely changed
+            // between when the user opened it and when they saved.
+            if let creds = appState.credentials {
+                let client = WordPressClient(credentials: creds)
+                if let fresh = try? await (post.type == "page"
+                    ? client.fetchPage(id: post.id)
+                    : client.fetchPost(id: post.id)) {
+                    lastSavedServerModified = fresh.modified
+                }
             }
 
         case .local(let draft):
@@ -607,6 +620,16 @@ public struct PostEditorView: View {
                 return
             }
             NSWorkspace.shared.open(url)
+            // For draft posts, WordPress may update the parent post's modified date when
+            // creating an autosave (drafts have no separate revision state). Refresh the
+            // baseline so a subsequent save doesn't trigger a false conflict alert.
+            if post.status == "draft" || post.status == "pending" {
+                if let fresh = try? await (post.type == "page"
+                    ? client.fetchPage(id: post.id)
+                    : client.fetchPost(id: post.id)) {
+                    lastSavedServerModified = fresh.modified
+                }
+            }
         } catch {
             previewError = error.localizedDescription
         }
