@@ -340,7 +340,7 @@
   <div id="editor-wrap"><div id="editor"></div></div>
 
   <script type="module">
-    import { Editor }   from 'https://esm.sh/@tiptap/core@2'
+    import { Editor, Extension } from 'https://esm.sh/@tiptap/core@2'
     import StarterKit   from 'https://esm.sh/@tiptap/starter-kit@2'
     import Underline    from 'https://esm.sh/@tiptap/extension-underline@2'
     import Table        from 'https://esm.sh/@tiptap/extension-table@2'
@@ -352,6 +352,8 @@
     import TaskList     from 'https://esm.sh/@tiptap/extension-task-list@2'
     import TaskItem     from 'https://esm.sh/@tiptap/extension-task-item@2'
     import Placeholder  from 'https://esm.sh/@tiptap/extension-placeholder@2'
+    import { Plugin, PluginKey }         from 'https://esm.sh/@tiptap/pm@2/state'
+    import { DecorationSet, Decoration } from 'https://esm.sh/@tiptap/pm@2/view'
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {
@@ -625,6 +627,32 @@
       },
     })
 
+    // ── Spell check ───────────────────────────────────────
+    const spellCheckKey = new PluginKey('spellCheck')
+
+    const SpellCheck = Extension.create({
+      name: 'spellCheck',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: spellCheckKey,
+            state: {
+              init() { return DecorationSet.empty },
+              apply(tr, set) {
+                const incoming = tr.getMeta(spellCheckKey)
+                if (incoming !== undefined) return incoming
+                if (tr.docChanged) return DecorationSet.empty
+                return set.map(tr.mapping, tr.doc)
+              }
+            },
+            props: {
+              decorations(state) { return spellCheckKey.getState(state) }
+            }
+          })
+        ]
+      }
+    })
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
@@ -639,6 +667,7 @@
         TaskList,
         TaskItem.configure({ nested: true }),
         Placeholder.configure({ placeholder: 'Start writing…' }),
+        SpellCheck,
       ],
       content: '',
       onTransaction: () => updateToolbar(),
