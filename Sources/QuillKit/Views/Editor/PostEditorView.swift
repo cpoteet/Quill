@@ -187,7 +187,7 @@ public struct PostEditorView: View {
             }
             .font(.system(size: 12))
             Spacer()
-            if isDirty {
+            if isDirty && !isRemote {
                 Circle()
                     .fill(Color.wpAmber)
                     .frame(width: 6, height: 6)
@@ -411,9 +411,10 @@ public struct PostEditorView: View {
 
     private func scheduleAutosave() {
         autosaveTask?.cancel()
+        let expectedItemID = item.id
         autosaveTask = Task {
             try? await Task.sleep(for: .seconds(30))
-            if !Task.isCancelled && isDirty { await performAutosave() }
+            if !Task.isCancelled && isDirty && item.id == expectedItemID { await performAutosave() }
         }
     }
 

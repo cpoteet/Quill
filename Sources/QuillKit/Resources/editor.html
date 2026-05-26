@@ -959,6 +959,7 @@
 
     window.setContent = html => {
       editor.commands.setContent(html || '', false)
+      clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
     }
     window.getContent = () => toWordPressHTML(editor.getHTML())
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
