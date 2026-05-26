@@ -647,8 +647,15 @@
               apply(tr, set) {
                 const incoming = tr.getMeta(spellCheckKey)
                 if (incoming !== undefined) return incoming
-                if (tr.docChanged) return DecorationSet.empty
-                return set.map(tr.mapping, tr.doc)
+                if (!tr.docChanged) return set
+                let next = set.map(tr.mapping, tr.doc)
+                for (const step of tr.steps) {
+                  step.getMap().forEach((oldStart, oldEnd, newStart, newEnd) => {
+                    const overlapping = next.find(newStart, newEnd)
+                    if (overlapping.length) next = next.remove(overlapping)
+                  })
+                }
+                return next
               }
             },
             props: {
