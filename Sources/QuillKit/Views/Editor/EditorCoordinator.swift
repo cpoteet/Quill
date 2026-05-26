@@ -92,6 +92,33 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                     self.onSelectionChanged?(nil)
                 }
             }
+        case "checkSpelling":
+            guard let text = message.body as? String else { return }
+            DispatchQueue.global(qos: .userInitiated).async {
+                var misspelled = Set<String>()
+                var offset = 0
+                let tag = NSSpellChecker.uniqueSpellDocumentTag()
+                while true {
+                    let range = NSSpellChecker.shared.checkSpelling(
+                        of: text, startingAt: offset,
+                        language: nil, wrap: false,
+                        inSpellDocumentWithTag: tag, wordCount: nil)
+                    if range.length == 0 { break }
+                    misspelled.insert((text as NSString).substring(with: range))
+                    offset = range.upperBound
+                }
+                NSSpellChecker.shared.closeSpellDocument(withTag: tag)
+                guard
+                    let data = try? JSONSerialization.data(withJSONObject: Array(misspelled)),
+                    let json = String(data: data, encoding: .utf8)
+                else { return }
+                DispatchQueue.main.async {
+                    self.webView?.evaluateJavaScript(
+                        "window.applySpellErrors(\(json))",
+                        completionHandler: nil
+                    )
+                }
+            }
         default:
             break
         }
