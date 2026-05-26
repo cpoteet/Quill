@@ -60,15 +60,24 @@ public final class DroppableWebView: WKWebView {
     private let menuFilter = WebViewMenuFilter()
 
     public override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
-        // WebKit's own Cut/Copy/Paste items use private internal selectors and
-        // get filtered away along with browser-specific items. Build fresh items
-        // using standard selectors — WKWebView handles cut:/copy:/paste: via the
-        // responder chain, with automatic enable/disable from menu validation.
-        menu.items = [
+        // Items before the first separator are spell-check suggestions WebKit adds
+        // for misspelled words (using standard selectors like changeSpelling:,
+        // ignoreSpelling:, learnSpelling:). Preserve those and rebuild the standard
+        // edit commands — WebKit's own Cut/Copy/Paste use private internal selectors
+        // that get filtered away along with browser-specific items.
+        var spellItems: [NSMenuItem] = []
+        for item in menu.items {
+            if item.isSeparatorItem { break }
+            spellItems.append(item)
+        }
+        var newItems = spellItems
+        if !spellItems.isEmpty { newItems.append(.separator()) }
+        newItems += [
             NSMenuItem(title: "Cut", action: NSSelectorFromString("cut:"), keyEquivalent: ""),
             NSMenuItem(title: "Copy", action: NSSelectorFromString("copy:"), keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
+        menu.items = newItems
         // macOS may still append Services/AutoFill after this; re-filter in menuWillOpen.
         menu.delegate = menuFilter
     }
@@ -89,10 +98,14 @@ public final class DroppableWebView: WKWebView {
 }
 
 final class WebViewMenuFilter: NSObject, NSMenuDelegate {
-    private static let allowed: Set<String> = ["cut:", "copy:", "paste:"]
+    private static let allowed: Set<String> = [
+        "cut:", "copy:", "paste:",
+        "changeSpelling:", "ignoreSpelling:", "learnSpelling:",
+    ]
 
     static func apply(to menu: NSMenu) {
         menu.items = menu.items.filter { item in
+            if item.isSeparatorItem { return true }
             guard let action = item.action else { return false }
             return allowed.contains(NSStringFromSelector(action))
         }
