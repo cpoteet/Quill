@@ -84,10 +84,16 @@ final class SelectionPillPanel: NSPanel {
         let rectInWindow = webView.convert(rectInWebView, to: nil)
         let rectOnScreen = window.convertToScreen(rectInWindow)
 
-        // Place pill 8 pt above the top edge of the selection
+        // Place pill 8 pt below the bottom edge of the selection so it stays near
+        // the selected text regardless of how tall the selection is. Fall back to
+        // above the selection if the pill would be clipped off the bottom of the screen.
         let panelW = frame.size.width
+        let panelH = frame.size.height
+        let screenMinY = webView.window?.screen?.visibleFrame.minY ?? 0
+
+        let belowY = rectOnScreen.minY - panelH - 8
+        let y = belowY >= screenMinY ? belowY : rectOnScreen.maxY + 8
         let x = rectOnScreen.midX - panelW / 2
-        let y = rectOnScreen.maxY + 8
         setFrameOrigin(NSPoint(x: x, y: y))
     }
 }
