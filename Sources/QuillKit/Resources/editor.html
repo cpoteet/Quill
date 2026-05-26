@@ -345,21 +345,18 @@
   </div>
   <div id="editor-wrap"><div id="editor"></div></div>
 
-  <script type="module">
-    import { Editor, Extension } from 'https://esm.sh/@tiptap/core@2'
-    import StarterKit   from 'https://esm.sh/@tiptap/starter-kit@2'
-    import Underline    from 'https://esm.sh/@tiptap/extension-underline@2'
-    import Table        from 'https://esm.sh/@tiptap/extension-table@2'
-    import TableRow     from 'https://esm.sh/@tiptap/extension-table-row@2'
-    import TableCell    from 'https://esm.sh/@tiptap/extension-table-cell@2'
-    import TableHeader  from 'https://esm.sh/@tiptap/extension-table-header@2'
-    import { Image as TiptapImage } from 'https://esm.sh/@tiptap/extension-image@2'
-    import Link         from 'https://esm.sh/@tiptap/extension-link@2'
-    import TaskList     from 'https://esm.sh/@tiptap/extension-task-list@2'
-    import TaskItem     from 'https://esm.sh/@tiptap/extension-task-item@2'
-    import Placeholder  from 'https://esm.sh/@tiptap/extension-placeholder@2'
-    import { Plugin, PluginKey }         from 'https://esm.sh/@tiptap/pm@2/state'
-    import { DecorationSet, Decoration } from 'https://esm.sh/@tiptap/pm@2/view'
+  <script src="./tiptap-bundle.js"></script>
+  <script>
+    const {
+      Editor, Extension,
+      StarterKit, Underline,
+      Table, TableRow, TableCell, TableHeader,
+      TiptapImage, Link,
+      TaskList, TaskItem,
+      Placeholder,
+      Plugin, PluginKey,
+      DecorationSet, Decoration,
+    } = TiptapBundle
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {

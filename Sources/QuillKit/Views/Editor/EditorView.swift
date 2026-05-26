@@ -4,6 +4,7 @@ import WebKit
 public struct EditorView: NSViewRepresentable {
     @Binding var html: String
     var onContentChange: (String) -> Void
+    var onEditorReady: (() -> Void)?
     var onInsertImageAt: ((Int) -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
@@ -13,6 +14,7 @@ public struct EditorView: NSViewRepresentable {
     public init(
         html: Binding<String>,
         onContentChange: @escaping (String) -> Void,
+        onEditorReady: (() -> Void)? = nil,
         onInsertImageAt: ((Int) -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
@@ -21,6 +23,7 @@ public struct EditorView: NSViewRepresentable {
     ) {
         self._html = html
         self.onContentChange = onContentChange
+        self.onEditorReady = onEditorReady
         self.onInsertImageAt = onInsertImageAt
         self.onImageFilesDropped = onImageFilesDropped
         self.onSearchLinks = onSearchLinks
@@ -29,7 +32,8 @@ public struct EditorView: NSViewRepresentable {
     }
 
     public func makeCoordinator() -> EditorCoordinator {
-        EditorCoordinator(onContentChange: onContentChange, onReady: {})
+        let ready = onEditorReady
+        return EditorCoordinator(onContentChange: onContentChange, onReady: { ready?() })
     }
 
     public func makeNSView(context: Context) -> DroppableWebView {
@@ -55,6 +59,8 @@ public struct EditorView: NSViewRepresentable {
     }
 
     public func updateNSView(_ nsView: DroppableWebView, context: Context) {
+        let ready = onEditorReady
+        context.coordinator.onReady = { ready?() }
         context.coordinator.setContent(html)
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
@@ -63,12 +69,10 @@ public struct EditorView: NSViewRepresentable {
     }
 
     private func loadEditorHTML(in webView: WKWebView) {
-        guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html"),
-            let html = try? String(contentsOf: htmlURL, encoding: .utf8)
-        else { return }
-        // Use an https base URL so the page has a non-null origin, allowing
-        // CORS-enabled ES module imports from esm.sh to succeed (file:// is
-        // treated as a null origin and is blocked by WebKit's cross-origin policy).
-        webView.loadHTMLString(html, baseURL: URL(string: "https://app.wpwriter/"))
+        guard let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") else { return }
+        // loadFileURL with allowingReadAccessTo grants the page access to the whole Resources
+        // directory, so the relative ./tiptap-bundle.js import resolves to the bundled file.
+        // All imports are same-origin (file://), so no cross-origin restrictions apply.
+        webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
     }
 }

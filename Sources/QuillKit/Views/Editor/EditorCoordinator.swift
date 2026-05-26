@@ -14,6 +14,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onRequestMediaSizes: ((Int) -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     private var linkPopover: NSPopover?
+    private var readyWatchdogItem: DispatchWorkItem?
 
     init(onContentChange: @escaping (String) -> Void, onReady: @escaping () -> Void) {
         self.onContentChange = onContentChange
@@ -51,6 +52,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         case "editorReady":
             DispatchQueue.main.async {
+                self.cancelReadyWatchdog()
                 self.isReady = true
                 if let html = self.pendingHTML {
                     self.setContent(html)
@@ -193,6 +195,31 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     // WKNavigationDelegate
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         applyColorScheme()
+        startReadyWatchdog()
+    }
+
+    private func startReadyWatchdog() {
+        cancelReadyWatchdog()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, !self.isReady else { return }
+            // editorReady never fired — CDN modules likely failed to load. Reload and retry.
+            self.isReady = false
+            self.reloadEditor()
+        }
+        readyWatchdogItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12, execute: item)
+    }
+
+    private func cancelReadyWatchdog() {
+        readyWatchdogItem?.cancel()
+        readyWatchdogItem = nil
+    }
+
+    private func reloadEditor() {
+        guard let wv = webView,
+              let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html")
+        else { return }
+        wv.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
     }
 
     func setContent(_ html: String) {

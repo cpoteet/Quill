@@ -25,6 +25,7 @@ chmod +x "$APP_DIR/MacOS/$APP_NAME"
 # Resources
 cp "Sources/QuillKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
 cp "Sources/QuillKit/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+cp "Sources/QuillKit/Resources/tiptap-bundle.js" "$RESOURCES_DIR/tiptap-bundle.js"
 
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF

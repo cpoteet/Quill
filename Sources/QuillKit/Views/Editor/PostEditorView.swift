@@ -20,6 +20,7 @@ public struct PostEditorView: View {
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
+    @State private var editorReady = false
 
     // AI state
     @State private var isAISheetOpen: Bool = false
@@ -40,30 +41,46 @@ public struct PostEditorView: View {
                 if saveError != nil { errorBanner }
                 titleField
                 Divider()
-                EditorView(
-                    html: $htmlContent,
-                    onContentChange: { newHTML in
-                        htmlContent = newHTML
-                        scheduleAutosave()
-                    },
-                    onInsertImageAt: { index in
-                        imageInsertIndex = index
-                    },
-                    onImageFilesDropped: { urls in
-                        Task { await handleDroppedImages(urls) }
-                    },
-                    onSearchLinks: { query in
-                        guard let creds = appState.credentials else { return [] }
-                        return try await WordPressClient(credentials: creds).searchLinks(query: query)
-                    },
-                    onRequestMediaSizes: { mediaId in
-                        appState.mediaItems.first(where: { $0.id == mediaId })
-                    },
-                    onSelectionChanged: { rect in
-                        currentSelectionRect = rect
-                        handleSelectionChange(rect: rect)
+                ZStack {
+                    EditorView(
+                        html: $htmlContent,
+                        onContentChange: { newHTML in
+                            htmlContent = newHTML
+                            scheduleAutosave()
+                        },
+                        onEditorReady: {
+                            withAnimation(.easeOut(duration: 0.15)) { editorReady = true }
+                        },
+                        onInsertImageAt: { index in
+                            imageInsertIndex = index
+                        },
+                        onImageFilesDropped: { urls in
+                            Task { await handleDroppedImages(urls) }
+                        },
+                        onSearchLinks: { query in
+                            guard let creds = appState.credentials else { return [] }
+                            return try await WordPressClient(credentials: creds).searchLinks(query: query)
+                        },
+                        onRequestMediaSizes: { mediaId in
+                            appState.mediaItems.first(where: { $0.id == mediaId })
+                        },
+                        onSelectionChanged: { rect in
+                            currentSelectionRect = rect
+                            handleSelectionChange(rect: rect)
+                        }
+                    )
+                    if !editorReady {
+                        VStack(spacing: 10) {
+                            ProgressView()
+                            Text("Loading editor…")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.wpPanelBg)
+                        .transition(.opacity)
                     }
-                )
+                }
                 .sheet(
                     isPresented: Binding(
                         get: { imageInsertIndex != nil },
