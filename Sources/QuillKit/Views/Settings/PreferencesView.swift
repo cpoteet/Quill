@@ -44,18 +44,16 @@ public struct PreferencesView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            settingSection(title: "WordPress Site") {
-                formRow(label: "Site URL") {
-                    TextField("", text: $siteURL)
-                        .textFieldStyle(.plain)
-                        .inputFieldStyle()
-                }
-            }
-
             VStack(alignment: .leading, spacing: 6) {
-                Text("Application Password")
+                Text("WordPress Credentials")
                     .font(.headline)
                 VStack(spacing: 0) {
+                    formRow(label: "Site URL") {
+                        TextField("", text: $siteURL)
+                            .textFieldStyle(.plain)
+                            .inputFieldStyle()
+                    }
+                    Divider().padding(.leading, 12)
                     formRow(label: "Username") {
                         TextField("", text: $username)
                             .textFieldStyle(.plain)
@@ -75,13 +73,11 @@ public struct PreferencesView: View {
                         .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
                 )
 
-                Text("Generate one in WordPress Admin → Users → Profile → Application Passwords.")
+                Text("Generate an application password in WordPress Admin → Users → Profile.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             }
-
-            Divider()
 
             settingSection(title: "AI Writing") {
                 formRow(label: "Anthropic API Key") {
@@ -94,6 +90,7 @@ public struct PreferencesView: View {
                     HStack(spacing: 8) {
                         Button("Choose Sample Posts…") { isSamplePickerOpen = true }
                             .buttonStyle(.bordered)
+                            .tint(Color.wpAmber)
                             .disabled(posts.isEmpty)
                         Text(aiSamplePostIDs.isEmpty
                              ? "No samples selected"
@@ -106,6 +103,7 @@ public struct PreferencesView: View {
                 formRow(label: "Web Search") {
                     Toggle("", isOn: $aiWebSearchEnabled)
                         .toggleStyle(.switch)
+                        .tint(Color.wpAmber)
                 }
             }
             .sheet(isPresented: $isSamplePickerOpen) {
@@ -122,11 +120,12 @@ public struct PreferencesView: View {
                 } else if isAnalyzing {
                     Text("Analyzing writing style…").foregroundStyle(.secondary).font(.caption)
                 } else if saveSuccess {
-                    Text("Saved.").foregroundStyle(.green).font(.caption)
+                    Text("Saved.").foregroundStyle(Color.wpAmber).font(.caption)
                 }
                 Spacer()
                 Button("Save") { Task { await saveAll() } }
                     .buttonStyle(.borderedProminent)
+                    .tint(Color.wpAmber)
                     .disabled(isSaving || isAnalyzing)
             }
         }

@@ -15,6 +15,7 @@ struct SamplePostPickerSheet: View {
                 Spacer()
                 Button("Done") { onDone() }
                     .buttonStyle(.borderedProminent)
+                    .tint(Color.wpAmber)
             }
             .padding()
 
@@ -48,7 +49,7 @@ struct SamplePostPickerSheet: View {
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                                        .foregroundStyle(isSelected ? Color.wpAmber : .secondary)
                                     Text(post.title.rendered.isEmpty ? "Untitled" : post.title.rendered)
                                         .foregroundStyle(atLimit && !isSelected ? .secondary : .primary)
                                         .lineLimit(1)
