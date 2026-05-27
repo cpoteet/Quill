@@ -53,6 +53,7 @@ struct MediaSidebarSection: View {
                             media: media,
                             isSelected: appState.selectedMedia?.id == media.id
                         )
+                        .contentShape(Rectangle())
                         .onTapGesture { appState.selectedMedia = media }
                         .contextMenu { contextMenuItems(for: media) }
                     }
