@@ -23,10 +23,13 @@ public struct PostEditorView: View {
     @State private var loadedItem: PostItem? = nil
     @State private var editorReady = false
 
+    private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
+
     // AI state
     @State private var isAISheetOpen: Bool = false
     @State private var showAIReplaceAlert: Bool = false
     @State private var currentSelectionRect: CGRect? = nil
+    @State private var editorWebView: WKWebView? = nil
     private var selectionPill: SelectionPillPanel = SelectionPillPanel()
     private var resultPanel: AIResultPanel = AIResultPanel()
 
@@ -68,6 +71,9 @@ public struct PostEditorView: View {
                         onSelectionChanged: { rect in
                             currentSelectionRect = rect
                             handleSelectionChange(rect: rect)
+                        },
+                        onWebViewCreated: { webView in
+                            editorWebView = webView
                         }
                     )
                     if !editorReady {
@@ -485,7 +491,7 @@ public struct PostEditorView: View {
             content: htmlContent,
             excerpt: settings.excerpt,
             status: status,
-            dateGmt: settings.publishDate.map { ISO8601DateFormatter().string(from: $0) },
+            dateGmt: settings.publishDate.map { Self.iso8601Formatter.string(from: $0) },
             featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
             categories: Array(settings.categoryIDs),
             tags: Array(settings.tagIDs),
@@ -593,7 +599,7 @@ public struct PostEditorView: View {
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                 toastMessage = "Image inserted"
             } catch {
-                saveError = "Upload failed: \(error.localizedDescription)"
+                toastMessage = "Upload failed: \(error.localizedDescription)"
             }
         }
     }
@@ -606,7 +612,7 @@ public struct PostEditorView: View {
         case "webp": return "image/webp"
         case "heic": return "image/heic"
         case "tiff", "tif": return "image/tiff"
-        default: return "image/jpeg"
+        default: return "application/octet-stream"
         }
     }
 
@@ -647,7 +653,7 @@ public struct PostEditorView: View {
     private func handleSelectionChange(rect: CGRect?) {
         guard appState.aiEnabled else { return }
         if let rect = rect {
-            guard let webView = findWKWebView() else { return }
+            guard let webView = editorWebView else { return }
             selectionPill.show(selectionRect: rect, in: webView) { operation in
                 Task { await executeAIOperation(operation) }
             }
@@ -661,7 +667,7 @@ public struct PostEditorView: View {
     @MainActor
     private func executeAIOperation(_ operation: AIWritingOperation) async {
         guard let settings = appState.aiSettings else { return }
-        guard let webView = findWKWebView() as? WKWebView else { return }
+        guard let webView = editorWebView else { return }
 
         // 1. Tell JS to capture the selection and show the loading placeholder.
         //    JS returns the selected plain text (used as prompt input), or null.
@@ -682,7 +688,7 @@ public struct PostEditorView: View {
                 userMessage: userMsg,
                 systemPrompt: system,
                 useWebSearch: false
-            )
+            ).text
             // 4. Show result in editor — JS replaces loading placeholder with result,
             //    selects it, and returns a bounding rect for panel positioning.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),
@@ -728,30 +734,9 @@ public struct PostEditorView: View {
 
     /// Walks the AppKit view hierarchy of the key window to locate the WKWebView
     /// (DroppableWebView subclass) used by EditorView.
-    private func findWKWebView() -> NSView? {
-        for window in NSApplication.shared.windows where window.isKeyWindow || window.isMainWindow {
-            if let found = findWKWebViewRecursive(in: window.contentView) { return found }
-        }
-        // Fallback: search all windows
-        for window in NSApplication.shared.windows {
-            if let found = findWKWebViewRecursive(in: window.contentView) { return found }
-        }
-        return nil
-    }
-
-    private func findWKWebViewRecursive(in view: NSView?) -> NSView? {
-        guard let view else { return nil }
-        if view is WKWebView { return view }
-        for sub in view.subviews {
-            if let found = findWKWebViewRecursive(in: sub) { return found }
-        }
-        return nil
-    }
-
     private func parseWPDate(_ iso: String) -> Date? {
         // Try ISO8601 with timezone first (handles date_gmt "2026-05-30T14:00:00Z")
-        let iso8601 = ISO8601DateFormatter()
-        if let date = iso8601.date(from: iso) { return date }
+        if let date = Self.iso8601Formatter.date(from: iso) { return date }
         // Fallback: no timezone suffix — treat as UTC (date_gmt format on some WP versions)
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")

@@ -52,6 +52,7 @@ public struct RenderedString: Codable, Hashable, Sendable {
     public var raw: String?
 
     public init(raw: String) {
+        // Local drafts have no server-rendered HTML; treat raw as the display value.
         self.rendered = raw
         self.raw = raw
     }

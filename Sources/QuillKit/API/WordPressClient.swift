@@ -4,16 +4,13 @@ public struct WordPressClient: Sendable {
     private let credentials: Credentials
     private let session: URLSession
 
+    // Shared ephemeral session — reuses the connection pool across all client instances.
+    // Ephemeral config keeps URLSession away from the system keychain credential store.
+    private static let sharedSession: URLSession = URLSession(configuration: .ephemeral)
+
     public init(credentials: Credentials, session: URLSession? = nil) {
         self.credentials = credentials
-        if let session {
-            self.session = session
-        } else {
-            // Use ephemeral configuration so URLSession never reads from or
-            // writes to the system keychain credential store.
-            let config = URLSessionConfiguration.ephemeral
-            self.session = URLSession(configuration: config)
-        }
+        self.session = session ?? Self.sharedSession
     }
 
     // MARK: - Posts

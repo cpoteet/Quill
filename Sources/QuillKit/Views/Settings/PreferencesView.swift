@@ -268,7 +268,7 @@ public struct PreferencesView: View {
                         userMessage: prompt,
                         systemPrompt: "Return only the requested style guide with no preamble.",
                         useWebSearch: false
-                    )
+                    ).text
                     current.styleGuide = guide
                     try? AISettingsStore.save(current)
                     onSaveAISettings?(current)

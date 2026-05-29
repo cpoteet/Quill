@@ -10,6 +10,7 @@ public struct EditorView: NSViewRepresentable {
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
+    var onWebViewCreated: ((WKWebView) -> Void)?
 
     public init(
         html: Binding<String>,
@@ -19,7 +20,8 @@ public struct EditorView: NSViewRepresentable {
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) -> WPMedia?)? = nil,
-        onSelectionChanged: ((CGRect?) -> Void)? = nil
+        onSelectionChanged: ((CGRect?) -> Void)? = nil,
+        onWebViewCreated: ((WKWebView) -> Void)? = nil
     ) {
         self._html = html
         self.onContentChange = onContentChange
@@ -29,6 +31,7 @@ public struct EditorView: NSViewRepresentable {
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
         self.onSelectionChanged = onSelectionChanged
+        self.onWebViewCreated = onWebViewCreated
     }
 
     public func makeCoordinator() -> EditorCoordinator {
@@ -50,6 +53,8 @@ public struct EditorView: NSViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.onImageFilesDropped = onImageFilesDropped
         context.coordinator.webView = webView
+        let onCreate = onWebViewCreated
+        Task { @MainActor in onCreate?(webView) }
         context.coordinator.onInsertImageAt = onInsertImageAt
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes

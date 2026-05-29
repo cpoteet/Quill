@@ -80,16 +80,26 @@ public struct AnthropicClient {
 
     private static let session: URLSession = URLSession(configuration: .ephemeral)
 
-    /// Sends a single-turn request and returns the full text response.
+    public struct Result {
+        public let text: String
+        /// True when the API stopped due to the token budget rather than natural completion.
+        public let truncated: Bool
+    }
+
+    /// Sends a single-turn request and returns the text response plus a truncation flag.
     /// - Parameters:
     ///   - userMessage: The user-turn content.
     ///   - systemPrompt: System instructions (cached with ephemeral cache_control).
     ///   - useWebSearch: Whether to include the web_search tool.
+    ///   - maxTokens: Maximum output tokens (default 4096). Raise for long-form generation.
+    ///   - model: Model ID (default claude-haiku-4-5).
     public func complete(
         userMessage: String,
         systemPrompt: String,
-        useWebSearch: Bool
-    ) async throws -> String {
+        useWebSearch: Bool,
+        maxTokens: Int = 4096,
+        model: String = "claude-haiku-4-5"
+    ) async throws -> Result {
         let url = URL(string: "https://api.anthropic.com/v1/messages")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -106,8 +116,8 @@ public struct AnthropicClient {
             : nil
 
         let body = AnthropicRequest(
-            model: "claude-haiku-4-5",
-            maxTokens: 4096,
+            model: model,
+            maxTokens: maxTokens,
             system: [SystemBlock(text: systemPrompt, cacheControl: CacheControl())],
             messages: [AnthropicMessage(role: "user", content: userMessage)],
             tools: tools
@@ -115,7 +125,14 @@ public struct AnthropicClient {
 
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, urlResponse) = try await Self.session.data(for: request)
+        let (data, urlResponse): (Data, URLResponse)
+        do {
+            (data, urlResponse) = try await Self.session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            throw CancellationError()
+        }
 
         guard let http = urlResponse as? HTTPURLResponse else { throw AnthropicError.invalidResponse }
         guard http.statusCode == 200 else {
@@ -134,6 +151,6 @@ public struct AnthropicClient {
         guard !text.isEmpty else {
             throw AnthropicError.noTextContent
         }
-        return text
+        return Result(text: text, truncated: response.stopReason == "max_tokens")
     }
 }

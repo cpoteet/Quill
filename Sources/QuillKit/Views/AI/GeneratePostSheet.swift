@@ -9,6 +9,8 @@ struct GeneratePostSheet: View {
     @State private var isGenerating: Bool = false
     @State private var statusText: String = ""
     @State private var errorText: String? = nil
+    @State private var showTruncationAlert: Bool = false
+    @State private var truncatedParsed: (title: String, html: String)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -64,32 +66,52 @@ struct GeneratePostSheet: View {
         }
         .padding(20)
         .frame(width: 480)
+        .alert("Post may be cut off", isPresented: $showTruncationAlert) {
+            Button("Get Full Version") {
+                Task { await generate(maxTokens: 16384) }
+            }
+            Button("Use What I Have") {
+                if let parsed = truncatedParsed { onResult(parsed.title, parsed.html) }
+            }
+        } message: {
+            Text("The generated post hit the initial length limit and may be incomplete. Get the full version? (Uses more API budget)")
+        }
     }
 
     @MainActor
-    private func generate() async {
+    private func generate(maxTokens: Int = 4096) async {
         isGenerating = true
         errorText = nil
+        truncatedParsed = nil
         statusText = aiSettings.webSearchEnabled ? "Searching the web…" : "Writing…"
 
         do {
             let client = AnthropicClient(apiKey: aiSettings.apiKey)
             let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
             let userMsg = AIPromptBuilder.generatePostPrompt(userPrompt: prompt)
-            let response = try await client.complete(
+            let result = try await client.complete(
                 userMessage: userMsg,
                 systemPrompt: system,
-                useWebSearch: aiSettings.webSearchEnabled
+                useWebSearch: aiSettings.webSearchEnabled,
+                maxTokens: maxTokens
             )
 
-            guard let parsed = AIPromptBuilder.parseGenerateResponse(response) else {
+            guard let parsed = AIPromptBuilder.parseGenerateResponse(result.text) else {
                 errorText = "Claude returned an unexpected format. Please try again."
                 isGenerating = false
                 return
             }
 
             isGenerating = false
-            onResult(parsed.title, parsed.html)
+
+            // Only prompt for the full version on the first (budget) pass.
+            // If the high-budget pass also truncates, just use what we got.
+            if result.truncated && maxTokens < 16384 {
+                truncatedParsed = (parsed.title, parsed.html)
+                showTruncationAlert = true
+            } else {
+                onResult(parsed.title, parsed.html)
+            }
         } catch {
             errorText = error.localizedDescription
             isGenerating = false

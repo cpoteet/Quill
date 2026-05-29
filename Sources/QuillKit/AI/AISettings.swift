@@ -15,30 +15,9 @@ public struct AISettings: Codable {
 }
 
 public struct AISettingsStore {
-    private static var fileURL: URL {
-        get throws { try AppSupportDirectory.fileURL("ai_settings.json") }
-    }
+    private static let store = JSONFileStore<AISettings>("ai_settings.json")
 
-    public static func save(_ settings: AISettings) throws {
-        let url = try fileURL
-        let data = try JSONEncoder().encode(settings)
-        try data.write(to: url, options: [.atomic])
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o600))],
-            ofItemAtPath: url.path
-        )
-    }
-
-    public static func load() throws -> AISettings? {
-        let url = try fileURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(AISettings.self, from: data)
-    }
-
-    public static func delete() throws {
-        let url = try fileURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        try FileManager.default.removeItem(at: url)
-    }
+    public static func save(_ settings: AISettings) throws { try store.save(settings) }
+    public static func load() throws -> AISettings? { try store.load() }
+    public static func delete() throws { try store.delete() }
 }

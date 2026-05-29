@@ -4,31 +4,9 @@ import Foundation
 /// chmod 600 keeps it owner-read/write only — same effective security as the
 /// system keychain for a non-sandboxed app, without any password prompts.
 public struct KeychainStore {
+    private static let store = JSONFileStore<Credentials>("credentials.json")
 
-    private static var fileURL: URL {
-        get throws { try AppSupportDirectory.fileURL("credentials.json") }
-    }
-
-    public static func save(_ credentials: Credentials) throws {
-        let url = try fileURL
-        let data = try JSONEncoder().encode(credentials)
-        try data.write(to: url, options: [.atomic])
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o600))],
-            ofItemAtPath: url.path
-        )
-    }
-
-    public static func load() throws -> Credentials? {
-        let url = try fileURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(Credentials.self, from: data)
-    }
-
-    public static func delete() throws {
-        let url = try fileURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        try FileManager.default.removeItem(at: url)
-    }
+    public static func save(_ credentials: Credentials) throws { try store.save(credentials) }
+    public static func load() throws -> Credentials? { try store.load() }
+    public static func delete() throws { try store.delete() }
 }

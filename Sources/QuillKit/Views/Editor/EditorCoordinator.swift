@@ -226,7 +226,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         cancelReadyWatchdog()
         let item = DispatchWorkItem { [weak self] in
             guard let self, !self.isReady else { return }
-            // editorReady never fired — CDN modules likely failed to load. Reload and retry.
+            // editorReady never fired — local bundle may have failed to load. Reload and retry.
             self.isReady = false
             self.reloadEditor()
         }
