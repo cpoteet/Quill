@@ -97,11 +97,15 @@ public struct SidebarView: View {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 13))
                             .foregroundStyle(.secondary)
+                            .padding(6)
+                            .background(Color.primary.opacity(0.05),
+                                        in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut("r", modifiers: .command)
                     .help("Refresh (⌘R)")
-                    .padding(10)
+                    .padding(.leading, 10)
+                    .padding(.vertical, 8)
 
                     Spacer()
 
@@ -112,11 +116,16 @@ public struct SidebarView: View {
                             Label(newButtonTitle, systemImage: "plus")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color.wpAmber)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.wpAmber.opacity(0.10),
+                                            in: RoundedRectangle(cornerRadius: 7))
                         }
                         .buttonStyle(.plain)
                         .keyboardShortcut("n", modifiers: .command)
                         .help("\(newButtonTitle) (⌘N)")
-                        .padding(10)
+                        .padding(.trailing, 10)
+                        .padding(.vertical, 8)
                     }
                 }
             } else {
@@ -178,7 +187,11 @@ public struct SidebarView: View {
                     .background {
                         if selected {
                             RoundedRectangle(cornerRadius: 7)
-                                .fill(Color.primary.opacity(0.07))
+                                .fill(Color.wpAmber.opacity(0.12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .strokeBorder(Color.wpAmber.opacity(0.30), lineWidth: 0.5)
+                                )
                         }
                     }
                     .foregroundStyle(selected ? Color.wpAmber : Color.secondary)
