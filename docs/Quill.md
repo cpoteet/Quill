@@ -94,7 +94,6 @@ The editor is powered by [Tiptap](https://tiptap.dev) running inside a WebView. 
 | Code block | |
 | Bullet list | |
 | Ordered list | |
-| Task list | Checkable items |
 | Tables | Insert 3×3; add/remove rows and columns |
 | Links | Insert or remove |
 | Images | From media library or drag from Finder; inline resize via drag handles |
@@ -273,8 +272,6 @@ To fully reset Quill, delete the `~/Library/Application Support/Quill/` director
 
 **Application Passwords require HTTPS.** WordPress disables Application Passwords on sites not served over HTTPS (unless you've explicitly enabled them via a filter). Make sure your site uses `https://`.
 
-**The editor requires an internet connection on first launch.** Tiptap is loaded from [esm.sh](https://esm.sh) at startup. The first launch after installing (or after a system update clears WebKit's cache) requires an internet connection. Subsequent launches use cached resources and work offline.
-
 **Pages have different metadata than posts.** The pages REST endpoint does not support categories, tags, or excerpts. Quill shows a page-specific settings panel with Parent Page, Slug, and Discussion in place of those fields.
 
 **Private posts.** Quill fetches posts and pages with `context=edit`, which requires authentication. Private posts are visible to authenticated users with edit permissions.
@@ -301,7 +298,7 @@ Quill is built with:
 
 - **Swift 6** with strict concurrency
 - **SwiftUI** (macOS 13+) for all native UI
-- **WKWebView** hosting a [Tiptap](https://tiptap.dev) editor loaded from [esm.sh](https://esm.sh)
+- **WKWebView** hosting a [Tiptap](https://tiptap.dev) editor loaded from a local bundle (no CDN dependency)
 - **SQLite.swift** for local storage
 - **WordPress REST API** — no plugins required
 

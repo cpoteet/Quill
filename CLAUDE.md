@@ -136,12 +136,12 @@ All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/Quill
 | Tiptap internal | `toWordPressHTML()` output |
 |---|---|
 | `<h1>`–`<h6>` | `+ class="wp-block-heading"` |
-| `<ul>` (non-task) | `+ class="wp-block-list"` |
-| `<ol>` | `+ class="wp-block-list"` |
+| `<ul>` (non-task) | `+ class="wp-block-list"`; `<p>` inside `<li>` unwrapped to text node |
+| `<ol>` | `+ class="wp-block-list"`; `<p>` inside `<li>` unwrapped to text node |
 | `<blockquote>` | `+ class="wp-block-quote"` |
 | `<pre>` | `+ class="wp-block-code"` |
-| `<img class="alignleft/right/center">` | wrapped in `<figure class="wp-block-image alignXXX">` |
-| `<table>` | wrapped in `<figure class="wp-block-table">` |
+| `<img class="alignleft/right/center">` | wrapped in `<figure class="wp-block-image alignXXX">`; `class="wp-image-{id}"` re-emitted when `data-media-id` is set |
+| `<table>` | wrapped in `<figure class="wp-block-table">`; first all-`<th>` row promoted from `<tbody>` to `<thead>` |
 | Bold, italic, strike, inline code, links, paragraphs | unchanged — already match Gutenberg |
 
 ### How to update when WordPress changes its HTML format
