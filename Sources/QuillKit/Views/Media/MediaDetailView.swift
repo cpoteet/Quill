@@ -5,54 +5,71 @@ struct MediaDetailView: View {
     let media: WPMedia
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Large preview
-                AsyncImage(url: URL(string: media.sourceURL)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fit)
-                    case .failure:
-                        Rectangle().fill(.quaternary)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 40, weight: .light))
-                                    .foregroundStyle(.tertiary)
-                            )
-                    default:
-                        Rectangle().fill(.quaternary)
-                            .overlay(ProgressView())
-                    }
+        HStack(spacing: 0) {
+            // Left: large image preview fills remaining space
+            imagePreview
+
+            Divider()
+
+            // Right: fixed-width metadata panel
+            metadataPanel
+                .frame(width: 260)
+        }
+        .background(Color.wpPanelBg)
+    }
+
+    // MARK: - Image preview
+
+    private var imagePreview: some View {
+        AsyncImage(url: URL(string: media.sourceURL)) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .padding(32)
+            case .failure:
+                VStack(spacing: 10) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 40, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text("Image unavailable")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: 320)
-                .background(Color.wpPanelBg)
-
-                Divider()
-
-                // Metadata
-                VStack(alignment: .leading, spacing: 16) {
-                    let name = media.title.rendered.isEmpty
-                        ? (URL(string: media.sourceURL)?.lastPathComponent ?? "")
-                        : media.title.rendered
-                    metadataRow(label: "Filename", value: name)
-                    metadataRow(label: "Type", value: media.mimeType)
-
-                    if let details = media.mediaDetails,
-                       let w = details.width, let h = details.height,
-                       w > 0, h > 0 {
-                        metadataRow(label: "Dimensions", value: "\(w) × \(h) px")
-                    }
-
-                    if !media.date.isEmpty {
-                        metadataRow(label: "Uploaded", value: formattedDate(media.date))
-                    }
-
-                    urlRow
-                }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            default:
+                ProgressView()
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.wpPanelBg)
+    }
+
+    // MARK: - Metadata panel
+
+    private var metadataPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                let name = media.title.rendered.isEmpty
+                    ? (URL(string: media.sourceURL)?.lastPathComponent ?? "")
+                    : media.title.rendered
+                metadataRow(label: "Filename", value: name)
+                metadataRow(label: "Type", value: media.mimeType)
+
+                if let details = media.mediaDetails,
+                   let w = details.width, let h = details.height,
+                   w > 0, h > 0 {
+                    metadataRow(label: "Dimensions", value: "\(w) × \(h) px")
+                }
+
+                if !media.date.isEmpty {
+                    metadataRow(label: "Uploaded", value: formattedDate(media.date))
+                }
+
+                urlRow
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color.wpPanelBg)
     }
