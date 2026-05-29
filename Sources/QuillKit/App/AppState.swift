@@ -75,6 +75,7 @@ public final class AppState: ObservableObject {
     @Published public var mediaError: String?
 
     @Published public var aiSettings: AISettings?
+    @Published public var triggerMediaUpload: Bool = false
 
     public var aiEnabled: Bool {
         guard let settings = aiSettings, !settings.apiKey.isEmpty else { return false }
@@ -83,6 +84,15 @@ public final class AppState: ObservableObject {
 
     public init() {
         aiSettings = try? AISettingsStore.load()
+    }
+
+    public func createNewDraft(type: String, draftStore: DraftStore) {
+        guard let id = try? draftStore.create(title: "Untitled", content: "", excerpt: "", type: type) else { return }
+        guard let updated = try? draftStore.fetchAll(),
+              let newDraft = updated.first(where: { $0.id == id }) else { return }
+        localDrafts = updated
+        selectedSection = .localDrafts
+        selectedItem = .local(newDraft)
     }
 
     public var filteredItems: [PostItem] {

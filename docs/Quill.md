@@ -88,7 +88,7 @@ The editor is powered by [Tiptap](https://tiptap.dev) running inside a WebView. 
 | Feature | Notes |
 |---|---|
 | Bold, italic, underline, strikethrough | Standard inline marks |
-| Headings H1–H3 | Via the heading dropdown |
+| Headings H1–H6 | Via the heading dropdown |
 | Blockquote | |
 | Code (inline) | |
 | Code block | |
@@ -223,7 +223,8 @@ A confirmation prompt appears before any delete action is executed. If a network
 
 Create drafts that live only on your Mac — useful for writing in progress that you're not ready to push to WordPress yet.
 
-- Press **⌘N** or click the pencil icon in the sidebar to create a new local draft
+- Press **⌘N** in the sidebar, or use **File → New Post** / **File → New Page** to create a new local draft
+- **File → New Media…** switches to the Media tab and opens the upload panel immediately
 - Local drafts autosave to a SQLite database in `~/Library/Application Support/Quill/`
 - When you publish a local draft, it is uploaded to WordPress and removed from local storage
 

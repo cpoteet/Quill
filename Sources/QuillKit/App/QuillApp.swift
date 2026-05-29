@@ -4,7 +4,9 @@ public struct QuillApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var appServices = AppServices()
 
-    public init() {}
+    public init() {
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
 
     public var body: some Scene {
         WindowGroup("Quill") {
@@ -33,7 +35,19 @@ public struct QuillApp: App {
                 }
         }
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .newItem) {
+                Button("New Post") {
+                    appState.createNewDraft(type: "post", draftStore: appServices.draftStore)
+                }
+                Button("New Page") {
+                    appState.createNewDraft(type: "page", draftStore: appServices.draftStore)
+                }
+                Divider()
+                Button("New Media…") {
+                    appState.selectedSection = .media
+                    appState.triggerMediaUpload = true
+                }
+            }
         }
 
         Settings {

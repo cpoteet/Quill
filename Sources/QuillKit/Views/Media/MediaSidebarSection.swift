@@ -81,6 +81,18 @@ struct MediaSidebarSection: View {
                 await loadMedia()
             }
         }
+        .onAppear {
+            if appState.triggerMediaUpload {
+                appState.triggerMediaUpload = false
+                uploadFromDisk()
+            }
+        }
+        .onChange(of: appState.triggerMediaUpload) { newValue in
+            if newValue {
+                appState.triggerMediaUpload = false
+                uploadFromDisk()
+            }
+        }
         // Confirmation alert for delete
         .alert(
             "Delete Permanently?",
