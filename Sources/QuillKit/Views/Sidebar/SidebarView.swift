@@ -219,8 +219,8 @@ public struct SidebarView: View {
         appState.categories = []
         appState.tags = []
         do {
-            async let posts = client.fetchPosts()
-            async let pages = client.fetchPages()
+            async let posts = client.fetchAllPosts()
+            async let pages = client.fetchAllPages()
             appState.posts = try await posts
             appState.pages = try await pages
             appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
@@ -242,9 +242,9 @@ public struct SidebarView: View {
         do {
             switch appState.selectedSection {
             case .posts:
-                appState.posts = try await client.fetchPosts()
+                appState.posts = try await client.fetchAllPosts()
             case .pages:
-                appState.pages = try await client.fetchPages()
+                appState.pages = try await client.fetchAllPages()
             case .localDrafts:
                 appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
             case .media:

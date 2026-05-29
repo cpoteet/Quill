@@ -38,6 +38,45 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    /// Fetches every post across all pages, following the `X-WP-TotalPages` header.
+    public func fetchAllPosts(perPage: Int = 100) async throws -> [WPPost] {
+        try await fetchAllPaginated(resource: "posts", perPage: perPage)
+    }
+
+    /// Fetches every page across all pages, following the `X-WP-TotalPages` header.
+    public func fetchAllPages(perPage: Int = 100) async throws -> [WPPost] {
+        try await fetchAllPaginated(resource: "pages", perPage: perPage)
+    }
+
+    private func fetchAllPaginated(resource: String, perPage: Int) async throws -> [WPPost] {
+        var all: [WPPost] = []
+        var page = 1
+        var totalPages = 1
+        repeat {
+            let url = try endpoint(
+                resource,
+                query: [
+                    "per_page": "\(perPage)", "page": "\(page)", "context": "edit",
+                    "status": "publish,draft,private,future,pending",
+                ])
+            let request = authorizedRequest(url: url, method: "GET")
+            let (data, http) = try await send(request)
+            let batch: [WPPost]
+            do {
+                batch = try JSONDecoder().decode([WPPost].self, from: data)
+            } catch {
+                throw APIError.decodingError(error)
+            }
+            all.append(contentsOf: batch)
+            if let header = http?.value(forHTTPHeaderField: "X-WP-TotalPages"),
+               let parsed = Int(header) {
+                totalPages = parsed
+            }
+            page += 1
+        } while page <= totalPages
+        return all
+    }
+
     public func fetchPost(id: Int) async throws -> WPPost {
         let url = try endpoint("posts/\(id)", query: ["context": "edit"])
         return try await get(url)
@@ -244,7 +283,9 @@ public struct WordPressClient: Sendable {
         let name: String
     }
 
-    private func performVoid(_ request: URLRequest) async throws {
+    /// Sends a request, mapping cancellation and HTTP errors. Returns the body data and
+    /// the HTTP response (so callers can read pagination headers like `X-WP-TotalPages`).
+    private func send(_ request: URLRequest) async throws -> (data: Data, http: HTTPURLResponse?) {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
@@ -255,27 +296,20 @@ public struct WordPressClient: Sendable {
         } catch {
             throw APIError.networkError(error)
         }
-        if let http = response as? HTTPURLResponse, http.statusCode >= 300 {
+        let http = response as? HTTPURLResponse
+        if let http, http.statusCode >= 300 {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw APIError.httpError(statusCode: http.statusCode, body: body)
         }
+        return (data, http)
+    }
+
+    private func performVoid(_ request: URLRequest) async throws {
+        _ = try await send(request)
     }
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            throw CancellationError()
-        } catch {
-            throw APIError.networkError(error)
-        }
-        if let http = response as? HTTPURLResponse, http.statusCode >= 300 {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw APIError.httpError(statusCode: http.statusCode, body: body)
-        }
+        let (data, _) = try await send(request)
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {

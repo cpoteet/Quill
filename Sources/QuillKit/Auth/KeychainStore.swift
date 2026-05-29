@@ -6,17 +6,7 @@ import Foundation
 public struct KeychainStore {
 
     private static var fileURL: URL {
-        get throws {
-            let base = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            let dir = base.appendingPathComponent("Quill", isDirectory: true)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            return dir.appendingPathComponent("credentials.json")
-        }
+        get throws { try AppSupportDirectory.fileURL("credentials.json") }
     }
 
     public static func save(_ credentials: Credentials) throws {

@@ -70,10 +70,7 @@ public final class AppDatabase: @unchecked Sendable {
     }
 
     public static func production() throws -> AppDatabase {
-        let dir = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Quill", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = try AppSupportDirectory.directory()
         return try AppDatabase(path: dir.appendingPathComponent("drafts.db").path)
     }
 

@@ -198,6 +198,30 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         startReadyWatchdog()
     }
 
+    /// The editor must never navigate away from the bundled `editor.html`. Only allow
+    /// `file://` loads (the initial editor load, its local bundle, and any watchdog
+    /// reload). Any other navigation — a clicked link, a `location` assignment, a
+    /// meta-refresh in pasted content — would replace the editor and break it until
+    /// relaunch, so cancel it. User-activated external links open in the default browser.
+    public func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        guard let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+        if url.isFileURL {
+            decisionHandler(.allow)
+            return
+        }
+        if navigationAction.navigationType == .linkActivated {
+            NSWorkspace.shared.open(url)
+        }
+        decisionHandler(.cancel)
+    }
+
     private func startReadyWatchdog() {
         cancelReadyWatchdog()
         let item = DispatchWorkItem { [weak self] in

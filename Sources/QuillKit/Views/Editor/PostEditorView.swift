@@ -3,6 +3,7 @@ import WebKit
 
 public struct PostEditorView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var services: AppServices
     let item: PostItem
 
     @State private var title: String = ""
@@ -349,8 +350,7 @@ public struct PostEditorView: View {
             cleanTitle = wpTitle
             cleanContent = wpContent
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
-            if let db = try? AppDatabase.production(),
-               let snap = try? AutosaveStore(db: db).load(postID: post.id) {
+            if let snap = try? services.autosaveStore.load(postID: post.id) {
                 title = snap.title
                 htmlContent = snap.content
                 toastMessage = "Unsaved changes restored"
@@ -371,8 +371,7 @@ public struct PostEditorView: View {
 
         case .local(let draft):
             // Read directly from SQLite to pick up any navigate-flush that updated the draft
-            if let db = try? AppDatabase.production(),
-               let fresh = try? DraftStore(db: db).load(id: draft.id) {
+            if let fresh = try? services.draftStore.load(id: draft.id) {
                 let showToast = fresh.title != draft.title || fresh.content != draft.content
                 title = fresh.title
                 htmlContent = fresh.content
@@ -393,16 +392,14 @@ public struct PostEditorView: View {
     // MARK: - Autosave
 
     private func flushToDB(for oldItem: PostItem) async {
-        guard let db = try? AppDatabase.production() else { return }
         switch oldItem {
         case .remote(let post):
-            try? AutosaveStore(db: db).save(
+            try? services.autosaveStore.save(
                 postID: post.id, title: title, content: htmlContent,
                 serverModified: lastSavedServerModified)
         case .local(let draft):
-            let store = DraftStore(db: db)
-            try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
-            if let updated = try? store.load(id: draft.id),
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            if let updated = try? services.draftStore.load(id: draft.id),
                let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
                 appState.localDrafts[idx] = updated
             }
@@ -419,15 +416,12 @@ public struct PostEditorView: View {
     }
 
     private func performAutosave() async {
-        guard let db = try? AppDatabase.production() else { return }
         switch item {
         case .remote(let post):
-            let store = AutosaveStore(db: db)
-            try? store.save(
+            try? services.autosaveStore.save(
                 postID: post.id, title: title, content: htmlContent, serverModified: lastSavedServerModified)
         case .local(let draft):
-            let store = DraftStore(db: db)
-            try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
         }
     }
 
@@ -442,12 +436,10 @@ public struct PostEditorView: View {
 
     private func saveLocalOnly() async {
         guard case .local(let draft) = item else { return }
-        guard let db = try? AppDatabase.production() else { return }
         isSaving = true
         defer { isSaving = false }
-        let store = DraftStore(db: db)
-        try? store.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
-        if let updated = try? store.load(id: draft.id),
+        try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+        if let updated = try? services.draftStore.load(id: draft.id),
            let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
             appState.localDrafts[idx] = updated
         }
@@ -522,9 +514,7 @@ public struct PostEditorView: View {
                 lastSavedServerModified = updated.modified
                 cleanTitle = title
                 cleanContent = htmlContent
-                if let db = try? AppDatabase.production() {
-                    try? AutosaveStore(db: db).delete(postID: post.id)
-                }
+                try? services.autosaveStore.delete(postID: post.id)
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
                     if let idx = appState.pages.firstIndex(where: { $0.id == updated.id }) {
@@ -540,8 +530,7 @@ public struct PostEditorView: View {
                     draft.type == "page"
                     ? try await client.createPage(payload)
                     : try await client.createPost(payload)
-                let db = try AppDatabase.production()
-                try DraftStore(db: db).delete(id: draft.id)
+                try services.draftStore.delete(id: draft.id)
                 lastSavedServerModified = created.modified
                 appState.localDrafts.removeAll { $0.id == draft.id }
                 if draft.type == "page" {

@@ -188,8 +188,17 @@ public struct PreferencesView: View {
 
         // Save WordPress credentials if any field is filled
         if !siteURL.isEmpty || !username.isEmpty || !appPassword.isEmpty {
-            guard let url = URL(string: siteURL), url.scheme != nil else {
+            guard let url = URL(string: siteURL), let scheme = url.scheme?.lowercased() else {
                 saveError = "Invalid URL. Include https://"
+                return
+            }
+            // The Basic-auth header is only base64-encoded, not encrypted — require HTTPS so
+            // credentials are never sent in clear text. http:// is permitted only for local
+            // development hosts (which ATS also exempts).
+            let host = url.host?.lowercased() ?? ""
+            let isLocalHost = host == "localhost" || host == "127.0.0.1" || host == "::1"
+            guard scheme == "https" || (scheme == "http" && isLocalHost) else {
+                saveError = "Site URL must use https:// (http is allowed only for localhost)."
                 return
             }
             isSaving = true

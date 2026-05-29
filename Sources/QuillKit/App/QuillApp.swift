@@ -26,6 +26,11 @@ public struct QuillApp: App {
                         appState.aiSettings = settings
                     })
                 }
+                .alert("Local Storage Unavailable", isPresented: $appServices.storageUnavailable) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text("Quill couldn't open its local database, so drafts and autosaves won't be saved and will be lost when you quit. Check available disk space and the permissions on your Application Support folder.")
+                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {}

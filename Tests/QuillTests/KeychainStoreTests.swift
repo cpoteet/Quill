@@ -11,6 +11,10 @@ struct KeychainStoreTests {
     )
 
     init() throws {
+        // Redirect all stores to a throwaway temp directory so the test suite never
+        // reads, writes, or deletes the real user's credentials.json.
+        AppSupportDirectory.override = FileManager.default.temporaryDirectory
+            .appendingPathComponent("QuillTests-\(UUID().uuidString)", isDirectory: true)
         try? KeychainStore.delete()
     }
 

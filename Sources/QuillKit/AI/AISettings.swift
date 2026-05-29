@@ -16,17 +16,7 @@ public struct AISettings: Codable {
 
 public struct AISettingsStore {
     private static var fileURL: URL {
-        get throws {
-            let base = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            let dir = base.appendingPathComponent("Quill", isDirectory: true)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            return dir.appendingPathComponent("ai_settings.json")
-        }
+        get throws { try AppSupportDirectory.fileURL("ai_settings.json") }
     }
 
     public static func save(_ settings: AISettings) throws {
