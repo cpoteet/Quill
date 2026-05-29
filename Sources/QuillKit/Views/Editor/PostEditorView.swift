@@ -717,7 +717,7 @@ public struct PostEditorView: View {
                     webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)
                     // Trigger contentChanged so Swift gets the accepted HTML
                     webView.evaluateJavaScript(
-                        "window.webkit?.messageHandlers?.contentChanged?.postMessage(editor.getHTML())",
+                        "window.webkit?.messageHandlers?.contentChanged?.postMessage(window.getContent())",
                         completionHandler: nil
                     )
                 },
