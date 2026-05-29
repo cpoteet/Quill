@@ -156,7 +156,7 @@ public struct PostSettingsPanel: View {
                 Divider()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 0) {
                         ForEach(filteredCategories) { cat in
                             Toggle(
                                 cat.name,
@@ -174,7 +174,7 @@ public struct PostSettingsPanel: View {
                             .toggleStyle(.checkbox)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.vertical, 5)
                         }
 
                         ForEach(settings.newCategoryNames, id: \.self) { name in
@@ -197,7 +197,7 @@ public struct PostSettingsPanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
                 }
-                .frame(maxHeight: 150)
+                .frame(maxHeight: 168)
                 .scrollIndicators(.visible)
             }
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
@@ -259,7 +259,7 @@ public struct PostSettingsPanel: View {
                 Divider()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: 0) {
                         ForEach(filteredUnselectedTags) { tag in
                             Button(tag.name) {
                                 settings.tagIDs.insert(tag.id)
@@ -283,7 +283,7 @@ public struct PostSettingsPanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
                 }
-                .frame(maxHeight: 140)
+                .frame(maxHeight: 156)
                 .scrollIndicators(.visible)
             }
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
@@ -502,7 +502,7 @@ private struct TaxonomyRowStyle: ButtonStyle {
             .font(.callout)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.vertical, 5)
             .background(configuration.isPressed ? Color.primary.opacity(0.06) : .clear)
             .contentShape(Rectangle())
     }
