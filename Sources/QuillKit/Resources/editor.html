@@ -779,7 +779,29 @@
       underline:     () => editor.chain().focus().toggleUnderline().run(),
       strike:        () => editor.chain().focus().toggleStrike().run(),
       code:          () => editor.chain().focus().toggleCode().run(),
-      blockquote:    () => editor.chain().focus().toggleBlockquote().run(),
+      blockquote: () => {
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().toggleBlockquote().run()
+          return
+        }
+        // Toggle on: wrap in blockquote then append an empty cite
+        editor.chain()
+          .focus()
+          .toggleBlockquote()
+          .command(({ tr, state }) => {
+            const { $head } = state.selection
+            for (let d = $head.depth; d >= 0; d--) {
+              const node = $head.node(d)
+              if (node.type.name === 'blockquote') {
+                const end = $head.after(d) - 1
+                tr.insert(end, state.schema.nodes.cite.create())
+                return true
+              }
+            }
+            return false
+          })
+          .run()
+      },
       codeBlock:     () => editor.chain().focus().toggleCodeBlock().run(),
       bulletList:    () => editor.chain().focus().toggleBulletList().run(),
       orderedList:   () => editor.chain().focus().toggleOrderedList().run(),
