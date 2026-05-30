@@ -366,10 +366,10 @@
   <script src="./tiptap-bundle.js"></script>
   <script>
     const {
-      Editor, Extension,
+      Editor, Extension, TiptapNode,
       StarterKit, Underline,
       Table, TableRow, TableCell, TableHeader,
-      TiptapImage, Link,
+      TiptapImage, Blockquote, Link,
       TaskList, TaskItem,
       Placeholder,
       Plugin, PluginKey,
@@ -645,6 +645,52 @@
       },
       addNodeView() {
         return ({ node, editor, getPos }) => new ImageNodeView(node, editor, getPos)
+      },
+    })
+
+    // ── Cite node ─────────────────────────────────────────
+    // Optional last child of blockquote. Maps to <cite> in WordPress/Gutenberg.
+    // No 'group' — cannot be inserted anywhere block is accepted; only blockquote
+    // schema allows it via 'block+ cite?'.
+    const Cite = TiptapNode.create({
+      name: 'cite',
+      content: 'inline*',
+      parseHTML() {
+        return [{ tag: 'cite' }]
+      },
+      renderHTML({ HTMLAttributes }) {
+        return ['cite', HTMLAttributes, 0]
+      },
+      addKeyboardShortcuts() {
+        return {
+          Enter: () => {
+            const { state } = this.editor
+            const { $from } = state.selection
+            if ($from.node($from.depth).type.name !== 'cite') return false
+            // Find blockquote ancestor depth
+            let bqDepth = -1
+            for (let d = $from.depth; d >= 0; d--) {
+              if ($from.node(d).type.name === 'blockquote') { bqDepth = d; break }
+            }
+            if (bqDepth === -1) return false
+            // Insert a paragraph immediately after the blockquote
+            const after = $from.after(bqDepth)
+            const para = state.schema.nodes.paragraph.create()
+            const tr = state.tr.insert(after, para)
+            const resolved = tr.doc.resolve(after + 1)
+            tr.setSelection(state.selection.constructor.near(resolved))
+            this.editor.view.dispatch(tr)
+            return true
+          },
+          Backspace: () => {
+            const { state } = this.editor
+            const { $from, empty } = state.selection
+            if (!empty) return false
+            const node = $from.node($from.depth)
+            if (node.type.name !== 'cite' || node.content.size > 0) return false
+            return this.editor.commands.deleteNode('cite')
+          },
+        }
       },
     })
 
