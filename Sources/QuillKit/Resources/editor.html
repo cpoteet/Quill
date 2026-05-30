@@ -978,6 +978,11 @@
         el.classList.add('wp-block-quote')
       })
 
+      // Strip empty cite elements (user left attribution blank)
+      div.querySelectorAll('blockquote cite').forEach(el => {
+        if (!el.textContent.trim()) el.remove()
+      })
+
       // Code blocks → wp-block-code class on the <pre> wrapper
       div.querySelectorAll('pre').forEach(el => {
         el.classList.add('wp-block-code')
