@@ -727,10 +727,17 @@
       }
     })
 
+    // Extended blockquote: allows an optional cite as its last child.
+    const CustomBlockquote = Blockquote.extend({
+      content: 'block+ cite?',
+    })
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
-        StarterKit,
+        StarterKit.configure({ blockquote: false }),
+        CustomBlockquote,
+        Cite,
         Underline,
         Table.configure({ resizable: false }),
         TableRow,
