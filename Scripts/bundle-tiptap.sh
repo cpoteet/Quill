@@ -32,6 +32,7 @@ cat > package.json <<'EOF'
     "@tiptap/extension-task-list": "^2",
     "@tiptap/extension-task-item": "^2",
     "@tiptap/extension-placeholder": "^2",
+    "@tiptap/extension-blockquote": "^2",
     "@tiptap/pm": "^2",
     "esbuild": "^0.25"
   }
@@ -42,6 +43,7 @@ npm install --silent
 
 cat > entry.js <<'EOF'
 export { Editor, Extension }           from '@tiptap/core'
+export { Node as TiptapNode }          from '@tiptap/core'
 export { default as StarterKit }       from '@tiptap/starter-kit'
 export { default as Underline }        from '@tiptap/extension-underline'
 export { default as Table }            from '@tiptap/extension-table'
@@ -49,6 +51,7 @@ export { default as TableRow }         from '@tiptap/extension-table-row'
 export { default as TableCell }        from '@tiptap/extension-table-cell'
 export { default as TableHeader }      from '@tiptap/extension-table-header'
 export { Image as TiptapImage }        from '@tiptap/extension-image'
+export { default as Blockquote }       from '@tiptap/extension-blockquote'
 export { default as Link }             from '@tiptap/extension-link'
 export { default as TaskList }         from '@tiptap/extension-task-list'
 export { default as TaskItem }         from '@tiptap/extension-task-item'
