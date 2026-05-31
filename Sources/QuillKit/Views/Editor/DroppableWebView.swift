@@ -6,6 +6,9 @@ import WebKit
 /// drop overlay inside the web content while dragging.
 public final class DroppableWebView: WKWebView {
     public var onImageFilesDropped: (([URL]) -> Void)?
+    public var onAIOperation: ((AIWritingOperation) -> Void)?
+    public var aiEnabled: Bool = false
+    public var hasTextSelection: Bool = false
 
     // Covers the common image UTIs; "public.image" catches anything else
     private static let imageUTIs: [String] = [
@@ -77,10 +80,31 @@ public final class DroppableWebView: WKWebView {
             NSMenuItem(title: "Copy", action: NSSelectorFromString("copy:"), keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
+        if aiEnabled && hasTextSelection {
+            newItems.append(.separator())
+            let aiActions: [(String, Selector)] = [
+                ("Make Longer",  #selector(aiMakeLonger)),
+                ("Make Shorter", #selector(aiMakeShorter)),
+                ("To Table",     #selector(aiConvertToTable)),
+                ("To List",      #selector(aiConvertToList)),
+            ]
+            for (title, sel) in aiActions {
+                let item = NSMenuItem(title: title, action: sel, keyEquivalent: "")
+                item.target = self
+                newItems.append(item)
+            }
+        }
         menu.items = newItems
         // macOS may still append Services/AutoFill after this; re-filter in menuWillOpen.
         menu.delegate = menuFilter
     }
+
+    // MARK: - AI menu actions
+
+    @objc private func aiMakeLonger()      { onAIOperation?(.makeLonger) }
+    @objc private func aiMakeShorter()     { onAIOperation?(.makeShorter) }
+    @objc private func aiConvertToTable()  { onAIOperation?(.convertToTable) }
+    @objc private func aiConvertToList()   { onAIOperation?(.convertToList) }
 
     // MARK: - Helpers
 
@@ -101,6 +125,7 @@ final class WebViewMenuFilter: NSObject, NSMenuDelegate {
     private static let allowed: Set<String> = [
         "cut:", "copy:", "paste:",
         "changeSpelling:", "ignoreSpelling:", "learnSpelling:",
+        "aiMakeLonger", "aiMakeShorter", "aiConvertToTable", "aiConvertToList",
     ]
 
     static func apply(to menu: NSMenu) {

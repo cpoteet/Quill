@@ -11,6 +11,9 @@ public struct EditorView: NSViewRepresentable {
     var onRequestMediaSizes: ((Int) -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onWebViewCreated: ((WKWebView) -> Void)?
+    var onAIOperation: ((AIWritingOperation) -> Void)?
+    var aiEnabled: Bool
+    var hasTextSelection: Bool
 
     public init(
         html: Binding<String>,
@@ -21,7 +24,10 @@ public struct EditorView: NSViewRepresentable {
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) -> WPMedia?)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
-        onWebViewCreated: ((WKWebView) -> Void)? = nil
+        onWebViewCreated: ((WKWebView) -> Void)? = nil,
+        onAIOperation: ((AIWritingOperation) -> Void)? = nil,
+        aiEnabled: Bool = false,
+        hasTextSelection: Bool = false
     ) {
         self._html = html
         self.onContentChange = onContentChange
@@ -32,6 +38,9 @@ public struct EditorView: NSViewRepresentable {
         self.onRequestMediaSizes = onRequestMediaSizes
         self.onSelectionChanged = onSelectionChanged
         self.onWebViewCreated = onWebViewCreated
+        self.onAIOperation = onAIOperation
+        self.aiEnabled = aiEnabled
+        self.hasTextSelection = hasTextSelection
     }
 
     public func makeCoordinator() -> EditorCoordinator {
@@ -52,6 +61,9 @@ public struct EditorView: NSViewRepresentable {
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.onImageFilesDropped = onImageFilesDropped
+        webView.onAIOperation = onAIOperation
+        webView.aiEnabled = aiEnabled
+        webView.hasTextSelection = hasTextSelection
         context.coordinator.webView = webView
         let onCreate = onWebViewCreated
         Task { @MainActor in onCreate?(webView) }
@@ -71,6 +83,9 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
         nsView.onImageFilesDropped = onImageFilesDropped
+        nsView.onAIOperation = onAIOperation
+        nsView.aiEnabled = aiEnabled
+        nsView.hasTextSelection = hasTextSelection
     }
 
     private func loadEditorHTML(in webView: WKWebView) {

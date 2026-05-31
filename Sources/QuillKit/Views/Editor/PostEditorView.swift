@@ -29,8 +29,8 @@ public struct PostEditorView: View {
     @State private var isAISheetOpen: Bool = false
     @State private var showAIReplaceAlert: Bool = false
     @State private var currentSelectionRect: CGRect? = nil
+    @State private var hasTextSelection: Bool = false
     @State private var editorWebView: WKWebView? = nil
-    private var selectionPill: SelectionPillPanel = SelectionPillPanel()
     private var resultPanel: AIResultPanel = AIResultPanel()
 
     public init(item: PostItem) {
@@ -74,7 +74,12 @@ public struct PostEditorView: View {
                         },
                         onWebViewCreated: { webView in
                             editorWebView = webView
-                        }
+                        },
+                        onAIOperation: { operation in
+                            Task { await executeAIOperation(operation) }
+                        },
+                        aiEnabled: appState.aiEnabled,
+                        hasTextSelection: hasTextSelection
                     )
                     if !editorReady {
                         VStack(spacing: 10) {
@@ -652,14 +657,7 @@ public struct PostEditorView: View {
 
     private func handleSelectionChange(rect: CGRect?) {
         guard appState.aiEnabled else { return }
-        if let rect = rect {
-            guard let webView = editorWebView else { return }
-            selectionPill.show(selectionRect: rect, in: webView) { operation in
-                Task { await executeAIOperation(operation) }
-            }
-        } else {
-            selectionPill.hide()
-        }
+        hasTextSelection = rect != nil
     }
 
     // MARK: - AI operation execution
