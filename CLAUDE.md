@@ -41,11 +41,16 @@ swift test --filter WordPressClientTests # run one suite
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+.
 
-## Test suite status (2026-06-01 — 146 tests passing)
+## Test suite status (2026-06-01 — 164 tests passing)
 
-Done: §1 models (WPPost/WPMedia/PostPayload/Credentials), §2 WordPressClient (28 tests, shared MockURLProtocol in `Tests/QuillTests/Support/`), §3 storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), §4.1 AIPromptBuilder (21 tests).
-Remaining: §4.2 AnthropicClient (needs injectable URLSession — change `private static let session` to an init param, mirror `WordPressClient`), §6.1 JS editor harness (`toWordPressHTML` + `parseHTML` via Node/jsdom).
+Done: §1 models (WPPost/WPMedia/PostPayload/Credentials), §2 WordPressClient (28 tests), §3 storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), §4.1 AIPromptBuilder (21 tests), §4.2 AnthropicClient (18 tests — injectable URLSession, mock-backed headers/body/error/joining).
+Remaining: §6.1 JS editor harness (`toWordPressHTML` + `parseHTML` via Node/jsdom).
 Full plan: `docs/testing-plan.md`
+
+## Test suite gotchas
+
+- **Each network test suite needs its own `URLProtocol` subclass** — `@Suite(.serialized)` only serializes within a suite; two serialized suites sharing `MockURLProtocol.requestHandler` (a global static) race against each other. Solution: give each suite its own subclass with its own `static var requestHandler` (e.g. `AnthropicMockURLProtocol` in `Tests/QuillTests/Support/`).
+- **`httpBody` is always nil in `URLProtocol.startLoading()`** — URLSession moves the body to `httpBodyStream`. To inspect request bodies in mock tests, reconstruct from the stream. See `AnthropicMockURLProtocol.startLoading()` for the pattern.
 
 ## Key decisions
 
