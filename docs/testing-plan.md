@@ -1,6 +1,6 @@
 # Quill — In-Depth Testing Plan
 
-_Last updated: 2026-06-01 (fourth pass — items 1, 2 & 3 implemented)_
+_Last updated: 2026-06-01 (fifth pass — items 1, 2, 3 & 4 implemented)_
 
 > **Changes since first draft (what this revision accounts for):**
 > - **Storage refactored** — new generic `JSONFileStore<T>` + `AppSupportDirectory`
@@ -853,11 +853,15 @@ ones that are automatable; manually verify the rest. (✅ = add automated test,
 1. ~~**Model tests** (§1) — fastest, highest regression value, zero new infra.~~ ✅ **Done** — `WPPostDecodingTests` (9), `WPMediaDecodingTests` (7), `PostPayloadTests` (11), `CredentialsTests` (4). 80 tests total passing.
 2. ~~**`AIPromptBuilder` tests** (§4.1) — pure, already-patched-twice logic.~~ ✅ **Done** — `AIPromptBuilderTests` (21). Covers all `parseGenerateResponse` edge cases, system prompt, generate/operation/style-guide prompts.
 3. ~~**`WordPressClient` gap-fill** (§2) — extract shared `MockURLProtocol` first.~~ ✅ **Done** — `MockURLProtocol` extracted to `Tests/QuillTests/Support/MockURLProtocol.swift`; 28 new tests added covering §2.1 URL construction, §2.2 error mapping, and §2.3 searchLinks. 108 tests total passing.
-4. **Storage gap-fill** (§3) — tags, autosave delete, migration, **and the new
-   `JSONFileStore`/`AppSupportDirectory` suite (§3.5)**. The latter is now a quick
-   win: `AppSupportDirectory.override` makes file-store tests hermetic with no
-   mocking, and it guards the chmod-600/atomic-write security path that backs
-   credentials and AI settings.
+4. ~~**Storage gap-fill** (§3) — tags, autosave delete, migration, **and the new
+   `JSONFileStore`/`AppSupportDirectory` suite (§3.5)**.~~ ✅ **Done** — 38 new tests added, suite grows from 108 → 146 tests (all passing).
+   - `JSONFileStoreTests` (8 tests) — §3.5, uses `in: baseDirectory` injection (no global state)
+   - `AppDatabaseTests` (2 tests) — §3.4, migration idempotency + old-schema type column
+   - `KeychainStoreTests` extended: +4 AppSupportDirectory tests (§3.5), +3 AISettingsStore tests (§3.6)
+   - `TaxonomyCacheTests` extended: +10 tests — tags, TTL boundary, replace semantics, non-collision, empty save
+   - `AutosaveStoreTests` extended: +5 tests — delete, onePerPostID, serverModified, savedAt ordering
+   - `DraftStoreTests` extended: +5 tests — emptyTitle, updateNonExistent, deleteNonExistent, fetchAll ordering, unicode
+   - **Note:** `JSONFileStore.init` gained an optional `in: baseDirectory` parameter for per-instance test isolation, avoiding `AppSupportDirectory.override` contention between parallel suites.
 5. **`AnthropicClient` injectable session + tests** (§4.2) — small refactor
    (still needed — session is still `static`).
 6. **JS editor harness** (§6.1) — biggest infra lift, biggest correctness payoff.
@@ -865,12 +869,10 @@ ones that are automatable; manually verify the rest. (✅ = add automated test,
    the regression matrix (§9) after any editor or save-path change.
 
 ### Concrete refactors that unlock testing
-- Extract `MockURLProtocol` to a shared support file.
+- Extract `MockURLProtocol` to a shared support file. ✅ Done.
 - Add an injectable `URLSession` to `AnthropicClient` (mirror `WordPressClient`).
-- _Already in place:_ `AppSupportDirectory.override` is the test seam for all file
-  stores — use it in `init`, no refactor needed. The `Cite` node and empty-cite
-  stripping should be included in whatever module exposes `toWordPressHTML` to the
-  JS harness (§6.1).
+- `AppSupportDirectory.override` is the test seam for the credential/AI-settings stores — used in `KeychainStoreTests`. Only ONE suite should set this global at a time; `JSONFileStoreTests` uses `in: baseDirectory` instead to avoid race conditions with parallel suites.
+- The `Cite` node and empty-cite stripping should be included in whatever module exposes `toWordPressHTML` to the JS harness (§6.1).
 - Extract `toWordPressHTML`, `extractAlignment`, and the parse helpers into a
   module the bundle imports **and** a Node test can import (or test against the
   built `tiptap-bundle.js` via jsdom).

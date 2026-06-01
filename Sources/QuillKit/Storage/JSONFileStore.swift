@@ -3,13 +3,25 @@ import Foundation
 /// Generic file-backed JSON store. Writes atomically; chmod 600 after every save.
 public struct JSONFileStore<T: Codable> {
     private let filename: String
+    private let baseDirectory: URL?
 
-    public init(_ filename: String) {
+    /// - Parameters:
+    ///   - filename: Name of the JSON file (e.g. `"credentials.json"`).
+    ///   - baseDirectory: When provided, files are stored here instead of the default
+    ///     Application Support directory. Intended for tests that need isolation without
+    ///     touching the global `AppSupportDirectory.override`.
+    public init(_ filename: String, in baseDirectory: URL? = nil) {
         self.filename = filename
+        self.baseDirectory = baseDirectory
     }
 
     private var fileURL: URL {
-        get throws { try AppSupportDirectory.fileURL(filename) }
+        get throws {
+            if let baseDirectory {
+                return baseDirectory.appendingPathComponent(filename)
+            }
+            return try AppSupportDirectory.fileURL(filename)
+        }
     }
 
     public func save(_ value: T) throws {

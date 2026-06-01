@@ -75,4 +75,38 @@ import Testing
         #expect(draft?.content == "new")
         #expect(draft?.excerpt == "updated")
     }
+
+    @Test func emptyTitleAndContentRoundTrip() throws {
+        let id = try store.create(title: "", content: "", excerpt: "", type: "post")
+        let draft = try store.load(id: id)
+        #expect(draft?.title == "")
+        #expect(draft?.content == "")
+    }
+
+    @Test func updateNonExistentIdDoesNotThrow() throws {
+        try store.update(id: 9999, title: "X", content: "y", excerpt: "")
+    }
+
+    @Test func deleteNonExistentIdDoesNotThrow() throws {
+        try store.delete(id: 9999)
+    }
+
+    @Test func fetchAllOrderedByUpdatedAtDesc() throws {
+        let idA = try store.create(title: "A", content: "", excerpt: "", type: "post")
+        Thread.sleep(forTimeInterval: 0.01)
+        _ = try store.create(title: "B", content: "", excerpt: "", type: "post")
+        Thread.sleep(forTimeInterval: 0.01)
+        try store.update(id: idA, title: "A Updated", content: "", excerpt: "")
+        let drafts = try store.fetchAll()
+        #expect(drafts[0].title == "A Updated")
+    }
+
+    @Test func unicodeAndEmojiRoundTrip() throws {
+        let title = "H\u{00E9}llo W\u{00F6}rld \u{1F30D} \u{201C}curly\u{201D}"
+        let content = "<p>\u{00CB}moji \u{1F389} and \u{00AB}quotes\u{00BB}</p>"
+        let id = try store.create(title: title, content: content, excerpt: "", type: "post")
+        let draft = try store.load(id: id)
+        #expect(draft?.title == title)
+        #expect(draft?.content == content)
+    }
 }
