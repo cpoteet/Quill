@@ -1,6 +1,6 @@
 # Quill — In-Depth Testing Plan
 
-_Last updated: 2026-06-01 (fifth pass — items 1, 2, 3 & 4 implemented)_
+_Last updated: 2026-06-01 (sixth pass — items 1, 2, 3, 4 & 5 implemented)_
 
 > **Changes since first draft (what this revision accounts for):**
 > - **Storage refactored** — new generic `JSONFileStore<T>` + `AppSupportDirectory`
@@ -862,15 +862,18 @@ ones that are automatable; manually verify the rest. (✅ = add automated test,
    - `AutosaveStoreTests` extended: +5 tests — delete, onePerPostID, serverModified, savedAt ordering
    - `DraftStoreTests` extended: +5 tests — emptyTitle, updateNonExistent, deleteNonExistent, fetchAll ordering, unicode
    - **Note:** `JSONFileStore.init` gained an optional `in: baseDirectory` parameter for per-instance test isolation, avoiding `AppSupportDirectory.override` contention between parallel suites.
-5. **`AnthropicClient` injectable session + tests** (§4.2) — small refactor
-   (still needed — session is still `static`).
+5. ~~**`AnthropicClient` injectable session + tests** (§4.2) — small refactor.~~ ✅ **Done** — 18 new tests added, suite grows from 146 → 164 tests (all passing).
+   - `AnthropicClient` now accepts `init(apiKey:session:)` (mirrors `WordPressClient`; existing callsites unaffected).
+   - `AnthropicClientTests` covers: request headers, beta headers ±web search, tools array present/absent, `cache_control: ephemeral` on system block, multi-block text joining (web-search fragmentation gotcha), non-text block exclusion, truncation flag, HTTP error body preservation, malformed JSON, network failure.
+   - `AnthropicMockURLProtocol` added to `Tests/QuillTests/Support/` — separate subclass with its own `static var requestHandler` to avoid races with `MockURLProtocol` (two `@Suite(.serialized)` suites sharing a global handler run concurrently with each other).
+   - `AnthropicMockURLProtocol.startLoading()` reconstructs `httpBody` from `httpBodyStream` (URLSession always clears `httpBody` in URLProtocol — body is in the stream).
 6. **JS editor harness** (§6.1) — biggest infra lift, biggest correctness payoff.
 7. **Manual checklists** (§7) — run a full pass before each release; spot-check
    the regression matrix (§9) after any editor or save-path change.
 
 ### Concrete refactors that unlock testing
 - Extract `MockURLProtocol` to a shared support file. ✅ Done.
-- Add an injectable `URLSession` to `AnthropicClient` (mirror `WordPressClient`).
+- Add an injectable `URLSession` to `AnthropicClient` (mirror `WordPressClient`). ✅ Done.
 - `AppSupportDirectory.override` is the test seam for the credential/AI-settings stores — used in `KeychainStoreTests`. Only ONE suite should set this global at a time; `JSONFileStoreTests` uses `in: baseDirectory` instead to avoid race conditions with parallel suites.
 - The `Cite` node and empty-cite stripping should be included in whatever module exposes `toWordPressHTML` to the JS harness (§6.1).
 - Extract `toWordPressHTML`, `extractAlignment`, and the parse helpers into a
