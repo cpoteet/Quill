@@ -59,7 +59,7 @@ private struct ContentBlock: Decodable {
 
 // MARK: - Errors
 
-public enum AnthropicError: LocalizedError {
+public enum AnthropicError: LocalizedError, Equatable {
     case httpError(Int, String)
     case noTextContent
     case invalidResponse
@@ -77,8 +77,14 @@ public enum AnthropicError: LocalizedError {
 
 public struct AnthropicClient {
     public let apiKey: String
+    private let session: URLSession
 
-    private static let session: URLSession = URLSession(configuration: .ephemeral)
+    private static let sharedSession: URLSession = URLSession(configuration: .ephemeral)
+
+    public init(apiKey: String, session: URLSession? = nil) {
+        self.apiKey = apiKey
+        self.session = session ?? Self.sharedSession
+    }
 
     public struct Result {
         public let text: String
@@ -127,7 +133,7 @@ public struct AnthropicClient {
 
         let (data, urlResponse): (Data, URLResponse)
         do {
-            (data, urlResponse) = try await Self.session.data(for: request)
+            (data, urlResponse) = try await session.data(for: request)
         } catch is CancellationError {
             throw CancellationError()
         } catch let urlError as URLError where urlError.code == .cancelled {
