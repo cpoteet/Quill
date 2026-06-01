@@ -27,6 +27,8 @@ import Testing
         #expect(post.title.rendered == "Hello")
         #expect(post.title.raw == "Hello")
         #expect(post.content.raw == "<p>Body</p>")
+        #expect(post.excerpt.raw == "Excerpt")
+        #expect(post.excerpt.rendered == "Excerpt")
         #expect(post.status == "publish")
         #expect(post.dateGmt == "2024-01-01T00:00:00")
         #expect(post.modified == "2024-01-02T00:00:00")

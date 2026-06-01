@@ -375,28 +375,74 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.httpMethod == "POST")
     }
 
-    @Test func fetchCategoriesRequestsPerPage100() async throws {
+    @Test func fetchAllCategoriesHitsCategoriesEndpointWithPerPage100() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
             capturedRequest = request
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                                    headerFields: ["X-WP-TotalPages": "1"])!,
                     "[]".data(using: .utf8)!)
         }
-        _ = try await client.fetchCategories()
+        _ = try await client.fetchAllCategories()
         #expect(capturedRequest?.url?.query?.contains("per_page=100") == true)
         #expect(capturedRequest?.url?.path.contains("/categories") == true)
     }
 
-    @Test func fetchTagsRequestsPerPage100() async throws {
+    @Test func fetchAllCategoriesPaginatesAcrossMultiplePages() async throws {
+        var requestedPages: [String] = []
+        MockURLProtocol.requestHandler = { request in
+            let pageParam = request.url?.query?
+                .components(separatedBy: "&")
+                .first(where: { $0.hasPrefix("page=") })?
+                .replacingOccurrences(of: "page=", with: "") ?? "1"
+            requestedPages.append(pageParam)
+            let json = pageParam == "1"
+                ? "[{\"id\":1,\"name\":\"Tech\",\"slug\":\"tech\",\"count\":5,\"parent\":0}]"
+                : "[{\"id\":2,\"name\":\"News\",\"slug\":\"news\",\"count\":2,\"parent\":0}]"
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                                    headerFields: ["X-WP-TotalPages": "2"])!,
+                    json.data(using: .utf8)!)
+        }
+        let categories = try await client.fetchAllCategories()
+        #expect(requestedPages == ["1", "2"])
+        #expect(categories.count == 2)
+        #expect(categories[0].id == 1)
+        #expect(categories[1].id == 2)
+    }
+
+    @Test func fetchAllTagsHitsTagsEndpointWithPerPage100() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
             capturedRequest = request
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                                    headerFields: ["X-WP-TotalPages": "1"])!,
                     "[]".data(using: .utf8)!)
         }
-        _ = try await client.fetchTags()
+        _ = try await client.fetchAllTags()
         #expect(capturedRequest?.url?.query?.contains("per_page=100") == true)
         #expect(capturedRequest?.url?.path.contains("/tags") == true)
+    }
+
+    @Test func fetchAllTagsPaginatesAcrossMultiplePages() async throws {
+        var requestedPages: [String] = []
+        MockURLProtocol.requestHandler = { request in
+            let pageParam = request.url?.query?
+                .components(separatedBy: "&")
+                .first(where: { $0.hasPrefix("page=") })?
+                .replacingOccurrences(of: "page=", with: "") ?? "1"
+            requestedPages.append(pageParam)
+            let json = pageParam == "1"
+                ? "[{\"id\":3,\"name\":\"swift\",\"slug\":\"swift\",\"count\":10}]"
+                : "[{\"id\":4,\"name\":\"ios\",\"slug\":\"ios\",\"count\":7}]"
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                                    headerFields: ["X-WP-TotalPages": "2"])!,
+                    json.data(using: .utf8)!)
+        }
+        let tags = try await client.fetchAllTags()
+        #expect(requestedPages == ["1", "2"])
+        #expect(tags.count == 2)
+        #expect(tags[0].id == 3)
+        #expect(tags[1].id == 4)
     }
 
     @Test func createCategoryUsesPostMethodOnCategoriesEndpoint() async throws {
