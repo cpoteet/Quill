@@ -1,6 +1,6 @@
 # Quill — In-Depth Testing Plan
 
-_Last updated: 2026-05-31 (third pass — items 1 & 2 implemented)_
+_Last updated: 2026-06-01 (fourth pass — items 1, 2 & 3 implemented)_
 
 > **Changes since first draft (what this revision accounts for):**
 > - **Storage refactored** — new generic `JSONFileStore<T>` + `AppSupportDirectory`
@@ -852,7 +852,7 @@ ones that are automatable; manually verify the rest. (✅ = add automated test,
 
 1. ~~**Model tests** (§1) — fastest, highest regression value, zero new infra.~~ ✅ **Done** — `WPPostDecodingTests` (9), `WPMediaDecodingTests` (7), `PostPayloadTests` (11), `CredentialsTests` (4). 80 tests total passing.
 2. ~~**`AIPromptBuilder` tests** (§4.1) — pure, already-patched-twice logic.~~ ✅ **Done** — `AIPromptBuilderTests` (21). Covers all `parseGenerateResponse` edge cases, system prompt, generate/operation/style-guide prompts.
-3. **`WordPressClient` gap-fill** (§2) — extract shared `MockURLProtocol` first.
+3. ~~**`WordPressClient` gap-fill** (§2) — extract shared `MockURLProtocol` first.~~ ✅ **Done** — `MockURLProtocol` extracted to `Tests/QuillTests/Support/MockURLProtocol.swift`; 28 new tests added covering §2.1 URL construction, §2.2 error mapping, and §2.3 searchLinks. 108 tests total passing.
 4. **Storage gap-fill** (§3) — tags, autosave delete, migration, **and the new
    `JSONFileStore`/`AppSupportDirectory` suite (§3.5)**. The latter is now a quick
    win: `AppSupportDirectory.override` makes file-store tests hermetic with no

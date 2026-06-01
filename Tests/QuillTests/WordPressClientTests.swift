@@ -2,6 +2,40 @@ import Foundation
 import Testing
 @testable import QuillKit
 
+// MARK: - Shared fixtures
+
+private let minimalPostJSON = """
+{"id":1,"title":{"rendered":"Hello","raw":"Hello"},\
+"content":{"rendered":"<p>World</p>","raw":"<p>World</p>"},\
+"excerpt":{"rendered":"","raw":""},\
+"status":"publish","date":"2024-01-01T00:00:00",\
+"modified":"2024-01-01T00:00:00","slug":"hello","link":"https://example.com/hello",\
+"featured_media":0,"categories":[],"tags":[]}
+"""
+
+private let minimalMediaJSON = """
+{"id":5,"title":{"rendered":"photo.jpg"},\
+"source_url":"https://example.com/photo.jpg",\
+"media_type":"image","mime_type":"image/jpeg",\
+"link":"https://example.com/?attachment_id=5","date":"2024-01-01T00:00:00"}
+"""
+
+private let minimalCategoryJSON = """
+{"id":1,"name":"Tech","slug":"tech","count":5,"parent":0}
+"""
+
+private let minimalTagJSON = """
+{"id":1,"name":"swift","slug":"swift","count":3}
+"""
+
+private let minimalAutosaveJSON = """
+{"parent":1}
+"""
+
+private let minimalPayload = PostPayload(title: "T", content: "C", status: "draft")
+
+// MARK: - Suite
+
 @Suite(.serialized) struct WordPressClientTests {
     var client: WordPressClient
 
@@ -17,6 +51,8 @@ import Testing
         )
         client = WordPressClient(credentials: credentials, session: session)
     }
+
+    // MARK: - Existing tests
 
     @Test func fetchPostsDecodesList() async throws {
         let json = """
@@ -167,29 +203,426 @@ import Testing
         #expect(results.count == 1)
         #expect(results[0].type == .post)
     }
-}
 
-// MARK: - Mock URLProtocol
-final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    // MARK: - §2.1 URL & request construction
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    @Test func fetchPagesHitsPagesEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchPages()
+        let path = capturedRequest?.url?.path ?? ""
+        #expect(path.contains("/pages"))
+        #expect(!path.contains("/posts"))
+    }
 
-    override func startLoading() {
-        guard let handler = MockURLProtocol.requestHandler else {
-            client?.urlProtocolDidFinishLoading(self)
-            return
+    @Test func fetchPostsIncludesRequiredQueryParams() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchPosts()
+        let query = capturedRequest?.url?.query ?? ""
+        #expect(query.contains("per_page="))
+        #expect(query.contains("page="))
+        #expect(query.contains("context=edit"))
+        #expect(query.contains("publish"))
+        #expect(query.contains("draft"))
+    }
+
+    @Test func createPostUsesPostMethodWithJsonContentType() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalPostJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createPost(minimalPayload)
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.hasSuffix("/posts") == true)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
+    @Test func updatePostUsesPutMethodOnPostsId() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalPostJSON.data(using: .utf8)!)
+        }
+        _ = try await client.updatePost(id: 99, payload: minimalPayload)
+        #expect(capturedRequest?.httpMethod == "PUT")
+        #expect(capturedRequest?.url?.path.contains("posts/99") == true)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
+    @Test func createPageUsesPostMethodOnPagesEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalPostJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createPage(minimalPayload)
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.hasSuffix("/pages") == true)
+    }
+
+    @Test func updatePageUsesPutMethodOnPagesId() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalPostJSON.data(using: .utf8)!)
+        }
+        _ = try await client.updatePage(id: 55, payload: minimalPayload)
+        #expect(capturedRequest?.httpMethod == "PUT")
+        #expect(capturedRequest?.url?.path.contains("pages/55") == true)
+    }
+
+    @Test func authorizationHeaderIncludedInRequests() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchPosts()
+        let auth = capturedRequest?.value(forHTTPHeaderField: "Authorization") ?? ""
+        #expect(auth.hasPrefix("Basic "))
+        #expect(auth.count > "Basic ".count)
+    }
+
+    @Test func uploadMediaSetsContentTypeFromMimeType() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.uploadMedia(data: Data([0x89, 0x50]), filename: "photo.png", mimeType: "image/png")
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "image/png")
+    }
+
+    @Test func uploadMediaSetsContentDispositionWithFilename() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "photo.jpg", mimeType: "image/jpeg")
+        let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        #expect(disposition.contains("filename=\"photo.jpg\""))
+        #expect(disposition.contains("filename*=UTF-8''"))
+    }
+
+    @Test func uploadMediaSpacesInFilenameArePercentEncoded() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "my photo.jpg", mimeType: "image/jpeg")
+        let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        // Raw filename preserved in quoted part; spaces encoded in filename* part
+        #expect(disposition.contains("filename=\"my photo.jpg\""))
+        #expect(disposition.contains("my%20photo.jpg"))
+    }
+
+    @Test func deleteMediaSendsDeleteWithForceTrueQuery() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data())
+        }
+        try await client.deleteMedia(id: 77)
+        #expect(capturedRequest?.httpMethod == "DELETE")
+        #expect(capturedRequest?.url?.path.contains("media/77") == true)
+        #expect(capturedRequest?.url?.query?.contains("force=true") == true)
+    }
+
+    @Test func createAutosaveSendsToPostAutosavesEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalAutosaveJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createAutosave(postID: 10, payload: minimalPayload)
+        let path = capturedRequest?.url?.path ?? ""
+        #expect(path.contains("posts/10/autosaves"))
+        #expect(capturedRequest?.httpMethod == "POST")
+    }
+
+    @Test func createPageAutosaveSendsToPageAutosavesEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalAutosaveJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createPageAutosave(postID: 20, payload: minimalPayload)
+        let path = capturedRequest?.url?.path ?? ""
+        #expect(path.contains("pages/20/autosaves"))
+        #expect(capturedRequest?.httpMethod == "POST")
+    }
+
+    @Test func fetchCategoriesRequestsPerPage100() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchCategories()
+        #expect(capturedRequest?.url?.query?.contains("per_page=100") == true)
+        #expect(capturedRequest?.url?.path.contains("/categories") == true)
+    }
+
+    @Test func fetchTagsRequestsPerPage100() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchTags()
+        #expect(capturedRequest?.url?.query?.contains("per_page=100") == true)
+        #expect(capturedRequest?.url?.path.contains("/tags") == true)
+    }
+
+    @Test func createCategoryUsesPostMethodOnCategoriesEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalCategoryJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createCategory(name: "Tech")
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.contains("/categories") == true)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
+    @Test func createTagUsesPostMethodOnTagsEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalTagJSON.data(using: .utf8)!)
+        }
+        _ = try await client.createTag(name: "swift")
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.contains("/tags") == true)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
+    // MARK: - §2.2 Response handling & error mapping
+
+    @Test func httpErrorPreservesStatusCode() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!,
+             "Not Found".data(using: .utf8)!)
         }
         do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
+            _ = try await client.fetchPosts()
+            Issue.record("Expected APIError.httpError to be thrown")
+        } catch let error as APIError {
+            guard case .httpError(let code, _) = error else {
+                Issue.record("Expected httpError, got \(error)")
+                return
+            }
+            #expect(code == 404)
         } catch {
-            client?.urlProtocol(self, didFailWithError: error)
+            Issue.record("Expected APIError, got \(error)")
         }
     }
 
-    override func stopLoading() {}
+    @Test func httpErrorPreservesBodyString() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!,
+             "Bad Request".data(using: .utf8)!)
+        }
+        do {
+            _ = try await client.fetchPosts()
+            Issue.record("Expected APIError.httpError to be thrown")
+        } catch let error as APIError {
+            guard case .httpError(let code, let body) = error else {
+                Issue.record("Expected httpError, got \(error)")
+                return
+            }
+            #expect(code == 400)
+            #expect(body == "Bad Request")
+        } catch {
+            Issue.record("Expected APIError, got \(error)")
+        }
+    }
+
+    @Test func nonUtf8ResponseBodyBecomesEmptyString() async throws {
+        MockURLProtocol.requestHandler = { request in
+            // 0xFF 0xFE is not valid UTF-8
+            (HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!,
+             Data([0xFF, 0xFE]))
+        }
+        do {
+            _ = try await client.fetchPosts()
+            Issue.record("Expected APIError.httpError to be thrown")
+        } catch let error as APIError {
+            guard case .httpError(_, let body) = error else {
+                Issue.record("Expected httpError, got \(error)")
+                return
+            }
+            #expect(body == "")
+        } catch {
+            Issue.record("Expected APIError, got \(error)")
+        }
+    }
+
+    @Test func successWithMalformedJsonThrowsDecodingError() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             "{not valid json!!!".data(using: .utf8)!)
+        }
+        do {
+            _ = try await client.fetchPosts()
+            Issue.record("Expected APIError.decodingError to be thrown")
+        } catch let error as APIError {
+            if case .httpError = error {
+                Issue.record("Expected decodingError, not httpError — malformed JSON on 200 should decode, not fail HTTP check")
+            } else if case .decodingError = error {
+                // Pass
+            } else {
+                Issue.record("Expected decodingError, got \(error)")
+            }
+        } catch {
+            Issue.record("Expected APIError, got \(error)")
+        }
+    }
+
+    @Test func networkFailureThrowsNetworkError() async throws {
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.timedOut)
+        }
+        do {
+            _ = try await client.fetchPosts()
+            Issue.record("Expected APIError.networkError to be thrown")
+        } catch let error as APIError {
+            if case .networkError = error { /* pass */ }
+            else { Issue.record("Expected networkError, got \(error)") }
+        } catch {
+            Issue.record("Expected APIError.networkError, got \(error)")
+        }
+    }
+
+    @Test func urlErrorCancelledRethrowsAsCancellationError() async throws {
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.cancelled)
+        }
+        do {
+            _ = try await client.fetchPosts()
+            Issue.record("Expected CancellationError to be thrown")
+        } catch is CancellationError {
+            // Pass — URLError(.cancelled) must be rethrown as CancellationError, not wrapped in APIError
+        } catch let error as APIError {
+            Issue.record("URLError(.cancelled) must not be wrapped in APIError; got \(error)")
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+    }
+
+    // MARK: - §2.3 searchLinks extensions
+
+    @Test func searchLinksAllSubrequestsFailReturnsEmptyArray() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil, headerFields: nil)!,
+             Data())
+        }
+        let results = try await client.searchLinks(query: "test")
+        #expect(results.isEmpty)
+    }
+
+    @Test func searchLinksPageSubtypeMapsToPageType() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/search") && query.contains("type=post") {
+                let json = """
+                [{"id":2,"title":"About","url":"https://example.com/about","type":"post","subtype":"page"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            return (response, "[]".data(using: .utf8)!)
+        }
+        let results = try await client.searchLinks(query: "about")
+        #expect(results.count == 1)
+        #expect(results[0].type == .page)
+    }
+
+    @Test func searchLinksTagSubtypeMapsToTagType() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/search") && query.contains("type=term") {
+                let json = """
+                [{"id":4,"title":"swift","url":"https://example.com/tag/swift","type":"term","subtype":"tag"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            return (response, "[]".data(using: .utf8)!)
+        }
+        let results = try await client.searchLinks(query: "swift")
+        #expect(results.count == 1)
+        #expect(results[0].type == .tag)
+    }
+
+    @Test func searchLinksUnknownTermSubtypeFallsToCategory() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/search") && query.contains("type=term") {
+                // "post_tag" is not "tag", so it falls through to .category
+                let json = """
+                [{"id":9,"title":"misc","url":"https://example.com/misc","type":"term","subtype":"unknown_type"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            return (response, "[]".data(using: .utf8)!)
+        }
+        let results = try await client.searchLinks(query: "misc")
+        #expect(results.count == 1)
+        #expect(results[0].type == .category)
+    }
+
+    @Test func searchLinksPostsFailWhileTermsSucceed() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let path = request.url?.path ?? ""
+            let query = request.url?.query ?? ""
+            if path.contains("/search") && query.contains("type=post") {
+                return (HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!,
+                        Data())
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            if path.contains("/search") && query.contains("type=term") {
+                let json = """
+                [{"id":3,"title":"Tech","url":"https://example.com/category/tech","type":"term","subtype":"category"}]
+                """.data(using: .utf8)!
+                return (response, json)
+            }
+            return (response, "[]".data(using: .utf8)!)
+        }
+        let results = try await client.searchLinks(query: "tech")
+        #expect(results.count == 1)
+        #expect(results[0].type == .category)
+    }
 }
