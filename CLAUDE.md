@@ -32,11 +32,20 @@ Implementation complete and running. Active polish/iteration phase.
 ```bash
 ./build.sh        # compiles, assembles Quill.app, ad-hoc signs
 open Quill.app
+swift test                               # run all tests
+swift test --filter WordPressClientTests # run one suite
 ```
 
 **After every code change:** quit the app, run `./build.sh`, reopen. Always.
+**After major changes:** run the `claude-md-management:revise-claude-md` skill to keep this file current.
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+.
+
+## Test suite status (2026-06-01 — 146 tests passing)
+
+Done: §1 models (WPPost/WPMedia/PostPayload/Credentials), §2 WordPressClient (28 tests, shared MockURLProtocol in `Tests/QuillTests/Support/`), §3 storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), §4.1 AIPromptBuilder (21 tests).
+Remaining: §4.2 AnthropicClient (needs injectable URLSession — change `private static let session` to an init param, mirror `WordPressClient`), §6.1 JS editor harness (`toWordPressHTML` + `parseHTML` via Node/jsdom).
+Full plan: `docs/testing-plan.md`
 
 ## Key decisions
 
