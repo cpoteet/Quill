@@ -147,14 +147,31 @@ public struct WordPressClient: Sendable {
 
     // MARK: - Taxonomies
 
-    public func fetchCategories() async throws -> [WPCategory] {
-        let url = try endpoint("categories", query: ["per_page": "100"])
-        return try await get(url)
+    public func fetchAllCategories() async throws -> [WPCategory] {
+        try await fetchAllPaginatedTaxonomy(resource: "categories")
     }
 
-    public func fetchTags() async throws -> [WPTag] {
-        let url = try endpoint("tags", query: ["per_page": "100"])
-        return try await get(url)
+    public func fetchAllTags() async throws -> [WPTag] {
+        try await fetchAllPaginatedTaxonomy(resource: "tags")
+    }
+
+    private func fetchAllPaginatedTaxonomy<T: Decodable>(resource: String) async throws -> [T] {
+        var all: [T] = []
+        var page = 1
+        var totalPages = 1
+        repeat {
+            let url = try endpoint(resource, query: ["per_page": "100", "page": "\(page)"])
+            let request = authorizedRequest(url: url, method: "GET")
+            let (data, http) = try await send(request)
+            let batch: [T]
+            do { batch = try JSONDecoder().decode([T].self, from: data) }
+            catch { throw APIError.decodingError(error) }
+            all.append(contentsOf: batch)
+            if let header = http?.value(forHTTPHeaderField: "X-WP-TotalPages"),
+               let parsed = Int(header) { totalPages = parsed }
+            page += 1
+        } while page <= totalPages
+        return all
     }
 
     public func createTag(name: String) async throws -> WPTag {

@@ -308,7 +308,7 @@ public struct SidebarView: View {
 
     private func loadTaxonomiesIfNeeded(client: WordPressClient) async {
         if (try? services.taxonomyCache.isCategoryStale()) != false {
-            if let cats = try? await client.fetchCategories() {
+            if let cats = try? await client.fetchAllCategories() {
                 try? services.taxonomyCache.saveCategories(cats)
                 appState.categories = cats
             }
@@ -316,7 +316,7 @@ public struct SidebarView: View {
             appState.categories = (try? services.taxonomyCache.loadCategories()) ?? []
         }
         if (try? services.taxonomyCache.isTagStale()) != false {
-            if let tags = try? await client.fetchTags() {
+            if let tags = try? await client.fetchAllTags() {
                 try? services.taxonomyCache.saveTags(tags)
                 appState.tags = tags
             }

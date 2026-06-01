@@ -354,6 +354,7 @@ public struct PostEditorView: View {
             settings.slug = post.slug
             settings.commentStatus = post.commentStatus
             settings.parentID = post.parent
+            settings.excerpt = post.excerpt.raw ?? ""
             if post.status == "future" {
                 settings.publishDate = parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             }
