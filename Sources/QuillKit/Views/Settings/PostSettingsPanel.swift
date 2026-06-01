@@ -325,12 +325,11 @@ public struct PostSettingsPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Excerpt")
             TextEditor(text: $settings.excerpt)
-                .frame(height: 70)
-                .font(.body)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5)
-                        .stroke(.separator, lineWidth: 1)
-                )
+                .scrollContentBackground(.hidden)
+                .font(.callout)
+                .frame(height: 56)
+                .padding(7)
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
         }
     }
 
