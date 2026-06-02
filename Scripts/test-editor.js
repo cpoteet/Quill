@@ -1,0 +1,282 @@
+'use strict'
+
+const { test, describe } = require('node:test')
+const assert = require('node:assert/strict')
+const { JSDOM } = require('jsdom')
+const { extractAlignment, toWordPressHTML } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+
+const { document } = new JSDOM('<!DOCTYPE html>').window
+
+// Convenience wrapper — always passes our jsdom document
+function wp(html) {
+  return toWordPressHTML(html, document)
+}
+
+// ---------------------------------------------------------------------------
+// extractAlignment
+// ---------------------------------------------------------------------------
+
+describe('extractAlignment', () => {
+  test('alignleft returns left', () => {
+    assert.equal(extractAlignment('alignleft'), 'left')
+  })
+
+  test('alignright returns right', () => {
+    assert.equal(extractAlignment('alignright'), 'right')
+  })
+
+  test('aligncenter returns center', () => {
+    assert.equal(extractAlignment('aligncenter'), 'center')
+  })
+
+  test('empty string returns null', () => {
+    assert.equal(extractAlignment(''), null)
+  })
+
+  test('unrelated class returns null', () => {
+    assert.equal(extractAlignment('wp-block-image'), null)
+  })
+
+  test('alignment class mixed with others is still detected', () => {
+    assert.equal(extractAlignment('wp-block-image alignright size-large'), 'right')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — headings
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — headings', () => {
+  test('h1 gains wp-block-heading class', () => {
+    const out = wp('<h1>Title</h1>')
+    assert.match(out, /class="wp-block-heading"/)
+  })
+
+  test('h2 through h6 each gain wp-block-heading', () => {
+    for (const level of [2, 3, 4, 5, 6]) {
+      const out = wp(`<h${level}>Text</h${level}>`)
+      assert.match(out, /wp-block-heading/, `h${level} missing class`)
+    }
+  })
+
+  test('existing classes on heading are preserved', () => {
+    const out = wp('<h2 class="custom">Text</h2>')
+    assert.match(out, /custom/)
+    assert.match(out, /wp-block-heading/)
+  })
+
+  test('headings are idempotent — running twice does not duplicate class', () => {
+    const once = wp('<h2>Text</h2>')
+    const twice = wp(once)
+    const count = (twice.match(/wp-block-heading/g) || []).length
+    assert.equal(count, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — lists
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — lists', () => {
+  test('ul gains wp-block-list', () => {
+    const out = wp('<ul><li>item</li></ul>')
+    assert.match(out, /wp-block-list/)
+  })
+
+  test('ol gains wp-block-list', () => {
+    const out = wp('<ol><li>item</li></ol>')
+    assert.match(out, /wp-block-list/)
+  })
+
+  test('task list (data-type=taskList) does NOT gain wp-block-list', () => {
+    const out = wp('<ul data-type="taskList"><li data-type="taskItem"><div><p>task</p></div></li></ul>')
+    assert.doesNotMatch(out, /wp-block-list/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — list-item <p> unwrapping
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — list item p unwrap', () => {
+  test('single-child <p> inside <li> is unwrapped', () => {
+    const out = wp('<ul><li><p>text</p></li></ul>')
+    assert.doesNotMatch(out, /<p>text<\/p>/)
+    assert.match(out, /<li>text<\/li>/)
+  })
+
+  test('multi-child <li> is left untouched', () => {
+    const out = wp('<ul><li><p>a</p><p>b</p></li></ul>')
+    assert.match(out, /<p>a<\/p>/)
+    assert.match(out, /<p>b<\/p>/)
+  })
+
+  test('task item div>p is unwrapped', () => {
+    const out = wp('<ul data-type="taskList"><li data-type="taskItem"><div><p>task text</p></div></li></ul>')
+    assert.doesNotMatch(out, /<p>task text<\/p>/)
+    assert.match(out, /<div>task text<\/div>/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — blockquotes and cite
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — blockquote', () => {
+  test('blockquote gains wp-block-quote class', () => {
+    const out = wp('<blockquote><p>quote</p></blockquote>')
+    assert.match(out, /wp-block-quote/)
+  })
+
+  test('empty cite is stripped', () => {
+    const out = wp('<blockquote><p>quote</p><cite></cite></blockquote>')
+    assert.doesNotMatch(out, /<cite/)
+  })
+
+  test('whitespace-only cite is stripped', () => {
+    const out = wp('<blockquote><p>quote</p><cite>   </cite></blockquote>')
+    assert.doesNotMatch(out, /<cite/)
+  })
+
+  test('non-empty cite is preserved', () => {
+    const out = wp('<blockquote><p>quote</p><cite>— Author</cite></blockquote>')
+    assert.match(out, /<cite>— Author<\/cite>/)
+  })
+
+  test('cite stripping only applies inside blockquote', () => {
+    // A <cite> outside a blockquote should not be stripped
+    const out = wp('<p>text</p><cite>standalone</cite>')
+    assert.match(out, /<cite>standalone<\/cite>/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — code blocks
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — code blocks', () => {
+  test('pre gains wp-block-code class', () => {
+    const out = wp('<pre><code>const x = 1</code></pre>')
+    assert.match(out, /wp-block-code/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — images
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — images', () => {
+  test('data-media-id produces wp-image-{id} class on img', () => {
+    const out = wp('<img src="a.jpg" data-media-id="42">')
+    assert.match(out, /wp-image-42/)
+  })
+
+  test('img.alignleft is wrapped in figure.wp-block-image.alignleft', () => {
+    const out = wp('<img src="a.jpg" class="alignleft">')
+    assert.match(out, /class="wp-block-image alignleft"/)
+    assert.match(out, /<figure/)
+  })
+
+  test('img.alignright is wrapped in figure.wp-block-image.alignright', () => {
+    const out = wp('<img src="a.jpg" class="alignright">')
+    assert.match(out, /class="wp-block-image alignright"/)
+  })
+
+  test('img.aligncenter is wrapped in figure.wp-block-image.aligncenter', () => {
+    const out = wp('<img src="a.jpg" class="aligncenter">')
+    assert.match(out, /class="wp-block-image aligncenter"/)
+  })
+
+  test('align class is removed from img after wrapping in figure', () => {
+    const out = wp('<img src="a.jpg" class="alignleft">')
+    // The <img> inside the figure should not still have the align class
+    const dom = new JSDOM(out).window.document
+    const img = dom.querySelector('img')
+    assert.ok(!img.classList.contains('alignleft'), 'img still has alignleft after wrapping')
+  })
+
+  test('image with both alignment and media-id gets figure wrapper and wp-image class', () => {
+    const out = wp('<img src="a.jpg" class="alignleft" data-media-id="7">')
+    assert.match(out, /wp-block-image alignleft/)
+    assert.match(out, /wp-image-7/)
+  })
+
+  test('image with no alignment and no media-id is untouched (no figure wrap)', () => {
+    const out = wp('<img src="a.jpg">')
+    assert.doesNotMatch(out, /<figure/)
+    assert.doesNotMatch(out, /wp-block-image/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — tables
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — tables', () => {
+  test('table is wrapped in figure.wp-block-table', () => {
+    const out = wp('<table><tbody><tr><td>cell</td></tr></tbody></table>')
+    assert.match(out, /class="wp-block-table"/)
+    assert.match(out, /<figure/)
+  })
+
+  test('all-th first row is promoted from tbody to thead', () => {
+    const out = wp('<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>')
+    const dom = new JSDOM(out).window.document
+    const thead = dom.querySelector('thead')
+    assert.ok(thead, 'thead not created')
+    assert.ok(thead.querySelector('th'), 'th not in thead')
+  })
+
+  test('mixed th/td first row is NOT promoted to thead', () => {
+    const out = wp('<table><tbody><tr><th>A</th><td>B</td></tr><tr><td>1</td><td>2</td></tr></tbody></table>')
+    const dom = new JSDOM(out).window.document
+    assert.equal(dom.querySelector('thead'), null, 'thead should not be created for mixed row')
+  })
+
+  test('table already having thead is not modified', () => {
+    const input = '<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>'
+    const out = wp(input)
+    const dom = new JSDOM(out).window.document
+    // Should still have exactly one thead
+    assert.equal(dom.querySelectorAll('thead').length, 1)
+  })
+
+  test('table already inside wp-block-table is not double-wrapped', () => {
+    const once = wp('<table><tbody><tr><td>cell</td></tr></tbody></table>')
+    const twice = wp(once)
+    const count = (twice.match(/wp-block-table/g) || []).length
+    assert.equal(count, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — idempotency and edge cases
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — idempotency and edge cases', () => {
+  test('full document is idempotent across all transform types', () => {
+    const input = [
+      '<h2>Heading</h2>',
+      '<ul><li><p>item</p></li></ul>',
+      '<blockquote><p>quote</p><cite>author</cite></blockquote>',
+      '<pre><code>code</code></pre>',
+      '<img src="a.jpg" class="alignleft" data-media-id="3">',
+      '<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>',
+    ].join('\n')
+    const once = wp(input)
+    const twice = wp(once)
+    assert.equal(once, twice)
+  })
+
+  test('empty paragraph is stable', () => {
+    const out = wp('<p></p>')
+    assert.equal(out, '<p></p>')
+  })
+
+  test('unicode and emoji in text are preserved', () => {
+    const out = wp('<p>café 🎉 "curly" ’quotes’</p>')
+    assert.match(out, /café/)
+    assert.match(out, /🎉/)
+    assert.match(out, /curly/)
+  })
+})
