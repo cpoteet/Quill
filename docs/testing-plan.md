@@ -1,540 +1,556 @@
-# Quill — In-Depth Testing Plan
+# Quill — Test Suite Reference
 
-_Last updated: 2026-06-01 (sixth pass — items 1, 2, 3, 4 & 5 implemented)_
+_Last updated: 2026-06-01 — 192 Swift tests + 37 JS editor tests, all passing._
 
-> **Changes since first draft (what this revision accounts for):**
-> - **Storage refactored** — new generic `JSONFileStore<T>` + `AppSupportDirectory`
->   with a `.override` test seam. `KeychainStore` and `AISettingsStore` are now thin
->   wrappers over it. This collapses the old per-store credential/settings tests into
->   one generic suite and makes file-store tests trivial to isolate (see §3.5).
-> - **AI selection UX changed** — the floating "selection pill" was removed
->   (`SelectionPillPanel` is gone); selection operations are now **right-click context
->   menu** items in `DroppableWebView` (`Make Longer/Shorter`, `To Table`, `To List`).
->   §7.10 / §7.13 updated accordingly.
-> - **New blockquote `<cite>` attribution node** — a Tiptap `Cite` node, auto-inserted
->   on blockquote toggle, with Enter/Backspace behavior and **empty-cite stripping** in
->   `toWordPressHTML`. New JS + manual cases added (§6.1, §7.3).
-> - **AI-accept now runs the Gutenberg transform** — accepted AI results are serialized
->   through `toWordPressHTML`, not inserted raw (§7.10).
-> - **H4–H6 heading levels, File-menu commands, two-column media detail** — minor; folded
->   into existing checklists.
-> - **Test suite itself is unchanged** — still the original 5 suites; items 1–6 of the
->   implementation order remain unbuilt. `AnthropicClient.session` is still a
->   `private static let` (not yet injectable), so §4.2/§5 refactor still applies.
->
-> **Items 1 & 2 implemented (2026-05-31):** 5 new test files added, suite grows from
-> 24 → 80 tests (all passing). See §10 for updated status.
-> - `WPPostDecodingTests.swift` (9 tests) — §1.1
-> - `WPMediaDecodingTests.swift` (7 tests) — §1.2
-> - `PostPayloadTests.swift` (11 tests) — §1.3
-> - `CredentialsTests.swift` (4 tests) — §1.5
-> - `AIPromptBuilderTests.swift` (21 tests) — §4.1
-> - `KeychainStoreTests.swift` updated: `struct` → `final class`, added `deinit` cleanup
-
-This plan covers the entire Quill macOS app: the Swift business logic, the
-SQLite storage layer, the WordPress and Anthropic network clients, the
-Tiptap/JavaScript editor bridge, and the SwiftUI/AppKit UI. It is organized so
-that the cheapest, most deterministic tests (pure-Swift unit tests) come first,
-then the harder-to-automate layers (JS editor, UI), then manual/functional
-checklists, and finally a regression matrix tied to the documented "known
-gotchas" — the bugs most likely to silently reappear.
-
-Each section lists **what to test**, **the concrete cases (including edge
-cases)**, and **how** (automated vs. manual).
+This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
 ---
 
-## 0. Test infrastructure & how to run
+## Running the tests
 
-- **Framework:** `swift-testing` (already a dependency in `Package.swift`). Test
-  target is `QuillTests` at `Tests/QuillTests/`.
-- **Run all tests:** `swift test`
-- **Run one suite:** `swift test --filter WordPressClientTests`
-- **Existing helpers worth reusing:**
-  - `MockURLProtocol` (in `WordPressClientTests.swift`) — install via
-    `URLSessionConfiguration.ephemeral` + `protocolClasses`. **Extract this into
-    its own file** (e.g. `Tests/QuillTests/Support/MockURLProtocol.swift`) so
-    every networking suite can share it instead of redefining it.
-  - `AppDatabase.inMemory()` — gives each storage suite an isolated in-memory DB.
-- **Suite serialization:** Network and keychain suites that mutate shared global
-  state (`MockURLProtocol.requestHandler`, the on-disk credentials file) must
-  keep `@Suite(.serialized)`. Storage suites using `inMemory()` can run in
-  parallel.
+### Full suite (recommended after every code change)
 
-### Current coverage snapshot (baseline)
+```bash
+./test.sh
+```
 
-| Module | File | Status |
-|---|---|---|
-| `WordPressClient` | `WordPressClientTests.swift` | Partial — fetch/trash/searchLinks only |
-| `DraftStore` | `DraftStoreTests.swift` | Good — CRUD covered |
-| `AutosaveStore` | `AutosaveStoreTests.swift` | Partial — no delete test |
-| `TaxonomyCache` | `TaxonomyCacheTests.swift` | Partial — categories only, no tags |
-| `KeychainStore` | `KeychainStoreTests.swift` | Good — now wraps `JSONFileStore`; uses `AppSupportDirectory.override` |
-| `JSONFileStore<T>` (new) | — | **None** — generic store under everything below |
-| `AppSupportDirectory` (new) | — | **None** — dir resolver + `.override` test seam |
-| `AISettingsStore` | — | **None** — now wraps `JSONFileStore` |
-| `WPPost`/`WPMedia` decoding | `WPPostDecodingTests.swift`, `WPMediaDecodingTests.swift` | ✅ Done — 16 tests |
-| `PostPayload` encoding | `PostPayloadTests.swift` | ✅ Done — 11 tests |
-| `AIPromptBuilder` | `AIPromptBuilderTests.swift` | ✅ Done — 21 tests |
-| `AnthropicClient` | — | **None** — requires injectable session refactor first |
-| `Credentials.basicAuthHeader` | `CredentialsTests.swift` | ✅ Done — 4 tests |
-| `AppState` computed props | — | **None** |
-| `editor.html` JS transforms | — | **None** |
-| UI flows | — | **None (manual only)** |
+`test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-The biggest gaps with the highest bug risk are: **model decoding**,
-**`PostPayload` encoding**, **`AIPromptBuilder.parseGenerateResponse`**, and the
-**`toWordPressHTML` JS transform**. Prioritize those.
+1. **Swift tests** — `swift test` (all 164 tests across 13 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (40 tests via Node's built-in runner + jsdom)
+
+If either layer fails, `test.sh` exits non-zero and reports which suite failed.
+
+### Run Swift tests only
+
+```bash
+swift test
+```
+
+### Run one Swift suite
+
+```bash
+swift test --filter WordPressClientTests
+swift test --filter AIPromptBuilderTests
+# etc. — filter matches the @Suite struct name
+```
+
+### Run JS editor tests only
+
+```bash
+node --test Scripts/test-editor.js
+```
+
+Requires `node` and the `jsdom` package (already installed in the project root via `npm install`).
 
 ---
 
-## 1. Model decoding & encoding (pure unit tests — highest ROI)
+## Swift test suite (164 tests)
 
-These are pure `Codable` functions with hand-written `init(from:)` containing
-defaulting logic that has already caused production bugs (see gotchas about
-float dimensions and missing taxonomy fields). They are trivial to test and
-catch real regressions.
+Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
-### 1.1 `WPPost` decoding (`Sources/QuillKit/API/Models/WPPost.swift`)
+### Suite summary
 
-Add `WPPostTests`:
-
-- **Full post** decodes all fields correctly.
-- **Pages omit `categories`/`tags`** → both default to `[]` (the documented
-  Pages-endpoint gotcha). Feed JSON with those keys absent and assert no throw.
-- **Missing `type`** → defaults to `"post"`.
-- **Missing `featured_media`** → defaults to `0`.
-- **Missing `date_gmt`** → defaults to `""`.
-- **Missing `parent`** → defaults to `0`; **missing `comment_status`** →
-  defaults to `"open"`.
-- **`content.raw` present vs. absent** → `content.raw` is the field
-  `PostEditorView` prefers; verify both `rendered` and optional `raw` decode.
-- **Edge:** `featured_media` as `0` vs. a real ID; `status` values `publish`,
-  `draft`, `future`, `private`, `pending`, `trash`.
-- **Edge:** required fields genuinely missing (`id`, `status`, `date`,
-  `modified`, `slug`, `link`) → assert it **throws** (these are not optional).
-- **Round-trip:** encode a decoded `WPPost` and confirm `CodingKeys` map back
-  (`date_gmt`, `featured_media`, `comment_status`).
-
-### 1.2 `WPMedia` / `MediaDetails` / `MediaSize` (`WPMedia.swift`)
-
-This is the documented float-dimensions gotcha. Add `WPMediaTests`:
-
-- **Integer dimensions** (`"width": 2560`) decode to `Int`.
-- **Float dimensions** (`"width": 2560.0`) decode to `Int` via the
-  try-Int-then-Double path. **This is the regression guard** — assert it does
-  not throw and truncates correctly.
-- **Missing `media_details`** → `nil`, no throw.
-- **Missing `title`** → defaults to empty `RenderedString`.
-- **`sizes` map** with named sizes (`thumbnail`, `medium`, `large`, `full`)
-  decodes into `[String: MediaSize]`.
-- **`sizes` with float width/height** → `MediaSize` truncates to `Int`.
-- **Malformed `sizes`** (e.g. `sizes` is `[]` instead of object) → `try?`
-  swallows it to `nil`; verify the whole `WPMedia` still decodes.
-- **Edge:** `media_type` `"file"` vs `"image"`; non-image mime types.
-
-### 1.3 `PostPayload` encoding (`WPPost.swift`)
-
-This drives every create/update. Encoding bugs corrupt published content
-silently. Add `PostPayloadTests` decoding the emitted JSON back into a
-dictionary:
-
-- **`date_gmt` key** is emitted (never `date`) when `dateGmt` is set — the
-  scheduling gotcha. Assert the JSON key is literally `date_gmt`.
-- **`featured_media` key name** correct.
-- **`comment_status` key name** correct.
-- **`slug` omitted when nil** (so the server value is preserved) — pass `nil`
-  and assert the key is **absent** from the JSON.
-- **`parent` for pages vs. nil for posts** — encode with `parent: nil` and
-  assert absent; with `parent: 5` and assert present.
-- **`dateGmt: nil`** → `date_gmt` key absent.
-- **`featuredMedia: nil`** → `featured_media` key absent.
-- **Empty `categories`/`tags`** arrays still encode as `[]`.
-
-### 1.4 `LinkSearchResult` / `LinkResultType`
-
-- ID construction `"\(type.rawValue)-\(id)"` matches what
-  `searchLinks` produces (already asserted indirectly; add a direct unit test of
-  the model if it has its own init logic).
-
-### 1.5 `Credentials.basicAuthHeader` (`Auth/Credentials.swift`)
-
-- **Known vector:** `user:pass` → `"Basic dXNlcjpwYXNz"`. Assert exact base64.
-- **Edge:** app password containing spaces (WordPress app passwords are
-  space-grouped, e.g. `xxxx yyyy zzzz`) — spaces are part of the secret and must
-  be base64-encoded verbatim, not stripped.
-- **Edge:** Unicode/non-ASCII in username → encoded via UTF-8 bytes
-  (`Data(raw.utf8)`), assert correct.
-- **Edge:** empty username or empty password → still produces a header (don't
-  crash); document expected behavior.
-
-> Note: `Credentials` persistence now goes through `KeychainStore` →
-> `JSONFileStore<Credentials>`. Persistence behavior is tested generically in §3.5;
-> the existing `KeychainStoreTests` should be updated to set
-> `AppSupportDirectory.override` to a temp dir in its `init` (instead of relying on
-> the real Application Support path) so it never touches real user credentials.
+| Suite | File | Tests | What it covers |
+|---|---|---|---|
+| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 10 | `WPPost` JSON decoding, optional-field defaults |
+| `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 7 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha |
+| `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
+| `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
+| `WordPressClientTests` | `WordPressClientTests.swift` | 37 | URL construction, HTTP error mapping, `searchLinks`, auth headers |
+| `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
+| `KeychainStoreTests` | `KeychainStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
+| `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
+| `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
+| `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
+| `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
+| `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 24 | `parseGenerateResponse` edge cases, system prompt, all prompt builders |
+| `AnthropicClientTests` | `AnthropicClientTests.swift` | 18 | Request headers, web search, multi-block joining, error handling |
+| `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
+| `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
+| `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 
 ---
 
-## 2. Networking — `WordPressClient` (mock-backed unit tests)
+### 1. Model decoding — `WPPostDecodingTests` (10 tests)
 
-Extend `WordPressClientTests` using the shared `MockURLProtocol`. The existing
-tests cover `fetchPosts`, `trashPost/Page`, and `searchLinks`. Fill the gaps and
-add edge cases.
+File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
-### 2.1 URL & request construction (capture the request, assert on it)
+Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults that have caused production bugs.
 
-- **`fetchPosts` query**: `per_page`, `page`, `context=edit`, and
-  `status=publish,draft,private,future,pending` are all present.
-- **`fetchPages`** hits `/wp-json/wp/v2/pages` (not `/posts`).
-- **`createPost`** → `POST /posts`, body is JSON, `Content-Type: application/json`.
-- **`updatePost`** → `PUT /posts/{id}`.
-- **`createPage`/`updatePage`** → `/pages` endpoints + correct method.
-- **Authorization header** present on every request (`Basic …`) — assert from a
-  captured request.
-- **`uploadMedia`** sets `Content-Type` to the passed mime type and
-  `Content-Disposition` with both `filename="…"` and `filename*=UTF-8''…`.
-  - **Edge:** filename with spaces/unicode (`café photo.jpg`) → percent-encoded
-    in the `filename*` part, raw in `filename`.
-  - **Edge:** filename that fails percent-encoding → falls back to raw filename
-    (the `?? filename` path).
-- **`deleteMedia`** → `DELETE /media/{id}?force=true` (permanent — contrast with
-  trash's `force=false`).
-- **`createAutosave`/`createPageAutosave`** → `POST /posts/{id}/autosaves` and
-  `/pages/{id}/autosaves`.
-- **`fetchCategories`/`fetchTags`** → `per_page=100`.
-- **`createCategory`/`createTag`** → `POST` with `{"name": …}` body.
-
-### 2.2 Response handling & error mapping (`perform` / `performVoid`)
-
-- **2xx with valid JSON** → decodes (covered for posts; add for media, taxonomy).
-- **Any status ≥ 300** → throws `APIError.httpError(statusCode:body:)` with the
-  **body string preserved**. Test 400, 401, 403, 404, 500.
-  - **Edge:** non-UTF8 body bytes → `body` becomes `""` (the `?? ""` path), no
-    crash.
-- **Valid 2xx but malformed/garbage JSON** → throws `APIError.decodingError`
-  (not `httpError`). This distinction matters for user-facing messages.
-- **Network failure** (have `MockURLProtocol` throw a `URLError`) →
-  `APIError.networkError`.
-- **Cancellation:** a `CancellationError` or `URLError(.cancelled)` is re-thrown
-  as `CancellationError`, **not** wrapped in `APIError.networkError`. This is
-  explicit code in both `perform` and `performVoid` — test both paths. (Matters
-  because autosave/load tasks get cancelled on fast navigation.)
-- **`performVoid` on 204/empty body** → succeeds without trying to decode.
-
-### 2.3 `searchLinks` (partially covered — extend)
-
-- **All three sub-requests succeed** → merged & ordered posts, terms, media
-  (covered).
-- **One sub-request fails** → ignored, others still returned (covered for the
-  media/term failure; also test the **posts** request failing while terms
-  succeed).
-- **All three fail** → returns `[]` (not a throw). The `try?` swallows each.
-- **subtype routing:** `subtype == "page"` → `.page`, else `.post`;
-  `subtype == "tag"` → `.tag`, else `.category`. Test a `subtype` value that's
-  neither to confirm the else-branch.
-- **Edge:** empty query string still issues requests (no client-side guard).
-- **Edge:** media item with empty `source_url` still produces a result.
-
-### 2.4 Concurrency
-
-- `searchLinks` issues the three `async let` fetches concurrently — verify with
-  a handler that records request order/timing isn't relied upon (the merge order
-  is deterministic regardless of completion order). A test that delays the posts
-  response but still expects posts first in the result proves ordering is by
-  construction, not by arrival.
+| Test | What it checks |
+|---|---|
+| `fullPostDecodesAllFields` | All standard fields decode from a complete JSON fixture |
+| `pageOmittingCategoriesAndTagsDefaultsToEmpty` | Pages endpoint omits `categories`/`tags` → both default to `[]` without throwing |
+| `missingTypeDefaultsToPost` | `type` absent → `"post"` |
+| `missingFeaturedMediaDefaultsToZero` | `featured_media` absent → `0` |
+| `missingDateGmtDefaultsToEmptyString` | `date_gmt` absent → `""` |
+| `missingParentDefaultsToZero` | `parent` absent → `0` |
+| `missingCommentStatusDefaultsToOpen` | `comment_status` absent → `"open"` |
+| `contentRawPreferredOverRendered` | `content.raw` decoded when present; `rendered` also decoded |
+| `missingRequiredFieldThrows` | Omitting `id` → decoding throws (required field guard) |
+| `futureStatusDecodes` | `status: "future"` decodes without error |
 
 ---
 
-## 3. Storage layer (SQLite — in-memory unit tests)
+### 2. Model decoding — `WPMediaDecodingTests` (7 tests)
 
-### 3.1 `DraftStore` (well covered — add edge cases)
+File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
-- **Empty title/content** create & fetch (new drafts start blank).
-- **`update` on a non-existent id** → no-op, no throw (SQLite update matches 0
-  rows). Confirm behavior is intentional.
-- **`delete` on a non-existent id** → no throw.
-- **`fetchAll` ordering** is by `updated_at DESC` — create A, create B, update
-  A, assert A now sorts first.
-- **Very large content** (multi-MB HTML) round-trips intact.
-- **Unicode / emoji / curly quotes** in title and content round-trip byte-exact
-  (ties to the curly-quotes gotcha).
-- **`type` defaulting**: a row inserted before the `type` column existed (or via
-  raw SQL without `type`) reads back as `"post"` (the `defaultValue` + ALTER
-  migration). Simulate by inserting via raw SQL.
+Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback.
 
-### 3.2 `AutosaveStore`
-
-- `saveAndLoad`, `loadReturnsNilForUnknownPost`, `saveOverwritesExisting` —
-  covered.
-- **Add `delete`** test (used by `save(force:)` after a successful publish to
-  clear the stash, and the gotcha around spurious restore toasts depends on it).
-- **`insert(or: .replace)`** keyed on `post_id` primary key — saving twice for
-  the same post keeps exactly one row; saving for two different posts keeps two.
-- **`serverModified` preserved** exactly (it's the conflict-detection baseline).
-- **Edge:** `savedAt` is set to "now" on each save — verify a later save has a
-  newer timestamp.
-
-### 3.3 `TaxonomyCache` (extend beyond categories)
-
-- **Tags**: add `saveAndLoadTags`, `isTagStale`, fresh-within-TTL for tags
-  (mirror the category tests — currently only categories are tested).
-- **TTL boundary:** exactly 24h (the documented TTL) — test just under and just
-  over. Current stale test uses 25h; add a 23h59m "fresh" and 24h01m "stale"
-  pair to pin the boundary.
-- **Replace semantics:** saving a new category set replaces the old (the
-  composite PK is `(type, wp_id)`) — save `[1,2]`, then save `[2,3]`, assert what
-  remains (does it merge or replace? document & test the actual behavior — this
-  is a likely surprise).
-- **Categories and tags don't collide:** a category with `wp_id == 1` and a tag
-  with `wp_id == 1` coexist because the PK includes `type`.
-- **Empty save** (`saveCategories([])`) → `loadCategories()` returns `[]`, and
-  staleness still computed from `fetchedAt`.
-
-### 3.4 `AppDatabase` migration
-
-- **`inMemory()` and re-`migrate()`** is idempotent (`ifNotExists`) — constructing
-  twice on the same path doesn't throw.
-- **ALTER TABLE add `type`** is wrapped in `try?` — simulate an old DB (create
-  `local_drafts` without `type`), open via `AppDatabase`, confirm the column is
-  added and existing rows default to `"post"`.
-
-### 3.5 `JSONFileStore<T>` & `AppSupportDirectory` (new — **untested, easy & high value**)
-
-These now back **all** file persistence (credentials, AI settings). One generic
-suite covers the security-critical write path that previously lived in each store.
-**Set `AppSupportDirectory.override` to a unique temp dir in the suite `init` and
-clean it up after** — this is the whole reason `.override` exists, and it makes
-these tests hermetic.
-
-`JSONFileStore` (parameterize over a simple `Codable` fixture type):
-- **Round-trip:** `save(value)` then `load()` returns an equal value.
-- **`load()` when file absent** → `nil` (not a throw) — the `fileExists` guard.
-- **`delete()`** removes the file; **`delete()` when absent** → no throw.
-- **Overwrite:** saving twice leaves one file with the latest value (atomic write).
-- **chmod 600:** after `save`, the file's posix permissions are exactly `0o600`
-  (owner read/write only). **This is the security regression guard.**
-- **Atomic write:** `options: [.atomic]` — a corrupt/partial file is never left
-  behind. (Hard to force a mid-write crash in a unit test; at minimum assert that
-  overwriting a larger file with a smaller value yields valid JSON, no trailing
-  garbage.)
-- **Decode failure:** write malformed JSON to the path, then `load()` → throws
-  (surfaces a decoding error rather than returning a half-object).
-- **Distinct filenames don't collide:** two stores with different filenames are
-  independent.
-
-`AppSupportDirectory`:
-- **`directory()` creates the dir** and returns it; calling twice is idempotent.
-- **Directory permissions `0o700`** — assert posix perms on the created dir
-  (closes the world-readable window the doc-comment describes).
-- **Pre-existing loose dir is tightened** — pre-create the override dir with
-  `0o755`, call `directory()`, assert it's re-set to `0o700` (the `setAttributes`
-  fallback path). _Note: this tightening only runs on the real path, not the
-  `override` branch — test the real branch carefully or document the gap._
-- **`fileURL(name)`** joins correctly.
-- **`override` isolation:** with `override` set, no file is ever created under the
-  real `~/Library/Application Support/Quill`.
-
-### 3.6 Thin store wrappers (`KeychainStore`, `AISettingsStore`)
-
-Now that both are one-liners over `JSONFileStore`, a light smoke test each is
-enough (the heavy lifting is §3.5):
-- `KeychainStore.save/load/delete` round-trips a `Credentials` (existing tests —
-  just add the `AppSupportDirectory.override` setup).
-- `AISettingsStore.save/load` round-trips an `AISettings` including `apiKey`,
-  `styleGuide`, `samplePostIDs`, and site URL; missing file → `nil`.
+| Test | What it checks |
+|---|---|
+| `integerDimensionsDecode` | `"width": 2560` → `Int` |
+| `floatDimensionsDecodeToInt` | `"width": 2560.0` → `Int` via the fallback path (regression guard) |
+| `missingMediaDetailsIsNil` | `media_details` absent → `nil`, no throw |
+| `missingTitleDefaultsToEmpty` | `title` absent → empty `RenderedString` |
+| `sizesMapDecodes` | `sizes` dict with named sizes → `[String: MediaSize]` |
+| `sizesDimensionsAsFloatsDecode` | Float `width`/`height` inside `sizes` entries also decode |
+| `malformedSizesDoesNotCrash` | `sizes: []` (wrong type) → `try?` swallows it, whole `WPMedia` still decodes |
 
 ---
 
-## 4. AI layer
+### 3. Model encoding — `PostPayloadTests` (11 tests)
 
-### 4.1 `AIPromptBuilder` (pure functions — **untested, high value**)
+File: `Tests/QuillTests/PostPayloadTests.swift`
 
-`parseGenerateResponse` has subtle string-parsing logic that has already been
-patched twice (web-search preamble, fences). Add `AIPromptBuilderTests`:
+Guards `PostPayload` encoding — encoding bugs corrupt published content silently. Tests decode the emitted JSON back into a dictionary to assert key names and presence.
 
-**`parseGenerateResponse`:**
-- **Happy path:** `"TITLE: My Post\n\nCONTENT:\n<p>Hi</p>"` → `("My Post",
-  "<p>Hi</p>")`.
-- **Markdown fences stripped:** input wrapped in ` ```html … ``` ` → fences
-  removed, title/content extracted.
-- **Web-search preamble:** preamble text glued directly before `TITLE:` with no
-  newline (`"I'll search for…TITLE: X\n\nCONTENT:\n<p>…</p>"`) → still parses
-  because it searches for `TITLE:` anywhere (the documented gotcha).
-- **Case-insensitive markers:** `title:` / `content:` lowercase → still parsed.
-- **Missing `TITLE:`** → returns `nil`.
-- **Missing `CONTENT:`** → returns `nil`.
-- **`CONTENT:` appears before `TITLE:`** → the content search is scoped to
-  *after* the title marker; a stray `CONTENT:` earlier shouldn't fool it. Test
-  `"CONTENT: junk TITLE: Real\n\nCONTENT:\n<p>body</p>"`.
-- **Empty title** (`"TITLE:\n\nCONTENT:\n<p>x</p>"`) → returns `nil` (guard).
-- **Empty content** (`"TITLE: X\n\nCONTENT:\n"`) → returns `nil` (guard).
-- **Title with leading/trailing whitespace** → trimmed.
-- **Content with surrounding blank lines** → trimmed via
-  `whitespacesAndNewlines`.
-- **`TITLE:` with no following newline** (title runs to EOF, no CONTENT) →
-  returns `nil` (no content marker).
-- **Multiple ` ``` ` occurrences** → all stripped.
-
-**`systemPrompt(styleGuide:)`:**
-- `nil` guide → base prompt only, no "Write in this author's style" block.
-- **Empty-string guide** → treated same as nil (the `!guide.isEmpty` check).
-- Non-empty guide → appended with the style-guide header.
-
-**`generatePostPrompt`** / **`operationPrompt`** / **`styleGuideGenerationPrompt`:**
-- Assert the prompt **names the HTML elements** (`<h2>`, `<h3>`, `<p>`,
-  `<ul>`/`<li>`) — the documented gotcha that vague prompts cause Claude to omit
-  headings. A test asserting `prompt.contains("<h2>")` guards that.
-- `operationPrompt` includes the correct instruction per `AIWritingOperation`
-  case and embeds the selected HTML after `"Content to transform:"`.
-- `styleGuideGenerationPrompt` numbers samples `--- Sample 1 ---`, `--- Sample 2
-  ---` and joins them; test with 0, 1, and N samples.
-
-### 4.2 `AnthropicClient` (mock-backed)
-
-`AnthropicClient.session` is **still** a `private static let` (confirmed this
-revision) — to unit test it, refactor to allow injecting a `URLSession` (mirror
-`WordPressClient`'s init, which already does this). With that:
-
-- **Request shape:** `x-api-key`, `anthropic-version: 2023-06-01`,
-  `content-type: application/json` headers set.
-- **Beta header without web search:** `anthropic-beta:
-  prompt-caching-2024-07-31` only.
-- **Beta header with web search:** includes `web-search-2025-03-05` and the
-  request body's `tools` array contains the `web_search_20250305` tool.
-- **No web search** → `tools` is omitted/nil in body.
-- **`cache_control: ephemeral`** present on the system block (caching gotcha).
-- **Response joining (the documented multi-block gotcha):** a response with
-  several `type: "text"` blocks plus `server_tool_use` and
-  `web_search_tool_result` blocks → only the text blocks are joined, in order,
-  into the full string. **Assert non-text blocks are excluded and order is
-  preserved** (don't use first/last).
-- **Empty text** (all blocks non-text, or empty) → throws
-  `AnthropicError.noTextContent`.
-- **Non-200** → throws `AnthropicError.httpError(code, body)` with body
-  preserved.
-- **Non-HTTP response** → `AnthropicError.invalidResponse`.
-- **Malformed JSON** → decoding throws (verify it surfaces, not silently empty).
-
-### 4.3 `AISettings` / `AISettingsStore`
-
-- Persistence round-trip and **chmod 600** are now covered generically in §3.5
-  (`AISettingsStore` is a thin `JSONFileStore<AISettings>` wrapper) — see §3.6 for
-  the smoke test. Don't re-test the file mechanics here.
-- `aiEnabled` logic (on `AppState`): nil settings → false; empty apiKey → false;
-  non-empty → true. (Unit-testable on `AppState` directly.)
-- **Style-guide regeneration rules** (documented in gotchas) — these live in
-  `PreferencesView.saveAll()`; if extractable into a testable helper, test:
-  (a) sample IDs changed → regenerate; (b) no guide yet → regenerate; (c) IDs
-  unchanged + guide exists → reuse, no Claude call; (d) **site URL changed →
-  clear `samplePostIDs` and set guide to nil**. If not extractable, cover under
-  manual §7.
+| Test | What it checks |
+|---|---|
+| `schedulingUsesDateGmtKeyNotDate` | Scheduling uses key `date_gmt`, never `date` (scheduling gotcha) |
+| `nilDateGmtOmitsKeyFromJSON` | `dateGmt: nil` → key absent from JSON |
+| `nilSlugOmitsKeyFromJSON` | `slug: nil` → key absent (preserves server value on update) |
+| `nonEmptySlugIncludedInJSON` | Non-nil slug → key present |
+| `nilFeaturedMediaOmitsKey` | `featuredMedia: nil` → `featured_media` absent |
+| `featuredMediaIncludedWhenSet` | Non-nil `featuredMedia` → key present |
+| `nilParentOmitsKey` | `parent: nil` → key absent (posts have no parent) |
+| `parentIncludedForPages` | `parent: 5` → key present (pages can have parent) |
+| `emptyCategoriesAndTagsEncodeAsEmptyArrays` | `[]` → still encodes as `[]`, not omitted |
+| `categoriesAndTagsPopulated` | Non-empty arrays encode correctly |
+| `codingKeyNamesAreCorrect` | `featured_media`, `comment_status`, `date_gmt` exact key names asserted |
 
 ---
 
-## 5. `AppState` & view-model logic (pure unit tests)
+### 4. Auth — `CredentialsTests` (4 tests)
 
-`AppState` has pure computed properties worth pinning:
+File: `Tests/QuillTests/CredentialsTests.swift`
 
-- **`filteredItems`** for each section: `.posts` → maps `posts`; `.pages` →
-  `pages`; `.localDrafts` → `localDrafts`; `.media` → `[]`.
-- **Search filter:** case-insensitive `contains` on title; empty search returns
-  all; no-match returns `[]`; partial match works; **whitespace-only search**
-  (document whether it filters or not).
-- **`PostItem.id`** uniqueness: a remote post id `5` → `"remote-5"`; a local
-  draft id `5` → `"local-5"` — they must not collide (the sidebar selection
-  depends on this).
-- **`PostItem.title`** empty → `"Untitled"` for both remote and local.
-- **`PostItem.statusBadge`**: remote → status string; local → `"local-{type}"`.
-- **`SidebarSection.icon` / `.shortTitle`** mapping (cheap, guards typos).
+| Test | What it checks |
+|---|---|
+| `basicAuthHeaderKnownVector` | `user:pass` → exact base64 `"Basic dXNlcjpwYXNz"` |
+| `appPasswordWithSpacesEncodedVerbatim` | Spaces in WordPress app passwords encoded as-is, not stripped |
+| `basicAuthHeaderHasCorrectPrefix` | Header starts with `"Basic "` |
+| `unicodeUsernameEncodedAsUTF8` | Non-ASCII username encoded via UTF-8 bytes |
 
 ---
 
-## 6. JavaScript editor layer (`Resources/editor.html`)
+### 5. Networking — `WordPressClientTests` (37 tests)
 
-This is the **least-covered, highest-complexity** area. The `toWordPressHTML`
-transform and the `parseHTML` rules are the contract with WordPress; a
-regression here corrupts every saved post. Two complementary approaches:
+File: `Tests/QuillTests/WordPressClientTests.swift`
+Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
-### 6.1 Headless JS unit tests (recommended — add a JS test harness)
+`@Suite(.serialized)` — runs sequentially because `MockURLProtocol.requestHandler` is a shared static. Uses `URLSessionConfiguration.ephemeral` with `MockURLProtocol` as the protocol class.
 
-`toWordPressHTML`, `extractAlignment`, and the parse rules are pure DOM
-functions. Extract them (or the bundle) so they can run under **Node with
-jsdom** or a headless browser, and add a `Scripts/test-editor.mjs` (or a small
-`vitest`/`node:test` suite). Test cases for `toWordPressHTML`:
+#### URL & request construction (14 tests)
 
-- **Headings** `<h1>`–`<h6>` → gain `class="wp-block-heading"`; existing classes
-  preserved (idempotent — running twice doesn't double-add).
-- **Lists:** `<ul>` (non-task) and `<ol>` → `wp-block-list`; **task lists
-  (`ul[data-type="taskList"]`) are excluded** — assert no class added.
-- **List-item `<p>` unwrap:** `<li><p>text</p></li>` → `<li>text</li>`; but
-  **multi-paragraph `<li>`** (`<li><p>a</p><p>b</p></li>`) is left untouched
-  (the "exactly one child" guard).
-- **Task item div unwrap:** `<li data-type="taskItem"><div><p>x</p></div></li>`
-  → inner `<p>` stripped to `<div>x</div>`.
-- **Blockquote** → `wp-block-quote`; **code `<pre>`** → `wp-block-code`.
-- **Blockquote `<cite>` (new feature):**
-  - **Empty cite stripped:** `<blockquote><p>quote</p><cite></cite></blockquote>`
-    and a whitespace-only cite (`<cite>   </cite>`) → the `<cite>` is **removed**
-    from saved HTML (the `!el.textContent.trim()` rule). This is the regression
-    guard for the auto-inserted empty cite on every new blockquote.
-  - **Non-empty cite preserved:** `<cite>— Author</cite>` survives and stays the
-    last child of the blockquote.
-  - **Cite only stripped inside blockquote** — the selector is `blockquote cite`;
-    a stray `<cite>` elsewhere (if it can occur) is out of scope. Confirm scope.
-  - **Round-trip:** load `<blockquote class="wp-block-quote"><p>q</p><cite>A</cite>
-    </blockquote>` → parses to a blockquote node with a trailing `cite` child →
-    serializes back to the same structure (parse rule is `{ tag: 'cite' }`,
-    schema `block+ cite?`).
-- **Aligned images:** `<img class="alignleft">` → wrapped in
-  `<figure class="wp-block-image alignleft">`, and the align class **removed
-  from the img**. Test all three: left/right/center.
-- **`data-media-id` → `wp-image-{id}` class** re-emitted on the img.
-- **Image with both alignment and media-id** → figure wrapper + `wp-image-{id}`.
-- **Image with no alignment, no media-id** → untouched (bare `<img>`).
-- **Tables — header promotion:** a `<tbody>` whose first row is all `<th>` →
-  that row moves into a new `<thead>`. **Edge:** first row mixed `<th>`/`<td>` →
-  **not** promoted. **Edge:** table already has `<thead>` → skipped.
-- **Tables — figure wrap:** `<table>` → wrapped in `<figure
-  class="wp-block-table">`; a table **already** inside `wp-block-table` is not
-  double-wrapped (idempotency guard).
-- **Idempotency overall:** `toWordPressHTML(toWordPressHTML(x))` ==
-  `toWordPressHTML(x)` for representative inputs — critical because it runs on
-  every keystroke-debounce.
-- **Empty document** (`<p></p>`) → stable output, no crash.
-- **Unicode / curly quotes / emoji** in text nodes → preserved.
+| Test | What it checks |
+|---|---|
+| `fetchPostsDecodesList` | `fetchPosts` decodes a list of posts |
+| `fetchPostsIncludesRequiredQueryParams` | `per_page`, `page`, `context=edit`, `status=…` all present |
+| `fetchPagesHitsPagesEndpoint` | `/wp-json/wp/v2/pages`, not `/posts` |
+| `createPostUsesPostMethodWithJsonContentType` | `POST /posts`, `Content-Type: application/json` |
+| `updatePostUsesPutMethodOnPostsId` | `PUT /posts/{id}` |
+| `createPageUsesPostMethodOnPagesEndpoint` | `POST /pages` |
+| `updatePageUsesPutMethodOnPagesId` | `PUT /pages/{id}` |
+| `authorizationHeaderIncludedInRequests` | `Authorization: Basic …` on all requests |
+| `uploadMediaSetsContentTypeFromMimeType` | `Content-Type` matches passed mime type |
+| `uploadMediaSetsContentDispositionWithFilename` | `Content-Disposition` includes `filename="…"` |
+| `uploadMediaSpacesInFilenameArePercentEncoded` | Spaces in filenames percent-encoded in `filename*` part |
+| `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
+| `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
+| `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
 
-For `extractAlignment` / `parseHTML`:
-- **`figure.wp-block-image alignleft`** on load → parsed back to an image node
-  with `alignment: left` (the round-trip with the serializer above).
-- A `figure.wp-block-image` with **no** alignment class → no alignment.
-- An `<img>` with `class="wp-image-42"` → `mediaId: 42` extracted.
-- An `<img>` with `width`/`height` attributes → parsed onto the node.
+#### Taxonomy (6 tests)
 
-**Round-trip property test:** For each Gutenberg block type, assert
-`parse(serialize(node)) == node` and `serialize(parse(html))` ==
-canonical-`html`. This is the single most valuable JS test — it proves load →
-edit → save doesn't drift.
+| Test | What it checks |
+|---|---|
+| `fetchAllCategoriesHitsCategoriesEndpointWithPerPage100` | `per_page=100` |
+| `fetchAllCategoriesPaginatesAcrossMultiplePages` | Follows `X-WP-TotalPages` to page 2 |
+| `fetchAllTagsHitsTagsEndpointWithPerPage100` | `/tags` endpoint |
+| `fetchAllTagsPaginatesAcrossMultiplePages` | Tags pagination |
+| `createCategoryUsesPostMethodOnCategoriesEndpoint` | `POST /categories` with `{"name":…}` |
+| `createTagUsesPostMethodOnTagsEndpoint` | `POST /tags` with `{"name":…}` |
 
-### 6.2 In-app integration (WKWebView) — covered under manual §7.4
+#### Error mapping (7 tests)
 
-The Swift↔JS bridge (`beginAIOperation`, `showAIResult`, `setMediaSizes`,
-`getContent`, message handlers) is hard to unit test without driving a live
-WKWebView. Cover via the manual editor checklist, or — if automation is worth
-it — an XCUITest target that loads `editor.html` and calls
-`evaluateJavaScript`.
+| Test | What it checks |
+|---|---|
+| `fetchPostsThrowsOnHTTPError` | Non-2xx → `APIError.httpError` |
+| `trashPostThrowsOnHTTPError` | DELETE non-2xx → error |
+| `httpErrorPreservesStatusCode` | Status code in `APIError.httpError(statusCode:body:)` |
+| `httpErrorPreservesBodyString` | Body string preserved in error |
+| `nonUtf8ResponseBodyBecomesEmptyString` | Non-UTF8 body → `body = ""`, no crash |
+| `successWithMalformedJsonThrowsDecodingError` | 200 + garbage JSON → `APIError.decodingError` (not `httpError`) |
+| `networkFailureThrowsNetworkError` | `URLError` from mock → `APIError.networkError` |
+
+#### Cancellation (1 test)
+
+| Test | What it checks |
+|---|---|
+| `urlErrorCancelledRethrowsAsCancellationError` | `URLError(.cancelled)` → `CancellationError`, not wrapped in `APIError.networkError` |
+
+#### Trash (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `trashPostSendsDeleteRequest` | `DELETE /posts/{id}?force=false` (recoverable) |
+| `trashPageSendsDeleteRequest` | `DELETE /pages/{id}?force=false` |
+
+#### `searchLinks` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `searchLinksReturnsMergedResults` | All three sub-requests succeed → merged list |
+| `searchLinksIgnoresSubrequestFailures` | Media/term failure → others still returned |
+| `searchLinksAllSubrequestsFailReturnsEmptyArray` | All fail → `[]`, no throw |
+| `searchLinksPostsFailWhileTermsSucceed` | Posts sub-request fails → terms/media still returned |
+| `searchLinksPageSubtypeMapsToPageType` | `subtype == "page"` → `.page` result type |
+| `searchLinksTagSubtypeMapsToTagType` | `subtype == "tag"` → `.tag` result type |
+| `searchLinksUnknownTermSubtypeFallsToCategory` | Unknown term subtype → `.category` |
 
 ---
 
-## 7. Functional / manual test checklists
+### 6. Storage — `JSONFileStoreTests` (8 tests)
 
-These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
-that aren't economically unit-testable. Run against a **real WordPress test
-site** (or a local `wp-env`/Docker WordPress) using an Application Password.
-Build with `./build.sh` and `open Quill.app` before each pass.
+File: `Tests/QuillTests/JSONFileStoreTests.swift`
 
-> Recommendation: keep a disposable WordPress instance so destructive tests
-> (delete, trash, publish) don't pollute a real site.
+Tests use an `in: baseDirectory` parameter pointing to a per-test temp dir — fully isolated, no global state.
+
+| Test | What it checks |
+|---|---|
+| `roundTrip` | `save` → `load` returns equal value |
+| `loadReturnsNilWhenAbsent` | No file → `nil`, no throw |
+| `deleteRemovesFile` | File gone after `delete()` |
+| `deleteWhenAbsentDoesNotThrow` | `delete()` on missing file is a no-op |
+| `overwriteKeepsLatestValue` | Save twice → one file with the latest value |
+| `savedFileHasChmod600` | Posix permissions after save are `0o600` (security regression guard) |
+| `decodeFailureThrows` | Malformed JSON on disk → `load()` throws |
+| `distinctFilenamesDontCollide` | Two stores with different names are independent |
+
+---
+
+### 7. Storage — `KeychainStoreTests` (10 tests)
+
+File: `Tests/QuillTests/KeychainStoreTests.swift`
+
+`@Suite(.serialized)` — uses `AppSupportDirectory.override` (a global) so only one test at a time writes to the temp dir. Override is set in `init` and cleared in `deinit`.
+
+#### `KeychainStore` / credentials (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `saveAndLoad` | Credentials round-trip through `KeychainStore` |
+| `loadReturnsNilWhenEmpty` | No stored creds → `nil` |
+| `deleteRemovesCredentials` | Credentials gone after delete |
+
+#### `AppSupportDirectory` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `appSupportDirectoryCreatesDir` | `directory()` creates the dir and returns it |
+| `appSupportDirectoryIsIdempotent` | Calling `directory()` twice doesn't error |
+| `appSupportFileURLJoinsCorrectly` | `fileURL(name:)` appends the name to the dir path |
+| `appSupportOverrideKeepsFilesInTempDir` | With override set, no files created under real `~/Library/Application Support/Quill` |
+
+#### `AISettingsStore` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `aiSettingsRoundTrip` | Full `AISettings` (apiKey, styleGuide, samplePostIDs, siteURL) round-trips |
+| `aiSettingsLoadReturnsNilWhenAbsent` | No file → `nil` |
+| `aiSettingsDeleteRemovesSettings` | File gone after delete |
+
+---
+
+### 8. Storage — `DraftStoreTests` (13 tests)
+
+File: `Tests/QuillTests/DraftStoreTests.swift`
+
+Uses `AppDatabase.inMemory()` — each test gets an isolated DB.
+
+| Test | What it checks |
+|---|---|
+| `createAndFetch` | Create → `fetchAll` returns it |
+| `createPageDraft` | `type: "page"` stored correctly |
+| `fetchAllPreservesType` | Multiple types returned with correct type field |
+| `update` | Updated title/content reflected on next fetch |
+| `delete` | Draft gone after delete |
+| `loadByIdReturnsNilForUnknownId` | Unknown id → `nil` |
+| `loadByIdReturnsCorrectDraft` | Correct draft by id |
+| `loadByIdReflectsUpdates` | Load after update returns new content |
+| `emptyTitleAndContentRoundTrip` | Blank strings store and load correctly |
+| `updateNonExistentIdDoesNotThrow` | Update on missing id → no-op |
+| `deleteNonExistentIdDoesNotThrow` | Delete on missing id → no-op |
+| `fetchAllOrderedByUpdatedAtDesc` | Most recently updated sorts first |
+| `unicodeAndEmojiRoundTrip` | Non-ASCII text, emoji, curly quotes preserved byte-exact |
+
+---
+
+### 9. Storage — `AutosaveStoreTests` (8 tests)
+
+File: `Tests/QuillTests/AutosaveStoreTests.swift`
+
+Uses `AppDatabase.inMemory()`.
+
+| Test | What it checks |
+|---|---|
+| `saveAndLoad` | Autosave round-trip |
+| `loadReturnsNilForUnknownPost` | Unknown post id → `nil` |
+| `saveOverwritesExisting` | Second save for same post replaces first (one row per post) |
+| `deleteRemovesAutosave` | Gone after delete |
+| `deleteOnMissingPostIDDoesNotThrow` | Delete on unknown id → no-op |
+| `oneSavePerPostID` | Save twice for same id → exactly one row |
+| `serverModifiedPreservedExactly` | `serverModified` timestamp stored and returned intact |
+| `laterSaveHasNewerSavedAt` | `savedAt` on second save is ≥ first |
+
+---
+
+### 10. Storage — `TaxonomyCacheTests` (12 tests)
+
+File: `Tests/QuillTests/TaxonomyCacheTests.swift`
+
+Uses `AppDatabase.inMemory()`.
+
+| Test | What it checks |
+|---|---|
+| `saveAndLoadCategories` | Category list round-trip |
+| `staleAfterTTL` | Cache is stale after 25h |
+| `freshWithinTTL` | Cache is fresh within 24h |
+| `saveAndLoadTags` | Tag list round-trip |
+| `staleTagsAfterTTL` | Tags stale after TTL |
+| `freshTagsWithinTTL` | Tags fresh within TTL |
+| `staleJustAfterTTLBoundary` | Stale at exactly 24h01m |
+| `freshJustBeforeTTLBoundary` | Fresh at exactly 23h59m |
+| `saveCategoriesReplacesAll` | Save `[1,2]` then `[2,3]` → only `[2,3]` remain (full replace, not merge) |
+| `categoryAndTagWithSameIDCoexist` | Category wp_id=1 and tag wp_id=1 don't collide (type is part of PK) |
+| `saveEmptyCategoriesYieldsEmptyLoad` | `save([])` → `load()` returns `[]` |
+| `isStaleWhenNoDataExists` | No data ever saved → `isStale` returns `true` |
+
+---
+
+### 11. Storage — `AppDatabaseTests` (2 tests)
+
+File: `Tests/QuillTests/AppDatabaseTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `migrationIsIdempotent` | Running `migrate()` twice on same schema doesn't throw |
+| `typeColumnMigratedFromOldSchema` | Old DB (without `type` column) → migrate adds it; existing rows default to `"post"` |
+
+---
+
+### 12. AI — `AIPromptBuilderTests` (24 tests)
+
+File: `Tests/QuillTests/AIPromptBuilderTests.swift`
+
+Pure function tests — no network, no async. `parseGenerateResponse` has been patched twice for real production bugs; these tests pin every edge case.
+
+#### `parseGenerateResponse` (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `happyPathParsesCorrectly` | Standard `TITLE:…CONTENT:…` structure |
+| `markdownFencesStripped` | ` ```html … ``` ` fences removed before parsing |
+| `webSearchPreambleGluedDirectlyToTitle` | Preamble text joined to `TITLE:` without newline still parsed (uses `range(of:)`, not `hasPrefix`) |
+| `caseInsensitiveMarkers` | `title:`/`content:` lowercase → still parsed |
+| `missingTitleMarkerReturnsNil` | No `TITLE:` → `nil` |
+| `missingContentMarkerReturnsNil` | No `CONTENT:` → `nil` |
+| `emptyTitleReturnsNil` | `TITLE:` with no text → `nil` |
+| `emptyContentReturnsNil` | `CONTENT:` with no text → `nil` |
+| `titleIsTrimmed` | Leading/trailing whitespace stripped from title |
+| `contentIsTrimmerd` | Content trimmed via `whitespacesAndNewlines` |
+| `contentMarkerScopedAfterTitleMarker` | Stray `CONTENT:` before `TITLE:` doesn't fool parser |
+
+#### `systemPrompt` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `systemPromptWithoutStyleGuide` | `nil` guide → no style block |
+| `systemPromptWithEmptyStyleGuideExcludesStyleBlock` | Empty string guide → same as nil |
+| `systemPromptWithStyleGuideIncludesIt` | Non-empty guide appended to prompt |
+
+#### `generatePostPrompt` & `operationPrompt` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `generatePostPromptNamesHTMLElements` | Prompt contains `<h2>`, `<h3>`, `<p>`, `<ul>`, `<li>` (prevents headings-only-p regression) |
+| `generatePostPromptIncludesUserPrompt` | User's prompt string embedded |
+| `operationPromptIncludesSelectedHTML` | Selected HTML embedded after "Content to transform:" |
+| `makeLongerInstructionPresent` | "longer" in `makeLonger` operation prompt |
+| `makeShorterInstructionPresent` | "shorter" in `makeShorter` operation prompt |
+| `convertToTableMentionsTableTags` | Table-related tags in `convertToTable` prompt |
+| `convertToListMentionsListTags` | List-related tags in `convertToList` prompt |
+
+#### `styleGuideGenerationPrompt` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `styleGuidePromptNumbersSamples` | `--- Sample 1 ---` / `--- Sample 2 ---` numbering |
+| `styleGuidePromptWithEmptySamples` | 0 samples → no crash, empty content |
+| `styleGuidePromptWordLimit` | 150-word limit mentioned in prompt |
+
+---
+
+### 13. AI — `AnthropicClientTests` (18 tests)
+
+File: `Tests/QuillTests/AnthropicClientTests.swift`
+Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
+
+`@Suite(.serialized)` — uses its own `AnthropicMockURLProtocol` subclass with a separate `static var requestHandler` to avoid races with `WordPressClientTests`' `MockURLProtocol`. Body reconstruction: URLSession clears `httpBody` in URLProtocol; `AnthropicMockURLProtocol.startLoading()` reads the body from `httpBodyStream`.
+
+#### Request headers (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `requestHasApiKeyHeader` | `x-api-key` header set |
+| `requestHasVersionHeader` | `anthropic-version: 2023-06-01` |
+| `requestHasContentTypeHeader` | `content-type: application/json` |
+
+#### Beta headers & web search (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `betaHeaderWithoutWebSearchContainsCachingOnly` | `anthropic-beta` contains `prompt-caching-2024-07-31` only |
+| `betaHeaderWithWebSearchIncludesWebSearchBeta` | `web-search-2025-03-05` added when web search on |
+| `toolsAbsentWhenWebSearchOff` | `tools` key absent from body |
+| `toolsPresentWhenWebSearchOn` | `tools` array contains `web_search_20250305` |
+
+#### Prompt caching (1 test)
+
+| Test | What it checks |
+|---|---|
+| `systemBlockHasCacheControlEphemeral` | System block has `cache_control: {"type":"ephemeral"}` |
+
+#### Response handling (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `singleTextBlockReturnsText` | Single `type:"text"` block → its text |
+| `multipleTextBlocksAreJoinedInOrder` | Multiple text blocks → joined in order (web-search fragmentation gotcha) |
+| `nonTextBlocksExcludedFromJoin` | `server_tool_use` and `web_search_tool_result` blocks excluded |
+| `allNonTextBlocksThrowsNoTextContent` | All non-text blocks → `AnthropicError.noTextContent` |
+| `truncatedTrueWhenStopReasonIsMaxTokens` | `stop_reason: "max_tokens"` → `truncated: true` |
+| `truncatedFalseWhenStopReasonIsEndTurn` | `stop_reason: "end_turn"` → `truncated: false` |
+| `nonOkStatusThrowsHttpError` | Non-200 → `AnthropicError.httpError(code, body)` |
+
+#### Error handling (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `httpErrorPreservesBodyString` | Error body string preserved |
+| `malformedJsonThrows` | Garbage JSON → decoding throws |
+| `networkFailureThrows` | `URLError` from mock → error surfaced |
+
+---
+
+## JS editor tests (37 tests)
+
+File: `Scripts/test-editor.js`
+Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
+
+Tests run under Node's built-in test runner with jsdom for DOM support. They test the `toWordPressHTML` and `extractAlignment` functions extracted from `editor.html` into `editor-transforms.js`.
+
+### `extractAlignment` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `alignleft returns left` | `"alignleft"` → `"left"` |
+| `alignright returns right` | `"alignright"` → `"right"` |
+| `aligncenter returns center` | `"aligncenter"` → `"center"` |
+| `empty string returns null` | `""` → `null` |
+| `unrelated class returns null` | `"wp-block-image"` → `null` |
+| `alignment class mixed with others is still detected` | `"wp-block-image alignright size-large"` → `"right"` |
+
+### `toWordPressHTML` — headings (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `h1 gains wp-block-heading class` | `<h1>` → `class="wp-block-heading"` |
+| `h2 through h6 each gain wp-block-heading` | All heading levels |
+| `existing classes on heading are preserved` | Pre-existing classes kept alongside new class |
+| `headings are idempotent` | Running twice doesn't duplicate the class |
+
+### `toWordPressHTML` — lists (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `ul gains wp-block-list` | `<ul>` → `wp-block-list` |
+| `ol gains wp-block-list` | `<ol>` → `wp-block-list` |
+| `task list does NOT gain wp-block-list` | `data-type="taskList"` → no class added |
+
+### `toWordPressHTML` — list item `<p>` unwrapping (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `single-child <p> inside <li> is unwrapped` | `<li><p>text</p></li>` → `<li>text</li>` |
+| `multi-child <li> is left untouched` | Two `<p>` in one `<li>` → unchanged |
+| `task item div>p is unwrapped` | Task item inner `<p>` stripped to `<div>text</div>` |
+
+### `toWordPressHTML` — blockquote & cite (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `blockquote gains wp-block-quote class` | `<blockquote>` → `wp-block-quote` |
+| `empty cite is stripped` | `<cite></cite>` → removed from saved HTML |
+| `whitespace-only cite is stripped` | `<cite>   </cite>` → removed |
+| `non-empty cite is preserved` | `<cite>— Author</cite>` → survives |
+| `cite stripping only applies inside blockquote` | `<cite>` outside blockquote not touched |
+
+### `toWordPressHTML` — code blocks (1 test)
+
+| Test | What it checks |
+|---|---|
+| `pre gains wp-block-code class` | `<pre>` → `wp-block-code` |
+
+### `toWordPressHTML` — images (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `data-media-id produces wp-image-{id} class on img` | `data-media-id="42"` → `class="wp-image-42"` |
+| `img.alignleft is wrapped in figure.wp-block-image.alignleft` | Alignment class causes figure wrap |
+| `img.alignright is wrapped in figure.wp-block-image.alignright` | Right alignment |
+| `img.aligncenter is wrapped in figure.wp-block-image.aligncenter` | Center alignment |
+| `align class is removed from img after wrapping in figure` | `alignleft` removed from `<img>` once in `<figure>` |
+| `image with both alignment and media-id gets figure wrapper and wp-image class` | Both transforms applied together |
+| `image with no alignment and no media-id is untouched` | Plain `<img>` → no figure wrap |
+
+### `toWordPressHTML` — tables (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `table is wrapped in figure.wp-block-table` | `<table>` → `<figure class="wp-block-table">` |
+| `all-th first row is promoted from tbody to thead` | All-`<th>` row moves to `<thead>` |
+| `mixed th/td first row is NOT promoted to thead` | Mixed `<th>`/`<td>` → no promotion |
+| `table already having thead is not modified` | Pre-existing `<thead>` → untouched |
+| `table already inside wp-block-table is not double-wrapped` | Idempotency: one `wp-block-table` after two passes |
+
+### `toWordPressHTML` — idempotency & edge cases (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `full document is idempotent across all transform types` | `toWordPressHTML(toWordPressHTML(x)) == toWordPressHTML(x)` for all element types |
+| `empty paragraph is stable` | `<p></p>` → `<p></p>` |
+| `unicode and emoji in text are preserved` | café, 🎉, curly quotes survive |
+
+---
+
+## Manual / functional test checklists
+
+These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows that aren't economically unit-testable. Run against a **real WordPress test site** (or a local `wp-env`/Docker WordPress) using an Application Password. Build with `./build.sh` and `open Quill.app` before each pass.
+
+> Recommendation: keep a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.
 
 ### 7.1 Authentication & onboarding
 
@@ -561,7 +577,7 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 - [ ] Search filters the current section case-insensitively; clearing restores.
 - [ ] **Empty states:** empty Posts, empty Pages, empty Drafts, empty Media each
       show the right placeholder; editor empty state says "post"/"page"/"draft"
-      per active section (TODO item).
+      per active section.
 - [ ] Switching to Media hides the post list/search/toolbar and shows the
       thumbnail grid (the `else` branch gotcha).
 - [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the
@@ -602,7 +618,7 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 
 - [ ] Insert image via media picker at caret → appears at correct position.
 - [ ] **Hit-testing:** clicking a thumbnail in the picker grid selects the
-      intended item (regression on the recent thumbnail-grid offset fix).
+      intended item.
 - [ ] Drag image file from Finder onto editor → uploads, inserts, toast shown.
 - [ ] **Edge:** drag a non-image file → ignored (the `isFileURL`/mime guard).
 - [ ] **Edge:** drag multiple images at once → all upload and insert.
@@ -637,8 +653,8 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 - [ ] **Local draft, Save Draft** → persists locally only, **no** network call
       (verify via proxy/network log); toast "Saved locally".
 - [ ] **Local draft, Publish** → creates remote post, **local copy disappears
-      immediately** from the Drafts list (TODO item), selection moves to the new
-      remote item, section switches to Posts/Pages.
+      immediately** from the Drafts list, selection moves to the new remote item,
+      section switches to Posts/Pages.
 - [ ] Page draft publishes to `/pages`, post draft to `/posts`.
 - [ ] **Remote post, ⌘S** → updates WordPress (status `draft` stays draft).
 - [ ] **Remote post, ⌘⇧P / Publish** → publishes; button label reflects state
@@ -653,8 +669,8 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 - [ ] **Edge:** taxonomy creation fails → save aborts with an error, content not
       lost.
 - [ ] Slug: blank slug on a new item stays blank (doesn't inherit previous
-      item's slug — TODO item); editing slug then save sends it; blank slug on
-      update **omits** `slug` so the server value is preserved.
+      item's slug); editing slug then save sends it; blank slug on update
+      **omits** `slug` so the server value is preserved.
 - [ ] Featured image set/clear; `featured_media: 0` clears it.
 - [ ] Comment status open/closed round-trips.
 - [ ] Page parent picker excludes the page itself; saving sets `parent`.
@@ -667,18 +683,16 @@ Build with `./build.sh` and `open Quill.app` before each pass.
   - [ ] "Use Server" → reloads server content, discards local edits.
   - [ ] "Cancel" → keeps editing, no data lost.
 - [ ] **False-conflict guard:** open a post, immediately save without server
-      changes → **no** conflict alert (the `loadItem` baseline-refresh from the
-      live server value).
-- [ ] **Preview-induced baseline refresh:** preview a *draft* post (which can
-      bump `modified` via autosave), then save → **no** spurious conflict (the
-      `openPreview` draft/pending refresh).
+      changes → **no** conflict alert.
+- [ ] **Preview-induced baseline refresh:** preview a draft post, then save →
+      **no** spurious conflict.
 
 ### 7.8 Autosave / unsaved-changes / navigation
 
 - [ ] Edit a remote post, wait 30s → autosave stash written; navigate away and
       back → "Unsaved changes restored" toast and stashed content shown.
 - [ ] **No spurious restore toast** when opening a server post that has no real
-      local divergence (the recent autosave-restore-toast fix).
+      local divergence.
 - [ ] Navigate away from a dirty local draft → flushed to SQLite; reopening shows
       the latest content.
 - [ ] Navigate away from a dirty remote post → stashed; not pushed to WordPress.
@@ -714,31 +728,28 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 - [ ] Generate with web search on → response reassembled correctly across
       fragmented blocks (the joining gotcha); citations don't break the
       TITLE/CONTENT parse.
-- [ ] **Selection ops (now right-click menu, not a pill):** select text →
-      right-click → Make Longer / Make Shorter / To Table / To List each appear
-      (only when `aiEnabled && hasTextSelection`) and each works.
+- [ ] **Selection ops (right-click menu):** select text → right-click → Make
+      Longer / Make Shorter / To Table / To List each appear (only when
+      `aiEnabled && hasTextSelection`) and each works.
   - [ ] `hasTextSelection` updates correctly: the AI items appear only when there
         is a non-empty selection; collapse the selection → items gone on next
         right-click.
   - [ ] The AI menu items survive the AutoFill/Services re-filter (their selector
-        strings are in `WebViewMenuFilter.allowed`) — see §7.13.
+        strings are in `WebViewMenuFilter.allowed`).
 - [ ] AI result inserts at **block boundaries** — no empty `<p>` fragments
-      before/after, no blank paragraphs from inter-block whitespace (the two
-      insertion gotchas). Verify the saved HTML has no stray empty paragraphs.
-- [ ] Accept → content committed and `contentChanged` fires (Swift gets the
-      HTML); Discard → original restored.
-- [ ] **Accepted AI result is Gutenberg-transformed** (commit
-      "apply Gutenberg HTML transformation when accepting AI result") — if the AI
-      returns a table/list/heading, the **saved** HTML has `wp-block-*` classes
-      and figure wrappers, not raw Tiptap output. Verify via `content.raw`.
+      before/after, no blank paragraphs from inter-block whitespace. Verify the
+      saved HTML has no stray empty paragraphs.
+- [ ] Accept → content committed and `contentChanged` fires; Discard → original
+      restored.
+- [ ] **Accepted AI result is Gutenberg-transformed** — if the AI returns a
+      table/list/heading, the saved HTML has `wp-block-*` classes and figure
+      wrappers. Verify via `content.raw`.
 - [ ] **Edge:** Claude error/timeout → original text restored, "couldn't
       complete" toast, editor not corrupted.
-- [ ] **Edge:** empty selection → no-op (`beginAIOperation` returns empty).
 - [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above
-      other apps when you switch away (the child-window gotcha); no rectangular
-      shadow artifact (the `hasShadow=false` gotcha); buttons are visible in light
-      mode (the `.plain` style gotcha). _(The old selection pill panel is gone — no
-      pill to test.)_
+      other apps when you switch away (child-window gotcha); no rectangular
+      shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode
+      (`.plain` style gotcha).
 - [ ] Style guide: select sample posts in Settings → guide generated once;
       re-saving with unchanged samples makes **no** Claude call; changing the
       site URL clears samples and guide.
@@ -748,18 +759,18 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 - [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt,
       discussion; for **pages** shows parent + slug + discussion only (no
       categories/tags/excerpt) — the `isPage` gotcha.
-- [ ] Amber accent applied throughout settings (recent commit).
-- [ ] Preferences opens from both the menu and (if present) the in-app sheet;
-      `PreferencesView` works in the separate `Settings` scene **without
-      EnvironmentObject** (the gotcha) — i.e. sample post picker is populated.
+- [ ] Amber accent applied throughout settings.
+- [ ] Preferences opens from both the menu and the in-app sheet; `PreferencesView`
+      works in the separate `Settings` scene **without EnvironmentObject** — i.e.
+      sample post picker is populated.
 
 ### 7.12 Window / appearance / chrome
 
 - [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`),
       title/breadcrumb bars render with correct tokens; **title/breadcrumb bars
       white in dark mode** (open TODO — verify current state).
-- [ ] Enter/exit full screen → title bar color stable (TODO fixed — confirm).
-- [ ] Title field + top border spacing correct (TODO fixed — confirm).
+- [ ] Enter/exit full screen → title bar color stable (fixed — confirm).
+- [ ] Title field + top border spacing correct (fixed — confirm).
 - [ ] App icon/logo present in dock and about.
 - [ ] Editor "Loading editor…" overlay shows then fades on `editorReady`; never
       sticks if the bundle loads.
@@ -783,101 +794,111 @@ Build with `./build.sh` and `open Quill.app` before each pass.
 
 ---
 
-## 8. Non-functional & resilience
+## Non-functional & resilience
 
-- **Offline / flaky network:** every network action (list load, save, publish,
-  upload, search, AI) degrades gracefully with a user-visible error, never a
-  hang or crash. Test by toggling network mid-operation.
-- **Slow network:** saves show the saving state and disable buttons
-  (`isSaving`); no double-submit on rapid clicks.
-- **Large media library:** Media grid with 500+ items — scrolling stays smooth,
-  pagination works, memory bounded (the `Color.clear` overlay layout gotcha
-  keeps columns aligned).
-- **Concurrency / cancellation:** rapidly switching items cancels in-flight
-  load/autosave tasks without throwing or cross-contaminating state.
-- **File permissions:** `credentials.json` and `ai_settings.json` are chmod 600.
-- **Crash recovery:** force-quit mid-edit → local draft / autosave stash
-  recovered on relaunch.
-- **Performance:** `toWordPressHTML` runs on a 500ms debounce on every edit — on
-  a large document it should not block typing (profile if sluggish).
-- **Security:** pasted/loaded HTML with `<script>` or `onerror=` attributes is
-  not executed in the WKWebView; AI-returned HTML is inserted as content, not
-  evaluated.
+- **Offline / flaky network:** every network action degrades gracefully with a user-visible error, never a hang or crash.
+- **Slow network:** saves show the saving state and disable buttons (`isSaving`); no double-submit on rapid clicks.
+- **Large media library:** Media grid with 500+ items — scrolling stays smooth, pagination works, memory bounded.
+- **File permissions:** `credentials.json` and `ai_settings.json` are chmod 600 (guarded by `JSONFileStoreTests.savedFileHasChmod600`).
+- **Crash recovery:** force-quit mid-edit → local draft / autosave stash recovered on relaunch.
+- **Performance:** `toWordPressHTML` runs on a 500ms debounce on every edit — on a large document it should not block typing.
+- **Security:** pasted/loaded HTML with `<script>` or `onerror=` attributes is not executed; AI-returned HTML is inserted as content, not evaluated.
 
 ---
 
-## 9. Regression matrix — "known gotchas" guards
+## Regression matrix — "known gotchas" guards
 
-Each documented gotcha in `CLAUDE.md` is a bug that already happened. Pin the
-ones that are automatable; manually verify the rest. (✅ = add automated test,
-👁 = manual verify.)
+Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = manual verify.
 
 | # | Gotcha | Guard |
 |---|---|---|
-| 1 | Pages omit `categories`/`tags` | ✅ §1.1 |
-| 2 | `WPPost.type` routing posts vs pages | ✅ §2.1 / 👁 §7.6 |
-| 3 | Scheduling uses `date_gmt` not `date` | ✅ §1.3 + 👁 §7.6 |
-| 4 | Media dimensions as floats | ✅ §1.2 |
-| 5 | `slug` omitted when empty | ✅ §1.3 + 👁 §7.6 |
-| 6 | Trash `force=false` vs media `force=true` | ✅ §2.1 + 👁 §7.9 |
-| 7 | Cancellation re-thrown, not wrapped | ✅ §2.2 |
-| 8 | `searchLinks` ignores sub-failures | ✅ §2.3 |
-| 9 | Web-search response joined across blocks | ✅ §4.2 |
-| 10 | Web-search preamble before `TITLE:` | ✅ §4.1 |
-| 11 | AI prompt must name HTML elements | ✅ §4.1 |
-| 12 | `toWordPressHTML` transforms (all rows) | ✅ §6.1 + 👁 §7.3 |
-| 12a | Empty blockquote `<cite>` stripped on save (new) | ✅ §6.1 + 👁 §7.3 |
-| 13 | List `<p>` unwrap only single-child | ✅ §6.1 |
-| 14 | Table thead promotion / figure wrap | ✅ §6.1 |
-| 15 | Style-guide regeneration rules | ✅/👁 §4.3 |
-| 16 | Curly quotes in Swift strings | ✅ §3.1 (round-trip) |
+| 1 | Pages omit `categories`/`tags` | ✅ `WPPostDecodingTests.pageOmittingCategoriesAndTagsDefaultsToEmpty` |
+| 2 | `WPPost.type` routing posts vs pages | ✅ `WPPostDecodingTests` + 👁 §7.6 |
+| 3 | Scheduling uses `date_gmt` not `date` | ✅ `PostPayloadTests.schedulingUsesDateGmtKeyNotDate` + 👁 §7.6 |
+| 4 | Media dimensions as floats | ✅ `WPMediaDecodingTests.floatDimensionsDecodeToInt` |
+| 5 | `slug` omitted when empty | ✅ `PostPayloadTests.nilSlugOmitsKeyFromJSON` + 👁 §7.6 |
+| 6 | Trash `force=false` vs media `force=true` | ✅ `WordPressClientTests` + 👁 §7.9 |
+| 7 | Cancellation re-thrown, not wrapped | ✅ `WordPressClientTests.urlErrorCancelledRethrowsAsCancellationError` |
+| 8 | `searchLinks` ignores sub-failures | ✅ `WordPressClientTests.searchLinks*` |
+| 9 | Web-search response joined across blocks | ✅ `AnthropicClientTests.multipleTextBlocksAreJoinedInOrder` |
+| 10 | Web-search preamble before `TITLE:` | ✅ `AIPromptBuilderTests.webSearchPreambleGluedDirectlyToTitle` |
+| 11 | AI prompt must name HTML elements | ✅ `AIPromptBuilderTests.generatePostPromptNamesHTMLElements` |
+| 12 | `toWordPressHTML` transforms (all rows) | ✅ JS editor tests + 👁 §7.3 |
+| 12a | Empty blockquote `<cite>` stripped on save | ✅ JS `empty cite is stripped` + 👁 §7.3 |
+| 13 | List `<p>` unwrap only single-child | ✅ JS `multi-child <li> is left untouched` |
+| 14 | Table thead promotion / figure wrap | ✅ JS table tests |
+| 15 | Style-guide regeneration rules | 👁 §7.10 |
+| 16 | Curly quotes in Swift strings | ✅ `DraftStoreTests.unicodeAndEmojiRoundTrip` + JS `unicode and emoji in text are preserved` |
 | 17 | Autosave restore toast not spurious | 👁 §7.8 |
 | 18 | Conflict baseline refresh (no false positive) | 👁 §7.7 |
 | 19 | Selection-anchored link popover + sizing | 👁 §7.5 |
-| 20 | `AIResultPanel` child-window / shadow / button style (pill removed) | 👁 §7.10 |
-| 21 | AI insert at block boundaries (no empty `<p>`) | 👁 §7.10 + ✅ §6.1 |
+| 20 | `AIResultPanel` child-window / shadow / button style | 👁 §7.10 |
+| 21 | AI insert at block boundaries (no empty `<p>`) | 👁 §7.10 |
 | 22 | Media grid `Color.clear` layout | 👁 §7.2 |
 | 23 | Context-menu AutoFill leakage | 👁 §7.13 |
 | 24 | macOS 26 spell-check KVC crash | 👁 §7.14 |
 | 25 | Ephemeral session (no keychain prompts) | 👁 §7.1 |
 | 26 | Sidebar not `List`; layout not `NavigationSplitView` | 👁 §7.2 |
-| 27 | `JSONFileStore` writes chmod 600 + atomic (new) | ✅ §3.5 |
-| 28 | `AppSupportDirectory` dir is 0o700 + `.override` isolation (new) | ✅ §3.5 |
-| 29 | AI selection ops via right-click menu, gated on `hasTextSelection` (new) | 👁 §7.10/§7.13 |
-| 30 | Accepted AI result is Gutenberg-transformed (new) | 👁 §7.10 |
+| 27 | `JSONFileStore` writes chmod 600 + atomic | ✅ `JSONFileStoreTests.savedFileHasChmod600` |
+| 28 | `AppSupportDirectory` override isolation | ✅ `KeychainStoreTests.appSupportOverrideKeepsFilesInTempDir` |
+| 29 | AI selection ops via right-click, gated on `hasTextSelection` | 👁 §7.10/§7.13 |
+| 30 | Accepted AI result is Gutenberg-transformed | 👁 §7.10 |
 
 ---
 
-## 10. Suggested implementation order
+### 14. View-model — `PostItemTests` (10 tests)
 
-1. ~~**Model tests** (§1) — fastest, highest regression value, zero new infra.~~ ✅ **Done** — `WPPostDecodingTests` (9), `WPMediaDecodingTests` (7), `PostPayloadTests` (11), `CredentialsTests` (4). 80 tests total passing.
-2. ~~**`AIPromptBuilder` tests** (§4.1) — pure, already-patched-twice logic.~~ ✅ **Done** — `AIPromptBuilderTests` (21). Covers all `parseGenerateResponse` edge cases, system prompt, generate/operation/style-guide prompts.
-3. ~~**`WordPressClient` gap-fill** (§2) — extract shared `MockURLProtocol` first.~~ ✅ **Done** — `MockURLProtocol` extracted to `Tests/QuillTests/Support/MockURLProtocol.swift`; 28 new tests added covering §2.1 URL construction, §2.2 error mapping, and §2.3 searchLinks. 108 tests total passing.
-4. ~~**Storage gap-fill** (§3) — tags, autosave delete, migration, **and the new
-   `JSONFileStore`/`AppSupportDirectory` suite (§3.5)**.~~ ✅ **Done** — 38 new tests added, suite grows from 108 → 146 tests (all passing).
-   - `JSONFileStoreTests` (8 tests) — §3.5, uses `in: baseDirectory` injection (no global state)
-   - `AppDatabaseTests` (2 tests) — §3.4, migration idempotency + old-schema type column
-   - `KeychainStoreTests` extended: +4 AppSupportDirectory tests (§3.5), +3 AISettingsStore tests (§3.6)
-   - `TaxonomyCacheTests` extended: +10 tests — tags, TTL boundary, replace semantics, non-collision, empty save
-   - `AutosaveStoreTests` extended: +5 tests — delete, onePerPostID, serverModified, savedAt ordering
-   - `DraftStoreTests` extended: +5 tests — emptyTitle, updateNonExistent, deleteNonExistent, fetchAll ordering, unicode
-   - **Note:** `JSONFileStore.init` gained an optional `in: baseDirectory` parameter for per-instance test isolation, avoiding `AppSupportDirectory.override` contention between parallel suites.
-5. ~~**`AnthropicClient` injectable session + tests** (§4.2) — small refactor.~~ ✅ **Done** — 18 new tests added, suite grows from 146 → 164 tests (all passing).
-   - `AnthropicClient` now accepts `init(apiKey:session:)` (mirrors `WordPressClient`; existing callsites unaffected).
-   - `AnthropicClientTests` covers: request headers, beta headers ±web search, tools array present/absent, `cache_control: ephemeral` on system block, multi-block text joining (web-search fragmentation gotcha), non-text block exclusion, truncation flag, HTTP error body preservation, malformed JSON, network failure.
-   - `AnthropicMockURLProtocol` added to `Tests/QuillTests/Support/` — separate subclass with its own `static var requestHandler` to avoid races with `MockURLProtocol` (two `@Suite(.serialized)` suites sharing a global handler run concurrently with each other).
-   - `AnthropicMockURLProtocol.startLoading()` reconstructs `httpBody` from `httpBodyStream` (URLSession always clears `httpBody` in URLProtocol — body is in the stream).
-6. **JS editor harness** (§6.1) — biggest infra lift, biggest correctness payoff.
-7. **Manual checklists** (§7) — run a full pass before each release; spot-check
-   the regression matrix (§9) after any editor or save-path change.
+File: `Tests/QuillTests/AppStateTests.swift`
 
-### Concrete refactors that unlock testing
-- Extract `MockURLProtocol` to a shared support file. ✅ Done.
-- Add an injectable `URLSession` to `AnthropicClient` (mirror `WordPressClient`). ✅ Done.
-- `AppSupportDirectory.override` is the test seam for the credential/AI-settings stores — used in `KeychainStoreTests`. Only ONE suite should set this global at a time; `JSONFileStoreTests` uses `in: baseDirectory` instead to avoid race conditions with parallel suites.
-- The `Cite` node and empty-cite stripping should be included in whatever module exposes `toWordPressHTML` to the JS harness (§6.1).
-- Extract `toWordPressHTML`, `extractAlignment`, and the parse helpers into a
-  module the bundle imports **and** a Node test can import (or test against the
-  built `tiptap-bundle.js` via jsdom).
-- If feasible, lift the style-guide regeneration decision out of
-  `PreferencesView.saveAll()` into a pure function for §4.3.
+| Test | What it checks |
+|---|---|
+| `remotePostIdFormatsAsRemoteDashId` | `PostItem.remote(post).id == "remote-5"` |
+| `localDraftIdFormatsAsLocalDashId` | `PostItem.local(draft).id == "local-5"` |
+| `remoteAndLocalWithSameNumericIdDoNotCollide` | `"remote-5" != "local-5"` (sidebar selection guard) |
+| `remotePostTitleUsesRenderedTitle` | `post.title.rendered` used as display title |
+| `remotePostWithEmptyTitleReturnsUntitled` | Empty rendered title → `"Untitled"` |
+| `localDraftTitleUsesDraftTitle` | `draft.title` used as display title |
+| `localDraftWithEmptyTitleReturnsUntitled` | Empty draft title → `"Untitled"` |
+| `remoteStatusBadgeIsPostStatus` | `post.status` (e.g. `"draft"`) used directly |
+| `localPostStatusBadgeIsLocalPost` | `type="post"` → `"local-post"` |
+| `localPageStatusBadgeIsLocalPage` | `type="page"` → `"local-page"` |
+
+### 15. View-model — `SidebarSectionTests` (8 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `postsIcon` | `.posts.icon == "doc.text"` |
+| `pagesIcon` | `.pages.icon == "doc.plaintext"` |
+| `localDraftsIcon` | `.localDrafts.icon == "pencil"` |
+| `mediaIcon` | `.media.icon == "photo"` |
+| `postsShortTitle` | `.posts.shortTitle == "Posts"` |
+| `pagesShortTitle` | `.pages.shortTitle == "Pages"` |
+| `localDraftsShortTitle` | `.localDrafts.shortTitle == "Drafts"` |
+| `mediaShortTitle` | `.media.shortTitle == "Media"` |
+
+### 16. View-model — `AppStateFilteredItemsTests` (10 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `postsSectionMapsRemotePosts` | `.posts` section → `[.remote(…)]` items |
+| `pagesSectionMapsRemotePages` | `.pages` section → `[.remote(…)]` items |
+| `localDraftsSectionMapsLocalDrafts` | `.localDrafts` section → `[.local(…)]` items |
+| `mediaSectionReturnsEmpty` | `.media` section → always `[]` |
+| `emptySearchReturnsAllItems` | `searchText == ""` → guard exits early, all items returned |
+| `searchFiltersCaseInsensitively` | `"hello"` matches title `"Hello World"` |
+| `searchReturnsEmptyForNoMatch` | `"zzz"` matches nothing |
+| `partialTitleMatchReturnsItem` | `"World"` matches `"Hello World"` |
+| `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
+| `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
+
+---
+
+## What's not yet automated
+
+All automatable Swift and JS layers are now covered. The only remaining gap is the **manual/functional checklists** (§7), which require a live WordPress site and cannot be run headlessly.
+
+Specifically: UI flows, SwiftUI/AppKit rendering behavior, WKWebView bridge interactions, conflict detection, autosave restoration, and AI result panel visual correctness. These are documented in §7 and should be run before each release.

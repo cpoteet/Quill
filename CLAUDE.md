@@ -32,20 +32,24 @@ Implementation complete and running. Active polish/iteration phase.
 ```bash
 ./build.sh        # compiles, assembles Quill.app, ad-hoc signs
 open Quill.app
-swift test                               # run all tests
-swift test --filter WordPressClientTests # run one suite
+./test.sh                                # run ALL tests (Swift + JS editor) — use this
+swift test                               # Swift tests only
+swift test --filter WordPressClientTests # one Swift suite
+node --test Scripts/test-editor.js       # JS editor tests only
 ```
 
 **After every code change:** quit the app, run `./build.sh`, reopen. Always.
 **After major changes:** run the `claude-md-management:revise-claude-md` skill to keep this file current.
 
-Requirements: Swift 6.3.1 (already installed), macOS 13+.
+Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-01 — 164 tests passing)
+## Test suite status (2026-06-01 — 192 Swift + 37 JS tests, all passing)
 
-Done: §1 models (WPPost/WPMedia/PostPayload/Credentials), §2 WordPressClient (28 tests), §3 storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), §4.1 AIPromptBuilder (21 tests), §4.2 AnthropicClient (18 tests — injectable URLSession, mock-backed headers/body/error/joining).
-Remaining: §6.1 JS editor harness (`toWordPressHTML` + `parseHTML` via Node/jsdom).
-Full plan: `docs/testing-plan.md`
+**Swift (192 tests):** 16 suites covering all models, the full WordPressClient, all storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), AIPromptBuilder, AnthropicClient, and AppState view-model logic (PostItem.id/title/statusBadge, SidebarSection.icon/shortTitle, filteredItems + search). Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
+
+**JS (37 tests):** `Scripts/test-editor.js` covers `toWordPressHTML` and `extractAlignment` via Node + jsdom. Tests headings, lists, list-item `<p>` unwrapping, blockquote+cite, code blocks, images (all alignments, figure-wrapping, media-id class), tables (thead promotion, figure-wrapping), idempotency, and unicode/emoji preservation.
+
+**Full reference:** `docs/testing-plan.md` — lists every test by name with what it checks, plus the manual/functional checklists for release sign-off.
 
 ## Test suite gotchas
 
