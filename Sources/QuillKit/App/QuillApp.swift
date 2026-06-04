@@ -4,8 +4,24 @@ public struct QuillApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var appServices = AppServices()
 
+    private static var aboutWindow: NSWindow?
+
     public init() {
         NSWindow.allowsAutomaticWindowTabbing = false
+    }
+
+    static func showAboutWindow() {
+        if aboutWindow == nil {
+            let hosting = NSHostingController(rootView: AboutView())
+            let window = NSWindow(contentViewController: hosting)
+            window.title = "About Quill"
+            window.styleMask = [.titled, .closable]
+            window.isReleasedWhenClosed = false
+            window.center()
+            aboutWindow = window
+        }
+        aboutWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     public var body: some Scene {
@@ -35,6 +51,11 @@ public struct QuillApp: App {
                 }
         }
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Quill") {
+                    QuillApp.showAboutWindow()
+                }
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Post") {
                     appState.createNewDraft(type: "post", draftStore: appServices.draftStore)

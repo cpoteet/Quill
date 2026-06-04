@@ -149,15 +149,6 @@ struct MediaSidebarSection: View {
             Label("Copy URL", systemImage: "link")
         }
 
-        Button {
-            let name = media.title.rendered.isEmpty ? "image" : media.title.rendered
-            let md = "![\(name)](\(media.sourceURL))"
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(md, forType: .string)
-        } label: {
-            Label("Copy as Markdown", systemImage: "doc.plaintext")
-        }
-
         if !media.link.isEmpty, let linkURL = URL(string: media.link) {
             Button {
                 NSWorkspace.shared.open(linkURL)
