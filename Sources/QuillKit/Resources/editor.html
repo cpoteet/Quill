@@ -396,7 +396,42 @@
       Placeholder,
       Plugin, PluginKey,
       DecorationSet, Decoration,
+      Paragraph, Heading, BulletList, OrderedList, ListItem,
     } = TiptapBundle
+
+    // Extend a Tiptap extension to preserve arbitrary class and id attributes
+    // through the ProseMirror schema, so visual edits don't strip them.
+    function withClassAttr(extension) {
+      return extension.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            class: {
+              default: null,
+              parseHTML: element => element.getAttribute('class') || null,
+              renderHTML: attributes => {
+                if (!attributes.class) return {}
+                return { class: attributes.class }
+              },
+            },
+            id: {
+              default: null,
+              parseHTML: element => element.getAttribute('id') || null,
+              renderHTML: attributes => {
+                if (!attributes.id) return {}
+                return { id: attributes.id }
+              },
+            },
+          }
+        },
+      })
+    }
+
+    const ParagraphWithClass  = withClassAttr(Paragraph)
+    const HeadingWithClass    = withClassAttr(Heading)
+    const BulletListWithClass = withClassAttr(BulletList)
+    const OrderedListWithClass = withClassAttr(OrderedList)
+    const ListItemWithClass   = withClassAttr(ListItem)
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {
@@ -743,14 +778,26 @@
     })
 
     // Extended blockquote: allows an optional cite as its last child.
-    const CustomBlockquote = Blockquote.extend({
+    const CustomBlockquote = withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
-    })
+    }))
 
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
-        StarterKit.configure({ blockquote: false }),
+        StarterKit.configure({
+          blockquote: false,
+          paragraph: false,
+          heading: false,
+          bulletList: false,
+          orderedList: false,
+          listItem: false,
+        }),
+        ParagraphWithClass,
+        HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
+        BulletListWithClass,
+        OrderedListWithClass,
+        ListItemWithClass,
         CustomBlockquote,
         Cite,
         Underline,
@@ -940,6 +987,7 @@
     // ── Content change → Swift ─────────────────────────
     let debounce
     editor.on('update', () => {
+      _rawHTML = null
       clearTimeout(debounce)
       debounce = setTimeout(() => {
         if (window.webkit?.messageHandlers?.contentChanged) {
@@ -980,11 +1028,16 @@
 
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
+    // Authoritative HTML that bypasses Tiptap's schema parser. Set when content
+    // is loaded from WordPress or when the user edits in code view. Cleared on any
+    // visual edit (onUpdate) so Tiptap becomes the source of truth again.
+    let _rawHTML = null
 
     function _enterCodeView() {
       if (codeViewActive) return
       codeViewActive = true
-      document.getElementById('code-editor').value = formatHTML(toWordPressHTML(editor.getHTML()))
+      const codeViewHTML = _rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML())
+      document.getElementById('code-editor').value = formatHTML(codeViewHTML)
       document.getElementById('editor').style.display = 'none'
       document.getElementById('code-editor').style.display = 'block'
       document.getElementById('btn-code-view').classList.add('active')
@@ -999,6 +1052,7 @@
       if (!codeViewActive) return
       codeViewActive = false
       const html = document.getElementById('code-editor').value
+      _rawHTML = html
       editor.commands.setContent(html, false)
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -1024,12 +1078,13 @@
         document.getElementById('btn-code-view').classList.remove('active')
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
+      _rawHTML = html || null
       editor.commands.setContent(html || '', false)
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
     }
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
-      : toWordPressHTML(editor.getHTML())
+      : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
     window.focusEditor = () => editor.commands.focus()
     window.insertImageAt = (_index, url, width, height, mediaId) => {

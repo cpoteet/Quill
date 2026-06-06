@@ -33,6 +33,11 @@ cat > package.json <<'EOF'
     "@tiptap/extension-task-item": "^2",
     "@tiptap/extension-placeholder": "^2",
     "@tiptap/extension-blockquote": "^2",
+    "@tiptap/extension-paragraph": "^2",
+    "@tiptap/extension-heading": "^2",
+    "@tiptap/extension-bullet-list": "^2",
+    "@tiptap/extension-ordered-list": "^2",
+    "@tiptap/extension-list-item": "^2",
     "@tiptap/pm": "^2",
     "esbuild": "^0.25"
   }
@@ -52,6 +57,11 @@ export { default as TableCell }        from '@tiptap/extension-table-cell'
 export { default as TableHeader }      from '@tiptap/extension-table-header'
 export { Image as TiptapImage }        from '@tiptap/extension-image'
 export { default as Blockquote }       from '@tiptap/extension-blockquote'
+export { default as Paragraph }        from '@tiptap/extension-paragraph'
+export { default as Heading }          from '@tiptap/extension-heading'
+export { default as BulletList }       from '@tiptap/extension-bullet-list'
+export { default as OrderedList }      from '@tiptap/extension-ordered-list'
+export { default as ListItem }         from '@tiptap/extension-list-item'
 export { default as Link }             from '@tiptap/extension-link'
 export { default as TaskList }         from '@tiptap/extension-task-list'
 export { default as TaskItem }         from '@tiptap/extension-task-item'
