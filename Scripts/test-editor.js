@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -278,5 +278,93 @@ describe('toWordPressHTML — idempotency and edge cases', () => {
     assert.match(out, /café/)
     assert.match(out, /🎉/)
     assert.match(out, /curly/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// formatHTML — pretty-printer
+// ---------------------------------------------------------------------------
+
+function fmt(html) {
+  return formatHTML(html, document)
+}
+
+describe('formatHTML — block elements', () => {
+  test('single paragraph renders on one line with no surrounding blank lines', () => {
+    const out = fmt('<p class="wp-block-heading">Hello world</p>')
+    assert.equal(out, '<p class="wp-block-heading">Hello world</p>')
+  })
+
+  test('two top-level blocks are separated by a blank line', () => {
+    const out = fmt('<p>First</p><h2>Second</h2>')
+    assert.match(out, /First[\s\S]*\n\n[\s\S]*Second/)
+  })
+
+  test('inline elements stay on the same line as their parent block', () => {
+    const out = fmt('<p>Hello <strong>bold</strong> and <em>italic</em></p>')
+    assert.equal(out.trim(), '<p>Hello <strong>bold</strong> and <em>italic</em></p>')
+  })
+
+  test('links stay inline', () => {
+    const out = fmt('<p>See <a href="https://example.com">this</a> link</p>')
+    assert.match(out, /<p>See <a/)
+    assert.equal(out.split('\n').length, 1)
+  })
+})
+
+describe('formatHTML — nested block elements', () => {
+  test('list items are indented inside ul', () => {
+    const out = fmt('<ul class="wp-block-list"><li>Item 1</li><li>Item 2</li></ul>')
+    const lines = out.split('\n')
+    assert.match(lines[0], /^<ul/)
+    assert.match(lines[1], /^  <li>Item 1<\/li>/)
+    assert.match(lines[2], /^  <li>Item 2<\/li>/)
+    assert.match(lines[3], /^<\/ul>/)
+  })
+
+  test('table cells are indented under their row and section', () => {
+    const out = fmt('<figure class="wp-block-table"><table><thead><tr><th>Col</th></tr></thead></table></figure>')
+    assert.match(out, /^<figure/m)
+    assert.match(out, /^  <table/m)
+    assert.match(out, /^    <thead/m)
+    assert.match(out, /^      <tr/m)
+    assert.match(out, /^        <th>Col<\/th>/m)
+  })
+
+  test('blockquote with p and cite each on their own indented lines', () => {
+    const out = fmt('<blockquote class="wp-block-quote"><p>Quote</p><cite>Author</cite></blockquote>')
+    assert.match(out, /^<blockquote/m)
+    assert.match(out, /^  <p>Quote<\/p>/m)
+    assert.match(out, /^  <cite>Author<\/cite>/m)
+    assert.match(out, /^<\/blockquote>/m)
+  })
+})
+
+describe('formatHTML — special elements', () => {
+  test('img void element has no closing tag', () => {
+    const out = fmt('<figure class="wp-block-image"><img src="x.jpg" width="100" height="100"></figure>')
+    assert.doesNotMatch(out, /<\/img>/)
+    assert.match(out, /<img/)
+  })
+
+  test('img is indented inside figure', () => {
+    const out = fmt('<figure class="wp-block-image"><img src="x.jpg"></figure>')
+    assert.match(out, /^  <img/m)
+  })
+
+  test('pre content is preserved verbatim without re-indenting', () => {
+    const inner = '<code>line one\n  line two</code>'
+    const out = fmt(`<pre class="wp-block-code">${inner}</pre>`)
+    assert.match(out, new RegExp(inner.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  })
+
+  test('empty input returns empty string', () => {
+    assert.equal(fmt(''), '')
+  })
+
+  test('unicode and emoji are preserved', () => {
+    const out = fmt('<p>café 🎉</p>')
+    assert.match(out, /café/)
+    assert.match(out, /🎉/)
   })
 })

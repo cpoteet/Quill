@@ -107,6 +107,50 @@ function toWordPressHTML(html, doc) {
   return div.innerHTML
 }
 
+function formatHTML(html, doc) {
+  if (!doc && typeof document !== 'undefined') doc = document
+  const BLOCK = new Set(['p','h1','h2','h3','h4','h5','h6',
+    'ul','ol','li','blockquote','pre','figure','figcaption',
+    'table','thead','tbody','tfoot','tr','th','td','cite'])
+  const VOID = new Set(['img','br','hr','input','meta','link',
+    'wbr','area','base','col','embed','param','source','track'])
+
+  function attrStr(el) {
+    return Array.from(el.attributes).map(a => ` ${a.name}="${a.value}"`).join('')
+  }
+
+  function serialize(node, depth) {
+    const pad = '  '.repeat(depth)
+    if (node.nodeType === 3) return node.textContent
+    if (node.nodeType !== 1) return ''
+    const tag = node.tagName.toLowerCase()
+    const at = attrStr(node)
+    if (VOID.has(tag)) return `${pad}<${tag}${at}>`
+    if (tag === 'pre') return `${pad}<${tag}${at}>${node.innerHTML}</${tag}>`
+    const hasBlockChild = [...node.childNodes].some(
+      c => c.nodeType === 1 && (BLOCK.has(c.tagName.toLowerCase()) || VOID.has(c.tagName.toLowerCase()))
+    )
+    if (BLOCK.has(tag) && hasBlockChild) {
+      const inner = [...node.childNodes]
+        .map(c => serialize(c, depth + 1))
+        .filter(s => s.trim() !== '')
+        .join('\n')
+      return `${pad}<${tag}${at}>\n${inner}\n${pad}</${tag}>`
+    }
+    const inner = [...node.childNodes].map(c => serialize(c, 0)).join('')
+    return BLOCK.has(tag)
+      ? `${pad}<${tag}${at}>${inner}</${tag}>`
+      : `<${tag}${at}>${inner}</${tag}>`
+  }
+
+  const container = doc.createElement('div')
+  container.innerHTML = html
+  return [...container.childNodes]
+    .map(n => serialize(n, 0))
+    .filter(s => s.trim() !== '')
+    .join('\n\n')
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML }
 }

@@ -648,7 +648,27 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] **Edge:** no results → empty state, no crash.
 - [ ] **Edge:** search while offline → handled gracefully.
 
-### 7.6 Save / publish / draft / schedule
+### 7.6 Editor — code view
+
+- [ ] `</>` button appears at the far right of the toolbar.
+- [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are
+      disabled while in code view; the `</>` button shows the active (blue) state.
+- [ ] HTML in the textarea is pretty-printed: block elements on their own lines,
+      inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their
+      parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested,
+      `<pre>` content left verbatim. Top-level blocks separated by a blank line.
+- [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons
+      re-enable; edited HTML round-trips correctly into Tiptap.
+- [ ] **Edit in code view, switch back:** make a change in the textarea (e.g. add
+      a word), switch to visual — the edit is reflected in the editor.
+- [ ] **Save from code view:** with code view active, use ⌘S — the saved content
+      matches what was in the textarea (not stale Tiptap state).
+- [ ] **Load new post while in code view:** select a different post — code view
+      exits automatically and the new post loads in visual mode.
+- [ ] **Dark mode:** code textarea background and text color match the editor
+      background (no light flash or mis-colored panel).
+
+### 7.7 Save / publish / draft / schedule
 
 - [ ] **Local draft, Save Draft** → persists locally only, **no** network call
       (verify via proxy/network log); toast "Saved locally".
@@ -675,7 +695,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Comment status open/closed round-trips.
 - [ ] Page parent picker excludes the page itself; saving sets `parent`.
 
-### 7.7 Conflict detection
+### 7.8 Conflict detection
 
 - [ ] Open a remote post in Quill. Edit it on the server (or via another client)
       so `modified` changes. Save in Quill → **Conflict Detected** alert.
@@ -687,7 +707,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] **Preview-induced baseline refresh:** preview a draft post, then save →
       **no** spurious conflict.
 
-### 7.8 Autosave / unsaved-changes / navigation
+### 7.9 Autosave / unsaved-changes / navigation
 
 - [ ] Edit a remote post, wait 30s → autosave stash written; navigate away and
       back → "Unsaved changes restored" toast and stashed content shown.
@@ -704,7 +724,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
 - [ ] Quitting the app with unsaved local-draft edits → recovered on next launch.
 
-### 7.9 Delete / trash
+### 7.10 Delete / trash
 
 - [ ] Trash a remote post → confirmation alert, then `force=false` (recoverable
       — appears in WordPress Trash, not gone).
@@ -716,7 +736,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       stays.
 - [ ] Cancel on any delete confirmation → nothing happens.
 
-### 7.10 AI features (require an Anthropic API key configured)
+### 7.11 AI features (require an Anthropic API key configured)
 
 - [ ] With no API key: ✦ toolbar button is **hidden** and the AI items are
       **absent** from the editor right-click menu (`aiEnabled == false`).
@@ -754,7 +774,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       re-saving with unchanged samples makes **no** Claude call; changing the
       site URL clears samples and guide.
 
-### 7.11 Settings panel & preferences
+### 7.12 Settings panel & preferences
 
 - [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt,
       discussion; for **pages** shows parent + slug + discussion only (no
@@ -764,7 +784,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       works in the separate `Settings` scene **without EnvironmentObject** — i.e.
       sample post picker is populated.
 
-### 7.12 Window / appearance / chrome
+### 7.13 Window / appearance / chrome
 
 - [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`),
       title/breadcrumb bars render with correct tokens; **title/breadcrumb bars
@@ -775,7 +795,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Editor "Loading editor…" overlay shows then fades on `editorReady`; never
       sticks if the bundle loads.
 
-### 7.13 Context menus (AppKit specifics)
+### 7.14 Context menus (AppKit specifics)
 
 - [ ] Right-click in the **editor (WKWebView)** → Cut/Copy/Paste present and
       correctly enabled/disabled; **no AutoFill/Services leakage** (the
@@ -784,7 +804,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       `RestrictedTextView` gotcha).
 - [ ] Right-click a misspelled word → spelling suggestions appear.
 
-### 7.14 Spell check
+### 7.15 Spell check
 
 - [ ] "ABC" toolbar button highlights misspellings via decorations; highlights
       clear on first edit.

@@ -55,6 +55,7 @@ Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node
 
 - **Each network test suite needs its own `URLProtocol` subclass** — `@Suite(.serialized)` only serializes within a suite; two serialized suites sharing `MockURLProtocol.requestHandler` (a global static) race against each other. Solution: give each suite its own subclass with its own `static var requestHandler` (e.g. `AnthropicMockURLProtocol` in `Tests/QuillTests/Support/`).
 - **`httpBody` is always nil in `URLProtocol.startLoading()`** — URLSession moves the body to `httpBodyStream`. To inspect request bodies in mock tests, reconstruct from the stream. See `AnthropicMockURLProtocol.startLoading()` for the pattern.
+- **Edit tool corrupts quotes in JS test files** — when the Edit tool's `old_string` spans a region containing curly Unicode quotes (U+2018/U+2019), it can replace straight ASCII `'` delimiters with curly ones in the output, producing `SyntaxError: Invalid or unexpected token` in Node.js. If you see that error after editing `Scripts/test-editor.js`, the fix is a targeted Python byte-level replacement — do NOT use the Edit tool again to fix it, as it will re-introduce the same corruption. The existing unicode test on line 277 intentionally contains U+2019 as *content* (not delimiters) and must be left alone.
 
 ## Key decisions
 
@@ -172,6 +173,22 @@ All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/Quill
 3. If WordPress also changes how it *stores* the format (what the API sends back on load), check whether Tiptap still parses it correctly by loading an existing post. If not, add or update a `parseHTML()` rule on the relevant Tiptap extension. For block elements wrapped in a `<figure>` (like images and tables), add a `getAttrs` rule that extracts the inner element's attrs.
 
 4. Rebuild and test the round-trip: load a post with the affected element → verify it displays correctly in Quill → save → verify the API-stored HTML matches the new expected format.
+
+## Code view
+
+`editor.html` has a `</>` toggle button (`#btn-code-view`) at the far right of the toolbar. Clicking it switches the Tiptap editor for a `<textarea id="code-editor">` showing the raw WordPress HTML.
+
+**State:** `codeViewActive` (boolean, JS module-level) tracks which mode is active.
+
+**`_enterCodeView()` / `_exitCodeView()`** — helpers that toggle DOM visibility, the button's `.active` class, and the disabled state of all other toolbar controls. `_exitCodeView()` calls `editor.commands.setContent(textarea.value)` to parse the edited HTML back into Tiptap before re-showing the visual editor.
+
+**`window.getContent()`** returns `textarea.value` when `codeViewActive`, otherwise the normal `toWordPressHTML(editor.getHTML())` — so Swift's save/autosave paths work correctly from either mode.
+
+**`window.setContent()`** exits code view silently (without round-tripping the textarea through Tiptap) before loading the new HTML, so switching posts always lands in visual mode.
+
+**`formatHTML(html, doc)`** — a pure DOM serializer in `Sources/QuillKit/Resources/editor-transforms.js` (exported alongside `toWordPressHTML`). Called by `_enterCodeView` to pretty-print the HTML before putting it in the textarea. Block elements get their own lines with 2-space indentation per level; inline elements stay on the same line as their parent; void elements (`<img>`, `<br>`, etc.) render without a closing tag; `<pre>` content is left verbatim. Top-level blocks are separated by a blank line. Covered by 12 automated JS tests.
+
+**Link extension:** `Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } })` — the `target: null` and `rel: null` override the Tiptap Link default of `target="_blank" rel="noopener noreferrer nofollow"`, which would otherwise be added to every link.
 
 ## Known gotchas
 
