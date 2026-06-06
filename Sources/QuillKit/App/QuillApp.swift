@@ -60,14 +60,17 @@ public struct QuillApp: App {
                 Button("New Post") {
                     appState.createNewDraft(type: "post", draftStore: appServices.draftStore)
                 }
+                .keyboardShortcut("n", modifiers: .command)
                 Button("New Page") {
                     appState.createNewDraft(type: "page", draftStore: appServices.draftStore)
                 }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
                 Divider()
-                Button("New Media…") {
+                Button("New Media") {
                     appState.selectedSection = .media
                     appState.triggerMediaUpload = true
                 }
+                .keyboardShortcut("n", modifiers: [.command, .option])
             }
         }
 

@@ -78,6 +78,25 @@
     }
     body.dark #editor-wrap { background: #1c1c1e; }
 
+    /* ── Code view textarea ──────────────────────────── */
+    #code-editor {
+      display: none;
+      width: 100%;
+      min-height: 100%;
+      padding: 32px 24px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: inherit;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      tab-size: 2;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
     .ProseMirror {
       max-width: 720px;
       margin: 0 auto;
@@ -346,6 +365,8 @@
     <button id="btn-spell" title="Check Spelling"><span style="text-decoration: red wavy underline; text-underline-offset: 3px; text-decoration-skip-ink: none;">ABC</span></button>
     <button data-cmd="undo" title="Undo (⌘Z)">&#8617;</button>
     <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618;</button>
+    <span class="tb-sep"></span>
+    <button id="btn-code-view" title="Toggle code view" style="font-family:monospace">&lt;/&gt;</button>
   </div>
   <div id="drop-overlay"><span>Drop to upload</span></div>
   <div id="image-toolbar">
@@ -361,7 +382,7 @@
     <span class="img-tb-sep"></span>
     <button id="img-tb-reset">Reset</button>
   </div>
-  <div id="editor-wrap"><div id="editor"></div></div>
+  <div id="editor-wrap"><div id="editor"></div><textarea id="code-editor" spellcheck="false"></textarea></div>
 
   <script src="./tiptap-bundle.js"></script>
   <script src="./editor-transforms.js"></script>
@@ -738,7 +759,7 @@
         TableHeader,
         TableCell,
         ResizableImage.configure({ inline: false }),
-        Link.configure({ openOnClick: false }),
+        Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Placeholder.configure({ placeholder: 'Start writing…' }),
@@ -957,11 +978,58 @@
       dispatch(state.tr.setMeta(spellCheckKey, decoSet))
     }
 
+    // ── Code view ─────────────────────────────────────
+    let codeViewActive = false
+
+    function _enterCodeView() {
+      if (codeViewActive) return
+      codeViewActive = true
+      document.getElementById('code-editor').value = formatHTML(toWordPressHTML(editor.getHTML()))
+      document.getElementById('editor').style.display = 'none'
+      document.getElementById('code-editor').style.display = 'block'
+      document.getElementById('btn-code-view').classList.add('active')
+      document.getElementById('toolbar').querySelectorAll('button:not(#btn-code-view), select').forEach(el => { el.disabled = true })
+      const ta = document.getElementById('code-editor')
+      ta.selectionStart = ta.selectionEnd = 0
+      ta.scrollTop = 0
+      ta.focus()
+    }
+
+    function _exitCodeView() {
+      if (!codeViewActive) return
+      codeViewActive = false
+      const html = document.getElementById('code-editor').value
+      editor.commands.setContent(html, false)
+      document.getElementById('editor').style.display = ''
+      document.getElementById('code-editor').style.display = 'none'
+      document.getElementById('btn-code-view').classList.remove('active')
+      document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
+      editor.commands.focus()
+      // setContent(html, false) suppresses the update event, so Swift never sees
+      // the edited HTML. Fire contentChanged manually so htmlContent stays current.
+      if (window.webkit?.messageHandlers?.contentChanged) {
+        window.webkit.messageHandlers.contentChanged.postMessage(html)
+      }
+    }
+
+    document.getElementById('btn-code-view').addEventListener('click', () => {
+      codeViewActive ? _exitCodeView() : _enterCodeView()
+    })
+
     window.setContent = html => {
+      if (codeViewActive) {
+        codeViewActive = false
+        document.getElementById('editor').style.display = ''
+        document.getElementById('code-editor').style.display = 'none'
+        document.getElementById('btn-code-view').classList.remove('active')
+        document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
+      }
       editor.commands.setContent(html || '', false)
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
     }
-    window.getContent = () => toWordPressHTML(editor.getHTML())
+    window.getContent = () => codeViewActive
+      ? document.getElementById('code-editor').value
+      : toWordPressHTML(editor.getHTML())
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
     window.focusEditor = () => editor.commands.focus()
     window.insertImageAt = (_index, url, width, height, mediaId) => {
