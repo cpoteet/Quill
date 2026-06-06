@@ -11,6 +11,7 @@ struct GeneratePostSheet: View {
     @State private var errorText: String? = nil
     @State private var showTruncationAlert: Bool = false
     @State private var truncatedParsed: (title: String, html: String)? = nil
+    @FocusState private var promptFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -29,6 +30,7 @@ struct GeneratePostSheet: View {
                     .font(.body)
                     .frame(minHeight: 80, maxHeight: 160)
                     .scrollContentBackground(.hidden)
+                    .focused($promptFocused)
                     .disabled(isGenerating)
             }
             .padding(6)
@@ -81,6 +83,7 @@ struct GeneratePostSheet: View {
     @MainActor
     private func generate(maxTokens: Int = 4096) async {
         isGenerating = true
+        promptFocused = false
         errorText = nil
         truncatedParsed = nil
         statusText = aiSettings.webSearchEnabled ? "Searching the web…" : "Writing…"
