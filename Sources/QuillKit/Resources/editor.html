@@ -395,9 +395,13 @@
 
     /* ── Image NodeView ─────────────────────────────── */
     .image-wrapper {
-      position: relative;
       display: inline-block;
       max-width: 100%;
+      line-height: 0;
+    }
+    .image-frame {
+      position: relative;
+      display: inline-block;
       line-height: 0;
     }
     .image-wrapper img { display: block; max-width: 100%; border-radius: 4px; }
@@ -803,16 +807,21 @@
         this.wrapper = document.createElement('div')
         this.wrapper.className = 'image-wrapper'
 
+        this.frame = document.createElement('div')
+        this.frame.className = 'image-frame'
+
         this.img = document.createElement('img')
         this._applyAttrs(node.attrs)
-        this.wrapper.appendChild(this.img)
+        this.frame.appendChild(this.img)
 
         for (const pos of ['nw','n','ne','e','se','s','sw','w']) {
           const h = document.createElement('div')
           h.className = `resize-handle ${pos}`
           h.addEventListener('mousedown', e => this._onHandleMousedown(e, pos))
-          this.wrapper.appendChild(h)
+          this.frame.appendChild(h)
         }
+
+        this.wrapper.appendChild(this.frame)
 
         this.figcaption = document.createElement('figcaption')
         this.figcaption.className = 'caption-placeholder'
@@ -828,10 +837,10 @@
         if (attrs.title) this.img.title = attrs.title
         if (attrs.width != null) {
           this.img.width = attrs.width
-          this.wrapper.style.width = attrs.width + 'px'
+          this.frame.style.width = attrs.width + 'px'
         } else {
           this.img.removeAttribute('width')
-          this.wrapper.style.width = ''
+          this.frame.style.width = ''
         }
         if (attrs.height != null) {
           this.img.height = attrs.height
@@ -936,7 +945,7 @@
 
           this.img.style.width  = newW + 'px'
           this.img.style.height = newH + 'px'
-          this.wrapper.style.width = newW + 'px'
+          this.frame.style.width = newW + 'px'
 
           const wIn = document.getElementById('img-tb-w')
           const hIn = document.getElementById('img-tb-h')
