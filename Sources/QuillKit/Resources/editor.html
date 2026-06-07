@@ -206,12 +206,12 @@
       outline: none;
     }
     body.dark .image-wrapper figcaption { color: #aaa; }
-    .image-wrapper figcaption.wp-caption-placeholder:empty::before {
+    .image-wrapper figcaption.caption-placeholder:empty::before {
       content: "Add a caption\2026";
       color: #bbb;
       pointer-events: none;
     }
-    body.dark .image-wrapper figcaption.wp-caption-placeholder:empty::before { color: #666; }
+    body.dark .image-wrapper figcaption.caption-placeholder:empty::before { color: #666; }
 
     /* ── Image toolbar ──────────────────────────────── */
     #image-toolbar {
@@ -473,7 +473,7 @@
         }
 
         this.figcaption = document.createElement('figcaption')
-        this.figcaption.className = 'wp-caption-placeholder'
+        this.figcaption.className = 'caption-placeholder'
         this.wrapper.appendChild(this.figcaption)
 
         this.dom        = this.wrapper
@@ -506,8 +506,8 @@
         this.node = node
         this._applyAttrs(node.attrs)
         // Toggle placeholder class: present when caption is empty
-        const hasCaption = node.content && node.content.size > 0
-        this.figcaption.classList.toggle('wp-caption-placeholder', !hasCaption)
+        const hasCaption = node.content.size > 0
+        this.figcaption.classList.toggle('caption-placeholder', !hasCaption)
         // Sync toolbar inputs if this image is currently selected
         const tb = document.getElementById('image-toolbar')
         if (tb?._activeNodeView === this) {
