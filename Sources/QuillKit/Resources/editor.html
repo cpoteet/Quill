@@ -19,55 +19,293 @@
 
     /* ── Toolbar ─────────────────────────────────────── */
     #toolbar {
+      --toolbar-bg: #f7f7f8;
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 2px;
-      padding: 5px 16px;
-      border-bottom: 1px solid #e0e0e0;
-      background: inherit;
+      align-content: center;
+      flex-wrap: nowrap;
+      gap: 5px;
+      min-height: 42px;
+      padding: 6px 16px;
+      border-bottom: 1px solid #dedfe3;
+      background: #f7f7f8;
       flex-shrink: 0;
+      box-shadow: none;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
-    body.dark #toolbar { border-color: #3a3a3a; }
+    body.dark #toolbar {
+      --toolbar-bg: #242426;
+      background: #242426;
+      border-color: #3a3a3d;
+    }
 
     #toolbar button, #toolbar select {
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 500;
       border: 1px solid transparent;
-      border-radius: 4px;
-      padding: 3px 7px;
+      border-radius: 6px;
+      min-width: 26px;
+      height: 26px;
+      padding: 0 4px;
       cursor: pointer;
       background: transparent;
-      color: inherit;
-      transition: background 0.1s;
+      color: #5f6470;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: background 0.12s ease, color 0.12s ease;
     }
-    #toolbar button:hover { background: rgba(0,0,0,0.07); }
-    body.dark #toolbar button:hover { background: rgba(255,255,255,0.1); }
+    #toolbar button:hover, #toolbar select:hover {
+      background: rgba(0,0,0,0.045);
+      color: #3f434d;
+    }
+    body.dark #toolbar button:hover, body.dark #toolbar select:hover {
+      background: rgba(255,255,255,0.08);
+      color: #d3d4d8;
+    }
     #toolbar button.active {
-      background: rgba(0,122,255,0.12);
-      color: #007aff;
-      border-color: rgba(0,122,255,0.3);
+      background: #ececef;
+      color: #3f434d;
+      border-color: transparent;
+      box-shadow: none;
     }
-    #toolbar button:disabled { opacity: 0.35; cursor: default; }
+    body.dark #toolbar button.active {
+      background: rgba(255,255,255,0.12);
+      color: #f4f4f5;
+    }
+    #toolbar button:disabled {
+      opacity: 0.28;
+      cursor: default;
+      box-shadow: none;
+    }
+    #toolbar button:disabled:hover {
+      background: transparent;
+      border-color: transparent;
+    }
+    #toolbar button:focus-visible, #toolbar select:focus-visible {
+      outline: 2px solid rgba(123,92,255,0.35);
+      outline-offset: 1px;
+    }
+    #toolbar svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+    #toolbar .tb-small-icon {
+      width: 15px;
+      height: 15px;
+    }
+    #toolbar .tb-text-icon {
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    #toolbar .tb-code-text {
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 21px;
+      height: 16px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    #toolbar .tb-spell-icon {
+      color: inherit;
+      display: inline-grid;
+      place-items: center;
+      min-width: 23px;
+      height: 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    #toolbar .tb-add {
+      gap: 5px;
+      min-width: auto;
+      padding: 0 5px;
+      font-size: 14px;
+      font-weight: 400;
+    }
+    #toolbar .tb-add svg {
+      width: 18px;
+      height: 18px;
+    }
+    #toolbar .tb-image-plus-cutout {
+      stroke: var(--toolbar-bg);
+      stroke-width: 5;
+    }
+    #toolbar .tb-image-plus {
+      stroke: currentColor;
+      stroke-width: 1.9;
+    }
 
-    #heading-select {
-      padding: 3px 5px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
+    #heading-button {
+      min-width: 48px;
+      padding: 0 8px 0 10px;
+      border-radius: 14px;
+      gap: 4px;
+      color: #5f6470;
+      background: #eeeef1;
+    }
+    #heading-button.heading-active {
+      color: #3f434d;
+      background: #ececef;
+    }
+    #heading-button svg {
+      width: 11px;
+      height: 11px;
+      stroke-width: 2;
+    }
+    .heading-current {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    #heading-menu {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 950;
+      min-width: 172px;
+      padding: 8px;
+      border: 1px solid rgba(0,0,0,0.04);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.98);
+      color: #555965;
+      box-shadow: 0 18px 45px rgba(28,28,35,0.16);
+    }
+    #heading-menu.visible { display: block; }
+    body.dark #heading-menu {
+      background: rgba(42,42,45,0.98);
+      border-color: rgba(255,255,255,0.08);
+      color: #e8e8ea;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.36);
+    }
+    .heading-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      border: none;
+      border-radius: 9px;
       background: transparent;
       color: inherit;
-      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
     }
-    body.dark #heading-select { border-color: #555; }
-
+    .heading-menu-item:hover,
+    .heading-menu-item.active {
+      background: #ececef;
+      color: #3f434d;
+    }
+    body.dark .heading-menu-item:hover,
+    body.dark .heading-menu-item.active {
+      background: rgba(255,255,255,0.12);
+      color: #f4f4f5;
+    }
+    .heading-menu-key {
+      width: 25px;
+      flex: 0 0 25px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: currentColor;
+      opacity: 0.9;
+    }
+    .heading-menu-label {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    .tb-group {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 5px;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      flex-shrink: 0;
+      max-width: 100%;
+    }
+    body.dark .tb-group {
+      background: transparent;
+      border-color: transparent;
+    }
     .tb-sep {
       width: 1px;
-      height: 18px;
-      background: #d0d0d0;
-      margin: 0 4px;
+      height: 26px;
+      background: #dedfe3;
       flex-shrink: 0;
     }
-    body.dark .tb-sep { background: #444; }
+    body.dark .tb-sep { background: #3a3a3d; }
+    body.dark #toolbar button, body.dark #toolbar select {
+      color: #b9bbc2;
+    }
+    #table-controls, #image-align-controls {
+      align-items: center;
+      gap: 5px;
+    }
+    #table-controls button {
+      min-width: auto;
+      padding: 0 9px;
+    }
+    #toolbar-tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+      pointer-events: none;
+      padding: 5px 8px;
+      border-radius: 5px;
+      background: rgba(24,24,27,0.96);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translate(-50%, 2px);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.24);
+    }
+    #toolbar-tooltip.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    #toolbar-tooltip::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 7px;
+      height: 7px;
+      background: rgba(24,24,27,0.96);
+      transform: translateX(-50%) rotate(45deg);
+    }
+    #toolbar-tooltip.below::before { top: -3px; }
+    #toolbar-tooltip.above::before { bottom: -3px; }
 
     /* ── Editor area ─────────────────────────────────── */
     #editor-wrap {
@@ -227,60 +465,81 @@
       flex-direction: column;
       align-items: stretch;
       gap: 0;
-      padding: 0;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 3px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.16);
       font-size: 12px;
       white-space: nowrap;
       z-index: 200;
       user-select: none;
+      backdrop-filter: blur(18px);
     }
-    body.dark #image-toolbar { background: #2c2c2e; border-color: #444; color: #f0f0f0; }
+    body.dark #image-toolbar {
+      background: rgba(44,44,46,0.96);
+      border-color: rgba(255,255,255,0.12);
+      color: #f0f0f0;
+    }
     .img-tb-row {
       display: flex;
       align-items: center;
       gap: 4px;
-      padding: 4px 8px;
+      padding: 5px 7px;
     }
-    .img-tb-row + .img-tb-row { border-top: 1px solid #eee; }
-    body.dark .img-tb-row + .img-tb-row { border-top-color: #444; }
+    .img-tb-row + .img-tb-row { border-top: 1px solid rgba(0,0,0,0.08); }
+    body.dark .img-tb-row + .img-tb-row { border-top-color: rgba(255,255,255,0.1); }
     #image-toolbar input[type="text"] {
       flex: 1;
       min-width: 140px;
-      padding: 2px 4px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
+      height: 26px;
+      padding: 0 7px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 6px;
       font-size: 12px;
-      background: transparent;
+      background: rgba(255,255,255,0.58);
       color: inherit;
     }
-    body.dark #image-toolbar input[type="text"] { border-color: #555; }
+    body.dark #image-toolbar input[type="text"] {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
     #image-toolbar input[type="number"] {
       width: 52px;
-      padding: 2px 4px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
+      height: 26px;
+      padding: 0 5px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 6px;
       font-size: 12px;
       text-align: center;
-      background: transparent;
+      background: rgba(255,255,255,0.58);
       color: inherit;
     }
-    body.dark #image-toolbar input[type="number"] { border-color: #555; }
+    body.dark #image-toolbar input[type="number"] {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
     #image-toolbar input[type="number"]::-webkit-inner-spin-button,
     #image-toolbar input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
     #image-toolbar button {
       font-size: 12px;
-      padding: 2px 6px;
+      font-weight: 600;
+      height: 26px;
+      padding: 0 8px;
       border: 1px solid transparent;
-      border-radius: 3px;
+      border-radius: 6px;
       cursor: pointer;
       background: transparent;
       color: inherit;
     }
-    #image-toolbar button:hover { background: rgba(0,0,0,0.07); }
-    body.dark #image-toolbar button:hover { background: rgba(255,255,255,0.1); }
+    #image-toolbar button:hover {
+      background: rgba(0,0,0,0.06);
+      border-color: rgba(0,0,0,0.08);
+    }
+    body.dark #image-toolbar button:hover {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.1);
+    }
     #image-toolbar button:disabled { opacity: 0.4; cursor: default; }
     #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: #ddd; margin: 0 2px; }
     body.dark #image-toolbar .img-tb-sep { background: #444; }
@@ -365,53 +624,103 @@
 </head>
 <body>
   <div id="toolbar">
-    <!-- Block type -->
-    <select id="heading-select" title="Heading">
-      <option value="0">Paragraph</option>
-      <option value="1">Heading 1</option>
-      <option value="2">Heading 2</option>
-      <option value="3">Heading 3</option>
-      <option value="4">Heading 4</option>
-      <option value="5">Heading 5</option>
-      <option value="6">Heading 6</option>
-    </select>
-    <span class="tb-sep"></span>
-    <!-- Inline + block marks -->
-    <button data-cmd="bold"      title="Bold (⌘B)"><b>B</b></button>
-    <button data-cmd="italic"    title="Italic (⌘I)"><i>I</i></button>
-    <button data-cmd="underline" title="Underline (⌘U)"><u>U</u></button>
-    <button data-cmd="strike"    title="Strikethrough"><s>S</s></button>
-    <button data-cmd="code"      title="Inline code" style="font-family:monospace">`</button>
-    <button data-cmd="blockquote" title="Blockquote">&ldquo;</button>
-    <button data-cmd="codeBlock"  title="Code block" style="font-family:monospace">{}</button>
-    <span class="tb-sep"></span>
-    <!-- Lists -->
-    <button data-cmd="bulletList"  title="Bullet list">&#8226;</button>
-    <button data-cmd="orderedList" title="Ordered list">1.</button>
-    <span class="tb-sep"></span>
-    <!-- Insert -->
-    <button data-cmd="insertTable" title="Insert 3×3 table">&#8862;</button>
-    <span id="table-controls" style="display:none">
-      <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
-      <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
-      <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
-      <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
-      <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
-    </span>
-    <button data-cmd="link"  title="Insert / remove link">&#128279;</button>
-    <button data-cmd="image" title="Insert image from media library">&#128444;</button>
-    <span id="image-align-controls" style="display:none">
-      <button data-cmd="alignLeft"   title="Float image left (text wraps right)">&#8592;</button>
-      <button data-cmd="alignCenter" title="Center image">&#8596;</button>
-      <button data-cmd="alignRight"  title="Float image right (text wraps left)">&#8594;</button>
+    <span class="tb-group">
+      <button data-cmd="undo" title="Undo (⌘Z)">
+        <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a7 7 0 1 1-5.3 11.6"></path></svg>
+      </button>
+      <button data-cmd="redo" title="Redo (⌘⇧Z)">
+        <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"></path><path d="M20 9H10a7 7 0 1 0 5.3 11.6"></path></svg>
+      </button>
     </span>
     <span class="tb-sep"></span>
-    <!-- Utilities -->
-    <button id="btn-spell" title="Check Spelling"><span style="text-decoration: red wavy underline; text-underline-offset: 3px; text-decoration-skip-ink: none;">ABC</span></button>
-    <button data-cmd="undo" title="Undo (⌘Z)">&#8617;</button>
-    <button data-cmd="redo" title="Redo (⌘⇧Z)">&#8618;</button>
+    <span class="tb-group">
+      <button id="heading-button" title="Paragraph / heading" aria-haspopup="menu" aria-expanded="false">
+        <span id="heading-current" class="heading-current">P</span>
+        <svg viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"></path></svg>
+      </button>
+    </span>
+    <span class="tb-group">
+      <button data-cmd="bulletList"  title="Bullet list">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="1.2"></circle><circle cx="5" cy="12" r="1.2"></circle><circle cx="5" cy="17" r="1.2"></circle><path d="M10 7h9"></path><path d="M10 12h9"></path><path d="M10 17h9"></path></svg>
+      </button>
+      <button data-cmd="orderedList" title="Ordered list">
+        <svg viewBox="0 0 24 24"><path d="M5 6h1v4"></path><path d="M4 10h3"></path><path d="M4 14h3l-3 4h3"></path><path d="M11 7h8"></path><path d="M11 12h8"></path><path d="M11 17h8"></path></svg>
+      </button>
+      <button data-cmd="blockquote" title="Blockquote">
+        <svg viewBox="0 0 24 24"><path d="M8 6h7"></path><path d="M8 12h9"></path><path d="M8 18h7"></path><path d="M4 6v12"></path></svg>
+      </button>
+      <button data-cmd="codeBlock"  title="Code block"><span class="tb-code-text">{}</span></button>
+    </span>
     <span class="tb-sep"></span>
-    <button id="btn-code-view" title="Toggle code view" style="font-family:monospace">&lt;/&gt;</button>
+    <span class="tb-group">
+      <button data-cmd="bold"      title="Bold (⌘B)"><span class="tb-text-icon">B</span></button>
+      <button data-cmd="italic"    title="Italic (⌘I)"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
+      <button data-cmd="underline" title="Underline (⌘U)"><span class="tb-text-icon" style="text-decoration:underline;text-underline-offset:2px;font-weight:500;">U</span></button>
+      <button data-cmd="strike"    title="Strikethrough"><span class="tb-text-icon" style="text-decoration:line-through;font-weight:500;">S</span></button>
+      <button data-cmd="code"      title="Inline code"><span class="tb-code-text">`</span></button>
+    </span>
+    <span class="tb-sep"></span>
+    <span class="tb-group">
+      <button data-cmd="insertTable" title="Insert 3×3 table">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="M5 9.67h14"></path><path d="M5 14.33h14"></path><path d="M9.67 5v14"></path><path d="M14.33 5v14"></path></svg>
+      </button>
+      <span id="table-controls" style="display:none">
+        <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
+        <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
+        <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
+        <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
+        <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
+      </span>
+      <button data-cmd="link"  title="Insert / remove link">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
+      </button>
+    </span>
+    <span class="tb-sep"></span>
+    <span class="tb-group">
+      <span id="image-align-controls" style="display:none">
+        <button data-cmd="alignLeft"   title="Float image left (text wraps right)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <button data-cmd="alignCenter" title="Center image">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <button data-cmd="alignRight"  title="Float image right (text wraps left)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+      </span>
+      <button id="btn-spell" title="Check Spelling"><span class="tb-spell-icon">ABC</span></button>
+      <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
+    </span>
+    <span class="tb-sep"></span>
+    <span class="tb-group">
+      <button data-cmd="image" title="Insert image from media library" class="tb-add">
+        <svg viewBox="0 0 24 24"><rect x="4" y="7" width="14" height="14" rx="2"></rect><path d="m4 18 4.6-4.6 3.2 3.2 2.2-2.2 4 4"></path><path class="tb-image-plus-cutout" d="M18 3.5v7M14.5 7h7"></path><path class="tb-image-plus" d="M18 3.5v7M14.5 7h7"></path></svg>
+        <span>Add</span>
+      </button>
+    </span>
+  </div>
+  <div id="heading-menu" role="menu">
+    <button class="heading-menu-item active" data-heading-level="0" role="menuitem">
+      <span class="heading-menu-key">P</span><span class="heading-menu-label">Paragraph</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="1" role="menuitem">
+      <span class="heading-menu-key">H1</span><span class="heading-menu-label">Heading 1</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="2" role="menuitem">
+      <span class="heading-menu-key">H2</span><span class="heading-menu-label">Heading 2</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="3" role="menuitem">
+      <span class="heading-menu-key">H3</span><span class="heading-menu-label">Heading 3</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="4" role="menuitem">
+      <span class="heading-menu-key">H4</span><span class="heading-menu-label">Heading 4</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="5" role="menuitem">
+      <span class="heading-menu-key">H5</span><span class="heading-menu-label">Heading 5</span>
+    </button>
+    <button class="heading-menu-item" data-heading-level="6" role="menuitem">
+      <span class="heading-menu-key">H6</span><span class="heading-menu-label">Heading 6</span>
+    </button>
   </div>
   <div id="drop-overlay"><span>Drop to upload</span></div>
   <div id="image-toolbar">
@@ -1021,15 +1330,122 @@
       })
     })
 
+    function initToolbarTooltips() {
+      const tip = document.createElement('div')
+      tip.id = 'toolbar-tooltip'
+      document.body.appendChild(tip)
+      let showTimer = null
+      let activeEl = null
+
+      function positionTip(el) {
+        const rect = el.getBoundingClientRect()
+        const tipRect = tip.getBoundingClientRect()
+        const margin = 8
+        const belowTop = rect.bottom + margin
+        const aboveTop = rect.top - tipRect.height - margin
+        const showAbove = belowTop + tipRect.height > window.innerHeight && aboveTop > margin
+        const top = showAbove ? aboveTop : belowTop
+        const half = tipRect.width / 2
+        const left = Math.min(
+          Math.max(rect.left + rect.width / 2, half + margin),
+          window.innerWidth - half - margin
+        )
+        tip.style.left = `${left}px`
+        tip.style.top = `${top}px`
+        tip.classList.toggle('above', showAbove)
+        tip.classList.toggle('below', !showAbove)
+      }
+
+      function show(el) {
+        if (el.disabled) return
+        const text = el.dataset.tooltip
+        if (!text) return
+        activeEl = el
+        clearTimeout(showTimer)
+        showTimer = setTimeout(() => {
+          if (activeEl !== el) return
+          tip.textContent = text
+          tip.classList.remove('visible')
+          tip.style.left = '-9999px'
+          tip.style.top = '-9999px'
+          requestAnimationFrame(() => {
+            positionTip(el)
+            tip.classList.add('visible')
+          })
+        }, 220)
+      }
+
+      function hide(el) {
+        if (el && activeEl !== el) return
+        activeEl = null
+        clearTimeout(showTimer)
+        tip.classList.remove('visible')
+      }
+
+      document.querySelectorAll('#toolbar button[title]').forEach(el => {
+        el.dataset.tooltip = el.getAttribute('title')
+        el.setAttribute('aria-label', el.dataset.tooltip)
+        el.removeAttribute('title')
+        el.addEventListener('mouseenter', () => show(el))
+        el.addEventListener('mouseleave', () => hide(el))
+        el.addEventListener('focus', () => show(el))
+        el.addEventListener('blur', () => hide(el))
+        el.addEventListener('mousedown', () => hide(el))
+      })
+      document.getElementById('editor-wrap').addEventListener('scroll', () => hide(activeEl))
+      window.addEventListener('resize', () => hide(activeEl))
+    }
+
+    initToolbarTooltips()
+
+    const headingButton = document.getElementById('heading-button')
+    const headingCurrent = document.getElementById('heading-current')
+    const headingMenu = document.getElementById('heading-menu')
+
+    function positionHeadingMenu() {
+      const rect = headingButton.getBoundingClientRect()
+      const margin = 8
+      headingMenu.style.left = `${Math.max(rect.left, margin)}px`
+      headingMenu.style.top = `${rect.bottom + margin}px`
+    }
+
+    function closeHeadingMenu() {
+      headingMenu.classList.remove('visible')
+      headingButton.setAttribute('aria-expanded', 'false')
+    }
+
+    function openHeadingMenu() {
+      positionHeadingMenu()
+      headingMenu.classList.add('visible')
+      headingButton.setAttribute('aria-expanded', 'true')
+    }
+
+    function setHeadingLevel(level) {
+      if (level === 0) editor.chain().focus().setParagraph().run()
+      else editor.chain().focus().setHeading({ level }).run()
+      closeHeadingMenu()
+    }
+
+    headingButton.addEventListener('click', e => {
+      e.preventDefault()
+      if (headingMenu.classList.contains('visible')) closeHeadingMenu()
+      else openHeadingMenu()
+    })
+
+    headingMenu.querySelectorAll('[data-heading-level]').forEach(item => {
+      item.addEventListener('mousedown', e => e.preventDefault())
+      item.addEventListener('click', () => setHeadingLevel(parseInt(item.dataset.headingLevel)))
+    })
+
+    document.addEventListener('mousedown', e => {
+      if (!headingMenu.contains(e.target) && !headingButton.contains(e.target)) closeHeadingMenu()
+    })
+    window.addEventListener('resize', closeHeadingMenu)
+    document.getElementById('editor-wrap').addEventListener('scroll', closeHeadingMenu)
+
     document.getElementById('btn-spell').addEventListener('mousedown', e => {
       e.preventDefault()
       window.webkit.messageHandlers.checkSpelling.postMessage(editor.getText())
-    })
-
-    document.getElementById('heading-select').addEventListener('change', e => {
-      const level = parseInt(e.target.value)
-      if (level === 0) editor.chain().focus().setParagraph().run()
-      else editor.chain().focus().toggleHeading({ level }).run()
     })
 
     // ── Active-state updates ───────────────────────────
@@ -1041,15 +1457,19 @@
         const btn = document.querySelector(`[data-cmd="${cmd}"]`)
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
       })
-      // Heading select
-      const sel = document.getElementById('heading-select')
-      sel.value = '0'
+      // Heading menu
+      let headingLevel = '0'
       for (let i = 1; i <= 6; i++) {
-        if (editor.isActive('heading', { level: i })) { sel.value = String(i); break }
+        if (editor.isActive('heading', { level: i })) { headingLevel = String(i); break }
       }
+      headingCurrent.textContent = headingLevel === '0' ? 'P' : `H${headingLevel}`
+      headingButton.classList.toggle('heading-active', headingLevel !== '0')
+      headingMenu.querySelectorAll('[data-heading-level]').forEach(item => {
+        item.classList.toggle('active', item.dataset.headingLevel === headingLevel)
+      })
       // Table controls
       const inTable = editor.isActive('table')
-      document.getElementById('table-controls').style.display = inTable ? 'contents' : 'none'
+      document.getElementById('table-controls').style.display = inTable ? 'inline-flex' : 'none'
       // Undo / Redo
       document.querySelector('[data-cmd="undo"]').disabled = !editor.can().undo()
       document.querySelector('[data-cmd="redo"]').disabled = !editor.can().redo()
@@ -1058,7 +1478,7 @@
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
       const alignControls = document.getElementById('image-align-controls')
       if (selectedImage) {
-        alignControls.style.display = 'contents'
+        alignControls.style.display = 'inline-flex'
         const alignCmdMap = { left: 'alignLeft', center: 'alignCenter', right: 'alignRight' }
         document.querySelectorAll('#image-align-controls button').forEach(btn => {
           btn.classList.toggle('active', btn.dataset.cmd === alignCmdMap[selectedImage.attrs.alignment])

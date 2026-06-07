@@ -684,9 +684,9 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 ### 7.6 Editor — code view
 
-- [ ] `</>` button appears at the far right of the toolbar.
+- [ ] `</>` button appears in the toolbar's utility group (left of the image "Add" button).
 - [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are
-      disabled while in code view; the `</>` button shows the active (blue) state.
+      disabled while in code view; the `</>` button shows the active state.
 - [ ] HTML in the textarea is pretty-printed: block elements on their own lines,
       inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their
       parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested,
