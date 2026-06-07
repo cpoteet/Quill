@@ -154,6 +154,7 @@ public struct WordPressClient: Sendable {
     }
 
     public func updateMediaAltText(id: Int, altText: String) async throws -> WPMedia {
+        // WordPress accepts POST for partial media updates (only alt_text changes)
         let url = try endpoint("media/\(id)")
         return try await post(url, body: MediaAltPayload(altText: altText))
     }

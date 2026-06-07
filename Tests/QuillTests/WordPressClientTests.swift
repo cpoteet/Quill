@@ -349,7 +349,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.url?.query?.contains("force=true") == true)
     }
 
-    @Test func updateMediaAltTextSendsPatchToMediaEndpoint() async throws {
+    @Test func updateMediaAltTextSendsPostToMediaEndpoint() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
             capturedRequest = request
