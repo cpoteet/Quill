@@ -153,6 +153,11 @@ public struct WordPressClient: Sendable {
         try await performVoid(request)
     }
 
+    public func updateMediaAltText(id: Int, altText: String) async throws -> WPMedia {
+        let url = try endpoint("media/\(id)")
+        return try await post(url, body: MediaAltPayload(altText: altText))
+    }
+
     // MARK: - Taxonomies
 
     public func fetchAllCategories() async throws -> [WPCategory] {
@@ -303,6 +308,11 @@ public struct WordPressClient: Sendable {
 
     private struct TaxonomyPayload: Encodable {
         let name: String
+    }
+
+    private struct MediaAltPayload: Encodable {
+        let altText: String
+        enum CodingKeys: String, CodingKey { case altText = "alt_text" }
     }
 
     /// Sends a request, mapping cancellation and HTTP errors. Returns the body data and

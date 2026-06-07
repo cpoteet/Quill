@@ -349,6 +349,58 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.url?.query?.contains("force=true") == true)
     }
 
+    @Test func updateMediaAltTextSendsPatchToMediaEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.updateMediaAltText(id: 42, altText: "A sunset photo")
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.contains("media/42") == true)
+    }
+
+    @Test func updateMediaAltTextBodyContainsAltText() async throws {
+        var bodyData: Data?
+        MockURLProtocol.requestHandler = { request in
+            var body = Data()
+            if let stream = request.httpBodyStream {
+                stream.open()
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let n = stream.read(&buffer, maxLength: buffer.count)
+                    if n > 0 { body.append(contentsOf: buffer[..<n]) }
+                }
+                stream.close()
+            }
+            bodyData = body
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.updateMediaAltText(id: 42, altText: "Sunset over a lake")
+        let bodyStr = String(data: bodyData ?? Data(), encoding: .utf8) ?? ""
+        #expect(bodyStr.contains("alt_text"))
+        #expect(bodyStr.contains("Sunset over a lake"))
+    }
+
+    @Test func updateMediaAltTextReturnsDecodedMedia() async throws {
+        let mediaJSON = """
+        {"id":42,"title":{"rendered":"photo.jpg"},\
+        "source_url":"https://example.com/photo.jpg",\
+        "media_type":"image","mime_type":"image/jpeg",\
+        "link":"https://example.com/?attachment_id=42","date":"2024-01-01T00:00:00",\
+        "alt_text":"Updated alt text"}
+        """
+        MockURLProtocol.requestHandler = { request in
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    mediaJSON.data(using: .utf8)!)
+        }
+        let updated = try await client.updateMediaAltText(id: 42, altText: "Updated alt text")
+        #expect(updated.id == 42)
+        #expect(updated.altText == "Updated alt text")
+    }
+
     @Test func createAutosaveSendsToPostAutosavesEndpoint() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
