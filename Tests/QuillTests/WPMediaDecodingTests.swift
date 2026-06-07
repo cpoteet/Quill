@@ -87,4 +87,20 @@ import Testing
         #expect(media.id == 7)
         #expect(media.mediaDetails?.sizes == nil)
     }
+
+    @Test func altTextDecodesFromAltText() throws {
+        let json = """
+        {"id":8,"source_url":"https://example.com/img.jpg","alt_text":"A sunset photo"}
+        """
+        let media = try decode(json)
+        #expect(media.altText == "A sunset photo")
+    }
+
+    @Test func missingAltTextDefaultsToEmpty() throws {
+        let json = """
+        {"id":9,"source_url":"https://example.com/img.jpg"}
+        """
+        let media = try decode(json)
+        #expect(media.altText == "")
+    }
 }

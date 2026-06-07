@@ -8,6 +8,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
     public var mimeType: String
     public var link: String       // WordPress attachment page URL
     public var date: String       // ISO8601, server local time
+    public var altText: String
     public var mediaDetails: MediaDetails?
 
     enum CodingKeys: String, CodingKey {
@@ -16,6 +17,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         case mediaType = "media_type"
         case mimeType = "mime_type"
         case link, date
+        case altText = "alt_text"
         case mediaDetails = "media_details"
     }
 
@@ -28,6 +30,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         mimeType = try c.decodeIfPresent(String.self, forKey: .mimeType) ?? ""
         link = try c.decodeIfPresent(String.self, forKey: .link) ?? ""
         date = try c.decodeIfPresent(String.self, forKey: .date) ?? ""
+        altText = try c.decodeIfPresent(String.self, forKey: .altText) ?? ""
         mediaDetails = try c.decodeIfPresent(MediaDetails.self, forKey: .mediaDetails)
     }
 }
