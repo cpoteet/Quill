@@ -166,44 +166,62 @@ describe('toWordPressHTML — code blocks', () => {
 // ---------------------------------------------------------------------------
 
 describe('toWordPressHTML — images', () => {
-  test('data-media-id produces wp-image-{id} class on img', () => {
-    const out = wp('<img src="a.jpg" data-media-id="42">')
+  // renderHTML now always produces <figure><img ...><figcaption></figcaption></figure>
+
+  test('figure with plain img gets wp-block-image class', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.match(out, /class="wp-block-image"/)
+  })
+
+  test('data-media-id produces wp-image-{id} class on img inside figure', () => {
+    const out = wp('<figure><img src="a.jpg" data-media-id="42"><figcaption></figcaption></figure>')
     assert.match(out, /wp-image-42/)
   })
 
-  test('img.alignleft is wrapped in figure.wp-block-image.alignleft', () => {
-    const out = wp('<img src="a.jpg" class="alignleft">')
-    assert.match(out, /class="wp-block-image alignleft"/)
-    assert.match(out, /<figure/)
+  test('alignleft on img is moved to figure class', () => {
+    const out = wp('<figure><img src="a.jpg" class="alignleft"><figcaption></figcaption></figure>')
+    const dom = new JSDOM(out).window.document
+    const fig = dom.querySelector('figure')
+    const img = dom.querySelector('img')
+    assert.ok(fig.classList.contains('wp-block-image'), 'figure missing wp-block-image')
+    assert.ok(fig.classList.contains('alignleft'), 'figure missing alignleft')
+    assert.ok(!img.classList.contains('alignleft'), 'img should not have alignleft')
   })
 
-  test('img.alignright is wrapped in figure.wp-block-image.alignright', () => {
-    const out = wp('<img src="a.jpg" class="alignright">')
+  test('alignright on img is moved to figure class', () => {
+    const out = wp('<figure><img src="a.jpg" class="alignright"><figcaption></figcaption></figure>')
     assert.match(out, /class="wp-block-image alignright"/)
   })
 
-  test('img.aligncenter is wrapped in figure.wp-block-image.aligncenter', () => {
-    const out = wp('<img src="a.jpg" class="aligncenter">')
+  test('aligncenter on img is moved to figure class', () => {
+    const out = wp('<figure><img src="a.jpg" class="aligncenter"><figcaption></figcaption></figure>')
     assert.match(out, /class="wp-block-image aligncenter"/)
   })
 
-  test('align class is removed from img after wrapping in figure', () => {
-    const out = wp('<img src="a.jpg" class="alignleft">')
-    // The <img> inside the figure should not still have the align class
-    const dom = new JSDOM(out).window.document
-    const img = dom.querySelector('img')
-    assert.ok(!img.classList.contains('alignleft'), 'img still has alignleft after wrapping')
-  })
-
-  test('image with both alignment and media-id gets figure wrapper and wp-image class', () => {
-    const out = wp('<img src="a.jpg" class="alignleft" data-media-id="7">')
+  test('both alignment and media-id: figure gets align class, img gets wp-image class', () => {
+    const out = wp('<figure><img src="a.jpg" class="alignleft" data-media-id="7"><figcaption></figcaption></figure>')
     assert.match(out, /wp-block-image alignleft/)
     assert.match(out, /wp-image-7/)
   })
 
-  test('image with no alignment and no media-id is untouched (no figure wrap)', () => {
-    const out = wp('<img src="a.jpg">')
-    assert.doesNotMatch(out, /<figure/)
+  test('empty figcaption is removed from output', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.doesNotMatch(out, /<figcaption/)
+  })
+
+  test('non-empty figcaption gets wp-element-caption class', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption>A caption</figcaption></figure>')
+    assert.match(out, /class="wp-element-caption"/)
+    assert.match(out, /A caption/)
+  })
+
+  test('whitespace-only figcaption is removed', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption>   </figcaption></figure>')
+    assert.doesNotMatch(out, /<figcaption/)
+  })
+
+  test('table figure is not treated as image figure', () => {
+    const out = wp('<figure class="wp-block-table"><table><tbody><tr><td>x</td></tr></tbody></table></figure>')
     assert.doesNotMatch(out, /wp-block-image/)
   })
 })
@@ -260,7 +278,7 @@ describe('toWordPressHTML — idempotency and edge cases', () => {
       '<ul><li><p>item</p></li></ul>',
       '<blockquote><p>quote</p><cite>author</cite></blockquote>',
       '<pre><code>code</code></pre>',
-      '<img src="a.jpg" class="alignleft" data-media-id="3">',
+      '<figure><img src="a.jpg" class="alignleft" data-media-id="3"><figcaption></figcaption></figure>',
       '<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>',
     ].join('\n')
     const once = wp(input)
