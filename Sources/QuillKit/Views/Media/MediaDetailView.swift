@@ -171,6 +171,7 @@ struct MediaDetailView: View {
     }
 
     private func commitAltText() {
+        guard altSaveState != .saving else { return }
         guard let save = onSaveAltText else { return }
         let text = altTextDraft
         altSaveState = .saving
