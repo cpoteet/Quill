@@ -7,3 +7,5 @@
 .claude/
 .superpowers/
 Scripts/node_modules/
+.agents/
+AGENTS.md

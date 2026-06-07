@@ -130,13 +130,21 @@ public struct WordPressClient: Sendable {
         let url = try endpoint("media")
         var request = authorizedRequest(url: url, method: "POST")
         request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
-        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
+        let fallback = WordPressClient.contentDispositionFilenameFallback(filename)
+        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? fallback
         request.setValue(
-            "attachment; filename=\"\(filename)\"; filename*=UTF-8''\(encoded)",
+            "attachment; filename=\"\(fallback)\"; filename*=UTF-8''\(encoded)",
             forHTTPHeaderField: "Content-Disposition"
         )
         request.httpBody = data
         return try await perform(request)
+    }
+
+    static func contentDispositionFilenameFallback(_ filename: String) -> String {
+        filename
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .filter { $0.unicodeScalars.allSatisfy { $0.value >= 32 && $0.value != 127 } }
     }
 
     public func deleteMedia(id: Int) async throws {

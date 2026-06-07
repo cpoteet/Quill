@@ -91,7 +91,7 @@ public struct MediaPickerView: View {
 
     private func uploadFromDisk() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.image, UTType.pdf, UTType.movie]
+        panel.allowedContentTypes = [UTType.image]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }

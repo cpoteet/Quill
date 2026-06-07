@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (164 tests)
+## Swift test suite (204 tests)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -57,7 +57,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 7 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha |
 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| `WordPressClientTests` | `WordPressClientTests.swift` | 37 | URL construction, HTTP error mapping, `searchLinks`, auth headers |
+| `WordPressClientTests` | `WordPressClientTests.swift` | 45 | URL construction, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping |
+| `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 5 | `previewURL` query/fragment handling |
 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | `KeychainStoreTests` | `KeychainStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
@@ -168,6 +169,13 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `uploadMediaSetsContentTypeFromMimeType` | `Content-Type` matches passed mime type |
 | `uploadMediaSetsContentDispositionWithFilename` | `Content-Disposition` includes `filename="…"` |
 | `uploadMediaSpacesInFilenameArePercentEncoded` | Spaces in filenames percent-encoded in `filename*` part |
+| `contentDispositionFallbackPassesThroughNormalFilename` | Plain filename unchanged in quoted fallback |
+| `contentDispositionFallbackEscapesDoubleQuote` | `"` → `\"` in quoted fallback |
+| `contentDispositionFallbackEscapesBackslash` | `\` → `\\` in quoted fallback |
+| `contentDispositionFallbackStripsNewlines` | Newlines removed from quoted fallback |
+| `contentDispositionFallbackStripsControlCharacters` | Control chars (< 32) removed from quoted fallback |
+| `contentDispositionFallbackPreservesUnicode` | Unicode (e.g. `café.jpg`) passes through unchanged |
+| `uploadMediaEscapesQuotesInContentDispositionFilename` | End-to-end: quoted filename with `"` produces valid `Content-Disposition` header |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
@@ -455,6 +463,24 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 
 ---
 
+### 17. Editor helpers — `PostEditorHelpersTests` (5 tests)
+
+File: `Tests/QuillTests/PostEditorHelpersTests.swift`
+
+Tests `PostEditorView` static helpers that are pure functions and can be exercised without instantiating the SwiftUI view.
+
+#### `previewURL` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `previewURLAppendsFreshQueryToCleanURL` | Pretty permalink gets `?preview=true` appended |
+| `previewURLAppendsPreviewAlongsideExistingQuery` | Plain permalink `/?p=123` becomes `/?p=123&preview=true` (not double `?`) |
+| `previewURLReplacesExistingPreviewFalseParam` | Existing `preview=false` is replaced, not duplicated |
+| `previewURLPreservesMultipleExistingParams` | Other query params survive the transformation |
+| `previewURLPreservesFragment` | `#section` fragment is preserved alongside the new query |
+
+---
+
 ## JS editor tests (37 tests)
 
 File: `Scripts/test-editor.js`
@@ -634,6 +660,11 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Clicking a toolbar input doesn't dismiss the toolbar (80ms delay).
 - [ ] Mime detection: insert `.jpg/.png/.gif/.webp/.heic/.tiff` → correct
       content type sent.
+- [ ] **Insert-image picker is image-only:** open the editor image picker (insert
+      image button in toolbar) → file dialog only shows/accepts image files; PDFs
+      and movies are greyed out or absent.
+- [ ] **Media tab still accepts PDFs and movies:** open the Media tab, use the
+      upload button there → file dialog accepts images, PDFs, and movies.
 
 ### 7.5 Editor — links
 
@@ -706,6 +737,12 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       changes → **no** conflict alert.
 - [ ] **Preview-induced baseline refresh:** preview a draft post, then save →
       **no** spurious conflict.
+- [ ] **Preview URL on plain-permalink site:** on a site using
+      `Settings → Permalinks → Plain` (URLs like `/?p=123`), click Preview →
+      browser opens the correct preview URL with `&preview=true` (not `?preview=true`
+      appended after the existing `?`).
+- [ ] **Preview URL on pretty-permalink site:** same test with a pretty permalink
+      (e.g. `https://example.com/my-post/`) → URL is `…/?preview=true`.
 
 ### 7.9 Autosave / unsaved-changes / navigation
 
@@ -715,6 +752,15 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       local divergence.
 - [ ] Navigate away from a dirty local draft → flushed to SQLite; reopening shows
       the latest content.
+- [ ] **onDisappear flush — local draft to Media:** edit a local draft, immediately
+      click the Media section (before the 30s autosave fires) → switch back to
+      Drafts, reopen the draft → the edit is present.
+- [ ] **onDisappear flush — remote post to Media:** edit a remote post, immediately
+      click the Media section → reopen the post → "Unsaved changes restored" toast
+      and the edit is shown.
+- [ ] **onDisappear flush — no regression on item switch:** switch directly between
+      two posts without going through Media → existing flush behavior still works,
+      no duplicate autosave written.
 - [ ] Navigate away from a dirty remote post → stashed; not pushed to WordPress.
 - [ ] After a successful publish/update, the autosave stash for that post is
       **deleted** (so the next open doesn't falsely restore).
@@ -919,6 +965,9 @@ File: `Tests/QuillTests/AppStateTests.swift`
 
 ## What's not yet automated
 
-All automatable Swift and JS layers are now covered. The only remaining gap is the **manual/functional checklists** (§7), which require a live WordPress site and cannot be run headlessly.
+The automatable Swift and JS layers are covered. The remaining gaps require a live WordPress site or SwiftUI UI test infrastructure and cannot be run headlessly:
 
-Specifically: UI flows, SwiftUI/AppKit rendering behavior, WKWebView bridge interactions, conflict detection, autosave restoration, and AI result panel visual correctness. These are documented in §7 and should be run before each release.
+- **onDisappear flush (§7.9):** The `onDisappear` closure fires in the SwiftUI view lifecycle, which can't be triggered from Swift Testing. Manual steps cover local-draft-to-Media and remote-post-to-Media scenarios.
+- **Preview URL on plain-permalink sites (§7.7):** `previewURL` logic is fully unit-tested; the manual step verifies the resulting URL actually loads in the browser on a real site.
+- **Insert-image picker file filter (§7.4):** `NSOpenPanel.allowedContentTypes` is an AppKit call; the panel itself can only be verified by running the app.
+- **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.

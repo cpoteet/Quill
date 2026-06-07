@@ -182,7 +182,12 @@ public struct PostEditorView: View {
             Text(previewError ?? "")
         }
         .task(id: item.id) { await loadItem() }
-        .onDisappear { autosaveTask?.cancel() }
+        .onDisappear {
+            autosaveTask?.cancel()
+            if let loadedItem, isDirty {
+                Task { await flushToDB(for: loadedItem) }
+            }
+        }
     }
 
     private var toolbar: some View {
@@ -610,6 +615,15 @@ public struct PostEditorView: View {
         }
     }
 
+    static func previewURL(from link: String) -> URL? {
+        guard var components = URLComponents(string: link) else { return nil }
+        var items = components.queryItems ?? []
+        items.removeAll { $0.name == "preview" }
+        items.append(URLQueryItem(name: "preview", value: "true"))
+        components.queryItems = items
+        return components.url
+    }
+
     private func imageMimeType(for ext: String) -> String {
         switch ext {
         case "jpg", "jpeg": return "image/jpeg"
@@ -634,7 +648,7 @@ public struct PostEditorView: View {
                 ? try await client.createPageAutosave(postID: post.id, payload: payload)
                 : try await client.createAutosave(postID: post.id, payload: payload)
             let linkBase = autosave.link ?? post.link
-            guard let url = URL(string: linkBase + "?preview=true") else {
+            guard let url = PostEditorView.previewURL(from: linkBase) else {
                 previewError = "WordPress returned an invalid preview URL: \(linkBase)"
                 return
             }

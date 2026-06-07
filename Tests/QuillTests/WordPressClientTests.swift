@@ -650,6 +650,44 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(results[0].type == .category)
     }
 
+    // MARK: - Content-Disposition filename escaping (Issue 3)
+
+    @Test func contentDispositionFallbackPassesThroughNormalFilename() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("photo.jpg") == "photo.jpg")
+    }
+
+    @Test func contentDispositionFallbackEscapesDoubleQuote() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("weird \"name\".jpg") == "weird \\\"name\\\".jpg")
+    }
+
+    @Test func contentDispositionFallbackEscapesBackslash() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("back\\slash.jpg") == "back\\\\slash.jpg")
+    }
+
+    @Test func contentDispositionFallbackStripsNewlines() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("bad\nname.jpg") == "badname.jpg")
+    }
+
+    @Test func contentDispositionFallbackStripsControlCharacters() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("file\u{0001}name.jpg") == "filename.jpg")
+    }
+
+    @Test func contentDispositionFallbackPreservesUnicode() {
+        #expect(WordPressClient.contentDispositionFilenameFallback("café.jpg") == "café.jpg")
+    }
+
+    @Test func uploadMediaEscapesQuotesInContentDispositionFilename() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "weird \"name\".jpg", mimeType: "image/jpeg")
+        let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        #expect(disposition.contains("filename=\"weird \\\"name\\\".jpg\""))
+    }
+
     @Test func searchLinksPostsFailWhileTermsSucceed() async throws {
         MockURLProtocol.requestHandler = { request in
             let path = request.url?.path ?? ""
