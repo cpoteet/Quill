@@ -217,9 +217,10 @@
     #image-toolbar {
       display: none;
       position: fixed;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: 0;
       background: #fff;
       border: 1px solid #ddd;
       border-radius: 6px;
@@ -230,6 +231,25 @@
       user-select: none;
     }
     body.dark #image-toolbar { background: #2c2c2e; border-color: #444; color: #f0f0f0; }
+    .img-tb-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+    }
+    .img-tb-row + .img-tb-row { border-top: 1px solid #eee; }
+    body.dark .img-tb-row + .img-tb-row { border-top-color: #444; }
+    #image-toolbar input[type="text"] {
+      flex: 1;
+      min-width: 140px;
+      padding: 2px 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+      background: transparent;
+      color: inherit;
+    }
+    body.dark #image-toolbar input[type="text"] { border-color: #555; }
     #image-toolbar input[type="number"] {
       width: 52px;
       padding: 2px 4px;
@@ -388,17 +408,23 @@
   </div>
   <div id="drop-overlay"><span>Drop to upload</span></div>
   <div id="image-toolbar">
-    <span class="img-tb-label">W</span>
-    <input type="number" id="img-tb-w" min="50" placeholder="—">
-    <span class="img-tb-label">H</span>
-    <input type="number" id="img-tb-h" min="50" placeholder="—">
-    <span class="img-tb-sep"></span>
-    <button data-size="thumbnail" style="display:none">Thumb</button>
-    <button data-size="medium"    style="display:none">Medium</button>
-    <button data-size="large"     style="display:none">Large</button>
-    <button data-size="full"      style="display:none">Full</button>
-    <span class="img-tb-sep"></span>
-    <button id="img-tb-reset">Reset</button>
+    <div class="img-tb-row">
+      <span class="img-tb-label">W</span>
+      <input type="number" id="img-tb-w" min="50" placeholder="—">
+      <span class="img-tb-label">H</span>
+      <input type="number" id="img-tb-h" min="50" placeholder="—">
+      <span class="img-tb-sep"></span>
+      <button data-size="thumbnail" style="display:none">Thumb</button>
+      <button data-size="medium"    style="display:none">Medium</button>
+      <button data-size="large"     style="display:none">Large</button>
+      <button data-size="full"      style="display:none">Full</button>
+      <span class="img-tb-sep"></span>
+      <button id="img-tb-reset">Reset</button>
+    </div>
+    <div class="img-tb-row">
+      <span class="img-tb-label">Alt</span>
+      <input type="text" id="img-tb-alt" placeholder="Alt text…">
+    </div>
   </div>
   <div id="editor-wrap"><div id="editor"></div><textarea id="code-editor" spellcheck="false"></textarea></div>
 
@@ -620,8 +646,9 @@
       const tb = document.getElementById('image-toolbar')
       if (!tb) return
       tb._activeNodeView = nv
-      document.getElementById('img-tb-w').value = nv.node.attrs.width  ?? ''
-      document.getElementById('img-tb-h').value = nv.node.attrs.height ?? ''
+      document.getElementById('img-tb-w').value   = nv.node.attrs.width  ?? ''
+      document.getElementById('img-tb-h').value   = nv.node.attrs.height ?? ''
+      document.getElementById('img-tb-alt').value = nv.node.attrs.alt    ?? ''
       _updateNamedSizeButtons(null)
 
       _positionImageToolbar(tb, nv.wrapper)
@@ -646,6 +673,8 @@
       }
       tb.style.display = 'none'
       tb._activeNodeView = null
+      const altIn = document.getElementById('img-tb-alt')
+      if (altIn) altIn.value = ''
     }
 
     function _updateNamedSizeButtons(sizes) {
@@ -1195,6 +1224,25 @@
         dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, width: null, height: null }))
         document.getElementById('img-tb-w').value = ''
         document.getElementById('img-tb-h').value = ''
+      })
+
+      let _altDebounceTimer = null
+      function _commitAlt(value) {
+        const tb = document.getElementById('image-toolbar')
+        const nv = tb?._activeNodeView
+        if (!nv) return
+        const pos = nv.getPos()
+        if (typeof pos !== 'number') return
+        const { state, dispatch } = nv.editor.view
+        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, alt: value || null }))
+      }
+      document.getElementById('img-tb-alt').addEventListener('input', e => {
+        clearTimeout(_altDebounceTimer)
+        _altDebounceTimer = setTimeout(() => _commitAlt(e.target.value), 500)
+      })
+      document.getElementById('img-tb-alt').addEventListener('blur', e => {
+        clearTimeout(_altDebounceTimer)
+        _commitAlt(e.target.value)
       })
 
       document.querySelectorAll('#image-toolbar [data-size]').forEach(btn => {
