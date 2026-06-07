@@ -46,18 +46,25 @@ struct TitleTextField: NSViewRepresentable {
 final class RestrictedTextView: NSTextView {
     var placeholder: String = "" { didSet { needsDisplay = true } }
 
-    private let menuRefilter = TextMenuRefilter()
+    // rightMouseDown pops up our own menu directly so that
+    // allowsContextMenuPlugIns = false is respected, preventing AutoFill
+    // from being injected. NSTextView's own rightMouseDown path does not
+    // honour that flag, so we bypass it by not calling super.
+    override func rightMouseDown(with event: NSEvent) {
+        NSMenu.popUpContextMenu(buildMenu(), with: event, for: self)
+    }
 
-    // menu(for:) is called directly on NSTextView — no shared field editor.
-    override func menu(for event: NSEvent) -> NSMenu? {
+    // menu(for:) is kept as a fallback for any code path that calls it directly.
+    override func menu(for event: NSEvent) -> NSMenu? { buildMenu() }
+
+    private func buildMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.allowsContextMenuPlugIns = false
         menu.items = [
-            NSMenuItem(title: "Cut", action: NSSelectorFromString("cut:"), keyEquivalent: ""),
-            NSMenuItem(title: "Copy", action: NSSelectorFromString("copy:"), keyEquivalent: ""),
+            NSMenuItem(title: "Cut",   action: NSSelectorFromString("cut:"),   keyEquivalent: ""),
+            NSMenuItem(title: "Copy",  action: NSSelectorFromString("copy:"),  keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
-        // Catch any items macOS appends (AutoFill, Services) before the menu shows.
-        menu.delegate = menuRefilter
         return menu
     }
 
@@ -74,16 +81,5 @@ final class RestrictedTextView: NSTextView {
             .font: f,
         ]
         placeholder.draw(at: NSPoint(x: 0, y: 1), withAttributes: attrs)
-    }
-}
-
-private final class TextMenuRefilter: NSObject, NSMenuDelegate {
-    private static let allowed: Set<String> = ["cut:", "copy:", "paste:"]
-
-    func menuWillOpen(_ menu: NSMenu) {
-        menu.items = menu.items.filter { item in
-            guard let action = item.action else { return false }
-            return Self.allowed.contains(NSStringFromSelector(action))
-        }
     }
 }

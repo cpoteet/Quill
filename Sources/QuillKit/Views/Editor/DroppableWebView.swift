@@ -60,43 +60,43 @@ public final class DroppableWebView: WKWebView {
 
     // MARK: - Context menu
 
-    private let menuFilter = WebViewMenuFilter()
+    // rightMouseDown pops up our own menu directly so that
+    // allowsContextMenuPlugIns = false is respected. WebKit's own menu-show
+    // path (via super.rightMouseDown) does not honour that flag, which caused
+    // AutoFill/Services to leak through.
+    public override func rightMouseDown(with event: NSEvent) {
+        NSMenu.popUpContextMenu(buildContextMenu(), with: event, for: self)
+    }
 
+    // willOpenMenu is kept as a fallback for non-rightMouseDown code paths
+    // (e.g. accessibility). allowsContextMenuPlugIns = false is set here too.
     public override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
-        // Items before the first separator are spell-check suggestions WebKit adds
-        // for misspelled words (using standard selectors like changeSpelling:,
-        // ignoreSpelling:, learnSpelling:). Preserve those and rebuild the standard
-        // edit commands — WebKit's own Cut/Copy/Paste use private internal selectors
-        // that get filtered away along with browser-specific items.
-        var spellItems: [NSMenuItem] = []
-        for item in menu.items {
-            if item.isSeparatorItem { break }
-            spellItems.append(item)
-        }
-        var newItems = spellItems
-        if !spellItems.isEmpty { newItems.append(.separator()) }
-        newItems += [
-            NSMenuItem(title: "Cut", action: NSSelectorFromString("cut:"), keyEquivalent: ""),
-            NSMenuItem(title: "Copy", action: NSSelectorFromString("copy:"), keyEquivalent: ""),
+        menu.allowsContextMenuPlugIns = false
+    }
+
+    private func buildContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.allowsContextMenuPlugIns = false
+        menu.items = [
+            NSMenuItem(title: "Cut",   action: NSSelectorFromString("cut:"),   keyEquivalent: ""),
+            NSMenuItem(title: "Copy",  action: NSSelectorFromString("copy:"),  keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
         if aiEnabled && hasTextSelection {
-            newItems.append(.separator())
+            menu.addItem(.separator())
             let aiActions: [(String, Selector)] = [
                 ("Make Longer",  #selector(aiMakeLonger)),
                 ("Make Shorter", #selector(aiMakeShorter)),
-                ("To Table",     #selector(aiConvertToTable)),
-                ("To List",      #selector(aiConvertToList)),
+                ("Convert to Table", #selector(aiConvertToTable)),
+                ("Convert to List",  #selector(aiConvertToList)),
             ]
             for (title, sel) in aiActions {
                 let item = NSMenuItem(title: title, action: sel, keyEquivalent: "")
                 item.target = self
-                newItems.append(item)
+                menu.addItem(item)
             }
         }
-        menu.items = newItems
-        // macOS may still append Services/AutoFill after this; re-filter in menuWillOpen.
-        menu.delegate = menuFilter
+        return menu
     }
 
     // MARK: - AI menu actions
@@ -118,25 +118,5 @@ public final class DroppableWebView: WKWebView {
     private func showOverlay(_ visible: Bool) {
         let js = visible ? "window.showDropOverlay?.()" : "window.hideDropOverlay?.()"
         evaluateJavaScript(js, completionHandler: nil)
-    }
-}
-
-final class WebViewMenuFilter: NSObject, NSMenuDelegate {
-    private static let allowed: Set<String> = [
-        "cut:", "copy:", "paste:",
-        "changeSpelling:", "ignoreSpelling:", "learnSpelling:",
-        "aiMakeLonger", "aiMakeShorter", "aiConvertToTable", "aiConvertToList",
-    ]
-
-    static func apply(to menu: NSMenu) {
-        menu.items = menu.items.filter { item in
-            if item.isSeparatorItem { return true }
-            guard let action = item.action else { return false }
-            return allowed.contains(NSStringFromSelector(action))
-        }
-    }
-
-    func menuWillOpen(_ menu: NSMenu) {
-        Self.apply(to: menu)
     }
 }
