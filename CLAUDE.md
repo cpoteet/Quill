@@ -43,11 +43,11 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-01 — 192 Swift + 37 JS tests, all passing)
+## Test suite status (2026-06-06 — 192 Swift + 52 JS tests, all passing)
 
 **Swift (192 tests):** 16 suites covering all models, the full WordPressClient, all storage (JSONFileStore, AppDatabase, DraftStore, AutosaveStore, TaxonomyCache, KeychainStore, AISettingsStore), AIPromptBuilder, AnthropicClient, and AppState view-model logic (PostItem.id/title/statusBadge, SidebarSection.icon/shortTitle, filteredItems + search). Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
-**JS (37 tests):** `Scripts/test-editor.js` covers `toWordPressHTML` and `extractAlignment` via Node + jsdom. Tests headings, lists, list-item `<p>` unwrapping, blockquote+cite, code blocks, images (all alignments, figure-wrapping, media-id class), tables (thead promotion, figure-wrapping), idempotency, and unicode/emoji preservation.
+**JS (52 tests):** `Scripts/test-editor.js` covers `toWordPressHTML` and `extractAlignment` via Node + jsdom. Tests headings, lists, list-item `<p>` unwrapping, blockquote+cite, code blocks, images (figure-based input, alignment class promotion, caption handling, media-id class), tables (thead promotion, figure-wrapping), idempotency, and unicode/emoji preservation.
 
 **Full reference:** `docs/testing-plan.md` — lists every test by name with what it checks, plus the manual/functional checklists for release sign-off.
 
@@ -147,7 +147,7 @@ Sources/QuillKit/
 
 All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/QuillKit/Resources/editor.html`:
 
-1. **`toWordPressHTML(html)`** (~line 789) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. Edit this when WordPress changes expected output format.
+1. **`toWordPressHTML(html)`** (~line 789) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
 
 2. **`ResizableImage.parseHTML()`** (~line 599) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
 
@@ -160,7 +160,7 @@ All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/Quill
 | `<ol>` | `+ class="wp-block-list"`; `<p>` inside `<li>` unwrapped to text node |
 | `<blockquote>` | `+ class="wp-block-quote"` |
 | `<pre>` | `+ class="wp-block-code"` |
-| `<img class="alignleft/right/center">` | wrapped in `<figure class="wp-block-image alignXXX">`; `class="wp-image-{id}"` re-emitted when `data-media-id` is set |
+| `<figure><img class="alignXXX"><figcaption>…</figcaption></figure>` (Tiptap `renderHTML` output) | figure gets `class="wp-block-image alignXXX"`; alignment class moved from `img` to `figure`; `class="wp-image-{id}"` added to `img` when `data-media-id` is set; non-empty `<figcaption>` gets `class="wp-element-caption"`; empty figcaption removed |
 | `<table>` | wrapped in `<figure class="wp-block-table">`; first all-`<th>` row promoted from `<tbody>` to `<thead>` |
 | Bold, italic, strike, inline code, links, paragraphs | unchanged — already match Gutenberg |
 
@@ -223,6 +223,8 @@ All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/Quill
 - **Link picker popover anchors to text selection rect, not toolbar button** — JS sends `showLinkPicker` with `window.getSelection().getRangeAt(0).getBoundingClientRect()` (falls back to the toolbar button rect when nothing is selected). WKWebView is flipped (Y-down, same as JS), so no coordinate conversion is needed — pass the JS rect directly to `NSPopover.show(relativeTo:of:preferredEdge:)` with `preferredEdge: .maxY`.
 - **`ResizableImage` Tiptap extension** — `Image` from `@tiptap/extension-image@2` must be imported as a named import (`{ Image as TiptapImage }`) so the default export doesn't shadow the name. `ResizableImage` extends `TiptapImage` and adds `width`, `height`, `mediaId` attributes. It parses standard `<img width="..." height="...">` and `class="wp-image-{id}"` on load; serializes to `width="..."`, `height="..."`, `data-media-id="..."` on output.
 - **`ImageNodeView` is a plain JS class, not a React/Svelte component** — registered via `addNodeView()` returning `new ImageNodeView(node, editor, getPos)`. Implements the ProseMirror NodeView interface: `dom`, `update()`, `selectNode()`, `deselectNode()`, `destroy()`, `stopEvent()`, `ignoreMutation()`. `stopEvent` returns `true` for `mousedown` on `.resize-handle` elements so ProseMirror doesn't steal the event.
+- **`ResizableImage` has `content: 'inline*'` for captions** — the image node is no longer atomic (leaf). `ImageNodeView` exposes `contentDOM = this.figcaption` so ProseMirror manages caption text directly inside the `<figcaption>`. `ignoreMutation` returns `false` for mutations inside `contentDOM` (so ProseMirror tracks caption edits) and `true` for all other mutations (resize handles, wrapper). `renderHTML` outputs `['figure', {}, ['img', HTMLAttributes], ['figcaption', 0]]` — the `0` is the ProseMirror content hole. `parseHTML` has `contentElement: 'figcaption'` on the `figure.wp-block-image` rule so existing WordPress captions load correctly.
+- **`WPMedia.altText`** — decoded from `alt_text` JSON key (default `""`). Populated on insert via the media picker and drag-drop. Editable in `MediaDetailView` via `onSaveAltText` callback (wired in `ContentView` to `WordPressClient.updateMediaAltText`). Pre-populates the `<img alt="...">` attribute in the editor when inserting from the media library. The image toolbar's Alt row reads/writes `node.attrs.alt` via `setNodeMarkup`.
 - **Use `state.tr.setNodeMarkup(pos, null, attrs)` to commit image attribute changes** — do NOT use `editor.chain().updateAttributes()` for the image node; it resets ProseMirror's selection state. `setNodeMarkup` commits only the attributes without touching selection. Always get `pos` from `getPos()` and check `typeof pos === 'number'` before dispatching.
 - **`#image-toolbar` is `position: fixed`, not an absolute child of the NodeView** — the toolbar div lives at the body level (inside `#editor-wrap`'s sibling scope) to avoid overflow clipping. Positioned via `getBoundingClientRect()` of the image wrapper. A scroll listener (`tb._scrollHandler`) is attached to `#editor-wrap` when shown and removed when hidden — always clean it up in `_hideImageToolbar()`.
 - **`tb._activeNodeView` stored on the toolbar DOM element** — the currently selected `ImageNodeView` instance is stored directly as a property on the `#image-toolbar` element (`tb._activeNodeView`). Toolbar event handlers read this to find the active node. Always null-check it; it is set to `null` by `_hideImageToolbar()`.
