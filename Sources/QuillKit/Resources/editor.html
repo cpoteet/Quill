@@ -1542,6 +1542,29 @@
       dispatch(state.tr.setMeta(spellCheckKey, decoSet))
     }
 
+    // Returns { word, from, to } if the click landed on a spell-error span,
+    // null otherwise. Uses the existing DOM decoration rather than re-scanning.
+    window.spellContextAtPoint = function(x, y) {
+      let el = document.elementFromPoint(x, y)
+      while (el && !el.classList.contains('spell-error')) {
+        if (!el.parentElement || el === document.body) { el = null; break }
+        el = el.parentElement
+      }
+      if (!el) return null
+      const word = el.textContent
+      if (!word) return null
+      try {
+        const from = editor.view.posAtDOM(el, 0)
+        return { word, from, to: from + word.length }
+      } catch (_) { return null }
+    }
+
+    window.replaceSpellError = function(from, to, replacement) {
+      if (typeof from !== 'number' || typeof to !== 'number' || typeof replacement !== 'string') return
+      editor.view.dispatch(editor.state.tr.insertText(replacement, from, to))
+      editor.view.focus()
+    }
+
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
     // Authoritative HTML that bypasses Tiptap's schema parser. Set when content

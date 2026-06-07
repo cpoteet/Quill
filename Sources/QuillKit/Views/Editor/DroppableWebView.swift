@@ -65,7 +65,11 @@ public final class DroppableWebView: WKWebView {
     // path (via super.rightMouseDown) does not honour that flag, which caused
     // AutoFill/Services to leak through.
     public override func rightMouseDown(with event: NSEvent) {
-        NSMenu.popUpContextMenu(buildContextMenu(), with: event, for: self)
+        let point = convert(event.locationInWindow, from: nil)
+        evaluateJavaScript("window.spellContextAtPoint?.(\(point.x), \(point.y))") { [weak self] result, _ in
+            guard let self else { return }
+            NSMenu.popUpContextMenu(self.buildContextMenu(spellContext: SpellContext(result)), with: event, for: self)
+        }
     }
 
     // willOpenMenu is kept as a fallback for non-rightMouseDown code paths
@@ -74,10 +78,22 @@ public final class DroppableWebView: WKWebView {
         menu.allowsContextMenuPlugIns = false
     }
 
-    private func buildContextMenu() -> NSMenu {
+    private func buildContextMenu(spellContext: SpellContext? = nil) -> NSMenu {
         let menu = NSMenu()
         menu.allowsContextMenuPlugIns = false
-        menu.items = [
+
+        if let sc = spellContext {
+            let suggestions = spellingSuggestions(for: sc.word)
+            for suggestion in suggestions {
+                let item = NSMenuItem(title: suggestion, action: #selector(applySpellingSuggestion(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = SpellReplacement(from: sc.from, to: sc.to, suggestion: suggestion)
+                menu.addItem(item)
+            }
+            if !suggestions.isEmpty { menu.addItem(.separator()) }
+        }
+
+        menu.items += [
             NSMenuItem(title: "Cut",   action: NSSelectorFromString("cut:"),   keyEquivalent: ""),
             NSMenuItem(title: "Copy",  action: NSSelectorFromString("copy:"),  keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
@@ -105,8 +121,26 @@ public final class DroppableWebView: WKWebView {
     @objc private func aiMakeShorter()     { onAIOperation?(.makeShorter) }
     @objc private func aiConvertToTable()  { onAIOperation?(.convertToTable) }
     @objc private func aiConvertToList()   { onAIOperation?(.convertToList) }
+    @objc private func applySpellingSuggestion(_ sender: NSMenuItem) {
+        guard let r = sender.representedObject as? SpellReplacement,
+              let json = String(data: (try? JSONEncoder().encode(r.suggestion)) ?? Data(), encoding: .utf8)
+        else { return }
+        evaluateJavaScript("window.replaceSpellError?.(\(r.from), \(r.to), \(json))", completionHandler: nil)
+    }
 
     // MARK: - Helpers
+
+    private func spellingSuggestions(for word: String) -> [String] {
+        let tag = NSSpellChecker.uniqueSpellDocumentTag()
+        defer { NSSpellChecker.shared.closeSpellDocument(withTag: tag) }
+        return Array(
+            (NSSpellChecker.shared.guesses(
+                forWordRange: NSRange(location: 0, length: (word as NSString).length),
+                in: word, language: nil,
+                inSpellDocumentWithTag: tag
+            ) ?? []).prefix(8)
+        )
+    }
 
     private func hasImageFiles(_ sender: NSDraggingInfo) -> Bool {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
@@ -118,5 +152,32 @@ public final class DroppableWebView: WKWebView {
     private func showOverlay(_ visible: Bool) {
         let js = visible ? "window.showDropOverlay?.()" : "window.hideDropOverlay?.()"
         evaluateJavaScript(js, completionHandler: nil)
+    }
+}
+
+private struct SpellContext {
+    let word: String
+    let from: Int
+    let to: Int
+
+    init?(_ result: Any?) {
+        guard
+            let map = result as? [String: Any],
+            let word = map["word"] as? String,
+            let from = map["from"] as? NSNumber,
+            let to   = map["to"]   as? NSNumber
+        else { return nil }
+        self.word = word
+        self.from = from.intValue
+        self.to   = to.intValue
+    }
+}
+
+private final class SpellReplacement: NSObject {
+    let from: Int
+    let to: Int
+    let suggestion: String
+    init(from: Int, to: Int, suggestion: String) {
+        self.from = from; self.to = to; self.suggestion = suggestion
     }
 }
