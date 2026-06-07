@@ -508,7 +508,7 @@
 
       _applyAttrs(attrs) {
         this.img.src = attrs.src || ''
-        if (attrs.alt)   this.img.alt   = attrs.alt
+        if (attrs.alt) { this.img.alt = attrs.alt } else { this.img.removeAttribute('alt') }
         if (attrs.title) this.img.title = attrs.title
         if (attrs.width != null) {
           this.img.width = attrs.width
@@ -537,8 +537,9 @@
         // Sync toolbar inputs if this image is currently selected
         const tb = document.getElementById('image-toolbar')
         if (tb?._activeNodeView === this) {
-          document.getElementById('img-tb-w').value = node.attrs.width  ?? ''
-          document.getElementById('img-tb-h').value = node.attrs.height ?? ''
+          document.getElementById('img-tb-w').value   = node.attrs.width  ?? ''
+          document.getElementById('img-tb-h').value   = node.attrs.height ?? ''
+          document.getElementById('img-tb-alt').value = node.attrs.alt    ?? ''
         }
         return true
       }
