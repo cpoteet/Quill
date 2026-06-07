@@ -1154,11 +1154,12 @@
       : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
     window.focusEditor = () => editor.commands.focus()
-    window.insertImageAt = (_index, url, width, height, mediaId) => {
+    window.insertImageAt = (_index, url, width, height, mediaId, alt) => {
       const attrs = { src: url }
-      if (width  != null) attrs.width   = width
-      if (height != null) attrs.height  = height
+      if (width   != null) attrs.width   = width
+      if (height  != null) attrs.height  = height
       if (mediaId != null) attrs.mediaId = mediaId
+      if (alt)             attrs.alt     = alt
       editor.chain().focus().setImage(attrs).run()
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')

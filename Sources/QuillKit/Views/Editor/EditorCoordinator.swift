@@ -35,7 +35,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         let width   = note.userInfo?["width"]   as? Int
         let height  = note.userInfo?["height"]  as? Int
         let mediaId = note.userInfo?["mediaId"] as? Int
-        insertImage(url: url, at: index, width: width, height: height, mediaId: mediaId)
+        let alt     = note.userInfo?["alt"]     as? String
+        insertImage(url: url, at: index, width: width, height: height, mediaId: mediaId, alt: alt)
     }
 
     // WKScriptMessageHandler
@@ -181,15 +182,23 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
     }
 
-    func insertImage(url: String, at index: Int, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil) {
+    func insertImage(url: String, at index: Int, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil, alt: String? = nil) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
             let urlStr = String(data: jsonURL, encoding: .utf8)
         else { return }
-        let wStr  = width.map   { String($0) } ?? "null"
-        let hStr  = height.map  { String($0) } ?? "null"
-        let idStr = mediaId.map { String($0) } ?? "null"
-        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr), \(wStr), \(hStr), \(idStr))", completionHandler: nil)
+        let wStr   = width.map   { String($0) } ?? "null"
+        let hStr   = height.map  { String($0) } ?? "null"
+        let idStr  = mediaId.map { String($0) } ?? "null"
+        let altStr: String
+        if let alt, !alt.isEmpty,
+           let jsonAlt = try? JSONEncoder().encode(alt),
+           let s = String(data: jsonAlt, encoding: .utf8) {
+            altStr = s
+        } else {
+            altStr = "null"
+        }
+        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr), \(wStr), \(hStr), \(idStr), \(altStr))", completionHandler: nil)
     }
 
     // WKNavigationDelegate
