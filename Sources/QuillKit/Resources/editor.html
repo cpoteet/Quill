@@ -195,6 +195,24 @@
     .resize-handle.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
     .resize-handle.w  { top: calc(50% - 4px); left: -4px; cursor: ew-resize; }
 
+    /* ── Image caption ──────────────────────────────── */
+    .image-wrapper figcaption {
+      display: block;
+      text-align: center;
+      font-style: italic;
+      font-size: 0.9em;
+      color: #555;
+      padding: 4px 8px 2px;
+      outline: none;
+    }
+    body.dark .image-wrapper figcaption { color: #aaa; }
+    .image-wrapper figcaption.wp-caption-placeholder:empty::before {
+      content: "Add a caption\2026";
+      color: #bbb;
+      pointer-events: none;
+    }
+    body.dark .image-wrapper figcaption.wp-caption-placeholder:empty::before { color: #666; }
+
     /* ── Image toolbar ──────────────────────────────── */
     #image-toolbar {
       display: none;
@@ -454,7 +472,12 @@
           this.wrapper.appendChild(h)
         }
 
-        this.dom = this.wrapper
+        this.figcaption = document.createElement('figcaption')
+        this.figcaption.className = 'wp-caption-placeholder'
+        this.wrapper.appendChild(this.figcaption)
+
+        this.dom        = this.wrapper
+        this.contentDOM = this.figcaption
       }
 
       _applyAttrs(attrs) {
@@ -482,6 +505,9 @@
         if (node.type.name !== 'image') return false
         this.node = node
         this._applyAttrs(node.attrs)
+        // Toggle placeholder class: present when caption is empty
+        const hasCaption = node.content && node.content.size > 0
+        this.figcaption.classList.toggle('wp-caption-placeholder', !hasCaption)
         // Sync toolbar inputs if this image is currently selected
         const tb = document.getElementById('image-toolbar')
         if (tb?._activeNodeView === this) {
@@ -516,7 +542,11 @@
         return e.type === 'mousedown' && e.target.classList.contains('resize-handle')
       }
 
-      ignoreMutation() { return true }
+      ignoreMutation(mutation) {
+        // Allow ProseMirror to track text changes inside the figcaption (contentDOM)
+        if (this.figcaption.contains(mutation.target)) return false
+        return true
+      }
 
       _onHandleMousedown(e, handlePos) {
         e.preventDefault()
@@ -669,6 +699,12 @@
           },
         }
       },
+      content: 'inline*',
+
+      renderHTML({ HTMLAttributes }) {
+        return ['figure', {}, ['img', HTMLAttributes], ['figcaption', 0]]
+      },
+
       parseHTML() {
         return [
           {
@@ -689,6 +725,7 @@
                 alignment: extractAlignment(el.getAttribute('class') || ''),
               }
             },
+            contentElement: 'figcaption',
           },
           { tag: 'img[src]' },
         ]
