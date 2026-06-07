@@ -24,16 +24,27 @@ function toWordPressHTML(html, doc) {
     if (id) img.classList.add(`wp-image-${id}`)
   })
 
-  // Aligned images → Gutenberg figure wrapper
-  div.querySelectorAll('img.alignleft, img.alignright, img.aligncenter').forEach(img => {
+  // Image figures: renderHTML produces <figure><img ...><figcaption/></figure>.
+  // Add wp-block-image class, move alignment from img to figure, handle caption.
+  div.querySelectorAll('figure:not(.wp-block-table)').forEach(figure => {
+    const img = figure.querySelector('img')
+    if (!img) return
     const align = ['alignleft', 'alignright', 'aligncenter']
       .find(c => img.classList.contains(c))
-    if (!align) return
-    const figure = doc.createElement('figure')
-    figure.className = `wp-block-image ${align}`
-    img.classList.remove('alignleft', 'alignright', 'aligncenter')
-    img.parentNode.insertBefore(figure, img)
-    figure.appendChild(img)
+    if (align) {
+      figure.classList.add('wp-block-image', align)
+      img.classList.remove(align)
+    } else {
+      figure.classList.add('wp-block-image')
+    }
+    const caption = figure.querySelector('figcaption')
+    if (caption) {
+      if (caption.textContent.trim()) {
+        caption.classList.add('wp-element-caption')
+      } else {
+        caption.remove()
+      }
+    }
   })
 
   // Headings → wp-block-heading class
