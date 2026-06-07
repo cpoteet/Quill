@@ -349,6 +349,20 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.url?.query?.contains("force=true") == true)
     }
 
+    @Test func fetchMediaItemHitsCorrectEndpointWithEditContext() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        let media = try await client.fetchMediaItem(id: 42)
+        #expect(capturedRequest?.url?.path.contains("media/42") == true)
+        #expect(capturedRequest?.url?.query?.contains("context=edit") == true)
+        #expect(capturedRequest?.httpMethod == "GET")
+        #expect(media.id == 5)
+    }
+
     @Test func updateMediaAltTextSendsPostToMediaEndpoint() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

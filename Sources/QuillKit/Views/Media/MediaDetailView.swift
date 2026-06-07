@@ -136,7 +136,7 @@ struct MediaDetailView: View {
             Text("ALT TEXT")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
-            TextField("Describe this image…", text: $altTextDraft, axis: .vertical)
+            TextField("", text: $altTextDraft, axis: .vertical)
                 .font(.system(size: 13))
                 .lineLimit(2...4)
                 .textFieldStyle(.plain)

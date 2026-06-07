@@ -198,14 +198,21 @@
     /* ── Image caption ──────────────────────────────── */
     .image-wrapper figcaption {
       display: block;
-      text-align: center;
+      text-align: left;
       font-style: italic;
-      font-size: 0.9em;
+      font-size: 0.85em;
+      line-height: 1.4;
       color: #555;
-      padding: 4px 8px 2px;
+      padding: 6px 10px 8px;
+      margin-top: 6px;
+      margin-bottom: 4px;
+      border-top: 1px solid #e0e0e0;
       outline: none;
     }
-    body.dark .image-wrapper figcaption { color: #aaa; }
+    body.dark .image-wrapper figcaption {
+      color: #aaa;
+      border-top-color: #444;
+    }
     .image-wrapper figcaption.caption-placeholder:empty::before {
       content: "Add a caption\2026";
       color: #bbb;
@@ -423,7 +430,7 @@
     </div>
     <div class="img-tb-row">
       <span class="img-tb-label">Alt</span>
-      <input type="text" id="img-tb-alt" placeholder="Alt text…">
+      <input type="text" id="img-tb-alt">
     </div>
   </div>
   <div id="editor-wrap"><div id="editor"></div><textarea id="code-editor" spellcheck="false"></textarea></div>
@@ -565,8 +572,21 @@
       }
 
       stopEvent(e) {
-        // Prevent ProseMirror from stealing handle mousedown events
-        return e.type === 'mousedown' && e.target.classList.contains('resize-handle')
+        if (e.type !== 'mousedown') return false
+        if (e.target.classList.contains('resize-handle')) return true
+        // Non-leaf nodes with contentDOM: ProseMirror maps any click inside the
+        // wrapper to a text cursor inside figcaption rather than a NodeSelection.
+        // Intercept clicks on the image area (not the caption) and dispatch a
+        // NodeSelection manually so selectNode() fires and the toolbar appears.
+        if (!this.figcaption.contains(e.target)) {
+          e.preventDefault()
+          const pos = this.getPos()
+          if (typeof pos === 'number') {
+            this.editor.commands.setNodeSelection(pos)
+          }
+          return true
+        }
+        return false
       }
 
       ignoreMutation(mutation) {
@@ -755,7 +775,7 @@
                 alignment: extractAlignment(el.getAttribute('class') || ''),
               }
             },
-            contentElement: 'figcaption',
+            contentElement: el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption')),
           },
           { tag: 'img[src]' },
         ]

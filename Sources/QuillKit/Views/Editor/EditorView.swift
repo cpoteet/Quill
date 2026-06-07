@@ -8,7 +8,7 @@ public struct EditorView: NSViewRepresentable {
     var onInsertImageAt: ((Int) -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
-    var onRequestMediaSizes: ((Int) -> WPMedia?)?
+    var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onWebViewCreated: ((WKWebView) -> Void)?
     var onAIOperation: ((AIWritingOperation) -> Void)?
@@ -22,7 +22,7 @@ public struct EditorView: NSViewRepresentable {
         onInsertImageAt: ((Int) -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
-        onRequestMediaSizes: ((Int) -> WPMedia?)? = nil,
+        onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
         onWebViewCreated: ((WKWebView) -> Void)? = nil,
         onAIOperation: ((AIWritingOperation) -> Void)? = nil,
@@ -77,8 +77,10 @@ public struct EditorView: NSViewRepresentable {
 
     public func updateNSView(_ nsView: DroppableWebView, context: Context) {
         let ready = onEditorReady
+        context.coordinator.onContentChange = onContentChange
         context.coordinator.onReady = { ready?() }
         context.coordinator.setContent(html)
+        context.coordinator.onInsertImageAt = onInsertImageAt
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged

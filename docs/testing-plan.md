@@ -53,11 +53,11 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | Suite | File | Tests | What it covers |
 |---|---|---|---|
-| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 10 | `WPPost` JSON decoding, optional-field defaults |
+| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 12 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback |
 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 7 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha |
 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| `WordPressClientTests` | `WordPressClientTests.swift` | 45 | URL construction, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping |
+| `WordPressClientTests` | `WordPressClientTests.swift` | 48 | URL construction, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text |
 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 5 | `previewURL` query/fragment handling |
 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | `KeychainStoreTests` | `KeychainStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
@@ -73,7 +73,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (10 tests)
+### 1. Model decoding — `WPPostDecodingTests` (12 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -88,7 +88,9 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `missingDateGmtDefaultsToEmptyString` | `date_gmt` absent → `""` |
 | `missingParentDefaultsToZero` | `parent` absent → `0` |
 | `missingCommentStatusDefaultsToOpen` | `comment_status` absent → `"open"` |
-| `contentRawPreferredOverRendered` | `content.raw` decoded when present; `rendered` also decoded |
+| `contentRawPreferredOverRendered` | `content.raw` decoded when present; `editorHTML` returns `raw` |
+| `emptyContentRawFallsBackToRenderedForEditorHTML` | `raw == ""` → `editorHTML` returns `rendered` |
+| `whitespaceContentRawFallsBackToRenderedForEditorHTML` | `raw == "\n  "` → `editorHTML` returns `rendered` |
 | `missingRequiredFieldThrows` | Omitting `id` → decoding throws (required field guard) |
 | `futureStatusDecodes` | `status: "future"` decodes without error |
 
@@ -176,6 +178,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `contentDispositionFallbackStripsControlCharacters` | Control chars (< 32) removed from quoted fallback |
 | `contentDispositionFallbackPreservesUnicode` | Unicode (e.g. `café.jpg`) passes through unchanged |
 | `uploadMediaEscapesQuotesInContentDispositionFilename` | End-to-end: quoted filename with `"` produces valid `Content-Disposition` header |
+| `fetchMediaItemHitsCorrectEndpointWithEditContext` | `GET /media/{id}?context=edit`, returns decoded `WPMedia` |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |

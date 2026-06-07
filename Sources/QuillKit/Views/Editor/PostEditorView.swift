@@ -66,7 +66,15 @@ public struct PostEditorView: View {
                             return try await WordPressClient(credentials: creds).searchLinks(query: query)
                         },
                         onRequestMediaSizes: { mediaId in
-                            appState.mediaItems.first(where: { $0.id == mediaId })
+                            if let cached = appState.mediaItems.first(where: { $0.id == mediaId }) {
+                                return cached
+                            }
+                            guard let creds = appState.credentials else { return nil }
+                            let fetched = try? await WordPressClient(credentials: creds).fetchMediaItem(id: mediaId)
+                            if let fetched {
+                                await MainActor.run { appState.mediaItems.append(fetched) }
+                            }
+                            return fetched
                         },
                         onSelectionChanged: { rect in
                             currentSelectionRect = rect
@@ -101,6 +109,10 @@ public struct PostEditorView: View {
                 ) {
                     if let idx = imageInsertIndex {
                         MediaPickerView { selected in
+                            // Ensure item is in appState so requestMediaSizes can find it
+                            if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
+                                appState.mediaItems.append(selected)
+                            }
                             var info: [String: Any] = [
                                 "url":     selected.sourceURL,
                                 "index":   idx,
@@ -337,6 +349,8 @@ public struct PostEditorView: View {
     // MARK: - Load
 
     private func loadItem() async {
+        let requestedItem = item
+
         // Cancel any pending autosave for the old item — flushToDB handles persistence
         autosaveTask?.cancel()
 
@@ -346,44 +360,37 @@ public struct PostEditorView: View {
         }
         loadedItem = item
 
-        switch item {
+        switch requestedItem {
         case .remote(let post):
-            let wpTitle = post.title.rendered
-            let wpContent = post.content.raw ?? post.content.rendered
-            title = wpTitle
-            htmlContent = wpContent
-            lastSavedServerModified = post.modified  // initial value; refreshed below
-            settings.status = post.status
-            settings.categoryIDs = Set(post.categories)
-            settings.tagIDs = Set(post.tags)
-            settings.featuredMediaID = post.featuredMedia
-            settings.slug = post.slug
-            settings.commentStatus = post.commentStatus
-            settings.parentID = post.parent
-            settings.excerpt = post.excerpt.raw ?? ""
-            if post.status == "future" {
-                settings.publishDate = parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
-            }
-            // Set clean baselines from WP data before checking for a stash
-            cleanTitle = wpTitle
-            cleanContent = wpContent
-            // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
-            if let snap = try? services.autosaveStore.load(postID: post.id) {
-                title = snap.title
-                htmlContent = snap.content
-                toastMessage = "Unsaved changes restored"
-            }
-            // Refresh the conflict-detection baseline from the server. The sidebar cache can
-            // be stale (WordPress updates modified via plugins, cron, or other clients), which
-            // causes false conflicts on the first save. Setting lastSavedServerModified to the
-            // live value means the conflict check only fires when the post genuinely changed
-            // between when the user opened it and when they saved.
+            applyRemotePost(post)
+
+            let loadedPost: WPPost
             if let creds = appState.credentials {
                 let client = WordPressClient(credentials: creds)
-                if let fresh = try? await (post.type == "page"
-                    ? client.fetchPage(id: post.id)
-                    : client.fetchPost(id: post.id)) {
-                    lastSavedServerModified = fresh.modified
+                do {
+                    loadedPost = try await (post.type == "page"
+                        ? client.fetchPage(id: post.id)
+                        : client.fetchPost(id: post.id))
+                } catch is CancellationError {
+                    return
+                } catch {
+                    loadedPost = post
+                }
+            } else {
+                loadedPost = post
+            }
+
+            guard !Task.isCancelled, loadedItem == requestedItem else { return }
+            lastSavedServerModified = loadedPost.modified
+
+            // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
+            if let snap = try? services.autosaveStore.load(postID: post.id) {
+                if shouldRestoreAutosave(snap, over: loadedPost) {
+                    title = snap.title
+                    htmlContent = snap.content
+                    toastMessage = "Unsaved changes restored"
+                } else {
+                    try? services.autosaveStore.delete(postID: post.id)
                 }
             }
 
@@ -405,6 +412,38 @@ public struct PostEditorView: View {
             cleanTitle = title
             cleanContent = htmlContent
         }
+    }
+
+    private func applyRemotePost(_ post: WPPost) {
+        let wpTitle = post.title.rendered
+        let wpContent = post.content.editorHTML
+        title = wpTitle
+        htmlContent = wpContent
+        lastSavedServerModified = post.modified
+        settings.status = post.status
+        settings.categoryIDs = Set(post.categories)
+        settings.tagIDs = Set(post.tags)
+        settings.featuredMediaID = post.featuredMedia
+        settings.slug = post.slug
+        settings.commentStatus = post.commentStatus
+        settings.parentID = post.parent
+        settings.excerpt = post.excerpt.editorHTML
+        settings.publishDate = post.status == "future"
+            ? parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
+            : nil
+        cleanTitle = wpTitle
+        cleanContent = wpContent
+    }
+
+    private func shouldRestoreAutosave(_ snap: AutosaveSnapshot, over post: WPPost) -> Bool {
+        let snapContent = snap.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let serverContent = post.content.editorHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+        if snapContent.isEmpty,
+           !serverContent.isEmpty,
+           snap.title == post.title.rendered {
+            return false
+        }
+        return true
     }
 
     // MARK: - Autosave
@@ -584,7 +623,7 @@ public struct PostEditorView: View {
                 : try? await client.fetchPost(id: postID)
             if let post = fetched {
                 title = post.title.rendered
-                htmlContent = post.content.raw ?? post.content.rendered
+                htmlContent = post.content.editorHTML
                 lastSavedServerModified = post.modified
                 cleanTitle = title
                 cleanContent = htmlContent

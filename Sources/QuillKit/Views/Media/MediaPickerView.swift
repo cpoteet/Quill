@@ -67,9 +67,10 @@ public struct MediaPickerView: View {
 
     private var mediaGrid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(mediaItems.filter { $0.mediaType == "image" }) { media in
                     MediaThumbnail(media: media)
+                        .contentShape(Rectangle())
                         .onTapGesture { onSelect(media) }
                 }
             }
@@ -128,22 +129,25 @@ struct MediaThumbnail: View {
     let media: WPMedia
 
     var body: some View {
-        AsyncImage(url: URL(string: media.sourceURL)) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: .fill)
-            case .failure, .empty:
-                Rectangle().fill(.quaternary)
-                    .overlay(Image(systemName: "photo").foregroundStyle(.tertiary))
-            @unknown default:
-                Rectangle().fill(.quaternary)
+        Color.clear
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 90, maxHeight: 90)
+            .overlay {
+                AsyncImage(url: URL(string: media.sourceURL)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    case .failure, .empty:
+                        Rectangle().fill(.quaternary)
+                            .overlay(Image(systemName: "photo").foregroundStyle(.tertiary))
+                    @unknown default:
+                        Rectangle().fill(.quaternary)
+                    }
+                }
+                .clipped()
             }
-        }
-        .frame(width: 120, height: 90)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6).stroke(.separator, lineWidth: 0.5)
-        )
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6).stroke(.separator, lineWidth: 0.5)
+            )
     }
 }

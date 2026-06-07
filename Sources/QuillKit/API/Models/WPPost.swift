@@ -51,6 +51,13 @@ public struct RenderedString: Codable, Hashable, Sendable {
     public var rendered: String
     public var raw: String?
 
+    public var editorHTML: String {
+        guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return rendered
+        }
+        return raw
+    }
+
     public init(raw: String) {
         // Local drafts have no server-rendered HTML; treat raw as the display value.
         self.rendered = raw

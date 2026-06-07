@@ -11,7 +11,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     weak var webView: WKWebView?
     var onInsertImageAt: ((Int) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
-    var onRequestMediaSizes: ((Int) -> WPMedia?)?
+    var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     private var linkPopover: NSPopover?
     private var readyWatchdogItem: DispatchWorkItem?
@@ -164,22 +164,24 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     }
 
     private func handleRequestMediaSizes(mediaId: Int) {
-        guard let wv = webView else { return }
-        guard let media = onRequestMediaSizes?(mediaId),
-              let sizes = media.mediaDetails?.sizes,
-              !sizes.isEmpty
-        else {
-            wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)", completionHandler: nil)
-            return
+        guard let wv = webView, let fetch = onRequestMediaSizes else { return }
+        Task {
+            guard let media = await fetch(mediaId),
+                  let sizes = media.mediaDetails?.sizes,
+                  !sizes.isEmpty
+            else {
+                wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)", completionHandler: nil)
+                return
+            }
+            var dict: [String: Any] = [:]
+            for (name, size) in sizes {
+                dict[name] = ["url": size.sourceURL, "width": size.width, "height": size.height]
+            }
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+                  let jsonStr  = String(data: jsonData, encoding: .utf8)
+            else { return }
+            wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
         }
-        var dict: [String: Any] = [:]
-        for (name, size) in sizes {
-            dict[name] = ["url": size.sourceURL, "width": size.width, "height": size.height]
-        }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-              let jsonStr  = String(data: jsonData, encoding: .utf8)
-        else { return }
-        wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
     }
 
     func insertImage(url: String, at index: Int, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil, alt: String? = nil) {

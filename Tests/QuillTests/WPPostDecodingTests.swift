@@ -121,6 +121,32 @@ import Testing
         let post = try decode(json)
         #expect(post.content.raw == "<p>raw</p>")
         #expect(post.content.rendered == "<p>rendered</p>")
+        #expect(post.content.editorHTML == "<p>raw</p>")
+    }
+
+    @Test func emptyContentRawFallsBackToRenderedForEditorHTML() throws {
+        let json = """
+        {"id":9,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>rendered body</p>","raw":""},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.raw == "")
+        #expect(post.content.editorHTML == "<p>rendered body</p>")
+    }
+
+    @Test func whitespaceContentRawFallsBackToRenderedForEditorHTML() throws {
+        let json = """
+        {"id":10,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>rendered body</p>","raw":"\\n  "},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == "<p>rendered body</p>")
     }
 
     @Test func missingRequiredFieldThrows() throws {

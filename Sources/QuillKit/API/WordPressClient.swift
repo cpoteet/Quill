@@ -126,6 +126,11 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    public func fetchMediaItem(id: Int) async throws -> WPMedia {
+        let url = try endpoint("media/\(id)", query: ["context": "edit"])
+        return try await get(url)
+    }
+
     public func uploadMedia(data: Data, filename: String, mimeType: String) async throws -> WPMedia {
         let url = try endpoint("media")
         var request = authorizedRequest(url: url, method: "POST")
