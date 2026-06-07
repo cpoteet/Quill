@@ -62,6 +62,9 @@ public struct ContentView: View {
                                 let updated = try await WordPressClient(credentials: creds)
                                     .updateMediaAltText(id: media.id, altText: altText)
                                 appState.mediaItems[idx] = updated
+                                if appState.selectedMedia?.id == updated.id {
+                                    appState.selectedMedia = updated
+                                }
                             } catch {
                                 // Save failed silently — field retains the edited value
                             }
