@@ -6,7 +6,7 @@ struct TitleTextField: NSViewRepresentable {
     @Binding var text: String
     var nsFont: NSFont
 
-    func makeNSView(context: Context) -> RestrictedTextView {
+    func makeNSView(context: Context) -> NSScrollView {
         let tv = RestrictedTextView()
         tv.font = nsFont
         tv.placeholder = placeholder
@@ -18,14 +18,25 @@ struct TitleTextField: NSViewRepresentable {
         tv.textContainer?.lineFragmentPadding = 0
         tv.textContainer?.maximumNumberOfLines = 1
         tv.textContainer?.lineBreakMode = .byClipping
-        tv.textContainer?.widthTracksTextView = true
+        // Decouple container width from view so all text is laid out and navigable.
+        tv.textContainer?.widthTracksTextView = false
+        tv.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         tv.isVerticallyResizable = false
-        tv.isHorizontallyResizable = false
+        tv.isHorizontallyResizable = true
         tv.delegate = context.coordinator
-        return tv
+
+        let sv = NSScrollView()
+        sv.hasVerticalScroller = false
+        sv.hasHorizontalScroller = false
+        sv.autohidesScrollers = true
+        sv.borderType = .noBorder
+        sv.drawsBackground = false
+        sv.documentView = tv
+        return sv
     }
 
-    func updateNSView(_ tv: RestrictedTextView, context: Context) {
+    func updateNSView(_ sv: NSScrollView, context: Context) {
+        guard let tv = sv.documentView as? RestrictedTextView else { return }
         guard tv.string != text else { return }
         tv.string = text
         tv.font = nsFont  // restoring font after string replacement
