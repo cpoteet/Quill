@@ -836,15 +836,19 @@
         if (attrs.alt) { this.img.alt = attrs.alt } else { this.img.removeAttribute('alt') }
         if (attrs.title) this.img.title = attrs.title
         if (attrs.width != null) {
+          this.img.style.width = ''
           this.img.width = attrs.width
           this.frame.style.width = attrs.width + 'px'
         } else {
+          this.img.style.width = ''
           this.img.removeAttribute('width')
           this.frame.style.width = ''
         }
         if (attrs.height != null) {
+          this.img.style.height = ''
           this.img.height = attrs.height
         } else {
+          this.img.style.height = ''
           this.img.removeAttribute('height')
         }
         // Alignment
@@ -1695,7 +1699,16 @@
         const pos = nv.getPos()
         if (typeof pos !== 'number') return
         const { state, dispatch } = nv.editor.view
-        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, width: null, height: null }))
+        // Restore to full-size URL and dimensions if WordPress media sizes are available;
+        // otherwise just remove the explicit constraints.
+        const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
+        const newAttrs = { ...nv.node.attrs, width: null, height: null }
+        if (fullBtn?._sizeData) {
+          newAttrs.src    = fullBtn._sizeData.url
+          newAttrs.width  = fullBtn._sizeData.width
+          newAttrs.height = fullBtn._sizeData.height
+        }
+        dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))
         document.getElementById('img-tb-w').value = ''
         document.getElementById('img-tb-h').value = ''
       })
