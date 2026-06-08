@@ -11,7 +11,7 @@ public struct SidebarView: View {
     public var body: some View {
         VStack(spacing: 0) {
             sectionTabs
-            Divider()
+            SoftHorizontalDivider()
 
             if appState.selectedSection != .media {
                 SearchField(text: $appState.searchText)
@@ -72,7 +72,7 @@ public struct SidebarView: View {
                                         .padding(.trailing, 12)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                                .background(rowSelected ? Color.wpAmber.opacity(0.07) : Color.wpSidebarBg)
+                                .background(rowSelected ? Color.wpAmber.opacity(0.12) : Color.clear)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -88,8 +88,9 @@ public struct SidebarView: View {
                         }
                     }
                 }
+                .overlay(alignment: .trailing) { PanelInteriorFade(from: .trailing) }
 
-                Divider()
+                SoftHorizontalDivider()
                 HStack {
                     Button {
                         Task { await loadCurrentSection() }
@@ -133,7 +134,7 @@ public struct SidebarView: View {
             }
         }
         .frame(minWidth: 220)
-        .background(Color.wpSidebarBg.ignoresSafeArea())
+        .background(WarmSidebarBackground().ignoresSafeArea())
         .alert(
             "Confirm Delete",
             isPresented: Binding(

@@ -73,7 +73,7 @@ struct MediaSidebarSection: View {
                 }
             }
 
-            Divider()
+            SoftHorizontalDivider()
             bottomToolbar
         }
         .task {

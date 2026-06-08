@@ -67,7 +67,8 @@ public struct PostSettingsPanel: View {
             .padding(16)
         }
         .frame(width: 260)
-        .background(Color.wpPanelBg)
+        .background(WarmPanelHeaderBackground())
+        .overlay(alignment: .leading) { PanelInteriorFade(from: .leading) }
     }
 
     // MARK: - Status

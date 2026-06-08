@@ -40,11 +40,8 @@ public struct PostEditorView: View {
     public var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                toolbar
-                Divider()
+                editorHeader
                 if saveError != nil { errorBanner }
-                titleField
-                Divider()
                 ZStack {
                     EditorView(
                         html: $htmlContent,
@@ -131,7 +128,8 @@ public struct PostEditorView: View {
             }
 
             if isSettingsOpen {
-                Divider()
+                SoftPanelBoundary()
+                    .transition(.move(edge: .trailing))
                 PostSettingsPanel(
                     settings: $settings,
                     postType: postType,
@@ -201,6 +199,15 @@ public struct PostEditorView: View {
                 Task { await flushToDB(for: loadedItem) }
             }
         }
+    }
+
+    private var editorHeader: some View {
+        VStack(spacing: 0) {
+            toolbar
+            titleField
+        }
+        .background(WarmPanelHeaderBackground())
+        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
     }
 
     private var toolbar: some View {
@@ -299,7 +306,7 @@ public struct PostEditorView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(Color.wpAmber.opacity(0.08))
-        .overlay(alignment: .bottom) { Divider() }
+        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
     }
 
     private var titleField: some View {

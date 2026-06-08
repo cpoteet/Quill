@@ -149,6 +149,12 @@ public final class DroppableWebView: WKWebView {
         return sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: options)
     }
 
+    public override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        evaluateJavaScript("window.setDarkMode?.(\(isDark))", completionHandler: nil)
+    }
+
     private func showOverlay(_ visible: Bool) {
         let js = visible ? "window.showDropOverlay?.()" : "window.hideDropOverlay?.()"
         evaluateJavaScript(js, completionHandler: nil)

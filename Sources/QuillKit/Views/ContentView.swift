@@ -29,12 +29,7 @@ private final class WindowObservingView: NSView {
 
 private func applyTitleBarFix(to window: NSWindow) {
     window.titlebarAppearsTransparent = false
-    window.backgroundColor = NSColor(name: nil) { appearance in
-        switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
-        case .darkAqua: return .underPageBackgroundColor
-        default: return NSColor(red: 242 / 255, green: 241 / 255, blue: 239 / 255, alpha: 1)
-        }
-    }
+    window.backgroundColor = .wpSidebarBg
 }
 
 private struct WindowTitleBarFix: NSViewRepresentable {
@@ -51,7 +46,7 @@ public struct ContentView: View {
         HStack(spacing: 0) {
             SidebarView()
                 .frame(width: 240)
-            Divider()
+            SoftPanelBoundary()
             Group {
                 if appState.selectedSection == .media {
                     if let media = appState.selectedMedia {
@@ -100,6 +95,7 @@ public struct ContentView: View {
             .frame(minWidth: 500, maxWidth: .infinity)
         }
         .frame(minWidth: 900, minHeight: 600)
+        .background(Color.wpPanelBg)
         .background(WindowTitleBarFix())
     }
 }

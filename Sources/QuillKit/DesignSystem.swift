@@ -1,16 +1,19 @@
 import SwiftUI
 
+extension NSColor {
+    static let wpSidebarBg = NSColor(name: nil) { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
+        case .darkAqua: return .underPageBackgroundColor
+        default: return NSColor(red: 242 / 255, green: 241 / 255, blue: 239 / 255, alpha: 1)
+        }
+    }
+}
+
 extension Color {
     static let wpAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
 
     /// Warm off-white sidebar background (#F2F1EF in light, system in dark)
-    static let wpSidebarBg = Color(
-        NSColor(name: nil) { appearance in
-            switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
-            case .darkAqua: return .underPageBackgroundColor
-            default: return NSColor(red: 242 / 255, green: 241 / 255, blue: 239 / 255, alpha: 1)
-            }
-        })
+    static let wpSidebarBg = Color(NSColor.wpSidebarBg)
 
     /// Warm off-white panel background (#F4F3F1 in light, system in dark)
     static let wpPanelBg = Color(
@@ -20,6 +23,104 @@ extension Color {
             default: return NSColor(red: 244 / 255, green: 243 / 255, blue: 241 / 255, alpha: 1)
             }
         })
+}
+
+// MARK: - Surfaces
+
+private struct WarmPanelBackground: View {
+    var color: Color
+    var shimmerOpacity: Double
+    var accentOpacity: Double
+
+    var body: some View {
+        ZStack {
+            color
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(shimmerOpacity),
+                    Color.wpAmber.opacity(accentOpacity),
+                    Color.clear,
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+}
+
+struct WarmSidebarBackground: View {
+    var body: some View {
+        WarmPanelBackground(color: .wpSidebarBg, shimmerOpacity: 0.14, accentOpacity: 0.018)
+    }
+}
+
+struct WarmPanelHeaderBackground: View {
+    var body: some View {
+        WarmPanelBackground(color: .wpPanelBg, shimmerOpacity: 0.10, accentOpacity: 0.014)
+    }
+}
+
+struct SoftPanelBoundary: View {
+    var body: some View {
+        Color.clear
+            .frame(width: 1)
+            .overlay(alignment: .leading) {
+                ZStack(alignment: .leading) {
+                    LinearGradient(
+                        colors: [
+                            Color.primary.opacity(0.035),
+                            Color.primary.opacity(0.012),
+                            Color.clear,
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.055))
+                        .frame(width: 0.5)
+                }
+                .frame(width: 8)
+            }
+            .allowsHitTesting(false)
+        }
+}
+
+struct SoftHorizontalDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.primary.opacity(0.04),
+                        Color.primary.opacity(0.095),
+                        Color.primary.opacity(0.04),
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(height: 0.5)
+            .allowsHitTesting(false)
+    }
+}
+
+struct PanelInteriorFade: View {
+    var from: UnitPoint
+    private var to: UnitPoint { from == .leading ? .trailing : .leading }
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color.primary.opacity(0.028),
+                Color.primary.opacity(0.010),
+                Color.clear,
+            ],
+            startPoint: from,
+            endPoint: to
+        )
+        .frame(width: 18)
+        .allowsHitTesting(false)
+    }
 }
 
 // MARK: - Toast
