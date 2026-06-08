@@ -77,9 +77,7 @@ struct MediaSidebarSection: View {
             bottomToolbar
         }
         .task {
-            if appState.mediaItems.isEmpty {
-                await loadMedia()
-            }
+            await loadMedia()
         }
         .onAppear {
             if appState.triggerMediaUpload {
