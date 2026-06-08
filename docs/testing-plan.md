@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-01 — 192 Swift tests + 37 JS editor tests, all passing._
+_Last updated: 2026-06-07 — 212 Swift tests + 52 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 164 tests across 13 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (40 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 212 tests across 16 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (52 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (204 tests)
+## Swift test suite (212 tests)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -653,9 +653,11 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] **Edge:** drag multiple images at once → all upload and insert.
 - [ ] **Edge:** upload failure (offline) → error surfaced, editor not corrupted.
 - [ ] Resize handles appear on select; drag resizes; aspect ratio respected.
+- [ ] **Resize handles align to the image, not the caption** — with a caption present, the bottom handles should sit at the image's bottom edge, not at the bottom of the caption. Confirm all four handles hug the image frame.
 - [ ] Named WordPress sizes (thumbnail/medium/large/full) offered when the image
       has a `mediaId` and the media item is loaded; hidden otherwise
       (`setMediaSizes(id, null)` path).
+- [ ] **Reset button** — click Reset on an image that has WordPress media sizes loaded → src switches to the full-size URL, width/height restore to the original full dimensions. On an image with no media sizes, Reset clears the explicit constraints without changing src.
 - [ ] Image alignment left/center/right → wraps text correctly and saves as
       `figure.wp-block-image alignXXX`.
 - [ ] Image toolbar repositions on scroll and hides on deselect (the
@@ -838,6 +840,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`),
       title/breadcrumb bars render with correct tokens; **title/breadcrumb bars
       white in dark mode** (open TODO — verify current state).
+- [ ] **Dark mode live toggle** — with the app open, toggle dark mode in System Settings → editor background, toolbar, and sidebar switch immediately without relaunch. (Tests the `viewDidChangeEffectiveAppearance` override in `DroppableWebView`.)
+- [ ] **Surface components** — `SoftPanelBoundary` between sidebar/editor and editor/settings-panel renders as a subtle gradient boundary, not a hard `Divider()` line. `SoftHorizontalDivider` at the bottom of the sidebar tab strip and above the bottom toolbar. `PanelInteriorFade` fades the right edge of the sidebar scroll list and the left edge of the settings panel.
 - [ ] Enter/exit full screen → title bar color stable (fixed — confirm).
 - [ ] Title field + top border spacing correct (fixed — confirm).
 - [ ] App icon/logo present in dock and about.
@@ -851,7 +855,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       `willOpenMenu` + `NSMenuDelegate` re-filter gotcha).
 - [ ] Right-click in the **title field** → only Cut/Copy/Paste; no AutoFill (the
       `RestrictedTextView` gotcha).
-- [ ] Right-click a misspelled word → spelling suggestions appear.
+- [ ] Right-click a misspelled word → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator; clicking a suggestion replaces the word in the editor.
 
 ### 7.15 Spell check
 
