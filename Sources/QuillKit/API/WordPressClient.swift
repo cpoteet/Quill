@@ -273,11 +273,9 @@ public struct WordPressClient: Sendable {
     // MARK: - Helpers
 
     private func endpoint(_ path: String, query: [String: String] = [:]) throws -> URL {
-        guard
-            var components = URLComponents(
-                url: credentials.siteURL.appendingPathComponent("/wp-json/wp/v2/\(path)"),
-                resolvingAgainstBaseURL: false
-            )
+        var base = credentials.siteURL.absoluteString
+        if base.hasSuffix("/") { base = String(base.dropLast()) }
+        guard var components = URLComponents(string: "\(base)/wp-json/wp/v2/\(path)")
         else { throw APIError.invalidURL }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
@@ -338,6 +336,10 @@ public struct WordPressClient: Sendable {
         if let http, http.statusCode >= 300 {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw APIError.httpError(statusCode: http.statusCode, body: body)
+        }
+        let contentType = http?.value(forHTTPHeaderField: "Content-Type") ?? ""
+        if contentType.contains("text/html") {
+            throw APIError.unexpectedHTML
         }
         return (data, http)
     }

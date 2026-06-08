@@ -6,6 +6,7 @@ public enum APIError: Error, LocalizedError {
     case decodingError(Error)
     case networkError(Error)
     case noCredentials
+    case unexpectedHTML
 
     public var errorDescription: String? {
         switch self {
@@ -14,6 +15,7 @@ public enum APIError: Error, LocalizedError {
         case .decodingError(let e): return "Decode error: \(e.localizedDescription)"
         case .networkError(let e): return e.localizedDescription
         case .noCredentials: return "No credentials saved. Open Preferences to add your site."
+        case .unexpectedHTML: return "The server returned a web page instead of API data. Check that your Site URL is the WordPress home address — if WordPress is installed in a subfolder (e.g. /wordpress) but serves from the root, enter the root URL (https://example.com, not https://example.com/wordpress)."
         }
     }
 
