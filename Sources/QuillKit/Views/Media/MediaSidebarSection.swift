@@ -174,11 +174,15 @@ struct MediaSidebarSection: View {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
+                    .padding(6)
+                    .background(Color.primary.opacity(0.05),
+                                in: RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
             .keyboardShortcut("r", modifiers: .command)
             .help("Refresh (⌘R)")
-            .padding(10)
+            .padding(.leading, 10)
+            .padding(.vertical, 8)
 
             Spacer()
 
@@ -192,12 +196,17 @@ struct MediaSidebarSection: View {
                 Label("New Media", systemImage: "plus")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.wpAmber)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.wpAmber.opacity(0.10),
+                                in: RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
             .disabled(isUploading)
             .keyboardShortcut("n", modifiers: .command)
             .help("Upload Media (⌘N)")
-            .padding(10)
+            .padding(.trailing, 10)
+            .padding(.vertical, 8)
         }
     }
 
