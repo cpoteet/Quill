@@ -15,14 +15,8 @@ extension Color {
     /// Warm off-white sidebar background (#F2F1EF in light, system in dark)
     static let wpSidebarBg = Color(NSColor.wpSidebarBg)
 
-    /// Warm off-white panel background (#F4F3F1 in light, system in dark)
-    static let wpPanelBg = Color(
-        NSColor(name: nil) { appearance in
-            switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
-            case .darkAqua: return .windowBackgroundColor
-            default: return NSColor(red: 244 / 255, green: 243 / 255, blue: 241 / 255, alpha: 1)
-            }
-        })
+    /// Same as wpSidebarBg — kept as a separate token so call sites don't need updating
+    static let wpPanelBg = wpSidebarBg
 }
 
 // MARK: - Surfaces
