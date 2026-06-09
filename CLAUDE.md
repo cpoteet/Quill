@@ -57,18 +57,21 @@ See `docs/future-architecture.md` for deferred design notes: image figure-first 
 
 ```
 Sources/QuillKit/
-  App/              AppState, AppServices, QuillApp
+  App/              AppState, AppServices, QuillApp, AppSupportDirectory
   Auth/             KeychainStore (file-based, not system keychain)
   API/              WordPressClient, Models (WPPost, WPMedia, WPTaxonomy)
   AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
+    ContentView.swift
     Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
+                    TitleTextField, LinkPickerView
     Sidebar/        SidebarView, PostListRow
-    Settings/       PreferencesView, PostSettingsPanel
-    Media/          MediaPickerView
+    Settings/       PreferencesView, PostSettingsPanel, AboutView
+    Media/          MediaPickerView, MediaDetailView, MediaSidebarSection
     AI/             GeneratePostSheet, AIResultPanel, SamplePostPickerSheet
   Resources/        editor.html (Tiptap)
+                    editor-transforms.js (WordPress HTML transforms, shared with test suite)
   DesignSystem.swift
 ```
 
@@ -78,14 +81,15 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles insert-image notification
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
+- `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `extractAlignment`, `formatHTML`; shared between `editor.html` and `Scripts/test-editor.js`
 
 ## Maintaining Gutenberg HTML compatibility
 
-All WordPress/Gutenberg HTML compatibility lives in two places in `Sources/QuillKit/Resources/editor.html`:
+All WordPress/Gutenberg HTML compatibility lives in two files:
 
-1. **`toWordPressHTML(html)`** (~line 789) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
+1. **`toWordPressHTML(html)`** in `editor-transforms.js` (line 16) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
 
-2. **`ResizableImage.parseHTML()`** (~line 599) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
+2. **`ResizableImage.parseHTML()`** (~line 1079 in `editor.html`) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
 
 ### What each element currently outputs (as of 2026-05-24)
 
