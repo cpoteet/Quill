@@ -386,3 +386,32 @@ describe('formatHTML — special elements', () => {
     assert.match(out, /🎉/)
   })
 })
+
+describe('formatHTML — entity escaping', () => {
+  test('text node with < is escaped so it round-trips safely', () => {
+    const out = fmt('<p>5 &lt; 10</p>')
+    assert.match(out, /5 &lt; 10/)
+    assert.doesNotMatch(out, /5 < 10/)
+  })
+
+  test('text node with & is escaped', () => {
+    const out = fmt('<p>cats &amp; dogs</p>')
+    assert.match(out, /cats &amp; dogs/)
+  })
+
+  test('text node with > is escaped', () => {
+    const out = fmt('<p>10 &gt; 5</p>')
+    assert.match(out, /10 &gt; 5/)
+  })
+
+  test('attribute value with " is escaped', () => {
+    const out = fmt('<p class="foo&quot;bar">text</p>')
+    assert.match(out, /class="foo&quot;bar"/)
+    assert.doesNotMatch(out, /class="foo"bar"/)
+  })
+
+  test('attribute value with & is escaped', () => {
+    const out = fmt('<a href="?a=1&amp;b=2">link</a>')
+    assert.match(out, /href="[^"]*&amp;[^"]*"/)
+  })
+})

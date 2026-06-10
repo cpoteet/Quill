@@ -310,7 +310,7 @@ private struct MediaSidebarCell: View {
         Color.clear
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
             .overlay {
-                AsyncImage(url: URL(string: media.sourceURL)) { phase in
+                AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
                     switch phase {
                     case .success(let image):
                         image.resizable().aspectRatio(contentMode: .fill)

@@ -16,7 +16,7 @@ public struct PostEditorView: View {
     @State private var conflictAlert: ConflictInfo?
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
-    @State private var imageInsertIndex: Int? = nil
+    @State private var showImagePicker = false
     @State private var toastMessage: String? = nil
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
@@ -25,13 +25,22 @@ public struct PostEditorView: View {
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
+    // Parses date_gmt values without a timezone suffix (some WP versions); treated as UTC.
+    private static let utcNoSuffixFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(identifier: "UTC")
+        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return df
+    }()
+
     // AI state
     @State private var isAISheetOpen: Bool = false
     @State private var showAIReplaceAlert: Bool = false
     @State private var currentSelectionRect: CGRect? = nil
     @State private var hasTextSelection: Bool = false
     @State private var editorWebView: WKWebView? = nil
-    private var resultPanel: AIResultPanel = AIResultPanel()
+    @State private var resultPanel: AIResultPanel = AIResultPanel()
 
     public init(item: PostItem) {
         self.item = item
@@ -52,8 +61,8 @@ public struct PostEditorView: View {
                         onEditorReady: {
                             withAnimation(.easeOut(duration: 0.15)) { editorReady = true }
                         },
-                        onInsertImageAt: { index in
-                            imageInsertIndex = index
+                        onInsertImage: {
+                            showImagePicker = true
                         },
                         onImageFilesDropped: { urls in
                             Task { await handleDroppedImages(urls) }
@@ -98,32 +107,24 @@ public struct PostEditorView: View {
                         .transition(.opacity)
                     }
                 }
-                .sheet(
-                    isPresented: Binding(
-                        get: { imageInsertIndex != nil },
-                        set: { if !$0 { imageInsertIndex = nil } }
-                    )
-                ) {
-                    if let idx = imageInsertIndex {
-                        MediaPickerView { selected in
-                            // Ensure item is in appState so requestMediaSizes can find it
-                            if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
-                                appState.mediaItems.append(selected)
-                            }
-                            var info: [String: Any] = [
-                                "url":     selected.sourceURL,
-                                "index":   idx,
-                                "mediaId": selected.id,
-                            ]
-                            if let w = selected.mediaDetails?.width  { info["width"]  = w }
-                            if let h = selected.mediaDetails?.height { info["height"] = h }
-                            if !selected.altText.isEmpty { info["alt"] = selected.altText }
-                            NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
-                            imageInsertIndex = nil
+                .sheet(isPresented: $showImagePicker) {
+                    MediaPickerView { selected in
+                        // Ensure item is in appState so requestMediaSizes can find it
+                        if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
+                            appState.mediaItems.append(selected)
                         }
-                        .environmentObject(appState)
-                        .frame(minWidth: 600, minHeight: 400)
+                        var info: [String: Any] = [
+                            "url":     selected.sourceURL,
+                            "mediaId": selected.id,
+                        ]
+                        if let w = selected.mediaDetails?.width  { info["width"]  = w }
+                        if let h = selected.mediaDetails?.height { info["height"] = h }
+                        if !selected.altText.isEmpty { info["alt"] = selected.altText }
+                        NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+                        showImagePicker = false
                     }
+                    .environmentObject(appState)
+                    .frame(minWidth: 600, minHeight: 400)
                 }
             }
 
@@ -389,6 +390,7 @@ public struct PostEditorView: View {
 
             guard !Task.isCancelled, loadedItem == requestedItem else { return }
             lastSavedServerModified = loadedPost.modified
+            applyRemotePost(loadedPost)
 
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
             if let snap = try? services.autosaveStore.load(postID: post.id) {
@@ -651,7 +653,7 @@ public struct PostEditorView: View {
                 let media = try await client.uploadMedia(
                     data: data, filename: url.lastPathComponent, mimeType: mime
                 )
-                var info: [String: Any] = ["url": media.sourceURL, "index": 0, "mediaId": media.id]
+                var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
                 if let w = media.mediaDetails?.width  { info["width"]  = w }
                 if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
@@ -793,17 +795,11 @@ public struct PostEditorView: View {
         }
     }
 
-    /// Walks the AppKit view hierarchy of the key window to locate the WKWebView
-    /// (DroppableWebView subclass) used by EditorView.
+    /// Parses a WordPress REST API date string. Tries ISO8601 with timezone first
+    /// (handles date_gmt "2026-05-30T14:00:00Z"), then falls back to the
+    /// no-timezone-suffix format some WP versions emit, treated as UTC.
     private func parseWPDate(_ iso: String) -> Date? {
-        // Try ISO8601 with timezone first (handles date_gmt "2026-05-30T14:00:00Z")
-        if let date = Self.iso8601Formatter.date(from: iso) { return date }
-        // Fallback: no timezone suffix — treat as UTC (date_gmt format on some WP versions)
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.timeZone = TimeZone(identifier: "UTC")
-        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return df.date(from: iso)
+        Self.iso8601Formatter.date(from: iso) ?? Self.utcNoSuffixFormatter.date(from: iso)
     }
 }
 

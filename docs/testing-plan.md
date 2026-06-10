@@ -60,7 +60,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `WordPressClientTests` | `WordPressClientTests.swift` | 48 | URL construction, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text |
 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 5 | `previewURL` query/fragment handling |
 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
-| `KeychainStoreTests` | `KeychainStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
+| `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
@@ -252,17 +252,17 @@ Tests use an `in: baseDirectory` parameter pointing to a per-test temp dir — f
 
 ---
 
-### 7. Storage — `KeychainStoreTests` (10 tests)
+### 7. Storage — `CredentialsStoreTests` (10 tests)
 
-File: `Tests/QuillTests/KeychainStoreTests.swift`
+File: `Tests/QuillTests/CredentialsStoreTests.swift`
 
 `@Suite(.serialized)` — uses `AppSupportDirectory.override` (a global) so only one test at a time writes to the temp dir. Override is set in `init` and cleared in `deinit`.
 
-#### `KeychainStore` / credentials (3 tests)
+#### `CredentialsStore` / credentials (3 tests)
 
 | Test | What it checks |
 |---|---|
-| `saveAndLoad` | Credentials round-trip through `KeychainStore` |
+| `saveAndLoad` | Credentials round-trip through `CredentialsStore` |
 | `loadReturnsNilWhenEmpty` | No stored creds → `nil` |
 | `deleteRemovesCredentials` | Credentials gone after delete |
 
@@ -913,7 +913,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 25 | Ephemeral session (no keychain prompts) | 👁 §7.1 |
 | 26 | Sidebar not `List`; layout not `NavigationSplitView` | 👁 §7.2 |
 | 27 | `JSONFileStore` writes chmod 600 + atomic | ✅ `JSONFileStoreTests.savedFileHasChmod600` |
-| 28 | `AppSupportDirectory` override isolation | ✅ `KeychainStoreTests.appSupportOverrideKeepsFilesInTempDir` |
+| 28 | `AppSupportDirectory` override isolation | ✅ `CredentialsStoreTests.appSupportOverrideKeepsFilesInTempDir` |
 | 29 | AI selection ops via right-click, gated on `hasTextSelection` | 👁 §7.10/§7.13 |
 | 30 | Accepted AI result is Gutenberg-transformed | 👁 §7.10 |
 

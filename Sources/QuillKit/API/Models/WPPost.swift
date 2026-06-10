@@ -31,8 +31,8 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         id = try c.decode(Int.self, forKey: .id)
         type = try c.decodeIfPresent(String.self, forKey: .type) ?? "post"
         title = try c.decode(RenderedString.self, forKey: .title)
-        content = try c.decode(RenderedString.self, forKey: .content)
-        excerpt = try c.decode(RenderedString.self, forKey: .excerpt)
+        content = try c.decodeIfPresent(RenderedString.self, forKey: .content) ?? RenderedString(raw: "")
+        excerpt = try c.decodeIfPresent(RenderedString.self, forKey: .excerpt) ?? RenderedString(raw: "")
         status = try c.decode(String.self, forKey: .status)
         date = try c.decode(String.self, forKey: .date)
         dateGmt = try c.decodeIfPresent(String.self, forKey: .dateGmt) ?? ""

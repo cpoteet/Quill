@@ -27,11 +27,11 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-07 — 212 Swift + 52 JS tests, all passing)
+## Test suite status (2026-06-10 — 214 Swift + 57 JS tests, all passing)
 
-**Swift (212 tests):** 16 suites covering all models, WordPressClient, all storage layers, AIPromptBuilder, AnthropicClient, and AppState view-model logic. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
+**Swift (214 tests):** 16 suites covering all models, WordPressClient, all storage layers, AIPromptBuilder, AnthropicClient, and AppState view-model logic. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
-**JS (52 tests):** `Scripts/test-editor.js` covers `toWordPressHTML` and `extractAlignment` via Node + jsdom (headings, lists, blockquotes, code blocks, images, tables, idempotency, unicode).
+**JS (57 tests):** `Scripts/test-editor.js` covers `toWordPressHTML` and `extractAlignment` via Node + jsdom (headings, lists, blockquotes, code blocks, images, tables, idempotency, unicode).
 
 **Full reference:** `docs/testing-plan.md` — lists every test by name with what it checks, plus the manual/functional checklists for release sign-off.
 
@@ -58,7 +58,7 @@ See `docs/future-architecture.md` for deferred design notes: image figure-first 
 ```
 Sources/QuillKit/
   App/              AppState, AppServices, QuillApp, AppSupportDirectory
-  Auth/             KeychainStore (file-based, not system keychain)
+  Auth/             CredentialsStore (file-based, not system keychain)
   API/              WordPressClient, Models (WPPost, WPMedia, WPTaxonomy)
   AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache

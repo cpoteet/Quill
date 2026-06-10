@@ -30,14 +30,17 @@ public struct PreferencesView: View {
     @State private var isAnalyzing: Bool = false
     var onSave: (Credentials) -> Void
     var posts: [WPPost]
+    var credentials: Credentials?
     var onSaveAISettings: ((AISettings) -> Void)?
 
     public init(
         posts: [WPPost] = [],
+        credentials: Credentials? = nil,
         onSave: @escaping (Credentials) -> Void,
         onSaveAISettings: ((AISettings) -> Void)? = nil
     ) {
         self.posts = posts
+        self.credentials = credentials
         self.onSave = onSave
         self.onSaveAISettings = onSaveAISettings
     }
@@ -180,7 +183,7 @@ public struct PreferencesView: View {
 
         // Detect site URL change before saving — stale sample IDs and style guide
         // from a previous site must be cleared when the user switches WordPress sites.
-        let previousCreds = try? KeychainStore.load()
+        let previousCreds = try? CredentialsStore.load()
         let siteURLChanged = previousCreds != nil && previousCreds?.siteURL.absoluteString != siteURL
         if siteURLChanged {
             aiSamplePostIDs = []
@@ -204,7 +207,7 @@ public struct PreferencesView: View {
             isSaving = true
             let creds = Credentials(siteURL: url, username: username, appPassword: appPassword)
             do {
-                try KeychainStore.save(creds)
+                try CredentialsStore.save(creds)
                 onSave(creds)
             } catch {
                 saveError = error.localizedDescription
@@ -251,16 +254,25 @@ public struct PreferencesView: View {
 
         // Optionally regenerate the style guide
         if shouldRegen {
-            let sampleContents: [String] = aiSamplePostIDs.compactMap { id in
-                guard let post = posts.first(where: { $0.id == id }) else { return nil }
-                let stripped = post.content.rendered
-                    .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return stripped.isEmpty ? nil : stripped
+            isAnalyzing = true
+            var sampleContents: [String] = []
+            if let creds = credentials {
+                let wpClient = WordPressClient(credentials: creds)
+                for id in aiSamplePostIDs {
+                    let postType = posts.first(where: { $0.id == id })?.type ?? "post"
+                    let fetched = try? await (postType == "page"
+                        ? wpClient.fetchPage(id: id)
+                        : wpClient.fetchPost(id: id))
+                    if let fetched {
+                        let stripped = fetched.content.rendered
+                            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !stripped.isEmpty { sampleContents.append(stripped) }
+                    }
+                }
             }
 
             if !sampleContents.isEmpty {
-                isAnalyzing = true
                 do {
                     let client = AnthropicClient(apiKey: aiAPIKey)
                     let prompt = AIPromptBuilder.styleGuideGenerationPrompt(sampleContents: sampleContents)
@@ -277,8 +289,8 @@ public struct PreferencesView: View {
                     isAnalyzing = false
                     return
                 }
-                isAnalyzing = false
             }
+            isAnalyzing = false
         }
 
         saveSuccess = true
@@ -287,7 +299,7 @@ public struct PreferencesView: View {
     }
 
     private func loadExisting() {
-        guard let creds = try? KeychainStore.load() else { return }
+        guard let creds = try? CredentialsStore.load() else { return }
         siteURL = creds.siteURL.absoluteString
         username = creds.username
         appPassword = creds.appPassword

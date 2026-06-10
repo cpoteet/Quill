@@ -126,13 +126,16 @@ function formatHTML(html, doc) {
   const VOID = new Set(['img','br','hr','input','meta','link',
     'wbr','area','base','col','embed','param','source','track'])
 
+  function escapeAttr(v) { return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;') }
+  function escapeText(v) { return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
   function attrStr(el) {
-    return Array.from(el.attributes).map(a => ` ${a.name}="${a.value}"`).join('')
+    return Array.from(el.attributes).map(a => ` ${a.name}="${escapeAttr(a.value)}"`).join('')
   }
 
   function serialize(node, depth) {
     const pad = '  '.repeat(depth)
-    if (node.nodeType === 3) return node.textContent
+    if (node.nodeType === 3) return escapeText(node.textContent)
     if (node.nodeType !== 1) return ''
     const tag = node.tagName.toLowerCase()
     const at = attrStr(node)

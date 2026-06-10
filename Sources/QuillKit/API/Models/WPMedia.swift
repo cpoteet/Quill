@@ -11,6 +11,13 @@ public struct WPMedia: Identifiable, Codable, Sendable {
     public var altText: String
     public var mediaDetails: MediaDetails?
 
+    public var thumbnailURL: String {
+        if let url = mediaDetails?.sizes?["thumbnail"]?.sourceURL, !url.isEmpty {
+            return url
+        }
+        return sourceURL
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, title
         case sourceURL = "source_url"

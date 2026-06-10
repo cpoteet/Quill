@@ -9,7 +9,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onContentChange: (String) -> Void
     var onReady: () -> Void
     weak var webView: WKWebView?
-    var onInsertImageAt: ((Int) -> Void)?
+    var onInsertImage: (() -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
@@ -29,14 +29,12 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     }
 
     @objc private func handleInsertMedia(_ note: Notification) {
-        guard let url = note.userInfo?["url"] as? String,
-            let index = note.userInfo?["index"] as? Int
-        else { return }
+        guard let url = note.userInfo?["url"] as? String else { return }
         let width   = note.userInfo?["width"]   as? Int
         let height  = note.userInfo?["height"]  as? Int
         let mediaId = note.userInfo?["mediaId"] as? Int
         let alt     = note.userInfo?["alt"]     as? String
-        insertImage(url: url, at: index, width: width, height: height, mediaId: mediaId, alt: alt)
+        insertImage(url: url, width: width, height: height, mediaId: mediaId, alt: alt)
     }
 
     // WKScriptMessageHandler
@@ -61,10 +59,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 }
                 self.onReady()
             }
-        case "insertImageAtIndex":
-            if let index = message.body as? Int {
-                DispatchQueue.main.async { self.onInsertImageAt?(index) }
-            }
+        case "insertImage":
+            DispatchQueue.main.async { self.onInsertImage?() }
         case "showLinkPicker":
             guard
                 let body    = message.body as? [String: Any],
@@ -97,30 +93,24 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         case "checkSpelling":
             guard let text = message.body as? String else { return }
-            DispatchQueue.global(qos: .userInitiated).async {
-                var misspelled = Set<String>()
-                var offset = 0
-                let tag = NSSpellChecker.uniqueSpellDocumentTag()
-                while true {
-                    let range = NSSpellChecker.shared.checkSpelling(
-                        of: text, startingAt: offset,
-                        language: nil, wrap: false,
-                        inSpellDocumentWithTag: tag, wordCount: nil)
-                    if range.length == 0 { break }
-                    misspelled.insert((text as NSString).substring(with: range))
-                    offset = range.upperBound
-                }
+            let tag = NSSpellChecker.uniqueSpellDocumentTag()
+            NSSpellChecker.shared.requestChecking(
+                of: text,
+                range: NSRange(text.startIndex..., in: text),
+                types: NSTextCheckingResult.CheckingType.spelling.rawValue,
+                options: nil,
+                inSpellDocumentWithTag: tag
+            ) { _, results, _, _ in
                 NSSpellChecker.shared.closeSpellDocument(withTag: tag)
+                let misspelled = results.map { (text as NSString).substring(with: $0.range) }
                 guard
-                    let data = try? JSONSerialization.data(withJSONObject: Array(misspelled)),
+                    let data = try? JSONSerialization.data(withJSONObject: misspelled),
                     let json = String(data: data, encoding: .utf8)
                 else { return }
-                DispatchQueue.main.async {
-                    self.webView?.evaluateJavaScript(
-                        "window.applySpellErrors(\(json))",
-                        completionHandler: nil
-                    )
-                }
+                self.webView?.evaluateJavaScript(
+                    "window.applySpellErrors(\(json))",
+                    completionHandler: nil
+                )
             }
         default:
             break
@@ -184,7 +174,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         }
     }
 
-    func insertImage(url: String, at index: Int, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil, alt: String? = nil) {
+    func insertImage(url: String, width: Int? = nil, height: Int? = nil, mediaId: Int? = nil, alt: String? = nil) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
             let urlStr = String(data: jsonURL, encoding: .utf8)
@@ -200,7 +190,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         } else {
             altStr = "null"
         }
-        wv.evaluateJavaScript("insertImageAt(\(index), \(urlStr), \(wStr), \(hStr), \(idStr), \(altStr))", completionHandler: nil)
+        wv.evaluateJavaScript("insertImage(\(urlStr), \(wStr), \(hStr), \(idStr), \(altStr))", completionHandler: nil)
     }
 
     // WKNavigationDelegate

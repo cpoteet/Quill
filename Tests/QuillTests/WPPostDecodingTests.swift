@@ -164,4 +164,23 @@ import Testing
         let post = try decode(fullJSON.replacingOccurrences(of: "\"publish\"", with: "\"future\""))
         #expect(post.status == "future")
     }
+
+    // When fetched via the list endpoint with _fields (no content/excerpt in payload),
+    // decoding must succeed with empty defaults rather than throwing.
+    @Test func missingContentAndExcerptDefaultToEmpty() throws {
+        let json = """
+        {"id":11,"type":"post",
+         "title":{"rendered":"List Post","raw":"List Post"},
+         "status":"publish","date":"2024-01-01T00:00:00",
+         "date_gmt":"2024-01-01T00:00:00","modified":"2024-01-02T00:00:00",
+         "slug":"list-post","link":"https://example.com/list-post",
+         "featured_media":0,"categories":[],"tags":[],"parent":0,"comment_status":"open"}
+        """
+        let post = try decode(json)
+        #expect(post.id == 11)
+        #expect(post.content.rendered == "")
+        #expect(post.content.raw == "")
+        #expect(post.content.editorHTML == "")
+        #expect(post.excerpt.rendered == "")
+    }
 }

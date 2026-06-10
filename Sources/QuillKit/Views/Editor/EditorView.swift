@@ -5,7 +5,7 @@ public struct EditorView: NSViewRepresentable {
     @Binding var html: String
     var onContentChange: (String) -> Void
     var onEditorReady: (() -> Void)?
-    var onInsertImageAt: ((Int) -> Void)?
+    var onInsertImage: (() -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
@@ -19,7 +19,7 @@ public struct EditorView: NSViewRepresentable {
         html: Binding<String>,
         onContentChange: @escaping (String) -> Void,
         onEditorReady: (() -> Void)? = nil,
-        onInsertImageAt: ((Int) -> Void)? = nil,
+        onInsertImage: (() -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
@@ -32,7 +32,7 @@ public struct EditorView: NSViewRepresentable {
         self._html = html
         self.onContentChange = onContentChange
         self.onEditorReady = onEditorReady
-        self.onInsertImageAt = onInsertImageAt
+        self.onInsertImage = onInsertImage
         self.onImageFilesDropped = onImageFilesDropped
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
@@ -52,7 +52,7 @@ public struct EditorView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "contentChanged")
         config.userContentController.add(context.coordinator, name: "editorReady")
-        config.userContentController.add(context.coordinator, name: "insertImageAtIndex")
+        config.userContentController.add(context.coordinator, name: "insertImage")
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
         config.userContentController.add(context.coordinator, name: "selectionChanged")
@@ -67,7 +67,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.webView = webView
         let onCreate = onWebViewCreated
         Task { @MainActor in onCreate?(webView) }
-        context.coordinator.onInsertImageAt = onInsertImageAt
+        context.coordinator.onInsertImage = onInsertImage
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
@@ -80,7 +80,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onContentChange = onContentChange
         context.coordinator.onReady = { ready?() }
         context.coordinator.setContent(html)
-        context.coordinator.onInsertImageAt = onInsertImageAt
+        context.coordinator.onInsertImage = onInsertImage
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
@@ -88,6 +88,10 @@ public struct EditorView: NSViewRepresentable {
         nsView.onAIOperation = onAIOperation
         nsView.aiEnabled = aiEnabled
         nsView.hasTextSelection = hasTextSelection
+    }
+
+    public static func dismantleNSView(_ nsView: DroppableWebView, coordinator: EditorCoordinator) {
+        nsView.configuration.userContentController.removeAllScriptMessageHandlers()
     }
 
     private func loadEditorHTML(in webView: WKWebView) {

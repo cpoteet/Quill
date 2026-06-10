@@ -225,7 +225,14 @@ public struct SidebarView: View {
         defer { appState.isLoadingList = false }
 
         let client = WordPressClient(credentials: creds)
-        try? services.taxonomyCache.clearAll()
+        // Clear taxonomy cache only when the WordPress site URL changes.
+        // Clearing unconditionally on every launch defeats the 24-hour TTL.
+        let siteKey = "TaxonomyCacheLastSiteURL"
+        let currentSite = creds.siteURL.absoluteString
+        if UserDefaults.standard.string(forKey: siteKey) != currentSite {
+            try? services.taxonomyCache.clearAll()
+            UserDefaults.standard.set(currentSite, forKey: siteKey)
+        }
         appState.categories = []
         appState.tags = []
         do {

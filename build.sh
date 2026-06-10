@@ -63,7 +63,7 @@ cat > "$APP_DIR/Info.plist" <<EOF
 EOF
 
 echo "▶ Signing $APP_BUNDLE..."
-codesign --force --deep --sign - "$APP_BUNDLE"
+codesign --force --sign - "$APP_BUNDLE"
 
 echo "✓ Built: $APP_BUNDLE"
 echo "  Run with: open $APP_BUNDLE"

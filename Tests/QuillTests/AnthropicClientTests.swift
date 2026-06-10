@@ -90,22 +90,8 @@ import Testing
 
     // MARK: - Beta headers
 
-    @Test func betaHeaderWithoutWebSearchContainsCachingOnly() async throws {
-        var captured: URLRequest?
-        AnthropicMockURLProtocol.requestHandler = { req in
-            captured = req
-            return (
-                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                try self.successBody(textBlocks: ["hi"])
-            )
-        }
-        _ = try await completeDefault(useWebSearch: false)
-        let beta = captured?.value(forHTTPHeaderField: "anthropic-beta") ?? ""
-        #expect(beta.contains("prompt-caching-2024-07-31"))
-        #expect(!beta.contains("web-search"))
-    }
-
-    @Test func betaHeaderWithWebSearchIncludesWebSearchBeta() async throws {
+    @Test func noBetaHeaderSent() async throws {
+        // Prompt caching and web search are both GA — no anthropic-beta header needed.
         var captured: URLRequest?
         AnthropicMockURLProtocol.requestHandler = { req in
             captured = req
@@ -115,9 +101,7 @@ import Testing
             )
         }
         _ = try await completeDefault(useWebSearch: true)
-        let beta = captured?.value(forHTTPHeaderField: "anthropic-beta") ?? ""
-        #expect(beta.contains("prompt-caching-2024-07-31"))
-        #expect(beta.contains("web-search-2025-03-05"))
+        #expect(captured?.value(forHTTPHeaderField: "anthropic-beta") == nil)
     }
 
     // MARK: - Tools array

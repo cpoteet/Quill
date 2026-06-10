@@ -49,12 +49,14 @@ public struct WordPressClient: Sendable {
         var all: [WPPost] = []
         var page = 1
         var totalPages = 1
+        let fields = "id,type,title,status,date,date_gmt,modified,slug,link,featured_media,categories,tags,parent,comment_status"
         repeat {
             let url = try endpoint(
                 resource,
                 query: [
                     "per_page": "\(perPage)", "page": "\(page)", "context": "edit",
                     "status": "publish,draft,private,future,pending",
+                    "_fields": fields,
                 ])
             let request = authorizedRequest(url: url, method: "GET")
             let (data, http) = try await send(request)

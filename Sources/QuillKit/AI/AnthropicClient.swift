@@ -113,10 +113,6 @@ public struct AnthropicClient {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
 
-        var betas = ["prompt-caching-2024-07-31"]
-        if useWebSearch { betas.append("web-search-2025-03-05") }
-        request.setValue(betas.joined(separator: ","), forHTTPHeaderField: "anthropic-beta")
-
         let tools: [AnthropicTool]? = useWebSearch
             ? [AnthropicTool(type: "web_search_20250305", name: "web_search")]
             : nil

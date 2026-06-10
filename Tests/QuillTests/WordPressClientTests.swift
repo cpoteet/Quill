@@ -775,4 +775,42 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(results.count == 1)
         #expect(results[0].type == .category)
     }
+
+    // fetchAllPosts must include _fields so the list payload omits content/excerpt.
+    // If _fields is removed, list fetches become 10–100× larger and the decoded posts
+    // will have content that was never meant to be cached (regression from H3 fix).
+    @Test func fetchAllPostsRequestIncludesFieldsFilter() async throws {
+        var capturedQuery: String?
+        let fieldFilteredJSON = """
+        [{"id":1,"type":"post","title":{"rendered":"Hello"},"status":"publish",
+          "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+          "slug":"hello","link":"https://example.com/hello"}]
+        """.data(using: .utf8)!
+
+        MockURLProtocol.requestHandler = { request in
+            capturedQuery = request.url?.query
+            let headers = ["X-WP-TotalPages": "1"]
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200,
+                                           httpVersion: nil, headerFields: headers)!
+            return (response, fieldFilteredJSON)
+        }
+
+        _ = try await client.fetchAllPosts()
+        #expect(capturedQuery?.contains("_fields=") == true)
+    }
+
+    // fetchPost must NOT include _fields — it must return full content for the editor.
+    // If _fields is accidentally added here, post content will be empty when opening a post.
+    @Test func fetchPostRequestOmitsFieldsFilter() async throws {
+        var capturedQuery: String?
+        MockURLProtocol.requestHandler = { request in
+            capturedQuery = request.url?.query
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200,
+                                           httpVersion: nil, headerFields: nil)!
+            return (response, minimalPostJSON.data(using: .utf8)!)
+        }
+
+        _ = try await client.fetchPost(id: 1)
+        #expect(capturedQuery?.contains("_fields=") != true)
+    }
 }

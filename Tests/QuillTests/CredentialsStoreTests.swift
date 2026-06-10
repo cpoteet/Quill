@@ -6,7 +6,7 @@ import Testing
 // idiomatic per-instance cleanup hook. Structs conform to `Copyable` and cannot declare
 // a deinitializer.
 @Suite(.serialized)
-final class KeychainStoreTests {
+final class CredentialsStoreTests {
     let testCredentials = Credentials(
         siteURL: URL(string: "https://example.com")!,
         username: "testuser",
@@ -21,7 +21,7 @@ final class KeychainStoreTests {
         tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("QuillTests-\(UUID().uuidString)", isDirectory: true)
         AppSupportDirectory.override = tempDir
-        try? KeychainStore.delete()
+        try? CredentialsStore.delete()
     }
 
     deinit {
@@ -32,23 +32,23 @@ final class KeychainStoreTests {
     }
 
     @Test func saveAndLoad() throws {
-        try KeychainStore.save(testCredentials)
-        let loaded = try KeychainStore.load()
+        try CredentialsStore.save(testCredentials)
+        let loaded = try CredentialsStore.load()
         #expect(loaded?.siteURL == testCredentials.siteURL)
         #expect(loaded?.username == testCredentials.username)
         #expect(loaded?.appPassword == testCredentials.appPassword)
-        try? KeychainStore.delete()
+        try? CredentialsStore.delete()
     }
 
     @Test func loadReturnsNilWhenEmpty() throws {
-        let result = try KeychainStore.load()
+        let result = try CredentialsStore.load()
         #expect(result == nil)
     }
 
     @Test func deleteRemovesCredentials() throws {
-        try KeychainStore.save(testCredentials)
-        try KeychainStore.delete()
-        let result = try KeychainStore.load()
+        try CredentialsStore.save(testCredentials)
+        try CredentialsStore.delete()
+        let result = try CredentialsStore.load()
         #expect(result == nil)
     }
 

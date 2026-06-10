@@ -31,13 +31,13 @@ public struct QuillApp: App {
                 .environmentObject(appServices)
                 .tint(Color.wpAmber)
                 .onAppear {
-                    appState.credentials = try? KeychainStore.load()
+                    appState.credentials = try? CredentialsStore.load()
                     if appState.credentials == nil {
                         appState.isShowingPreferences = true
                     }
                 }
                 .sheet(isPresented: $appState.isShowingPreferences) {
-                    PreferencesView(posts: appState.posts, onSave: { creds in
+                    PreferencesView(posts: appState.posts, credentials: appState.credentials, onSave: { creds in
                         appState.credentials = creds
                         appState.isShowingPreferences = false
                     }, onSaveAISettings: { settings in
@@ -75,7 +75,7 @@ public struct QuillApp: App {
         }
 
         Settings {
-            PreferencesView(posts: appState.posts, onSave: { creds in
+            PreferencesView(posts: appState.posts, credentials: appState.credentials, onSave: { creds in
                 appState.credentials = creds
             }, onSaveAISettings: { settings in
                 appState.aiSettings = settings
