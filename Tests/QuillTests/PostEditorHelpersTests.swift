@@ -44,6 +44,7 @@ import Testing
         #expect(PostEditorView.publishButtonTitle(status: "private", isPublishedRemote: false) == "Publish Privately")
         #expect(PostEditorView.publishButtonTitle(status: "publish", isPublishedRemote: false) == "Publish")
         #expect(PostEditorView.publishButtonTitle(status: "publish", isPublishedRemote: true) == "Update")
+        #expect(PostEditorView.publishButtonTitle(status: "trash", isPublishedRemote: false) == "Publish")
     }
 
     @Test func toastMessagePerStatus() {
