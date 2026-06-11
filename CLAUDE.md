@@ -81,7 +81,7 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles insert-image notification
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
-- `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `extractAlignment`, `formatHTML`; shared between `editor.html` and `Scripts/test-editor.js`
+- `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, `embedClassFor`; shared between `editor.html` and `Scripts/test-editor.js`. Loaded as `<script src="./editor-transforms.js">` before the main editor script block, so all functions are available as globals inside `editor.html`'s JS.
 
 ## Maintaining Gutenberg HTML compatibility
 
@@ -91,7 +91,7 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 
 2. **`ResizableImage.parseHTML()`** (~line 1079 in `editor.html`) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
 
-### What each element currently outputs (as of 2026-05-24)
+### What each element currently outputs (as of 2026-06-11)
 
 | Tiptap internal | `toWordPressHTML()` output |
 |---|---|
@@ -208,6 +208,7 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 - **`FootnoteSync` `appendTransaction` rebuilds the list children** — deleting a marker deletes its entry (including typed text) by design.
 - **Find & replace decorations use `PluginKey('findReplace')`** — separate from spell check; `_refreshFind` dispatches meta-only transactions which do not re-fire `update`.
 - **Stats freeze in code view** and refresh on `_exitCodeView()`/`setContent` via `_postStats()`.
+- **`crypto.randomUUID()` is available in WKWebView on macOS 13+ even with `file://` URLs** — WebKit treats `file://` as a secure context for the Web Crypto API. Do not polyfill `randomUUID` — it is natively available and used by `insertFootnote()`.
 
 ## Docs
 
