@@ -69,4 +69,22 @@ import Testing
         s.statusDidChange()
         #expect(s.publishDate == nil)
     }
+
+    @Test func statusChangeToFuturePreservesExistingDate() {
+        var s = PostSettings()
+        let existing = Date().addingTimeInterval(7200)
+        s.status = "future"
+        s.publishDate = existing
+        s.statusDidChange()
+        #expect(s.publishDate == existing)
+    }
+
+    @Test func statusChangeToPendingClearsScheduledDate() {
+        var s = PostSettings()
+        s.status = "future"
+        s.statusDidChange()
+        s.status = "pending"
+        s.statusDidChange()
+        #expect(s.publishDate == nil)
+    }
 }

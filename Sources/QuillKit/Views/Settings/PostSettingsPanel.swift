@@ -15,6 +15,8 @@ public struct PostSettings: Equatable {
 
     public init() {}
 
+    // Manages the same publishDate/status invariant as statusDidChange(), but
+    // driven by the Schedule toggle in the UI rather than the status picker.
     public mutating func setScheduled(_ enabled: Bool) {
         if enabled {
             if publishDate == nil { publishDate = Date().addingTimeInterval(3600) }
