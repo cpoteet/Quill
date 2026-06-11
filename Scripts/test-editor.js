@@ -544,18 +544,27 @@ describe('embedClassFor', () => {
 })
 
 describe('toWordPressHTML — embeds', () => {
-  const EMBED = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">\nhttps://youtu.be/abc\n</div></figure>'
+  const EMBED_FIGURE = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">\nhttps://youtu.be/abc\n</div></figure>'
+  const EMBED_COMMENT = '<!-- wp:embed {"url":"https://youtu.be/abc","type":"video","providerNameSlug":"youtube","responsive":true,"className":"wp-embed-aspect-16-9 wp-has-aspect-ratio"} -->'
+  const EMBED = EMBED_COMMENT + '\n' + EMBED_FIGURE + '\n<!-- /wp:embed -->'
 
-  test('embed figure passes through unchanged', () => {
+  test('embed figure gets Gutenberg block comment wrappers', () => {
+    assert.equal(wp(EMBED_FIGURE), EMBED)
+  })
+
+  test('block comment wrapping is idempotent', () => {
     assert.equal(wp(EMBED), EMBED)
   })
 
   test('embed figure does not gain wp-block-image', () => {
-    assert.ok(!wp(EMBED).includes('wp-block-image'))
+    assert.ok(!wp(EMBED_FIGURE).includes('wp-block-image'))
   })
 
-  test('embed figure with caption passes through unchanged', () => {
-    const withCaption = EMBED.replace('</figure>', '<figcaption class="wp-element-caption">My <a href="https://e.com">video</a></figcaption></figure>')
-    assert.equal(wp(withCaption), withCaption)
+  test('embed figure with caption gets block comment wrappers', () => {
+    const figWithCaption = EMBED_FIGURE.replace('</figure>', '<figcaption class="wp-element-caption">My <a href="https://e.com">video</a></figcaption></figure>')
+    const out = wp(figWithCaption)
+    assert.match(out, /<!-- wp:embed .* -->/)
+    assert.ok(out.includes(figWithCaption))
+    assert.match(out, /<!-- \/wp:embed -->/)
   })
 })

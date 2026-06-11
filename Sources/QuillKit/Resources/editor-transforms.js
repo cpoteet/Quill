@@ -16,7 +16,10 @@ function extractAlignment(cls) {
 function toWordPressHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = document
   const div = doc.createElement('div')
+  // Strip existing wp:embed block comments — will re-add fresh ones below.
   div.innerHTML = html
+    .replace(/<!-- wp:embed [^\n]*-->\n?/g, '')
+    .replace(/\n?<!-- \/wp:embed -->/g, '')
 
   // Re-emit wp-image-{id} class so WordPress can associate images with media library entries
   div.querySelectorAll('img[data-media-id]').forEach(img => {
@@ -115,7 +118,25 @@ function toWordPressHTML(html, doc) {
     figure.appendChild(table)
   })
 
-  return div.innerHTML
+  // Wrap embed figures with Gutenberg block comments so WordPress enqueues
+  // the embed block CSS (required for responsive aspect-ratio behaviour).
+  let result = div.innerHTML
+  div.querySelectorAll('figure.wp-block-embed').forEach(figure => {
+    const wrapper = figure.querySelector('.wp-block-embed__wrapper')
+    const url = wrapper ? wrapper.textContent.trim() : ''
+    if (!url) return
+    const p = detectEmbedProvider(url)
+    const attrs = { url }
+    if (p) {
+      attrs.type = p.type
+      attrs.providerNameSlug = p.slug
+    }
+    attrs.responsive = true
+    if (p && p.aspect) attrs.className = 'wp-embed-aspect-16-9 wp-has-aspect-ratio'
+    const figHTML = figure.outerHTML
+    result = result.replace(figHTML, () => `<!-- wp:embed ${JSON.stringify(attrs)} -->\n${figHTML}\n<!-- /wp:embed -->`)
+  })
+  return result
 }
 
 function formatHTML(html, doc) {
