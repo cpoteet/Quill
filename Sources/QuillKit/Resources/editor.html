@@ -1468,7 +1468,7 @@
       }
 
       update(node) {
-        if (node.type !== this.node.type) return false
+        if (node.type.name !== 'footnoteItem') return false
         this.node = node
         this.dom.id = node.attrs.fnId || ''
         return true
