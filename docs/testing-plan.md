@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-11 — 233 Swift tests + 89 JS editor tests, all passing._
+_Last updated: 2026-06-11 — 233 Swift tests + 92 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 233 tests across 17 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (89 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 233 tests across 18 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (92 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (233 tests)
+## Swift test suite (233 tests, 18 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -58,7 +58,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
-| `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 5 | `previewURL` query/fragment handling |
+| `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
@@ -71,8 +71,6 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
-| `PostStatsTests` | `AppStateTests.swift` | 3 | `PostStats` reading time (zero words, short text = 1 min, rounds up) |
-| `PostStatusHelpersTests` | `AppStateTests.swift` | 4 | `publishButtonTitle`, `toastMessage`, `statusChangeToFuture`, `statusChangeToPrivate` |
 
 ---
 
@@ -515,12 +513,12 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 ---
 
-## JS editor tests (89 tests)
+## JS editor tests (92 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
 
-Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, and `formatHTML` from `editor-transforms.js`.
+Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, and `embedClassFor` from `editor-transforms.js`.
 
 ### `extractAlignment` (6 tests)
 
@@ -692,13 +690,14 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `twitter rich type` | `embedClassFor("twitter", "rich")` → includes `is-type-rich is-provider-twitter` |
 | `unknown provider produces bare wp-block-embed` | `embedClassFor(null, null)` → `"wp-block-embed"` |
 
-### `toWordPressHTML` — embeds (3 tests)
+### `toWordPressHTML` — embeds (4 tests)
 
 | Test | What it checks |
 |---|---|
-| `embed figure passes through unchanged` | `<figure class="wp-block-embed …">` → output HTML identical to input |
-| `embed figure not treated as image figure` | No `wp-block-image` class added, no alignment transform |
-| `embed caption passes through verbatim` | `<figcaption>` inside embed figure preserved as-is |
+| `embed figure gets Gutenberg block comment wrappers` | `<figure class="wp-block-embed …">` → wrapped with `<!-- wp:embed … -->` / `<!-- /wp:embed -->` Gutenberg block comments |
+| `block comment wrapping is idempotent` | Running `toWordPressHTML` on already-wrapped embed doesn't double-wrap |
+| `embed figure does not gain wp-block-image` | No `wp-block-image` class added, no alignment transform |
+| `embed figure with caption gets block comment wrappers` | Embed `<figure>` containing a `<figcaption>` still gets wrapped correctly |
 
 ### `toWordPressHTML` — footnotes (5 tests)
 
@@ -709,6 +708,14 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `sup without data-fn is not renumbered` | Plain `<sup>` not treated as footnote marker |
 | `footnotes list does not get wp-block-list` | `<ol class="wp-block-footnotes">` → no `wp-block-list` added |
 | `ordinary ol still gets wp-block-list` | Regular `<ol>` without `wp-block-footnotes` still receives `wp-block-list` |
+
+### `toWordPressHTML` — footnote backrefs (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `marker sup gains id="ref-fn-UUID"` | Each `<sup data-fn="UUID">` gets `id="ref-fn-UUID"` added so backref anchors can target it |
+| `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
+| `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
 
 ---
 
@@ -1049,9 +1056,10 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Delete a footnote marker → its entry is removed from the footnotes list automatically (`FootnoteSync`).
 - [ ] Type text in a footnote list entry → text is preserved on save.
 - [ ] Click a footnote number in the list → cursor jumps to the corresponding marker in the body.
-- [ ] Save → fetch `content.raw` → footnote markers are `<sup data-fn="…" class="fn"><a href="#…">[N]</a></sup>` and the list is `<ol class="wp-block-footnotes">…</ol>` at the end of the content.
-- [ ] Reload the post in Quill → footnotes render and are editable (round-trip stable).
-- [ ] View on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links work.
+- [ ] Click the ↩ button at the end of a footnote list entry → cursor jumps to the corresponding marker in the body (`FootnoteItemNodeView` back-arrow).
+- [ ] Save → fetch `content.raw` → footnote markers are `<sup id="ref-fn-…" data-fn="…" class="fn"><a href="#…">[N]</a></sup>` and each list item has `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended.
+- [ ] Reload the post in Quill → footnotes render and are editable (round-trip stable); back-arrow button still present in each list item.
+- [ ] View on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links (`↩`) jump back to the correct inline marker.
 - [ ] Footnote list `<ol>` does **not** get `wp-block-list` class (excluded by design).
 
 ---
@@ -1119,6 +1127,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 40 | Footnotes list excluded from `wp-block-list` | ✅ JS `footnotes list does not get wp-block-list` |
 | 41 | `FootnotesList`/`FootnoteItem`/`FootnoteMarker` parse priority | 👁 §7.20 (load existing post with footnotes) |
 | 42 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
+| 43 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
 
 ---
 
@@ -1171,26 +1180,28 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
 | `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
 
-### 19. View-model — `PostStatsTests` (3 tests)
+### 19. View-model — PostStats (3 tests)
 
-File: `Tests/QuillTests/AppStateTests.swift`
-
-| Test | What it checks |
-|---|---|
-| `zeroWordsReturnsOneMinuteReadingTime` | Empty/zero-word post → `readingTime == 1` (minimum 1 min) |
-| `shortTextReturnsOneMinute` | Word count well under 200 → `readingTime == 1` |
-| `longTextRoundsUp` | Word count that doesn't divide evenly → reading time rounded up |
-
-### 20. View-model — `PostStatusHelpersTests` (4 tests)
-
-File: `Tests/QuillTests/AppStateTests.swift`
+File: `Tests/QuillTests/PostEditorHelpersTests.swift` (inside `PostEditorHelpersTests` suite)
 
 | Test | What it checks |
 |---|---|
-| `publishButtonTitle` | Each status value maps to the correct button label (`"Publish"`, `"Update"`, `"Schedule"`, etc.) |
-| `toastMessage` | Each status transition maps to the correct toast string |
-| `statusChangeToFuture` | Setting a future date produces `status == "future"` and `"Schedule"` button label |
-| `statusChangeToPrivate` | Setting visibility to Private produces `status == "private"` and `"Publish Privately"` button label |
+| `readingTimeZeroWordsIsZero` | Zero-word post → `readingMinutes == 0` |
+| `readingTimeShortTextIsOneMinute` | Word count ≤ 238 → `readingMinutes == 1` |
+| `readingTimeRoundsUp` | Word count that doesn't divide evenly → reading time rounds up (e.g. 239 words → 2 min) |
+
+### 20. View-model — Status helpers (6 tests)
+
+File: `Tests/QuillTests/PostEditorHelpersTests.swift` (inside `PostEditorHelpersTests` suite)
+
+| Test | What it checks |
+|---|---|
+| `publishButtonTitlePerStatus` | Each status value maps to the correct button label (`"Publish Draft"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"`, etc.) |
+| `toastMessagePerStatus` | Each status transition maps to the correct toast string |
+| `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
+| `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
+| `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
+| `statusChangeToPendingClearsScheduledDate` | Switching from `future` to `pending` → `publishDate` cleared to `nil` |
 
 ---
 
