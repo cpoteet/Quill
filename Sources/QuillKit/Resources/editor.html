@@ -623,6 +623,48 @@
       0%, 100% { opacity: 0.3; }
       50%       { opacity: 0.85; }
     }
+
+    /* ── Find & replace ─────────────────────────────── */
+    #find-bar {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #f4f3f1;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      font-size: 12px;
+    }
+    #find-bar.visible { display: flex; }
+    #find-bar input {
+      flex: 0 1 180px;
+      padding: 3px 7px;
+      font-size: 12px;
+      border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 5px;
+      background: #fff;
+      color: inherit;
+      outline: none;
+    }
+    #find-bar input:focus { border-color: #b45309; }
+    #find-bar button {
+      padding: 3px 8px;
+      font-size: 12px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+    }
+    #find-bar button.active { background: #b45309; color: #fff; border-color: #b45309; }
+    #find-count { color: #888; min-width: 52px; text-align: center; }
+    .find-sep { width: 1px; height: 16px; background: rgba(0,0,0,0.12); margin: 0 4px; }
+    .find-match { background: rgba(255, 200, 0, 0.35); border-radius: 2px; }
+    .find-match-active { background: rgba(255, 145, 0, 0.6); }
+    body.dark #find-bar { background: #2a2a2a; border-bottom-color: rgba(255,255,255,0.1); }
+    body.dark #find-bar input,
+    body.dark #find-bar button { background: #3a3a3a; border-color: rgba(255,255,255,0.15); color: #eee; }
+    body.dark #find-bar button.active { background: #d97706; border-color: #d97706; }
+    body.dark .find-match { background: rgba(255, 200, 0, 0.30); }
+    body.dark .find-match-active { background: rgba(255, 145, 0, 0.55); }
   </style>
 </head>
 <body>
@@ -744,6 +786,18 @@
       <span class="img-tb-label">Alt</span>
       <input type="text" id="img-tb-alt">
     </div>
+  </div>
+  <div id="find-bar">
+    <input id="find-input" type="text" placeholder="Find" spellcheck="false">
+    <span id="find-count">0 of 0</span>
+    <button id="find-prev" title="Previous match (⇧↩)">‹</button>
+    <button id="find-next" title="Next match (↩)">›</button>
+    <button id="find-case" title="Match case">Aa</button>
+    <span class="find-sep"></span>
+    <input id="replace-input" type="text" placeholder="Replace" spellcheck="false">
+    <button id="replace-one">Replace</button>
+    <button id="replace-all">All</button>
+    <button id="find-close" title="Close (Esc)">✕</button>
   </div>
   <div id="editor-wrap"><div id="editor"></div><textarea id="code-editor" spellcheck="false"></textarea></div>
 
@@ -1185,6 +1239,31 @@
       }
     })
 
+    // ── Find & replace highlight ─────────────────────
+    const findKey = new PluginKey('findReplace')
+
+    const FindHighlight = Extension.create({
+      name: 'findHighlight',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: findKey,
+            state: {
+              init() { return DecorationSet.empty },
+              apply(tr, set) {
+                const incoming = tr.getMeta(findKey)
+                if (incoming !== undefined) return incoming
+                return tr.docChanged ? set.map(tr.mapping, tr.doc) : set
+              }
+            },
+            props: {
+              decorations(state) { return findKey.getState(state) }
+            }
+          })
+        ]
+      }
+    })
+
     // Extended blockquote: allows an optional cite as its last child.
     const CustomBlockquote = withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
@@ -1219,6 +1298,7 @@
         TaskItem.configure({ nested: true }),
         Placeholder.configure({ placeholder: 'Start writing…' }),
         SpellCheck,
+        FindHighlight,
       ],
       content: '',
       onTransaction: () => updateToolbar(),
@@ -1511,6 +1591,7 @@
 
     editor.on('update', () => {
       _rawHTML = null
+      if (_findOpen) _refreshFind(false)
       clearTimeout(debounce)
       debounce = setTimeout(() => {
         if (window.webkit?.messageHandlers?.contentChanged) {
@@ -1574,6 +1655,137 @@
       editor.view.focus()
     }
 
+    // ── Find & replace ────────────────────────────────
+    let _findOpen = false
+    let _findActiveIndex = 0
+    let _findMatchPositions = []   // [{ from, to }] in doc positions
+
+    function _collectFindMatches() {
+      const query = document.getElementById('find-input').value
+      const caseSensitive = document.getElementById('find-case').classList.contains('active')
+      const result = []
+      if (!query) return result
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isTextblock) return true
+        let text = ''
+        const positions = []
+        node.descendants((child, childPos) => {
+          if (child.isText) {
+            for (let i = 0; i < child.text.length; i++) {
+              positions.push(pos + 1 + childPos + i)
+              text += child.text[i]
+            }
+          }
+        })
+        for (const m of findMatches(text, query, caseSensitive)) {
+          result.push({ from: positions[m.start], to: positions[m.end - 1] + 1 })
+        }
+        return false
+      })
+      return result
+    }
+
+    function _renderFindDecorations() {
+      const decos = _findMatchPositions.map((m, i) =>
+        Decoration.inline(m.from, m.to, {
+          class: i === _findActiveIndex ? 'find-match find-match-active' : 'find-match'
+        })
+      )
+      const { state, dispatch } = editor.view
+      dispatch(state.tr.setMeta(findKey, DecorationSet.create(state.doc, decos)))
+      document.getElementById('find-count').textContent = _findMatchPositions.length
+        ? `${_findActiveIndex + 1} of ${_findMatchPositions.length}`
+        : '0 of 0'
+    }
+
+    function _scrollToActiveMatch() {
+      const m = _findMatchPositions[_findActiveIndex]
+      if (!m) return
+      try {
+        const dom = editor.view.domAtPos(m.from).node
+        const el = dom.nodeType === Node.TEXT_NODE ? dom.parentElement : dom
+        el?.scrollIntoView({ block: 'center' })
+      } catch (_) {}
+    }
+
+    function _refreshFind(resetIndex) {
+      _findMatchPositions = _collectFindMatches()
+      if (resetIndex || _findActiveIndex >= _findMatchPositions.length) _findActiveIndex = 0
+      _renderFindDecorations()
+    }
+
+    function _stepFind(delta) {
+      if (!_findMatchPositions.length) return
+      _findActiveIndex = (_findActiveIndex + delta + _findMatchPositions.length) % _findMatchPositions.length
+      _renderFindDecorations()
+      _scrollToActiveMatch()
+    }
+
+    function _openFindBar() {
+      if (codeViewActive) return
+      _findOpen = true
+      document.getElementById('find-bar').classList.add('visible')
+      const input = document.getElementById('find-input')
+      const sel = window.getSelection()
+      if (sel && !sel.isCollapsed) input.value = sel.toString()
+      input.focus()
+      input.select()
+      _refreshFind(true)
+      if (_findMatchPositions.length) _scrollToActiveMatch()
+    }
+
+    function _closeFindBar() {
+      if (!_findOpen) return
+      _findOpen = false
+      document.getElementById('find-bar').classList.remove('visible')
+      _findMatchPositions = []
+      const { state, dispatch } = editor.view
+      dispatch(state.tr.setMeta(findKey, DecorationSet.empty))
+      editor.commands.focus()
+    }
+
+    function _replaceActive() {
+      const m = _findMatchPositions[_findActiveIndex]
+      if (!m) return
+      const replacement = document.getElementById('replace-input').value
+      editor.view.dispatch(editor.state.tr.insertText(replacement, m.from, m.to))
+      _scrollToActiveMatch()
+    }
+
+    function _replaceAll() {
+      if (!_findMatchPositions.length) return
+      const replacement = document.getElementById('replace-input').value
+      const tr = editor.state.tr
+      for (const m of [..._findMatchPositions].reverse()) {
+        tr.insertText(replacement, m.from, m.to)
+      }
+      editor.view.dispatch(tr)
+      _refreshFind(true)
+    }
+
+    document.getElementById('find-input').addEventListener('input', () => _refreshFind(true))
+    document.getElementById('find-next').addEventListener('click', () => _stepFind(1))
+    document.getElementById('find-prev').addEventListener('click', () => _stepFind(-1))
+    document.getElementById('find-case').addEventListener('click', e => {
+      e.currentTarget.classList.toggle('active')
+      _refreshFind(true)
+    })
+    document.getElementById('replace-one').addEventListener('click', _replaceActive)
+    document.getElementById('replace-all').addEventListener('click', _replaceAll)
+    document.getElementById('find-close').addEventListener('click', _closeFindBar)
+    document.getElementById('find-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _stepFind(e.shiftKey ? -1 : 1) }
+    })
+    document.addEventListener('keydown', e => {
+      if (e.metaKey && !e.shiftKey && !e.altKey && e.key === 'f') {
+        e.preventDefault()
+        _openFindBar()
+      } else if (e.key === 'Escape' && _findOpen) {
+        e.preventDefault()
+        _closeFindBar()
+      }
+    })
+
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
     // Authoritative HTML that bypasses Tiptap's schema parser. Set when content
@@ -1583,6 +1795,7 @@
 
     function _enterCodeView() {
       if (codeViewActive) return
+      _closeFindBar()
       codeViewActive = true
       const codeViewHTML = _rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML())
       document.getElementById('code-editor').value = formatHTML(codeViewHTML)
@@ -1627,6 +1840,7 @@
         document.getElementById('btn-code-view').classList.remove('active')
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
+      _closeFindBar()
       _rawHTML = html || null
       editor.commands.setContent(html || '', false)
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
