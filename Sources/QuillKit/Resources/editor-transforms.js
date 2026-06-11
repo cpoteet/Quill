@@ -55,8 +55,8 @@ function toWordPressHTML(html, doc) {
     el.classList.add('wp-block-heading')
   })
 
-  // Lists → wp-block-list class (task lists excluded — they use data-type)
-  div.querySelectorAll('ul:not([data-type="taskList"]), ol').forEach(el => {
+  // Lists → wp-block-list class (task lists excluded — they use data-type; footnotes list excluded — it has its own class)
+  div.querySelectorAll('ul:not([data-type="taskList"]), ol:not(.wp-block-footnotes)').forEach(el => {
     el.classList.add('wp-block-list')
   })
 
@@ -118,6 +118,13 @@ function toWordPressHTML(html, doc) {
     figure.appendChild(table)
   })
 
+  // Footnote markers: write 1-based numbers into anchors in document order.
+  // The editor leaves anchors empty (CSS counters display numbers live);
+  // the saved HTML carries real text so it renders anywhere.
+  div.querySelectorAll('sup.fn[data-fn] > a').forEach((a, i) => {
+    a.textContent = String(i + 1)
+  })
+
   // Wrap embed figures with Gutenberg block comments so WordPress enqueues
   // the embed block CSS (required for responsive aspect-ratio behaviour).
   let result = div.innerHTML
@@ -136,6 +143,7 @@ function toWordPressHTML(html, doc) {
     const figHTML = figure.outerHTML
     result = result.replace(figHTML, () => `<!-- wp:embed ${JSON.stringify(attrs)} -->\n${figHTML}\n<!-- /wp:embed -->`)
   })
+
   return result
 }
 

@@ -568,3 +568,38 @@ describe('toWordPressHTML — embeds', () => {
     assert.match(out, /<!-- \/wp:embed -->/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — footnotes
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — footnotes', () => {
+  test('marker anchors are numbered in document order', () => {
+    const html = '<p>One<sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup> two<sup data-fn="fn-b" class="fn"><a href="#fn-b"></a></sup></p>'
+    const out = wp(html)
+    assert.match(out, /<a href="#fn-a">1<\/a>/)
+    assert.match(out, /<a href="#fn-b">2<\/a>/)
+  })
+
+  test('renumbering is idempotent and corrects stale numbers', () => {
+    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a">7</a></sup><sup data-fn="fn-b" class="fn"><a href="#fn-b">3</a></sup></p>'
+    const out = wp(wp(html))
+    assert.match(out, />1<\/a>/)
+    assert.match(out, />2<\/a>/)
+  })
+
+  test('sup without data-fn is left alone', () => {
+    const out = wp('<p><sup>2</sup></p>')
+    assert.match(out, /<sup>2<\/sup>/)
+  })
+
+  test('footnotes list does not gain wp-block-list', () => {
+    const out = wp('<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>')
+    assert.ok(!out.includes('wp-block-list'))
+    assert.match(out, /wp-block-footnotes/)
+  })
+
+  test('ordinary ol still gains wp-block-list', () => {
+    assert.match(wp('<ol><li>x</li></ol>'), /wp-block-list/)
+  })
+})
