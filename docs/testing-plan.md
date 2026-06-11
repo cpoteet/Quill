@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-10 — 224 Swift tests + 57 JS editor tests, all passing._
+_Last updated: 2026-06-11 — 233 Swift tests + 89 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 224 tests across 17 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (57 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 233 tests across 17 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (89 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (224 tests)
+## Swift test suite (233 tests)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -71,6 +71,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
+| `PostStatsTests` | `AppStateTests.swift` | 3 | `PostStats` reading time (zero words, short text = 1 min, rounds up) |
+| `PostStatusHelpersTests` | `AppStateTests.swift` | 4 | `publishButtonTitle`, `toastMessage`, `statusChangeToFuture`, `statusChangeToPrivate` |
 
 ---
 
@@ -513,7 +515,7 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 ---
 
-## JS editor tests (57 tests)
+## JS editor tests (89 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -645,6 +647,68 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `text node with > is escaped` | `a > b` → `a &gt; b` |
 | `attribute value with " is escaped` | `"` inside attribute value → `&quot;` |
 | `attribute value with & is escaped` | `&` inside attribute value → `&amp;` |
+
+### `countStats` (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `empty string returns zero counts` | `""` → `{ words: 0, chars: 0, readingTime: 1 }` |
+| `null/undefined input returns zero counts` | `null` and `undefined` both return zero stats without throwing |
+| `single word` | `"Hello"` → `words: 1` |
+| `multiple words counted correctly` | `"Hello world foo"` → `words: 3` |
+| `whitespace-only returns zero words` | `"   \t\n"` → `words: 0` |
+| `chars counts all non-whitespace characters` | Punctuation and letters counted, spaces excluded |
+| `unicode words counted correctly` | Multi-byte characters treated as words correctly |
+| `reading time rounds up` | 400-word text → `readingTime: 2` (at 200 wpm, ceil) |
+
+### `findMatches` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `case-insensitive match by default` | `"hello"` matches `"Hello World"` |
+| `case-sensitive flag respected` | `caseSensitive: true` → `"hello"` does not match `"Hello"` |
+| `empty query returns no matches` | `""` → `[]` |
+| `no match returns empty array` | Query not in text → `[]` |
+| `regex special chars are escaped` | `"a.b"` matches literal `"a.b"`, not `"axb"` |
+| `non-overlapping matches` | `"aa"` in `"aaaa"` → 2 matches, not 3 |
+| `unicode offsets are correct` | Match positions in text containing multi-byte characters are byte-correct |
+
+### `detectEmbedProvider` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `youtube.com URL detected as youtube` | `https://www.youtube.com/watch?v=…` → `"youtube"` |
+| `youtu.be short URL detected as youtube` | `https://youtu.be/…` → `"youtube"` |
+| `vimeo.com URL detected as vimeo` | `https://vimeo.com/…` → `"vimeo"` |
+| `x.com and twitter.com detected as twitter` | Both `x.com` and `twitter.com` → `"twitter"` |
+| `unknown host returns null` | `https://example.com/…` → `null` |
+| `invalid URL returns null` | `"not a url"` → `null` |
+
+### `embedClassFor` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `youtube produces full class string` | `embedClassFor("youtube", "video")` → `"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube"` |
+| `twitter rich type` | `embedClassFor("twitter", "rich")` → includes `is-type-rich is-provider-twitter` |
+| `unknown provider produces bare wp-block-embed` | `embedClassFor(null, null)` → `"wp-block-embed"` |
+
+### `toWordPressHTML` — embeds (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `embed figure passes through unchanged` | `<figure class="wp-block-embed …">` → output HTML identical to input |
+| `embed figure not treated as image figure` | No `wp-block-image` class added, no alignment transform |
+| `embed caption passes through verbatim` | `<figcaption>` inside embed figure preserved as-is |
+
+### `toWordPressHTML` — footnotes (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `footnote markers numbered in document order` | First `<sup data-fn>` gets `[1]`, second gets `[2]`, etc. |
+| `footnote renumbering is idempotent` | Running `toWordPressHTML` twice does not change numbers |
+| `sup without data-fn is not renumbered` | Plain `<sup>` not treated as footnote marker |
+| `footnotes list does not get wp-block-list` | `<ol class="wp-block-footnotes">` → no `wp-block-list` added |
+| `ordinary ol still gets wp-block-list` | Regular `<ol>` without `wp-block-footnotes` still receives `wp-block-list` |
 
 ---
 
@@ -944,6 +1008,52 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       `continuousSpellCheckingEnabled` KVC gotcha) — launch and run spell check
       on the current OS.
 
+### 7.16 Stats panel (Phase 5)
+
+- [ ] Stats panel (settings panel footer or dedicated area) shows word count, character count, and reading time.
+- [ ] Counts update live as the user types (debounced).
+- [ ] Counts freeze correctly when code view is active and refresh when returning to visual mode.
+- [ ] Reading time shows "1 min" for short posts; rounds up for longer ones.
+
+### 7.17 Publish status helpers (Phase 5)
+
+- [ ] Publish button label is correct for each status: draft → "Publish", published → "Update", future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
+- [ ] Toast message after save reflects the correct status change.
+- [ ] Setting a future date switches status to `future` and button to "Schedule".
+- [ ] Setting visibility to Private switches status to `private` and button to "Publish Privately".
+
+### 7.18 Find & replace (Phase 5)
+
+- [ ] Find & replace bar opens (⌘F or toolbar button) and closes (Escape or close button).
+- [ ] Typing in the Find field highlights all matches in the editor with a yellow decoration.
+- [ ] Match counter shows "1 of N" and updates as the query changes.
+- [ ] Next/Previous buttons navigate between matches; wraps around at ends.
+- [ ] Replace field + Replace button replaces the current match and advances to the next.
+- [ ] Replace All button replaces every match in one operation.
+- [ ] Case-sensitive toggle works: lowercase query matches differently with toggle on vs off.
+- [ ] Find bar is hidden in code view; decorations do not appear in the textarea.
+
+### 7.19 Embeds (Phase 5)
+
+- [ ] Insert an embed by pasting a YouTube/Vimeo/Twitter URL → displays as a static embed card in the editor with the provider name and URL visible.
+- [ ] Save → fetch `content.raw` via REST → output is a valid Gutenberg `wp-block-embed` block with correct provider classes (`is-type-video is-provider-youtube wp-block-embed-youtube` etc.).
+- [ ] Reload the post in Quill → embed card renders correctly (round-trip stable).
+- [ ] View the post on the live WordPress site → embed renders as the expected oEmbed widget.
+- [ ] Unknown URL (not a recognised provider) → saves as a generic `wp-block-embed` block without provider-specific classes.
+- [ ] Embed figure is not misidentified as an image figure (no `wp-block-image` class, no resize handles).
+
+### 7.20 Footnotes (Phase 5)
+
+- [ ] Insert Footnote via right-click context menu → a numbered superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
+- [ ] Add a second footnote → numbered `[2]`; numbers update in document order.
+- [ ] Delete a footnote marker → its entry is removed from the footnotes list automatically (`FootnoteSync`).
+- [ ] Type text in a footnote list entry → text is preserved on save.
+- [ ] Click a footnote number in the list → cursor jumps to the corresponding marker in the body.
+- [ ] Save → fetch `content.raw` → footnote markers are `<sup data-fn="…" class="fn"><a href="#…">[N]</a></sup>` and the list is `<ol class="wp-block-footnotes">…</ol>` at the end of the content.
+- [ ] Reload the post in Quill → footnotes render and are editable (round-trip stable).
+- [ ] View on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links work.
+- [ ] Footnote list `<ol>` does **not** get `wp-block-list` class (excluded by design).
+
 ---
 
 ## Non-functional & resilience
@@ -1002,6 +1112,13 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 33 | External link navigation restricted to http/https/mailto | ✅ `EditorCoordinatorTests` (all 7) |
 | 34 | `uploadMedia` streams from file, no RAM buffering | ✅ `WordPressClientTests.uploadMediaStreamsFromFileNotHttpBody` |
 | 35 | Code view entity escaping (< & > " in text/attrs) | ✅ `formatHTML — entity escaping` (5 JS tests) |
+| 36 | Stats freeze in code view; refresh on exit | ✅ `countStats` (8 JS tests) + 👁 §7.16 |
+| 37 | Find & replace decorations don't re-fire `update` | ✅ `findMatches` (7 JS tests) + 👁 §7.18 |
+| 38 | Embed figure passes through, not treated as image | ✅ JS embed tests + 👁 §7.19 |
+| 39 | Footnote markers renumbered by `toWordPressHTML` | ✅ JS footnote tests + 👁 §7.20 |
+| 40 | Footnotes list excluded from `wp-block-list` | ✅ JS `footnotes list does not get wp-block-list` |
+| 41 | `FootnotesList`/`FootnoteItem`/`FootnoteMarker` parse priority | 👁 §7.20 (load existing post with footnotes) |
+| 42 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
 
 ---
 
@@ -1053,6 +1170,27 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `partialTitleMatchReturnsItem` | `"World"` matches `"Hello World"` |
 | `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
 | `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
+
+### 19. View-model — `PostStatsTests` (3 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `zeroWordsReturnsOneMinuteReadingTime` | Empty/zero-word post → `readingTime == 1` (minimum 1 min) |
+| `shortTextReturnsOneMinute` | Word count well under 200 → `readingTime == 1` |
+| `longTextRoundsUp` | Word count that doesn't divide evenly → reading time rounded up |
+
+### 20. View-model — `PostStatusHelpersTests` (4 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `publishButtonTitle` | Each status value maps to the correct button label (`"Publish"`, `"Update"`, `"Schedule"`, etc.) |
+| `toastMessage` | Each status transition maps to the correct toast string |
+| `statusChangeToFuture` | Setting a future date produces `status == "future"` and `"Schedule"` button label |
+| `statusChangeToPrivate` | Setting visibility to Private produces `status == "private"` and `"Publish Privately"` button label |
 
 ---
 
