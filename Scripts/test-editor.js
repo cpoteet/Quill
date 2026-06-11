@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, detectEmbedProvider, embedClassFor } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -490,5 +490,72 @@ describe('findMatches', () => {
   test('offsets are JS string indices (UTF-16)', () => {
     // 👍 occupies indices 0–1
     assert.deepEqual(findMatches('👍 hi', 'hi', false), [{ start: 3, end: 5 }])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Embeds — provider detection
+// ---------------------------------------------------------------------------
+
+describe('detectEmbedProvider', () => {
+  test('youtube.com and youtu.be map to youtube', () => {
+    assert.equal(detectEmbedProvider('https://www.youtube.com/watch?v=abc').slug, 'youtube')
+    assert.equal(detectEmbedProvider('https://youtu.be/abc').slug, 'youtube')
+  })
+
+  test('vimeo maps to vimeo with video type', () => {
+    const p = detectEmbedProvider('https://vimeo.com/12345')
+    assert.equal(p.slug, 'vimeo')
+    assert.equal(p.type, 'video')
+  })
+
+  test('x.com and twitter.com map to twitter', () => {
+    assert.equal(detectEmbedProvider('https://x.com/user/status/1').slug, 'twitter')
+    assert.equal(detectEmbedProvider('https://twitter.com/user/status/1').slug, 'twitter')
+  })
+
+  test('unknown host returns null', () => {
+    assert.equal(detectEmbedProvider('https://example.com/video'), null)
+  })
+
+  test('invalid URL returns null', () => {
+    assert.equal(detectEmbedProvider('not a url'), null)
+  })
+})
+
+describe('embedClassFor', () => {
+  test('youtube gets full Gutenberg class list with aspect ratio', () => {
+    assert.equal(
+      embedClassFor('https://www.youtube.com/watch?v=abc'),
+      'wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio'
+    )
+  })
+
+  test('twitter gets rich type without aspect classes', () => {
+    assert.equal(
+      embedClassFor('https://x.com/user/status/1'),
+      'wp-block-embed is-type-rich is-provider-twitter wp-block-embed-twitter'
+    )
+  })
+
+  test('unknown provider gets bare wp-block-embed', () => {
+    assert.equal(embedClassFor('https://example.com/thing'), 'wp-block-embed')
+  })
+})
+
+describe('toWordPressHTML — embeds', () => {
+  const EMBED = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">\nhttps://youtu.be/abc\n</div></figure>'
+
+  test('embed figure passes through unchanged', () => {
+    assert.equal(wp(EMBED), EMBED)
+  })
+
+  test('embed figure does not gain wp-block-image', () => {
+    assert.ok(!wp(EMBED).includes('wp-block-image'))
+  })
+
+  test('embed figure with caption passes through unchanged', () => {
+    const withCaption = EMBED.replace('</figure>', '<figcaption class="wp-element-caption">My <a href="https://e.com">video</a></figcaption></figure>')
+    assert.equal(wp(withCaption), withCaption)
   })
 })

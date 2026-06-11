@@ -26,7 +26,7 @@ function toWordPressHTML(html, doc) {
 
   // Image figures: renderHTML produces <figure><img ...><figcaption/></figure>.
   // Add wp-block-image class, move alignment from img to figure, handle caption.
-  div.querySelectorAll('figure:not(.wp-block-table)').forEach(figure => {
+  div.querySelectorAll('figure:not(.wp-block-table):not(.wp-block-embed)').forEach(figure => {
     const img = figure.querySelector('img')
     if (!img) return
     const align = ['alignleft', 'alignright', 'aligncenter']
@@ -191,6 +191,37 @@ function countStats(text) {
   }
 }
 
+// Embed provider table. `aspect: true` providers get Gutenberg's 16:9 classes.
+const EMBED_PROVIDERS = [
+  { slug: 'youtube',    type: 'video', aspect: true,  hosts: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'] },
+  { slug: 'vimeo',      type: 'video', aspect: true,  hosts: ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'] },
+  { slug: 'twitter',    type: 'rich',  aspect: false, hosts: ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'] },
+  { slug: 'spotify',    type: 'rich',  aspect: false, hosts: ['open.spotify.com', 'spotify.com'] },
+  { slug: 'soundcloud', type: 'rich',  aspect: false, hosts: ['soundcloud.com', 'www.soundcloud.com'] },
+  { slug: 'tiktok',     type: 'video', aspect: false, hosts: ['tiktok.com', 'www.tiktok.com'] },
+  { slug: 'instagram',  type: 'rich',  aspect: false, hosts: ['instagram.com', 'www.instagram.com'] },
+]
+
+function detectEmbedProvider(url) {
+  let host
+  try { host = new URL(url).hostname.toLowerCase() } catch (_) { return null }
+  for (const p of EMBED_PROVIDERS) {
+    if (p.hosts.includes(host)) return p
+  }
+  return null
+}
+
+// Gutenberg figure class for an embed URL — class order matches what the
+// block editor emits. Unknown providers get the bare class; WordPress still
+// resolves those via oEmbed at render time.
+function embedClassFor(url) {
+  const p = detectEmbedProvider(url)
+  if (!p) return 'wp-block-embed'
+  let cls = `wp-block-embed is-type-${p.type} is-provider-${p.slug} wp-block-embed-${p.slug}`
+  if (p.aspect) cls += ' wp-embed-aspect-16-9 wp-has-aspect-ratio'
+  return cls
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, detectEmbedProvider, embedClassFor }
 }
