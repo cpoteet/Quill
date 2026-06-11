@@ -734,6 +734,17 @@
       color: #555;
     }
     body.dark ol.wp-block-footnotes { border-top-color: rgba(255,255,255,0.2); color: #aaa; }
+    .fn-backref {
+      color: #b45309;
+      text-decoration: none;
+      margin-left: 0.35em;
+      font-size: 0.85em;
+      cursor: pointer;
+      opacity: 0.65;
+      user-select: none;
+    }
+    .fn-backref:hover { opacity: 1; }
+    body.dark .fn-backref { color: #d97706; }
   </style>
 </head>
 <body>
@@ -1405,13 +1416,73 @@
       parseHTML() {
         return [{
           tag: 'ol.wp-block-footnotes > li',
-          getAttrs: el => ({ fnId: el.getAttribute('id') }),
+          getAttrs: el => {
+            el.querySelectorAll('.footnote-backref').forEach(a => a.remove())
+            return { fnId: el.getAttribute('id') }
+          },
         }]
       },
       renderHTML({ node }) {
         return ['li', { id: node.attrs.fnId }, 0]
       },
+      addNodeView() {
+        return ({ node, editor, getPos }) => new FootnoteItemNodeView(node, editor, getPos)
+      },
     })
+
+    class FootnoteItemNodeView {
+      constructor(node, editor, getPos) {
+        this.node = node
+        this.editor = editor
+
+        this.dom = document.createElement('li')
+        this.dom.id = node.attrs.fnId || ''
+
+        this.contentDOM = document.createElement('span')
+        this.contentDOM.className = 'fn-item-content'
+
+        this.backArrow = document.createElement('a')
+        this.backArrow.className = 'fn-backref'
+        this.backArrow.textContent = '↩'
+        this.backArrow.setAttribute('aria-label', 'Back to content')
+        this.backArrow.addEventListener('mousedown', e => {
+          e.preventDefault()
+          const fnId = this.node.attrs.fnId
+          let markerPos = null
+          let markerSize = 0
+          this.editor.state.doc.descendants((n, pos) => {
+            if (n.type.name === 'footnoteMarker' && n.attrs.fnId === fnId) {
+              markerPos = pos
+              markerSize = n.nodeSize
+              return false
+            }
+            return true
+          })
+          if (markerPos !== null) {
+            this.editor.chain().focus().setTextSelection(markerPos + markerSize).scrollIntoView().run()
+          }
+        })
+
+        this.dom.appendChild(this.contentDOM)
+        this.dom.appendChild(this.backArrow)
+      }
+
+      update(node) {
+        if (node.type !== this.node.type) return false
+        this.node = node
+        this.dom.id = node.attrs.fnId || ''
+        return true
+      }
+
+      stopEvent(event) {
+        return event.target === this.backArrow
+      }
+
+      ignoreMutation(mutation) {
+        return mutation.target === this.backArrow ||
+          this.backArrow.contains(mutation.target)
+      }
+    }
 
     // Keeps the footnotes list consistent with the markers after every doc
     // change: entries follow marker order, orphaned entries are removed,
