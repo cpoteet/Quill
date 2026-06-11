@@ -88,4 +88,20 @@ import Testing
         s.statusDidChange()
         #expect(s.publishDate == nil)
     }
+
+    // MARK: - PostStats reading time
+
+    @Test func readingTimeZeroWordsIsZero() {
+        #expect(PostStats(words: 0, characters: 0).readingMinutes == 0)
+    }
+
+    @Test func readingTimeShortTextIsOneMinute() {
+        #expect(PostStats(words: 1, characters: 5).readingMinutes == 1)
+        #expect(PostStats(words: 238, characters: 1000).readingMinutes == 1)
+    }
+
+    @Test func readingTimeRoundsUp() {
+        #expect(PostStats(words: 239, characters: 1000).readingMinutes == 2)
+        #expect(PostStats(words: 1000, characters: 5000).readingMinutes == 5)  // 1000/238 = 4.2 → 5
+    }
 }

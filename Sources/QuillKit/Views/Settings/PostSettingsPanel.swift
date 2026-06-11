@@ -39,6 +39,23 @@ public struct PostSettings: Equatable {
     }
 }
 
+/// Live word/character counts reported by the JS editor. Reading time uses
+/// the common 238 words-per-minute average, rounded up, minimum 1 minute.
+public struct PostStats: Equatable {
+    public var words: Int
+    public var characters: Int
+
+    public init(words: Int = 0, characters: Int = 0) {
+        self.words = words
+        self.characters = characters
+    }
+
+    public var readingMinutes: Int {
+        guard words > 0 else { return 0 }
+        return max(1, Int((Double(words) / 238.0).rounded(.up)))
+    }
+}
+
 public struct PostSettingsPanel: View {
     @Binding var settings: PostSettings
     let postType: String
