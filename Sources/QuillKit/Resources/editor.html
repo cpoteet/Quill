@@ -1413,6 +1413,71 @@
       },
     })
 
+    // Keeps the footnotes list consistent with the markers after every doc
+    // change: entries follow marker order, orphaned entries are removed,
+    // missing entries are created (paste/undo edge cases), and the list
+    // itself is removed when the last marker goes. appendTransaction runs
+    // again on its own output; the second pass finds everything consistent
+    // and returns null, so there is no loop.
+    const FootnoteSync = Extension.create({
+      name: 'footnoteSync',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: new PluginKey('footnoteSync'),
+            appendTransaction(transactions, oldState, newState) {
+              if (!transactions.some(tr => tr.docChanged)) return null
+
+              const markerIds = []
+              let listPos = null
+              let listNode = null
+              newState.doc.descendants((node, pos) => {
+                if (node.type.name === 'footnotesList') {
+                  listPos = pos
+                  listNode = node
+                  return false  // don't collect markers inside the list
+                }
+                if (node.type.name === 'footnoteMarker' && node.attrs.fnId) {
+                  markerIds.push(node.attrs.fnId)
+                }
+                return true
+              })
+
+              if (listPos === null) {
+                if (markerIds.length === 0) return null
+                const items = markerIds.map(id =>
+                  newState.schema.nodes.footnoteItem.create({ fnId: id }))
+                return newState.tr.insert(
+                  newState.doc.content.size,
+                  newState.schema.nodes.footnotesList.create(null, items)
+                )
+              }
+
+              const currentIds = []
+              const itemsById = new Map()
+              listNode.forEach(child => {
+                currentIds.push(child.attrs.fnId)
+                if (child.attrs.fnId) itemsById.set(child.attrs.fnId, child)
+              })
+
+              if (currentIds.length === markerIds.length &&
+                  currentIds.every((id, i) => id === markerIds[i])) return null
+
+              const tr = newState.tr
+              if (markerIds.length === 0) {
+                tr.delete(listPos, listPos + listNode.nodeSize)
+              } else {
+                const desired = markerIds.map(id =>
+                  itemsById.get(id) || newState.schema.nodes.footnoteItem.create({ fnId: id }))
+                tr.replaceWith(listPos + 1, listPos + listNode.nodeSize - 1, desired)
+              }
+              return tr
+            },
+          })
+        ]
+      },
+    })
+
     // ── Spell check ───────────────────────────────────────
     const spellCheckKey = new PluginKey('spellCheck')
 
@@ -1504,6 +1569,7 @@
         FootnoteMarker,
         FootnotesList,
         FootnoteItem,
+        FootnoteSync,
         Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
         TaskList,
         TaskItem.configure({ nested: true }),
