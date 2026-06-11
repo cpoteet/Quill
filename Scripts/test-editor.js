@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -453,5 +453,42 @@ describe('countStats', () => {
 
   test('unicode words count normally', () => {
     assert.equal(countStats('café naïve résumé').words, 3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// findMatches
+// ---------------------------------------------------------------------------
+
+describe('findMatches', () => {
+  test('case-insensitive by default', () => {
+    assert.deepEqual(findMatches('Hello hello HELLO', 'hello', false), [
+      { start: 0, end: 5 }, { start: 6, end: 11 }, { start: 12, end: 17 },
+    ])
+  })
+
+  test('case-sensitive mode', () => {
+    assert.deepEqual(findMatches('Hello hello', 'hello', true), [{ start: 6, end: 11 }])
+  })
+
+  test('empty query returns no matches', () => {
+    assert.deepEqual(findMatches('anything', '', false), [])
+  })
+
+  test('no match returns empty array', () => {
+    assert.deepEqual(findMatches('abc', 'xyz', false), [])
+  })
+
+  test('regex special characters are treated literally', () => {
+    assert.deepEqual(findMatches('price is $5.00 (sale)', '$5.00 (sale)', false), [{ start: 9, end: 21 }])
+  })
+
+  test('matches are non-overlapping', () => {
+    assert.deepEqual(findMatches('aaa', 'aa', false), [{ start: 0, end: 2 }])
+  })
+
+  test('offsets are JS string indices (UTF-16)', () => {
+    // 👍 occupies indices 0–1
+    assert.deepEqual(findMatches('👍 hi', 'hi', false), [{ start: 3, end: 5 }])
   })
 })

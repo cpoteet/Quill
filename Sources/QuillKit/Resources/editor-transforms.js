@@ -165,6 +165,21 @@ function formatHTML(html, doc) {
     .join('\n\n')
 }
 
+// Non-overlapping substring matches for find & replace. Returns JS string
+// indices ({ start, end }) on the original text; the editor maps them to
+// ProseMirror positions. Query is matched literally (regex chars escaped).
+function findMatches(text, query, caseSensitive) {
+  if (!query) return []
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(escaped, caseSensitive ? 'g' : 'gi')
+  const out = []
+  let m
+  while ((m = re.exec(text)) !== null) {
+    out.push({ start: m.index, end: m.index + m[0].length })
+  }
+  return out
+}
+
 // Word/character counts for the stats display. Words are whitespace-separated
 // tokens; characters are Unicode code points (so emoji count as 1).
 function countStats(text) {
@@ -177,5 +192,5 @@ function countStats(text) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches }
 }
