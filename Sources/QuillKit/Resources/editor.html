@@ -1558,7 +1558,8 @@
       if (!word) return null
       try {
         const from = editor.view.posAtDOM(el, 0)
-        return { word, from, to: from + word.length }
+        const to = editor.view.posAtDOM(el, el.childNodes.length)
+        return { word, from, to }
       } catch (_) { return null }
     }
 

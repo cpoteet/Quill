@@ -103,4 +103,25 @@ import Testing
         let media = try decode(json)
         #expect(media.altText == "")
     }
+
+    @Test func thumbnailURLUsesThumbnailSizeWhenPresent() throws {
+        let json = """
+        {"id":10,"source_url":"https://example.com/img.jpg",
+         "media_details":{
+           "sizes":{
+             "thumbnail":{"source_url":"https://example.com/img-150x150.jpg","width":150,"height":150}
+           }
+         }}
+        """
+        let media = try decode(json)
+        #expect(media.thumbnailURL == "https://example.com/img-150x150.jpg")
+    }
+
+    @Test func thumbnailURLFallsBackToSourceURLWhenNoThumbnailSize() throws {
+        let json = """
+        {"id":11,"source_url":"https://example.com/img.jpg"}
+        """
+        let media = try decode(json)
+        #expect(media.thumbnailURL == "https://example.com/img.jpg")
+    }
 }

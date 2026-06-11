@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-07 — 212 Swift tests + 52 JS editor tests, all passing._
+_Last updated: 2026-06-10 — 224 Swift tests + 57 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 212 tests across 16 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (52 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 224 tests across 17 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (57 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (212 tests)
+## Swift test suite (224 tests)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -53,11 +53,11 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | Suite | File | Tests | What it covers |
 |---|---|---|---|
-| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 12 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback |
-| `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 7 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha |
+| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 13 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, empty content from `_fields` list fetch |
+| `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| `WordPressClientTests` | `WordPressClientTests.swift` | 48 | URL construction, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text |
+| `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 5 | `previewURL` query/fragment handling |
 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
@@ -66,14 +66,15 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 24 | `parseGenerateResponse` edge cases, system prompt, all prompt builders |
-| `AnthropicClientTests` | `AnthropicClientTests.swift` | 18 | Request headers, web search, multi-block joining, error handling |
+| `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
+| `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (12 tests)
+### 1. Model decoding — `WPPostDecodingTests` (13 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -93,14 +94,15 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `whitespaceContentRawFallsBackToRenderedForEditorHTML` | `raw == "\n  "` → `editorHTML` returns `rendered` |
 | `missingRequiredFieldThrows` | Omitting `id` → decoding throws (required field guard) |
 | `futureStatusDecodes` | `status: "future"` decodes without error |
+| `missingContentAndExcerptDefaultToEmpty` | No `content`/`excerpt` keys (list fetch with `_fields`) → both default to empty `RenderedString` without throwing |
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (7 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (11 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
-Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback.
+Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback. Also covers `altText` and `thumbnailURL`.
 
 | Test | What it checks |
 |---|---|
@@ -111,6 +113,10 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `sizesMapDecodes` | `sizes` dict with named sizes → `[String: MediaSize]` |
 | `sizesDimensionsAsFloatsDecode` | Float `width`/`height` inside `sizes` entries also decode |
 | `malformedSizesDoesNotCrash` | `sizes: []` (wrong type) → `try?` swallows it, whole `WPMedia` still decodes |
+| `altTextDecodesFromAltText` | `alt_text` key → `altText` property |
+| `missingAltTextDefaultsToEmpty` | `alt_text` absent → `""` |
+| `thumbnailURLUsesThumbnailSizeWhenPresent` | `sizes["thumbnail"].source_url` present → `thumbnailURL` returns it, not `sourceURL` |
+| `thumbnailURLFallsBackToSourceURLWhenNoThumbnailSize` | No `media_details` → `thumbnailURL` returns `sourceURL` |
 
 ---
 
@@ -149,7 +155,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (37 tests)
+### 5. Networking — `WordPressClientTests` (51 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -178,10 +184,16 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `contentDispositionFallbackStripsControlCharacters` | Control chars (< 32) removed from quoted fallback |
 | `contentDispositionFallbackPreservesUnicode` | Unicode (e.g. `café.jpg`) passes through unchanged |
 | `uploadMediaEscapesQuotesInContentDispositionFilename` | End-to-end: quoted filename with `"` produces valid `Content-Disposition` header |
+| `uploadMediaStreamsFromFileNotHttpBody` | `uploadMedia(fileURL:)` uses `URLSession.upload(fromFile:)`, not `httpBody` (streaming regression guard) |
 | `fetchMediaItemHitsCorrectEndpointWithEditContext` | `GET /media/{id}?context=edit`, returns decoded `WPMedia` |
+| `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
+| `updateMediaAltTextBodyContainsAltText` | Request body has `{"alt_text":"…"}` |
+| `updateMediaAltTextReturnsDecodedMedia` | Response decoded into `WPMedia` |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
+| `fetchAllPostsRequestIncludesFieldsFilter` | `fetchAllPosts` query includes `_fields=` (list fetch omits content body) |
+| `fetchPostRequestOmitsFieldsFilter` | `fetchPost` has no `_fields=` (full content required for editor) |
 
 #### Taxonomy (6 tests)
 
@@ -414,7 +426,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 
 ---
 
-### 13. AI — `AnthropicClientTests` (18 tests)
+### 13. AI — `AnthropicClientTests` (17 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
 Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
@@ -429,12 +441,11 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 | `requestHasVersionHeader` | `anthropic-version: 2023-06-01` |
 | `requestHasContentTypeHeader` | `content-type: application/json` |
 
-#### Beta headers & web search (4 tests)
+#### Beta headers & web search (3 tests)
 
 | Test | What it checks |
 |---|---|
-| `betaHeaderWithoutWebSearchContainsCachingOnly` | `anthropic-beta` contains `prompt-caching-2024-07-31` only |
-| `betaHeaderWithWebSearchIncludesWebSearchBeta` | `web-search-2025-03-05` added when web search on |
+| `noBetaHeaderSent` | No `anthropic-beta` header sent (prompt caching and web search are GA, no longer need beta header) |
 | `toolsAbsentWhenWebSearchOff` | `tools` key absent from body |
 | `toolsPresentWhenWebSearchOn` | `tools` array contains `web_search_20250305` |
 
@@ -466,7 +477,25 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 
 ---
 
-### 17. Editor helpers — `PostEditorHelpersTests` (5 tests)
+### 17. Security — `EditorCoordinatorTests` (7 tests)
+
+File: `Tests/QuillTests/EditorCoordinatorTests.swift`
+
+Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security finding: clicked links in the editor must not be handed to `NSWorkspace.shared.open` with arbitrary schemes.
+
+| Test | What it checks |
+|---|---|
+| `httpURLIsAllowed` | `http://` → allowed |
+| `httpsURLIsAllowed` | `https://` → allowed |
+| `mailtoURLIsAllowed` | `mailto:` → allowed |
+| `fileURLIsNotAllowed` | `file:///` → blocked |
+| `javascriptURLIsNotAllowed` | `javascript:` → blocked |
+| `ftpURLIsNotAllowed` | `ftp://` → blocked |
+| `schemeCheckIsCaseInsensitive` | `HTTPS://` → allowed (lowercased before compare) |
+
+---
+
+### 18. Editor helpers — `PostEditorHelpersTests` (5 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -484,12 +513,12 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 ---
 
-## JS editor tests (37 tests)
+## JS editor tests (57 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
 
-Tests run under Node's built-in test runner with jsdom for DOM support. They test the `toWordPressHTML` and `extractAlignment` functions extracted from `editor.html` into `editor-transforms.js`.
+Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, and `formatHTML` from `editor-transforms.js`.
 
 ### `extractAlignment` (6 tests)
 
@@ -543,17 +572,20 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 |---|---|
 | `pre gains wp-block-code class` | `<pre>` → `wp-block-code` |
 
-### `toWordPressHTML` — images (7 tests)
+### `toWordPressHTML` — images (10 tests)
 
 | Test | What it checks |
 |---|---|
-| `data-media-id produces wp-image-{id} class on img` | `data-media-id="42"` → `class="wp-image-42"` |
-| `img.alignleft is wrapped in figure.wp-block-image.alignleft` | Alignment class causes figure wrap |
-| `img.alignright is wrapped in figure.wp-block-image.alignright` | Right alignment |
-| `img.aligncenter is wrapped in figure.wp-block-image.aligncenter` | Center alignment |
-| `align class is removed from img after wrapping in figure` | `alignleft` removed from `<img>` once in `<figure>` |
-| `image with both alignment and media-id gets figure wrapper and wp-image class` | Both transforms applied together |
-| `image with no alignment and no media-id is untouched` | Plain `<img>` → no figure wrap |
+| `figure with plain img gets wp-block-image class` | `<figure><img></figure>` gains `wp-block-image` class |
+| `data-media-id produces wp-image-{id} class on img inside figure` | `data-media-id="42"` → `class="wp-image-42"` on `<img>` |
+| `alignleft on img is moved to figure class` | `alignleft` moved from `<img>` to `<figure>` |
+| `alignright on img is moved to figure class` | `alignright` moved from `<img>` to `<figure>` |
+| `aligncenter on img is moved to figure class` | `aligncenter` moved from `<img>` to `<figure>` |
+| `both alignment and media-id: figure gets align class, img gets wp-image class` | Both transforms applied together |
+| `empty figcaption is removed from output` | `<figcaption></figcaption>` stripped |
+| `non-empty figcaption gets wp-element-caption class` | Non-empty caption → `class="wp-element-caption"` |
+| `whitespace-only figcaption is removed` | `<figcaption>   </figcaption>` treated as empty |
+| `table figure is not treated as image figure` | `<figure class="wp-block-table">` → image transforms not applied |
 
 ### `toWordPressHTML` — tables (5 tests)
 
@@ -572,6 +604,47 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `full document is idempotent across all transform types` | `toWordPressHTML(toWordPressHTML(x)) == toWordPressHTML(x)` for all element types |
 | `empty paragraph is stable` | `<p></p>` → `<p></p>` |
 | `unicode and emoji in text are preserved` | café, 🎉, curly quotes survive |
+
+### `formatHTML` — block elements (4 tests)
+
+`formatHTML` is the HTML pretty-printer used by code view (`_enterCodeView`). Tests verify structural indentation and inline element handling.
+
+| Test | What it checks |
+|---|---|
+| `single paragraph renders on one line with no surrounding blank lines` | `<p>text</p>` → one line, no extra blank lines |
+| `two top-level blocks are separated by a blank line` | Adjacent block elements have a blank line between them |
+| `inline elements stay on the same line as their parent block` | `<strong>`, `<em>` etc. not moved to their own lines |
+| `links stay inline` | `<a>` treated as inline, not block |
+
+### `formatHTML` — nested block elements (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `list items are indented inside ul` | `<li>` indented one level inside `<ul>` |
+| `table cells are indented under their row and section` | `<td>` indented inside `<tr>` inside `<tbody>` |
+| `blockquote with p and cite each on their own indented lines` | `<p>` and `<cite>` inside `<blockquote>` each on own indented line |
+
+### `formatHTML` — special elements (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `img void element has no closing tag` | `<img>` serialized without `</img>` |
+| `img is indented inside figure` | `<img>` child of `<figure>` gets proper indentation |
+| `pre content is preserved verbatim without re-indenting` | Content of `<pre>` not touched (code block gotcha) |
+| `empty input returns empty string` | `formatHTML("")` → `""` |
+| `unicode and emoji are preserved` | Non-ASCII content survives pretty-printing |
+
+### `formatHTML` — entity escaping (5 tests)
+
+Guards the C1 code-view corruption bug: text nodes and attribute values must be re-escaped when serializing, since the DOM decodes entities on parse.
+
+| Test | What it checks |
+|---|---|
+| `text node with < is escaped so it round-trips safely` | `5 < 10` → `5 &lt; 10` in output |
+| `text node with & is escaped` | `a & b` → `a &amp; b` |
+| `text node with > is escaped` | `a > b` → `a &gt; b` |
+| `attribute value with " is escaped` | `"` inside attribute value → `&quot;` |
+| `attribute value with & is escaped` | `&` inside attribute value → `&amp;` |
 
 ---
 
@@ -617,6 +690,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 ### 7.3 Editor — content & Gutenberg round-trip
 
 - [ ] Load an existing remote post → content renders identically to WordPress.
+- [ ] **Post loading state:** clicking a post shows the editor briefly with "Start writing..." while the individual fetch completes, then content renders — this is expected from the `_fields` list-fetch optimization. Confirm content is correct after load, not truncated.
 - [ ] Type formatting: bold, italic, strike, inline code, links, headings (h1–
       h6), bullet/ordered/task lists, blockquote, code block, table.
 - [ ] Save → fetch `content.raw` via REST (`?context=edit`) → matches the
@@ -652,6 +726,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] **Edge:** drag a non-image file → ignored (the `isFileURL`/mime guard).
 - [ ] **Edge:** drag multiple images at once → all upload and insert.
 - [ ] **Edge:** upload failure (offline) → error surfaced, editor not corrupted.
+- [ ] **Large file upload:** drag a file ≥ 10 MB onto the editor → UI stays responsive during upload (editor not frozen); same check via the Media tab upload button. Regression guard for H4 streaming-upload fix.
 - [ ] Resize handles appear on select; drag resizes; aspect ratio respected.
 - [ ] **Resize handles align to the image, not the caption** — with a caption present, the bottom handles should sit at the image's bottom edge, not at the bottom of the caption. Confirm all four handles hug the image frame.
 - [ ] Named WordPress sizes (thumbnail/medium/large/full) offered when the image
@@ -683,6 +758,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Selecting a result inserts the link; manual URL entry works.
 - [ ] **Edge:** no results → empty state, no crash.
 - [ ] **Edge:** search while offline → handled gracefully.
+- [ ] **Link click scheme check:** insert `http://` and `https://` links via the link picker → clicking them opens the system browser. Insert a `mailto:` link → clicking opens Mail. Insert a `file:///` or `javascript:alert(1)` URL via code view → clicking does **nothing** (S2 scheme-allowlist guard).
 
 ### 7.6 Editor — code view
 
@@ -703,6 +779,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       exits automatically and the new post loads in visual mode.
 - [ ] **Dark mode:** code textarea background and text color match the editor
       background (no light flash or mis-colored panel).
+- [ ] **Special characters round-trip:** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)
 
 ### 7.7 Save / publish / draft / schedule
 
@@ -824,6 +901,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Style guide: select sample posts in Settings → guide generated once;
       re-saving with unchanged samples makes **no** Claude call; changing the
       site URL clears samples and guide.
+- [ ] **Panel survives sidebar re-renders:** trigger the AI result panel, then type in the sidebar search field — the panel stays visible and positioned correctly without disappearing or duplicating. (H1 regression guard: `@State` ensures one panel instance per view identity.)
 
 ### 7.12 Settings panel & preferences
 
@@ -855,7 +933,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
       `willOpenMenu` + `NSMenuDelegate` re-filter gotcha).
 - [ ] Right-click in the **title field** → only Cut/Copy/Paste; no AutoFill (the
       `RestrictedTextView` gotcha).
-- [ ] Right-click a misspelled word → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator; clicking a suggestion replaces the word in the editor.
+- [ ] Right-click a misspelled word → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator; clicking a suggestion replaces the word correctly.
+- [ ] **Emoji adjacency:** right-click a misspelled word immediately next to an emoji (e.g. `"speling 🎉"`) → the suggestion replaces only the misspelled word without corrupting the emoji or surrounding text. (C3 `posAtDOM` regression guard.)
 
 ### 7.15 Spell check
 
@@ -876,6 +955,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - **Crash recovery:** force-quit mid-edit → local draft / autosave stash recovered on relaunch.
 - **Performance:** `toWordPressHTML` runs on a 500ms debounce on every edit — on a large document it should not block typing.
 - **Security:** pasted/loaded HTML with `<script>` or `onerror=` attributes is not executed; AI-returned HTML is inserted as content, not evaluated.
+- **Thumbnail bandwidth:** media grid cells load small thumbnail images (a few KB each), not full-resolution originals — confirming `WPMedia.thumbnailURL` is used in `AsyncImage`. Verify with a network proxy on a grid of large images.
+- **Taxonomy cache persistence:** on second app launch with unchanged site URL, a network proxy shows no `/categories` or `/tags` requests (served from 24-hour SQLite cache). Changing the site URL should trigger a fresh fetch.
 
 ---
 
@@ -916,6 +997,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 28 | `AppSupportDirectory` override isolation | ✅ `CredentialsStoreTests.appSupportOverrideKeepsFilesInTempDir` |
 | 29 | AI selection ops via right-click, gated on `hasTextSelection` | 👁 §7.10/§7.13 |
 | 30 | Accepted AI result is Gutenberg-transformed | 👁 §7.10 |
+| 31 | `appState.posts` list has empty content (`_fields` filter) | ✅ `WordPressClientTests.fetchAllPostsRequestIncludesFieldsFilter` + `fetchPostRequestOmitsFieldsFilter` + `WPPostDecodingTests.missingContentAndExcerptDefaultToEmpty` |
+| 32 | `thumbnailURL` used in grids, not full-res `sourceURL` | ✅ `WPMediaDecodingTests.thumbnailURL*` + 👁 §7.2 |
+| 33 | External link navigation restricted to http/https/mailto | ✅ `EditorCoordinatorTests` (all 7) |
+| 34 | `uploadMedia` streams from file, no RAM buffering | ✅ `WordPressClientTests.uploadMediaStreamsFromFileNotHttpBody` |
+| 35 | Code view entity escaping (< & > " in text/attrs) | ✅ `formatHTML — entity escaping` (5 JS tests) |
 
 ---
 

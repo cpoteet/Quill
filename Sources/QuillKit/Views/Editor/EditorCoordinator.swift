@@ -217,10 +217,18 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             decisionHandler(.allow)
             return
         }
-        if navigationAction.navigationType == .linkActivated {
+        if navigationAction.navigationType == .linkActivated,
+           EditorCoordinator.isAllowedExternalURL(url) {
             NSWorkspace.shared.open(url)
         }
         decisionHandler(.cancel)
+    }
+
+    /// Returns true for URL schemes that are safe to open in the system browser.
+    /// Restricts to http, https, and mailto — blocks file://, javascript:, ftp:, etc.
+    static func isAllowedExternalURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "http" || scheme == "https" || scheme == "mailto"
     }
 
     private func startReadyWatchdog() {
