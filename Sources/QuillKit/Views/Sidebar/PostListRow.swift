@@ -32,6 +32,8 @@ public struct PostListRow: View {
         case "publish": return .green
         case "draft": return Color.wpAmber
         case "future": return .blue
+        case "pending": return .orange
+        case "private": return .teal
         case "local-post": return .purple
         case "local-page": return Color(nsColor: .systemIndigo)
         default: return Color(.tertiaryLabelColor)
@@ -40,7 +42,13 @@ public struct PostListRow: View {
 
     private var subtitle: String {
         switch item {
-        case .remote(let post): return formattedDate(post.date)
+        case .remote(let post):
+            let date = formattedDate(post.date)
+            switch post.status {
+            case "pending": return date + " · Pending"
+            case "private": return date + " · Private"
+            default: return date
+            }
         case .local(let draft): return "\(draft.type.capitalized) Draft"
         }
     }

@@ -67,7 +67,7 @@ public struct PostSettingsPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 statusSection
-                publishDateSection
+                if settings.status != "private" { publishDateSection }
                 if isPage { parentSection }
                 if !isPage { categoriesSection }
                 if !isPage { tagsSection }
@@ -89,20 +89,14 @@ public struct PostSettingsPanel: View {
             sectionLabel("Status")
             Picker("Status", selection: $settings.status) {
                 Text("Draft").tag("draft")
+                Text("Pending Review").tag("pending")
                 Text("Published").tag("publish")
                 Text("Scheduled").tag("future")
+                Text("Private").tag("private")
             }
-            .pickerStyle(.segmented)
             .labelsHidden()
-            .onChange(of: settings.status) { _ in
-                if settings.status == "future" {
-                    if settings.publishDate == nil {
-                        settings.publishDate = Date().addingTimeInterval(3600)
-                    }
-                } else {
-                    settings.publishDate = nil
-                }
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onChange(of: settings.status) { _ in settings.statusDidChange() }
         }
     }
 

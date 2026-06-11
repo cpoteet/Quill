@@ -323,14 +323,9 @@ public struct PostEditorView: View {
     }
 
     private var publishButtonTitle: String {
-        switch settings.status {
-        case "draft": return "Publish Draft"
-        case "future": return "Schedule"
-        case "publish":
-            if case .remote(let p) = item, p.status == "publish" { return "Update" }
-            return "Publish"
-        default: return "Publish"
-        }
+        var isPublishedRemote = false
+        if case .remote(let p) = item, p.status == "publish" { isPublishedRemote = true }
+        return Self.publishButtonTitle(status: settings.status, isPublishedRemote: isPublishedRemote)
     }
 
     private var isRemote: Bool {
@@ -610,7 +605,7 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != "future" { settings.publishDate = nil }
-            toastMessage = status == "publish" ? "Published" : status == "future" ? "Scheduled" : "Draft saved"
+            toastMessage = Self.toastMessage(forStatus: status)
         } catch {
             saveError = error.localizedDescription
         }
