@@ -100,12 +100,9 @@ public struct MediaPickerView: View {
         Task {
             defer { isUploading = false }
             do {
-                let data = try await Task.detached(priority: .userInitiated) {
-                    try Data(contentsOf: url)
-                }.value
                 let mime = mimeType(for: url)
                 let uploaded = try await WordPressClient(credentials: creds)
-                    .uploadMedia(data: data, filename: url.lastPathComponent, mimeType: mime)
+                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
                 mediaItems.insert(uploaded, at: 0)
             } catch {
                 uploadError = error.localizedDescription

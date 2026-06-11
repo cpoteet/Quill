@@ -266,7 +266,7 @@ struct MediaSidebarSection: View {
 
     private func uploadFromDisk() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.image, UTType.pdf, UTType.movie]
+        panel.allowedContentTypes = [UTType.image, UTType.pdf]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }
@@ -274,12 +274,9 @@ struct MediaSidebarSection: View {
         Task {
             defer { isUploading = false }
             do {
-                let data = try await Task.detached(priority: .userInitiated) {
-                    try Data(contentsOf: url)
-                }.value
                 let mime = mimeType(for: url)
                 let uploaded = try await WordPressClient(credentials: creds)
-                    .uploadMedia(data: data, filename: url.lastPathComponent, mimeType: mime)
+                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
                 appState.mediaItems.insert(uploaded, at: 0)
                 appState.selectedMedia = uploaded
             } catch {

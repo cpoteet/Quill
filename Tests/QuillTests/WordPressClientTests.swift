@@ -305,7 +305,10 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalMediaJSON.data(using: .utf8)!)
         }
-        _ = try await client.uploadMedia(data: Data([0x89, 0x50]), filename: "photo.png", mimeType: "image/png")
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        try Data([0x89, 0x50]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        _ = try await client.uploadMedia(fileURL: tmp, filename: "photo.png", mimeType: "image/png")
         #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "image/png")
     }
 
@@ -316,7 +319,10 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalMediaJSON.data(using: .utf8)!)
         }
-        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "photo.jpg", mimeType: "image/jpeg")
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        try Data([0xFF, 0xD8]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        _ = try await client.uploadMedia(fileURL: tmp, filename: "photo.jpg", mimeType: "image/jpeg")
         let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
         #expect(disposition.contains("filename=\"photo.jpg\""))
         #expect(disposition.contains("filename*=UTF-8''"))
@@ -329,9 +335,11 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalMediaJSON.data(using: .utf8)!)
         }
-        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "my photo.jpg", mimeType: "image/jpeg")
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        try Data([0xFF, 0xD8]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        _ = try await client.uploadMedia(fileURL: tmp, filename: "my photo.jpg", mimeType: "image/jpeg")
         let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
-        // Raw filename preserved in quoted part; spaces encoded in filename* part
         #expect(disposition.contains("filename=\"my photo.jpg\""))
         #expect(disposition.contains("my%20photo.jpg"))
     }
@@ -749,9 +757,29 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalMediaJSON.data(using: .utf8)!)
         }
-        _ = try await client.uploadMedia(data: Data([0xFF, 0xD8]), filename: "weird \"name\".jpg", mimeType: "image/jpeg")
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        try Data([0xFF, 0xD8]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        _ = try await client.uploadMedia(fileURL: tmp, filename: "weird \"name\".jpg", mimeType: "image/jpeg")
         let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
         #expect(disposition.contains("filename=\"weird \\\"name\\\".jpg\""))
+    }
+
+    @Test func uploadMediaStreamsFromFileNotHttpBody() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let media = try await client.uploadMedia(fileURL: tmp, filename: "test.png", mimeType: "image/png")
+        #expect(capturedRequest?.httpBody == nil)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "image/png")
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Disposition")?.contains("filename=\"test.png\"") == true)
+        #expect(media.id == 5)
     }
 
     @Test func searchLinksPostsFailWhileTermsSucceed() async throws {

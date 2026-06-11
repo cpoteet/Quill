@@ -133,7 +133,7 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
-    public func uploadMedia(data: Data, filename: String, mimeType: String) async throws -> WPMedia {
+    public func uploadMedia(fileURL: URL, filename: String, mimeType: String) async throws -> WPMedia {
         let url = try endpoint("media")
         var request = authorizedRequest(url: url, method: "POST")
         request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
@@ -143,8 +143,12 @@ public struct WordPressClient: Sendable {
             "attachment; filename=\"\(fallback)\"; filename*=UTF-8''\(encoded)",
             forHTTPHeaderField: "Content-Disposition"
         )
-        request.httpBody = data
-        return try await perform(request)
+        let (data, _) = try await sendUpload(request, fromFile: fileURL)
+        do {
+            return try JSONDecoder().decode(WPMedia.self, from: data)
+        } catch {
+            throw APIError.decodingError(error)
+        }
     }
 
     static func contentDispositionFilenameFallback(_ filename: String) -> String {
@@ -327,6 +331,29 @@ public struct WordPressClient: Sendable {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw APIError.networkError(error)
+        }
+        let http = response as? HTTPURLResponse
+        if let http, http.statusCode >= 300 {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw APIError.httpError(statusCode: http.statusCode, body: body)
+        }
+        let contentType = http?.value(forHTTPHeaderField: "Content-Type") ?? ""
+        if contentType.contains("text/html") {
+            throw APIError.unexpectedHTML
+        }
+        return (data, http)
+    }
+
+    private func sendUpload(_ request: URLRequest, fromFile fileURL: URL) async throws -> (data: Data, http: HTTPURLResponse?) {
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.upload(for: request, fromFile: fileURL)
         } catch is CancellationError {
             throw CancellationError()
         } catch let urlError as URLError where urlError.code == .cancelled {

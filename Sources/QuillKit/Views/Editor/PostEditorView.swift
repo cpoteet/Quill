@@ -648,10 +648,9 @@ public struct PostEditorView: View {
         for url in urls {
             guard url.isFileURL else { continue }
             do {
-                let data = try Data(contentsOf: url)
                 let mime = imageMimeType(for: url.pathExtension.lowercased())
                 let media = try await client.uploadMedia(
-                    data: data, filename: url.lastPathComponent, mimeType: mime
+                    fileURL: url, filename: url.lastPathComponent, mimeType: mime
                 )
                 var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
                 if let w = media.mediaDetails?.width  { info["width"]  = w }
