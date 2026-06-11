@@ -715,6 +715,25 @@
     }
     body.dark #embed-menu { background: #2e2e2e; border-color: rgba(255,255,255,0.15); }
     body.dark #embed-menu input { background: #3a3a3a; border-color: rgba(255,255,255,0.15); color: #eee; }
+
+    /* ── Footnotes ──────────────────────────────────── */
+    #editor { counter-reset: quill-footnote; }
+    sup.fn { counter-increment: quill-footnote; }
+    sup.fn a::before { content: counter(quill-footnote); }
+    sup.fn a {
+      color: #b45309;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    ol.wp-block-footnotes {
+      margin-top: 2.2em;
+      padding-top: 0.9em;
+      border-top: 1px solid rgba(0,0,0,0.15);
+      font-size: 0.85em;
+      color: #555;
+    }
+    body.dark ol.wp-block-footnotes { border-top-color: rgba(255,255,255,0.2); color: #aaa; }
   </style>
 </head>
 <body>
@@ -787,6 +806,7 @@
         </button>
       </span>
       <button id="btn-spell" title="Check Spelling"><span class="tb-spell-icon">ABC</span></button>
+      <button id="btn-footnote" title="Insert footnote"><span class="tb-text-icon">x¹</span></button>
       <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
     </span>
     <span class="tb-sep"></span>
@@ -1332,6 +1352,67 @@
       },
     })
 
+    // ── Footnotes ─────────────────────────────────────
+    // Self-contained HTML footnotes: markers are inline atoms
+    // <sup data-fn class="fn"><a href="#id"></a></sup>; the list is a literal
+    // <ol class="wp-block-footnotes"> pinned at the document end. Marker
+    // numbers are rendered by CSS counters in the editor and written as real
+    // text by toWordPressHTML on save.
+    const FootnoteMarker = TiptapNode.create({
+      name: 'footnoteMarker',
+      group: 'inline',
+      inline: true,
+      atom: true,
+      priority: 110,
+      addAttributes() {
+        return { fnId: { default: null } }
+      },
+      parseHTML() {
+        return [{
+          tag: 'sup.fn[data-fn]',
+          getAttrs: el => ({ fnId: el.getAttribute('data-fn') }),
+        }]
+      },
+      renderHTML({ node }) {
+        return ['sup', { 'data-fn': node.attrs.fnId, class: 'fn' },
+          ['a', { href: '#' + node.attrs.fnId }]]
+      },
+    })
+
+    const FootnotesList = TiptapNode.create({
+      name: 'footnotesList',
+      group: 'block',
+      content: 'footnoteItem+',
+      defining: true,
+      isolating: true,
+      priority: 110,  // must out-rank OrderedList's generic 'ol' parse rule
+      parseHTML() {
+        return [{ tag: 'ol.wp-block-footnotes' }]
+      },
+      renderHTML() {
+        return ['ol', { class: 'wp-block-footnotes' }, 0]
+      },
+    })
+
+    const FootnoteItem = TiptapNode.create({
+      name: 'footnoteItem',
+      content: 'inline*',
+      defining: true,
+      priority: 110,  // must out-rank ListItem's generic 'li' rule for these lis
+      addAttributes() {
+        return { fnId: { default: null } }
+      },
+      parseHTML() {
+        return [{
+          tag: 'ol.wp-block-footnotes > li',
+          getAttrs: el => ({ fnId: el.getAttribute('id') }),
+        }]
+      },
+      renderHTML({ node }) {
+        return ['li', { id: node.attrs.fnId }, 0]
+      },
+    })
+
     // ── Spell check ───────────────────────────────────────
     const spellCheckKey = new PluginKey('spellCheck')
 
@@ -1420,6 +1501,9 @@
         TableCell,
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
+        FootnoteMarker,
+        FootnotesList,
+        FootnoteItem,
         Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -1949,6 +2033,72 @@
         e.preventDefault()
         _closeFindBar()
       }
+    })
+
+    // ── Footnotes: insert + jump ──────────────────────
+    function _findFootnoteItemPos(fnId) {
+      let itemPos = null
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'footnoteItem' && node.attrs.fnId === fnId) {
+          itemPos = pos
+          return false
+        }
+        return true
+      })
+      return itemPos
+    }
+
+    function insertFootnote() {
+      if (codeViewActive) return
+      const { state } = editor
+      // No footnotes-from-within-footnotes: bail if the cursor is in the list
+      const $from = state.selection.$from
+      for (let d = $from.depth; d > 0; d--) {
+        if ($from.node(d).type.name === 'footnotesList') return
+      }
+      const fnId = 'fn-' + crypto.randomUUID()
+      const schema = state.schema
+      const tr = state.tr
+      tr.insert(state.selection.from, schema.nodes.footnoteMarker.create({ fnId }))
+
+      // Append the entry to the footnotes list, creating it at the doc end if
+      // missing.
+      let listPos = null
+      let listNode = null
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name === 'footnotesList') { listPos = pos; listNode = node; return false }
+        return true
+      })
+      const item = schema.nodes.footnoteItem.create({ fnId })
+      if (listPos === null) {
+        tr.insert(tr.doc.content.size, schema.nodes.footnotesList.create(null, [item]))
+      } else {
+        tr.insert(listPos + listNode.nodeSize - 1, item)
+      }
+      editor.view.dispatch(tr)
+
+      // Put the cursor inside the new entry so the user can type immediately
+      const itemPos = _findFootnoteItemPos(fnId)
+      if (itemPos !== null) {
+        editor.chain().focus().setTextSelection(itemPos + 1).scrollIntoView().run()
+      }
+    }
+    window.insertFootnote = insertFootnote
+
+    // Clicking a marker jumps to (and focuses) its entry
+    document.getElementById('editor').addEventListener('click', e => {
+      const sup = e.target.closest('sup.fn[data-fn]')
+      if (!sup) return
+      e.preventDefault()   // stop the <a href="#id"> from triggering a fragment navigation
+      const itemPos = _findFootnoteItemPos(sup.getAttribute('data-fn'))
+      if (itemPos !== null) {
+        editor.chain().focus().setTextSelection(itemPos + 1).scrollIntoView().run()
+      }
+    })
+
+    document.getElementById('btn-footnote').addEventListener('mousedown', e => {
+      e.preventDefault()
+      insertFootnote()
     })
 
     // ── Code view ─────────────────────────────────────
