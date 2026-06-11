@@ -165,6 +165,17 @@ function formatHTML(html, doc) {
     .join('\n\n')
 }
 
+// Word/character counts for the stats display. Words are whitespace-separated
+// tokens; characters are Unicode code points (so emoji count as 1).
+function countStats(text) {
+  const t = text || ''
+  const trimmed = t.trim()
+  return {
+    words: trimmed ? trimmed.split(/\s+/).length : 0,
+    characters: Array.from(t).length,
+  }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats }
 }

@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -413,5 +413,45 @@ describe('formatHTML — entity escaping', () => {
   test('attribute value with & is escaped', () => {
     const out = fmt('<a href="?a=1&amp;b=2">link</a>')
     assert.match(out, /href="[^"]*&amp;[^"]*"/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// countStats
+// ---------------------------------------------------------------------------
+
+describe('countStats', () => {
+  test('empty string is zero words, zero characters', () => {
+    assert.deepEqual(countStats(''), { words: 0, characters: 0 })
+  })
+
+  test('null/undefined input is zero', () => {
+    assert.deepEqual(countStats(null), { words: 0, characters: 0 })
+    assert.deepEqual(countStats(undefined), { words: 0, characters: 0 })
+  })
+
+  test('simple sentence', () => {
+    assert.deepEqual(countStats('hello world'), { words: 2, characters: 11 })
+  })
+
+  test('multiple spaces and newlines count as one separator', () => {
+    assert.equal(countStats('one  two\n\nthree\tfour').words, 4)
+  })
+
+  test('leading/trailing whitespace does not add words', () => {
+    assert.equal(countStats('  hello  ').words, 1)
+  })
+
+  test('whitespace-only string is zero words', () => {
+    assert.equal(countStats('   \n\t ').words, 0)
+  })
+
+  test('characters counted as code points, not UTF-16 units', () => {
+    // 👍 is one code point but two UTF-16 units
+    assert.deepEqual(countStats('👍'), { words: 1, characters: 1 })
+  })
+
+  test('unicode words count normally', () => {
+    assert.equal(countStats('café naïve résumé').words, 3)
   })
 })
