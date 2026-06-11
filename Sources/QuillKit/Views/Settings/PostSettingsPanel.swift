@@ -62,6 +62,7 @@ public struct PostSettingsPanel: View {
     let categories: [WPCategory]
     let tags: [WPTag]
     let pages: [WPPost]
+    let stats: PostStats
 
     @State private var categorySearch = ""
     @State private var tagSearch = ""
@@ -71,13 +72,15 @@ public struct PostSettingsPanel: View {
         postType: String,
         categories: [WPCategory],
         tags: [WPTag],
-        pages: [WPPost] = []
+        pages: [WPPost] = [],
+        stats: PostStats = PostStats()
     ) {
         self._settings = settings
         self.postType = postType
         self.categories = categories
         self.tags = tags
         self.pages = pages
+        self.stats = stats
     }
 
     private var isPage: Bool { postType == "page" }
@@ -93,6 +96,7 @@ public struct PostSettingsPanel: View {
                 slugSection
                 if !isPage { excerptSection }
                 discussionSection
+                statsSection
             }
             .padding(16)
         }
@@ -371,6 +375,22 @@ public struct PostSettingsPanel: View {
                 )
             )
             .toggleStyle(.switch)
+        }
+    }
+
+    // MARK: - Stats
+
+    private var statsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("Stats")
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(stats.words.formatted()) words · \(stats.characters.formatted()) characters")
+                if stats.readingMinutes > 0 {
+                    Text("\(stats.readingMinutes) min read")
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
         }
     }
 

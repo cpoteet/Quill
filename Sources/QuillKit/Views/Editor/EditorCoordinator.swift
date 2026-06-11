@@ -13,6 +13,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
+    var onStatsChanged: ((Int, Int) -> Void)?
     private var linkPopover: NSPopover?
     private var readyWatchdogItem: DispatchWorkItem?
 
@@ -90,6 +91,12 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 } else {
                     self.onSelectionChanged?(nil)
                 }
+            }
+        case "statsChanged":
+            if let body = message.body as? [String: Any],
+               let words = body["words"] as? Int,
+               let characters = body["characters"] as? Int {
+                DispatchQueue.main.async { self.onStatsChanged?(words, characters) }
             }
         case "checkSpelling":
             guard let text = message.body as? String else { return }

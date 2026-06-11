@@ -10,6 +10,7 @@ public struct EditorView: NSViewRepresentable {
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
+    var onStatsChanged: ((Int, Int) -> Void)?
     var onWebViewCreated: ((WKWebView) -> Void)?
     var onAIOperation: ((AIWritingOperation) -> Void)?
     var aiEnabled: Bool
@@ -24,6 +25,7 @@ public struct EditorView: NSViewRepresentable {
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
+        onStatsChanged: ((Int, Int) -> Void)? = nil,
         onWebViewCreated: ((WKWebView) -> Void)? = nil,
         onAIOperation: ((AIWritingOperation) -> Void)? = nil,
         aiEnabled: Bool = false,
@@ -37,6 +39,7 @@ public struct EditorView: NSViewRepresentable {
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
         self.onSelectionChanged = onSelectionChanged
+        self.onStatsChanged = onStatsChanged
         self.onWebViewCreated = onWebViewCreated
         self.onAIOperation = onAIOperation
         self.aiEnabled = aiEnabled
@@ -56,6 +59,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
         config.userContentController.add(context.coordinator, name: "selectionChanged")
+        config.userContentController.add(context.coordinator, name: "statsChanged")
         config.userContentController.add(context.coordinator, name: "checkSpelling")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
@@ -71,6 +75,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
+        context.coordinator.onStatsChanged = onStatsChanged
         loadEditorHTML(in: webView)
         return webView
     }
@@ -84,6 +89,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
+        context.coordinator.onStatsChanged = onStatsChanged
         nsView.onImageFilesDropped = onImageFilesDropped
         nsView.onAIOperation = onAIOperation
         nsView.aiEnabled = aiEnabled

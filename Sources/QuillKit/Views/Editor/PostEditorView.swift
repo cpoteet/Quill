@@ -9,6 +9,7 @@ public struct PostEditorView: View {
     @State private var title: String = ""
     @State private var htmlContent: String = ""
     @State private var settings = PostSettings()
+    @State private var stats = PostStats()
     @State private var isSettingsOpen: Bool = false
     @State private var isSaving: Bool = false
     @State private var saveError: String?
@@ -86,6 +87,9 @@ public struct PostEditorView: View {
                             currentSelectionRect = rect
                             handleSelectionChange(rect: rect)
                         },
+                        onStatsChanged: { words, characters in
+                            stats = PostStats(words: words, characters: characters)
+                        },
                         onWebViewCreated: { webView in
                             editorWebView = webView
                         },
@@ -136,7 +140,8 @@ public struct PostEditorView: View {
                     postType: postType,
                     categories: appState.categories,
                     tags: appState.tags,
-                    pages: availableParentPages
+                    pages: availableParentPages,
+                    stats: stats
                 )
                 .transition(.move(edge: .trailing))
             }

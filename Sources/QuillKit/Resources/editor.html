@@ -1505,6 +1505,10 @@
 
     // ── Content change → Swift ─────────────────────────
     let debounce
+    function _postStats() {
+      window.webkit?.messageHandlers?.statsChanged?.postMessage(countStats(editor.getText()))
+    }
+
     editor.on('update', () => {
       _rawHTML = null
       clearTimeout(debounce)
@@ -1512,6 +1516,7 @@
         if (window.webkit?.messageHandlers?.contentChanged) {
           window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
         }
+        _postStats()
       }, 500)
     })
 
@@ -1607,6 +1612,7 @@
       if (window.webkit?.messageHandlers?.contentChanged) {
         window.webkit.messageHandlers.contentChanged.postMessage(html)
       }
+      _postStats()
     }
 
     document.getElementById('btn-code-view').addEventListener('click', () => {
@@ -1624,6 +1630,7 @@
       _rawHTML = html || null
       editor.commands.setContent(html || '', false)
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
+      _postStats()
     }
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
