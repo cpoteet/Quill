@@ -24,6 +24,17 @@ public struct PostSettings: Equatable {
             if status == "future" { status = "draft" }
         }
     }
+
+    /// Keeps publishDate consistent with the chosen status: entering "future"
+    /// seeds a default date one hour out; every other status (including
+    /// "private", which WordPress cannot schedule) clears it.
+    public mutating func statusDidChange() {
+        if status == "future" {
+            if publishDate == nil { publishDate = Date().addingTimeInterval(3600) }
+        } else {
+            publishDate = nil
+        }
+    }
 }
 
 public struct PostSettingsPanel: View {

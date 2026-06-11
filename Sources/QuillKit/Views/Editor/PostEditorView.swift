@@ -673,6 +673,27 @@ public struct PostEditorView: View {
         return components.url
     }
 
+    static func publishButtonTitle(status: String, isPublishedRemote: Bool) -> String {
+        switch status {
+        case "draft": return "Publish Draft"
+        case "future": return "Schedule"
+        case "pending": return "Submit for Review"
+        case "private": return "Publish Privately"
+        case "publish": return isPublishedRemote ? "Update" : "Publish"
+        default: return "Publish"
+        }
+    }
+
+    static func toastMessage(forStatus status: String) -> String {
+        switch status {
+        case "publish": return "Published"
+        case "future": return "Scheduled"
+        case "pending": return "Submitted for review"
+        case "private": return "Published privately"
+        default: return "Draft saved"
+        }
+    }
+
     private func imageMimeType(for ext: String) -> String {
         switch ext {
         case "jpg", "jpeg": return "image/jpeg"
