@@ -125,6 +125,21 @@ function toWordPressHTML(html, doc) {
     a.textContent = String(i + 1)
   })
 
+  // Footnote backrefs: give each marker sup an id and add a return link to
+  // its matching list item so published WordPress posts have working ↩ anchors.
+  div.querySelectorAll('sup.fn[data-fn]').forEach(sup => {
+    sup.id = 'ref-' + sup.getAttribute('data-fn')
+  })
+  div.querySelectorAll('ol.wp-block-footnotes > li[id]').forEach(li => {
+    if (li.querySelector('.footnote-backref')) return
+    const a = doc.createElement('a')
+    a.href = '#ref-' + li.id
+    a.className = 'footnote-backref'
+    a.setAttribute('aria-label', 'Back to content')
+    a.textContent = '↩'
+    li.appendChild(a)
+  })
+
   // Wrap embed figures with Gutenberg block comments so WordPress enqueues
   // the embed block CSS (required for responsive aspect-ratio behaviour).
   let result = div.innerHTML

@@ -603,3 +603,30 @@ describe('toWordPressHTML — footnotes', () => {
     assert.match(wp('<ol><li>x</li></ol>'), /wp-block-list/)
   })
 })
+
+
+// ---------------------------------------------------------------------------
+// toWordPressHTML — footnote backrefs
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — footnote backrefs', () => {
+  test('marker sup gains id="ref-fn-UUID"', () => {
+    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>'
+    assert.match(wp(html), /id="ref-fn-a"/)
+  })
+
+  test('footnote list item gains backref link', () => {
+    const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
+    const out = wp(html)
+    assert.match(out, /href="#ref-fn-a"/)
+    assert.match(out, /class="footnote-backref"/)
+    assert.match(out, /↩/)
+  })
+
+  test('backref is idempotent — not added twice on double transform', () => {
+    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>' +
+      '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
+    const twice = wp(wp(html))
+    assert.equal((twice.match(/footnote-backref/g) || []).length, 1)
+  })
+})
