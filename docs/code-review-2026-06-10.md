@@ -21,9 +21,9 @@ fixing soon.
 | 4 | [H3](#h3-startup-fetches-full-raw-html-of-every-post-and-page) — Full content fetched at launch | High | Medium | ✅ Fixed |
 | 5 | [C1](#c1-code-view-corrupts-text-containing---or-quoted-attributes) — Code view entity corruption | Medium (data corruption) | Small | ✅ Fixed |
 | 6 | [C2](#c2-taxonomy-cache-cleared-on-every-launch) — Taxonomy cache TTL defeated | Medium | Small | ✅ Fixed |
-| 7 | [H4](#h4-whole-file-buffering-for-media-uploads-main-thread-reads-for-drops) — Upload buffering / main-thread reads | Medium | Medium | ⬜ Todo |
-| 8 | [S2](#s2-clicked-links-open-via-nsworkspace-with-any-scheme) — Unrestricted link schemes | Low–Medium | Small | ⬜ Todo |
-| 9 | [C3](#c3-prosemirror-positions-vs-utf-16-lengths-in-spell-context) — Spell-fix range mismatch | Low (silent corruption) | Small | ⬜ Todo |
+| 7 | [H4](#h4-whole-file-buffering-for-media-uploads-main-thread-reads-for-drops) — Upload buffering / main-thread reads | Medium | Medium | ✅ Fixed |
+| 8 | [S2](#s2-clicked-links-open-via-nsworkspace-with-any-scheme) — Unrestricted link schemes | Low–Medium | Small | ✅ Fixed |
+| 9 | [C3](#c3-prosemirror-positions-vs-utf-16-lengths-in-spell-context) — Spell-fix range mismatch | Low (silent corruption) | Small | ✅ Fixed |
 | 10 | [Smaller items](#smaller-optimizations-and-cleanups) — opportunistically | Low | Small each | ✅ Fixed |
 | 11 | [Architecture](#architecture-observations) — when next touching those files | — | Larger | ⬜ Todo |
 
