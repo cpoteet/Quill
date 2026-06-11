@@ -112,6 +112,10 @@ public final class DroppableWebView: WKWebView {
                 menu.addItem(item)
             }
         }
+        menu.addItem(.separator())
+        let footnote = NSMenuItem(title: "Insert Footnote", action: #selector(insertFootnoteAction), keyEquivalent: "")
+        footnote.target = self
+        menu.addItem(footnote)
         return menu
     }
 
@@ -121,6 +125,9 @@ public final class DroppableWebView: WKWebView {
     @objc private func aiMakeShorter()     { onAIOperation?(.makeShorter) }
     @objc private func aiConvertToTable()  { onAIOperation?(.convertToTable) }
     @objc private func aiConvertToList()   { onAIOperation?(.convertToList) }
+    @objc private func insertFootnoteAction() {
+        evaluateJavaScript("window.insertFootnote?.()", completionHandler: nil)
+    }
     @objc private func applySpellingSuggestion(_ sender: NSMenuItem) {
         guard let r = sender.representedObject as? SpellReplacement,
               let json = String(data: (try? JSONEncoder().encode(r.suggestion)) ?? Data(), encoding: .utf8)
