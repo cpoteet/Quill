@@ -148,7 +148,6 @@ Find the `FootnoteItem` definition and its closing `})` (~line 1414). After that
       constructor(node, editor, getPos) {
         this.node = node
         this.editor = editor
-        this.getPos = getPos
 
         this.dom = document.createElement('li')
         this.dom.id = node.attrs.fnId || ''
@@ -159,20 +158,22 @@ Find the `FootnoteItem` definition and its closing `})` (~line 1414). After that
         this.backArrow = document.createElement('a')
         this.backArrow.className = 'fn-backref'
         this.backArrow.textContent = '↩'
-        this.backArrow.title = 'Back to text'
+        this.backArrow.setAttribute('aria-label', 'Back to content')
         this.backArrow.addEventListener('mousedown', e => {
           e.preventDefault()
           const fnId = this.node.attrs.fnId
           let markerPos = null
+          let markerSize = 0
           this.editor.state.doc.descendants((n, pos) => {
             if (n.type.name === 'footnoteMarker' && n.attrs.fnId === fnId) {
               markerPos = pos
+              markerSize = n.nodeSize
               return false
             }
             return true
           })
           if (markerPos !== null) {
-            this.editor.chain().focus().setTextSelection(markerPos).scrollIntoView().run()
+            this.editor.chain().focus().setTextSelection(markerPos + markerSize).scrollIntoView().run()
           }
         })
 

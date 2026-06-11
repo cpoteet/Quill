@@ -446,7 +446,7 @@ git commit -m "feat: status helper logic for pending and private statuses"
             }
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .onChange(of: settings.status) { _ in settings.statusDidChange() }
+            .onChange(of: settings.status) { _, _ in settings.statusDidChange() }
         }
     }
 ```
@@ -804,7 +804,8 @@ Add `FindHighlight,` to the `extensions:` array of `new Editor({...})` (after `S
       const replacement = document.getElementById('replace-input').value
       // insertText with an empty string deletes the range
       editor.view.dispatch(editor.state.tr.insertText(replacement, m.from, m.to))
-      _refreshFind(false)
+      // _refreshFind is not called here: the dispatch above fires editor.on('update')
+      // synchronously, which already calls _refreshFind(false) before returning.
       _scrollToActiveMatch()
     }
 
@@ -1599,7 +1600,11 @@ git commit -m "feat: FootnoteSync plugin keeps footnote entries ordered and orph
 **Files:**
 - Modify: `Sources/QuillKit/Views/Editor/DroppableWebView.swift`
 
-- [ ] **Step 1: Context menu item.** In `buildContextMenu` (after the Cut/Copy/Paste block, before the `aiEnabled` block), add:
+- [ ] **Step 1: Verify allow-list status, then add the context menu item.**
+
+First, open `Sources/QuillKit/Views/Editor/DroppableWebView.swift` and search for `WebViewMenuFilter`. Two possible states:
+
+**If `WebViewMenuFilter` does NOT exist** (the menu is built entirely in `rightMouseDown` / `buildContextMenu` without a post-`menuWillOpen` re-filter): no allow-list registration is needed. Add the item directly:
 
 ```swift
         menu.addItem(.separator())
@@ -1608,15 +1613,15 @@ git commit -m "feat: FootnoteSync plugin keeps footnote entries ordered and orph
         menu.addItem(footnote)
 ```
 
-Add the action method next to the AI menu actions:
+**If `WebViewMenuFilter` DOES exist** (CLAUDE.md says it re-filters the menu in `menuWillOpen` and strips any selector not in `WebViewMenuFilter.allowed`): you must also add `"insertFootnoteAction"` to `WebViewMenuFilter.allowed` alongside the existing AI action selectors, or the item will be silently removed. Then add the menu item as above.
+
+Add the action method next to the AI menu actions regardless of which path above applies:
 
 ```swift
     @objc private func insertFootnoteAction() {
         evaluateJavaScript("window.insertFootnote?.()", completionHandler: nil)
     }
 ```
-
-(The current `buildContextMenu` constructs the menu from scratch in `rightMouseDown`, so no allow-list registration is needed — the `WebViewMenuFilter` mentioned in older CLAUDE.md notes no longer exists in this code path.)
 
 - [ ] **Step 2: Build and run the full footnote round-trip**
 
