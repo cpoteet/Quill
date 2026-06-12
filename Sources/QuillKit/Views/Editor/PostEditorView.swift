@@ -24,6 +24,7 @@ public struct PostEditorView: View {
     @State private var loadedItem: PostItem? = nil
     @State private var editorReady = false
     @State private var contentLoaded = false
+    @State private var showDiscardAlert: Bool = false
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -150,6 +151,12 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .toast(message: $toastMessage)
+        .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
+            Button("Revert", role: .destructive) { discardChanges() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your unsaved changes will be lost.")
+        }
         .alert("Replace Content?", isPresented: $showAIReplaceAlert) {
             Button("Continue") { isAISheetOpen = true }
             Button("Cancel", role: .cancel) {}
@@ -245,6 +252,11 @@ public struct PostEditorView: View {
                     .hidden()
             }
             if isRemote {
+                if isDirty {
+                    Button("Revert") { showDiscardAlert = true }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                }
                 Button("Preview") { Task { await openPreview() } }
                     .buttonStyle(.bordered)
                     .disabled(isSaving)
@@ -635,6 +647,12 @@ public struct PostEditorView: View {
 
     private func saveToWordPress(force: Bool) {
         Task { await save(status: settings.status, force: true) }
+    }
+
+    private func discardChanges() {
+        guard case .remote(let post) = item else { return }
+        try? services.autosaveStore.delete(postID: post.id)
+        loadFromServer(postID: post.id)
     }
 
     private func loadFromServer(postID: Int) {
