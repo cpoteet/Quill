@@ -17,7 +17,7 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (all 233 tests across 18 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (92 tests via Node's built-in runner + jsdom)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (93 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -51,26 +51,26 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ### Suite summary
 
-| Suite | File | Tests | What it covers |
-|---|---|---|---|
-| `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 13 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, empty content from `_fields` list fetch |
-| `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
-| `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
-| `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
-| `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
-| `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
-| `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
-| `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
-| `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
-| `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
-| `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 24 | `parseGenerateResponse` edge cases, system prompt, all prompt builders |
-| `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
-| `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
-| `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
-| `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
-| `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
+| # | Suite | File | Tests | What it covers |
+|---|---|---|---|---|
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 13 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, empty content from `_fields` list fetch |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
+| 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
+| 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
+| 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
+| 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
+| 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
+| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
+| 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
+| 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 24 | `parseGenerateResponse` edge cases, system prompt, all prompt builders |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
+| 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
+| 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
+| 16 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
+| 17 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
+| 18 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 
 ---
 
@@ -477,6 +477,57 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 
 ---
 
+### 14. View-model — `PostItemTests` (10 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `remotePostIdFormatsAsRemoteDashId` | `PostItem.remote(post).id == "remote-5"` |
+| `localDraftIdFormatsAsLocalDashId` | `PostItem.local(draft).id == "local-5"` |
+| `remoteAndLocalWithSameNumericIdDoNotCollide` | `"remote-5" != "local-5"` (sidebar selection guard) |
+| `remotePostTitleUsesRenderedTitle` | `post.title.rendered` used as display title |
+| `remotePostWithEmptyTitleReturnsUntitled` | Empty rendered title → `"Untitled"` |
+| `localDraftTitleUsesDraftTitle` | `draft.title` used as display title |
+| `localDraftWithEmptyTitleReturnsUntitled` | Empty draft title → `"Untitled"` |
+| `remoteStatusBadgeIsPostStatus` | `post.status` (e.g. `"draft"`) used directly |
+| `localPostStatusBadgeIsLocalPost` | `type="post"` → `"local-post"` |
+| `localPageStatusBadgeIsLocalPage` | `type="page"` → `"local-page"` |
+
+### 15. View-model — `SidebarSectionTests` (8 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `postsIcon` | `.posts.icon == "doc.text"` |
+| `pagesIcon` | `.pages.icon == "doc.plaintext"` |
+| `localDraftsIcon` | `.localDrafts.icon == "pencil"` |
+| `mediaIcon` | `.media.icon == "photo"` |
+| `postsShortTitle` | `.posts.shortTitle == "Posts"` |
+| `pagesShortTitle` | `.pages.shortTitle == "Pages"` |
+| `localDraftsShortTitle` | `.localDrafts.shortTitle == "Drafts"` |
+| `mediaShortTitle` | `.media.shortTitle == "Media"` |
+
+### 16. View-model — `AppStateFilteredItemsTests` (10 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `postsSectionMapsRemotePosts` | `.posts` section → `[.remote(…)]` items |
+| `pagesSectionMapsRemotePages` | `.pages` section → `[.remote(…)]` items |
+| `localDraftsSectionMapsLocalDrafts` | `.localDrafts` section → `[.local(…)]` items |
+| `mediaSectionReturnsEmpty` | `.media` section → always `[]` |
+| `emptySearchReturnsAllItems` | `searchText == ""` → guard exits early, all items returned |
+| `searchFiltersCaseInsensitively` | `"hello"` matches title `"Hello World"` |
+| `searchReturnsEmptyForNoMatch` | `"zzz"` matches nothing |
+| `partialTitleMatchReturnsItem` | `"World"` matches `"Hello World"` |
+| `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
+| `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
+
+---
+
 ### 17. Security — `EditorCoordinatorTests` (7 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
@@ -495,7 +546,7 @@ Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security fi
 
 ---
 
-### 18. Editor helpers — `PostEditorHelpersTests` (5 tests)
+### 18. Editor helpers — `PostEditorHelpersTests` (14 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -511,9 +562,28 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 | `previewURLPreservesMultipleExistingParams` | Other query params survive the transformation |
 | `previewURLPreservesFragment` | `#section` fragment is preserved alongside the new query |
 
+#### `PostStats` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `readingTimeZeroWordsIsZero` | Zero-word post → `readingMinutes == 0` |
+| `readingTimeShortTextIsOneMinute` | Word count ≤ 238 → `readingMinutes == 1` |
+| `readingTimeRoundsUp` | Word count that doesn't divide evenly → reading time rounds up (e.g. 239 words → 2 min) |
+
+#### Status helpers (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `publishButtonTitlePerStatus` | Each status value maps to the correct button label (`"Publish Draft"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"`, etc.) |
+| `toastMessagePerStatus` | Each status transition maps to the correct toast string |
+| `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
+| `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
+| `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
+| `statusChangeToPendingClearsScheduledDate` | Switching from `future` to `pending` → `publishDate` cleared to `nil` |
+
 ---
 
-## JS editor tests (92 tests)
+## JS editor tests (93 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -730,60 +800,39 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 - [ ] First launch with no credentials → preferences/login prompt shown.
 - [ ] Valid site URL + username + app password → connects, lists load.
-- [ ] **Edge:** site URL without scheme (`example.com`) — does it normalize or
-      fail clearly?
-- [ ] **Edge:** site URL with trailing slash, with subdirectory install
-      (`example.com/blog`), with non-standard port.
-- [ ] **Edge:** wrong password → `401` surfaced as a readable error, not a
-      silent failure.
+- [ ] **Edge:** site URL without scheme (`example.com`) → app normalizes it or shows a clear error (no silent failure or crash).
+- [ ] **Edge:** site URL with trailing slash, with subdirectory install (`example.com/blog`), with non-standard port.
+- [ ] **Edge:** wrong password → `401` surfaced as a readable error, not a silent failure.
 - [ ] **Edge:** site that isn't WordPress / REST API disabled → clear error.
-- [ ] App password with spaces pasted verbatim → auth succeeds (ties to §1.5).
-- [ ] No keychain prompt appears during normal network use (ephemeral-session
-      gotcha).
-- [ ] Credentials persist across relaunch; changing the site URL updates the
-      lists and (per gotcha) clears AI sample post IDs.
+- [ ] App password with spaces pasted verbatim → auth succeeds (ties to §4).
+- [ ] No keychain prompt appears during normal network use (ephemeral-session gotcha).
+- [ ] Credentials persist across relaunch; changing the site URL updates the lists and (per gotcha) clears AI sample post IDs.
 
 ### 7.2 Sidebar, lists, navigation
 
 - [ ] Posts / Pages / Local Drafts / Media sections each load and render.
-- [ ] Selection highlight uses the custom (non-blue) style — confirms the
-      `ScrollView+LazyVStack` (not `List`) gotcha holds.
+- [ ] Selection highlight uses the custom (non-blue) style — confirms the `ScrollView+LazyVStack` (not `List`) gotcha holds.
 - [ ] Search filters the current section case-insensitively; clearing restores.
-- [ ] **Empty states:** empty Posts, empty Pages, empty Drafts, empty Media each
-      show the right placeholder; editor empty state says "post"/"page"/"draft"
-      per active section.
-- [ ] Switching to Media hides the post list/search/toolbar and shows the
-      thumbnail grid (the `else` branch gotcha).
-- [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the
-      end.
-- [ ] No `NavigationSplitView`/`HSplitView` chrome (no drag cursor on the
-      divider) — visual confirm of the layout gotcha.
+- [ ] **Empty states:** empty Posts, empty Pages, empty Drafts, empty Media each show the right placeholder; editor empty state says "post"/"page"/"draft" per active section.
+- [ ] Switching to Media hides the post list/search/toolbar and shows the thumbnail grid (the `else` branch gotcha).
+- [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the end.
+- [ ] No `NavigationSplitView`/`HSplitView` chrome (no drag cursor on the divider) — visual confirm of the layout gotcha.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
 - [ ] Load an existing remote post → content renders identically to WordPress.
 - [ ] **Post loading state:** clicking a post shows the editor briefly with "Start writing..." while the individual fetch completes, then content renders — this is expected from the `_fields` list-fetch optimization. Confirm content is correct after load, not truncated.
-- [ ] Type formatting: bold, italic, strike, inline code, links, headings (h1–
-      h6), bullet/ordered/task lists, blockquote, code block, table.
-- [ ] Save → fetch `content.raw` via REST (`?context=edit`) → matches the
-      Gutenberg expected output table in `CLAUDE.md` (heading classes, list
-      classes, figure-wrapped tables/images, thead promotion).
-- [ ] **Round-trip stability:** load → save without editing → diff is empty (no
-      drift). Then load again → still identical.
-- [ ] Multi-paragraph list items survive the save unchanged (don't get
-      collapsed).
+- [ ] Type formatting: bold, italic, strike, inline code, links, headings (h1–h6), bullet/ordered/task lists, blockquote, code block, table.
+- [ ] Save → fetch `content.raw` via REST (`?context=edit`) → matches the Gutenberg expected output table in `CLAUDE.md` (heading classes, list classes, figure-wrapped tables/images, thead promotion).
+- [ ] **Round-trip stability:** load → save without editing → diff is empty (no drift). Then load again → still identical.
+- [ ] Multi-paragraph list items survive the save unchanged (don't get collapsed).
 - [ ] Task list checkboxes round-trip.
 - [ ] **Blockquote attribution (`<cite>`):**
-  - [ ] Toggling blockquote **on** auto-appends an empty cite line (subdued,
-        right-aligned).
-  - [ ] Typing in the cite line then saving → `<cite>` persists inside the
-        blockquote and renders as a `<cite>` on WordPress.
-  - [ ] Leaving the cite **blank** → the empty `<cite>` is **not** saved (no empty
-        cite litters the published HTML).
-  - [ ] **Enter** inside the cite exits the blockquote into a new paragraph after
-        it (doesn't add a newline inside the cite).
-  - [ ] **Backspace** in an empty cite deletes the cite node (doesn't delete the
-        whole quote).
+  - [ ] Toggling blockquote **on** auto-appends an empty cite line (subdued, right-aligned).
+  - [ ] Typing in the cite line then saving → `<cite>` persists inside the blockquote and renders as a `<cite>` on WordPress.
+  - [ ] Leaving the cite **blank** → the empty `<cite>` is **not** saved (no empty cite litters the published HTML).
+  - [ ] **Enter** inside the cite exits the blockquote into a new paragraph after it (doesn't add a newline inside the cite).
+  - [ ] **Backspace** in an empty cite deletes the cite node (doesn't delete the whole quote).
   - [ ] Toggling blockquote **off** removes the quote and its cite cleanly.
 - [ ] Curly quotes / emoji / non-Latin scripts survive save→reload byte-exact.
 - [ ] Very long post (10k+ words) — editor stays responsive; save succeeds.
@@ -792,8 +841,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 ### 7.4 Editor — images
 
 - [ ] Insert image via media picker at caret → appears at correct position.
-- [ ] **Hit-testing:** clicking a thumbnail in the picker grid selects the
-      intended item.
+- [ ] **Hit-testing:** clicking a thumbnail in the picker grid selects the intended item.
 - [ ] Drag image file from Finder onto editor → uploads, inserts, toast shown.
 - [ ] **Edge:** drag a non-image file → ignored (the `isFileURL`/mime guard).
 - [ ] **Edge:** drag multiple images at once → all upload and insert.
@@ -801,32 +849,20 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] **Large file upload:** drag a file ≥ 10 MB onto the editor → UI stays responsive during upload (editor not frozen); same check via the Media tab upload button. Regression guard for H4 streaming-upload fix.
 - [ ] Resize handles appear on select; drag resizes; aspect ratio respected.
 - [ ] **Resize handles align to the image, not the caption** — with a caption present, the bottom handles should sit at the image's bottom edge, not at the bottom of the caption. Confirm all four handles hug the image frame.
-- [ ] Named WordPress sizes (thumbnail/medium/large/full) offered when the image
-      has a `mediaId` and the media item is loaded; hidden otherwise
-      (`setMediaSizes(id, null)` path).
+- [ ] Named WordPress sizes (thumbnail/medium/large/full) offered when the image has a `mediaId` and the media item is loaded; hidden otherwise (`setMediaSizes(id, null)` path).
 - [ ] **Reset button** — click Reset on an image that has WordPress media sizes loaded → src switches to the full-size URL, width/height restore to the original full dimensions. On an image with no media sizes, Reset clears the explicit constraints without changing src.
-- [ ] Image alignment left/center/right → wraps text correctly and saves as
-      `figure.wp-block-image alignXXX`.
-- [ ] Image toolbar repositions on scroll and hides on deselect (the
-      `_scrollHandler` cleanup + 80ms deselect delay gotchas).
+- [ ] Image alignment left/center/right → wraps text correctly and saves as `figure.wp-block-image alignXXX`.
+- [ ] Image toolbar repositions on scroll and hides on deselect (the `_scrollHandler` cleanup + 80ms deselect delay gotchas).
 - [ ] Clicking a toolbar input doesn't dismiss the toolbar (80ms delay).
-- [ ] Mime detection: insert `.jpg/.png/.gif/.webp/.heic/.tiff` → correct
-      content type sent.
-- [ ] **Insert-image picker is image-only:** open the editor image picker (insert
-      image button in toolbar) → file dialog only shows/accepts image files; PDFs
-      and movies are greyed out or absent.
-- [ ] **Media tab still accepts PDFs and movies:** open the Media tab, use the
-      upload button there → file dialog accepts images, PDFs, and movies.
+- [ ] Mime detection: insert `.jpg/.png/.gif/.webp/.heic/.tiff` → correct content type sent.
+- [ ] **Insert-image picker is image-only:** open the editor image picker (insert image button in toolbar) → file dialog only shows/accepts image files; PDFs and movies are greyed out or absent.
+- [ ] **Media tab still accepts PDFs and movies:** open the Media tab, use the upload button there → file dialog accepts images, PDFs, and movies.
 
 ### 7.5 Editor — links
 
-- [ ] Link button opens the popover anchored to the **selection rect** (not the
-      toolbar button) when text is selected; anchored to the button when nothing
-      selected.
-- [ ] Typing a query searches posts/pages/categories/tags/media; results render
-      (the `ObservableObject` re-render gotcha).
-- [ ] Popover **grows** as results appear without clipping (the
-      `.preferredContentSize` sizing gotcha).
+- [ ] Link button opens the popover anchored to the **selection rect** (not the toolbar button) when text is selected; anchored to the button when nothing selected.
+- [ ] Typing a query searches posts/pages/categories/tags/media; results render (the `ObservableObject` re-render gotcha).
+- [ ] Popover **grows** as results appear without clipping (the `.preferredContentSize` sizing gotcha).
 - [ ] Selecting a result inserts the link; manual URL entry works.
 - [ ] **Edge:** no results → empty state, no crash.
 - [ ] **Edge:** search while offline → handled gracefully.
@@ -835,96 +871,56 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 ### 7.6 Editor — code view
 
 - [ ] `</>` button appears in the toolbar's utility group (left of the image "Add" button).
-- [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are
-      disabled while in code view; the `</>` button shows the active state.
-- [ ] HTML in the textarea is pretty-printed: block elements on their own lines,
-      inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their
-      parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested,
-      `<pre>` content left verbatim. Top-level blocks separated by a blank line.
-- [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons
-      re-enable; edited HTML round-trips correctly into Tiptap.
-- [ ] **Edit in code view, switch back:** make a change in the textarea (e.g. add
-      a word), switch to visual — the edit is reflected in the editor.
-- [ ] **Save from code view:** with code view active, use ⌘S — the saved content
-      matches what was in the textarea (not stale Tiptap state).
-- [ ] **Load new post while in code view:** select a different post — code view
-      exits automatically and the new post loads in visual mode.
-- [ ] **Dark mode:** code textarea background and text color match the editor
-      background (no light flash or mis-colored panel).
+- [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are disabled while in code view; the `</>` button shows the active state.
+- [ ] HTML in the textarea is pretty-printed: block elements on their own lines, inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested, `<pre>` content left verbatim. Top-level blocks separated by a blank line.
+- [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons re-enable; edited HTML round-trips correctly into Tiptap.
+- [ ] **Edit in code view, switch back:** make a change in the textarea (e.g. add a word), switch to visual — the edit is reflected in the editor.
+- [ ] **Save from code view:** with code view active, use ⌘S — the saved content matches what was in the textarea (not stale Tiptap state).
+- [ ] **Load new post while in code view:** select a different post — code view exits automatically and the new post loads in visual mode.
+- [ ] **Dark mode:** code textarea background and text color match the editor background (no light flash or mis-colored panel).
 - [ ] **Special characters round-trip:** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)
 
 ### 7.7 Save / publish / draft / schedule
 
-- [ ] **Local draft, Save Draft** → persists locally only, **no** network call
-      (verify via proxy/network log); toast "Saved locally".
-- [ ] **Local draft, Publish** → creates remote post, **local copy disappears
-      immediately** from the Drafts list, selection moves to the new remote item,
-      section switches to Posts/Pages.
+- [ ] **Local draft, Save Draft** → persists locally only, **no** network call (verify via proxy/network log); toast shows "Saved locally".
+- [ ] **Local draft, Publish** → creates remote post, **local copy disappears immediately** from the Drafts list, selection moves to the new remote item, section switches to Posts/Pages.
 - [ ] Page draft publishes to `/pages`, post draft to `/posts`.
 - [ ] **Remote post, ⌘S** → updates WordPress (status `draft` stays draft).
-- [ ] **Remote post, ⌘⇧P / Publish** → publishes; button label reflects state
-      (`Publish` / `Update` / `Publish Draft` / `Schedule`).
-- [ ] **Scheduling:** set a future date → status `future`, post scheduled;
-      verify on the server the scheduled time matches (UTC `date_gmt`, **not**
-      site-local `date` — the scheduling gotcha). Test a timezone-offset site.
-- [ ] Reopening a scheduled post shows the correct future date in the panel
-      (the `parseWPDate` round-trip, incl. the no-timezone-suffix fallback).
-- [ ] Inline new category/tag names → created on save, IDs attached, appear in
-      `appState.categories/tags` and the panel (the deferred-creation gotcha).
-- [ ] **Edge:** taxonomy creation fails → save aborts with an error, content not
-      lost.
-- [ ] Slug: blank slug on a new item stays blank (doesn't inherit previous
-      item's slug); editing slug then save sends it; blank slug on update
-      **omits** `slug` so the server value is preserved.
+- [ ] **Remote post, ⌘⇧P / Publish** → publishes; button label reflects state (`Publish` / `Update` / `Publish Draft` / `Schedule`).
+- [ ] **Scheduling:** set a future date → status `future`, post scheduled; verify on the server the scheduled time matches (UTC `date_gmt`, **not** site-local `date` — the scheduling gotcha). Test a timezone-offset site.
+- [ ] Reopening a scheduled post shows the correct future date in the panel (the `parseWPDate` round-trip, incl. the no-timezone-suffix fallback).
+- [ ] Inline new category/tag names → created on save, IDs attached, appear in `appState.categories/tags` and the panel (the deferred-creation gotcha).
+- [ ] **Edge:** taxonomy creation fails → save aborts with an error, content not lost.
+- [ ] Slug: blank slug on a new item stays blank (doesn't inherit previous item's slug); editing slug then save sends it; blank slug on update **omits** `slug` so the server value is preserved.
 - [ ] Featured image set/clear; `featured_media: 0` clears it.
 - [ ] Comment status open/closed round-trips.
 - [ ] Page parent picker excludes the page itself; saving sets `parent`.
 
 ### 7.8 Conflict detection
 
-- [ ] Open a remote post in Quill. Edit it on the server (or via another client)
-      so `modified` changes. Save in Quill → **Conflict Detected** alert.
+- [ ] Open a remote post in Quill. Edit it on the server (or via another client) so `modified` changes. Save in Quill → **Conflict Detected** alert.
   - [ ] "Keep Local" → force-saves, overwrites server.
   - [ ] "Use Server" → reloads server content, discards local edits.
   - [ ] "Cancel" → keeps editing, no data lost.
-- [ ] **False-conflict guard:** open a post, immediately save without server
-      changes → **no** conflict alert.
-- [ ] **Preview-induced baseline refresh:** preview a draft post, then save →
-      **no** spurious conflict.
-- [ ] **Preview URL on plain-permalink site:** on a site using
-      `Settings → Permalinks → Plain` (URLs like `/?p=123`), click Preview →
-      browser opens the correct preview URL with `&preview=true` (not `?preview=true`
-      appended after the existing `?`).
-- [ ] **Preview URL on pretty-permalink site:** same test with a pretty permalink
-      (e.g. `https://example.com/my-post/`) → URL is `…/?preview=true`.
+- [ ] **False-conflict guard:** open a post, immediately save without server changes → **no** conflict alert.
+- [ ] **Preview-induced baseline refresh:** preview a draft post, then save → **no** spurious conflict.
+- [ ] **Preview URL on plain-permalink site:** on a site using `Settings → Permalinks → Plain` (URLs like `/?p=123`), click Preview → browser opens the correct preview URL with `&preview=true` (not `?preview=true` appended after the existing `?`).
+- [ ] **Preview URL on pretty-permalink site:** same test with a pretty permalink (e.g. `https://example.com/my-post/`) → URL is `…/?preview=true`.
 
 ### 7.9 Autosave / unsaved-changes / navigation
 
-- [ ] Edit a remote post, wait 30s → autosave stash written; navigate away and
-      back → "Unsaved changes restored" toast and stashed content shown.
-- [ ] **No spurious restore toast** when opening a server post that has no real
-      local divergence.
-- [ ] Navigate away from a dirty local draft → flushed to SQLite; reopening shows
-      the latest content.
-- [ ] **onDisappear flush — local draft to Media:** edit a local draft, immediately
-      click the Media section (before the 30s autosave fires) → switch back to
-      Drafts, reopen the draft → the edit is present.
-- [ ] **onDisappear flush — remote post to Media:** edit a remote post, immediately
-      click the Media section → reopen the post → "Unsaved changes restored" toast
-      and the edit is shown.
-- [ ] **onDisappear flush — no regression on item switch:** switch directly between
-      two posts without going through Media → existing flush behavior still works,
-      no duplicate autosave written.
+- [ ] Edit a remote post, wait 30s → autosave stash written; navigate away and back → "Unsaved changes restored" toast and stashed content shown.
+- [ ] **No spurious restore toast** when opening a server post that has no real local divergence.
+- [ ] Navigate away from a dirty local draft → flushed to SQLite; reopening shows the latest content.
+- [ ] **onDisappear flush — local draft to Media:** edit a local draft, immediately click the Media section (before the 30s autosave fires) → switch back to Drafts, reopen the draft → the edit is present.
+- [ ] **onDisappear flush — remote post to Media:** edit a remote post, immediately click the Media section → reopen the post → "Unsaved changes restored" toast and the edit is shown.
+- [ ] **onDisappear flush — no regression on item switch:** switch directly between two posts without going through Media → existing flush behavior still works, no duplicate autosave written.
 - [ ] Navigate away from a dirty remote post → stashed; not pushed to WordPress.
-- [ ] After a successful publish/update, the autosave stash for that post is
-      **deleted** (so the next open doesn't falsely restore).
-- [ ] Dirty indicator (amber dot) shows for local drafts when `isDirty`, hidden
-      for remote.
-- [ ] Rapid navigation between items → no autosave from item A lands on item B
-      (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
+- [ ] After a successful publish/update, the autosave stash for that post is **deleted** (so the next open doesn't falsely restore).
+- [ ] Dirty indicator (amber dot) shows for local drafts when `isDirty`, hidden for remote.
+- [ ] Rapid navigation between items → no autosave from item A lands on item B (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
 - [ ] Quitting the app with unsaved local-draft edits → recovered on next launch.
-- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears
-      in the header. Click it → "Revert to Server Version?" alert appears.
+- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears in the header. Click it → "Revert to Server Version?" alert appears.
   - [ ] "Revert" → local autosave deleted, server content reloaded, dirty state cleared.
   - [ ] "Cancel" → editing continues, no data lost.
 - [ ] Revert button is **hidden** for local drafts (only shown for remote posts).
@@ -932,111 +928,74 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 ### 7.10 Delete / trash
 
-- [ ] Trash a remote post → confirmation alert, then `force=false` (recoverable
-      — appears in WordPress Trash, not gone).
+- [ ] Trash a remote post → confirmation alert, then `force=false` (recoverable — appears in WordPress Trash, not gone).
 - [ ] Trash a page → `/pages/{id}` trashed.
 - [ ] Delete a local draft → removed from list and SQLite.
-- [ ] Delete media → confirmation alert (permanent, `force=true`); after confirm
-      it's gone from the grid and server.
-- [ ] **Edge:** delete failure (permissions/offline) → `deleteError` alert; item
-      stays.
+- [ ] Delete media → confirmation alert (permanent, `force=true`); after confirm it's gone from the grid and server.
+- [ ] **Edge:** delete failure (permissions/offline) → `deleteError` alert; item stays.
 - [ ] Cancel on any delete confirmation → nothing happens.
 
 ### 7.11 AI features (require an Anthropic API key configured)
 
-- [ ] With no API key: ✦ toolbar button is **hidden** and the AI items are
-      **absent** from the editor right-click menu (`aiEnabled == false`).
+- [ ] With no API key: ✦ toolbar button is **hidden** and the AI items are **absent** from the editor right-click menu (`aiEnabled == false`).
 - [ ] Add a key in Settings → feature enables **without relaunch**.
-- [ ] **Generate post:** ✦ on an empty editor opens the sheet directly; on a
-      non-empty editor shows the "Replace Content?" alert first.
-- [ ] Generate produces a title + structured HTML **with headings** (not just
-      `<p>` — the prompt-structure gotcha).
-- [ ] Generate with web search on → response reassembled correctly across
-      fragmented blocks (the joining gotcha); citations don't break the
-      TITLE/CONTENT parse.
-- [ ] **Selection ops (right-click menu):** select text → right-click → Make
-      Longer / Make Shorter / To Table / To List each appear (only when
-      `aiEnabled && hasTextSelection`) and each works.
-  - [ ] `hasTextSelection` updates correctly: the AI items appear only when there
-        is a non-empty selection; collapse the selection → items gone on next
-        right-click.
-  - [ ] The AI menu items survive the AutoFill/Services re-filter (their selector
-        strings are in `WebViewMenuFilter.allowed`).
-- [ ] AI result inserts at **block boundaries** — no empty `<p>` fragments
-      before/after, no blank paragraphs from inter-block whitespace. Verify the
-      saved HTML has no stray empty paragraphs.
-- [ ] Accept → content committed and `contentChanged` fires; Discard → original
-      restored.
-- [ ] **Accepted AI result is Gutenberg-transformed** — if the AI returns a
-      table/list/heading, the saved HTML has `wp-block-*` classes and figure
-      wrappers. Verify via `content.raw`.
-- [ ] **Edge:** Claude error/timeout → original text restored, "couldn't
-      complete" toast, editor not corrupted.
-- [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above
-      other apps when you switch away (child-window gotcha); no rectangular
-      shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode
-      (`.plain` style gotcha).
-- [ ] Style guide: select sample posts in Settings → guide generated once;
-      re-saving with unchanged samples makes **no** Claude call; changing the
-      site URL clears samples and guide.
+- [ ] **Generate post:** ✦ on an empty editor opens the sheet directly; on a non-empty editor shows the "Replace Content?" alert first.
+- [ ] Generate produces a title + structured HTML **with headings** (not just `<p>` — the prompt-structure gotcha).
+- [ ] Generate with web search on → response reassembled correctly across fragmented blocks (the joining gotcha); citations don't break the TITLE/CONTENT parse.
+- [ ] **Selection ops (right-click menu):** select text → right-click → Make Longer / Make Shorter / To Table / To List each appear (only when `aiEnabled && hasTextSelection`) and each works.
+  - [ ] `hasTextSelection` updates correctly: the AI items appear only when there is a non-empty selection; collapse the selection → items gone on next right-click.
+  - [ ] The AI menu items survive the AutoFill/Services re-filter (their selector strings are in `WebViewMenuFilter.allowed`).
+- [ ] AI result inserts at **block boundaries** — no empty `<p>` fragments before/after, no blank paragraphs from inter-block whitespace. Verify the saved HTML has no stray empty paragraphs.
+- [ ] Accept → content committed and `contentChanged` fires; Discard → original restored.
+- [ ] **Accepted AI result is Gutenberg-transformed** — if the AI returns a table/list/heading, the saved HTML has `wp-block-*` classes and figure wrappers. Verify via `content.raw`.
+- [ ] **Edge:** Claude error/timeout → original text restored, "couldn't complete" toast, editor not corrupted.
+- [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above other apps when you switch away (child-window gotcha); no rectangular shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode (`.plain` style gotcha).
+- [ ] Style guide: select sample posts in Settings → guide generated once; re-saving with unchanged samples makes **no** Claude call; changing the site URL clears samples and guide.
 - [ ] **Panel survives sidebar re-renders:** trigger the AI result panel, then type in the sidebar search field — the panel stays visible and positioned correctly without disappearing or duplicating. (H1 regression guard: `@State` ensures one panel instance per view identity.)
 
 ### 7.12 Settings panel & preferences
 
-- [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt,
-      discussion; for **pages** shows parent + slug + discussion only (no
-      categories/tags/excerpt) — the `isPage` gotcha.
+- [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt, discussion; for **pages** shows parent + slug + discussion only (no categories/tags/excerpt) — the `isPage` gotcha.
 - [ ] Amber accent applied throughout settings.
-- [ ] Preferences opens from both the menu and the in-app sheet; `PreferencesView`
-      works in the separate `Settings` scene **without EnvironmentObject** — i.e.
-      sample post picker is populated.
+- [ ] Preferences opens from both the menu and the in-app sheet; `PreferencesView` works in the separate `Settings` scene **without EnvironmentObject** — i.e. sample post picker is populated.
 
 ### 7.13 Window / appearance / chrome
 
-- [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`),
-      title/breadcrumb bars render with correct tokens; **title/breadcrumb bars
-      white in dark mode** (open TODO — verify current state).
+- [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`), title/breadcrumb bars render with correct tokens; **title/breadcrumb bars white in dark mode** (open TODO — verify current state).
 - [ ] **Dark mode live toggle** — with the app open, toggle dark mode in System Settings → editor background, toolbar, and sidebar switch immediately without relaunch. (Tests the `viewDidChangeEffectiveAppearance` override in `DroppableWebView`.)
 - [ ] **Surface components** — `SoftPanelBoundary` between sidebar/editor and editor/settings-panel renders as a subtle gradient boundary, not a hard `Divider()` line. `SoftHorizontalDivider` at the bottom of the sidebar tab strip and above the bottom toolbar. `PanelInteriorFade` fades the right edge of the sidebar scroll list and the left edge of the settings panel.
 - [ ] Enter/exit full screen → title bar color stable (fixed — confirm).
 - [ ] Title field + top border spacing correct (fixed — confirm).
 - [ ] App icon/logo present in dock and about.
-- [ ] Editor "Loading editor…" overlay shows then fades on `editorReady`; never
-      sticks if the bundle loads.
+- [ ] Editor "Loading editor…" overlay shows then fades on `editorReady`; never sticks if the bundle loads.
 
 ### 7.14 Context menus (AppKit specifics)
 
-- [ ] Right-click in the **editor (WKWebView)** → Cut/Copy/Paste present and
-      correctly enabled/disabled; **no AutoFill/Services leakage** (the
-      `willOpenMenu` + `NSMenuDelegate` re-filter gotcha).
-- [ ] Right-click in the **title field** → only Cut/Copy/Paste; no AutoFill (the
-      `RestrictedTextView` gotcha).
+- [ ] Right-click in the **editor (WKWebView)** → Cut/Copy/Paste present and correctly enabled/disabled; **no AutoFill/Services leakage** (the `willOpenMenu` + `NSMenuDelegate` re-filter gotcha).
+- [ ] Right-click in the **title field** → only Cut/Copy/Paste; no AutoFill (the `RestrictedTextView` gotcha).
 - [ ] Right-click a misspelled word → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator; clicking a suggestion replaces the word correctly.
 - [ ] **Emoji adjacency:** right-click a misspelled word immediately next to an emoji (e.g. `"speling 🎉"`) → the suggestion replaces only the misspelled word without corrupting the emoji or surrounding text. (C3 `posAtDOM` regression guard.)
 
 ### 7.15 Spell check
 
-- [ ] "ABC" toolbar button highlights misspellings via decorations; highlights
-      clear on first edit.
-- [ ] No `NSUndefinedKeyException` crash on macOS 26 (the
-      `continuousSpellCheckingEnabled` KVC gotcha) — launch and run spell check
-      on the current OS.
+- [ ] "ABC" toolbar button highlights misspellings via decorations; highlights clear on first edit.
+- [ ] No `NSUndefinedKeyException` crash on macOS 26 (the `continuousSpellCheckingEnabled` KVC gotcha) — launch and run spell check on the current OS.
 
-### 7.16 Stats panel (Phase 5)
+### 7.16 Stats panel
 
 - [ ] Stats panel (settings panel footer or dedicated area) shows word count, character count, and reading time.
 - [ ] Counts update live as the user types (debounced).
 - [ ] Counts freeze correctly when code view is active and refresh when returning to visual mode.
 - [ ] Reading time shows "1 min" for short posts; rounds up for longer ones.
 
-### 7.17 Publish status helpers (Phase 5)
+### 7.17 Publish status helpers
 
 - [ ] Publish button label is correct for each status: draft → "Publish", published → "Update", future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
 - [ ] Toast message after save reflects the correct status change.
 - [ ] Setting a future date switches status to `future` and button to "Schedule".
 - [ ] Setting visibility to Private switches status to `private` and button to "Publish Privately".
 
-### 7.18 Find & replace (Phase 5)
+### 7.18 Find & replace
 
 - [ ] Find & replace bar opens (⌘F or toolbar button) and closes (Escape or close button).
 - [ ] Typing in the Find field highlights all matches in the editor with a yellow decoration.
@@ -1047,7 +1006,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Case-sensitive toggle works: lowercase query matches differently with toggle on vs off.
 - [ ] Find bar is hidden in code view; decorations do not appear in the textarea.
 
-### 7.19 Embeds (Phase 5)
+### 7.19 Embeds
 
 - [ ] Insert an embed by pasting a YouTube/Vimeo/Twitter URL → displays as a static embed card in the editor with the provider name and URL visible.
 - [ ] Save → fetch `content.raw` via REST → output is a valid Gutenberg `wp-block-embed` block with correct provider classes (`is-type-video is-provider-youtube wp-block-embed-youtube` etc.).
@@ -1056,7 +1015,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Unknown URL (not a recognised provider) → saves as a generic `wp-block-embed` block without provider-specific classes.
 - [ ] Embed figure is not misidentified as an image figure (no `wp-block-image` class, no resize handles).
 
-### 7.20 Footnotes (Phase 5)
+### 7.20 Footnotes
 
 - [ ] Insert Footnote via right-click context menu → a numbered superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
 - [ ] Add a second footnote → numbered `[2]`; numbers update in document order.
@@ -1092,11 +1051,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | # | Gotcha | Guard |
 |---|---|---|
 | 1 | Pages omit `categories`/`tags` | ✅ `WPPostDecodingTests.pageOmittingCategoriesAndTagsDefaultsToEmpty` |
-| 2 | `WPPost.type` routing posts vs pages | ✅ `WPPostDecodingTests` + 👁 §7.6 |
-| 3 | Scheduling uses `date_gmt` not `date` | ✅ `PostPayloadTests.schedulingUsesDateGmtKeyNotDate` + 👁 §7.6 |
+| 2 | `WPPost.type` routing posts vs pages | ✅ `WPPostDecodingTests` + 👁 §7.7 |
+| 3 | Scheduling uses `date_gmt` not `date` | ✅ `PostPayloadTests.schedulingUsesDateGmtKeyNotDate` + 👁 §7.7 |
 | 4 | Media dimensions as floats | ✅ `WPMediaDecodingTests.floatDimensionsDecodeToInt` |
-| 5 | `slug` omitted when empty | ✅ `PostPayloadTests.nilSlugOmitsKeyFromJSON` + 👁 §7.6 |
-| 6 | Trash `force=false` vs media `force=true` | ✅ `WordPressClientTests` + 👁 §7.9 |
+| 5 | `slug` omitted when empty | ✅ `PostPayloadTests.nilSlugOmitsKeyFromJSON` + 👁 §7.7 |
+| 6 | Trash `force=false` vs media `force=true` | ✅ `WordPressClientTests` + 👁 §7.10 |
 | 7 | Cancellation re-thrown, not wrapped | ✅ `WordPressClientTests.urlErrorCancelledRethrowsAsCancellationError` |
 | 8 | `searchLinks` ignores sub-failures | ✅ `WordPressClientTests.searchLinks*` |
 | 9 | Web-search response joined across blocks | ✅ `AnthropicClientTests.multipleTextBlocksAreJoinedInOrder` |
@@ -1106,27 +1065,27 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 12a | Empty blockquote `<cite>` stripped on save | ✅ JS `empty cite is stripped` + 👁 §7.3 |
 | 13 | List `<p>` unwrap only single-child | ✅ JS `multi-child <li> is left untouched` |
 | 14 | Table thead promotion / figure wrap | ✅ JS table tests |
-| 15 | Style-guide regeneration rules | 👁 §7.10 |
-| 16 | Curly quotes in Swift strings | ✅ `DraftStoreTests.unicodeAndEmojiRoundTrip` + JS `unicode and emoji in text are preserved` |
-| 17 | Autosave restore toast not spurious | 👁 §7.8 |
-| 18 | Conflict baseline refresh (no false positive) | 👁 §7.7 |
+| 15 | Style-guide regeneration rules | 👁 §7.11 |
+| 16 | Curly quotes in Swift strings | ✅ `DraftStoreTests.unicodeAndEmojiRoundTrip` + JS `unicode and emoji in text are preserved` + 👁 §7.3 |
+| 17 | Autosave restore toast not spurious | 👁 §7.9 |
+| 18 | Conflict baseline refresh (no false positive) | 👁 §7.8 |
 | 19 | Selection-anchored link popover + sizing | 👁 §7.5 |
-| 20 | `AIResultPanel` child-window / shadow / button style | 👁 §7.10 |
-| 21 | AI insert at block boundaries (no empty `<p>`) | 👁 §7.10 |
+| 20 | `AIResultPanel` child-window / shadow / button style | 👁 §7.11 |
+| 21 | AI insert at block boundaries (no empty `<p>`) | 👁 §7.11 |
 | 22 | Media grid `Color.clear` layout | 👁 §7.2 |
-| 23 | Context-menu AutoFill leakage | 👁 §7.13 |
-| 24 | macOS 26 spell-check KVC crash | 👁 §7.14 |
+| 23 | Context-menu AutoFill leakage | 👁 §7.14 |
+| 24 | macOS 26 spell-check KVC crash | 👁 §7.15 |
 | 25 | Ephemeral session (no keychain prompts) | 👁 §7.1 |
 | 26 | Sidebar not `List`; layout not `NavigationSplitView` | 👁 §7.2 |
 | 27 | `JSONFileStore` writes chmod 600 + atomic | ✅ `JSONFileStoreTests.savedFileHasChmod600` |
 | 28 | `AppSupportDirectory` override isolation | ✅ `CredentialsStoreTests.appSupportOverrideKeepsFilesInTempDir` |
-| 29 | AI selection ops via right-click, gated on `hasTextSelection` | 👁 §7.10/§7.13 |
-| 30 | Accepted AI result is Gutenberg-transformed | 👁 §7.10 |
+| 29 | AI selection ops via right-click, gated on `hasTextSelection` | 👁 §7.11 + 👁 §7.14 |
+| 30 | Accepted AI result is Gutenberg-transformed | 👁 §7.11 |
 | 31 | `appState.posts` list has empty content (`_fields` filter) | ✅ `WordPressClientTests.fetchAllPostsRequestIncludesFieldsFilter` + `fetchPostRequestOmitsFieldsFilter` + `WPPostDecodingTests.missingContentAndExcerptDefaultToEmpty` |
 | 32 | `thumbnailURL` used in grids, not full-res `sourceURL` | ✅ `WPMediaDecodingTests.thumbnailURL*` + 👁 §7.2 |
-| 33 | External link navigation restricted to http/https/mailto | ✅ `EditorCoordinatorTests` (all 7) |
-| 34 | `uploadMedia` streams from file, no RAM buffering | ✅ `WordPressClientTests.uploadMediaStreamsFromFileNotHttpBody` |
-| 35 | Code view entity escaping (< & > " in text/attrs) | ✅ `formatHTML — entity escaping` (5 JS tests) |
+| 33 | External link navigation restricted to http/https/mailto | ✅ `EditorCoordinatorTests` (all 7) + 👁 §7.5 |
+| 34 | `uploadMedia` streams from file, no RAM buffering | ✅ `WordPressClientTests.uploadMediaStreamsFromFileNotHttpBody` + 👁 §7.4 |
+| 35 | Code view entity escaping (< & > " in text/attrs) | ✅ `formatHTML — entity escaping` (5 JS tests) + 👁 §7.6 |
 | 36 | Stats freeze in code view; refresh on exit | ✅ `countStats` (8 JS tests) + 👁 §7.16 |
 | 37 | Find & replace decorations don't re-fire `update` | ✅ `findMatches` (7 JS tests) + 👁 §7.18 |
 | 38 | Embed figure passes through, not treated as image | ✅ JS embed tests + 👁 §7.19 |
@@ -1138,85 +1097,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 
 ---
 
-### 14. View-model — `PostItemTests` (10 tests)
-
-File: `Tests/QuillTests/AppStateTests.swift`
-
-| Test | What it checks |
-|---|---|
-| `remotePostIdFormatsAsRemoteDashId` | `PostItem.remote(post).id == "remote-5"` |
-| `localDraftIdFormatsAsLocalDashId` | `PostItem.local(draft).id == "local-5"` |
-| `remoteAndLocalWithSameNumericIdDoNotCollide` | `"remote-5" != "local-5"` (sidebar selection guard) |
-| `remotePostTitleUsesRenderedTitle` | `post.title.rendered` used as display title |
-| `remotePostWithEmptyTitleReturnsUntitled` | Empty rendered title → `"Untitled"` |
-| `localDraftTitleUsesDraftTitle` | `draft.title` used as display title |
-| `localDraftWithEmptyTitleReturnsUntitled` | Empty draft title → `"Untitled"` |
-| `remoteStatusBadgeIsPostStatus` | `post.status` (e.g. `"draft"`) used directly |
-| `localPostStatusBadgeIsLocalPost` | `type="post"` → `"local-post"` |
-| `localPageStatusBadgeIsLocalPage` | `type="page"` → `"local-page"` |
-
-### 15. View-model — `SidebarSectionTests` (8 tests)
-
-File: `Tests/QuillTests/AppStateTests.swift`
-
-| Test | What it checks |
-|---|---|
-| `postsIcon` | `.posts.icon == "doc.text"` |
-| `pagesIcon` | `.pages.icon == "doc.plaintext"` |
-| `localDraftsIcon` | `.localDrafts.icon == "pencil"` |
-| `mediaIcon` | `.media.icon == "photo"` |
-| `postsShortTitle` | `.posts.shortTitle == "Posts"` |
-| `pagesShortTitle` | `.pages.shortTitle == "Pages"` |
-| `localDraftsShortTitle` | `.localDrafts.shortTitle == "Drafts"` |
-| `mediaShortTitle` | `.media.shortTitle == "Media"` |
-
-### 16. View-model — `AppStateFilteredItemsTests` (10 tests)
-
-File: `Tests/QuillTests/AppStateTests.swift`
-
-| Test | What it checks |
-|---|---|
-| `postsSectionMapsRemotePosts` | `.posts` section → `[.remote(…)]` items |
-| `pagesSectionMapsRemotePages` | `.pages` section → `[.remote(…)]` items |
-| `localDraftsSectionMapsLocalDrafts` | `.localDrafts` section → `[.local(…)]` items |
-| `mediaSectionReturnsEmpty` | `.media` section → always `[]` |
-| `emptySearchReturnsAllItems` | `searchText == ""` → guard exits early, all items returned |
-| `searchFiltersCaseInsensitively` | `"hello"` matches title `"Hello World"` |
-| `searchReturnsEmptyForNoMatch` | `"zzz"` matches nothing |
-| `partialTitleMatchReturnsItem` | `"World"` matches `"Hello World"` |
-| `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
-| `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
-
-### 19. View-model — PostStats (3 tests)
-
-File: `Tests/QuillTests/PostEditorHelpersTests.swift` (inside `PostEditorHelpersTests` suite)
-
-| Test | What it checks |
-|---|---|
-| `readingTimeZeroWordsIsZero` | Zero-word post → `readingMinutes == 0` |
-| `readingTimeShortTextIsOneMinute` | Word count ≤ 238 → `readingMinutes == 1` |
-| `readingTimeRoundsUp` | Word count that doesn't divide evenly → reading time rounds up (e.g. 239 words → 2 min) |
-
-### 20. View-model — Status helpers (6 tests)
-
-File: `Tests/QuillTests/PostEditorHelpersTests.swift` (inside `PostEditorHelpersTests` suite)
-
-| Test | What it checks |
-|---|---|
-| `publishButtonTitlePerStatus` | Each status value maps to the correct button label (`"Publish Draft"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"`, etc.) |
-| `toastMessagePerStatus` | Each status transition maps to the correct toast string |
-| `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
-| `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
-| `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
-| `statusChangeToPendingClearsScheduledDate` | Switching from `future` to `pending` → `publishDate` cleared to `nil` |
-
----
-
 ## What's not yet automated
 
 The automatable Swift and JS layers are covered. The remaining gaps require a live WordPress site or SwiftUI UI test infrastructure and cannot be run headlessly:
 
 - **onDisappear flush (§7.9):** The `onDisappear` closure fires in the SwiftUI view lifecycle, which can't be triggered from Swift Testing. Manual steps cover local-draft-to-Media and remote-post-to-Media scenarios.
-- **Preview URL on plain-permalink sites (§7.7):** `previewURL` logic is fully unit-tested; the manual step verifies the resulting URL actually loads in the browser on a real site.
+- **Preview URL on plain-permalink sites (§7.8):** `previewURL` logic is fully unit-tested; the manual step verifies the resulting URL actually loads in the browser on a real site.
 - **Insert-image picker file filter (§7.4):** `NSOpenPanel.allowedContentTypes` is an AppKit call; the panel itself can only be verified by running the app.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
