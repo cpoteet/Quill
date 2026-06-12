@@ -923,6 +923,12 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Rapid navigation between items → no autosave from item A lands on item B
       (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
 - [ ] Quitting the app with unsaved local-draft edits → recovered on next launch.
+- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears
+      in the header. Click it → "Revert to Server Version?" alert appears.
+  - [ ] "Revert" → local autosave deleted, server content reloaded, dirty state cleared.
+  - [ ] "Cancel" → editing continues, no data lost.
+- [ ] Revert button is **hidden** for local drafts (only shown for remote posts).
+- [ ] Revert button is **hidden** for a clean (unedited) remote post.
 
 ### 7.10 Delete / trash
 
