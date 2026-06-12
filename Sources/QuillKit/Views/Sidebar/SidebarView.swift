@@ -73,6 +73,7 @@ public struct SidebarView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .background(rowSelected ? Color.wpAmber.opacity(0.12) : Color.clear)
+                                .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
