@@ -223,17 +223,7 @@ public struct PostEditorView: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            // #5 Breadcrumb
-            HStack(spacing: 4) {
-                Text(breadcrumbSection)
-                    .foregroundStyle(.tertiary)
-                Text("›")
-                    .foregroundStyle(.tertiary)
-                Text(title.isEmpty ? "Untitled" : title)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .font(.system(size: 12))
+            statusBadge
             Spacer()
             if isDirty && !isRemote {
                 Circle()
@@ -286,12 +276,29 @@ public struct PostEditorView: View {
         .padding(.vertical, 8)
     }
 
-    // #5 Breadcrumb section label
-    private var breadcrumbSection: String {
-        switch item {
-        case .remote(let post): return post.type == "page" ? "Pages" : "Posts"
-        case .local(let draft): return draft.type == "page" ? "Pages" : "Posts"
+    private var statusBadgeLabel: String {
+        if case .local = item { return "Local Draft" }
+        switch settings.status {
+        case .publish:  return "Published"
+        case .draft:    return "Draft"
+        case .future:   return "Scheduled"
+        case .pending:  return "Pending Review"
+        case .private:  return "Private"
         }
+    }
+
+    private var statusBadge: some View {
+        let key: String = {
+            if case .local(let d) = item { return "local-\(d.type)" }
+            return settings.status.rawValue
+        }()
+        let color = Color.statusColor(key)
+        return Text(statusBadgeLabel)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.12), in: Capsule())
     }
 
     // #1 Dismissible amber error banner

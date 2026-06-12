@@ -17,6 +17,20 @@ extension Color {
 
     /// Same as wpSidebarBg — kept as a separate token so call sites don't need updating
     static let wpPanelBg = wpSidebarBg
+
+    /// Maps a PostItem.statusBadge string to a display color.
+    static func statusColor(_ badge: String) -> Color {
+        switch badge {
+        case "publish":    return .green
+        case "draft":      return .wpAmber
+        case "future":     return .blue
+        case "pending":    return .orange
+        case "private":    return .teal
+        case "local-post": return .purple
+        case "local-page": return Color(nsColor: .systemIndigo)
+        default:           return Color(.tertiaryLabelColor)
+        }
+    }
 }
 
 // MARK: - Surfaces

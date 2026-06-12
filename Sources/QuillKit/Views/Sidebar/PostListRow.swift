@@ -27,18 +27,7 @@ public struct PostListRow: View {
         .padding(.vertical, 6)
     }
 
-    private var statusColor: Color {
-        switch item.statusBadge {
-        case "publish": return .green
-        case "draft": return Color.wpAmber
-        case "future": return .blue
-        case "pending": return .orange
-        case "private": return .teal
-        case "local-post": return .purple
-        case "local-page": return Color(nsColor: .systemIndigo)
-        default: return Color(.tertiaryLabelColor)
-        }
-    }
+    private var statusColor: Color { Color.statusColor(item.statusBadge) }
 
     private var subtitle: String {
         switch item {
