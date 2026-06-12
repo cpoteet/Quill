@@ -67,6 +67,7 @@ public struct PostStats: Equatable {
 public struct PostSettingsPanel: View {
     @Binding var settings: PostSettings
     let postType: String
+    let isLocalDraft: Bool
     let categories: [WPCategory]
     let tags: [WPTag]
     let pages: [WPPost]
@@ -78,6 +79,7 @@ public struct PostSettingsPanel: View {
     public init(
         settings: Binding<PostSettings>,
         postType: String,
+        isLocalDraft: Bool = false,
         categories: [WPCategory],
         tags: [WPTag],
         pages: [WPPost] = [],
@@ -85,6 +87,7 @@ public struct PostSettingsPanel: View {
     ) {
         self._settings = settings
         self.postType = postType
+        self.isLocalDraft = isLocalDraft
         self.categories = categories
         self.tags = tags
         self.pages = pages
@@ -96,6 +99,7 @@ public struct PostSettingsPanel: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                if isLocalDraft { localDraftNote }
                 statusSection
                 if settings.status != .private { publishDateSection }
                 if isPage { parentSection }
@@ -111,6 +115,15 @@ public struct PostSettingsPanel: View {
         .frame(width: 260)
         .background(WarmSidebarBackground())
         .overlay(alignment: .leading) { PanelInteriorFade(from: .leading) }
+    }
+
+    // MARK: - Local draft note
+
+    private var localDraftNote: some View {
+        Label("Settings aren't saved for local drafts. Publish to WordPress to save them.", systemImage: "info.circle")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Status

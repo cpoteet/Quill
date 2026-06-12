@@ -139,6 +139,7 @@ public struct PostEditorView: View {
                 PostSettingsPanel(
                     settings: $settings,
                     postType: postType,
+                    isLocalDraft: !isRemote,
                     categories: appState.categories,
                     tags: appState.tags,
                     pages: availableParentPages,
