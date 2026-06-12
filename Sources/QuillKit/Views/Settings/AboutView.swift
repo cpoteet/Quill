@@ -14,7 +14,7 @@ struct AboutView: View {
                 Text("Quill")
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
 
-                Text("Version 1.5.0")
+                Text("Version 1.6.0")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
