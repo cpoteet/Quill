@@ -174,6 +174,7 @@ public struct SidebarView: View {
             ForEach(SidebarSection.allCases, id: \.self) { section in
                 let selected = appState.selectedSection == section
                 Button {
+                    if appState.selectedSection != section { appState.selectedItem = nil }
                     appState.selectedSection = section
                 } label: {
                     VStack(spacing: 3) {
