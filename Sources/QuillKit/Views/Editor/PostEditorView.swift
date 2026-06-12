@@ -23,6 +23,7 @@ public struct PostEditorView: View {
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
     @State private var editorReady = false
+    @State private var contentLoaded = false
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -99,7 +100,7 @@ public struct PostEditorView: View {
                         aiEnabled: appState.aiEnabled,
                         hasTextSelection: hasTextSelection
                     )
-                    if !editorReady {
+                    if !editorReady || !contentLoaded {
                         VStack(spacing: 10) {
                             ProgressView()
                             Text("Loading editor…")
@@ -198,6 +199,7 @@ public struct PostEditorView: View {
         } message: {
             Text(previewError ?? "")
         }
+        .onChange(of: item.id) { _ in contentLoaded = false }
         .task(id: item.id) { await loadItem() }
         .onDisappear {
             autosaveTask?.cancel()
@@ -414,6 +416,7 @@ public struct PostEditorView: View {
                     try? services.autosaveStore.delete(postID: post.id)
                 }
             }
+            contentLoaded = true
 
         case .local(let draft):
             // Read directly from SQLite to pick up any navigate-flush that updated the draft
@@ -432,6 +435,7 @@ public struct PostEditorView: View {
             }
             cleanTitle = title
             cleanContent = htmlContent
+            contentLoaded = true
         }
     }
 

@@ -31,8 +31,11 @@ public struct QuillApp: App {
                 .environmentObject(appServices)
                 .tint(Color.wpAmber)
                 .onAppear {
-                    appState.credentials = try? CredentialsStore.load()
-                    if appState.credentials == nil {
+                    let creds = try? CredentialsStore.load()
+                    appState.credentials = creds
+                    if creds != nil {
+                        appState.isLoadingList = true
+                    } else {
                         appState.isShowingPreferences = true
                     }
                 }
