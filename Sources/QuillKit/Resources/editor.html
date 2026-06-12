@@ -18,6 +18,28 @@
     body.dark { background: #1c1c1e; color: #f0f0f0; }
 
     /* ── Toolbar ─────────────────────────────────────── */
+    #toolbar-wrap {
+      position: relative;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    #toolbar-wrap::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 28px;
+      background: linear-gradient(to right, transparent, rgba(247,247,248,0.96));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+    }
+    body.dark #toolbar-wrap::after {
+      background: linear-gradient(to right, transparent, rgba(36,36,38,0.96));
+    }
+    #toolbar-wrap.overflowing::after { opacity: 1; }
+
     #toolbar {
       --toolbar-bg: #f7f7f8;
       display: flex;
@@ -656,10 +678,12 @@
       background: #f4f3f1;
       border-bottom: 1px solid rgba(0,0,0,0.08);
       font-size: 12px;
+      overflow: hidden;
     }
     #find-bar.visible { display: flex; }
     #find-bar input {
-      flex: 0 1 180px;
+      flex: 1 1 80px;
+      min-width: 0;
       padding: 3px 7px;
       font-size: 12px;
       border: 1px solid rgba(0,0,0,0.15);
@@ -1915,6 +1939,9 @@
       embedMenu.style.left = `${Math.max(rect.left, 8)}px`
       embedMenu.style.top = `${rect.bottom + 8}px`
       embedMenu.classList.add('visible')
+      const right = embedMenu.getBoundingClientRect().right
+      if (right > window.innerWidth - 8)
+        embedMenu.style.left = `${Math.max(8, window.innerWidth - 8 - embedMenu.offsetWidth)}px`
       const input = document.getElementById('embed-url-input')
       input.value = ''
       input.focus()
@@ -2576,6 +2603,21 @@
       }
       _aiInProgress = false
     }
+
+    // ── Toolbar overflow fade ─────────────────────────
+    const tbEl = document.getElementById('toolbar')
+    const tbWrap = document.createElement('div')
+    tbWrap.id = 'toolbar-wrap'
+    tbEl.parentNode.insertBefore(tbWrap, tbEl)
+    tbWrap.appendChild(tbEl)
+
+    function _updateToolbarFade() {
+      const atEnd = tbEl.scrollLeft + tbEl.clientWidth >= tbEl.scrollWidth - 1
+      tbWrap.classList.toggle('overflowing', tbEl.scrollWidth > tbEl.clientWidth && !atEnd)
+    }
+    tbEl.addEventListener('scroll', _updateToolbarFade)
+    window.addEventListener('resize', _updateToolbarFade)
+    _updateToolbarFade()
   </script>
 </body>
 </html>

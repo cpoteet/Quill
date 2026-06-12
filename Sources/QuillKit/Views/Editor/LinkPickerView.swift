@@ -54,32 +54,55 @@ final class LinkPickerModel: ObservableObject {
 
 struct LinkPickerView: View {
     @ObservedObject var model: LinkPickerModel
+    @FocusState private var fieldFocused: Bool
+
+    private static let amber = Color(red: 0xb4 / 255.0, green: 0x53 / 255.0, blue: 0x09 / 255.0)
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── URL / search field ────────────────────────
+            // ── URL / search field + Apply button ────────
             HStack(spacing: 6) {
-                TextField("Search or paste URL", text: $model.fieldText)
-                    .textFieldStyle(.plain)
-                    .onSubmit { if !model.fieldText.isEmpty { model.onApply(model.fieldText) } }
-                if !model.fieldText.isEmpty {
-                    Button {
-                        model.fieldText = ""
-                        model.results = []
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    TextField("Search or paste URL", text: $model.fieldText)
+                        .textFieldStyle(.plain)
+                        .focused($fieldFocused)
+                        .onSubmit { if !model.fieldText.isEmpty { model.onApply(model.fieldText) } }
+                    if model.isSearching {
+                        ProgressView().controlSize(.mini)
                     }
-                    .buttonStyle(.plain)
+                    if !model.fieldText.isEmpty {
+                        Button {
+                            model.fieldText = ""
+                            model.results = []
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                if model.isSearching {
-                    ProgressView().controlSize(.small)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(
+                            fieldFocused ? Self.amber : Color.primary.opacity(0.15),
+                            lineWidth: 1
+                        )
+                )
 
-            // ── Results ───────────────────────────────────
+                Button("Apply") { model.onApply(model.fieldText) }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Self.amber.opacity(model.fieldText.isEmpty ? 0.45 : 1))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .disabled(model.fieldText.isEmpty)
+            }
+            .padding(8)
+
+            // ── Search results ────────────────────────────
             if !model.results.isEmpty {
                 Divider()
                 ScrollView {
@@ -92,27 +115,24 @@ struct LinkPickerView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 220)
+                .frame(maxHeight: 200)
             }
 
-            // ── Bottom buttons ────────────────────────────
-            Divider()
-            HStack {
-                if !model.currentHref.isEmpty {
-                    Button("Remove Link") { model.onRemove() }
+            // ── Remove link (editing existing link only) ──
+            if !model.currentHref.isEmpty {
+                Divider()
+                HStack {
+                    Button("Remove link") { model.onRemove() }
                         .buttonStyle(.plain)
-                        .foregroundStyle(.red)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Spacer()
                 }
-                Spacer()
-                Button("Apply Link") { model.onApply(model.fieldText) }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(model.fieldText.isEmpty)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
         }
-        .frame(width: 320)
+        .frame(width: 290)
         .onChange(of: model.fieldText, perform: model.scheduleSearch)
     }
 }
