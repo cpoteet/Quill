@@ -38,35 +38,34 @@ import Testing
     // MARK: - Status helpers
 
     @Test func publishButtonTitlePerStatus() {
-        #expect(PostEditorView.publishButtonTitle(status: "draft", isPublishedRemote: false) == "Publish Draft")
-        #expect(PostEditorView.publishButtonTitle(status: "future", isPublishedRemote: false) == "Schedule")
-        #expect(PostEditorView.publishButtonTitle(status: "pending", isPublishedRemote: false) == "Submit for Review")
-        #expect(PostEditorView.publishButtonTitle(status: "private", isPublishedRemote: false) == "Publish Privately")
-        #expect(PostEditorView.publishButtonTitle(status: "publish", isPublishedRemote: false) == "Publish")
-        #expect(PostEditorView.publishButtonTitle(status: "publish", isPublishedRemote: true) == "Update")
-        #expect(PostEditorView.publishButtonTitle(status: "trash", isPublishedRemote: false) == "Publish")
+        #expect(PostEditorView.publishButtonTitle(status: .draft, isPublishedRemote: false) == "Publish Draft")
+        #expect(PostEditorView.publishButtonTitle(status: .future, isPublishedRemote: false) == "Schedule")
+        #expect(PostEditorView.publishButtonTitle(status: .pending, isPublishedRemote: false) == "Submit for Review")
+        #expect(PostEditorView.publishButtonTitle(status: .private, isPublishedRemote: false) == "Publish Privately")
+        #expect(PostEditorView.publishButtonTitle(status: .publish, isPublishedRemote: false) == "Publish")
+        #expect(PostEditorView.publishButtonTitle(status: .publish, isPublishedRemote: true) == "Update")
     }
 
     @Test func toastMessagePerStatus() {
-        #expect(PostEditorView.toastMessage(forStatus: "publish") == "Published")
-        #expect(PostEditorView.toastMessage(forStatus: "future") == "Scheduled")
-        #expect(PostEditorView.toastMessage(forStatus: "pending") == "Submitted for review")
-        #expect(PostEditorView.toastMessage(forStatus: "private") == "Published privately")
-        #expect(PostEditorView.toastMessage(forStatus: "draft") == "Draft saved")
+        #expect(PostEditorView.toastMessage(forStatus: .publish) == "Published")
+        #expect(PostEditorView.toastMessage(forStatus: .future) == "Scheduled")
+        #expect(PostEditorView.toastMessage(forStatus: .pending) == "Submitted for review")
+        #expect(PostEditorView.toastMessage(forStatus: .private) == "Published privately")
+        #expect(PostEditorView.toastMessage(forStatus: .draft) == "Draft saved")
     }
 
     @Test func statusChangeToFutureSetsDefaultDate() {
         var s = PostSettings()
-        s.status = "future"
+        s.status = .future
         s.statusDidChange()
         #expect(s.publishDate != nil)
     }
 
     @Test func statusChangeToPrivateClearsScheduledDate() {
         var s = PostSettings()
-        s.status = "future"
+        s.status = .future
         s.statusDidChange()
-        s.status = "private"
+        s.status = .private
         s.statusDidChange()
         #expect(s.publishDate == nil)
     }
@@ -74,7 +73,7 @@ import Testing
     @Test func statusChangeToFuturePreservesExistingDate() {
         var s = PostSettings()
         let existing = Date().addingTimeInterval(7200)
-        s.status = "future"
+        s.status = .future
         s.publishDate = existing
         s.statusDidChange()
         #expect(s.publishDate == existing)
@@ -82,9 +81,9 @@ import Testing
 
     @Test func statusChangeToPendingClearsScheduledDate() {
         var s = PostSettings()
-        s.status = "future"
+        s.status = .future
         s.statusDidChange()
-        s.status = "pending"
+        s.status = .pending
         s.statusDidChange()
         #expect(s.publishDate == nil)
     }

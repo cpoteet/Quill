@@ -1,7 +1,15 @@
 import SwiftUI
 
+public enum PostStatus: String, CaseIterable, Equatable {
+    case draft = "draft"
+    case pending = "pending"
+    case publish = "publish"
+    case future = "future"
+    case `private` = "private"
+}
+
 public struct PostSettings: Equatable {
-    public var status: String = "draft"
+    public var status: PostStatus = .draft
     public var publishDate: Date? = nil
     public var categoryIDs: Set<Int> = []
     public var tagIDs: Set<Int> = []
@@ -20,10 +28,10 @@ public struct PostSettings: Equatable {
     public mutating func setScheduled(_ enabled: Bool) {
         if enabled {
             if publishDate == nil { publishDate = Date().addingTimeInterval(3600) }
-            status = "future"
+            status = .future
         } else {
             publishDate = nil
-            if status == "future" { status = "draft" }
+            if status == .future { status = .draft }
         }
     }
 
@@ -31,7 +39,7 @@ public struct PostSettings: Equatable {
     /// seeds a default date one hour out; every other status (including
     /// "private", which WordPress cannot schedule) clears it.
     public mutating func statusDidChange() {
-        if status == "future" {
+        if status == .future {
             if publishDate == nil { publishDate = Date().addingTimeInterval(3600) }
         } else {
             publishDate = nil
@@ -89,7 +97,7 @@ public struct PostSettingsPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 statusSection
-                if settings.status != "private" { publishDateSection }
+                if settings.status != .private { publishDateSection }
                 if isPage { parentSection }
                 if !isPage { categoriesSection }
                 if !isPage { tagsSection }
@@ -111,11 +119,11 @@ public struct PostSettingsPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Status")
             Picker("Status", selection: $settings.status) {
-                Text("Draft").tag("draft")
-                Text("Pending Review").tag("pending")
-                Text("Published").tag("publish")
-                Text("Scheduled").tag("future")
-                Text("Private").tag("private")
+                Text("Draft").tag(PostStatus.draft)
+                Text("Pending Review").tag(PostStatus.pending)
+                Text("Published").tag(PostStatus.publish)
+                Text("Scheduled").tag(PostStatus.future)
+                Text("Private").tag(PostStatus.private)
             }
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)

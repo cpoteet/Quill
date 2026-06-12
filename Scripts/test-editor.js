@@ -567,6 +567,15 @@ describe('toWordPressHTML — embeds', () => {
     assert.ok(out.includes(figWithCaption))
     assert.match(out, /<!-- \/wp:embed -->/)
   })
+
+  test('two embeds with the same URL are each wrapped exactly once', () => {
+    const two = EMBED_FIGURE + '\n' + EMBED_FIGURE
+    const out = wp(two)
+    const openCount = (out.match(/<!-- wp:embed /g) || []).length
+    const closeCount = (out.match(/<!-- \/wp:embed -->/g) || []).length
+    assert.equal(openCount, 2)
+    assert.equal(closeCount, 2)
+  })
 })
 
 // ---------------------------------------------------------------------------

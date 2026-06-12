@@ -2135,6 +2135,7 @@
       if (!m) return
       const replacement = document.getElementById('replace-input').value
       editor.view.dispatch(editor.state.tr.insertText(replacement, m.from, m.to))
+      _refreshFind(false)
       _scrollToActiveMatch()
     }
 
@@ -2298,6 +2299,7 @@
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()
     }
+    window.openFindBar = _openFindBar
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
       : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))

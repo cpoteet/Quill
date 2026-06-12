@@ -56,6 +56,12 @@ public struct QuillApp: App {
                     QuillApp.showAboutWindow()
                 }
             }
+            CommandGroup(after: .pasteboard) {
+                Button("Find…") {
+                    appState.triggerFindBar = true
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Post") {
                     appState.createNewDraft(type: "post", draftStore: appServices.draftStore)

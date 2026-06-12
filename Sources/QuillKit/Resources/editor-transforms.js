@@ -142,7 +142,8 @@ function toWordPressHTML(html, doc) {
 
   // Wrap embed figures with Gutenberg block comments so WordPress enqueues
   // the embed block CSS (required for responsive aspect-ratio behaviour).
-  let result = div.innerHTML
+  // DOM-level insertion avoids the String.replace() first-occurrence-only bug
+  // that double-wraps duplicate embed URLs.
   div.querySelectorAll('figure.wp-block-embed').forEach(figure => {
     const wrapper = figure.querySelector('.wp-block-embed__wrapper')
     const url = wrapper ? wrapper.textContent.trim() : ''
@@ -155,11 +156,17 @@ function toWordPressHTML(html, doc) {
     }
     attrs.responsive = true
     if (p && p.aspect) attrs.className = 'wp-embed-aspect-16-9 wp-has-aspect-ratio'
-    const figHTML = figure.outerHTML
-    result = result.replace(figHTML, () => `<!-- wp:embed ${JSON.stringify(attrs)} -->\n${figHTML}\n<!-- /wp:embed -->`)
+    const open = doc.createComment(` wp:embed ${JSON.stringify(attrs)} `)
+    const close = doc.createComment(' /wp:embed ')
+    const parent = figure.parentNode
+    const next = figure.nextSibling
+    parent.insertBefore(open, figure)
+    parent.insertBefore(doc.createTextNode('\n'), figure)
+    parent.insertBefore(doc.createTextNode('\n'), next)
+    parent.insertBefore(close, next)
   })
 
-  return result
+  return div.innerHTML
 }
 
 function formatHTML(html, doc) {

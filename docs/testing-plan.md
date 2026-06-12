@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-11 — 233 Swift tests + 92 JS editor tests, all passing._
+_Last updated: 2026-06-11 — 233 Swift tests + 93 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -690,7 +690,7 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `twitter rich type` | `embedClassFor("twitter", "rich")` → includes `is-type-rich is-provider-twitter` |
 | `unknown provider produces bare wp-block-embed` | `embedClassFor(null, null)` → `"wp-block-embed"` |
 
-### `toWordPressHTML` — embeds (4 tests)
+### `toWordPressHTML` — embeds (5 tests)
 
 | Test | What it checks |
 |---|---|
@@ -698,6 +698,7 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `block comment wrapping is idempotent` | Running `toWordPressHTML` on already-wrapped embed doesn't double-wrap |
 | `embed figure does not gain wp-block-image` | No `wp-block-image` class added, no alignment transform |
 | `embed figure with caption gets block comment wrappers` | Embed `<figure>` containing a `<figcaption>` still gets wrapped correctly |
+| `two embeds with the same URL are each wrapped exactly once` | Two identical embed figures both get their own open/close block comments — regression for the `String.replace()` first-match-only bug |
 
 ### `toWordPressHTML` — footnotes (5 tests)
 

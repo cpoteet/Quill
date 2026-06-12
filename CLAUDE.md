@@ -27,7 +27,7 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-11 — 233 Swift + 92 JS tests, all passing)
+## Test suite status (2026-06-11 — 233 Swift + 93 JS tests, all passing)
 
 **Swift (233 tests):** 18 suites covering all models, WordPressClient, all storage layers, AIPromptBuilder, AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, and PostStats. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
@@ -206,7 +206,7 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 - **`FootnotesList`/`FootnoteItem`/`FootnoteMarker` use `priority: 110`** — so their parse rules beat the generic `ol`/`li` rules. Do not remove the priority.
 - **Footnote numbers in the editor come from CSS counters** (`sup.fn a::before`); the saved number is written by `toWordPressHTML`. Anchors in the editor DOM are intentionally empty.
 - **`FootnoteSync` `appendTransaction` rebuilds the list children** — deleting a marker deletes its entry (including typed text) by design.
-- **Footnote back-arrow (`↩`) in editor vs. saved HTML** — `FootnoteItemNodeView` renders a `<a class="fn-backref">↩</a>` button at the end of each list item DOM node; clicking it dispatches `setTextSelection` to jump to the matching marker. This button is a NodeView artifact and does NOT appear in the ProseMirror doc or saved HTML. The saved backref (`<a href="#ref-fn-…" class="footnote-backref">↩</a>`) is added by `toWordPressHTML`, which also sets `id="ref-fn-{UUID}"` on each marker `<sup>`. The `.footnote-backref` class is stripped from the `<li>` innerHTML in `FootnoteItem.renderHTML()` so it is not double-saved.
+- **Footnote back-arrow (`↩`) in editor vs. saved HTML** — `FootnoteItemNodeView` renders a `<a class="fn-backref">↩</a>` button at the end of each list item DOM node; clicking it dispatches `setTextSelection` to jump to the matching marker. This button is a NodeView artifact and does NOT appear in the ProseMirror doc or saved HTML. The saved backref (`<a href="#ref-fn-…" class="footnote-backref">↩</a>`) is added by `toWordPressHTML`, which also sets `id="ref-fn-{UUID}"` on each marker `<sup>`. The `.footnote-backref` class is stripped on load in `FootnoteItem.parseHTML()`'s `getAttrs` (`editor.html:1420`); the idempotency guard at `editor-transforms.js:134` prevents double-wrapping on save.
 - **Find & replace decorations use `PluginKey('findReplace')`** — separate from spell check; `_refreshFind` dispatches meta-only transactions which do not re-fire `update`.
 - **Stats freeze in code view** and refresh on `_exitCodeView()`/`setContent` via `_postStats()`.
 - **`crypto.randomUUID()` is available in WKWebView on macOS 13+ even with `file://` URLs** — WebKit treats `file://` as a secure context for the Web Crypto API. Do not polyfill `randomUUID` — it is natively available and used by `insertFootnote()`.

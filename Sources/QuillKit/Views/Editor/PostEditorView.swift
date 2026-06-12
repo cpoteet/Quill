@@ -205,6 +205,11 @@ public struct PostEditorView: View {
                 Task { await flushToDB(for: loadedItem) }
             }
         }
+        .onChange(of: appState.triggerFindBar) { newValue in
+            guard newValue else { return }
+            appState.triggerFindBar = false
+            editorWebView?.evaluateJavaScript("openFindBar()", completionHandler: nil)
+        }
     }
 
     private var editorHeader: some View {
@@ -329,7 +334,7 @@ public struct PostEditorView: View {
 
     private var publishButtonTitle: String {
         var isPublishedRemote = false
-        if case .remote(let p) = item, p.status == "publish" { isPublishedRemote = true }
+        if case .remote(let p) = item, p.status == PostStatus.publish.rawValue { isPublishedRemote = true }
         return Self.publishButtonTitle(status: settings.status, isPublishedRemote: isPublishedRemote)
     }
 
@@ -429,7 +434,7 @@ public struct PostEditorView: View {
         title = wpTitle
         htmlContent = wpContent
         lastSavedServerModified = post.modified
-        settings.status = post.status
+        settings.status = PostStatus(rawValue: post.status) ?? .draft
         settings.categoryIDs = Set(post.categories)
         settings.tagIDs = Set(post.tags)
         settings.featuredMediaID = post.featuredMedia
@@ -437,7 +442,7 @@ public struct PostEditorView: View {
         settings.commentStatus = post.commentStatus
         settings.parentID = post.parent
         settings.excerpt = post.excerpt.editorHTML
-        settings.publishDate = post.status == "future"
+        settings.publishDate = PostStatus(rawValue: post.status) == .future
             ? parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             : nil
         cleanTitle = wpTitle
@@ -496,7 +501,7 @@ public struct PostEditorView: View {
     private func saveDraft() async {
         switch item {
         case .local: await saveLocalOnly()
-        case .remote: await save(status: "draft")
+        case .remote: await save(status: .draft)
         }
     }
 
@@ -518,7 +523,7 @@ public struct PostEditorView: View {
         await save(status: settings.status)
     }
 
-    private func save(status: String, force: Bool = false) async {
+    private func save(status: PostStatus, force: Bool = false) async {
         guard let creds = appState.credentials else { return }
         isSaving = true
         saveError = nil
@@ -550,7 +555,7 @@ public struct PostEditorView: View {
             title: title,
             content: htmlContent,
             excerpt: settings.excerpt,
-            status: status,
+            status: status.rawValue,
             dateGmt: settings.publishDate.map { Self.iso8601Formatter.string(from: $0) },
             featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
             categories: Array(settings.categoryIDs),
@@ -609,7 +614,7 @@ public struct PostEditorView: View {
                 appState.selectedItem = .remote(created)
             }
             settings.status = status
-            if status != "future" { settings.publishDate = nil }
+            if status != .future { settings.publishDate = nil }
             toastMessage = Self.toastMessage(forStatus: status)
         } catch {
             saveError = error.localizedDescription
@@ -673,24 +678,23 @@ public struct PostEditorView: View {
         return components.url
     }
 
-    static func publishButtonTitle(status: String, isPublishedRemote: Bool) -> String {
+    static func publishButtonTitle(status: PostStatus, isPublishedRemote: Bool) -> String {
         switch status {
-        case "draft": return "Publish Draft"
-        case "future": return "Schedule"
-        case "pending": return "Submit for Review"
-        case "private": return "Publish Privately"
-        case "publish": return isPublishedRemote ? "Update" : "Publish"
-        default: return "Publish"
+        case .draft: return "Publish Draft"
+        case .future: return "Schedule"
+        case .pending: return "Submit for Review"
+        case .private: return "Publish Privately"
+        case .publish: return isPublishedRemote ? "Update" : "Publish"
         }
     }
 
-    static func toastMessage(forStatus status: String) -> String {
+    static func toastMessage(forStatus status: PostStatus) -> String {
         switch status {
-        case "publish": return "Published"
-        case "future": return "Scheduled"
-        case "pending": return "Submitted for review"
-        case "private": return "Published privately"
-        default: return "Draft saved"
+        case .publish: return "Published"
+        case .future: return "Scheduled"
+        case .pending: return "Submitted for review"
+        case .private: return "Published privately"
+        case .draft: return "Draft saved"
         }
     }
 
