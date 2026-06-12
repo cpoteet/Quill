@@ -797,10 +797,10 @@
 <body>
   <div id="toolbar">
     <span class="tb-group">
-      <button data-cmd="undo" title="Undo (⌘Z)">
+      <button data-cmd="undo" title="Undo">
         <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a7 7 0 1 1-5.3 11.6"></path></svg>
       </button>
-      <button data-cmd="redo" title="Redo (⌘⇧Z)">
+      <button data-cmd="redo" title="Redo">
         <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"></path><path d="M20 9H10a7 7 0 1 0 5.3 11.6"></path></svg>
       </button>
     </span>
@@ -815,7 +815,7 @@
       <button data-cmd="bulletList"  title="Bullet list">
         <svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="1.2"></circle><circle cx="5" cy="12" r="1.2"></circle><circle cx="5" cy="17" r="1.2"></circle><path d="M10 7h9"></path><path d="M10 12h9"></path><path d="M10 17h9"></path></svg>
       </button>
-      <button data-cmd="orderedList" title="Ordered list">
+      <button data-cmd="orderedList" title="Number list">
         <svg viewBox="0 0 24 24"><path d="M5 6h1v4"></path><path d="M4 10h3"></path><path d="M4 14h3l-3 4h3"></path><path d="M11 7h8"></path><path d="M11 12h8"></path><path d="M11 17h8"></path></svg>
       </button>
       <button data-cmd="blockquote" title="Blockquote">
@@ -825,15 +825,15 @@
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group">
-      <button data-cmd="bold"      title="Bold (⌘B)"><span class="tb-text-icon">B</span></button>
-      <button data-cmd="italic"    title="Italic (⌘I)"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
-      <button data-cmd="underline" title="Underline (⌘U)"><span class="tb-text-icon" style="text-decoration:underline;text-underline-offset:2px;font-weight:500;">U</span></button>
+      <button data-cmd="bold"      title="Bold"><span class="tb-text-icon">B</span></button>
+      <button data-cmd="italic"    title="Italic"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
+      <button data-cmd="underline" title="Underline"><span class="tb-text-icon" style="text-decoration:underline;text-underline-offset:2px;font-weight:500;">U</span></button>
       <button data-cmd="strike"    title="Strikethrough"><span class="tb-text-icon" style="text-decoration:line-through;font-weight:500;">S</span></button>
       <button data-cmd="code"      title="Inline code"><span class="tb-inline-code">A</span></button>
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group">
-      <button data-cmd="insertTable" title="Insert 3×3 table">
+      <button data-cmd="insertTable" title="Insert table">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="M5 9.67h14"></path><path d="M5 14.33h14"></path><path d="M9.67 5v14"></path><path d="M14.33 5v14"></path></svg>
       </button>
       <span id="table-controls" style="display:none">
@@ -864,7 +864,7 @@
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
       </span>
-      <button id="btn-spell" title="Check Spelling"><span class="tb-spell-icon">ABC</span></button>
+      <button id="btn-spell" title="Check spelling"><span class="tb-spell-icon">ABC</span></button>
       <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
     </span>
     <span class="tb-sep"></span>
@@ -899,7 +899,7 @@
     </button>
   </div>
   <div id="embed-menu">
-    <input id="embed-url-input" type="text" spellcheck="false">
+    <input id="embed-url-input" type="text" placeholder="Insert media link" spellcheck="false">
     <button id="embed-insert-btn">Insert</button>
   </div>
   <div id="drop-overlay"><span>Drop to upload</span></div>
