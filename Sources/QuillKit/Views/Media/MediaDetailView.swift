@@ -77,7 +77,12 @@ struct MediaDetailView: View {
                     ? (URL(string: media.sourceURL)?.lastPathComponent ?? "")
                     : media.title.rendered
                 metadataRow(label: "Filename", value: name)
-                metadataRow(label: "Type", value: media.mimeType)
+                metadataRow(label: "Type", value: {
+                    if let ext = URL(string: media.sourceURL)?.pathExtension, !ext.isEmpty {
+                        return ext.uppercased()
+                    }
+                    return media.mimeType.split(separator: "/").last.map(String.init)?.uppercased() ?? media.mimeType
+                }())
 
                 if let details = media.mediaDetails,
                    let w = details.width, let h = details.height,
