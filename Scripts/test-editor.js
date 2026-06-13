@@ -417,6 +417,23 @@ describe('formatHTML — entity escaping', () => {
 })
 
 // ---------------------------------------------------------------------------
+// formatHTML — HTML comments (WordPress block comments)
+// ---------------------------------------------------------------------------
+
+describe('formatHTML — HTML comments', () => {
+  test('block comment before an element is preserved', () => {
+    const out = fmt('<!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->')
+    assert.match(out, /<!-- wp:paragraph -->/)
+    assert.match(out, /<!-- \/wp:paragraph -->/)
+  })
+
+  test('block comment with JSON attributes is preserved', () => {
+    const out = fmt('<!-- wp:image {"id":42,"sizeSlug":"full"} --><figure></figure><!-- /wp:image -->')
+    assert.match(out, /<!-- wp:image \{"id":42/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // countStats
 // ---------------------------------------------------------------------------
 

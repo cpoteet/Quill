@@ -2295,18 +2295,34 @@
     // is loaded from WordPress or when the user edits in code view. Cleared on any
     // visual edit (onUpdate) so Tiptap becomes the source of truth again.
     let _rawHTML = null
+    // Last raw HTML set via setContent() or saved from code view. Unlike _rawHTML,
+    // this is never cleared by visual edits — so code view always shows the full
+    // WordPress HTML (including block comments) even after the user has typed in
+    // the visual editor.
+    let _rawHTMLOnLoad = null
+
+    function _codeViewChanged() {
+      clearTimeout(debounce)
+      debounce = setTimeout(() => {
+        const html = document.getElementById('code-editor').value
+        if (window.webkit?.messageHandlers?.contentChanged) {
+          window.webkit.messageHandlers.contentChanged.postMessage(html)
+        }
+      }, 500)
+    }
 
     function _enterCodeView() {
       if (codeViewActive) return
       _closeFindBar()
       codeViewActive = true
-      const codeViewHTML = _rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML())
+      const codeViewHTML = _rawHTMLOnLoad !== null ? _rawHTMLOnLoad : toWordPressHTML(editor.getHTML())
       document.getElementById('code-editor').value = formatHTML(codeViewHTML)
       document.getElementById('editor').style.display = 'none'
       document.getElementById('code-editor').style.display = 'block'
       document.getElementById('btn-code-view').classList.add('active')
       document.getElementById('toolbar').querySelectorAll('button:not(#btn-code-view), select').forEach(el => { el.disabled = true })
       const ta = document.getElementById('code-editor')
+      ta.addEventListener('input', _codeViewChanged)
       ta.selectionStart = ta.selectionEnd = 0
       ta.scrollTop = 0
       ta.focus()
@@ -2316,7 +2332,10 @@
       if (!codeViewActive) return
       codeViewActive = false
       const html = document.getElementById('code-editor').value
+      document.getElementById('code-editor').removeEventListener('input', _codeViewChanged)
+      clearTimeout(debounce)
       _rawHTML = html
+      _rawHTMLOnLoad = html
       editor.commands.setContent(html, false)
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -2345,6 +2364,7 @@
       }
       _closeFindBar()
       _rawHTML = html || null
+      _rawHTMLOnLoad = html || null
       editor.commands.setContent(html || '', false)
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()

@@ -187,6 +187,7 @@ function formatHTML(html, doc) {
   function serialize(node, depth) {
     const pad = '  '.repeat(depth)
     if (node.nodeType === 3) return escapeText(node.textContent)
+    if (node.nodeType === 8) return `<!--${node.nodeValue}-->`
     if (node.nodeType !== 1) return ''
     const tag = node.tagName.toLowerCase()
     const at = attrStr(node)
