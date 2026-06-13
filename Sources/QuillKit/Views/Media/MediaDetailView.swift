@@ -34,28 +34,38 @@ struct MediaDetailView: View {
     // MARK: - Image preview
 
     private var imagePreview: some View {
-        AsyncImage(url: URL(string: media.sourceURL)) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(32)
-            case .failure:
-                VStack(spacing: 10) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 40, weight: .light))
-                        .foregroundStyle(.tertiary)
-                    Text("Image unavailable")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
+        Group {
+            if media.mediaType == "image" {
+                AsyncImage(url: URL(string: media.sourceURL)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .padding(32)
+                    case .failure:
+                        previewUnavailable
+                    default:
+                        ProgressView()
+                    }
                 }
-            default:
-                ProgressView()
+            } else {
+                previewUnavailable
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.wpPanelBg)
+    }
+
+    private var previewUnavailable: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "doc.fill")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(.tertiary)
+            Text("Preview unavailable")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+        }
     }
 
     // MARK: - Metadata panel
@@ -75,7 +85,9 @@ struct MediaDetailView: View {
                     metadataRow(label: "Dimensions", value: "\(w) × \(h) px")
                 }
 
-                altTextRow
+                if media.mediaType == "image" {
+                    altTextRow
+                }
 
                 if !media.date.isEmpty {
                     metadataRow(label: "Uploaded", value: formattedDate(media.date))

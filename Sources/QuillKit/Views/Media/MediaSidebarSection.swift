@@ -307,22 +307,31 @@ private struct MediaSidebarCell: View {
         Color.clear
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
             .overlay {
-                AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
-                        Rectangle().fill(.quaternary)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.tertiary)
-                            )
-                    @unknown default:
-                        Rectangle().fill(.quaternary)
+                if media.mediaType == "image" {
+                    AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        case .failure, .empty:
+                            Rectangle().fill(.quaternary)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.tertiary)
+                                )
+                        @unknown default:
+                            Rectangle().fill(.quaternary)
+                        }
                     }
+                    .clipped()
+                } else {
+                    Rectangle().fill(.quaternary)
+                        .overlay(
+                            Image(systemName: media.mimeType == "application/pdf" ? "doc.richtext.fill" : "doc.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.tertiary)
+                        )
                 }
-                .clipped()
             }
             .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
