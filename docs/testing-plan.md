@@ -830,6 +830,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the end.
 - [ ] No `NavigationSplitView`/`HSplitView` chrome (no drag cursor on the divider) — visual confirm of the layout gotcha.
 - [ ] **Sidebar toggle** — `sidebar.left` button in the editor toolbar hides/shows the sidebar with a slide animation; button remains visible when sidebar is hidden so it can be restored; editor expands to fill the freed space.
+- [ ] **Non-image media panel** — upload a PDF via the Media tab; confirm: sidebar cell shows `doc.richtext.fill` icon (not a broken image), detail view shows `doc.fill` icon + "Preview unavailable" (not "Image unavailable"), and no alt text field appears in the metadata panel.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -1128,6 +1129,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 42 | `FootnotesList`/`FootnoteItem`/`FootnoteMarker` parse priority | 👁 §7.20 (load existing post with footnotes) |
 | 43 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
 | 44 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
+| 45 | Non-image media shows file icon in sidebar cell and "Preview unavailable" in detail view; alt text hidden | 👁 §7.2 |
 
 ---
 
