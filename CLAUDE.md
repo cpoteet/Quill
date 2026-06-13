@@ -27,7 +27,7 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-12 — 233 Swift + 95 JS tests, all passing)
+## Test suite status (2026-06-12 — 233 Swift + 98 JS tests, all passing)
 
 **Swift (233 tests):** 18 suites covering all models, WordPressClient, all storage layers, AIPromptBuilder, AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, and PostStats. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
@@ -137,7 +137,7 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 
 **`_codeViewChanged()`** — debounced `input` listener attached to the textarea on `_enterCodeView` and removed on `_exitCodeView`. Fires `contentChanged` to Swift on a 500 ms debounce, keeping `htmlContent` in sync so ⌘S saves code-view edits without requiring an explicit exit. Uses the same `debounce` variable as the visual editor; `_exitCodeView()` cancels any pending debounce and fires `contentChanged` directly with the final value.
 
-**`formatHTML(html, doc)`** — pure DOM HTML pretty-printer in `editor-transforms.js`, called by `_enterCodeView`. Block elements indented, inline elements inline, void elements self-close, `<pre>` verbatim, HTML comment nodes (nodeType 8) preserved verbatim. 14 JS tests.
+**`formatHTML(html, doc)`** — pure DOM HTML pretty-printer in `editor-transforms.js`, called by `_enterCodeView`. Block elements indented, inline elements inline, void elements self-close, `<pre>` verbatim, HTML comment nodes (nodeType 8) preserved verbatim. 17 JS tests.
 
 **Link extension:** `Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } })` — the `target: null` and `rel: null` override the Tiptap Link default of `target="_blank" rel="noopener noreferrer nofollow"`, which would otherwise be added to every link.
 

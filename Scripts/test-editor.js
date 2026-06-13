@@ -431,6 +431,41 @@ describe('formatHTML — HTML comments', () => {
     const out = fmt('<!-- wp:image {"id":42,"sizeSlug":"full"} --><figure></figure><!-- /wp:image -->')
     assert.match(out, /<!-- wp:image \{"id":42/)
   })
+
+  test('opening comment appears on its own line before the element', () => {
+    const out = fmt('<!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->')
+    const lines = out.split('\n')
+    const commentIdx = lines.findIndex(l => l.includes('<!-- wp:paragraph -->'))
+    const paraIdx = lines.findIndex(l => l.includes('<p>'))
+    assert.ok(commentIdx !== -1, 'opening comment present')
+    assert.ok(paraIdx !== -1, 'paragraph present')
+    assert.ok(commentIdx < paraIdx, 'opening comment comes before the element')
+    assert.ok(!lines[commentIdx].includes('<p>'), 'opening comment is on its own line')
+  })
+
+  test('closing comment appears on its own line after the element', () => {
+    const out = fmt('<!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->')
+    const lines = out.split('\n')
+    const paraIdx = lines.findIndex(l => l.includes('<p>'))
+    const closeIdx = lines.findIndex(l => l.includes('<!-- /wp:paragraph -->'))
+    assert.ok(closeIdx !== -1, 'closing comment present')
+    assert.ok(closeIdx > paraIdx, 'closing comment comes after the element')
+    assert.ok(!lines[closeIdx].includes('<p>'), 'closing comment is on its own line')
+  })
+
+  test('multiple wrapped blocks each keep their block comments', () => {
+    const input = '<!-- wp:paragraph --><p>First</p><!-- /wp:paragraph --><!-- wp:heading --><h2>Second</h2><!-- /wp:heading -->'
+    const out = fmt(input)
+    assert.match(out, /<!-- wp:paragraph -->/)
+    assert.match(out, /<!-- \/wp:paragraph -->/)
+    assert.match(out, /<!-- wp:heading -->/)
+    assert.match(out, /<!-- \/wp:heading -->/)
+    const openP = out.indexOf('<!-- wp:paragraph -->')
+    const closeP = out.indexOf('<!-- /wp:paragraph -->')
+    const openH = out.indexOf('<!-- wp:heading -->')
+    assert.ok(openP < closeP, 'paragraph open before close')
+    assert.ok(closeP < openH, 'paragraph closes before heading opens')
+  })
 })
 
 // ---------------------------------------------------------------------------
