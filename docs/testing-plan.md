@@ -876,6 +876,9 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons re-enable; edited HTML round-trips correctly into Tiptap.
 - [ ] **Edit in code view, switch back:** make a change in the textarea (e.g. add a word), switch to visual — the edit is reflected in the editor.
 - [ ] **Save from code view:** with code view active, use ⌘S — the saved content matches what was in the textarea (not stale Tiptap state).
+- [ ] **Save without exiting code view:** make a change in the code view textarea, do NOT click `</>` to exit, then ⌘S — the edit is pushed to WordPress (not the pre-edit content).
+- [ ] **Block comments preserved:** open a block-based page/post that has blocks Quill doesn't natively support (e.g. a Gallery or Columns block). Enter code view — WordPress block comments (`<!-- wp:gallery -->`, etc.) should be visible in the textarea.
+- [ ] **Block comments survive visual edits:** open a block-based post, make a visual edit (e.g. fix a typo in a paragraph), then enter code view — block comments for unsupported blocks are still present in the textarea.
 - [ ] **Load new post while in code view:** select a different post — code view exits automatically and the new post loads in visual mode.
 - [ ] **Dark mode:** code textarea background and text color match the editor background (no light flash or mis-colored panel).
 - [ ] **Special characters round-trip:** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)

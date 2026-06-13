@@ -27,7 +27,7 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-11 — 233 Swift + 93 JS tests, all passing)
+## Test suite status (2026-06-12 — 233 Swift + 95 JS tests, all passing)
 
 **Swift (233 tests):** 18 suites covering all models, WordPressClient, all storage layers, AIPromptBuilder, AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, and PostStats. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
@@ -125,11 +125,17 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 
 **`_enterCodeView()` / `_exitCodeView()`** — helpers that toggle DOM visibility, the button's `.active` class, and the disabled state of all other toolbar controls. `_exitCodeView()` calls `editor.commands.setContent(textarea.value)` to parse the edited HTML back into Tiptap before re-showing the visual editor.
 
-**`window.getContent()`** returns `textarea.value` when `codeViewActive`, otherwise the normal `toWordPressHTML(editor.getHTML())` — so Swift's save/autosave paths work correctly from either mode.
+**`window.getContent()`** returns `textarea.value` when `codeViewActive`, otherwise `_rawHTML` if set (the last raw HTML loaded from WordPress), or `toWordPressHTML(editor.getHTML())` after visual edits — so Swift's save/autosave paths work correctly from either mode.
 
 **`window.setContent()`** exits code view silently (without round-tripping the textarea through Tiptap) before loading the new HTML, so switching posts always lands in visual mode.
 
-**`formatHTML(html, doc)`** — pure DOM HTML pretty-printer in `editor-transforms.js`, called by `_enterCodeView`. Block elements indented, inline elements inline, void elements self-close, `<pre>` verbatim. 12 JS tests.
+**`_rawHTML`** — stores the last raw HTML passed to `setContent()` or saved from code view. Cleared on every Tiptap `update` event so Tiptap becomes the source of truth after visual edits. Used by `getContent()` so saving without any visual edits sends the original WordPress HTML (including block comments) back verbatim.
+
+**`_rawHTMLOnLoad`** — like `_rawHTML` but never cleared by visual edits. Set in `setContent()` and updated in `_exitCodeView()`. Used by `_enterCodeView()` to seed the textarea, so block comments (e.g. `<!-- wp:gallery -->`) remain visible in code view even after the user has typed in the visual editor. After exiting code view, `_rawHTMLOnLoad` is updated to the code-view-edited HTML so subsequent re-entries show the latest code.
+
+**`_codeViewChanged()`** — debounced `input` listener attached to the textarea on `_enterCodeView` and removed on `_exitCodeView`. Fires `contentChanged` to Swift on a 500 ms debounce, keeping `htmlContent` in sync so ⌘S saves code-view edits without requiring an explicit exit. Uses the same `debounce` variable as the visual editor; `_exitCodeView()` cancels any pending debounce and fires `contentChanged` directly with the final value.
+
+**`formatHTML(html, doc)`** — pure DOM HTML pretty-printer in `editor-transforms.js`, called by `_enterCodeView`. Block elements indented, inline elements inline, void elements self-close, `<pre>` verbatim, HTML comment nodes (nodeType 8) preserved verbatim. 14 JS tests.
 
 **Link extension:** `Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } })` — the `target: null` and `rel: null` override the Tiptap Link default of `target="_blank" rel="noopener noreferrer nofollow"`, which would otherwise be added to every link.
 
