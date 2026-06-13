@@ -44,9 +44,13 @@ public struct ContentView: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            SidebarView()
-                .frame(width: 240)
-            SoftPanelBoundary()
+            if appState.isSidebarVisible {
+                SidebarView()
+                    .frame(width: 240)
+                    .transition(.move(edge: .leading))
+                SoftPanelBoundary()
+                    .transition(.move(edge: .leading))
+            }
             Group {
                 if appState.selectedSection == .media {
                     if let media = appState.selectedMedia {
@@ -94,6 +98,7 @@ public struct ContentView: View {
             }
             .frame(minWidth: 500, maxWidth: .infinity)
         }
+        .animation(.easeInOut(duration: 0.2), value: appState.isSidebarVisible)
         .frame(minWidth: 900, minHeight: 600)
         .background(Color.wpPanelBg)
         .background(WindowTitleBarFix())
