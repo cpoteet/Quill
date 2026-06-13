@@ -716,6 +716,18 @@ Guards the C1 code-view corruption bug: text nodes and attribute values must be 
 | `attribute value with " is escaped` | `"` inside attribute value → `&quot;` |
 | `attribute value with & is escaped` | `&` inside attribute value → `&amp;` |
 
+### `formatHTML` — HTML comments (5 tests)
+
+Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph -->` etc.) are HTML comment nodes (nodeType 8); if `formatHTML` drops them, code view silently strips all Gutenberg block markup.
+
+| Test | What it checks |
+|---|---|
+| `block comment before an element is preserved` | `<!-- wp:paragraph -->` and `<!-- /wp:paragraph -->` survive `formatHTML` |
+| `block comment with JSON attributes is preserved` | `<!-- wp:image {"id":42,"sizeSlug":"full"} -->` — JSON payload inside comment is not mangled |
+| `opening comment appears on its own line before the element` | Opening comment is a separate line above the element, not concatenated inline |
+| `closing comment appears on its own line after the element` | Closing comment is a separate line below the element, not concatenated inline |
+| `multiple wrapped blocks each keep their block comments` | Two blocks each wrapped in open/close comments: all four comments present, in correct order |
+
 ### `countStats` (8 tests)
 
 | Test | What it checks |
@@ -1105,14 +1117,15 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 33 | External link navigation restricted to http/https/mailto | ✅ `EditorCoordinatorTests` (all 7) + 👁 §7.5 |
 | 34 | `uploadMedia` streams from file, no RAM buffering | ✅ `WordPressClientTests.uploadMediaStreamsFromFileNotHttpBody` + 👁 §7.4 |
 | 35 | Code view entity escaping (< & > " in text/attrs) | ✅ `formatHTML — entity escaping` (5 JS tests) + 👁 §7.6 |
-| 36 | Stats freeze in code view; refresh on exit | ✅ `countStats` (8 JS tests) + 👁 §7.16 |
-| 37 | Find & replace decorations don't re-fire `update` | ✅ `findMatches` (7 JS tests) + 👁 §7.18 |
-| 38 | Embed figure passes through, not treated as image | ✅ JS embed tests + 👁 §7.19 |
-| 39 | Footnote markers renumbered by `toWordPressHTML` | ✅ JS footnote tests + 👁 §7.20 |
-| 40 | Footnotes list excluded from `wp-block-list` | ✅ JS `footnotes list does not get wp-block-list` |
-| 41 | `FootnotesList`/`FootnoteItem`/`FootnoteMarker` parse priority | 👁 §7.20 (load existing post with footnotes) |
-| 42 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
-| 43 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
+| 36 | Block comments preserved by `formatHTML` (nodeType 8) | ✅ `formatHTML — HTML comments` (5 JS tests) + 👁 §7.6 |
+| 37 | Stats freeze in code view; refresh on exit | ✅ `countStats` (8 JS tests) + 👁 §7.16 |
+| 38 | Find & replace decorations don't re-fire `update` | ✅ `findMatches` (7 JS tests) + 👁 §7.18 |
+| 39 | Embed figure passes through, not treated as image | ✅ JS embed tests + 👁 §7.19 |
+| 40 | Footnote markers renumbered by `toWordPressHTML` | ✅ JS footnote tests + 👁 §7.20 |
+| 41 | Footnotes list excluded from `wp-block-list` | ✅ JS `footnotes list does not get wp-block-list` |
+| 42 | `FootnotesList`/`FootnoteItem`/`FootnoteMarker` parse priority | 👁 §7.20 (load existing post with footnotes) |
+| 43 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
+| 44 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
 
 ---
 
