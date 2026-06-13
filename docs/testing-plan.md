@@ -829,6 +829,7 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Switching to Media hides the post list/search/toolbar and shows the thumbnail grid (the `else` branch gotcha).
 - [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the end.
 - [ ] No `NavigationSplitView`/`HSplitView` chrome (no drag cursor on the divider) — visual confirm of the layout gotcha.
+- [ ] **Sidebar toggle** — `sidebar.left` button in the editor toolbar hides/shows the sidebar with a slide animation; button remains visible when sidebar is hidden so it can be restored; editor expands to fill the freed space.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -1105,6 +1106,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 21 | AI insert at block boundaries (no empty `<p>`) | 👁 §7.11 |
 | 22 | Media grid `Color.clear` layout | 👁 §7.2 |
 | 23 | Context-menu AutoFill leakage | 👁 §7.14 |
+| 24 | Sidebar toggle hides panel and keeps button visible | 👁 §7.2 |
 | 24 | macOS 26 spell-check KVC crash | 👁 §7.15 |
 | 25 | Ephemeral session (no keychain prompts) | 👁 §7.1 |
 | 26 | Sidebar not `List`; layout not `NavigationSplitView` | 👁 §7.2 |
