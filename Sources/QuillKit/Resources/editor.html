@@ -2300,6 +2300,10 @@
     // WordPress HTML (including block comments) even after the user has typed in
     // the visual editor.
     let _rawHTMLOnLoad = null
+    // Textarea value when code view was opened. Used to detect whether the user
+    // actually edited anything — if unchanged on exit, we skip setContent so
+    // Tiptap's visual state is preserved unchanged.
+    let _codeViewOriginal = null
 
     function _codeViewChanged() {
       clearTimeout(debounce)
@@ -2315,8 +2319,18 @@
       if (codeViewActive) return
       _closeFindBar()
       codeViewActive = true
-      const codeViewHTML = _rawHTMLOnLoad !== null ? _rawHTMLOnLoad : toWordPressHTML(editor.getHTML())
-      document.getElementById('code-editor').value = formatHTML(codeViewHTML)
+      // _rawHTML is cleared (set to null) on every Tiptap update event, so null means
+      // the user has made visual edits since the last load/code-view save.
+      // Always run the source through formatHTML for a readable, indented display.
+      // _rawHTMLOnLoad is never updated unless the user edits in code view, so
+      // formatHTML(_rawHTMLOnLoad) is idempotent across repeated enter/exit cycles.
+      const hasVisualEdits = _rawHTML === null
+      const sourceHTML = (!hasVisualEdits && _rawHTMLOnLoad !== null)
+        ? _rawHTMLOnLoad
+        : toWordPressHTML(editor.getHTML())
+      const codeViewHTML = formatHTML(sourceHTML)
+      _codeViewOriginal = codeViewHTML
+      document.getElementById('code-editor').value = codeViewHTML
       document.getElementById('editor').style.display = 'none'
       document.getElementById('code-editor').style.display = 'block'
       document.getElementById('btn-code-view').classList.add('active')
@@ -2334,18 +2348,25 @@
       const html = document.getElementById('code-editor').value
       document.getElementById('code-editor').removeEventListener('input', _codeViewChanged)
       clearTimeout(debounce)
-      _rawHTML = html
-      _rawHTMLOnLoad = html
-      editor.commands.setContent(html, false)
+      const userEdited = html !== _codeViewOriginal
+      _codeViewOriginal = null
+      if (userEdited) {
+        // User changed the HTML — parse it back into Tiptap and update raw stores.
+        _rawHTML = html
+        _rawHTMLOnLoad = html
+        editor.commands.setContent(html, false)
+      }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
       document.getElementById('btn-code-view').classList.remove('active')
       document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       editor.commands.focus()
-      // setContent(html, false) suppresses the update event, so Swift never sees
-      // the edited HTML. Fire contentChanged manually so htmlContent stays current.
+      // Always fire contentChanged so Swift's htmlContent stays current.
+      // If not edited, getContent() returns the pre-code-view value unchanged.
       if (window.webkit?.messageHandlers?.contentChanged) {
-        window.webkit.messageHandlers.contentChanged.postMessage(html)
+        window.webkit.messageHandlers.contentChanged.postMessage(
+          userEdited ? html : window.getContent()
+        )
       }
       _postStats()
     }

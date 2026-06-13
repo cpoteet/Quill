@@ -32,6 +32,16 @@ public struct PostListRow: View {
     private var subtitle: String {
         switch item {
         case .remote(let post):
+            if post.type == "page" {
+                switch post.status {
+                case "publish": return "Published"
+                case "draft":   return "Draft"
+                case "private": return "Private"
+                case "pending": return "Pending"
+                case "future":  return "Scheduled"
+                default:        return post.status.capitalized
+                }
+            }
             let date = formattedDate(post.date)
             switch post.status {
             case "pending": return date + " · Pending"

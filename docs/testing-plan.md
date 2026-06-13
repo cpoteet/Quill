@@ -870,18 +870,34 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 ### 7.6 Editor — code view
 
+**UI & general behaviour (both)**
 - [ ] `</>` button appears in the toolbar's utility group (left of the image "Add" button).
 - [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are disabled while in code view; the `</>` button shows the active state.
 - [ ] HTML in the textarea is pretty-printed: block elements on their own lines, inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested, `<pre>` content left verbatim. Top-level blocks separated by a blank line.
 - [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons re-enable; edited HTML round-trips correctly into Tiptap.
-- [ ] **Edit in code view, switch back:** make a change in the textarea (e.g. add a word), switch to visual — the edit is reflected in the editor.
-- [ ] **Save from code view:** with code view active, use ⌘S — the saved content matches what was in the textarea (not stale Tiptap state).
-- [ ] **Save without exiting code view:** make a change in the code view textarea, do NOT click `</>` to exit, then ⌘S — the edit is pushed to WordPress (not the pre-edit content).
-- [ ] **Block comments preserved:** open a block-based page/post that has blocks Quill doesn't natively support (e.g. a Gallery or Columns block). Enter code view — WordPress block comments (`<!-- wp:gallery -->`, etc.) should be visible in the textarea.
-- [ ] **Block comments survive visual edits:** open a block-based post, make a visual edit (e.g. fix a typo in a paragraph), then enter code view — block comments for unsupported blocks are still present in the textarea.
-- [ ] **Load new post while in code view:** select a different post — code view exits automatically and the new post loads in visual mode.
-- [ ] **Dark mode:** code textarea background and text color match the editor background (no light flash or mis-colored panel).
-- [ ] **Special characters round-trip:** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)
+- [ ] **Code edit reflected in visual editor (both):** make a change directly in the code textarea, exit code view — the visual editor reflects the change.
+- [ ] **No content wipe on exit without editing (both):** enter code view, do not change anything, exit — the visual editor content is completely unchanged.
+- [ ] **No compounding whitespace (both):** open a post/page, enter code view, exit without editing, repeat several times — the HTML formatting does not accumulate extra blank lines or whitespace each cycle.
+- [ ] **Save from code view (both):** with code view active, use ⌘S — the saved content matches what was in the textarea (not stale Tiptap state).
+- [ ] **Save without exiting code view (both):** make a change in the code view textarea, do NOT click `</>` to exit, then ⌘S — the edit is pushed to WordPress.
+- [ ] **Load new post while in code view (both):** select a different post/page — code view exits automatically and the new post loads in visual mode.
+- [ ] **Dark mode (both):** code textarea background and text color match the editor background (no light flash or mis-colored panel).
+- [ ] **Special characters round-trip (both):** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)
+
+**Block posts/pages only**
+- [ ] **Block comments visible (block only):** open a block-based post/page with unsupported blocks (e.g. Gallery, Columns). Enter code view **without making any visual edit first** — WordPress block comments (`<!-- wp:gallery -->`, etc.) are visible in the textarea.
+- [ ] **Block comments gone after visual edit (block only):** open a block-based post/page, make a visual edit (e.g. fix a typo), then enter code view — block comments are **gone**. This is expected: Tiptap becomes the source of truth after any visual edit and does not preserve block comments.
+
+**Non-block pages only**
+- [ ] **Non-block page formatting (non-block only):** open a page with no Gutenberg block comments (e.g. an About page with plain paragraphs). Enter code view — the HTML is indented and readable across multiple lines, not compacted onto a single line.
+
+**Both — visual edit interaction**
+- [ ] **Visual edit appears in code view (both):** make a visual edit, then open code view — the edit is visible in the HTML (code view shows Tiptap's current content, not the pre-edit snapshot).
+- [ ] **Visual edit round-trip (both):** make a visual edit → save → close the post/page → reopen — visual content is intact.
+- [ ] **Save without touching code view (both):** make only visual edits, never open code view → save — content saves correctly with no code-view interference.
+
+**Both — save round-trip**
+- [ ] **Code edit round-trip (both):** edit in code view → exit → save to WordPress → close the post/page → reopen → enter code view — HTML is still formatted (not compacted onto one line) and the edit is present.
 
 ### 7.7 Save / publish / draft / schedule
 
