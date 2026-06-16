@@ -226,6 +226,16 @@ To replace matches, type in the **Replace** field and click **Replace** to repla
 
 Click the **ABC** button in the toolbar to check spelling. Right-clicking on any word in the editor while editing shows a context menu with spelling suggestions when a spelling error is detected under the cursor.
 
+### Code View
+
+Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML that will be saved — including Gutenberg block comments such as `<!-- wp:paragraph -->` — formatted and indented for readability.
+
+**Block comments are preserved.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. This means you can make visual edits to a post and its block structure remains intact when saved back to WordPress.
+
+**Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type — you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, the visual editor reloads from your edited HTML.
+
+If you enter and exit code view without making any changes, the visual editor is left exactly as it was — Quill detects the no-op and skips the reload entirely.
+
 ---
 
 ## Content Elements
