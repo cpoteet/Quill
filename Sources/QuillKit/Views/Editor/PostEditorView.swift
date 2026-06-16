@@ -282,7 +282,10 @@ public struct PostEditorView: View {
             if appState.aiEnabled {
                 Divider().frame(height: 20)
                 Button {
-                    if title.isEmpty && htmlContent.isEmpty {
+                    let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let titleIsEmpty = title.isEmpty || title == "Untitled"
+                    let contentIsEmpty = titleIsEmpty && (trimmed.isEmpty || trimmed == "<p></p>")
+                    if contentIsEmpty {
                         isAISheetOpen = true
                     } else {
                         showAIReplaceAlert = true
