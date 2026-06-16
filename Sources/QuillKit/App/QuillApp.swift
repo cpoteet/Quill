@@ -65,6 +65,11 @@ public struct QuillApp: App {
                 }
                 .keyboardShortcut("f", modifiers: .command)
             }
+            CommandGroup(replacing: .help) {
+                Button("Quill Help") {
+                    NSWorkspace.shared.open(URL(string: "https://cpoteet.github.io/Quill-Releases/docs.html")!)
+                }
+            }
             CommandGroup(replacing: .newItem) {
                 Button("New Post") {
                     appState.createNewDraft(type: "post", draftStore: appServices.draftStore)
