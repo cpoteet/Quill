@@ -126,13 +126,12 @@ Above the title field is the **toolbar**, which contains:
 |---|---|
 | Sidebar toggle | Shows or hides the left sidebar |
 | Status badge | Displays the current post status (Draft, Published, Scheduled, etc.) |
-| Save Draft / ⌘S | Saves the current post as a local draft or syncs changes to WordPress |
+| Save Draft | Saves the current post as a local draft or syncs changes to WordPress |
 | Revert | Discards unsaved changes and restores the last saved version |
 | Preview | Opens the current post's preview URL in your browser |
-| Publish / ⌘⇧P | Publishes or updates the post on your WordPress site |
+| Publish | Publishes or updates the post on your WordPress site |
 | Settings toggle | Shows or hides the right-side settings panel |
 | ✦ | Opens the AI writing assistant (visible only when an Anthropic API key is configured) |
-| Image | Opens the media library to insert an image at the cursor position |
 
 A small amber dot appears next to Save Draft when you have unsaved local changes.
 
