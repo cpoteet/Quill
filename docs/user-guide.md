@@ -22,7 +22,7 @@ A reference manual for Quill, the native macOS WordPress editor.
 
 ## Introduction
 
-Quill is a native macOS application for writing and publishing content on self-hosted WordPress sites. It replaces the browser-based Gutenberg editor with a focused, distraction-free writing environment built for the Mac, with full support for posts, pages, media, taxonomies, scheduling, and AI-assisted writing.
+Quill is a native macOS application for writing and publishing content on self-hosted WordPress sites. It replaces the browser-based Gutenberg editor with a focused, distraction-free writing environment built for the Mac, with full support for posts, pages, media, scheduling, and AI-assisted writing.
 
 Quill is built around a simple premise: the act of writing deserves a dedicated tool. Rather than competing with WordPress's block editor for layout and site-building tasks, Quill concentrates on what most WordPress authors actually spend their time doing: drafting, editing, and publishing content. The result is an interface that stays out of your way and lets you focus on the work.
 
@@ -80,8 +80,6 @@ Quill connects to your WordPress site using an **Application Password**, a crede
 4. In the **New Application Password Name** field, enter a name to identify this connection, such as "Quill".
 5. Click **Add New Application Password**.
 6. WordPress will display the generated password. **Copy it now.** It will not be shown again.
-
-> Application Passwords require WordPress 7.0 or later (officially), and your site must use HTTPS.
 
 ### Step 2: Enter Your Credentials in Quill
 
@@ -230,11 +228,11 @@ Click the **ABC** button in the toolbar to check spelling. Right-clicking on any
 
 Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML that will be saved — including Gutenberg block comments such as `<!-- wp:paragraph -->` — formatted and indented for readability.
 
-**Block comments are preserved.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. This means you can make visual edits to a post and its block structure remains intact when saved back to WordPress.
+**Block comments are preserved.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. 
 
-**Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type — you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, the visual editor reloads from your edited HTML.
+**Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type — you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, the visual editor reloads from your edited HTML. If you enter and exit code view without making any changes, the visual editor is left exactly as it was — Quill detects the no-op and skips the reload entirely.
 
-If you enter and exit code view without making any changes, the visual editor is left exactly as it was — Quill detects the no-op and skips the reload entirely.
+> If your post or page has block comments and you make visual edits, the block comments will be erased. Only edit those posts or pages in code view to retain the comments.
 
 ---
 
