@@ -46,7 +46,7 @@ Quill is free.
 
 ### Requirements
 
-- **macOS:** macOS 26 (Tahoe) or later. Earlier versions of macOS may work but are not officially supported.
+- **macOS:** macOS 13 (Ventura) or later.
 - **WordPress:** A self-hosted WordPress site running WordPress 7.0 or later. Earlier versions may work but are not officially supported. Your site must be accessible over HTTPS.
 - **WordPress.com:** Not supported. Quill connects only to self-hosted WordPress installations.
 
@@ -413,7 +413,7 @@ The metadata panel shows:
 | Uploaded | The date the file was uploaded |
 | URL | The full URL of the file, with a copy button |
 
-**Alt text** can be edited directly in the detail panel. Changes are saved to WordPress automatically as you type, with no save button required.
+**Alt text** can be edited directly in the detail panel. Press **Return** or click away from the field to save the change to WordPress.
 
 ### Uploading
 

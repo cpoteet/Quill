@@ -235,4 +235,5 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 - Plan (AI writing): `docs/superpowers/plans/2026-05-23-ai-writing.md`
 - Spec (AI style guide caching): `docs/superpowers/specs/2026-05-24-ai-style-guide-caching-design.md`
 - Plan (AI style guide caching): `docs/superpowers/plans/2026-05-24-ai-style-guide-caching.md`
-- Public docs: `docs/Quill.md`
+- Public docs (developer/build): `docs/Quill.md`
+- End-user guide: `docs/user-guide.md`
