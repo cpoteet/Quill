@@ -46,7 +46,7 @@ Quill is free.
 
 ### Requirements
 
-- **macOS:** macOS 13 (Ventura) or later.
+- **macOS:** macOS 26 (Tahoe) or later. Earlier versions of macOS may work but are not officially supported.
 - **WordPress:** A self-hosted WordPress site running WordPress 7.0 or later. Earlier versions may work but are not officially supported. Your site must be accessible over HTTPS.
 - **WordPress.com:** Not supported. Quill connects only to self-hosted WordPress installations.
 
