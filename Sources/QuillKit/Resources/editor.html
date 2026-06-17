@@ -341,7 +341,7 @@
     #toolbar-tooltip::before {
       content: "";
       position: absolute;
-      left: 50%;
+      left: var(--arrow-offset, 50%);
       width: 7px;
       height: 7px;
       background: rgba(24,24,27,0.96);
@@ -876,7 +876,7 @@
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group" id="ai-toolbar-group" style="display:none">
-      <button id="btn-generate" title="Generate post with Claude">
+      <button id="btn-generate" title="Generate content">
         <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
       </button>
       <button id="btn-evaluate" title="Evaluate writing quality">
@@ -1842,10 +1842,14 @@
         const showAbove = belowTop + tipRect.height > window.innerHeight && aboveTop > margin
         const top = showAbove ? aboveTop : belowTop
         const half = tipRect.width / 2
+        const idealLeft = rect.left + rect.width / 2
         const left = Math.min(
-          Math.max(rect.left + rect.width / 2, half + margin),
+          Math.max(idealLeft, half + margin),
           window.innerWidth - half - margin
         )
+        // Arrow points at the button center regardless of how far the tooltip was clamped
+        const arrowPx = idealLeft - (left - half)
+        tip.style.setProperty('--arrow-offset', `${arrowPx}px`)
         tip.style.left = `${left}px`
         tip.style.top = `${top}px`
         tip.classList.toggle('above', showAbove)

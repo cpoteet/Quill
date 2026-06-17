@@ -38,7 +38,7 @@ public struct EvaluationPanel: View {
 
     private var header: some View {
         HStack {
-            Text("Post Evaluation")
+            Text("Content Evaluation")
                 .font(.system(size: 12, weight: .semibold))
             Spacer()
             Button("Close") { onClose() }
