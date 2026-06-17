@@ -874,6 +874,15 @@
         <span>Add</span>
       </button>
     </span>
+    <span class="tb-sep"></span>
+    <span class="tb-group" id="ai-toolbar-group" style="display:none">
+      <button id="btn-generate" title="Generate post with Claude">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+      <button id="btn-evaluate" title="Evaluate writing quality">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      </button>
+    </span>
   </div>
   <div id="heading-menu" role="menu">
     <button class="heading-menu-item active" data-heading-level="0" role="menuitem">
@@ -2373,6 +2382,25 @@
 
     document.getElementById('btn-code-view').addEventListener('click', () => {
       codeViewActive ? _exitCodeView() : _enterCodeView()
+    })
+
+    // AI toolbar buttons
+    window.setAIEnabled = enabled => {
+      document.getElementById('ai-toolbar-group').style.display = enabled ? '' : 'none'
+    }
+    window.setEvaluating = active => {
+      document.getElementById('btn-evaluate').disabled = active
+    }
+    window.setEvaluationPanelOpen = open => {
+      document.getElementById('btn-evaluate').classList.toggle('active', open)
+    }
+    document.getElementById('btn-generate').addEventListener('mousedown', e => {
+      e.preventDefault()
+      window.webkit.messageHandlers.triggerGenerate.postMessage({})
+    })
+    document.getElementById('btn-evaluate').addEventListener('mousedown', e => {
+      e.preventDefault()
+      window.webkit.messageHandlers.triggerEvaluate.postMessage({})
     })
 
     window.setContent = html => {
