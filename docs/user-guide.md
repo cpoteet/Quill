@@ -129,8 +129,6 @@ Above the title field is the **toolbar**, which contains:
 | Preview | Opens the current post's preview URL in your browser |
 | Publish | Publishes or updates the post on your WordPress site |
 | Settings toggle | Shows or hides the right-side settings panel |
-| Pencil | Opens the AI content generator (visible only when an Anthropic API key is configured) |
-| Checkmark-circle | Opens the AI writing evaluator (visible only when an Anthropic API key is configured) |
 
 A small amber dot appears next to Save Draft when you have unsaved local changes.
 
@@ -199,6 +197,8 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | ABC (Spell check) | Runs a spell check on the document |
 | </> (Code view) | Toggles between the rich text editor and a raw HTML view |
 | Image | Opens the media library picker to insert an image. See [Images](#images) in Content Elements. |
+| Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features). |
+| Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features). |
 
 The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. See [Images](#images) in Content Elements for full detail on resizing, captions, and alt text.
 
