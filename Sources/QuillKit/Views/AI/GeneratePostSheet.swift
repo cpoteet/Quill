@@ -15,17 +15,10 @@ struct GeneratePostSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Generate Post with Claude")
+            Text("Generate Content with Claude")
                 .font(.headline)
 
             ZStack(alignment: .topLeading) {
-                if prompt.isEmpty {
-                    Text("Describe the post you want to write…")
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 8)
-                        .padding(.leading, 4)
-                        .allowsHitTesting(false)
-                }
                 TextEditor(text: $prompt)
                     .font(.body)
                     .frame(minHeight: 80, maxHeight: 160)

@@ -171,6 +171,7 @@ public struct PostEditorView: View {
                     onFindingSelected: { quote in
                         guard let data = try? JSONEncoder().encode(quote),
                               let json = String(data: data, encoding: .utf8) else { return }
+                        if let wv = editorWebView { wv.window?.makeFirstResponder(wv) }
                         editorWebView?.evaluateJavaScript(
                             "window.findAndSelectText(\(json))", completionHandler: nil)
                     }
