@@ -180,6 +180,19 @@ An **Accept / Discard** bar appears below the result:
 
 If you navigate away or close the editor before accepting, the original text is restored automatically.
 
+#### Post Evaluation
+
+Click the ✦ button in the toolbar and choose **Evaluate Post** (or click it while no text is selected in any post with enough content). Quill sends the full post to Claude and displays an **Evaluation panel** on the right:
+
+- A short prose **summary** of overall writing quality
+- A list of specific **findings** — each tagged with a category (Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone) and an optional suggested rewrite
+
+**Click any finding card** to jump to that sentence in the editor. The full sentence is selected and scrolled into view so you can see the finding in context.
+
+Click **↺ Re-evaluate** at the bottom of the panel to run another pass (useful after making edits).
+
+If a writing style guide has been generated from your sample posts, findings that are consistent with your established style are suppressed — so your intentional voice isn't flagged as a problem.
+
 ### Drag and drop
 
 Drag any image file from Finder directly into the editor. Quill will:

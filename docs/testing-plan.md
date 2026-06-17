@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-11 — 233 Swift tests + 93 JS editor tests, all passing._
+_Last updated: 2026-06-17 — 259 Swift tests + 98 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 233 tests across 18 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (93 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 259 tests across 18 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (98 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (233 tests, 18 suites)
+## Swift test suite (259 tests, 18 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -64,7 +64,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 24 | `parseGenerateResponse` edge cases, system prompt, all prompt builders |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 50 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -374,7 +374,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (24 tests)
+### 12. AI — `AIPromptBuilderTests` (50 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -423,6 +423,42 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `styleGuidePromptNumbersSamples` | `--- Sample 1 ---` / `--- Sample 2 ---` numbering |
 | `styleGuidePromptWithEmptySamples` | 0 samples → no crash, empty content |
 | `styleGuidePromptWordLimit` | 150-word limit mentioned in prompt |
+
+#### `parseEvaluationResponse` (15 tests)
+
+| Test | What it checks |
+|---|---|
+| `happyPathTwoFindings` | Standard format parsed to `EvaluationResult` with 2 findings |
+| `emptyFindingsReturnsResultWithNoFindings` | Empty `FINDINGS:` block → result with 0 findings, not nil |
+| `missingSummaryMarkerReturnsNil` | No `SUMMARY:` → `nil` |
+| `missingFindingsMarkerReturnsNil` | No `FINDINGS:` → `nil` |
+| `emptySummaryReturnsNil` | `SUMMARY:` with no text → `nil` |
+| `caseInsensitiveMarkers` | `summary:` / `findings:` lowercase accepted |
+| `findingWithoutSuggestionHasNilSuggestion` | Omitting `SUGGESTION` field → `finding.suggestion == nil` |
+| `findingWithEmptySuggestionFieldHasNilSuggestion` | `SUGGESTION:` with no text → `nil` |
+| `nonQuoteLinesBetweenFindingsAreSkipped` | Non-`QUOTE:` lines between findings ignored |
+| `findingsMarkerScopedAfterSummaryMarker` | Stray `FINDINGS:` before `SUMMARY:` not used as real marker |
+| `anchorFieldIsParsedIntoFinding` | Full `ANCHOR:` field parsed into `finding.anchor` |
+| `anchorFieldIsNilWhenOmitted` | No `ANCHOR:` field → `finding.anchor == nil` |
+| `anchorFieldStripsOuterQuotes` | Surrounding `"` stripped from ANCHOR value |
+| `anchorFieldEmptyStringBecomesNil` | `ANCHOR: ""` → `nil` (not empty string) |
+| `anchorFieldCaseInsensitivePrefix` | Lowercase `anchor:` accepted |
+
+#### `evaluatePostPrompt` (12 tests)
+
+| Test | What it checks |
+|---|---|
+| `promptIncludesTitle` | Post title embedded in prompt |
+| `promptStripsHTMLTags` | HTML removed, text content preserved |
+| `promptDecodesHTMLEntities` | `&amp;` / `&lt;` / `&gt;` decoded |
+| `promptDecodesSmartQuoteEntities` | `&ldquo;` / `&rdquo;` / `&rsquo;` decoded to Unicode typography chars |
+| `promptDecodesTypographicDashAndEllipsis` | `&ndash;` / `&mdash;` / `&hellip;` decoded |
+| `promptNamesAllFiveCategories` | Grammar, Clarity, Readability, Wordiness, Tone all named |
+| `promptIncludesSummaryAndFindingsFormatInstructions` | `SUMMARY:` / `FINDINGS:` / `QUOTE:` / `ISSUE:` format spec present |
+| `promptIncludesAnchorFormatSpec` | `ANCHOR:` format instruction present |
+| `promptIncludesStyleGuideWhenProvided` | Non-nil guide embedded with "established writing style" framing |
+| `promptOmitsStyleGuideBlockWhenNil` | `nil` guide → no style block in prompt |
+| `promptOmitsStyleGuideBlockWhenEmpty` | Empty string guide → no style block |
 
 ---
 
@@ -985,6 +1021,9 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above other apps when you switch away (child-window gotcha); no rectangular shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode (`.plain` style gotcha).
 - [ ] Style guide: select sample posts in Settings → guide generated once; re-saving with unchanged samples makes **no** Claude call; changing the site URL clears samples and guide.
 - [ ] **Panel survives sidebar re-renders:** trigger the AI result panel, then type in the sidebar search field — the panel stays visible and positioned correctly without disappearing or duplicating. (H1 regression guard: `@State` ensures one panel instance per view identity.)
+- [ ] **Post Evaluation:** click ✦ → Evaluate Post; panel shows summary + findings; clicking a finding card jumps to that sentence in the editor (full sentence selected, not just the anchor words); selection scrolls into view.
+- [ ] Evaluation respects style guide: if a sample-post style is saved, findings that match the author's established voice should not appear (e.g. intentionally conversational tone not flagged as "Wordiness").
+- [ ] Finding count is reasonable (5–12 for a typical post, not 45; not 2 unless truly flawless); clicking every finding card navigates to the correct sentence.
 
 ### 7.12 Settings panel & preferences
 
@@ -1130,6 +1169,9 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 43 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
 | 44 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
 | 45 | Non-image media shows file icon in sidebar cell and "Preview unavailable" in detail view; alt text hidden | 👁 §7.2 |
+| 46 | Evaluation `ANCHOR:` field parsed to `finding.anchor`; omission → `nil` | ✅ `EvaluationParserTests.anchorFieldIsParsedIntoFinding` + `.anchorFieldIsNilWhenOmitted` |
+| 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
+| 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
 
 ---
 

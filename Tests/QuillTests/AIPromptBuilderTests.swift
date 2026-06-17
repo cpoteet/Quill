@@ -265,6 +265,71 @@ import Testing
         let result = AIPromptBuilder.parseEvaluationResponse(input)
         #expect(result?.summary == "Real summary.")
     }
+
+    @Test func anchorFieldIsParsedIntoFinding() {
+        let input = """
+        SUMMARY:
+        A solid draft with a few issues.
+
+        FINDINGS:
+        QUOTE: "was completed by the team" | ANCHOR: "completed by the" | ISSUE: Passive Voice | SUGGESTION: the team completed
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.count == 1)
+        #expect(result?.findings[0].anchor == "completed by the")
+        #expect(result?.findings[0].quote == "was completed by the team")
+        #expect(result?.findings[0].issue == "Passive Voice")
+        #expect(result?.findings[0].suggestion == "the team completed")
+    }
+
+    @Test func anchorFieldIsNilWhenOmitted() {
+        let input = """
+        SUMMARY:
+        Good draft.
+
+        FINDINGS:
+        QUOTE: "in order to achieve" | ISSUE: Wordiness
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.first?.anchor == nil)
+    }
+
+    @Test func anchorFieldStripsOuterQuotes() {
+        let input = """
+        SUMMARY:
+        Fine post.
+
+        FINDINGS:
+        QUOTE: "some longer phrase here" | ANCHOR: "some phrase" | ISSUE: Clarity
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        // Surrounding quote marks are stripped; the literal text is preserved
+        #expect(result?.findings.first?.anchor == "some phrase")
+    }
+
+    @Test func anchorFieldEmptyStringBecomesNil() {
+        let input = """
+        SUMMARY:
+        Fine post.
+
+        FINDINGS:
+        QUOTE: "some phrase" | ANCHOR: "" | ISSUE: Clarity
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.first?.anchor == nil)
+    }
+
+    @Test func anchorFieldCaseInsensitivePrefix() {
+        let input = """
+        SUMMARY:
+        Fine post.
+
+        FINDINGS:
+        QUOTE: "phrase" | anchor: "the phrase" | ISSUE: Clarity
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.first?.anchor == "the phrase")
+    }
 }
 
 // MARK: - evaluatePostPrompt
@@ -272,24 +337,45 @@ import Testing
 @Suite struct EvaluatePostPromptTests {
 
     @Test func promptIncludesTitle() {
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "My Article", html: "<p>Body.</p>")
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "My Article", html: "<p>Body.</p>", styleGuide: nil)
         #expect(prompt.contains("My Article"))
     }
 
     @Test func promptStripsHTMLTags() {
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>Hello <strong>world</strong></p>")
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>Hello <strong>world</strong></p>", styleGuide: nil)
         #expect(!prompt.contains("<p>"))
         #expect(!prompt.contains("<strong>"))
         #expect(prompt.contains("Hello world"))
     }
 
     @Test func promptDecodesHTMLEntities() {
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>a &amp; b &lt;c&gt;</p>")
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>a &amp; b &lt;c&gt;</p>", styleGuide: nil)
         #expect(prompt.contains("a & b <c>"))
     }
 
+    @Test func promptDecodesSmartQuoteEntities() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(
+            title: "T",
+            html: "<p>He said &ldquo;hello&rdquo; and it&rsquo;s fine.</p>",
+            styleGuide: nil
+        )
+        #expect(prompt.contains("\u{201C}hello\u{201D}"))
+        #expect(prompt.contains("it\u{2019}s"))
+    }
+
+    @Test func promptDecodesTypographicDashAndEllipsis() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(
+            title: "T",
+            html: "<p>A&ndash;B &mdash; C&hellip;</p>",
+            styleGuide: nil
+        )
+        #expect(prompt.contains("\u{2013}"))  // en dash
+        #expect(prompt.contains("\u{2014}"))  // em dash
+        #expect(prompt.contains("\u{2026}"))  // ellipsis
+    }
+
     @Test func promptNamesAllFiveCategories() {
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>")
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: nil)
         #expect(prompt.lowercased().contains("grammar"))
         #expect(prompt.lowercased().contains("clarity"))
         #expect(prompt.lowercased().contains("readability"))
@@ -298,10 +384,34 @@ import Testing
     }
 
     @Test func promptIncludesSummaryAndFindingsFormatInstructions() {
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>")
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: nil)
         #expect(prompt.contains("SUMMARY:"))
         #expect(prompt.contains("FINDINGS:"))
         #expect(prompt.contains("QUOTE:"))
         #expect(prompt.contains("ISSUE:"))
+    }
+
+    @Test func promptIncludesAnchorFormatSpec() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: nil)
+        #expect(prompt.contains("ANCHOR:"))
+    }
+
+    @Test func promptIncludesStyleGuideWhenProvided() {
+        let guide = "Conversational tone, short sentences, avoids jargon."
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: guide)
+        #expect(prompt.contains(guide))
+        #expect(prompt.contains("established writing style"))
+        #expect(prompt.contains("Treat elements consistent with this style as intentional"))
+    }
+
+    @Test func promptOmitsStyleGuideBlockWhenNil() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: nil)
+        #expect(!prompt.contains("established writing style"))
+        #expect(!prompt.contains("Treat elements consistent"))
+    }
+
+    @Test func promptOmitsStyleGuideBlockWhenEmpty() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: "")
+        #expect(!prompt.contains("established writing style"))
     }
 }
