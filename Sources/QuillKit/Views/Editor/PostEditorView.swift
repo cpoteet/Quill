@@ -337,37 +337,6 @@ public struct PostEditorView: View {
                 Image(systemName: "sidebar.right")
             }
             .help("Post Settings")
-            if appState.aiEnabled {
-                Divider().frame(height: 20)
-                Button {
-                    let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let titleIsEmpty = title.isEmpty || title == "Untitled"
-                    let contentIsEmpty = titleIsEmpty && (trimmed.isEmpty || trimmed == "<p></p>")
-                    if contentIsEmpty {
-                        isAISheetOpen = true
-                    } else {
-                        showAIReplaceAlert = true
-                    }
-                } label: {
-                    Text("✦")
-                        .font(.system(size: 13))
-                }
-                .help("Generate post with Claude")
-                Button {
-                    if !isEvaluating {
-                        isSettingsOpen = false
-                        showEvaluationPanel = true
-                        if evaluationResult == nil && evaluationError == nil {
-                            Task { await executeEvaluation() }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 13))
-                }
-                .help("Evaluate writing quality")
-                .disabled(isEvaluating)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
