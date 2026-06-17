@@ -210,8 +210,8 @@ public struct AIPromptBuilder {
             with: "\n",
             options: .regularExpression
         )
-        // Remove remaining tags (replace with empty string so inline tags don't add spaces)
-        text = text.replacingOccurrences(of: #"<[^>]+(>|$)"#, with: "", options: .regularExpression)
+        // Remove remaining tags (replace with space to prevent smashing adjacent inline elements)
+        text = text.replacingOccurrences(of: #"<[^>]+(>|$)"#, with: " ", options: .regularExpression)
         // Decode common HTML entities
         text = text
             .replacingOccurrences(of: "&amp;",  with: "&")
