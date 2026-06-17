@@ -13,6 +13,8 @@ public struct EditorView: NSViewRepresentable {
     var onStatsChanged: ((Int, Int) -> Void)?
     var onWebViewCreated: ((WKWebView) -> Void)?
     var onAIOperation: ((AIWritingOperation) -> Void)?
+    var onTriggerGenerate: (() -> Void)?
+    var onTriggerEvaluate: (() -> Void)?
     var aiEnabled: Bool
     var hasTextSelection: Bool
 
@@ -28,6 +30,8 @@ public struct EditorView: NSViewRepresentable {
         onStatsChanged: ((Int, Int) -> Void)? = nil,
         onWebViewCreated: ((WKWebView) -> Void)? = nil,
         onAIOperation: ((AIWritingOperation) -> Void)? = nil,
+        onTriggerGenerate: (() -> Void)? = nil,
+        onTriggerEvaluate: (() -> Void)? = nil,
         aiEnabled: Bool = false,
         hasTextSelection: Bool = false
     ) {
@@ -42,6 +46,8 @@ public struct EditorView: NSViewRepresentable {
         self.onStatsChanged = onStatsChanged
         self.onWebViewCreated = onWebViewCreated
         self.onAIOperation = onAIOperation
+        self.onTriggerGenerate = onTriggerGenerate
+        self.onTriggerEvaluate = onTriggerEvaluate
         self.aiEnabled = aiEnabled
         self.hasTextSelection = hasTextSelection
     }
@@ -61,6 +67,8 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "selectionChanged")
         config.userContentController.add(context.coordinator, name: "statsChanged")
         config.userContentController.add(context.coordinator, name: "checkSpelling")
+        config.userContentController.add(context.coordinator, name: "triggerGenerate")
+        config.userContentController.add(context.coordinator, name: "triggerEvaluate")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -76,6 +84,8 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
+        context.coordinator.onTriggerGenerate = onTriggerGenerate
+        context.coordinator.onTriggerEvaluate = onTriggerEvaluate
         loadEditorHTML(in: webView)
         return webView
     }
@@ -90,6 +100,12 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
+        context.coordinator.onTriggerGenerate = onTriggerGenerate
+        context.coordinator.onTriggerEvaluate = onTriggerEvaluate
+        if context.coordinator.aiEnabled != aiEnabled {
+            context.coordinator.aiEnabled = aiEnabled
+            nsView.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: nil)
+        }
         nsView.onImageFilesDropped = onImageFilesDropped
         nsView.onAIOperation = onAIOperation
         nsView.aiEnabled = aiEnabled

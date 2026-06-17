@@ -14,6 +14,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
+    var onTriggerGenerate: (() -> Void)?
+    var onTriggerEvaluate: (() -> Void)?
+    var aiEnabled: Bool = false
     private var linkPopover: NSPopover?
     private var readyWatchdogItem: DispatchWorkItem?
 
@@ -119,6 +122,10 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                     completionHandler: nil
                 )
             }
+        case "triggerGenerate":
+            DispatchQueue.main.async { self.onTriggerGenerate?() }
+        case "triggerEvaluate":
+            DispatchQueue.main.async { self.onTriggerEvaluate?() }
         default:
             break
         }
@@ -280,6 +287,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         guard let wv = webView else { return }
         let isDark = wv.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         wv.evaluateJavaScript("setDarkMode(\(isDark))", completionHandler: nil)
+        wv.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: nil)
     }
 }
 
