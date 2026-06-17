@@ -45,6 +45,10 @@ window.setAIEnabled = enabled => {
 window.setEvaluating = active => {
   document.getElementById('btn-evaluate').disabled = active
 }
+
+window.setEvaluationPanelOpen = open => {
+  document.getElementById('btn-evaluate').classList.toggle('active', open)
+}
 ```
 
 Both functions are called by Swift via `evaluateJavaScript`.
@@ -111,6 +115,18 @@ wv.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: 
 ```
 
 The `?.` guard makes both calls safe before the JS function is defined.
+
+### State Sync — setEvaluationPanelOpen
+
+Called whenever `showEvaluationPanel` changes in `PostEditorView`. Use a `.onChange(of: showEvaluationPanel)` modifier on the editor body — this covers all code paths that toggle the panel (open from toolbar, close button, post switch, settings button):
+
+```swift
+.onChange(of: showEvaluationPanel) { open in
+    editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
+}
+```
+
+The `.active` CSS class on `#btn-evaluate` is already styled by the toolbar's existing `#toolbar button.active` rule — no new CSS needed.
 
 ### State Sync — setEvaluating
 

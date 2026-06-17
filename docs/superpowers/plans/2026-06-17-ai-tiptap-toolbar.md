@@ -65,6 +65,9 @@ In `editor.html`, find the block where `btn-code-view` and `btn-footnote` listen
     window.setEvaluating = active => {
       document.getElementById('btn-evaluate').disabled = active
     }
+    window.setEvaluationPanelOpen = open => {
+      document.getElementById('btn-evaluate').classList.toggle('active', open)
+    }
     document.getElementById('btn-generate').addEventListener('mousedown', e => {
       e.preventDefault()
       window.webkit.messageHandlers.triggerGenerate.postMessage({})
@@ -263,7 +266,19 @@ isEvaluating = false
 editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil)
 ```
 
-- [ ] **Step 3: Build**
+- [ ] **Step 3: Add .onChange to sync panel-open state to the evaluate button**
+
+In `PostEditorView`, add this modifier on the outermost view (alongside the existing `.onChange(of: item.id)` modifier):
+
+```swift
+.onChange(of: showEvaluationPanel) { open in
+    editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
+}
+```
+
+This covers every code path that toggles the panel (the close button, opening from the toolbar, post switching, and the settings button dismissal) without needing inline calls at each site.
+
+- [ ] **Step 4: Build**
 
 ```bash
 cd "/Users/Chris/Documents/Claude/WP Mac App" && ./build.sh 2>&1 | tail -5
@@ -271,7 +286,7 @@ cd "/Users/Chris/Documents/Claude/WP Mac App" && ./build.sh 2>&1 | tail -5
 
 Expected: `Build complete!`
 
-- [ ] **Step 4: Smoke test the new buttons**
+- [ ] **Step 5: Smoke test the new buttons**
 
 ```bash
 open "/Users/Chris/Documents/Claude/WP Mac App/Quill.app"
@@ -283,9 +298,11 @@ Verify:
 - Clicking the pencil (with empty post) opens the Generate sheet
 - Clicking the pencil (with existing content) shows the "Replace Content?" alert
 - Clicking the checkmark-circle opens the Evaluation panel and runs evaluation
+- Evaluate button appears highlighted/active while the panel is open
+- Closing the panel removes the highlight from the evaluate button
 - Evaluate button is disabled (greyed) while evaluation is in flight
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Views/Editor/PostEditorView.swift
