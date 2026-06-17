@@ -7,6 +7,17 @@ public enum AIWritingOperation {
     case convertToList
 }
 
+public struct EvaluationFinding {
+    public let quote: String
+    public let issue: String
+    public let suggestion: String?
+}
+
+public struct EvaluationResult {
+    public let summary: String
+    public let findings: [EvaluationFinding]
+}
+
 public struct AIPromptBuilder {
 
     /// System prompt, optionally incorporating a pre-computed writing style guide.
@@ -100,5 +111,124 @@ public struct AIPromptBuilder {
             instruction = "Convert this content into an HTML unordered list using <ul> and <li> tags. Each distinct point or item becomes a list item. Return only the list HTML — no preamble, no explanation."
         }
         return "\(instruction)\n\nContent to transform:\n\(selectedHTML)"
+    }
+
+    /// Prompt for evaluating the writing quality of a full post or page.
+    /// Strips HTML to plain text before sending to reduce token usage.
+    public static func evaluatePostPrompt(title: String, html: String) -> String {
+        let body = stripHTML(html)
+        return """
+        You are a writing quality evaluator. Analyze the following blog post for: \
+        grammar, clarity, readability, wordiness, and tone/voice consistency.
+
+        Title: \(title)
+
+        Content:
+        \(body)
+
+        Respond in this exact format:
+
+        SUMMARY:
+        <2–4 sentence prose critique of the overall writing quality>
+
+        FINDINGS:
+        QUOTE: "exact phrase from the title or content" | ISSUE: short label | SUGGESTION: rewrite (optional)
+
+        Rules:
+        - Quote exact phrases verbatim from the title or content — not paraphrases. \
+          The quotes must match the text character-for-character.
+        - ISSUE label should be one of: Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone
+        - SUGGESTION is optional — omit the pipe and SUGGESTION field if you have no specific rewrite
+        - List only meaningful issues, not subjective stylistic preferences
+        - If there are no issues worth flagging, leave FINDINGS empty
+        """
+    }
+
+    /// Parses Claude's evaluation response into an EvaluationResult.
+    /// Returns nil if the SUMMARY: or FINDINGS: markers are missing or the summary is empty.
+    public static func parseEvaluationResponse(_ text: String) -> EvaluationResult? {
+        guard let summaryRange = text.range(of: "SUMMARY:", options: .caseInsensitive) else {
+            return nil
+        }
+        guard let findingsRange = text.range(
+            of: "FINDINGS:",
+            options: .caseInsensitive,
+            range: summaryRange.upperBound..<text.endIndex
+        ) else {
+            return nil
+        }
+
+        let summary = String(text[summaryRange.upperBound..<findingsRange.lowerBound])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !summary.isEmpty else { return nil }
+
+        let findingsText = String(text[findingsRange.upperBound...])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var findings: [EvaluationFinding] = []
+        for line in findingsText.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.uppercased().hasPrefix("QUOTE:") else { continue }
+
+            let parts = trimmed.components(separatedBy: " | ")
+            guard parts.count >= 2 else { continue }
+
+            // Strip "QUOTE:" prefix, then remove surrounding quotes if present
+            let quotePart = parts[0]
+                .replacingOccurrences(of: "QUOTE:", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+            let quote: String
+            if quotePart.hasPrefix("\""), quotePart.hasSuffix("\""), quotePart.count > 1 {
+                quote = String(quotePart.dropFirst().dropLast())
+            } else {
+                quote = quotePart
+            }
+            guard !quote.isEmpty else { continue }
+
+            guard let issuePart = parts.first(where: { $0.uppercased().hasPrefix("ISSUE:") }) else { continue }
+            let issue = issuePart
+                .replacingOccurrences(of: "ISSUE:", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+            guard !issue.isEmpty else { continue }
+
+            let suggestion = parts
+                .first(where: { $0.uppercased().hasPrefix("SUGGESTION:") })
+                .map { $0.replacingOccurrences(of: "SUGGESTION:", with: "", options: .caseInsensitive)
+                          .trimmingCharacters(in: .whitespaces) }
+                .flatMap { $0.isEmpty ? nil : $0 }
+
+            findings.append(EvaluationFinding(quote: quote, issue: issue, suggestion: suggestion))
+        }
+
+        return EvaluationResult(summary: summary, findings: findings)
+    }
+
+    private static func stripHTML(_ html: String) -> String {
+        // Convert closing block tags to newlines before stripping other tags
+        var text = html.replacingOccurrences(
+            of: #"</(p|h[1-6]|li|blockquote|pre|div)>"#,
+            with: "\n",
+            options: .regularExpression
+        )
+        // Remove remaining tags (replace with empty string so inline tags don't add spaces)
+        text = text.replacingOccurrences(of: #"<[^>]+(>|$)"#, with: "", options: .regularExpression)
+        // Decode common HTML entities
+        text = text
+            .replacingOccurrences(of: "&amp;",  with: "&")
+            .replacingOccurrences(of: "&lt;",   with: "<")
+            .replacingOccurrences(of: "&gt;",   with: ">")
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;",  with: "'")
+        // Collapse multiple spaces within lines, then filter blank lines
+        return text.components(separatedBy: .newlines)
+            .map { line -> String in
+                // Collapse runs of whitespace to a single space
+                line.components(separatedBy: .whitespaces)
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 }

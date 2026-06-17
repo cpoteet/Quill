@@ -161,3 +161,147 @@ import Testing
         #expect(prompt.contains("150 words"))
     }
 }
+
+// MARK: - EvaluationResult / parseEvaluationResponse
+
+@Suite struct EvaluationParserTests {
+
+    @Test func happyPathTwoFindings() {
+        let input = """
+        SUMMARY:
+        Clear writing overall. A few passive constructions drag it down.
+
+        FINDINGS:
+        QUOTE: "was completed by the team" | ISSUE: Passive Voice | SUGGESTION: the team completed
+        QUOTE: "in order to achieve" | ISSUE: Wordiness
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.summary == "Clear writing overall. A few passive constructions drag it down.")
+        #expect(result?.findings.count == 2)
+        #expect(result?.findings[0].quote == "was completed by the team")
+        #expect(result?.findings[0].issue == "Passive Voice")
+        #expect(result?.findings[0].suggestion == "the team completed")
+        #expect(result?.findings[1].quote == "in order to achieve")
+        #expect(result?.findings[1].issue == "Wordiness")
+        #expect(result?.findings[1].suggestion == nil)
+    }
+
+    @Test func emptyFindingsReturnsResultWithNoFindings() {
+        let input = """
+        SUMMARY:
+        Well-written post with no significant issues.
+
+        FINDINGS:
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result != nil)
+        #expect(result?.summary == "Well-written post with no significant issues.")
+        #expect(result?.findings.isEmpty == true)
+    }
+
+    @Test func missingSummaryMarkerReturnsNil() {
+        let input = "FINDINGS:\nQUOTE: \"text\" | ISSUE: Clarity"
+        #expect(AIPromptBuilder.parseEvaluationResponse(input) == nil)
+    }
+
+    @Test func missingFindingsMarkerReturnsNil() {
+        let input = "SUMMARY:\nGood post."
+        #expect(AIPromptBuilder.parseEvaluationResponse(input) == nil)
+    }
+
+    @Test func emptySummaryReturnsNil() {
+        let input = "SUMMARY:\n\nFINDINGS:\n"
+        #expect(AIPromptBuilder.parseEvaluationResponse(input) == nil)
+    }
+
+    @Test func caseInsensitiveMarkers() {
+        let input = "summary:\nGood draft.\n\nfindings:\n"
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.summary == "Good draft.")
+        #expect(result?.findings.isEmpty == true)
+    }
+
+    @Test func findingWithoutSuggestionHasNilSuggestion() {
+        let input = """
+        SUMMARY:
+        Decent draft.
+
+        FINDINGS:
+        QUOTE: "some phrase" | ISSUE: Clarity
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.first?.suggestion == nil)
+    }
+
+    @Test func findingWithEmptySuggestionFieldHasNilSuggestion() {
+        let input = """
+        SUMMARY:
+        Decent draft.
+
+        FINDINGS:
+        QUOTE: "some phrase" | ISSUE: Clarity | SUGGESTION:
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.first?.suggestion == nil)
+    }
+
+    @Test func nonQuoteLinesBetweenFindingsAreSkipped() {
+        let input = """
+        SUMMARY:
+        Good post.
+
+        FINDINGS:
+        Here are the issues I found:
+        QUOTE: "a phrase" | ISSUE: Grammar
+        """
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.findings.count == 1)
+        #expect(result?.findings.first?.quote == "a phrase")
+    }
+
+    @Test func findingsMarkerScopedAfterSummaryMarker() {
+        // Stray FINDINGS: before SUMMARY: should not confuse the parser
+        let input = "FINDINGS: junk SUMMARY:\nReal summary.\n\nFINDINGS:\n"
+        let result = AIPromptBuilder.parseEvaluationResponse(input)
+        #expect(result?.summary == "Real summary.")
+    }
+}
+
+// MARK: - evaluatePostPrompt
+
+@Suite struct EvaluatePostPromptTests {
+
+    @Test func promptIncludesTitle() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "My Article", html: "<p>Body.</p>")
+        #expect(prompt.contains("My Article"))
+    }
+
+    @Test func promptStripsHTMLTags() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>Hello <strong>world</strong></p>")
+        #expect(!prompt.contains("<p>"))
+        #expect(!prompt.contains("<strong>"))
+        #expect(prompt.contains("Hello world"))
+    }
+
+    @Test func promptDecodesHTMLEntities() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>a &amp; b &lt;c&gt;</p>")
+        #expect(prompt.contains("a & b <c>"))
+    }
+
+    @Test func promptNamesAllFiveCategories() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>")
+        #expect(prompt.lowercased().contains("grammar"))
+        #expect(prompt.lowercased().contains("clarity"))
+        #expect(prompt.lowercased().contains("readability"))
+        #expect(prompt.lowercased().contains("wordiness"))
+        #expect(prompt.lowercased().contains("tone"))
+    }
+
+    @Test func promptIncludesSummaryAndFindingsFormatInstructions() {
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>")
+        #expect(prompt.contains("SUMMARY:"))
+        #expect(prompt.contains("FINDINGS:"))
+        #expect(prompt.contains("QUOTE:"))
+        #expect(prompt.contains("ISSUE:"))
+    }
+}
