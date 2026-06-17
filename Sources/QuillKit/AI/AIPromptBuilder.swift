@@ -235,9 +235,27 @@ public struct AIPromptBuilder {
     }
 
     private static func stripHTML(_ html: String) -> String {
+        // Strip non-prose blocks entirely before tag removal so they don't produce
+        // nonsensical evaluation findings.
+        // (?s) enables DOTALL so . matches newlines inside multi-line blocks
+        var text = html.replacingOccurrences(
+            of: #"(?s)<figcaption[^>]*>.*?</figcaption>"#,
+            with: " ",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"(?s)<pre[^>]*>.*?</pre>"#,
+            with: " ",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"(?s)<figure[^>]*wp-block-embed[^>]*>.*?</figure>"#,
+            with: " ",
+            options: .regularExpression
+        )
         // Convert closing block tags to spaces (not newlines) so the plain-text output
         // matches how findAndSelectText concatenates ProseMirror text nodes — with no separator.
-        var text = html.replacingOccurrences(
+        text = text.replacingOccurrences(
             of: #"</(p|h[1-6]|li|blockquote|pre|div)>"#,
             with: " ",
             options: .regularExpression

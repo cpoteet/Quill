@@ -147,8 +147,6 @@ public struct PostEditorView: View {
                     state: evaluationPanelState,
                     onClose: {
                         showEvaluationPanel = false
-                        evaluationResult = nil
-                        evaluationError = nil
                     },
                     onReEvaluate: { if !isEvaluating { Task { await executeEvaluation() } } },
                     onFindingSelected: { quote in
@@ -306,7 +304,13 @@ public struct PostEditorView: View {
                 .disabled(isSaving)
             Divider().frame(height: 20)
             Button {
-                withAnimation { isSettingsOpen.toggle() }
+                withAnimation {
+                    if showEvaluationPanel {
+                        showEvaluationPanel = false
+                    } else {
+                        isSettingsOpen.toggle()
+                    }
+                }
             } label: {
                 Image(systemName: "sidebar.right")
             }
@@ -331,9 +335,9 @@ public struct PostEditorView: View {
                     if !isEvaluating {
                         isSettingsOpen = false
                         showEvaluationPanel = true
-                        evaluationResult = nil
-                        evaluationError = nil
-                        Task { await executeEvaluation() }
+                        if evaluationResult == nil && evaluationError == nil {
+                            Task { await executeEvaluation() }
+                        }
                     }
                 } label: {
                     Image(systemName: "checkmark.circle")

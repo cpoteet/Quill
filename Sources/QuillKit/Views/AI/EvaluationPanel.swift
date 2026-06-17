@@ -45,6 +45,9 @@ public struct EvaluationPanel: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -124,8 +127,11 @@ public struct EvaluationPanel: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
             }
         }
     }

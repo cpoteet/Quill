@@ -414,4 +414,28 @@ import Testing
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>x</p>", styleGuide: "")
         #expect(!prompt.contains("established writing style"))
     }
+
+    @Test func promptExcludesImageCaptionText() {
+        let html = "<figure class=\"wp-block-image\"><img src=\"x.jpg\"><figcaption class=\"wp-element-caption\">This is a caption</figcaption></figure><p>Body text.</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(!prompt.contains("This is a caption"))
+        #expect(prompt.contains("Body text"))
+    }
+
+    @Test func promptExcludesCodeBlockContent() {
+        let html = "<p>Intro.</p><pre class=\"wp-block-code\"><code>let x = 1\nfoo()</code></pre><p>After code.</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(!prompt.contains("let x = 1"))
+        #expect(!prompt.contains("foo()"))
+        #expect(prompt.contains("Intro"))
+        #expect(prompt.contains("After code"))
+    }
+
+    @Test func promptExcludesEmbedFigureContent() {
+        let html = "<p>See below.</p><figure class=\"wp-block-embed is-type-video\"><div class=\"wp-block-embed__wrapper\">https://www.youtube.com/watch?v=abc</div></figure><p>More prose.</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(!prompt.contains("youtube.com"))
+        #expect(prompt.contains("See below"))
+        #expect(prompt.contains("More prose"))
+    }
 }
