@@ -129,7 +129,8 @@ Above the title field is the **toolbar**, which contains:
 | Preview | Opens the current post's preview URL in your browser |
 | Publish | Publishes or updates the post on your WordPress site |
 | Settings toggle | Shows or hides the right-side settings panel |
-| ✦ | Opens the AI writing assistant (visible only when an Anthropic API key is configured) |
+| Pencil | Opens the AI content generator (visible only when an Anthropic API key is configured) |
+| Checkmark-circle | Opens the AI writing evaluator (visible only when an Anthropic API key is configured) |
 
 A small amber dot appears next to Save Draft when you have unsaved local changes.
 
@@ -447,7 +448,9 @@ Right-click any item in the media grid and select **Delete** to remove it. A con
 
 ## AI Writing Features
 
-Quill includes an optional AI writing assistant powered by the Anthropic Claude API, using the Claude Haiku model. AI features are disabled by default and require your own Anthropic API key to use. Usage is billed directly by Anthropic based on your API consumption.
+Quill includes an optional AI writing assistant powered by the Anthropic Claude API. AI features are disabled by default and require your own Anthropic API key to use. Usage is billed directly by Anthropic based on your API consumption.
+
+When configured, Quill's AI features let you generate complete posts and pages from a prompt, rewrite selected text, and evaluate the writing quality of your content.
 
 ### Setup
 
@@ -455,7 +458,7 @@ Quill includes an optional AI writing assistant powered by the Anthropic Claude 
 2. Open **Quill → Settings** (⌘,) and find the **AI Writing** section.
 3. Paste your key into the **Anthropic API Key** field and click **Save**.
 
-Once a valid key is saved, the **✦** button appears in the editor toolbar.
+Once a valid key is saved, a **pencil** button (Generate) and a **checkmark-circle** button (Evaluate) appear in the editor toolbar.
 
 ### Writing Style
 
@@ -467,15 +470,32 @@ The style guide is regenerated automatically when you change your sample post se
 
 The **Web Search** toggle in Settings allows the Generate Post feature to search the web for current information when composing a post. Disable it to generate posts using only Claude's existing knowledge, which is faster and uses less API budget.
 
-### Generating a Post
+### Generating Content
 
-Click the **✦** button in the editor toolbar to open the post generator. Type a topic, title idea, or detailed prompt describing what you want, then click **Generate**.
+Click the **pencil icon** in the editor toolbar to open the content generator. Type a topic, title idea, or detailed prompt describing what you want, then click **Generate**.
 
-Quill will write a complete post, including a title and structured body, and load it into the editor. If web search is enabled, Claude will research the topic before writing.
+Quill will write a complete post or page, including a title and structured body, and load it into the editor. If web search is enabled, Claude will research the topic before writing.
 
 If the editor already contains content, you will be asked to confirm before the existing content is replaced.
 
-If the generated post is long and hits an initial length limit, Quill will offer to continue generating for the full version. Choosing to continue uses additional API budget.
+If the generated content is long and hits an initial length limit, Quill will offer to continue generating for the full version. Choosing to continue uses additional API budget.
+
+### Evaluating Writing Quality
+
+Click the **checkmark-circle icon** in the editor toolbar to evaluate the current post or page. The editor must contain at least around 100 words for evaluation to be available.
+
+Quill sends the full content to Claude and displays an **Evaluation panel** on the right side of the editor. The panel shows:
+
+- A short prose **summary** of the overall writing quality
+- A list of specific **findings**, each tagged with a category — Grammar, Clarity, Readability, Wordiness, Passive Voice, or Tone — and an optional suggested rewrite
+
+**Jumping to a finding:** Click any finding card to jump directly to that sentence in the editor. The full sentence is selected and scrolled into view so you can read the finding in context.
+
+**Re-evaluating:** Click **↺ Re-evaluate** at the bottom of the panel to run another pass after making edits.
+
+**Style awareness:** If you have configured a writing style guide using sample posts (see Writing Style above), Claude uses it during evaluation to distinguish your intentional voice from genuine issues. Stylistic choices consistent with your established writing will not be flagged.
+
+The checkmark-circle button is highlighted while the evaluation panel is open and is disabled while an evaluation is running.
 
 ### In-Editor AI Operations
 
