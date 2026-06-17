@@ -104,6 +104,25 @@ public struct PostEditorView: View {
                         onAIOperation: { operation in
                             Task { await executeAIOperation(operation) }
                         },
+                        onTriggerGenerate: {
+                            let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let titleIsEmpty = title.isEmpty || title == "Untitled"
+                            let contentIsEmpty = titleIsEmpty && (trimmed.isEmpty || trimmed == "<p></p>")
+                            if contentIsEmpty {
+                                isAISheetOpen = true
+                            } else {
+                                showAIReplaceAlert = true
+                            }
+                        },
+                        onTriggerEvaluate: {
+                            if !isEvaluating {
+                                isSettingsOpen = false
+                                showEvaluationPanel = true
+                                if evaluationResult == nil && evaluationError == nil {
+                                    Task { await executeEvaluation() }
+                                }
+                            }
+                        },
                         aiEnabled: appState.aiEnabled,
                         hasTextSelection: hasTextSelection
                     )
@@ -237,6 +256,9 @@ public struct PostEditorView: View {
             isEvaluating = false
             evaluationResult = nil
             evaluationError = nil
+        }
+        .onChange(of: showEvaluationPanel) { open in
+            editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
         }
         .task(id: item.id) { await loadItem() }
         .onDisappear {
@@ -853,6 +875,7 @@ public struct PostEditorView: View {
         isEvaluating = true
         evaluationResult = nil
         evaluationError = nil
+        editorWebView?.evaluateJavaScript("window.setEvaluating?.(true)", completionHandler: nil)
 
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent, styleGuide: aiSettings.styleGuide)
         let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
@@ -874,6 +897,7 @@ public struct PostEditorView: View {
         }
 
         isEvaluating = false
+        editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil)
     }
 
     // MARK: - AI selection handling
