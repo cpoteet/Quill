@@ -2645,6 +2645,26 @@
       _aiInProgress = false
     }
 
+    window.findAndSelectText = function(query) {
+      if (!editor || !query) return
+      const positions = []
+      let text = ''
+      editor.state.doc.descendants(function(node, pos) {
+        if (!node.isText) return
+        for (let i = 0; i < node.text.length; i++) {
+          positions.push(pos + i)
+          text += node.text[i]
+        }
+      })
+      const matches = findMatches(text, query, false)
+      if (!matches.length) return
+      const m = matches[0]
+      if (m.start >= positions.length || m.end - 1 >= positions.length) return
+      const from = positions[m.start]
+      const to = positions[m.end - 1] + 1
+      editor.chain().setTextSelection({ from, to }).scrollIntoView().run()
+    }
+
     // ── Toolbar overflow fade ─────────────────────────
     const tbEl = document.getElementById('toolbar')
     const tbWrap = document.createElement('div')
