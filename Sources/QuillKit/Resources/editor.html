@@ -2646,6 +2646,7 @@
     }
 
     window.findAndSelectText = function(query) {
+      query = query.trim()
       if (!editor || !query) return
       const positions = []
       let text = ''
@@ -2653,8 +2654,8 @@
         if (!node.isText) return
         for (let i = 0; i < node.text.length; i++) {
           positions.push(pos + i)
-          text += node.text[i]
         }
+        text += node.text
       })
       const matches = findMatches(text, query, false)
       if (!matches.length) return
