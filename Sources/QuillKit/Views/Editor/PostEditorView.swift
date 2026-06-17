@@ -45,6 +45,12 @@ public struct PostEditorView: View {
     @State private var editorWebView: WKWebView? = nil
     @State private var resultPanel: AIResultPanel = AIResultPanel()
 
+    // Evaluation state
+    @State private var showEvaluationPanel: Bool = false
+    @State private var isEvaluating: Bool = false
+    @State private var evaluationResult: EvaluationResult? = nil
+    @State private var evaluationError: String? = nil
+
     public init(item: PostItem) {
         self.item = item
     }
@@ -134,7 +140,26 @@ public struct PostEditorView: View {
                 }
             }
 
-            if isSettingsOpen {
+            if showEvaluationPanel {
+                SoftPanelBoundary()
+                    .transition(.move(edge: .trailing))
+                EvaluationPanel(
+                    state: evaluationPanelState,
+                    onClose: {
+                        showEvaluationPanel = false
+                        evaluationResult = nil
+                        evaluationError = nil
+                    },
+                    onReEvaluate: { Task { await executeEvaluation() } },
+                    onFindingSelected: { quote in
+                        guard let data = try? JSONEncoder().encode(quote),
+                              let json = String(data: data, encoding: .utf8) else { return }
+                        editorWebView?.evaluateJavaScript(
+                            "window.findAndSelectText(\(json))", completionHandler: nil)
+                    }
+                )
+                .transition(.move(edge: .trailing))
+            } else if isSettingsOpen {
                 SoftPanelBoundary()
                     .transition(.move(edge: .trailing))
                 PostSettingsPanel(
@@ -150,6 +175,7 @@ public struct PostEditorView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
+        .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
         .toast(message: $toastMessage)
         .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
             Button("Revert", role: .destructive) { discardChanges() }
@@ -207,7 +233,12 @@ public struct PostEditorView: View {
         } message: {
             Text(previewError ?? "")
         }
-        .onChange(of: item.id) { _ in contentLoaded = false }
+        .onChange(of: item.id) { _ in
+            contentLoaded = false
+            showEvaluationPanel = false
+            evaluationResult = nil
+            evaluationError = nil
+        }
         .task(id: item.id) { await loadItem() }
         .onDisappear {
             autosaveTask?.cancel()
@@ -295,6 +326,16 @@ public struct PostEditorView: View {
                         .font(.system(size: 13))
                 }
                 .help("Generate post with Claude")
+                Button {
+                    showEvaluationPanel = true
+                    evaluationResult = nil
+                    evaluationError = nil
+                    Task { await executeEvaluation() }
+                } label: {
+                    Image(systemName: "doc.badge.checkmark")
+                        .font(.system(size: 13))
+                }
+                .help("Evaluate writing quality")
             }
         }
         .padding(.horizontal, 16)
@@ -780,6 +821,47 @@ public struct PostEditorView: View {
         } catch {
             previewError = error.localizedDescription
         }
+    }
+
+    // MARK: - Evaluation
+
+    private var evaluationPanelState: EvaluationPanelState {
+        if stats.words < 100 { return .shortContent }
+        if isEvaluating { return .loading }
+        if let error = evaluationError { return .error(error) }
+        if let result = evaluationResult { return .result(result) }
+        return .loading
+    }
+
+    @MainActor
+    private func executeEvaluation() async {
+        guard let aiSettings = appState.aiSettings else { return }
+        guard stats.words >= 100 else { return }
+
+        isEvaluating = true
+        evaluationResult = nil
+        evaluationError = nil
+
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent)
+        let system = AIPromptBuilder.systemPrompt(styleGuide: nil)
+        let client = AnthropicClient(apiKey: aiSettings.apiKey)
+
+        do {
+            let responseText = try await client.complete(
+                userMessage: prompt,
+                systemPrompt: system,
+                useWebSearch: false
+            ).text
+            if let result = AIPromptBuilder.parseEvaluationResponse(responseText) {
+                evaluationResult = result
+            } else {
+                evaluationError = "Could not parse evaluation response."
+            }
+        } catch {
+            evaluationError = error.localizedDescription
+        }
+
+        isEvaluating = false
     }
 
     // MARK: - AI selection handling
