@@ -2657,13 +2657,41 @@
         }
         text += node.text
       })
-      const matches = findMatches(text, query, false)
-      if (!matches.length) return
-      const m = matches[0]
+      // Normalize smart quotes/NBSP -- 1:1 substitutions keep positions array valid
+      function normTypo(s) {
+        return s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/ /g, ' ')
+      }
+      const normText = normTypo(text)
+      function tryFind(q) {
+        let ms = findMatches(text, q, false)
+        if (ms.length) return ms[0]
+        ms = findMatches(normText, normTypo(q), false)
+        return ms.length ? ms[0] : null
+      }
+      const m = tryFind(query)
+      if (!m) return
       if (m.start >= positions.length || m.end - 1 >= positions.length) return
-      const from = positions[m.start]
-      const to = positions[m.end - 1] + 1
-      editor.chain().setTextSelection({ from, to }).scrollIntoView().run()
+      // Expand to the full sentence containing the anchor.
+      // Paragraph boundaries have a gap of 3; inline atoms (footnotes etc.) a gap of 2 —
+      // use > 2 so inline atoms don't prematurely stop the walk.
+      // Walk backward to sentence start (previous .!? or block boundary)
+      let startIdx = m.start
+      while (startIdx > 0) {
+        if (positions[startIdx] - positions[startIdx - 1] > 2) break  // block boundary
+        if ('.!?'.includes(text[startIdx - 1])) break                 // end of prev sentence
+        startIdx--
+      }
+      while (startIdx < m.start && text[startIdx] === ' ') startIdx++ // skip leading space
+      // Walk forward to sentence end (.!? or block boundary); 300-char cap for unpunctuated sentences
+      let endIdx = m.end
+      while (endIdx < positions.length && endIdx - m.end < 300) {
+        if (positions[endIdx] - positions[endIdx - 1] > 2) break  // block boundary
+        endIdx++
+        if ('.!?'.includes(text[endIdx - 1])) break               // sentence end
+      }
+      const from = positions[startIdx]
+      const to = positions[Math.min(endIdx, positions.length) - 1] + 1
+      editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run()
     }
 
     // ── Toolbar overflow fade ─────────────────────────

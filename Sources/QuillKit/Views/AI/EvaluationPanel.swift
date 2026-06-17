@@ -108,10 +108,10 @@ public struct EvaluationPanel: View {
 
                 if !result.findings.isEmpty {
                     VStack(spacing: 8) {
-                        ForEach(Array(result.findings.enumerated()), id: \.element.quote) { _, finding in
+                        ForEach(Array(result.findings.enumerated()), id: \.offset) { _, finding in
                             EvaluationFindingCard(
                                 finding: finding,
-                                onTap: { onFindingSelected(finding.quote) }
+                                onTap: { onFindingSelected(finding.anchor ?? finding.quote) }
                             )
                         }
                     }
@@ -171,7 +171,7 @@ private struct EvaluationFindingCard: View {
                     Text("→ \(suggestion)")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

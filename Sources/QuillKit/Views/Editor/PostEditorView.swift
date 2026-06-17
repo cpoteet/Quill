@@ -236,6 +236,7 @@ public struct PostEditorView: View {
         .onChange(of: item.id) { _ in
             contentLoaded = false
             showEvaluationPanel = false
+            isEvaluating = false
             evaluationResult = nil
             evaluationError = nil
         }
@@ -328,13 +329,14 @@ public struct PostEditorView: View {
                 .help("Generate post with Claude")
                 Button {
                     if !isEvaluating {
+                        isSettingsOpen = false
                         showEvaluationPanel = true
                         evaluationResult = nil
                         evaluationError = nil
                         Task { await executeEvaluation() }
                     }
                 } label: {
-                    Image(systemName: "doc.badge.checkmark")
+                    Image(systemName: "checkmark.circle")
                         .font(.system(size: 13))
                 }
                 .help("Evaluate writing quality")
@@ -838,14 +840,17 @@ public struct PostEditorView: View {
 
     @MainActor
     private func executeEvaluation() async {
-        guard let aiSettings = appState.aiSettings else { return }
+        guard let aiSettings = appState.aiSettings else {
+            evaluationError = "No API key configured. Add one in Preferences → AI."
+            return
+        }
         guard stats.words >= 100 else { return }
 
         isEvaluating = true
         evaluationResult = nil
         evaluationError = nil
 
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent)
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent, styleGuide: aiSettings.styleGuide)
         let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
         let client = AnthropicClient(apiKey: aiSettings.apiKey)
 

@@ -9,6 +9,7 @@ public enum AIWritingOperation {
 
 public struct EvaluationFinding {
     public let quote: String
+    public let anchor: String?   // 3–4 verbatim words for navigation; nil falls back to quote
     public let issue: String
     public let suggestion: String?
 }
@@ -115,11 +116,23 @@ public struct AIPromptBuilder {
 
     /// Prompt for evaluating the writing quality of a full post or page.
     /// Strips HTML to plain text before sending to reduce token usage.
-    public static func evaluatePostPrompt(title: String, html: String) -> String {
+    public static func evaluatePostPrompt(title: String, html: String, styleGuide: String?) -> String {
         let body = stripHTML(html)
+        let styleContext: String
+        if let guide = styleGuide, !guide.isEmpty {
+            styleContext = """
+
+        Author's established writing style:
+        \(guide)
+
+        Treat elements consistent with this style as intentional — do not flag them as issues.
+        """
+        } else {
+            styleContext = ""
+        }
         return """
-        You are a writing quality evaluator. Analyze the following blog post for: \
-        grammar, clarity, readability, wordiness, and tone/voice consistency.
+        You are a writing quality evaluator. Analyze the following blog post for \
+        grammar, clarity, readability, wordiness, and tone/voice consistency.\(styleContext)
 
         Title: \(title)
 
@@ -132,14 +145,19 @@ public struct AIPromptBuilder {
         <2–4 sentence prose critique of the overall writing quality>
 
         FINDINGS:
-        QUOTE: "exact phrase from the title or content" | ISSUE: short label | SUGGESTION: rewrite (optional)
+        QUOTE: "display phrase (≤15 words, can be approximate)" | ANCHOR: "3–4 verbatim words" | ISSUE: short label | SUGGESTION: rewrite (optional)
 
         Rules:
-        - Quote exact phrases verbatim from the title or content — not paraphrases. \
-          The quotes must match the text character-for-character.
+        - QUOTE is shown to the user in the panel — it can be approximate or paraphrased, ≤15 words
+        - ANCHOR is 3–4 consecutive words copied verbatim, character-for-character from the \
+          Content above — no punctuation changes, no added or removed characters. \
+          It is used to locate the text in the editor and must match exactly.
         - ISSUE label should be one of: Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone
         - SUGGESTION is optional — omit the pipe and SUGGESTION field if you have no specific rewrite
-        - List only meaningful issues, not subjective stylistic preferences
+        - Flag issues that would meaningfully improve the writing — skip minor stylistic preferences
+        - For Wordiness: only flag phrases that are genuinely excessive and could be cut or \
+          shortened without losing meaning; do not flag every slightly-long sentence
+        - Prioritise the most impactful findings; aim for the 5–12 most significant issues
         - If there are no issues worth flagging, leave FINDINGS empty
         """
     }
@@ -191,44 +209,70 @@ public struct AIPromptBuilder {
                 .trimmingCharacters(in: .whitespaces)
             guard !issue.isEmpty else { continue }
 
+            let anchor = parts
+                .first(where: { $0.uppercased().hasPrefix("ANCHOR:") })
+                .map { part -> String in
+                    var s = part
+                        .replacingOccurrences(of: "ANCHOR:", with: "", options: .caseInsensitive)
+                        .trimmingCharacters(in: .whitespaces)
+                    if s.hasPrefix("\""), s.hasSuffix("\""), s.count > 1 {
+                        s = String(s.dropFirst().dropLast())
+                    }
+                    return s
+                }
+                .flatMap { $0.isEmpty ? nil : $0 }
+
             let suggestion = parts
                 .first(where: { $0.uppercased().hasPrefix("SUGGESTION:") })
                 .map { $0.replacingOccurrences(of: "SUGGESTION:", with: "", options: .caseInsensitive)
                           .trimmingCharacters(in: .whitespaces) }
                 .flatMap { $0.isEmpty ? nil : $0 }
 
-            findings.append(EvaluationFinding(quote: quote, issue: issue, suggestion: suggestion))
+            findings.append(EvaluationFinding(quote: quote, anchor: anchor, issue: issue, suggestion: suggestion))
         }
 
         return EvaluationResult(summary: summary, findings: findings)
     }
 
     private static func stripHTML(_ html: String) -> String {
-        // Convert closing block tags to newlines before stripping other tags
+        // Convert closing block tags to spaces (not newlines) so the plain-text output
+        // matches how findAndSelectText concatenates ProseMirror text nodes — with no separator.
         var text = html.replacingOccurrences(
             of: #"</(p|h[1-6]|li|blockquote|pre|div)>"#,
-            with: "\n",
+            with: " ",
             options: .regularExpression
         )
         // Remove remaining tags (replace with space to prevent smashing adjacent inline elements)
         text = text.replacingOccurrences(of: #"<[^>]+(>|$)"#, with: " ", options: .regularExpression)
-        // Decode common HTML entities
+        // Decode HTML entities — named + numeric forms common in WordPress content
         text = text
-            .replacingOccurrences(of: "&amp;",  with: "&")
-            .replacingOccurrences(of: "&lt;",   with: "<")
-            .replacingOccurrences(of: "&gt;",   with: ">")
-            .replacingOccurrences(of: "&nbsp;", with: " ")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#39;",  with: "'")
-        // Collapse multiple spaces within lines, then filter blank lines
-        return text.components(separatedBy: .newlines)
-            .map { line -> String in
-                // Collapse runs of whitespace to a single space
-                line.components(separatedBy: .whitespaces)
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " ")
-            }
+            .replacingOccurrences(of: "&amp;",   with: "&")
+            .replacingOccurrences(of: "&lt;",    with: "<")
+            .replacingOccurrences(of: "&gt;",    with: ">")
+            .replacingOccurrences(of: "&nbsp;",  with: "\u{00A0}")
+            .replacingOccurrences(of: "&#160;",  with: "\u{00A0}")
+            .replacingOccurrences(of: "&quot;",  with: "\"")
+            .replacingOccurrences(of: "&#34;",   with: "\"")
+            .replacingOccurrences(of: "&#39;",   with: "'")
+            .replacingOccurrences(of: "&apos;",  with: "'")
+            .replacingOccurrences(of: "&#8216;", with: "\u{2018}")
+            .replacingOccurrences(of: "&lsquo;", with: "\u{2018}")
+            .replacingOccurrences(of: "&#8217;", with: "\u{2019}")
+            .replacingOccurrences(of: "&rsquo;", with: "\u{2019}")
+            .replacingOccurrences(of: "&#8220;", with: "\u{201C}")
+            .replacingOccurrences(of: "&ldquo;", with: "\u{201C}")
+            .replacingOccurrences(of: "&#8221;", with: "\u{201D}")
+            .replacingOccurrences(of: "&rdquo;", with: "\u{201D}")
+            .replacingOccurrences(of: "&#8211;", with: "\u{2013}")
+            .replacingOccurrences(of: "&ndash;", with: "\u{2013}")
+            .replacingOccurrences(of: "&#8212;", with: "\u{2014}")
+            .replacingOccurrences(of: "&mdash;", with: "\u{2014}")
+            .replacingOccurrences(of: "&#8230;", with: "\u{2026}")
+            .replacingOccurrences(of: "&hellip;", with: "\u{2026}")
+        // Collapse all whitespace (spaces, tabs, newlines) and strip blank segments
+        return text
+            .components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
-            .joined(separator: "\n")
+            .joined(separator: " ")
     }
 }
