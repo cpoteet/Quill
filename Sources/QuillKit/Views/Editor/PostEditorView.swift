@@ -50,6 +50,7 @@ public struct PostEditorView: View {
     @State private var isEvaluating: Bool = false
     @State private var evaluationResult: EvaluationResult? = nil
     @State private var evaluationError: String? = nil
+    @State private var evaluationTask: Task<Void, Never>? = nil
 
     public init(item: PostItem) {
         self.item = item
@@ -119,7 +120,7 @@ public struct PostEditorView: View {
                                 isSettingsOpen = false
                                 showEvaluationPanel = true
                                 if evaluationResult == nil && evaluationError == nil {
-                                    Task { await executeEvaluation() }
+                                    evaluationTask = Task { await executeEvaluation() }
                                 }
                             }
                         },
@@ -167,7 +168,7 @@ public struct PostEditorView: View {
                     onClose: {
                         showEvaluationPanel = false
                     },
-                    onReEvaluate: { if !isEvaluating { Task { await executeEvaluation() } } },
+                    onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
                     onFindingSelected: { quote in
                         guard let data = try? JSONEncoder().encode(quote),
                               let json = String(data: data, encoding: .utf8) else { return }
@@ -253,6 +254,8 @@ public struct PostEditorView: View {
         }
         .onChange(of: item.id) { _ in
             contentLoaded = false
+            evaluationTask?.cancel()
+            evaluationTask = nil
             showEvaluationPanel = false
             isEvaluating = false
             evaluationResult = nil
@@ -264,6 +267,7 @@ public struct PostEditorView: View {
         .task(id: item.id) { await loadItem() }
         .onDisappear {
             autosaveTask?.cancel()
+            evaluationTask?.cancel()
             if let loadedItem, isDirty {
                 Task { await flushToDB(for: loadedItem) }
             }
@@ -857,12 +861,16 @@ public struct PostEditorView: View {
                 systemPrompt: system,
                 useWebSearch: false
             ).text
+            guard !Task.isCancelled else { return }
             if let result = AIPromptBuilder.parseEvaluationResponse(responseText) {
                 evaluationResult = result
             } else {
                 evaluationError = "Could not parse evaluation response."
             }
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled else { return }
             evaluationError = error.localizedDescription
         }
 

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-17 — 259 Swift tests + 98 JS editor tests, all passing._
+_Last updated: 2026-06-17 — 262 Swift tests + 98 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 259 tests across 18 suites)
+1. **Swift tests** — `swift test` (all 262 tests across 18 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (98 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
@@ -1006,9 +1006,9 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 ### 7.11 AI features (require an Anthropic API key configured)
 
-- [ ] With no API key: ✦ toolbar button is **hidden** and the AI items are **absent** from the editor right-click menu (`aiEnabled == false`).
-- [ ] Add a key in Settings → feature enables **without relaunch**.
-- [ ] **Generate post:** ✦ on an empty editor opens the sheet directly; on a non-empty editor shows the "Replace Content?" alert first.
+- [ ] With no API key: the **pencil** and **checkmark-circle** buttons in the editor toolbar are **hidden** and the AI items are **absent** from the right-click context menu (`aiEnabled == false`).
+- [ ] Add a key in Settings → both toolbar buttons appear and AI context menu items appear — **without relaunch**.
+- [ ] **Generate content:** pencil button on an empty editor opens the generate dialog directly; on a non-empty editor shows the "Replace Content?" alert first.
 - [ ] Generate produces a title + structured HTML **with headings** (not just `<p>` — the prompt-structure gotcha).
 - [ ] Generate with web search on → response reassembled correctly across fragmented blocks (the joining gotcha); citations don't break the TITLE/CONTENT parse.
 - [ ] **Selection ops (right-click menu):** select text → right-click → Make Longer / Make Shorter / To Table / To List each appear (only when `aiEnabled && hasTextSelection`) and each works.
@@ -1021,9 +1021,12 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above other apps when you switch away (child-window gotcha); no rectangular shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode (`.plain` style gotcha).
 - [ ] Style guide: select sample posts in Settings → guide generated once; re-saving with unchanged samples makes **no** Claude call; changing the site URL clears samples and guide.
 - [ ] **Panel survives sidebar re-renders:** trigger the AI result panel, then type in the sidebar search field — the panel stays visible and positioned correctly without disappearing or duplicating. (H1 regression guard: `@State` ensures one panel instance per view identity.)
-- [ ] **Post Evaluation:** click ✦ → Evaluate Post; panel shows summary + findings; clicking a finding card jumps to that sentence in the editor (full sentence selected, not just the anchor words); selection scrolls into view.
+- [ ] **Post Evaluation:** click the **checkmark-circle** button in the editor toolbar; panel shows summary + findings; clicking a finding card jumps to that sentence in the editor (full sentence selected, not just the anchor words); selection scrolls into view.
 - [ ] Evaluation respects style guide: if a sample-post style is saved, findings that match the author's established voice should not appear (e.g. intentionally conversational tone not flagged as "Wordiness").
 - [ ] Finding count is reasonable (5–12 for a typical post, not 45; not 2 unless truly flawless); clicking every finding card navigates to the correct sentence.
+- [ ] **Evaluate button active state:** checkmark-circle button has `.active` highlight while the evaluation panel is open; returns to normal when closed.
+- [ ] **Evaluate button disabled during evaluation:** checkmark-circle button is non-interactive while Claude is running.
+- [ ] **Switch posts mid-evaluation:** click evaluate, then immediately switch to another post — the old evaluation result does NOT appear for the new post; opening the evaluation panel for the new post triggers a fresh run.
 
 ### 7.12 Settings panel & preferences
 
@@ -1172,6 +1175,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 46 | Evaluation `ANCHOR:` field parsed to `finding.anchor`; omission → `nil` | ✅ `EvaluationParserTests.anchorFieldIsParsedIntoFinding` + `.anchorFieldIsNilWhenOmitted` |
 | 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
 | 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
+| 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
 
 ---
 

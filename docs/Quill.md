@@ -147,7 +147,7 @@ Click the sidebar-right icon in the editor toolbar to open the settings panel. A
 
 ### AI writing assistant
 
-Quill includes an optional AI writing assistant powered by the Claude API. It works directly on selected text in the editor.
+Quill includes an optional AI writing assistant powered by the Claude API. When an API key is configured, two buttons appear in the editor toolbar: a pencil icon (Generate) and a checkmark-circle icon (Evaluate). If no key is saved, both buttons are hidden.
 
 #### Setup
 
@@ -155,13 +155,17 @@ Quill includes an optional AI writing assistant powered by the Claude API. It wo
 2. Paste your [Anthropic API key](https://console.anthropic.com/)
 3. Click **Save**
 
-The AI features activate immediately — no restart required. If no API key is saved, the AI controls stay hidden.
+The AI features activate immediately — no restart required.
 
 Optionally, select one or more of your existing posts as **style samples**. When you save with samples selected, Quill sends them to Claude once to generate a compact writing style guide, then stores it locally. Claude uses that guide on every subsequent request to match your tone, rhythm, and vocabulary — no extra cost per call. If you change your sample selection and save again, the guide is regenerated automatically.
 
-#### Using the writing assistant
+#### Generate content
 
-Select at least 10 characters of text in the editor. A small pill button (✦) appears near the selection. Click it to choose an operation:
+Click the **pencil icon** in the editor toolbar. If the editor is empty, a dialog opens where you describe what you want written. If the editor already has content, Quill asks whether to replace it first.
+
+#### Rewrite selected text
+
+Select at least 10 characters of text in the editor, then **right-click** to see AI operations in the context menu:
 
 | Operation | What it does |
 |---|---|
@@ -180,9 +184,9 @@ An **Accept / Discard** bar appears below the result:
 
 If you navigate away or close the editor before accepting, the original text is restored automatically.
 
-#### Post Evaluation
+#### Evaluate writing quality
 
-Click the ✦ button in the toolbar and choose **Evaluate Post** (or click it while no text is selected in any post with enough content). Quill sends the full post to Claude and displays an **Evaluation panel** on the right:
+Click the **checkmark-circle icon** in the editor toolbar (requires at least ~100 words of content). Quill sends the full post or page to Claude and displays an **Evaluation panel** on the right:
 
 - A short prose **summary** of overall writing quality
 - A list of specific **findings** — each tagged with a category (Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone) and an optional suggested rewrite
