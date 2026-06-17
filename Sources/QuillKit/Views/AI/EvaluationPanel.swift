@@ -13,6 +13,18 @@ public struct EvaluationPanel: View {
     let onReEvaluate: () -> Void
     let onFindingSelected: (String) -> Void
 
+    public init(
+        state: EvaluationPanelState,
+        onClose: @escaping () -> Void,
+        onReEvaluate: @escaping () -> Void,
+        onFindingSelected: @escaping (String) -> Void
+    ) {
+        self.state = state
+        self.onClose = onClose
+        self.onReEvaluate = onReEvaluate
+        self.onFindingSelected = onFindingSelected
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             header
@@ -96,7 +108,7 @@ public struct EvaluationPanel: View {
 
                 if !result.findings.isEmpty {
                     VStack(spacing: 8) {
-                        ForEach(Array(result.findings.enumerated()), id: \.offset) { _, finding in
+                        ForEach(Array(result.findings.enumerated()), id: \.element.quote) { _, finding in
                             EvaluationFindingCard(
                                 finding: finding,
                                 onTap: { onFindingSelected(finding.quote) }
@@ -127,7 +139,12 @@ public struct EvaluationPanel: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Retry") { onReEvaluate() }
-                .buttonStyle(.bordered)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.wpAmber, in: RoundedRectangle(cornerRadius: 5))
+                .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
