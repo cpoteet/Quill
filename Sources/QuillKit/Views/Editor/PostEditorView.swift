@@ -150,7 +150,7 @@ public struct PostEditorView: View {
                         evaluationResult = nil
                         evaluationError = nil
                     },
-                    onReEvaluate: { Task { await executeEvaluation() } },
+                    onReEvaluate: { if !isEvaluating { Task { await executeEvaluation() } } },
                     onFindingSelected: { quote in
                         guard let data = try? JSONEncoder().encode(quote),
                               let json = String(data: data, encoding: .utf8) else { return }
@@ -327,15 +327,18 @@ public struct PostEditorView: View {
                 }
                 .help("Generate post with Claude")
                 Button {
-                    showEvaluationPanel = true
-                    evaluationResult = nil
-                    evaluationError = nil
-                    Task { await executeEvaluation() }
+                    if !isEvaluating {
+                        showEvaluationPanel = true
+                        evaluationResult = nil
+                        evaluationError = nil
+                        Task { await executeEvaluation() }
+                    }
                 } label: {
                     Image(systemName: "doc.badge.checkmark")
                         .font(.system(size: 13))
                 }
                 .help("Evaluate writing quality")
+                .disabled(isEvaluating)
             }
         }
         .padding(.horizontal, 16)
@@ -843,7 +846,7 @@ public struct PostEditorView: View {
         evaluationError = nil
 
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent)
-        let system = AIPromptBuilder.systemPrompt(styleGuide: nil)
+        let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
         let client = AnthropicClient(apiKey: aiSettings.apiKey)
 
         do {
