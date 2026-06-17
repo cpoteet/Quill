@@ -24,12 +24,16 @@ Add after the Add image group:
 ```html
 <span class="tb-sep"></span>
 <span class="tb-group" id="ai-toolbar-group" style="display:none">
-  <button id="btn-generate" title="Generate post with Claude">✦</button>
-  <button id="btn-evaluate" title="Evaluate writing quality">✓</button>
+  <button id="btn-generate" title="Generate post with Claude">
+    <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+  </button>
+  <button id="btn-evaluate" title="Evaluate writing quality">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+  </button>
 </span>
 ```
 
-The group starts hidden. `setAIEnabled(true)` reveals it; `setAIEnabled(false)` hides it. Button characters use the existing `.tb-text-icon` / `.tb-code-text` styling pattern — no new CSS needed.
+The group starts hidden. `setAIEnabled(true)` reveals it; `setAIEnabled(false)` hides it. Both buttons use inline SVG at `viewBox="0 0 24 24"` matching the existing toolbar icon pattern — no new CSS needed. The generate button uses a pencil/edit icon (not the generic sparkle); the evaluate button uses a checkmark-in-circle.
 
 ## JS Functions (editor.html)
 
