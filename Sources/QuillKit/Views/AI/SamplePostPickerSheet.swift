@@ -21,7 +21,7 @@ struct SamplePostPickerSheet: View {
 
             Divider()
 
-            Text("Select up to 5 posts that represent your writing style. Claude will match your voice when generating content.")
+            Text("Select up to 5 posts that represent your writing style. Claude will match your voice generating and evaluating content.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)

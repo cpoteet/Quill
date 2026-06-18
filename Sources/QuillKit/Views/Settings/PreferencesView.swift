@@ -91,7 +91,7 @@ public struct PreferencesView: View {
                 Divider().padding(.leading, 12)
                 formRow(label: "Writing Style") {
                     HStack(spacing: 8) {
-                        Button("Choose Sample Posts…") { isSamplePickerOpen = true }
+                        Button("Choose Posts") { isSamplePickerOpen = true }
                             .buttonStyle(.bordered)
                             .tint(Color.wpAmber)
                             .disabled(posts.isEmpty)

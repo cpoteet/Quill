@@ -462,7 +462,7 @@ Once a valid key is saved, a **pencil** button (Generate) and a **checkmark-circ
 
 ### Writing Style
 
-Quill can learn your writing style by analyzing posts from your blog. In the AI Writing section of Settings, click **Choose Sample Posts** and select up to 5 posts that are representative of how you write. When you save, Quill sends those posts to Claude to generate a concise style guide, which is then used to inform all AI writing operations.
+Quill can learn your writing style by analyzing posts from your blog. In the AI Writing section of Settings, click **Choose Posts** and select up to 5 posts that are representative of how you write. When you save, Quill sends those posts to Claude to generate a concise style guide, which is then used to inform all AI writing operations.
 
 The style guide is regenerated automatically when you change your sample post selection. If you switch to a different WordPress site, the sample selection is cleared and you will need to set it again for the new site.
 
