@@ -14,7 +14,7 @@ struct AboutView: View {
                 Text("Quill")
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
 
-                Text("Version 1.7.0")
+                Text("Version 1.8.0")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
@@ -63,6 +63,13 @@ struct AboutView: View {
                         copyright: "Copyright © 2014–2015 Stephen Celis",
                         license: "MIT License"
                     )
+
+                    NoticeEntry(
+                        name: "Quill Icon",
+                        url: "https://www.vecteezy.com/free-vector/quill",
+                        copyright: "Quill Vectors by Vecteezy",
+                        license: "Vecteezy Free License"
+                    )
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,9 +93,11 @@ private struct NoticeEntry: View {
             Text(name)
                 .font(.system(size: 12, weight: .medium))
 
-            Text(url)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+            if let dest = URL(string: url) {
+                Link(url, destination: dest)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
 
             Text(copyright)
                 .font(.system(size: 11))

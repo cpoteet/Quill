@@ -196,17 +196,48 @@ public struct PostEditorView: View {
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
         .toast(message: $toastMessage)
-        .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
-            Button("Revert", role: .destructive) { discardChanges() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your unsaved changes will be lost.")
+        .sheet(isPresented: $showDiscardAlert) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Revert to Server Version?")
+                    .font(.headline)
+                Text("Your unsaved changes will be lost.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { showDiscardAlert = false }
+                    Button("Revert") {
+                        showDiscardAlert = false
+                        discardChanges()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .keyboardShortcut(.return, modifiers: .command)
+                }
+            }
+            .padding(20)
+            .frame(width: 380)
         }
-        .alert("Replace Content?", isPresented: $showAIReplaceAlert) {
-            Button("Continue") { isAISheetOpen = true }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will replace your current title and content. Continue?")
+        .sheet(isPresented: $showAIReplaceAlert) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Replace Content?")
+                    .font(.headline)
+                Text("This will replace your current title and content. Continue?")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { showAIReplaceAlert = false }
+                    Button("Continue") {
+                        showAIReplaceAlert = false
+                        isAISheetOpen = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.return, modifiers: .command)
+                }
+            }
+            .padding(20)
+            .frame(width: 380)
         }
         .sheet(isPresented: $isAISheetOpen) {
             if let settings = appState.aiSettings {
@@ -222,24 +253,37 @@ public struct PostEditorView: View {
                 }
             }
         }
-        .alert(
-            "Conflict Detected",
+        .sheet(
             isPresented: Binding(
                 get: { conflictAlert != nil },
                 set: { if !$0 { conflictAlert = nil } }
             )
         ) {
-            if conflictAlert != nil {
-                Button("Keep Local") { saveToWordPress(force: true) }
-                Button("Use Server") {
-                    if case .remote(let post) = item {
-                        loadFromServer(postID: post.id)
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Conflict Detected")
+                    .font(.headline)
+                Text("This post was modified on the server since you last fetched it.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { conflictAlert = nil }
+                    Button("Use Server") {
+                        conflictAlert = nil
+                        if case .remote(let post) = item {
+                            loadFromServer(postID: post.id)
+                        }
                     }
+                    Button("Keep Local") {
+                        conflictAlert = nil
+                        saveToWordPress(force: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.return, modifiers: .command)
                 }
-                Button("Cancel", role: .cancel) {}
             }
-        } message: {
-            Text("This post was modified on the server since you last fetched it.")
+            .padding(20)
+            .frame(width: 380)
         }
         .alert(
             "Preview Failed",
