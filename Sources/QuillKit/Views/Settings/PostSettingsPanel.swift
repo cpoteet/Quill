@@ -174,8 +174,12 @@ public struct PostSettingsPanel: View {
 
     private var filteredCategories: [WPCategory] {
         let q = categorySearch.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return categories }
-        return categories.filter { $0.name.localizedCaseInsensitiveContains(q) }
+        let pool = q.isEmpty ? categories : categories.filter { $0.name.localizedCaseInsensitiveContains(q) }
+        let selected = pool.filter { settings.categoryIDs.contains($0.id) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let unselected = pool.filter { !settings.categoryIDs.contains($0.id) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return selected + unselected
     }
 
     private var hasExactCategoryMatch: Bool {
@@ -257,15 +261,17 @@ public struct PostSettingsPanel: View {
     // MARK: - Tags
 
     private var selectedTagNames: [String] {
-        tags.filter { settings.tagIDs.contains($0.id) }.map { $0.name }
+        tags.filter { settings.tagIDs.contains($0.id) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            .map { $0.name }
             + settings.newTagNames
     }
 
     private var filteredUnselectedTags: [WPTag] {
         let q = tagSearch.trimmingCharacters(in: .whitespaces)
         let unselected = tags.filter { !settings.tagIDs.contains($0.id) }
-        guard !q.isEmpty else { return unselected }
-        return unselected.filter { $0.name.localizedCaseInsensitiveContains(q) }
+        let pool = q.isEmpty ? unselected : unselected.filter { $0.name.localizedCaseInsensitiveContains(q) }
+        return pool.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private var hasExactTagMatch: Bool {
