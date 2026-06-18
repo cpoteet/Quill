@@ -211,7 +211,7 @@ The image alignment buttons (left, center, right) appear in the toolbar only whe
 **For posts and pages already on WordPress:**
 - Press **⌘S** or click **Publish** to sync your changes to WordPress immediately.
 - An amber dot in the toolbar indicates you have unsaved changes.
-- Click **Revert** to discard unsaved changes and restore the last saved version.
+- Click **Revert** to discard unsaved changes and restore the last saved version. A confirmation sheet appears; press **⌘↩** to confirm or **Escape** to cancel.
 
 **Autosave:** Quill automatically saves your work every 30 seconds after a change, so you don't lose progress if you close the app unexpectedly. For remote posts, autosaves are stored locally and applied if you reopen a post before manually saving.
 
@@ -366,13 +366,13 @@ Once you have set the date and time, press **⌘⇧P** or click **Publish** to c
 
 ### Categories (Posts only)
 
-The categories section lists all categories on your site. Check a category to assign it to the post. Use the search field to filter categories by name.
+The categories section lists all categories on your site. Check a category to assign it to the post. Checked categories always sort to the top of the list (alphabetically), followed by unchecked categories (also alphabetically), making your active selections easy to see. Use the search field to filter categories by name.
 
 To create a new category, type its name in the search field and press Enter. New categories are created on your WordPress site when the post is saved or published.
 
 ### Tags (Posts only)
 
-Tags work the same way as categories. Type in the search field to find existing tags or press Enter to create a new one. New tags are created on your WordPress site when the post is saved or published.
+Tags work similarly to categories. Selected tags appear as chips above the search field, sorted alphabetically. Type in the search field to find existing tags or press Enter to create a new one. New tags are created on your WordPress site when the post is saved or published.
 
 ### Slug
 
@@ -468,7 +468,7 @@ The style guide is regenerated automatically when you change your sample post se
 
 ### Web Search
 
-The **Web Search** toggle in Settings allows the Generate Post feature to search the web for current information when composing a post. Disable it to generate posts using only Claude's existing knowledge, which is faster and uses less API budget.
+The **Web Search** toggle in Settings allows the Generate Content feature to search the web for current information when composing a post. Disable it to generate posts using only Claude's existing knowledge, which is faster and uses less API budget.
 
 ### Generating Content
 
@@ -476,9 +476,9 @@ Click the **pencil icon** in the editor toolbar to open the content generator. T
 
 Quill will write a complete post or page, including a title and structured body, and load it into the editor. If web search is enabled, Claude will research the topic before writing.
 
-If the editor already contains content, you will be asked to confirm before the existing content is replaced.
+If the editor already contains content, a **Replace Content?** confirmation sheet appears first. Press **⌘↩** to proceed or **Escape** (or Cancel) to go back.
 
-If the generated content is long and hits an initial length limit, Quill will offer to continue generating for the full version. Choosing to continue uses additional API budget.
+If the generated content is long and hits an initial length limit, a **Post may be cut off** sheet appears. Choose **Get Full Version** (⌘↩) to request a longer response, or **Use What I Have** to accept the draft as-is. Getting the full version uses additional API budget.
 
 ### Evaluating Writing Quality
 
@@ -555,7 +555,7 @@ These operations work on the selected text only and do not use web search. The r
 
 | Shortcut | Action |
 |---|---|
-| ⌘↩ | Generate post (in the Generate Post sheet) |
+| ⌘↩ | Confirm primary action in any confirmation sheet (Generate Content, Replace Content?, Revert to Server Version?, Conflict Detected, Post may be cut off) |
 
 ---
 
