@@ -10,26 +10,30 @@ public enum APIError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Invalid site URL."
+        case .invalidURL: return "That doesn't look like a valid site URL. Make sure it starts with https://."
         case .httpError(let code, let body): return Self.friendlyHTTPMessage(code: code, rawBody: body)
-        case .decodingError(let e): return "Decode error: \(e.localizedDescription)"
-        case .networkError(let e): return e.localizedDescription
-        case .noCredentials: return "No credentials saved. Open Preferences to add your site."
-        case .unexpectedHTML: return "The server returned a web page instead of API data. Check that your Site URL is the WordPress home address — if WordPress is installed in a subfolder (e.g. /wordpress) but serves from the root, enter the root URL (https://example.com, not https://example.com/wordpress)."
+        case .decodingError: return "Quill couldn't read the response from WordPress. Try again, or check that your site is running a supported version."
+        case .networkError(let e):
+            let msg = e.localizedDescription
+            if msg.contains("Could not connect") || msg.contains("Cannot connect") || msg.contains("not found") {
+                return "Couldn't reach your site. Check the URL and make sure your site is online."
+            }
+            return msg
+        case .noCredentials: return "No site configured yet. Open Blog Settings to connect your WordPress site."
+        case .unexpectedHTML: return "Your site returned a web page instead of data. Check that the Site URL is your WordPress home address, not a subfolder where WordPress is installed."
         }
     }
 
     private static func friendlyHTTPMessage(code: Int, rawBody: String) -> String {
-        // Log the raw body for debugging without surfacing it to the user.
         fputs("API HTTP \(code): \(rawBody)\n", stderr)
         switch code {
-        case 400: return "WordPress rejected the request — your Application Password may be incorrectly formatted. Open Blog Settings to check."
-        case 401: return "Authentication failed — your username or Application Password may be wrong. Open Blog Settings to fix this."
-        case 403: return "You don't have permission to perform this action."
-        case 404: return "The requested content was not found on the server."
-        case 409: return "A conflict occurred — the post may have been modified elsewhere."
-        case 500...599: return "Server error (\(code)). Try again in a moment."
-        default: return "Request failed (HTTP \(code))."
+        case 400: return "WordPress didn't accept the request. Try re-entering your Application Password — make sure there are no extra spaces."
+        case 401: return "Couldn't sign in. Double-check your username and Application Password."
+        case 403: return "Your WordPress account doesn't have permission to do this. Check your role in WordPress Admin."
+        case 404: return "That content doesn't exist anymore. It may have been deleted from WordPress."
+        case 409: return "This post was edited somewhere else at the same time. Reload and try again."
+        case 500...599: return "Something went wrong on your WordPress server. Try again in a moment."
+        default: return "The request didn't go through (HTTP \(code)). Try again."
         }
     }
 }

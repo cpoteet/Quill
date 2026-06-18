@@ -117,10 +117,15 @@ public struct PreferencesView: View {
                 )
             }
 
+            if let error = saveError {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HStack {
-                if let error = saveError {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                } else if isAnalyzing {
+                if isAnalyzing {
                     Text("Analyzing writing style…").foregroundStyle(.secondary).font(.caption)
                 } else if saveSuccess {
                     Text("Saved.").foregroundStyle(Color.wpAmber).font(.caption)
@@ -195,9 +200,6 @@ public struct PreferencesView: View {
                 saveError = "Invalid URL. Include https://"
                 return
             }
-            // The Basic-auth header is only base64-encoded, not encrypted — require HTTPS so
-            // credentials are never sent in clear text. http:// is permitted only for local
-            // development hosts (which ATS also exempts).
             let host = url.host?.lowercased() ?? ""
             let isLocalHost = host == "localhost" || host == "127.0.0.1" || host == "::1"
             guard scheme == "https" || (scheme == "http" && isLocalHost) else {
@@ -208,12 +210,23 @@ public struct PreferencesView: View {
             let creds = Credentials(siteURL: url, username: username, appPassword: appPassword)
             do {
                 try CredentialsStore.save(creds)
-                onSave(creds)
             } catch {
                 saveError = error.localizedDescription
                 isSaving = false
                 return
             }
+
+            // Validate credentials with a lightweight API call before dismissing
+            do {
+                let client = WordPressClient(credentials: creds)
+                _ = try await client.fetchPosts(page: 1, perPage: 1)
+            } catch {
+                saveError = error.localizedDescription
+                isSaving = false
+                return
+            }
+
+            onSave(creds)
             isSaving = false
         }
 
