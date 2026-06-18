@@ -1033,6 +1033,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 ### 7.12 Settings panel & preferences
 
 - [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt, discussion; for **pages** shows parent + slug + discussion only (no categories/tags/excerpt) — the `isPage` gotcha.
+- [ ] **Category list ordering:** checked categories appear first (alphabetical), then unchecked (alphabetical) — both in the full list and when filtering by search term. Same ordering is preserved after toggling a category on/off.
+- [ ] **Tag list ordering:** selected tag chips above the search box are in alphabetical order; unselected tags in the search dropdown are alphabetical.
 - [ ] Amber accent applied throughout settings.
 - [ ] Preferences opens from both the menu and the in-app sheet; `PreferencesView` works in the separate `Settings` scene **without EnvironmentObject** — i.e. sample post picker is populated.
 

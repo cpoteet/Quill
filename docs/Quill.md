@@ -132,8 +132,8 @@ Click the sidebar-right icon in the editor toolbar to open the settings panel. A
 **Posts:**
 - **Status** — Draft, Published, or Scheduled
 - **Publish Date** — schedule a future publish with a date/time picker
-- **Categories** — filter existing categories with the search box, or type a new name and press Return to create it on your site when the post is saved
-- **Tags** — selected tags appear as chips at the top; search to add from existing tags, or type a new name and press Return to create it on your site when the post is saved
+- **Categories** — checked categories sort to the top (alphabetically), followed by unchecked ones; filter with the search box, or type a new name and press Return to create it on your site when the post is saved
+- **Tags** — selected tags appear as chips at the top (alphabetically sorted); search to add from existing tags, or type a new name and press Return to create it on your site when the post is saved
 - **Slug** — the URL-friendly identifier for the post
 - **Excerpt** — custom post excerpt
 - **Discussion** — toggle whether comments are allowed on the post
