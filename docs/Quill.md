@@ -161,7 +161,9 @@ Optionally, select one or more of your existing posts as **style samples**. When
 
 #### Generate content
 
-Click the **pencil icon** in the editor toolbar. If the editor is empty, a dialog opens where you describe what you want written. If the editor already has content, Quill asks whether to replace it first.
+Click the **pencil icon** in the editor toolbar. If the editor is empty, a dialog opens where you describe what you want written. If the editor already has content, Quill asks whether to replace it first — press **⌘↩** to confirm or **Escape** to cancel.
+
+If Claude's response is very long, a "Post may be cut off" dialog appears. Choose **Get Full Version** (⌘↩) to request a longer response, or **Use What I Have** to keep the draft as-is.
 
 #### Rewrite selected text
 

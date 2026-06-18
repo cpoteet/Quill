@@ -967,8 +967,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 ### 7.8 Conflict detection
 
-- [ ] Open a remote post in Quill. Edit it on the server (or via another client) so `modified` changes. Save in Quill → **Conflict Detected** alert.
-  - [ ] "Keep Local" → force-saves, overwrites server.
+- [ ] Open a remote post in Quill. Edit it on the server (or via another client) so `modified` changes. Save in Quill → **Conflict Detected** sheet appears.
+  - [ ] "Keep Local" (⌘↩) → force-saves, overwrites server.
   - [ ] "Use Server" → reloads server content, discards local edits.
   - [ ] "Cancel" → keeps editing, no data lost.
 - [ ] **False-conflict guard:** open a post, immediately save without server changes → **no** conflict alert.
@@ -989,8 +989,8 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 - [ ] Dirty indicator (amber dot) shows for local drafts when `isDirty`, hidden for remote.
 - [ ] Rapid navigation between items → no autosave from item A lands on item B (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
 - [ ] Quitting the app with unsaved local-draft edits → recovered on next launch.
-- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears in the header. Click it → "Revert to Server Version?" alert appears.
-  - [ ] "Revert" → local autosave deleted, server content reloaded, dirty state cleared.
+- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears in the header. Click it → "Revert to Server Version?" sheet appears.
+  - [ ] "Revert" (⌘↩) → local autosave deleted, server content reloaded, dirty state cleared.
   - [ ] "Cancel" → editing continues, no data lost.
 - [ ] Revert button is **hidden** for local drafts (only shown for remote posts).
 - [ ] Revert button is **hidden** for a clean (unedited) remote post.
@@ -1008,8 +1008,10 @@ These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows
 
 - [ ] With no API key: the **pencil** and **checkmark-circle** buttons in the editor toolbar are **hidden** and the AI items are **absent** from the right-click context menu (`aiEnabled == false`).
 - [ ] Add a key in Settings → both toolbar buttons appear and AI context menu items appear — **without relaunch**.
-- [ ] **Generate content:** pencil button on an empty editor opens the generate dialog directly; on a non-empty editor shows the "Replace Content?" alert first.
+- [ ] **Generate content:** pencil button on an empty editor opens the generate dialog directly; on a non-empty editor shows the "Replace Content?" confirmation sheet first.
+  - [ ] ⌘↩ confirms the primary action (Continue) from the keyboard; Escape or clicking Cancel dismisses without opening the generate sheet.
 - [ ] Generate produces a title + structured HTML **with headings** (not just `<p>` — the prompt-structure gotcha).
+- [ ] **Truncation dialog:** if Claude hits the length limit, a "Post may be cut off" sheet appears with "Use What I Have" and "Get Full Version" — ⌘↩ triggers "Get Full Version"; selecting "Use What I Have" accepts the truncated result.
 - [ ] Generate with web search on → response reassembled correctly across fragmented blocks (the joining gotcha); citations don't break the TITLE/CONTENT parse.
 - [ ] **Selection ops (right-click menu):** select text → right-click → Make Longer / Make Shorter / To Table / To List each appear (only when `aiEnabled && hasTextSelection`) and each works.
   - [ ] `hasTextSelection` updates correctly: the AI items appear only when there is a non-empty selection; collapse the selection → items gone on next right-click.
@@ -1176,6 +1178,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
 | 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
 | 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
+| 50 | Confirmation sheets (Revert / Conflict / Replace / Truncation) have ⌘↩ on primary action | 👁 §7.8 + §7.9 + §7.11 |
 
 ---
 
