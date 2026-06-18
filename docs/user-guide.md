@@ -448,7 +448,7 @@ Right-click any item in the media grid and select **Delete** to remove it. A con
 
 ## AI Writing Features
 
-Quill includes an optional AI writing assistant powered by the Anthropic Claude API. AI features are disabled by default and require your own Anthropic API key to use. Usage is billed directly by Anthropic based on your API consumption.
+Quill includes an optional AI writing assistant powered by the Anthropic Claude API, using the Claude Haiku model. AI features are disabled by default and require your own Anthropic API key to use. Usage is billed directly by Anthropic based on your API consumption.
 
 When configured, Quill's AI features let you generate complete posts and pages from a prompt, rewrite selected text, and evaluate the writing quality of your content.
 
