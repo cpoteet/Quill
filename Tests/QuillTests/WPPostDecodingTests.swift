@@ -310,6 +310,28 @@ import Testing
 
     // When fetched via the list endpoint with _fields (no content/excerpt in payload),
     // decoding must succeed with empty defaults rather than throwing.
+    // MARK: – HTML entity decoding
+
+    @Test func decodesNumericEntities() {
+        #expect("Hell&#8217;s Kitchen".decodingHTMLEntities() == "Hell\u{2019}s Kitchen")
+    }
+
+    @Test func decodesHexEntities() {
+        #expect("A&#x26;B".decodingHTMLEntities() == "A&B")
+    }
+
+    @Test func decodesNamedEntities() {
+        #expect("&ldquo;Hello&rdquo; &amp; &lt;world&gt;".decodingHTMLEntities() == "\u{201C}Hello\u{201D} & <world>")
+    }
+
+    @Test func noEntitiesPassthrough() {
+        #expect("Plain Title".decodingHTMLEntities() == "Plain Title")
+    }
+
+    @Test func decodesMultipleMixed() {
+        #expect("&#8220;Quoted&#8221; &#38; More".decodingHTMLEntities() == "\u{201C}Quoted\u{201D} & More")
+    }
+
     @Test func missingContentAndExcerptDefaultToEmpty() throws {
         let json = """
         {"id":11,"type":"post",

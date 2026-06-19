@@ -53,7 +53,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 13 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, empty content from `_fields` list fetch |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 28 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, empty content from `_fields` list fetch |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
@@ -75,11 +75,11 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (13 tests)
+### 1. Model decoding — `WPPostDecodingTests` (28 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
-Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults that have caused production bugs.
+Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults that have caused production bugs. Also covers `editorHTML` wpautop for classic content and `decodingHTMLEntities()` for title display.
 
 | Test | What it checks |
 |---|---|
@@ -95,6 +95,22 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `whitespaceContentRawFallsBackToRenderedForEditorHTML` | `raw == "\n  "` → `editorHTML` returns `rendered` |
 | `missingRequiredFieldThrows` | Omitting `id` → decoding throws (required field guard) |
 | `futureStatusDecodes` | `status: "future"` decodes without error |
+| `classicContentGetsWpautop` | Double-newline classic content → `<p>` wrapped paragraphs |
+| `classicContentSingleNewlineBecomesBr` | Single newline → `<br />` within paragraph |
+| `classicContentWithInlineHTML` | Inline HTML (`<a>`, `<strong>`) preserved inside `<p>` wrapping |
+| `classicContentBlockElementNotWrapped` | Block elements (`<blockquote>`) not double-wrapped in `<p>` |
+| `gutenbergContentUnchanged` | Content with `<!-- wp:` comments passed through unchanged |
+| `contentWithParagraphTagsUnchanged` | Content already containing `<p>` tags not re-wrapped |
+| `classicContentShortcodePreserved` | WordPress shortcodes preserved inside `<p>` wrapping |
+| `classicContentListNotCorrupted` | `<ul>/<li>` not wrapped in `<p>` or injected with `<br>` |
+| `classicContentListWithAttributes` | `<ol start="3">` attributes preserved through wpautop |
+| `classicExcerptGetsWpautop` | Classic excerpt (no `<p>`, no block comments) gets wpautop |
+| `classicContentTableNotCorrupted` | `<table>` elements not wrapped in `<p>` |
+| `decodesNumericEntities` | `&#8217;` → `'` (right single quotation mark) |
+| `decodesHexEntities` | `&#x26;` → `&` |
+| `decodesNamedEntities` | `&ldquo;`, `&rdquo;`, `&amp;`, `&lt;`, `&gt;` decode correctly |
+| `noEntitiesPassthrough` | Plain text without entities passes through unchanged |
+| `decodesMultipleMixed` | Multiple numeric and named entities in one string |
 | `missingContentAndExcerptDefaultToEmpty` | No `content`/`excerpt` keys (list fetch with `_fields`) → both default to empty `RenderedString` without throwing |
 
 ---
@@ -917,12 +933,15 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Add a caption to an image, then click the image → resize handles should align to the image edges, not extend down to the bottom of the caption.
 - [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumbnail, Medium, Large, Full). Click each → the image swaps to that size.
 - [ ] Click Reset on an image with sizes loaded → the image returns to its original full-size dimensions. On an image without media sizes, Reset removes custom width/height constraints.
+- [ ] Click a classic-editor image (no explicit width/height attributes) → the image toolbar shows the image's natural dimensions (not blank fields).
 - [ ] Set image alignment to left, center, and right → text wraps correctly for each. Save and fetch the raw HTML → the figure has `wp-block-image alignleft/aligncenter/alignright`.
 - [ ] With an image selected, scroll the editor → the image toolbar moves with the image. Click elsewhere to deselect → the toolbar disappears.
 - [ ] Click inside the alt text or caption field in the image toolbar → the toolbar stays open (doesn't close when you click its own controls).
 - [ ] Insert images of different formats (`.jpg`, `.png`, `.gif`, `.webp`, `.heic`, `.tiff`) → each uploads successfully.
 - [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
 - [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
+- [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
+- [ ] If the media library has more than 50 items, a "Load More" button appears at the bottom of the picker grid. Click it → more images load and append to the grid.
 
 ### 7.5 Editor — links
 
@@ -950,6 +969,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Make a change in the code textarea, press ⌘S without exiting code view first → the change is saved to WordPress.
 - [ ] While in code view, click a different post in the sidebar → code view exits automatically and the new post loads in visual mode.
 - [ ] In dark mode, the code textarea background and text colors match the rest of the editor (no bright white flash).
+- [ ] With the image toolbar or embed menu open, enter code view → both dismiss automatically (no stale floating panels remain).
 
 **Special characters**
 - [ ] Write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view → the HTML shows `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual → original text is intact. Save and reload → still intact.
@@ -1081,6 +1101,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] The title field and top border spacing look correct (no extra gaps or overlap).
 - [ ] The app icon appears in the Dock and in the About window.
 - [ ] On launch, a "Loading editor…" overlay appears briefly and fades out once the editor is ready. It should never stay visible permanently.
+- [ ] In dark mode, links in the editor are visible (light blue on dark background), not unreadable dark blue.
+- [ ] Switch to dark mode while the app is running → open a post → editor, toolbar, and editor-wrap all start in dark colors immediately (no white flash).
 
 ### 7.14 Context menus
 
@@ -1211,6 +1233,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 44 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
 | 45 | Non-image media shows file icon in sidebar cell and "Preview unavailable" in detail view; alt text hidden | 👁 §7.2 |
 | 46 | Evaluation `ANCHOR:` field parsed to `finding.anchor`; omission → `nil` | ✅ `EvaluationParserTests.anchorFieldIsParsedIntoFinding` + `.anchorFieldIsNilWhenOmitted` |
+| 47 | Classic (pre-Gutenberg) content gets wpautop treatment | ✅ `WPPostDecodingTests.classicContent*` (10 tests) |
+| 48 | HTML entities in post/media titles decoded for display | ✅ `WPPostDecodingTests.decodes*` + `.noEntitiesPassthrough` (5 tests) |
 | 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
 | 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
 | 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
