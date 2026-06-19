@@ -55,7 +55,63 @@ public struct RenderedString: Codable, Hashable, Sendable {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return rendered
         }
-        return raw
+        if raw.contains("<!-- wp:") || raw.contains("<p>") || raw.contains("<p ") {
+            return raw
+        }
+        return Self.wpautop(raw)
+    }
+
+    static func wpautop(_ text: String) -> String {
+        var s = text.replacingOccurrences(of: "\r\n", with: "\n")
+                    .replacingOccurrences(of: "\r", with: "\n")
+
+        let containers = "ul|ol|table|blockquote|pre|div|figure|h[1-6]|hr|section|article"
+
+        if let re = try? NSRegularExpression(
+            pattern: "(<(?:\(containers))(?:\\s[^>]*)?>)", options: .caseInsensitive
+        ) {
+            s = re.stringByReplacingMatches(
+                in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "\n\n$1")
+        }
+        if let re = try? NSRegularExpression(
+            pattern: "(</(?:\(containers))>)", options: .caseInsensitive
+        ) {
+            s = re.stringByReplacingMatches(
+                in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "$1\n\n")
+        }
+        if let re = try? NSRegularExpression(
+            pattern: "(<hr\\b[^>]*/?>)", options: .caseInsensitive
+        ) {
+            s = re.stringByReplacingMatches(
+                in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "$1\n\n")
+        }
+
+        while s.contains("\n\n\n") {
+            s = s.replacingOccurrences(of: "\n\n\n", with: "\n\n")
+        }
+
+        let blocks = s.components(separatedBy: "\n\n")
+
+        let wrapped = blocks.compactMap { block -> String? in
+            let trimmed = block.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return nil }
+            if Self.containsBlockTag(trimmed) { return trimmed }
+
+            let withBreaks = trimmed.replacingOccurrences(of: "\n", with: "<br />\n")
+            return "<p>\(withBreaks)</p>"
+        }
+
+        return wrapped.joined(separator: "\n\n")
+    }
+
+    private static func containsBlockTag(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let tags = [
+            "<ul", "<ol", "<li", "<table", "<thead", "<tbody", "<tfoot",
+            "<tr", "<td", "<th", "<blockquote", "<pre", "<div", "<figure",
+            "<h1", "<h2", "<h3", "<h4", "<h5", "<h6", "<hr", "<section",
+        ]
+        return tags.contains { lower.contains($0) }
     }
 
     public var decodedTitle: String {

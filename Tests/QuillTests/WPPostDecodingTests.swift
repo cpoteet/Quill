@@ -167,6 +167,149 @@ import Testing
 
     // When fetched via the list endpoint with _fields (no content/excerpt in payload),
     // decoding must succeed with empty defaults rather than throwing.
+    // MARK: – Classic content wpautop
+
+    @Test func classicContentGetsWpautop() throws {
+        let json = """
+        {"id":20,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>rendered</p>","raw":"Hello world\\n\\nSecond paragraph"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == "<p>Hello world</p>\n\n<p>Second paragraph</p>")
+    }
+
+    @Test func classicContentSingleNewlineBecomesBr() throws {
+        let json = """
+        {"id":21,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"Line one\\nLine two"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == "<p>Line one<br />\nLine two</p>")
+    }
+
+    @Test func classicContentWithInlineHTML() throws {
+        let json = """
+        {"id":22,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"Check out <a href=\\"http://example.com\\">this link</a> today\\n\\n<strong>Bold</strong> text"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<p>Check out <a href=\"http://example.com\">this link</a> today</p>"))
+        #expect(html.contains("<p><strong>Bold</strong> text</p>"))
+    }
+
+    @Test func classicContentBlockElementNotWrapped() throws {
+        let json = """
+        {"id":23,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"Intro text\\n\\n<blockquote>A quote</blockquote>\\n\\nEnd"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<p>Intro text</p>"))
+        #expect(html.contains("<blockquote>A quote</blockquote>"))
+        #expect(!html.contains("<p><blockquote>"))
+        #expect(html.contains("<p>End</p>"))
+    }
+
+    @Test func gutenbergContentUnchanged() throws {
+        let raw = "<!-- wp:paragraph -->\\n<p>Hello</p>\\n<!-- /wp:paragraph -->"
+        let json = """
+        {"id":24,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>Hello</p>","raw":"\(raw)"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == post.content.raw)
+    }
+
+    @Test func contentWithParagraphTagsUnchanged() throws {
+        let json = """
+        {"id":25,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"<p>Already wrapped</p>"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == "<p>Already wrapped</p>")
+    }
+
+    @Test func classicContentShortcodePreserved() throws {
+        let json = """
+        {"id":26,"title":{"rendered":"T"},
+         "content":{"rendered":"<div class='gallery'>...</div>","raw":"Check this gallery:\\n\\n[gallery ids=\\"1,2,3\\"]\\n\\nNeat!"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<p>[gallery ids=\"1,2,3\"]</p>"))
+        #expect(html.contains("<p>Neat!</p>"))
+    }
+
+    @Test func classicContentListNotCorrupted() throws {
+        let json = """
+        {"id":28,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"Intro text\\r\\n<ul>\\r\\n\\t<li>Item A</li>\\r\\n\\t<li>Item B</li>\\r\\n</ul>\\r\\nEnd text"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<p>Intro text</p>"))
+        #expect(html.contains("<p>End text</p>"))
+        #expect(!html.contains("<br"))
+        #expect(html.contains("<li>Item A</li>"))
+        #expect(html.contains("<li>Item B</li>"))
+    }
+
+    @Test func classicContentListWithAttributes() throws {
+        let json = """
+        {"id":29,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>r</p>","raw":"Before\\n<ol start=\\"3\\">\\n<li>First</li>\\n<li>Second</li>\\n</ol>\\nAfter"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<p>Before</p>"))
+        #expect(html.contains("<p>After</p>"))
+        #expect(html.contains("<ol start=\"3\">"))
+        #expect(!html.contains("<br"))
+    }
+
+    @Test func classicExcerptGetsWpautop() throws {
+        let json = """
+        {"id":27,"title":{"rendered":"T"},
+         "content":{"rendered":"<p>body</p>","raw":"<p>body</p>"},
+         "excerpt":{"rendered":"<p>Nice excerpt</p>","raw":"Nice excerpt"},
+         "status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.excerpt.editorHTML == "<p>Nice excerpt</p>")
+    }
+
+    // When fetched via the list endpoint with _fields (no content/excerpt in payload),
+    // decoding must succeed with empty defaults rather than throwing.
     @Test func missingContentAndExcerptDefaultToEmpty() throws {
         let json = """
         {"id":11,"type":"post",
