@@ -140,7 +140,7 @@ public struct PostEditorView: View {
                     }
                 }
                 .sheet(isPresented: $showImagePicker) {
-                    MediaPickerView { selected in
+                    MediaPickerView(onSelect: { selected in
                         // Ensure item is in appState so requestMediaSizes can find it
                         if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
                             appState.mediaItems.append(selected)
@@ -154,7 +154,9 @@ public struct PostEditorView: View {
                         if !selected.altText.isEmpty { info["alt"] = selected.altText }
                         NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                         showImagePicker = false
-                    }
+                    }, onCancel: {
+                        showImagePicker = false
+                    })
                     .environmentObject(appState)
                     .frame(minWidth: 600, minHeight: 400)
                 }

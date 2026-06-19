@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 public struct MediaPickerView: View {
     var onSelect: (WPMedia) -> Void
+    var onCancel: (() -> Void)?
 
     @EnvironmentObject private var appState: AppState
     @State private var mediaItems: [WPMedia] = []
@@ -10,9 +11,13 @@ public struct MediaPickerView: View {
     @State private var loadError: String?
     @State private var isUploading = false
     @State private var uploadError: String?
+    @State private var currentPage: Int = 1
+    @State private var hasMore: Bool = false
+    @State private var isLoadingMore = false
 
-    public init(onSelect: @escaping (WPMedia) -> Void) {
+    public init(onSelect: @escaping (WPMedia) -> Void, onCancel: (() -> Void)? = nil) {
         self.onSelect = onSelect
+        self.onCancel = onCancel
     }
 
     public var body: some View {
@@ -52,14 +57,17 @@ public struct MediaPickerView: View {
 
     private var toolbar: some View {
         HStack {
+            Button("Cancel") { onCancel?() }
+                .keyboardShortcut(.cancelAction)
+            Spacer()
             Text("Media Library")
                 .font(.headline)
             Spacer()
-            Button("Upload…") { uploadFromDisk() }
-                .disabled(isUploading)
             if isUploading {
                 ProgressView().scaleEffect(0.7)
             }
+            Button("Upload") { uploadFromDisk() }
+                .disabled(isUploading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -75,16 +83,50 @@ public struct MediaPickerView: View {
                 }
             }
             .padding(12)
+            if hasMore {
+                Button {
+                    Task { await loadMoreMedia() }
+                } label: {
+                    if isLoadingMore {
+                        ProgressView().scaleEffect(0.7)
+                    } else {
+                        Text("Load More")
+                    }
+                }
+                .disabled(isLoadingMore)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 12)
+            }
         }
     }
+
+    private let perPage = 50
 
     private func loadMedia() async {
         guard let creds = appState.credentials else { return }
         isLoading = true
         loadError = nil
+        currentPage = 1
         defer { isLoading = false }
         do {
-            mediaItems = try await WordPressClient(credentials: creds).fetchMedia()
+            let items = try await WordPressClient(credentials: creds).fetchMedia(page: 1, perPage: perPage)
+            mediaItems = items
+            hasMore = items.count == perPage
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+
+    private func loadMoreMedia() async {
+        guard let creds = appState.credentials else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        let nextPage = currentPage + 1
+        do {
+            let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
+            mediaItems.append(contentsOf: items)
+            currentPage = nextPage
+            hasMore = items.count == perPage
         } catch {
             loadError = error.localizedDescription
         }
