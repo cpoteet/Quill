@@ -1178,8 +1178,21 @@
       const tb = document.getElementById('image-toolbar')
       if (!tb) return
       tb._activeNodeView = nv
-      document.getElementById('img-tb-w').value   = nv.node.attrs.width  ?? ''
-      document.getElementById('img-tb-h').value   = nv.node.attrs.height ?? ''
+      function fillDims() {
+        let w = nv.node.attrs.width
+        let h = nv.node.attrs.height
+        if (w == null && nv.img.naturalWidth)  w = nv.img.naturalWidth
+        if (h == null && nv.img.naturalHeight) h = nv.img.naturalHeight
+        document.getElementById('img-tb-w').value = w ?? ''
+        document.getElementById('img-tb-h').value = h ?? ''
+      }
+      fillDims()
+      if (nv.node.attrs.width == null && !nv.img.naturalWidth) {
+        nv.img.addEventListener('load', function onLoad() {
+          nv.img.removeEventListener('load', onLoad)
+          if (tb._activeNodeView === nv) fillDims()
+        })
+      }
       document.getElementById('img-tb-alt').value = nv.node.attrs.alt    ?? ''
       _updateNamedSizeButtons(null)
 
@@ -2323,6 +2336,8 @@
     function _enterCodeView() {
       if (codeViewActive) return
       _closeFindBar()
+      _hideImageToolbar()
+      _closeEmbedMenu()
       codeViewActive = true
       // _rawHTML is cleared (set to null) on every Tiptap update event, so null means
       // the user has made visual edits since the last load/code-view save.
