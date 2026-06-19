@@ -253,6 +253,20 @@ public struct AIPromptBuilder {
             with: " ",
             options: .regularExpression
         )
+        // Footnote markers are inline atoms in the editor (no text), so strip them
+        // entirely — leaving the number causes Claude to flag it as stray text.
+        text = text.replacingOccurrences(
+            of: #"<sup[^>]*data-fn[^>]*>.*?</sup>"#,
+            with: "",
+            options: .regularExpression
+        )
+        // Footnote backrefs (↩) are NodeView artifacts not in the ProseMirror doc —
+        // strip so footnote list text matches the editor for anchor navigation.
+        text = text.replacingOccurrences(
+            of: #"<a[^>]*footnote-backref[^>]*>.*?</a>"#,
+            with: "",
+            options: .regularExpression
+        )
         // Convert closing block tags to spaces (not newlines) so the plain-text output
         // matches how findAndSelectText concatenates ProseMirror text nodes — with no separator.
         text = text.replacingOccurrences(

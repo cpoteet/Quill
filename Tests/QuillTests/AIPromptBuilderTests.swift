@@ -438,4 +438,15 @@ import Testing
         #expect(prompt.contains("See below"))
         #expect(prompt.contains("More prose"))
     }
+
+    @Test func promptExcludesFootnoteMarkersAndBackrefs() {
+        let html = "<p>Editorial is the opposite of that. It\u{2019}s a block theme built around<sup data-fn class=\"fn\"><a href=\"#fn-abc123\">3</a></sup> the idea of blocks.</p><ol class=\"wp-block-footnotes\"><li id=\"fn-abc123\">See reference<a class=\"footnote-backref\" href=\"#ref-fn-abc123\">\u{21A9}</a></li></ol>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        // Footnote number should not appear as plain text between words
+        #expect(!prompt.contains("around 3 the"))
+        #expect(prompt.contains("around the"))
+        // Backref arrow should be stripped from footnote list text
+        #expect(!prompt.contains("\u{21A9}"))
+        #expect(prompt.contains("See reference"))
+    }
 }
