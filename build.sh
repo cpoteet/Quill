@@ -5,6 +5,9 @@ APP_NAME="Quill"
 BUNDLE_ID="com.quill.app"
 MIN_MACOS="13.0"
 
+echo "▶ Closing $APP_NAME..."
+pkill -x "$APP_NAME" 2>/dev/null && sleep 0.5 || true
+
 echo "▶ Building $APP_NAME..."
 swift build -c release 2>&1
 
@@ -67,5 +70,6 @@ echo "▶ Signing $APP_BUNDLE..."
 codesign --force --sign - "$APP_BUNDLE"
 
 echo "✓ Built: $APP_BUNDLE"
-echo "  Run with: open $APP_BUNDLE"
-echo "  Install:  cp -r $APP_BUNDLE /Applications/"
+
+echo "▶ Launching $APP_NAME..."
+open "$APP_BUNDLE"
