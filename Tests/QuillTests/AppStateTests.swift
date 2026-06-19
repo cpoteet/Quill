@@ -174,3 +174,39 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.filteredItems[0].id == "remote-1")
     }
 }
+
+// MARK: - AppState.sectionIsEmpty
+
+@Suite struct SectionIsEmptyTests {
+
+    @Test func postsEmptyWhenNoPosts() {
+        let state = AppState()
+        state.selectedSection = .posts
+        #expect(state.sectionIsEmpty)
+    }
+
+    @Test func postsNotEmptyWhenPostsExist() throws {
+        let state = AppState()
+        state.posts = [try makePost(id: 1)]
+        state.selectedSection = .posts
+        #expect(!state.sectionIsEmpty)
+    }
+
+    @Test func pagesEmptyWhenNoPages() {
+        let state = AppState()
+        state.selectedSection = .pages
+        #expect(state.sectionIsEmpty)
+    }
+
+    @Test func localDraftsEmptyWhenNoDrafts() {
+        let state = AppState()
+        state.selectedSection = .localDrafts
+        #expect(state.sectionIsEmpty)
+    }
+
+    @Test func mediaEmptyWhenNoMedia() {
+        let state = AppState()
+        state.selectedSection = .media
+        #expect(state.sectionIsEmpty)
+    }
+}

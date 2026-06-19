@@ -271,7 +271,7 @@ Click below an image to place the cursor in the caption field and type a caption
 
 ### Footnotes
 
-Quill has full support for WordPress-style footnotes. To insert a footnote, place the cursor where you want the marker to appear and click the **\*** button in the toolbar, or right-click and choose **Insert Footnote** from the context menu.
+Quill has full support for WordPress-style footnotes. To insert a footnote, place the cursor where you want the marker to appear and click the **\*** button in the toolbar.
 
 When you insert a footnote, two things happen automatically:
 

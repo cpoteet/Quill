@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-18 — 261 Swift tests + 96 JS editor tests, all passing._
+_Last updated: 2026-06-18 — 267 Swift tests + 96 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 261 tests across 18 suites)
+1. **Swift tests** — `swift test` (all 267 tests across 19 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (96 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (261 tests, 18 suites)
+## Swift test suite (267 tests, 19 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -69,8 +69,9 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
-| 17 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
-| 18 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
+| 17 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
+| 18 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
+| 19 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 
 ---
 
@@ -566,7 +567,23 @@ File: `Tests/QuillTests/AppStateTests.swift`
 
 ---
 
-### 17. Security — `EditorCoordinatorTests` (7 tests)
+### 17. View-model — `SectionIsEmptyTests` (5 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+Tests the `sectionIsEmpty` computed property on `AppState`, used by `SidebarEmptyState` and `EmptyEditorPlaceholder` to show contextual empty-state messages.
+
+| Test | What it checks |
+|---|---|
+| `postsEmptyWhenNoPosts` | `.posts` section with no posts → `true` |
+| `postsNotEmptyWhenPostsExist` | `.posts` section with posts → `false` |
+| `pagesEmptyWhenNoPages` | `.pages` section with no pages → `true` |
+| `localDraftsEmptyWhenNoDrafts` | `.localDrafts` section with no drafts → `true` |
+| `mediaEmptyWhenNoMedia` | `.media` section with no media → `true` |
+
+---
+
+### 18. Security — `EditorCoordinatorTests` (7 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -584,7 +601,7 @@ Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security fi
 
 ---
 
-### 18. Editor helpers — `PostEditorHelpersTests` (14 tests)
+### 19. Editor helpers — `PostEditorHelpersTests` (14 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
