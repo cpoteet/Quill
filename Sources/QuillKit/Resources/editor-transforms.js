@@ -55,8 +55,8 @@ function toWordPressHTML(html, doc) {
     el.classList.add('wp-block-heading')
   })
 
-  // Lists → wp-block-list class (task lists excluded — they use data-type; footnotes list excluded — it has its own class)
-  div.querySelectorAll('ul:not([data-type="taskList"]), ol:not(.wp-block-footnotes)').forEach(el => {
+  // Lists → wp-block-list class (footnotes list excluded — it has its own class)
+  div.querySelectorAll('ul, ol:not(.wp-block-footnotes)').forEach(el => {
     el.classList.add('wp-block-list')
   })
 
@@ -67,15 +67,6 @@ function toWordPressHTML(html, doc) {
     const kids = Array.from(li.children)
     if (kids.length === 1 && kids[0].tagName === 'P') {
       li.innerHTML = kids[0].innerHTML
-    }
-  })
-
-  // Task items: Tiptap wraps content in <div><p>text</p></div> inside each task <li>.
-  // Strip the inner <p> from that div so we get <div>text</div>.
-  div.querySelectorAll('li[data-type="taskItem"] > div').forEach(wrapper => {
-    const kids = Array.from(wrapper.children)
-    if (kids.length === 1 && kids[0].tagName === 'P') {
-      wrapper.innerHTML = kids[0].innerHTML
     }
   })
 

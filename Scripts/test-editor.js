@@ -88,10 +88,7 @@ describe('toWordPressHTML — lists', () => {
     assert.match(out, /wp-block-list/)
   })
 
-  test('task list (data-type=taskList) does NOT gain wp-block-list', () => {
-    const out = wp('<ul data-type="taskList"><li data-type="taskItem"><div><p>task</p></div></li></ul>')
-    assert.doesNotMatch(out, /wp-block-list/)
-  })
+
 })
 
 // ---------------------------------------------------------------------------
@@ -111,11 +108,7 @@ describe('toWordPressHTML — list item p unwrap', () => {
     assert.match(out, /<p>b<\/p>/)
   })
 
-  test('task item div>p is unwrapped', () => {
-    const out = wp('<ul data-type="taskList"><li data-type="taskItem"><div><p>task text</p></div></li></ul>')
-    assert.doesNotMatch(out, /<p>task text<\/p>/)
-    assert.match(out, /<div>task text<\/div>/)
-  })
+
 })
 
 // ---------------------------------------------------------------------------
