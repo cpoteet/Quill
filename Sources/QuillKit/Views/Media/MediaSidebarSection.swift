@@ -132,7 +132,7 @@ struct MediaSidebarSection: View {
                 Task { await performDelete(target) }
             }
         } message: { media in
-            let name = media.title.rendered.isEmpty ? "This item" : "\"\(media.title.rendered)\""
+            let name = media.title.rendered.isEmpty ? "This item" : "\"\(media.title.decodedTitle)\""
             Text("\(name) will be permanently deleted from WordPress. This cannot be undone.")
         }
         // Delete error alert

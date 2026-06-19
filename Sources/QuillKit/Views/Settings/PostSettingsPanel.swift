@@ -354,7 +354,7 @@ public struct PostSettingsPanel: View {
             Picker("Parent", selection: $settings.parentID) {
                 Text("None (top-level)").tag(0)
                 ForEach(pages) { page in
-                    Text(page.title.rendered).tag(page.id)
+                    Text(page.title.decodedTitle).tag(page.id)
                 }
             }
             .labelsHidden()

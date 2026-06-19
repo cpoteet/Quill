@@ -39,7 +39,7 @@ public enum PostItem: Identifiable, Hashable {
 
     public var title: String {
         switch self {
-        case .remote(let p): return p.title.rendered.isEmpty ? "Untitled" : p.title.rendered
+        case .remote(let p): return p.title.rendered.isEmpty ? "Untitled" : p.title.decodedTitle
         case .local(let d): return d.title.isEmpty ? "Untitled" : d.title
         }
     }

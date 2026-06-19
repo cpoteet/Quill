@@ -58,10 +58,57 @@ public struct RenderedString: Codable, Hashable, Sendable {
         return raw
     }
 
+    public var decodedTitle: String {
+        rendered.decodingHTMLEntities()
+    }
+
     public init(raw: String) {
         // Local drafts have no server-rendered HTML; treat raw as the display value.
         self.rendered = raw
         self.raw = raw
+    }
+}
+
+extension String {
+    func decodingHTMLEntities() -> String {
+        guard contains("&") else { return self }
+        var result = self
+        let named: [(String, String)] = [
+            ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+            ("&quot;", "\""), ("&apos;", "'"), ("&nbsp;", "\u{00A0}"),
+            ("&mdash;", "\u{2014}"), ("&ndash;", "\u{2013}"),
+            ("&hellip;", "\u{2026}"), ("&lsquo;", "\u{2018}"),
+            ("&rsquo;", "\u{2019}"), ("&ldquo;", "\u{201C}"),
+            ("&rdquo;", "\u{201D}"),
+        ]
+        if let regex = try? NSRegularExpression(pattern: "&#(\\d+);") {
+            let nsRange = NSRange(result.startIndex..., in: result)
+            let matches = regex.matches(in: result, range: nsRange).reversed()
+            for match in matches {
+                if let range = Range(match.range(at: 1), in: result),
+                   let code = UInt32(result[range]),
+                   let scalar = Unicode.Scalar(code) {
+                    let charRange = Range(match.range, in: result)!
+                    result.replaceSubrange(charRange, with: String(Character(scalar)))
+                }
+            }
+        }
+        if let regex = try? NSRegularExpression(pattern: "&#x([0-9a-fA-F]+);") {
+            let nsRange = NSRange(result.startIndex..., in: result)
+            let matches = regex.matches(in: result, range: nsRange).reversed()
+            for match in matches {
+                if let range = Range(match.range(at: 1), in: result),
+                   let code = UInt32(result[range], radix: 16),
+                   let scalar = Unicode.Scalar(code) {
+                    let charRange = Range(match.range, in: result)!
+                    result.replaceSubrange(charRange, with: String(Character(scalar)))
+                }
+            }
+        }
+        for (entity, char) in named {
+            result = result.replacingOccurrences(of: entity, with: char)
+        }
+        return result
     }
 }
 

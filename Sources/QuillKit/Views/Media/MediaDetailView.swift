@@ -75,7 +75,7 @@ struct MediaDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 let name = media.title.rendered.isEmpty
                     ? (URL(string: media.sourceURL)?.lastPathComponent ?? "")
-                    : media.title.rendered
+                    : media.title.decodedTitle
                 metadataRow(label: "Filename", value: name)
                 metadataRow(label: "Type", value: {
                     if let ext = URL(string: media.sourceURL)?.pathExtension, !ext.isEmpty {

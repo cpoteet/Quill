@@ -553,7 +553,7 @@ public struct PostEditorView: View {
     }
 
     private func applyRemotePost(_ post: WPPost) {
-        let wpTitle = post.title.rendered
+        let wpTitle = post.title.decodedTitle
         let wpContent = post.content.editorHTML
         title = wpTitle
         htmlContent = wpContent
@@ -578,7 +578,7 @@ public struct PostEditorView: View {
         let serverContent = post.content.editorHTML.trimmingCharacters(in: .whitespacesAndNewlines)
         if snapContent.isEmpty,
            !serverContent.isEmpty,
-           snap.title == post.title.rendered {
+           snap.title == post.title.decodedTitle {
             return false
         }
         return true
@@ -766,7 +766,7 @@ public struct PostEditorView: View {
                 ? try? await client.fetchPage(id: postID)
                 : try? await client.fetchPost(id: postID)
             if let post = fetched {
-                title = post.title.rendered
+                title = post.title.decodedTitle
                 htmlContent = post.content.editorHTML
                 lastSavedServerModified = post.modified
                 cleanTitle = title
