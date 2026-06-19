@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-17 — 262 Swift tests + 98 JS editor tests, all passing._
+_Last updated: 2026-06-18 — 261 Swift tests + 96 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 262 tests across 18 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (98 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 261 tests across 18 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (96 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (259 tests, 18 suites)
+## Swift test suite (261 tests, 18 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -57,14 +57,14 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 50 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 50 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 53 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -155,20 +155,19 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (51 tests)
+### 5. Networking — `WordPressClientTests` (50 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 `@Suite(.serialized)` — runs sequentially because `MockURLProtocol.requestHandler` is a shared static. Uses `URLSessionConfiguration.ephemeral` with `MockURLProtocol` as the protocol class.
 
-#### URL & request construction (14 tests)
+#### URL & request construction (13 tests)
 
 | Test | What it checks |
 |---|---|
 | `fetchPostsDecodesList` | `fetchPosts` decodes a list of posts |
 | `fetchPostsIncludesRequiredQueryParams` | `per_page`, `page`, `context=edit`, `status=…` all present |
-| `fetchPagesHitsPagesEndpoint` | `/wp-json/wp/v2/pages`, not `/posts` |
 | `createPostUsesPostMethodWithJsonContentType` | `POST /posts`, `Content-Type: application/json` |
 | `updatePostUsesPutMethodOnPostsId` | `PUT /posts/{id}` |
 | `createPageUsesPostMethodOnPagesEndpoint` | `POST /pages` |
@@ -374,7 +373,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (50 tests)
+### 12. AI — `AIPromptBuilderTests` (53 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -444,7 +443,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `anchorFieldEmptyStringBecomesNil` | `ANCHOR: ""` → `nil` (not empty string) |
 | `anchorFieldCaseInsensitivePrefix` | Lowercase `anchor:` accepted |
 
-#### `evaluatePostPrompt` (12 tests)
+#### `evaluatePostPrompt` (14 tests)
 
 | Test | What it checks |
 |---|---|
@@ -459,6 +458,9 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `promptIncludesStyleGuideWhenProvided` | Non-nil guide embedded with "established writing style" framing |
 | `promptOmitsStyleGuideBlockWhenNil` | `nil` guide → no style block in prompt |
 | `promptOmitsStyleGuideBlockWhenEmpty` | Empty string guide → no style block |
+| `promptExcludesImageCaptionText` | Image caption text excluded from the content sent to Claude |
+| `promptExcludesCodeBlockContent` | Code block content excluded from the content sent to Claude |
+| `promptExcludesEmbedFigureContent` | Embed figure content excluded from the content sent to Claude |
 
 ---
 
@@ -619,7 +621,7 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 ---
 
-## JS editor tests (93 tests)
+## JS editor tests (96 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -646,21 +648,19 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `existing classes on heading are preserved` | Pre-existing classes kept alongside new class |
 | `headings are idempotent` | Running twice doesn't duplicate the class |
 
-### `toWordPressHTML` — lists (3 tests)
+### `toWordPressHTML` — lists (2 tests)
 
 | Test | What it checks |
 |---|---|
 | `ul gains wp-block-list` | `<ul>` → `wp-block-list` |
 | `ol gains wp-block-list` | `<ol>` → `wp-block-list` |
-| `task list does NOT gain wp-block-list` | `data-type="taskList"` → no class added |
 
-### `toWordPressHTML` — list item `<p>` unwrapping (3 tests)
+### `toWordPressHTML` — list item `<p>` unwrapping (2 tests)
 
 | Test | What it checks |
 |---|---|
 | `single-child <p> inside <li> is unwrapped` | `<li><p>text</p></li>` → `<li>text</li>` |
 | `multi-child <li> is left untouched` | Two `<p>` in one `<li>` → unchanged |
-| `task item div>p is unwrapped` | Task item inner `<p>` stripped to `<div>text</div>` |
 
 ### `toWordPressHTML` — blockquote & cite (5 tests)
 
@@ -793,10 +793,9 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 | Test | What it checks |
 |---|---|
-| `youtube.com URL detected as youtube` | `https://www.youtube.com/watch?v=…` → `"youtube"` |
-| `youtu.be short URL detected as youtube` | `https://youtu.be/…` → `"youtube"` |
-| `vimeo.com URL detected as vimeo` | `https://vimeo.com/…` → `"vimeo"` |
-| `x.com and twitter.com detected as twitter` | Both `x.com` and `twitter.com` → `"twitter"` |
+| `youtube.com and youtu.be map to youtube` | Both `youtube.com` and `youtu.be` → `"youtube"` |
+| `vimeo maps to vimeo with video type` | `https://vimeo.com/…` → `"vimeo"` |
+| `x.com and twitter.com map to twitter` | Both `x.com` and `twitter.com` → `"twitter"` |
 | `unknown host returns null` | `https://example.com/…` → `null` |
 | `invalid URL returns null` | `"not a url"` → `null` |
 
@@ -804,9 +803,9 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 | Test | What it checks |
 |---|---|
-| `youtube produces full class string` | `embedClassFor("youtube", "video")` → `"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube"` |
-| `twitter rich type` | `embedClassFor("twitter", "rich")` → includes `is-type-rich is-provider-twitter` |
-| `unknown provider produces bare wp-block-embed` | `embedClassFor(null, null)` → `"wp-block-embed"` |
+| `youtube gets full Gutenberg class list with aspect ratio` | `embedClassFor("youtube", "video")` → `"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube"` |
+| `twitter gets rich type without aspect classes` | `embedClassFor("twitter", "rich")` → includes `is-type-rich is-provider-twitter` |
+| `unknown provider gets bare wp-block-embed` | `embedClassFor(null, null)` → `"wp-block-embed"` |
 
 ### `toWordPressHTML` — embeds (5 tests)
 
@@ -840,286 +839,304 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 ## Manual / functional test checklists
 
-These cover SwiftUI/AppKit behavior, WKWebView interaction, and end-to-end flows that aren't economically unit-testable. Run against a **real WordPress test site** (or a local `wp-env`/Docker WordPress) using an Application Password. Build with `./build.sh` and `open Quill.app` before each pass.
+Run these against a real WordPress test site (or a local Docker WordPress) using an Application Password. Build with `./build.sh` and `open Quill.app` before each pass.
 
-> Recommendation: keep a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.
+> Tip: use a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.
 
 ### 7.1 Authentication & onboarding
 
-- [ ] First launch with no credentials → preferences/login prompt shown.
-- [ ] Valid site URL + username + app password → connects, lists load.
-- [ ] **Edge:** site URL without scheme (`example.com`) → app normalizes it or shows a clear error (no silent failure or crash).
-- [ ] **Edge:** site URL with trailing slash, with subdirectory install (`example.com/blog`), with non-standard port.
-- [ ] **Edge:** wrong password → `401` surfaced as a readable error, not a silent failure.
-- [ ] **Edge:** site that isn't WordPress / REST API disabled → clear error.
-- [ ] App password with spaces pasted verbatim → auth succeeds (ties to §4).
-- [ ] No keychain prompt appears during normal network use (ephemeral-session gotcha).
-- [ ] Credentials persist across relaunch; changing the site URL updates the lists and (per gotcha) clears AI sample post IDs.
+- [ ] Launch with no saved credentials → login/preferences screen appears.
+- [ ] Enter a valid site URL, username, and app password → app connects and post/page lists appear.
+- [ ] Enter a site URL without `https://` (e.g. `example.com`) → app either adds the scheme automatically or shows a clear error.
+- [ ] Try a site URL with a trailing slash, a subdirectory install (`example.com/blog`), and a non-standard port → all connect successfully.
+- [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash).
+- [ ] Enter a URL for a non-WordPress site or one with the REST API disabled → a clear error appears.
+- [ ] Paste an app password that contains spaces → authentication succeeds (WordPress app passwords normally have spaces).
+- [ ] No macOS Keychain password prompt appears during normal use.
+- [ ] Quit and relaunch → credentials are remembered and lists reload without re-entering them.
+- [ ] Change the site URL in settings → lists update to the new site; any saved AI sample posts are cleared.
 
 ### 7.2 Sidebar, lists, navigation
 
-- [ ] Posts / Pages / Local Drafts / Media sections each load and render.
-- [ ] Selection highlight uses the custom (non-blue) style — confirms the `ScrollView+LazyVStack` (not `List`) gotcha holds.
-- [ ] Search filters the current section case-insensitively; clearing restores.
-- [ ] **Empty states:** empty Posts, empty Pages, empty Drafts, empty Media each show the right placeholder; editor empty state says "post"/"page"/"draft" per active section.
-- [ ] Switching to Media hides the post list/search/toolbar and shows the thumbnail grid (the `else` branch gotcha).
-- [ ] Pagination in Posts and Media loads more on scroll; `hasMore` stops at the end.
-- [ ] No `NavigationSplitView`/`HSplitView` chrome (no drag cursor on the divider) — visual confirm of the layout gotcha.
-- [ ] **Sidebar toggle** — `sidebar.left` button in the editor toolbar hides/shows the sidebar with a slide animation; button remains visible when sidebar is hidden so it can be restored; editor expands to fill the freed space.
-- [ ] **Non-image media panel** — upload a PDF via the Media tab; confirm: sidebar cell shows `doc.richtext.fill` icon (not a broken image), detail view shows `doc.fill` icon + "Preview unavailable" (not "Image unavailable"), and no alt text field appears in the metadata panel.
+- [ ] Posts, Pages, Local Drafts, and Media sections each load and show their items.
+- [ ] Clicking a sidebar item highlights it with the app's warm accent color (not the default macOS blue).
+- [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
+- [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears. The editor empty state says "post", "page", or "draft" depending on the active section.
+- [ ] Switch to the Media section → the post list, search bar, and toolbar are replaced by a thumbnail grid.
+- [ ] Scroll to the bottom of the Posts or Media list → more items load automatically; loading stops when all items have been fetched.
+- [ ] The dividers between sidebar/editor and editor/settings panels have no drag cursor — they are fixed boundaries, not resizable splitters.
+- [ ] Click the sidebar toggle button in the editor toolbar → sidebar slides away; click again → it slides back. The toggle button stays visible when the sidebar is hidden. The editor expands to fill the space.
+- [ ] Upload a PDF via the Media tab → the sidebar cell shows a document icon (not a broken image); the detail panel shows a document icon with "Preview unavailable" (not "Image unavailable"); no alt text field appears.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
-- [ ] Load an existing remote post → content renders identically to WordPress.
-- [ ] **Post loading state:** clicking a post shows the editor briefly with "Start writing..." while the individual fetch completes, then content renders — this is expected from the `_fields` list-fetch optimization. Confirm content is correct after load, not truncated.
-- [ ] Type formatting: bold, italic, strike, inline code, links, headings (h1–h6), bullet/ordered/task lists, blockquote, code block, table.
-- [ ] Save → fetch `content.raw` via REST (`?context=edit`) → matches the Gutenberg expected output table in `CLAUDE.md` (heading classes, list classes, figure-wrapped tables/images, thead promotion).
-- [ ] **Round-trip stability:** load → save without editing → diff is empty (no drift). Then load again → still identical.
-- [ ] Multi-paragraph list items survive the save unchanged (don't get collapsed).
-- [ ] Task list checkboxes round-trip.
-- [ ] **Blockquote attribution (`<cite>`):**
-  - [ ] Toggling blockquote **on** auto-appends an empty cite line (subdued, right-aligned).
-  - [ ] Typing in the cite line then saving → `<cite>` persists inside the blockquote and renders as a `<cite>` on WordPress.
-  - [ ] Leaving the cite **blank** → the empty `<cite>` is **not** saved (no empty cite litters the published HTML).
-  - [ ] **Enter** inside the cite exits the blockquote into a new paragraph after it (doesn't add a newline inside the cite).
-  - [ ] **Backspace** in an empty cite deletes the cite node (doesn't delete the whole quote).
-  - [ ] Toggling blockquote **off** removes the quote and its cite cleanly.
-- [ ] Curly quotes / emoji / non-Latin scripts survive save→reload byte-exact.
-- [ ] Very long post (10k+ words) — editor stays responsive; save succeeds.
-- [ ] Paste from Word/Google Docs/Safari → reasonable HTML, no script injection.
+- [ ] Open an existing remote post → content renders the same as it does in WordPress.
+- [ ] When clicking a post, the editor briefly shows "Start writing..." while loading, then content appears. Content should be complete and not truncated.
+- [ ] Apply each formatting option: bold, italic, strikethrough, inline code, links, headings (h1–h6), bullet lists, numbered lists, blockquote, code block, table. Each renders correctly.
+- [ ] Save a post containing all formatting types → fetch the raw content via the WordPress REST API (`?context=edit`). Verify: headings have `wp-block-heading` class, lists have `wp-block-list`, tables are wrapped in `figure.wp-block-table`, images are wrapped in `figure.wp-block-image`, and the first all-header row in a table is promoted to `<thead>`.
+- [ ] Open a post, save it without making any changes, then fetch the raw content → it should be identical to before (no drift).
+- [ ] Multi-paragraph list items survive a save without being collapsed into a single paragraph.
+- [ ] **Blockquote attribution:**
+  - [ ] Toggle blockquote on → an empty cite line appears at the bottom (subdued, right-aligned).
+  - [ ] Type an author name in the cite line, save → `<cite>` persists in the saved HTML.
+  - [ ] Leave the cite line blank, save → no empty `<cite>` appears in the saved HTML.
+  - [ ] Press Enter inside the cite → cursor exits the blockquote into a new paragraph below.
+  - [ ] Press Backspace in an empty cite → the cite is deleted (not the entire blockquote).
+  - [ ] Toggle blockquote off → the quote and its cite are removed cleanly.
+- [ ] Write content with curly quotes, emoji, and non-Latin scripts → save and reload → characters are preserved exactly.
+- [ ] Open or create a very long post (10k+ words) → the editor stays responsive; save completes successfully.
+- [ ] Paste content from Word, Google Docs, or Safari → HTML is reasonable; no script tags or unexpected elements injected.
 
 ### 7.4 Editor — images
 
-- [ ] Insert image via media picker at caret → appears at correct position.
-- [ ] **Hit-testing:** clicking a thumbnail in the picker grid selects the intended item.
-- [ ] Drag image file from Finder onto editor → uploads, inserts, toast shown.
-- [ ] **Edge:** drag a non-image file → ignored (the `isFileURL`/mime guard).
-- [ ] **Edge:** drag multiple images at once → all upload and insert.
-- [ ] **Edge:** upload failure (offline) → error surfaced, editor not corrupted.
-- [ ] **Large file upload:** drag a file ≥ 10 MB onto the editor → UI stays responsive during upload (editor not frozen); same check via the Media tab upload button. Regression guard for H4 streaming-upload fix.
-- [ ] Resize handles appear on select; drag resizes; aspect ratio respected.
-- [ ] **Resize handles align to the image, not the caption** — with a caption present, the bottom handles should sit at the image's bottom edge, not at the bottom of the caption. Confirm all four handles hug the image frame.
-- [ ] Named WordPress sizes (thumbnail/medium/large/full) offered when the image has a `mediaId` and the media item is loaded; hidden otherwise (`setMediaSizes(id, null)` path).
-- [ ] **Reset button** — click Reset on an image that has WordPress media sizes loaded → src switches to the full-size URL, width/height restore to the original full dimensions. On an image with no media sizes, Reset clears the explicit constraints without changing src.
-- [ ] Image alignment left/center/right → wraps text correctly and saves as `figure.wp-block-image alignXXX`.
-- [ ] Image toolbar repositions on scroll and hides on deselect (the `_scrollHandler` cleanup + 80ms deselect delay gotchas).
-- [ ] Clicking a toolbar input doesn't dismiss the toolbar (80ms delay).
-- [ ] Mime detection: insert `.jpg/.png/.gif/.webp/.heic/.tiff` → correct content type sent.
-- [ ] **Insert-image picker is image-only:** open the editor image picker (insert image button in toolbar) → file dialog only shows/accepts image files; PDFs and movies are greyed out or absent.
-- [ ] **Media tab still accepts PDFs and movies:** open the Media tab, use the upload button there → file dialog accepts images, PDFs, and movies.
+- [ ] Click the insert image button in the toolbar → select an image from the picker → it appears at the cursor position in the editor.
+- [ ] In the image picker grid, click a specific thumbnail → it selects that exact image (not an adjacent one).
+- [ ] Drag an image file from Finder onto the editor → the image uploads, appears in the editor, and a success toast is shown.
+- [ ] Drag a non-image file (e.g. a `.txt` or `.pdf`) onto the editor → nothing happens (file is ignored).
+- [ ] Drag multiple image files onto the editor at once → all upload and insert.
+- [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
+- [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
+- [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
+- [ ] Add a caption to an image, then click the image → resize handles should align to the image edges, not extend down to the bottom of the caption.
+- [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumbnail, Medium, Large, Full). Click each → the image swaps to that size.
+- [ ] Click Reset on an image with sizes loaded → the image returns to its original full-size dimensions. On an image without media sizes, Reset removes custom width/height constraints.
+- [ ] Set image alignment to left, center, and right → text wraps correctly for each. Save and fetch the raw HTML → the figure has `wp-block-image alignleft/aligncenter/alignright`.
+- [ ] With an image selected, scroll the editor → the image toolbar moves with the image. Click elsewhere to deselect → the toolbar disappears.
+- [ ] Click inside the alt text or caption field in the image toolbar → the toolbar stays open (doesn't close when you click its own controls).
+- [ ] Insert images of different formats (`.jpg`, `.png`, `.gif`, `.webp`, `.heic`, `.tiff`) → each uploads successfully.
+- [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
+- [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
 
 ### 7.5 Editor — links
 
-- [ ] Link button opens the popover anchored to the **selection rect** (not the toolbar button) when text is selected; anchored to the button when nothing selected.
-- [ ] Typing a query searches posts/pages/categories/tags/media; results render (the `ObservableObject` re-render gotcha).
-- [ ] Popover **grows** as results appear without clipping (the `.preferredContentSize` sizing gotcha).
-- [ ] Selecting a result inserts the link; manual URL entry works.
-- [ ] **Edge:** no results → empty state, no crash.
-- [ ] **Edge:** search while offline → handled gracefully.
-- [ ] **Link click scheme check:** insert `http://` and `https://` links via the link picker → clicking them opens the system browser. Insert a `mailto:` link → clicking opens Mail. Insert a `file:///` or `javascript:alert(1)` URL via code view → clicking does **nothing** (S2 scheme-allowlist guard).
+- [ ] Select text, click the link button → a link popover appears anchored near the selected text. With no selection, the popover anchors to the toolbar button instead.
+- [ ] Type a search query in the link popover → results from posts, pages, categories, tags, and media appear.
+- [ ] As search results appear, the popover grows taller to fit them (results are not clipped or hidden).
+- [ ] Select a search result → a link is inserted on the selected text. Manually typing a URL also works.
+- [ ] Search for something with no matches → an empty state is shown; no crash.
+- [ ] Search while offline → the popover handles the error gracefully (no crash or hang).
+- [ ] Insert links with `http://` and `https://` URLs → clicking them in the editor opens the system browser. Insert a `mailto:` link → clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link via code view → clicking it in the editor does nothing (blocked for security).
 
 ### 7.6 Editor — code view
 
-**UI & general behaviour (both)**
-- [ ] `</>` button appears in the toolbar's utility group (left of the image "Add" button).
-- [ ] Clicking `</>` switches to the code textarea; all other toolbar buttons are disabled while in code view; the `</>` button shows the active state.
-- [ ] HTML in the textarea is pretty-printed: block elements on their own lines, inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their parent, `<li>` items indented inside `<ul>`/`<ol>`, table rows/cells nested, `<pre>` content left verbatim. Top-level blocks separated by a blank line.
-- [ ] Clicking `</>` again switches back to visual mode; all toolbar buttons re-enable; edited HTML round-trips correctly into Tiptap.
-- [ ] **Code edit reflected in visual editor (both):** make a change directly in the code textarea, exit code view — the visual editor reflects the change.
-- [ ] **No content wipe on exit without editing (both):** enter code view, do not change anything, exit — the visual editor content is completely unchanged.
-- [ ] **No compounding whitespace (both):** open a post/page, enter code view, exit without editing, repeat several times — the HTML formatting does not accumulate extra blank lines or whitespace each cycle.
-- [ ] **Save from code view (both):** with code view active, use ⌘S — the saved content matches what was in the textarea (not stale Tiptap state).
-- [ ] **Save without exiting code view (both):** make a change in the code view textarea, do NOT click `</>` to exit, then ⌘S — the edit is pushed to WordPress.
-- [ ] **Load new post while in code view (both):** select a different post/page — code view exits automatically and the new post loads in visual mode.
-- [ ] **Dark mode (both):** code textarea background and text color match the editor background (no light flash or mis-colored panel).
-- [ ] **Special characters round-trip (both):** write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view — the HTML should show `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual — the original text is intact. Save and reload — still intact. (C1 entity-escaping regression guard.)
+**Entering and exiting**
+- [ ] The `</>` button appears in the toolbar to the left of the image Add button.
+- [ ] Click `</>` → the visual editor switches to a code textarea; all other toolbar buttons become disabled; the `</>` button shows an active/highlighted state.
+- [ ] The code textarea shows nicely formatted HTML: block elements on their own lines, inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their parent, list items are indented inside their list, table cells are nested under rows, and `<pre>` content is left exactly as-is. Top-level blocks are separated by blank lines.
+- [ ] Click `</>` again → the editor switches back to visual mode; toolbar buttons re-enable; any HTML changes made in the textarea are reflected in the visual editor.
 
-**Block posts/pages only**
-- [ ] **Block comments visible (block only):** open a block-based post/page with unsupported blocks (e.g. Gallery, Columns). Enter code view **without making any visual edit first** — WordPress block comments (`<!-- wp:gallery -->`, etc.) are visible in the textarea.
-- [ ] **Block comments gone after visual edit (block only):** open a block-based post/page, make a visual edit (e.g. fix a typo), then enter code view — block comments are **gone**. This is expected: Tiptap becomes the source of truth after any visual edit and does not preserve block comments.
+**Editing and saving**
+- [ ] Make a change in the code textarea, exit code view → the visual editor shows the change.
+- [ ] Enter code view without changing anything, exit → the visual editor content is completely unchanged.
+- [ ] Enter and exit code view repeatedly without editing → the HTML formatting does not accumulate extra blank lines or whitespace with each cycle.
+- [ ] With code view active, press ⌘S → the content from the textarea is saved to WordPress (not stale content from before entering code view).
+- [ ] Make a change in the code textarea, press ⌘S without exiting code view first → the change is saved to WordPress.
+- [ ] While in code view, click a different post in the sidebar → code view exits automatically and the new post loads in visual mode.
+- [ ] In dark mode, the code textarea background and text colors match the rest of the editor (no bright white flash).
 
-**Non-block pages only**
-- [ ] **Non-block page formatting (non-block only):** open a page with no Gutenberg block comments (e.g. an About page with plain paragraphs). Enter code view — the HTML is indented and readable across multiple lines, not compacted onto a single line.
+**Special characters**
+- [ ] Write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view → the HTML shows `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual → original text is intact. Save and reload → still intact.
 
-**Both — visual edit interaction**
-- [ ] **Visual edit appears in code view (both):** make a visual edit, then open code view — the edit is visible in the HTML (code view shows Tiptap's current content, not the pre-edit snapshot).
-- [ ] **Visual edit round-trip (both):** make a visual edit → save → close the post/page → reopen — visual content is intact.
-- [ ] **Save without touching code view (both):** make only visual edits, never open code view → save — content saves correctly with no code-view interference.
+**Block posts/pages** (posts created in the WordPress block editor)
+- [ ] Open a block-based post that uses Gallery or Columns blocks. Enter code view without making any visual edits first → WordPress block comments (`<!-- wp:gallery -->`, etc.) are visible in the textarea.
+- [ ] Open the same post, make a visual edit (e.g. fix a typo), then enter code view → block comments are gone. This is expected: once you edit visually, Quill's editor becomes the source of truth.
 
-**Both — save round-trip**
-- [ ] **Code edit round-trip (both):** edit in code view → exit → save to WordPress → close the post/page → reopen → enter code view — HTML is still formatted (not compacted onto one line) and the edit is present.
+**Non-block pages** (pages with plain HTML, no Gutenberg blocks)
+- [ ] Open a page with no block comments (e.g. a simple About page). Enter code view → the HTML is indented and readable, not compressed onto a single line.
+
+**Round-trips**
+- [ ] Make a visual edit, then open code view → the edit is visible in the HTML.
+- [ ] Make a visual edit → save → close the post → reopen → content is intact.
+- [ ] Make only visual edits, never open code view → save → content saves correctly.
+- [ ] Edit in code view → exit → save → close the post → reopen → enter code view → the edit is present and the HTML is still formatted (not compressed).
 
 ### 7.7 Save / publish / draft / schedule
 
-- [ ] **Local draft, Save Draft** → persists locally only, **no** network call (verify via proxy/network log); toast shows "Saved locally".
-- [ ] **Local draft, Publish** → creates remote post, **local copy disappears immediately** from the Drafts list, selection moves to the new remote item, section switches to Posts/Pages.
-- [ ] Page draft publishes to `/pages`, post draft to `/posts`.
-- [ ] **Remote post, ⌘S** → updates WordPress (status `draft` stays draft).
-- [ ] **Remote post, ⌘⇧P / Publish** → publishes; button label reflects state (`Publish` / `Update` / `Publish Draft` / `Schedule`).
-- [ ] **Scheduling:** set a future date → status `future`, post scheduled; verify on the server the scheduled time matches (UTC `date_gmt`, **not** site-local `date` — the scheduling gotcha). Test a timezone-offset site.
-- [ ] Reopening a scheduled post shows the correct future date in the panel (the `parseWPDate` round-trip, incl. the no-timezone-suffix fallback).
-- [ ] Inline new category/tag names → created on save, IDs attached, appear in `appState.categories/tags` and the panel (the deferred-creation gotcha).
-- [ ] **Edge:** taxonomy creation fails → save aborts with an error, content not lost.
-- [ ] Slug: blank slug on a new item stays blank (doesn't inherit previous item's slug); editing slug then save sends it; blank slug on update **omits** `slug` so the server value is preserved.
-- [ ] Featured image set/clear; `featured_media: 0` clears it.
-- [ ] Comment status open/closed round-trips.
-- [ ] Page parent picker excludes the page itself; saving sets `parent`.
+- [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally".
+- [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
+- [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.
+- [ ] Press ⌘S on a remote draft → it updates on WordPress while keeping its "draft" status.
+- [ ] Press ⌘⇧P or click Publish on a remote post → the post publishes. The button label matches the action: "Publish" for drafts, "Update" for published posts, "Schedule" for future-dated posts, "Submit for Review" for pending posts, "Publish Privately" for private posts.
+- [ ] Set a future date on a post → status changes to "future" and the post is scheduled. Check on the WordPress server that the scheduled time matches (particularly important for sites in non-UTC timezones).
+- [ ] Close and reopen a scheduled post → the correct future date appears in the settings panel.
+- [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
+- [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost.
+- [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
+- [ ] Set a featured image → it appears on the post. Clear the featured image → it is removed on the server.
+- [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
+- [ ] In the page parent picker, the current page does not appear in the list. Save with a parent selected → the parent is set on the server.
 
 ### 7.8 Conflict detection
 
-- [ ] Open a remote post in Quill. Edit it on the server (or via another client) so `modified` changes. Save in Quill → **Conflict Detected** sheet appears.
-  - [ ] "Keep Local" (⌘↩) → force-saves, overwrites server.
-  - [ ] "Use Server" → reloads server content, discards local edits.
-  - [ ] "Cancel" → keeps editing, no data lost.
-- [ ] **False-conflict guard:** open a post, immediately save without server changes → **no** conflict alert.
-- [ ] **Preview-induced baseline refresh:** preview a draft post, then save → **no** spurious conflict.
-- [ ] **Preview URL on plain-permalink site:** on a site using `Settings → Permalinks → Plain` (URLs like `/?p=123`), click Preview → browser opens the correct preview URL with `&preview=true` (not `?preview=true` appended after the existing `?`).
-- [ ] **Preview URL on pretty-permalink site:** same test with a pretty permalink (e.g. `https://example.com/my-post/`) → URL is `…/?preview=true`.
+- [ ] Open a remote post in Quill. Edit the same post from another client (or directly on the server) so its `modified` date changes. Save in Quill → a "Conflict Detected" dialog appears.
+  - [ ] Click "Keep Local" (⌘↩) → Quill saves its version, overwriting the server.
+  - [ ] Click "Use Server" → Quill reloads the server's content, discarding local edits.
+  - [ ] Click "Cancel" → the dialog closes and editing continues; no data is lost.
+- [ ] Open a post, immediately save without anyone else changing it → no conflict alert appears.
+- [ ] Preview a draft post, then save → no spurious conflict alert appears.
+- [ ] On a site using plain permalinks (`?p=123` URLs), click Preview → the browser opens the correct URL with `&preview=true` appended (not a malformed double `?`).
+- [ ] On a site using pretty permalinks (`/my-post/` URLs), click Preview → the browser opens `…/?preview=true`.
 
-### 7.9 Autosave / unsaved-changes / navigation
+### 7.9 Autosave / unsaved changes / navigation
 
-- [ ] Edit a remote post, wait 30s → autosave stash written; navigate away and back → "Unsaved changes restored" toast and stashed content shown.
-- [ ] **No spurious restore toast** when opening a server post that has no real local divergence.
-- [ ] Navigate away from a dirty local draft → flushed to SQLite; reopening shows the latest content.
-- [ ] **onDisappear flush — local draft to Media:** edit a local draft, immediately click the Media section (before the 30s autosave fires) → switch back to Drafts, reopen the draft → the edit is present.
-- [ ] **onDisappear flush — remote post to Media:** edit a remote post, immediately click the Media section → reopen the post → "Unsaved changes restored" toast and the edit is shown.
-- [ ] **onDisappear flush — no regression on item switch:** switch directly between two posts without going through Media → existing flush behavior still works, no duplicate autosave written.
-- [ ] Navigate away from a dirty remote post → stashed; not pushed to WordPress.
-- [ ] After a successful publish/update, the autosave stash for that post is **deleted** (so the next open doesn't falsely restore).
-- [ ] Dirty indicator (amber dot) shows for local drafts when `isDirty`, hidden for remote.
-- [ ] Rapid navigation between items → no autosave from item A lands on item B (the `expectedItemID` guard); no crash; cancelled load tasks don't throw.
-- [ ] Quitting the app with unsaved local-draft edits → recovered on next launch.
-- [ ] **Revert button:** open a remote post, make edits → **Revert** button appears in the header. Click it → "Revert to Server Version?" sheet appears.
-  - [ ] "Revert" (⌘↩) → local autosave deleted, server content reloaded, dirty state cleared.
-  - [ ] "Cancel" → editing continues, no data lost.
-- [ ] Revert button is **hidden** for local drafts (only shown for remote posts).
-- [ ] Revert button is **hidden** for a clean (unedited) remote post.
+- [ ] Edit a remote post, wait 30 seconds → an autosave is created. Navigate away and back → a "Unsaved changes restored" toast appears and the stashed edits are shown.
+- [ ] Open a remote post that has no local changes → no "Unsaved changes restored" toast appears.
+- [ ] Edit a local draft, navigate away without saving → switch back and reopen it → the edits are preserved.
+- [ ] Edit a local draft, immediately click the Media section (before the 30-second autosave timer fires) → switch back to Drafts and reopen the draft → the edits are present.
+- [ ] Edit a remote post, immediately click the Media section → reopen the post → "Unsaved changes restored" toast appears and the edits are shown.
+- [ ] Switch directly between two posts (without going through Media) → edits from the first post don't leak into the second; no duplicate autosaves.
+- [ ] Edit a remote post and navigate away → the edits are stashed locally but not pushed to WordPress.
+- [ ] Successfully publish or update a post → reopen it → no "Unsaved changes restored" toast (the stash was cleared on save).
+- [ ] Edit a local draft → an amber dot appears next to it in the sidebar. Remote posts do not show this dot.
+- [ ] Rapidly switch between several posts → no autosave data from one post appears in another; no crashes.
+- [ ] Quit the app with unsaved local-draft edits → relaunch → the edits are recovered.
+- [ ] Open a remote post, make edits → a "Revert" button appears in the editor header. Click it → a "Revert to Server Version?" dialog appears.
+  - [ ] Click "Revert" (⌘↩) → local edits are discarded and the server content reloads.
+  - [ ] Click "Cancel" → editing continues; no data is lost.
+- [ ] The Revert button does not appear for local drafts.
+- [ ] The Revert button does not appear for a remote post that has not been edited.
 
 ### 7.10 Delete / trash
 
-- [ ] Trash a remote post → confirmation alert, then `force=false` (recoverable — appears in WordPress Trash, not gone).
-- [ ] Trash a page → `/pages/{id}` trashed.
-- [ ] Delete a local draft → removed from list and SQLite.
-- [ ] Delete media → confirmation alert (permanent, `force=true`); after confirm it's gone from the grid and server.
-- [ ] **Edge:** delete failure (permissions/offline) → `deleteError` alert; item stays.
-- [ ] Cancel on any delete confirmation → nothing happens.
+- [ ] Right-click a remote post and choose Delete → a confirmation dialog appears. Confirm → the post moves to WordPress Trash (recoverable, not permanently deleted).
+- [ ] Same test with a page → the page moves to Trash.
+- [ ] Delete a local draft → it disappears from the sidebar and is removed from local storage.
+- [ ] Delete a media item → a confirmation dialog warns that deletion is permanent. Confirm → the item is gone from both the grid and the WordPress server.
+- [ ] If deletion fails (e.g. no permission, or offline) → an error alert appears; the item remains in the list.
+- [ ] Click Cancel on any delete confirmation → nothing happens.
 
-### 7.11 AI features (require an Anthropic API key configured)
+### 7.11 AI features (requires an Anthropic API key)
 
-- [ ] With no API key: the **pencil** and **checkmark-circle** buttons in the editor toolbar are **hidden** and the AI items are **absent** from the right-click context menu (`aiEnabled == false`).
-- [ ] Add a key in Settings → both toolbar buttons appear and AI context menu items appear — **without relaunch**.
-- [ ] **Generate content:** pencil button on an empty editor opens the generate dialog directly; on a non-empty editor shows the "Replace Content?" confirmation sheet first.
-  - [ ] ⌘↩ confirms the primary action (Continue) from the keyboard; Escape or clicking Cancel dismisses without opening the generate sheet.
-- [ ] Generate produces a title + structured HTML **with headings** (not just `<p>` — the prompt-structure gotcha).
-- [ ] **Truncation dialog:** if Claude hits the length limit, a "Post may be cut off" sheet appears with "Use What I Have" and "Get Full Version" — ⌘↩ triggers "Get Full Version"; selecting "Use What I Have" accepts the truncated result.
-- [ ] Generate with web search on → response reassembled correctly across fragmented blocks (the joining gotcha); citations don't break the TITLE/CONTENT parse.
-- [ ] **Selection ops (right-click menu):** select text → right-click → Make Longer / Make Shorter / To Table / To List each appear (only when `aiEnabled && hasTextSelection`) and each works.
-  - [ ] `hasTextSelection` updates correctly: the AI items appear only when there is a non-empty selection; collapse the selection → items gone on next right-click.
-  - [ ] The AI menu items survive the AutoFill/Services re-filter (their selector strings are in `WebViewMenuFilter.allowed`).
-- [ ] AI result inserts at **block boundaries** — no empty `<p>` fragments before/after, no blank paragraphs from inter-block whitespace. Verify the saved HTML has no stray empty paragraphs.
-- [ ] Accept → content committed and `contentChanged` fires; Discard → original restored.
-- [ ] **Accepted AI result is Gutenberg-transformed** — if the AI returns a table/list/heading, the saved HTML has `wp-block-*` classes and figure wrappers. Verify via `content.raw`.
-- [ ] **Edge:** Claude error/timeout → original text restored, "couldn't complete" toast, editor not corrupted.
-- [ ] The AI result bar (`AIResultPanel`) stays above Quill but **not** above other apps when you switch away (child-window gotcha); no rectangular shadow artifact (`hasShadow=false` gotcha); buttons visible in light mode (`.plain` style gotcha).
-- [ ] Style guide: select sample posts in Settings → guide generated once; re-saving with unchanged samples makes **no** Claude call; changing the site URL clears samples and guide.
-- [ ] **Panel survives sidebar re-renders:** trigger the AI result panel, then type in the sidebar search field — the panel stays visible and positioned correctly without disappearing or duplicating. (H1 regression guard: `@State` ensures one panel instance per view identity.)
-- [ ] **Post Evaluation:** click the **checkmark-circle** button in the editor toolbar; panel shows summary + findings; clicking a finding card jumps to that sentence in the editor (full sentence selected, not just the anchor words); selection scrolls into view.
-- [ ] Evaluation respects style guide: if a sample-post style is saved, findings that match the author's established voice should not appear (e.g. intentionally conversational tone not flagged as "Wordiness").
-- [ ] Finding count is reasonable (5–12 for a typical post, not 45; not 2 unless truly flawless); clicking every finding card navigates to the correct sentence.
-- [ ] **Evaluate button active state:** checkmark-circle button has `.active` highlight while the evaluation panel is open; returns to normal when closed.
-- [ ] **Evaluate button disabled during evaluation:** checkmark-circle button is non-interactive while Claude is running.
-- [ ] **Switch posts mid-evaluation:** click evaluate, then immediately switch to another post — the old evaluation result does NOT appear for the new post; opening the evaluation panel for the new post triggers a fresh run.
+**Setup**
+- [ ] With no API key configured: the pencil (✦) and checkmark buttons in the editor toolbar are hidden, and AI items are absent from the right-click context menu.
+- [ ] Add an API key in Settings → both toolbar buttons appear and AI context menu items appear, without relaunching the app.
+
+**Generate content**
+- [ ] Click the pencil button on an empty editor → the generate dialog opens directly. On a non-empty editor → a "Replace Content?" confirmation appears first.
+  - [ ] ⌘↩ confirms from the keyboard; Escape or Cancel dismisses without generating.
+- [ ] Generate a post → the result includes a title and structured HTML with headings (not just plain paragraphs).
+- [ ] If Claude's response is cut off by the token limit → a "Post may be cut off" dialog appears. "Get Full Version" (⌘↩) retries for a complete result; "Use What I Have" accepts the truncated version.
+- [ ] Generate with web search enabled → the result is coherent and complete (not fragmented); citations don't break the output.
+
+**Selection operations (right-click menu)**
+- [ ] Select some text, right-click → Make Longer, Make Shorter, To Table, and To List appear in the context menu. Each produces a correct result when clicked.
+- [ ] Deselect all text, right-click → the AI items are absent.
+- [ ] The AI menu items are not hidden by macOS AutoFill or Services items that may be injected into the menu.
+
+**Result handling**
+- [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
+- [ ] Click Accept → the AI content is kept; click Discard → the original content is restored.
+- [ ] If the AI returns tables, lists, or headings, save and fetch the raw HTML → it has proper WordPress classes (`wp-block-table`, `wp-block-list`, `wp-block-heading`, etc.).
+- [ ] If Claude errors or times out → the original text is restored, an error toast appears, and the editor is not corrupted.
+
+**AI result bar**
+- [ ] The Accept/Discard bar floats above the Quill window but does not float above other apps when you switch away from Quill.
+- [ ] The bar has no rectangular shadow artifact around it.
+- [ ] Both buttons are clearly visible in light mode and dark mode.
+- [ ] Trigger the AI result bar, then type in the sidebar search field → the bar stays visible and correctly positioned (doesn't disappear or duplicate).
+
+**Style guide**
+- [ ] In Settings, select sample posts → a style guide is generated. Re-save with the same sample posts → no new Claude call is made. Change the site URL → sample posts and style guide are cleared.
+
+**Post evaluation**
+- [ ] Click the checkmark button in the editor toolbar → a panel appears with a summary and a list of findings.
+- [ ] Click a finding card → the corresponding sentence in the editor is selected and scrolled into view (the full sentence, not just a few words).
+- [ ] If a style guide is saved, evaluation findings that match the author's established voice should not appear (e.g. intentionally conversational tone not flagged).
+- [ ] The number of findings is reasonable (5–12 for a typical post); clicking every finding navigates to the correct sentence.
+- [ ] The checkmark button shows an active/highlighted state while the evaluation panel is open.
+- [ ] The checkmark button is disabled (non-clickable) while the evaluation is running.
+- [ ] Click evaluate, then immediately switch to another post → the old evaluation result does not appear for the new post.
 
 ### 7.12 Settings panel & preferences
 
-- [ ] Post settings panel for **posts** shows categories, tags, slug, excerpt, discussion; for **pages** shows parent + slug + discussion only (no categories/tags/excerpt) — the `isPage` gotcha.
-- [ ] **Category list ordering:** checked categories appear first (alphabetical), then unchecked (alphabetical) — both in the full list and when filtering by search term. Same ordering is preserved after toggling a category on/off.
-- [ ] **Tag list ordering:** selected tag chips above the search box are in alphabetical order; unselected tags in the search dropdown are alphabetical.
-- [ ] Amber accent applied throughout settings.
-- [ ] Preferences opens from both the menu and the in-app sheet; `PreferencesView` works in the separate `Settings` scene **without EnvironmentObject** — i.e. sample post picker is populated.
+- [ ] Open the settings panel for a **post** → it shows categories, tags, slug, excerpt, and discussion. For a **page** → it shows parent page, slug, and discussion only (no categories, tags, or excerpt).
+- [ ] In the category list, checked categories appear first (alphabetical), then unchecked (alphabetical). This ordering holds when filtering by search and after toggling a category on/off.
+- [ ] Selected tag chips above the search box are in alphabetical order; unselected tags in the dropdown are also alphabetical.
+- [ ] The amber accent color is used throughout the settings panel.
+- [ ] Preferences opens from both the app menu (⌘,) and any in-app settings button. The sample post picker is populated (not empty).
 
-### 7.13 Window / appearance / chrome
+### 7.13 Window / appearance
 
-- [ ] Light and dark mode: sidebar (`wpSidebarBg`), panels (`wpPanelBg`), title/breadcrumb bars render with correct tokens; **title/breadcrumb bars white in dark mode** (open TODO — verify current state).
-- [ ] **Dark mode live toggle** — with the app open, toggle dark mode in System Settings → editor background, toolbar, and sidebar switch immediately without relaunch. (Tests the `viewDidChangeEffectiveAppearance` override in `DroppableWebView`.)
-- [ ] **Surface components** — `SoftPanelBoundary` between sidebar/editor and editor/settings-panel renders as a subtle gradient boundary, not a hard `Divider()` line. `SoftHorizontalDivider` at the bottom of the sidebar tab strip and above the bottom toolbar. `PanelInteriorFade` fades the right edge of the sidebar scroll list and the left edge of the settings panel.
-- [ ] Enter/exit full screen → title bar color stable (fixed — confirm).
-- [ ] Title field + top border spacing correct (fixed — confirm).
-- [ ] App icon/logo present in dock and about.
-- [ ] Editor "Loading editor…" overlay shows then fades on `editorReady`; never sticks if the bundle loads.
+- [ ] In light mode, the sidebar, panels, and editor have the correct warm off-white tones. In dark mode, they use the correct dark tones. Title and breadcrumb bars should be white in dark mode (this is an open TODO — verify current state).
+- [ ] With the app open, toggle dark mode in System Settings → the editor, toolbar, and sidebar all switch immediately without relaunching.
+- [ ] The boundaries between sidebar/editor and editor/settings-panel render as subtle gradient transitions, not hard lines.
+- [ ] Enter and exit full screen → the title bar color remains stable.
+- [ ] The title field and top border spacing look correct (no extra gaps or overlap).
+- [ ] The app icon appears in the Dock and in the About window.
+- [ ] On launch, a "Loading editor…" overlay appears briefly and fades out once the editor is ready. It should never stay visible permanently.
 
-### 7.14 Context menus (AppKit specifics)
+### 7.14 Context menus
 
-- [ ] Right-click in the **editor (WKWebView)** → Cut/Copy/Paste present and correctly enabled/disabled; **no AutoFill/Services leakage** (the `willOpenMenu` + `NSMenuDelegate` re-filter gotcha).
-- [ ] Right-click in the **title field** → only Cut/Copy/Paste; no AutoFill (the `RestrictedTextView` gotcha).
-- [ ] Right-click a misspelled word → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator; clicking a suggestion replaces the word correctly.
-- [ ] **Emoji adjacency:** right-click a misspelled word immediately next to an emoji (e.g. `"speling 🎉"`) → the suggestion replaces only the misspelled word without corrupting the emoji or surrounding text. (C3 `posAtDOM` regression guard.)
+- [ ] Right-click in the editor → the menu shows Cut, Copy, and Paste with correct enabled/disabled states. No macOS AutoFill, Services, or other system-injected items appear.
+- [ ] Right-click in the title field → only Cut, Copy, and Paste appear. No AutoFill or Services items.
+- [ ] Right-click on a misspelled word in the editor → up to 8 spelling suggestions appear above Cut/Copy/Paste with a separator. Click a suggestion → it correctly replaces the misspelled word.
+- [ ] Right-click a misspelled word next to an emoji (e.g. `speling 🎉`) → the suggestion replaces only the word without corrupting the emoji or surrounding text.
 
 ### 7.15 Spell check
 
-- [ ] "ABC" toolbar button highlights misspellings via decorations; highlights clear on first edit.
-- [ ] No `NSUndefinedKeyException` crash on macOS 26 (the `continuousSpellCheckingEnabled` KVC gotcha) — launch and run spell check on the current OS.
+- [ ] Click the "ABC" toolbar button → misspelled words are highlighted. The highlights clear when you start editing.
+- [ ] Spell check runs without crashing on the current macOS version.
 
 ### 7.16 Stats panel
 
-- [ ] Stats panel (settings panel footer or dedicated area) shows word count, character count, and reading time.
-- [ ] Counts update live as the user types (debounced).
-- [ ] Counts freeze correctly when code view is active and refresh when returning to visual mode.
-- [ ] Reading time shows "1 min" for short posts; rounds up for longer ones.
+- [ ] The stats area shows word count, character count, and reading time.
+- [ ] Counts update as you type.
+- [ ] In code view, the counts freeze. Switch back to visual mode → they refresh.
+- [ ] A short post shows "1 min" reading time; longer posts round up (e.g. 400 words → 2 min).
 
 ### 7.17 Publish status helpers
 
-- [ ] Publish button label is correct for each status: draft → "Publish", published → "Update", future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
-- [ ] Toast message after save reflects the correct status change.
-- [ ] Setting a future date switches status to `future` and button to "Schedule".
-- [ ] Setting visibility to Private switches status to `private` and button to "Publish Privately".
+- [ ] The publish button label matches the post status: draft → "Publish", published → "Update", future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
+- [ ] The toast message after saving reflects what happened (e.g. "Published" vs "Updated" vs "Scheduled").
+- [ ] Set a future date → the status changes to "future" and the button changes to "Schedule".
+- [ ] Set visibility to Private → the status changes to "private" and the button changes to "Publish Privately".
 
 ### 7.18 Find & replace
 
-- [ ] Find & replace bar opens (⌘F or toolbar button) and closes (Escape or close button).
-- [ ] Typing in the Find field highlights all matches in the editor with a yellow decoration.
-- [ ] Match counter shows "1 of N" and updates as the query changes.
-- [ ] Next/Previous buttons navigate between matches; wraps around at ends.
-- [ ] Replace field + Replace button replaces the current match and advances to the next.
-- [ ] Replace All button replaces every match in one operation.
-- [ ] Case-sensitive toggle works: lowercase query matches differently with toggle on vs off.
-- [ ] Find bar is hidden in code view; decorations do not appear in the textarea.
+- [ ] Press ⌘F (or click the toolbar button) → the find & replace bar appears. Press Escape or the close button → it closes.
+- [ ] Type in the Find field → all matches in the editor are highlighted in yellow.
+- [ ] The match counter shows "1 of N" and updates as you change the query.
+- [ ] Click Next/Previous → the highlight moves between matches and wraps around at the beginning/end.
+- [ ] Type a replacement, click Replace → the current match is replaced and the highlight advances to the next match.
+- [ ] Click Replace All → every match is replaced in one operation.
+- [ ] Toggle case-sensitive mode on → a lowercase query no longer matches uppercase text.
+- [ ] In code view, the find bar is hidden and no highlights appear in the textarea.
 
 ### 7.19 Embeds
 
-- [ ] Insert an embed by pasting a YouTube/Vimeo/Twitter URL → displays as a static embed card in the editor with the provider name and URL visible.
-- [ ] Save → fetch `content.raw` via REST → output is a valid Gutenberg `wp-block-embed` block with correct provider classes (`is-type-video is-provider-youtube wp-block-embed-youtube` etc.).
-- [ ] Reload the post in Quill → embed card renders correctly (round-trip stable).
-- [ ] View the post on the live WordPress site → embed renders as the expected oEmbed widget.
-- [ ] Unknown URL (not a recognised provider) → saves as a generic `wp-block-embed` block without provider-specific classes.
-- [ ] Embed figure is not misidentified as an image figure (no `wp-block-image` class, no resize handles).
+- [ ] Paste a YouTube, Vimeo, or Twitter/X URL into the editor → it displays as an embed card showing the provider name and URL.
+- [ ] Save and fetch the raw HTML → the embed is a valid Gutenberg `wp-block-embed` block with correct provider classes (e.g. `is-type-video is-provider-youtube wp-block-embed-youtube`).
+- [ ] Close and reopen the post → the embed card still renders correctly.
+- [ ] View the post on the live WordPress site → the embed renders as the expected player/widget.
+- [ ] Paste an unrecognized URL → it saves as a generic embed block without provider-specific classes.
+- [ ] An embed card does not show resize handles or get treated as an image.
 
 ### 7.20 Footnotes
 
-- [ ] Insert Footnote via right-click context menu → a numbered superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
-- [ ] Add a second footnote → numbered `[2]`; numbers update in document order.
-- [ ] Delete a footnote marker → its entry is removed from the footnotes list automatically (`FootnoteSync`).
-- [ ] Type text in a footnote list entry → text is preserved on save.
-- [ ] Click a footnote number in the list → cursor jumps to the corresponding marker in the body.
-- [ ] Click the ↩ button at the end of a footnote list entry → cursor jumps to the corresponding marker in the body (`FootnoteItemNodeView` back-arrow).
-- [ ] Save → fetch `content.raw` → footnote markers are `<sup id="ref-fn-…" data-fn="…" class="fn"><a href="#…">[N]</a></sup>` and each list item has `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended.
-- [ ] Reload the post in Quill → footnotes render and are editable (round-trip stable); back-arrow button still present in each list item.
-- [ ] View on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links (`↩`) jump back to the correct inline marker.
-- [ ] Footnote list `<ol>` does **not** get `wp-block-list` class (excluded by design).
+- [ ] Right-click and choose Insert Footnote → a superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
+- [ ] Insert a second footnote → it is numbered `[2]`. The numbers follow document order.
+- [ ] Delete a footnote marker from the text → its entry is automatically removed from the footnotes list.
+- [ ] Type text in a footnote list entry → the text is preserved on save.
+- [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text.
+- [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
+- [ ] Save the post → fetch the raw HTML. Footnote markers should be `<sup>` elements with `id` and `data-fn` attributes; each footnote list item should end with a `↩` back-link.
+- [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry.
+- [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links jump back to the inline markers.
+- [ ] The footnotes `<ol>` does not receive a `wp-block-list` class (it should keep only its `wp-block-footnotes` class).
 
 ---
 
 ## Non-functional & resilience
 
-- **Offline / flaky network:** every network action degrades gracefully with a user-visible error, never a hang or crash.
-- **Slow network:** saves show the saving state and disable buttons (`isSaving`); no double-submit on rapid clicks.
-- **Large media library:** Media grid with 500+ items — scrolling stays smooth, pagination works, memory bounded.
-- **File permissions:** `credentials.json` and `ai_settings.json` are chmod 600 (guarded by `JSONFileStoreTests.savedFileHasChmod600`).
-- **Crash recovery:** force-quit mid-edit → local draft / autosave stash recovered on relaunch.
-- **Performance:** `toWordPressHTML` runs on a 500ms debounce on every edit — on a large document it should not block typing.
-- **Security:** pasted/loaded HTML with `<script>` or `onerror=` attributes is not executed; AI-returned HTML is inserted as content, not evaluated.
-- **Thumbnail bandwidth:** media grid cells load small thumbnail images (a few KB each), not full-resolution originals — confirming `WPMedia.thumbnailURL` is used in `AsyncImage`. Verify with a network proxy on a grid of large images.
-- **Taxonomy cache persistence:** on second app launch with unchanged site URL, a network proxy shows no `/categories` or `/tags` requests (served from 24-hour SQLite cache). Changing the site URL should trigger a fresh fetch.
+- **Offline / flaky network:** Every network action (save, load, upload, search) shows a user-visible error when it fails. No hangs or crashes.
+- **Slow network:** While saving, the save button shows a loading state and is disabled. Clicking rapidly does not submit twice.
+- **Large media library:** A media grid with 500+ items scrolls smoothly, paginates correctly, and does not consume unbounded memory.
+- **File permissions:** Credential and AI settings files are stored with restricted permissions (only the current user can read them).
+- **Crash recovery:** Force-quit the app mid-edit → relaunch → local drafts and autosaved edits are recovered.
+- **Typing performance:** On a large document, typing remains responsive (content transforms run on a debounce, not on every keystroke).
+- **Security:** Pasting or loading HTML with `<script>` tags or `onerror=` attributes does not execute any scripts. AI-generated HTML is inserted as content only.
+- **Thumbnail bandwidth:** The media grid loads small thumbnail images (a few KB), not full-resolution originals. Verify with a network proxy on a grid of large images.
+- **Taxonomy caching:** On the second app launch with the same site URL, no `/categories` or `/tags` network requests are made (served from a local cache). Changing the site URL triggers a fresh fetch.
 
 ---
 
