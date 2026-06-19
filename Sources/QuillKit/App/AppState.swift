@@ -56,7 +56,6 @@ public final class AppState: ObservableObject {
     @Published public var selectedSection: SidebarSection = .posts
     @Published public var selectedItem: PostItem?
     @Published public var searchText: String = ""
-    @Published public var isSettingsPanelOpen: Bool = false
     @Published public var isSidebarVisible: Bool = true
     @Published public var credentials: Credentials?
     @Published public var isShowingPreferences: Bool = false
@@ -95,6 +94,15 @@ public final class AppState: ObservableObject {
         localDrafts = updated
         selectedSection = .localDrafts
         selectedItem = .local(newDraft)
+    }
+
+    public var sectionIsEmpty: Bool {
+        switch selectedSection {
+        case .posts: return posts.isEmpty
+        case .pages: return pages.isEmpty
+        case .localDrafts: return localDrafts.isEmpty
+        case .media: return mediaItems.isEmpty
+        }
     }
 
     public var filteredItems: [PostItem] {

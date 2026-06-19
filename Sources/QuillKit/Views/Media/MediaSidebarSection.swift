@@ -43,33 +43,48 @@ struct MediaSidebarSection: View {
                 .background(Color.orange.opacity(0.08))
             }
 
-            ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.flexible()), GridItem(.flexible())],
-                    spacing: 4
-                ) {
-                    ForEach(appState.mediaItems) { media in
-                        MediaSidebarCell(
-                            media: media,
-                            isSelected: appState.selectedMedia?.id == media.id
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture { appState.selectedMedia = media }
-                        .contextMenu { contextMenuItems(for: media) }
-                    }
+            if appState.mediaItems.isEmpty && !appState.isLoadingMedia {
+                VStack(spacing: 6) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(.quaternary)
+                    Text("No media yet")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                    Text("Upload with the + button below")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
                 }
-                .padding(.horizontal, 8)
-                .padding(.top, 6)
-
-                if hasMore {
-                    Button("Load more…") {
-                        Task { await loadMoreMedia() }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible()), GridItem(.flexible())],
+                        spacing: 4
+                    ) {
+                        ForEach(appState.mediaItems) { media in
+                            MediaSidebarCell(
+                                media: media,
+                                isSelected: appState.selectedMedia?.id == media.id
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { appState.selectedMedia = media }
+                            .contextMenu { contextMenuItems(for: media) }
+                        }
                     }
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .buttonStyle(.plain)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+
+                    if hasMore {
+                        Button("Load more…") {
+                            Task { await loadMoreMedia() }
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
 

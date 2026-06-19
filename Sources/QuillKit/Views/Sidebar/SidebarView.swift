@@ -56,40 +56,45 @@ public struct SidebarView: View {
                     .background(Color.orange.opacity(0.08))
                 }
 
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(appState.filteredItems) { item in
-                            let rowSelected = appState.selectedItem == item
-                            Button {
-                                appState.selectedItem = item
-                            } label: {
-                                HStack(spacing: 0) {
-                                    Rectangle()
-                                        .fill(rowSelected ? Color.wpAmber : Color.clear)
-                                        .frame(width: 2.5)
-                                    PostListRow(item: item, isSelected: rowSelected)
-                                        .padding(.leading, 9.5)
-                                        .padding(.trailing, 12)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .background(rowSelected ? Color.wpAmber.opacity(0.12) : Color.clear)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    itemPendingDelete = item
+                if appState.filteredItems.isEmpty && !appState.isLoadingList {
+                    SidebarEmptyState(section: appState.selectedSection,
+                                     isSearching: !appState.searchText.isEmpty)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(appState.filteredItems) { item in
+                                let rowSelected = appState.selectedItem == item
+                                Button {
+                                    appState.selectedItem = item
                                 } label: {
-                                    switch item {
-                                    case .remote: Label("Move to Trash", systemImage: "trash")
-                                    case .local: Label("Delete Draft", systemImage: "trash")
+                                    HStack(spacing: 0) {
+                                        Rectangle()
+                                            .fill(rowSelected ? Color.wpAmber : Color.clear)
+                                            .frame(width: 2.5)
+                                        PostListRow(item: item, isSelected: rowSelected)
+                                            .padding(.leading, 9.5)
+                                            .padding(.trailing, 12)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .background(rowSelected ? Color.wpAmber.opacity(0.12) : Color.clear)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        itemPendingDelete = item
+                                    } label: {
+                                        switch item {
+                                        case .remote: Label("Move to Trash", systemImage: "trash")
+                                        case .local: Label("Delete Draft", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                    .overlay(alignment: .trailing) { PanelInteriorFade(from: .trailing) }
                 }
-                .overlay(alignment: .trailing) { PanelInteriorFade(from: .trailing) }
 
                 SoftHorizontalDivider()
                 HStack {
@@ -177,6 +182,7 @@ public struct SidebarView: View {
                     if appState.selectedSection != section {
                         appState.selectedItem = nil
                         appState.selectedMedia = nil
+                        appState.searchText = ""
                     }
                     appState.selectedSection = section
                 } label: {
@@ -336,6 +342,57 @@ public struct SidebarView: View {
         } else {
             appState.tags = (try? services.taxonomyCache.loadTags()) ?? []
         }
+    }
+}
+
+struct SidebarEmptyState: View {
+    let section: SidebarSection
+    let isSearching: Bool
+
+    private var icon: String {
+        switch section {
+        case .posts: return "doc.text"
+        case .pages: return "doc.plaintext"
+        case .localDrafts: return "pencil"
+        case .media: return "photo"
+        }
+    }
+
+    private var message: String {
+        if isSearching { return "No matches found" }
+        switch section {
+        case .posts: return "No posts yet"
+        case .pages: return "No pages yet"
+        case .localDrafts: return "No drafts yet"
+        case .media: return "No media yet"
+        }
+    }
+
+    private var hint: String? {
+        if isSearching { return nil }
+        switch section {
+        case .posts: return "Create one with the + button below"
+        case .pages: return "Create one with the + button below"
+        case .localDrafts: return "Use File \u{2192} New Post to start writing"
+        case .media: return nil
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .light))
+                .foregroundStyle(.quaternary)
+            Text(message)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.tertiary)
+            if let hint {
+                Text(hint)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.quaternary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

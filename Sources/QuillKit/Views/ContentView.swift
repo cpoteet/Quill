@@ -93,7 +93,8 @@ public struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.wpPanelBg)
                 } else {
-                    EmptyEditorPlaceholder(section: appState.selectedSection)
+                    EmptyEditorPlaceholder(section: appState.selectedSection,
+                                          sectionIsEmpty: appState.sectionIsEmpty)
                 }
             }
             .frame(minWidth: 500, maxWidth: .infinity)
@@ -107,6 +108,7 @@ public struct ContentView: View {
 
 struct EmptyEditorPlaceholder: View {
     let section: SidebarSection
+    var sectionIsEmpty: Bool = false
 
     private var noun: String {
         switch section {
@@ -117,12 +119,28 @@ struct EmptyEditorPlaceholder: View {
         }
     }
 
+    private var icon: String {
+        switch section {
+        case .posts: return "doc.text"
+        case .pages: return "doc.plaintext"
+        case .localDrafts: return "pencil"
+        case .media: return "photo"
+        }
+    }
+
+    private var message: String {
+        if sectionIsEmpty {
+            return "No \(noun)s yet"
+        }
+        return "Select a \(noun) to edit"
+    }
+
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: "doc.text")
+            Image(systemName: icon)
                 .font(.system(size: 38, weight: .light))
                 .foregroundStyle(Color.wpAmber.opacity(0.5))
-            Text("Select a \(noun) to edit")
+            Text(message)
                 .font(.system(size: 13))
                 .foregroundStyle(.tertiary)
         }
