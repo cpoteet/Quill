@@ -14,7 +14,7 @@ public struct PostEditorView: View {
     @State private var isSaving: Bool = false
     @State private var saveError: String?
     @State private var previewError: String?
-    @State private var conflictAlert: ConflictInfo?
+    @State private var showConflictAlert: Bool = false
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
@@ -255,8 +255,8 @@ public struct PostEditorView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { conflictAlert != nil },
-                set: { if !$0 { conflictAlert = nil } }
+                get: { showConflictAlert },
+                set: { showConflictAlert = $0 }
             )
         ) {
             VStack(alignment: .leading, spacing: 16) {
@@ -267,15 +267,15 @@ public struct PostEditorView: View {
                     .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
-                    Button("Cancel") { conflictAlert = nil }
+                    Button("Cancel") { showConflictAlert = false }
                     Button("Use Server") {
-                        conflictAlert = nil
+                        showConflictAlert = false
                         if case .remote(let post) = item {
                             loadFromServer(postID: post.id)
                         }
                     }
                     Button("Keep Local") {
-                        conflictAlert = nil
+                        showConflictAlert = false
                         saveToWordPress(force: true)
                     }
                     .buttonStyle(.borderedProminent)
@@ -698,7 +698,7 @@ public struct PostEditorView: View {
                         ? try await client.fetchPage(id: post.id)
                         : try await client.fetchPost(id: post.id)
                     if current.modified != lastSavedServerModified {
-                        conflictAlert = ConflictInfo(postID: post.id)
+                        showConflictAlert = true
                         return
                     }
                 }
@@ -1007,6 +1007,3 @@ public struct PostEditorView: View {
     }
 }
 
-private struct ConflictInfo {
-    let postID: Int
-}

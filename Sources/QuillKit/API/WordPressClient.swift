@@ -25,16 +25,6 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
-    public func fetchPages(page: Int = 1, perPage: Int = 100) async throws -> [WPPost] {
-        let url = try endpoint(
-            "pages",
-            query: [
-                "per_page": "\(perPage)", "page": "\(page)", "context": "edit",
-                "status": "publish,draft,private,future,pending",
-            ])
-        return try await get(url)
-    }
-
     /// Fetches every post across all pages, following the `X-WP-TotalPages` header.
     public func fetchAllPosts(perPage: Int = 100) async throws -> [WPPost] {
         try await fetchAllPaginated(resource: "posts", perPage: perPage)
@@ -137,10 +127,10 @@ public struct WordPressClient: Sendable {
         let url = try endpoint("media")
         var request = authorizedRequest(url: url, method: "POST")
         request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
-        let fallback = WordPressClient.contentDispositionFilenameFallback(filename)
-        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? fallback
+        let safe = WordPressClient.sanitizeFilename(filename)
+        let encoded = safe.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? safe
         request.setValue(
-            "attachment; filename=\"\(fallback)\"; filename*=UTF-8''\(encoded)",
+            "attachment; filename=\"\(safe)\"; filename*=UTF-8''\(encoded)",
             forHTTPHeaderField: "Content-Disposition"
         )
         let (data, _) = try await sendUpload(request, fromFile: fileURL)
@@ -151,11 +141,18 @@ public struct WordPressClient: Sendable {
         }
     }
 
-    static func contentDispositionFilenameFallback(_ filename: String) -> String {
-        filename
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .filter { $0.unicodeScalars.allSatisfy { $0.value >= 32 && $0.value != 127 } }
+    static func sanitizeFilename(_ filename: String) -> String {
+        let ext = (filename as NSString).pathExtension
+        let stem = (filename as NSString).deletingPathExtension
+        var sanitized = String(stem.unicodeScalars.map { scalar in
+            if scalar.value < 32 || scalar.value == 127 { return Character("-") }
+            if scalar.properties.generalCategory == .spaceSeparator { return Character(" ") }
+            if scalar == "\"" || scalar == "\\" { return Character("-") }
+            return Character(scalar)
+        })
+        sanitized = sanitized.trimmingCharacters(in: .whitespaces)
+        if sanitized.isEmpty { sanitized = "upload" }
+        return ext.isEmpty ? sanitized : "\(sanitized).\(ext)"
     }
 
     public func deleteMedia(id: Int) async throws {
@@ -256,20 +253,20 @@ public struct WordPressClient: Sendable {
             let type: LinkResultType = item.subtype == "page" ? .page : .post
             results.append(LinkSearchResult(
                 id: "\(type.rawValue)-\(item.id)",
-                wpId: item.id, title: item.title, url: item.url, type: type
+                title: item.title, url: item.url, type: type
             ))
         }
         for item in terms {
             let type: LinkResultType = item.subtype == "tag" ? .tag : .category
             results.append(LinkSearchResult(
                 id: "\(type.rawValue)-\(item.id)",
-                wpId: item.id, title: item.title, url: item.url, type: type
+                title: item.title, url: item.url, type: type
             ))
         }
         for item in medias {
             results.append(LinkSearchResult(
                 id: "media-\(item.id)",
-                wpId: item.id, title: item.title.rendered, url: item.sourceURL, type: .media
+                title: item.title.rendered, url: item.sourceURL, type: .media
             ))
         }
 

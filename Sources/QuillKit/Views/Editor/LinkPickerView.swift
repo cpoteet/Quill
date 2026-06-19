@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 final class LinkPickerModel: ObservableObject {
     @Published var fieldText: String

@@ -206,19 +206,6 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
 
     // MARK: - §2.1 URL & request construction
 
-    @Test func fetchPagesHitsPagesEndpoint() async throws {
-        var capturedRequest: URLRequest?
-        MockURLProtocol.requestHandler = { request in
-            capturedRequest = request
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                    "[]".data(using: .utf8)!)
-        }
-        _ = try await client.fetchPages()
-        let path = capturedRequest?.url?.path ?? ""
-        #expect(path.contains("/pages"))
-        #expect(!path.contains("/posts"))
-    }
-
     @Test func fetchPostsIncludesRequiredQueryParams() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
@@ -724,33 +711,36 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(results[0].type == .category)
     }
 
-    // MARK: - Content-Disposition filename escaping (Issue 3)
+    // MARK: - Filename sanitization
 
-    @Test func contentDispositionFallbackPassesThroughNormalFilename() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("photo.jpg") == "photo.jpg")
+    @Test func sanitizeFilenamePassesThroughNormal() {
+        #expect(WordPressClient.sanitizeFilename("photo.jpg") == "photo.jpg")
     }
 
-    @Test func contentDispositionFallbackEscapesDoubleQuote() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("weird \"name\".jpg") == "weird \\\"name\\\".jpg")
+    @Test func sanitizeFilenameReplacesQuotesAndBackslashes() {
+        #expect(WordPressClient.sanitizeFilename("weird \"name\".jpg") == "weird -name-.jpg")
+        #expect(WordPressClient.sanitizeFilename("back\\slash.jpg") == "back-slash.jpg")
     }
 
-    @Test func contentDispositionFallbackEscapesBackslash() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("back\\slash.jpg") == "back\\\\slash.jpg")
+    @Test func sanitizeFilenameReplacesControlChars() {
+        #expect(WordPressClient.sanitizeFilename("bad\nname.jpg") == "bad-name.jpg")
+        #expect(WordPressClient.sanitizeFilename("file\u{0001}name.jpg") == "file-name.jpg")
     }
 
-    @Test func contentDispositionFallbackStripsNewlines() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("bad\nname.jpg") == "badname.jpg")
+    @Test func sanitizeFilenamePreservesUnicode() {
+        #expect(WordPressClient.sanitizeFilename("café.jpg") == "café.jpg")
     }
 
-    @Test func contentDispositionFallbackStripsControlCharacters() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("file\u{0001}name.jpg") == "filename.jpg")
+    @Test func sanitizeFilenameNormalizesUnicodeSpaces() {
+        #expect(WordPressClient.sanitizeFilename("ai-writing 9.06.39\u{202F}PM.png") == "ai-writing 9.06.39 PM.png")
+        #expect(WordPressClient.sanitizeFilename("file\u{00A0}name.jpg") == "file name.jpg")
     }
 
-    @Test func contentDispositionFallbackPreservesUnicode() {
-        #expect(WordPressClient.contentDispositionFilenameFallback("café.jpg") == "café.jpg")
+    @Test func sanitizeFilenameHandlesEmptyStem() {
+        #expect(WordPressClient.sanitizeFilename("   .png") == "upload.png")
     }
 
-    @Test func uploadMediaEscapesQuotesInContentDispositionFilename() async throws {
+    @Test func uploadMediaSanitizesFilenameInContentDisposition() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
             capturedRequest = request
@@ -762,7 +752,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         defer { try? FileManager.default.removeItem(at: tmp) }
         _ = try await client.uploadMedia(fileURL: tmp, filename: "weird \"name\".jpg", mimeType: "image/jpeg")
         let disposition = capturedRequest?.value(forHTTPHeaderField: "Content-Disposition") ?? ""
-        #expect(disposition.contains("filename=\"weird \\\"name\\\".jpg\""))
+        #expect(disposition.contains("filename=\"weird -name-.jpg\""))
     }
 
     @Test func uploadMediaStreamsFromFileNotHttpBody() async throws {

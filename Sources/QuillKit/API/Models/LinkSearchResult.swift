@@ -16,7 +16,6 @@ public enum LinkResultType: String, Sendable {
 
 public struct LinkSearchResult: Identifiable, Sendable {
     public let id: String   // e.g. "post-42", "category-7" — avoids collisions across types
-    public let wpId: Int
     public let title: String
     public let url: String
     public let type: LinkResultType

@@ -5,7 +5,6 @@ public enum APIError: Error, LocalizedError {
     case httpError(statusCode: Int, body: String)
     case decodingError(Error)
     case networkError(Error)
-    case noCredentials
     case unexpectedHTML
 
     public var errorDescription: String? {
@@ -19,7 +18,6 @@ public enum APIError: Error, LocalizedError {
                 return "Couldn't reach your site. Check the URL and make sure your site is online."
             }
             return msg
-        case .noCredentials: return "No site configured yet. Open Blog Settings to connect your WordPress site."
         case .unexpectedHTML: return "Your site returned a web page instead of data. Check that the Site URL is your WordPress home address, not a subfolder where WordPress is installed."
         }
     }
