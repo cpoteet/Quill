@@ -16,17 +16,6 @@ struct MediaSidebarSection: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isLoadingMedia {
-                HStack(spacing: 6) {
-                    ProgressView().scaleEffect(0.65)
-                    Text("Loading…")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
-            }
-
             if let error = appState.mediaError {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .top, spacing: 6) {
@@ -53,20 +42,7 @@ struct MediaSidebarSection: View {
                 .background(Color.orange.opacity(0.08))
             }
 
-            if appState.mediaItems.isEmpty && !appState.isLoadingMedia {
-                VStack(spacing: 6) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 24, weight: .light))
-                        .foregroundStyle(.quaternary)
-                    Text("No media yet")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                    Text("Upload with the + button below")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.quaternary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+            if !appState.mediaItems.isEmpty {
                 ScrollView {
                     LazyVGrid(
                         columns: [GridItem(.flexible()), GridItem(.flexible())],
@@ -86,16 +62,37 @@ struct MediaSidebarSection: View {
                     .padding(.top, 6)
 
                     if hasMore {
-                        Button("Load more…") {
+                        Button("Load more") {
                             Task { await loadMoreMedia() }
                         }
-                        .font(.system(size: 12))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.05),
+                                    in: RoundedRectangle(cornerRadius: 7))
                         .buttonStyle(.plain)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                     }
                 }
+            } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
+                VStack(spacing: 6) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(.quaternary)
+                    Text("No media yet")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                    Text("Upload with the + button below")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
 
             SoftHorizontalDivider()
@@ -238,11 +235,15 @@ struct MediaSidebarSection: View {
     // MARK: - Data loading
 
     private func loadMedia() async {
-        guard let creds = appState.credentials else { return }
-        appState.isLoadingMedia = true
+        guard let creds = appState.credentials else {
+            appState.isLoadingMedia = false
+            return
+        }
+        if appState.mediaItems.isEmpty {
+            appState.isLoadingMedia = true
+        }
         appState.mediaError = nil
         currentPage = 1
-        defer { appState.isLoadingMedia = false }
         do {
             let items = try await WordPressClient(credentials: creds)
                 .fetchMedia(page: 1, perPage: perPage)
@@ -251,9 +252,14 @@ struct MediaSidebarSection: View {
             if let sel = appState.selectedMedia, !items.contains(where: { $0.id == sel.id }) {
                 appState.selectedMedia = nil
             }
+            appState.hasLoadedMedia = true
+            appState.isLoadingMedia = false
         } catch is CancellationError {
+            appState.isLoadingMedia = false
         } catch {
             appState.mediaError = error.localizedDescription
+            appState.hasLoadedMedia = true
+            appState.isLoadingMedia = false
         }
     }
 

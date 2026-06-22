@@ -19,17 +19,6 @@ public struct SidebarView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
 
-                if appState.isLoadingList {
-                    HStack(spacing: 6) {
-                        ProgressView().scaleEffect(0.65)
-                        Text("Loading…")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 6)
-                }
-
                 if let error = appState.listError {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 6) {
@@ -56,10 +45,7 @@ public struct SidebarView: View {
                     .background(Color.orange.opacity(0.08))
                 }
 
-                if appState.filteredItems.isEmpty && !appState.isLoadingList {
-                    SidebarEmptyState(section: appState.selectedSection,
-                                     isSearching: !appState.searchText.isEmpty)
-                } else {
+                if !appState.filteredItems.isEmpty {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(appState.filteredItems) { item in
@@ -94,6 +80,13 @@ public struct SidebarView: View {
                         }
                     }
                     .overlay(alignment: .trailing) { PanelInteriorFade(from: .trailing) }
+                } else if appState.hasLoadedList && !appState.isLoadingList {
+                    SidebarEmptyState(section: appState.selectedSection,
+                                     isSearching: !appState.searchText.isEmpty)
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
 
                 SoftHorizontalDivider()
@@ -233,7 +226,6 @@ public struct SidebarView: View {
         guard let creds = appState.credentials else { return }
         appState.isLoadingList = true
         appState.listError = nil
-        defer { appState.isLoadingList = false }
 
         let client = WordPressClient(credentials: creds)
         // Clear taxonomy cache only when the WordPress site URL changes.
@@ -253,10 +245,14 @@ public struct SidebarView: View {
             appState.pages = try await pages
             appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
             await loadTaxonomiesIfNeeded(client: client)
+            appState.hasLoadedList = true
+            appState.isLoadingList = false
         } catch is CancellationError {
-            // normal view lifecycle cancellation — not an error
+            appState.isLoadingList = false
         } catch {
             appState.listError = error.localizedDescription
+            appState.hasLoadedList = true
+            appState.isLoadingList = false
         }
     }
 
@@ -264,7 +260,6 @@ public struct SidebarView: View {
         guard let creds = appState.credentials else { return }
         appState.isLoadingList = true
         appState.listError = nil
-        defer { appState.isLoadingList = false }
 
         let client = WordPressClient(credentials: creds)
         do {
@@ -279,10 +274,14 @@ public struct SidebarView: View {
                 break
             }
             await loadTaxonomiesIfNeeded(client: client)
+            appState.hasLoadedList = true
+            appState.isLoadingList = false
         } catch is CancellationError {
-            // normal view lifecycle cancellation — not an error
+            appState.isLoadingList = false
         } catch {
             appState.listError = error.localizedDescription
+            appState.hasLoadedList = true
+            appState.isLoadingList = false
         }
     }
 
@@ -373,8 +372,8 @@ struct SidebarEmptyState: View {
         switch section {
         case .posts: return "Create one with the + button below"
         case .pages: return "Create one with the + button below"
-        case .localDrafts: return "Use File \u{2192} New Post to start writing"
-        case .media: return nil
+        case .localDrafts: return "Use File \u{2192} New Post/Page to start writing"
+        case .media: return "Create one with the + button below"
         }
     }
 

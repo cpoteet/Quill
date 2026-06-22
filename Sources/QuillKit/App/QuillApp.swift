@@ -33,9 +33,8 @@ public struct QuillApp: App {
                 .onAppear {
                     let creds = try? CredentialsStore.load()
                     appState.credentials = creds
-                    if creds != nil {
-                        appState.isLoadingList = true
-                    } else {
+                    if creds == nil {
+                        appState.isLoadingList = false
                         appState.isShowingPreferences = true
                     }
                 }

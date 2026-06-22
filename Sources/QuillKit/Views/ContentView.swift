@@ -83,15 +83,11 @@ public struct ContentView: View {
                     }
                 } else if let item = appState.selectedItem {
                     PostEditorView(item: item)
-                } else if appState.isLoadingList {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                        Text("Loading posts from WordPress…")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.wpPanelBg)
+                } else if !appState.hasLoadedList || appState.isLoadingList {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.wpPanelBg)
                 } else {
                     EmptyEditorPlaceholder(section: appState.selectedSection,
                                           sectionIsEmpty: appState.sectionIsEmpty)

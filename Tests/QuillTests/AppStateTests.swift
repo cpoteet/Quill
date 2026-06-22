@@ -84,6 +84,15 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
 
 // MARK: - AppState.filteredItems
 
+@Suite struct AppStateLoadingTests {
+
+    @Test func initialListStateWaitsForFirstLoad() {
+        let state = AppState()
+        #expect(state.isLoadingList)
+        #expect(!state.hasLoadedList)
+    }
+}
+
 @Suite struct AppStateFilteredItemsTests {
 
     @Test func postsSectionMapsRemotePosts() throws {
