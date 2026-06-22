@@ -223,7 +223,11 @@ public struct SidebarView: View {
     }
 
     private func loadAllSections() async {
-        guard let creds = appState.credentials else { return }
+        guard let creds = appState.credentials else {
+            appState.isLoadingList = false
+            appState.hasLoadedList = true
+            return
+        }
         appState.isLoadingList = true
         appState.listError = nil
 

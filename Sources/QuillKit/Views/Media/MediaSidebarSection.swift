@@ -237,6 +237,7 @@ struct MediaSidebarSection: View {
     private func loadMedia() async {
         guard let creds = appState.credentials else {
             appState.isLoadingMedia = false
+            appState.hasLoadedMedia = true
             return
         }
         if appState.mediaItems.isEmpty {

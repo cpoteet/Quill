@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-18 — 267 Swift tests + 96 JS editor tests, all passing._
+_Last updated: 2026-06-22 — 284 Swift tests + 96 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (267 tests, 19 suites)
+## Swift test suite (284 tests, 20 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -64,14 +64,15 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 53 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 54 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
-| 16 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
-| 17 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 18 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
-| 19 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
+| 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
+| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
+| 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 
 ---
 
@@ -390,7 +391,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (53 tests)
+### 12. AI — `AIPromptBuilderTests` (54 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -420,7 +421,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `systemPromptWithEmptyStyleGuideExcludesStyleBlock` | Empty string guide → same as nil |
 | `systemPromptWithStyleGuideIncludesIt` | Non-empty guide appended to prompt |
 
-#### `generatePostPrompt` & `operationPrompt` (6 tests)
+#### `generatePostPrompt` & `operationPrompt` (7 tests)
 
 | Test | What it checks |
 |---|---|
@@ -460,7 +461,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `anchorFieldEmptyStringBecomesNil` | `ANCHOR: ""` → `nil` (not empty string) |
 | `anchorFieldCaseInsensitivePrefix` | Lowercase `anchor:` accepted |
 
-#### `evaluatePostPrompt` (14 tests)
+#### `evaluatePostPrompt` (15 tests)
 
 | Test | What it checks |
 |---|---|
@@ -478,6 +479,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `promptExcludesImageCaptionText` | Image caption text excluded from the content sent to Claude |
 | `promptExcludesCodeBlockContent` | Code block content excluded from the content sent to Claude |
 | `promptExcludesEmbedFigureContent` | Embed figure content excluded from the content sent to Claude |
+| `promptExcludesFootnoteMarkersAndBackrefs` | Footnote markers and backref links excluded from content sent to Claude |
 
 ---
 
@@ -564,7 +566,18 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `localDraftsShortTitle` | `.localDrafts.shortTitle == "Drafts"` |
 | `mediaShortTitle` | `.media.shortTitle == "Media"` |
 
-### 16. View-model — `AppStateFilteredItemsTests` (10 tests)
+### 16. View-model — `AppStateLoadingTests` (2 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+Tests that `AppState` initializes with loading flags set correctly — `isLoadingList`/`isLoadingMedia` start `true` and `hasLoadedList`/`hasLoadedMedia` start `false`, so views show a spinner instead of flashing an empty state before the first fetch completes.
+
+| Test | What it checks |
+|---|---|
+| `initialListStateWaitsForFirstLoad` | `isLoadingList == true`, `hasLoadedList == false` on fresh `AppState` |
+| `initialMediaStateWaitsForFirstLoad` | `isLoadingMedia == true`, `hasLoadedMedia == false` on fresh `AppState` |
+
+### 17. View-model — `AppStateFilteredItemsTests` (10 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -583,7 +596,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 
 ---
 
-### 17. View-model — `SectionIsEmptyTests` (5 tests)
+### 18. View-model — `SectionIsEmptyTests` (5 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -599,7 +612,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SidebarEmpt
 
 ---
 
-### 18. Security — `EditorCoordinatorTests` (7 tests)
+### 19. Security — `EditorCoordinatorTests` (7 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -617,7 +630,7 @@ Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security fi
 
 ---
 
-### 19. Editor helpers — `PostEditorHelpersTests` (14 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (14 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -886,7 +899,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Enter a URL for a non-WordPress site or one with the REST API disabled → a clear error appears.
 - [ ] Paste an app password that contains spaces → authentication succeeds (WordPress app passwords normally have spaces).
 - [ ] No macOS Keychain password prompt appears during normal use.
-- [ ] Quit and relaunch → credentials are remembered and lists reload without re-entering them.
+- [ ] Quit and relaunch → credentials are remembered and lists reload without re-entering them. A spinner appears during loading — the empty-state placeholder does NOT flash before posts arrive.
 - [ ] Change the site URL in settings → lists update to the new site; any saved AI sample posts are cleared.
 
 ### 7.2 Sidebar, lists, navigation
@@ -1237,6 +1250,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 48 | HTML entities in post/media titles decoded for display | ✅ `WPPostDecodingTests.decodes*` + `.noEntitiesPassthrough` (5 tests) |
 | 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
 | 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
+| 49 | Empty state flash before first load (`hasLoadedList`/`hasLoadedMedia`) | ✅ `AppStateLoadingTests` (2 tests) + 👁 §7.1 |
 | 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
 | 50 | Confirmation sheets (Revert / Conflict / Replace / Truncation) have ⌘↩ on primary action | 👁 §7.8 + §7.9 + §7.11 |
 

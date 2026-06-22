@@ -35,6 +35,9 @@ public struct QuillApp: App {
                     appState.credentials = creds
                     if creds == nil {
                         appState.isLoadingList = false
+                        appState.hasLoadedList = true
+                        appState.isLoadingMedia = false
+                        appState.hasLoadedMedia = true
                         appState.isShowingPreferences = true
                     }
                 }

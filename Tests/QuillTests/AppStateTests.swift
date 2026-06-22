@@ -91,6 +91,12 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.isLoadingList)
         #expect(!state.hasLoadedList)
     }
+
+    @Test func initialMediaStateWaitsForFirstLoad() {
+        let state = AppState()
+        #expect(state.isLoadingMedia)
+        #expect(!state.hasLoadedMedia)
+    }
 }
 
 @Suite struct AppStateFilteredItemsTests {
