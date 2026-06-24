@@ -91,8 +91,15 @@ public struct AIPromptBuilder {
                                                 range: titleMarker.upperBound..<cleaned.endIndex) else {
             return nil
         }
-        let html = String(cleaned[contentMarker.upperBound...])
+        var html = String(cleaned[contentMarker.upperBound...])
             .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Strip <cite index="...">...</cite> tags injected by Anthropic web search citations
+        html = html.replacingOccurrences(
+            of: #"<cite\s+index="[^"]*">[^<]*</cite>"#,
+            with: "",
+            options: .regularExpression
+        )
 
         guard !title.isEmpty, !html.isEmpty else { return nil }
         return (title, html)
