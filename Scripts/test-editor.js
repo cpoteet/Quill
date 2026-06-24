@@ -317,6 +317,7 @@ describe('toWordPressHTML — idempotency and edge cases', () => {
       '<ul><li><p>item</p></li></ul>',
       '<blockquote><p>quote</p><cite>author</cite></blockquote>',
       '<pre><code>code</code></pre>',
+      '<hr>',
       '<figure><img src="a.jpg" class="alignleft" data-media-id="3"><figcaption></figcaption></figure>',
       '<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>',
     ].join('\n')

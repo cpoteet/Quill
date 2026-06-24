@@ -80,7 +80,7 @@ public final class DroppableWebView: WKWebView {
                 var ns = window.getSelection();
                 hasSel = !!(ns && !ns.isCollapsed && ns.toString().length >= 10);
             }
-            if (!hasSel && sel && ed) {
+            if (!hasSel && sel && ed && sel.from !== sel.to) {
                 var $f = ed.state.doc.resolve(sel.from);
                 for (var d = $f.depth; d > 0; d--) {
                     var n = $f.node(d).type.name;

@@ -139,6 +139,32 @@ import Testing
         #expect(prompt.contains("<ul>") && prompt.contains("<li>"))
     }
 
+    @Test func makeLongerWithListContextUsesListInstruction() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeLonger, context: "bulletList")
+        #expect(prompt.lowercased().contains("list item"))
+        #expect(prompt.contains("<ul>"))
+    }
+
+    @Test func makeShorterWithListContextUsesListInstruction() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeShorter, context: "orderedList")
+        #expect(prompt.lowercased().contains("list item"))
+    }
+
+    @Test func makeLongerWithTableContextUsesTableInstruction() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "cells", operation: .makeLonger, context: "table")
+        #expect(prompt.lowercased().contains("table cell") || prompt.lowercased().contains("table structure"))
+    }
+
+    @Test func makeShorterWithTableContextUsesTableInstruction() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "cells", operation: .makeShorter, context: "table")
+        #expect(prompt.lowercased().contains("table cell") || prompt.lowercased().contains("table structure"))
+    }
+
+    @Test func operationPromptWithNilContextUsesDefaultInstruction() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "text", operation: .makeLonger, context: nil)
+        #expect(prompt.lowercased().contains("expand this content"))
+    }
+
     // MARK: - styleGuideGenerationPrompt
 
     @Test func styleGuidePromptNumbersSamples() {

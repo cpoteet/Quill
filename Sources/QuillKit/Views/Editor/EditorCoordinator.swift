@@ -274,8 +274,14 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         guard let wv = webView else { return }
         if isReady {
             let needsSync = syncAfterNextSetContent
+            guard html != lastPushedHTML else {
+                if needsSync {
+                    syncAfterNextSetContent = false
+                    wv.evaluateJavaScript("window.syncContentToSwift?.()", completionHandler: nil)
+                }
+                return
+            }
             syncAfterNextSetContent = false
-            guard html != lastPushedHTML else { return }
             lastPushedHTML = html
             guard let jsonHTML = try? JSONEncoder().encode(html),
                 let htmlStr = String(data: jsonHTML, encoding: .utf8)

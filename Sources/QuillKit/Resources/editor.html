@@ -2610,10 +2610,14 @@
       }
       // Fallback: ProseMirror says there's a selection but native range has no rect.
       // Use coordsAtPos for a valid rect.
-      const coords = editor.view.coordsAtPos(from)
-      window.webkit?.messageHandlers?.selectionChanged?.postMessage({
-        rect: { x: coords.left, y: coords.top, width: 1, height: coords.bottom - coords.top },
-      })
+      try {
+        const coords = editor.view.coordsAtPos(from)
+        window.webkit?.messageHandlers?.selectionChanged?.postMessage({
+          rect: { x: coords.left, y: coords.top, width: 1, height: coords.bottom - coords.top },
+        })
+      } catch (_) {
+        window.webkit?.messageHandlers?.selectionChanged?.postMessage(null)
+      }
     }
 
     let _selChangeTimer = null
@@ -2738,8 +2742,9 @@
         }
       } else {
         const { state } = editor
-        const $from   = state.doc.resolve(_aiFrom)
-        const $to     = state.doc.resolve(_aiTo)
+        const docSize = state.doc.content.size
+        const $from   = state.doc.resolve(Math.min(_aiFrom, docSize))
+        const $to     = state.doc.resolve(Math.min(_aiTo, docSize))
         nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
         nodeTo   = $to.depth > 0   ? $to.after($to.depth)      : $to.end()
       }
@@ -2769,7 +2774,7 @@
         const coords = editor.view.coordsAtPos(nodeFrom)
         return { x: coords.left, y: coords.top, width: 200, height: coords.bottom - coords.top }
       } catch (_) {
-        return { x: 100, y: 100, width: 200, height: 20 }
+        return { x: 0, y: 0, width: 0, height: 0 }
       }
     }
 

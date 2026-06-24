@@ -510,6 +510,8 @@ With text selected in the editor, right-click to access AI writing operations:
 
 These operations work on the selected text only and do not use web search. The result appears inline in the editor with an **Accept** or **Discard** panel. Accept to keep the change, or discard to restore the original text.
 
+**Lists and tables:** When your selection is inside a list or table, Make Longer and Make Shorter automatically detect the structure and apply changes that preserve the format — expanding or condensing individual list items or table cells rather than converting them to plain paragraphs.
+
 ---
 
 ## Keyboard Reference
@@ -571,7 +573,7 @@ Quill stores credentials for a single WordPress site. To switch sites, update yo
 
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, images, tables, embeds, footnotes, and links. Posts you write in Quill will round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, tables, embeds, footnotes, and links. Posts you write in Quill will round-trip correctly through the Gutenberg editor.
 
 However, if you open a post that was created in Gutenberg using block types Quill does not support (such as galleries, columns, cover blocks, or custom blocks) those blocks will be visible in the **Code View** (`</>`) but will not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
 

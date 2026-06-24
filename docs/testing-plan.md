@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-22 — 284 Swift tests + 96 JS editor tests, all passing._
+_Last updated: 2026-06-24 — 289 Swift tests + 101 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (284 tests, 20 suites)
+## Swift test suite (290 tests, 20 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -64,7 +64,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 54 | `parseGenerateResponse` edge cases, system prompt, all prompt builders, evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 59 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -421,7 +421,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `systemPromptWithEmptyStyleGuideExcludesStyleBlock` | Empty string guide → same as nil |
 | `systemPromptWithStyleGuideIncludesIt` | Non-empty guide appended to prompt |
 
-#### `generatePostPrompt` & `operationPrompt` (7 tests)
+#### `generatePostPrompt` & `operationPrompt` (12 tests)
 
 | Test | What it checks |
 |---|---|
@@ -432,6 +432,11 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `makeShorterInstructionPresent` | "shorter" in `makeShorter` operation prompt |
 | `convertToTableMentionsTableTags` | Table-related tags in `convertToTable` prompt |
 | `convertToListMentionsListTags` | List-related tags in `convertToList` prompt |
+| `makeLongerWithListContextUsesListInstruction` | `context: "bulletList"` → list-specific expansion prompt with `<ul>` |
+| `makeShorterWithListContextUsesListInstruction` | `context: "orderedList"` → list-specific condensation prompt |
+| `makeLongerWithTableContextUsesTableInstruction` | `context: "table"` → table cell expansion prompt |
+| `makeShorterWithTableContextUsesTableInstruction` | `context: "table"` → table cell condensation prompt |
+| `operationPromptWithNilContextUsesDefaultInstruction` | `context: nil` → default "expand this content" (not list/table-specific) |
 
 #### `styleGuideGenerationPrompt` (3 tests)
 
@@ -667,7 +672,7 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 ---
 
-## JS editor tests (96 tests)
+## JS editor tests (101 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -724,6 +729,13 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 |---|---|
 | `pre gains wp-block-code class` | `<pre>` → `wp-block-code` |
 
+### `toWordPressHTML` — horizontal rules (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `hr gains wp-block-separator class` | `<hr>` → `wp-block-separator has-alpha-channel-opacity` |
+| `hr class is idempotent` | Running twice doesn't duplicate the class |
+
 ### `toWordPressHTML` — images (10 tests)
 
 | Test | What it checks |
@@ -739,7 +751,7 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `whitespace-only figcaption is removed` | `<figcaption>   </figcaption>` treated as empty |
 | `table figure is not treated as image figure` | `<figure class="wp-block-table">` → image transforms not applied |
 
-### `toWordPressHTML` — tables (5 tests)
+### `toWordPressHTML` — tables (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -748,6 +760,9 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `mixed th/td first row is NOT promoted to thead` | Mixed `<th>`/`<td>` → no promotion |
 | `table already having thead is not modified` | Pre-existing `<thead>` → untouched |
 | `table already inside wp-block-table is not double-wrapped` | Idempotency: one `wp-block-table` after two passes |
+| `Tiptap table style and colgroup are stripped` | `style` attribute and `<colgroup>` removed from tables |
+| `default colspan=1 and rowspan=1 are stripped from cells` | `colspan="1"` and `rowspan="1"` removed; non-default values preserved |
+| `paragraph wrapper inside table cells is unwrapped` | Single `<p>` in `<td>` unwrapped; multi-`<p>` left as-is |
 
 ### `toWordPressHTML` — idempotency & edge cases (3 tests)
 
@@ -1072,6 +1087,9 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Select some text, right-click → Make Longer, Make Shorter, To Table, and To List appear in the context menu. Each produces a correct result when clicked.
 - [ ] Deselect all text, right-click → the AI items are absent.
 - [ ] The AI menu items are not hidden by macOS AutoFill or Services items that may be injected into the menu.
+- [ ] Select text inside a bullet list, right-click → Make Longer/Shorter appear. The result preserves the list format.
+- [ ] Click inside a table, select some cells, right-click → Make Longer/Shorter appear. The result preserves the table structure.
+- [ ] Drag-select in reverse (from bottom to top) → AI menu items still appear for selections ≥ 10 characters.
 
 **Result handling**
 - [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
@@ -1253,6 +1271,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 49 | Empty state flash before first load (`hasLoadedList`/`hasLoadedMedia`) | ✅ `AppStateLoadingTests` (2 tests) + 👁 §7.1 |
 | 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
 | 50 | Confirmation sheets (Revert / Conflict / Replace / Truncation) have ⌘↩ on primary action | 👁 §7.8 + §7.9 + §7.11 |
+| 51 | HR → `wp-block-separator has-alpha-channel-opacity` | ✅ JS `hr gains wp-block-separator class` + `hr class is idempotent` |
+| 52 | Tiptap table artifacts stripped (style, colgroup, default colspan/rowspan, p-in-cell) | ✅ JS table cleanup tests (3 tests) |
+| 53 | AI Make Longer/Shorter uses list/table-specific prompts when context detected | ✅ `AIPromptBuilderTests.makeLongerWithListContextUsesListInstruction` + 3 siblings + 👁 §7.11 |
+| 54 | AI selection detection uses ProseMirror state (handles reversed/table selections) | 👁 §7.11 (select in table, right-click) |
+| 55 | AI result panel clamps to webview bounds, fallback for invalid rects | 👁 §7.11 |
 
 ---
 
