@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-24 — 289 Swift tests + 101 JS editor tests, all passing._
+_Last updated: 2026-06-24 — 291 Swift tests + 101 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,8 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 267 tests across 19 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (96 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 291 tests across 20 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (101 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (290 tests, 20 suites)
+## Swift test suite (291 tests, 20 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -64,7 +64,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 59 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 61 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -391,7 +391,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (54 tests)
+### 12. AI — `AIPromptBuilderTests` (61 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -432,8 +432,10 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `makeShorterInstructionPresent` | "shorter" in `makeShorter` operation prompt |
 | `convertToTableMentionsTableTags` | Table-related tags in `convertToTable` prompt |
 | `convertToListMentionsListTags` | List-related tags in `convertToList` prompt |
-| `makeLongerWithListContextUsesListInstruction` | `context: "bulletList"` → list-specific expansion prompt with `<ul>` |
-| `makeShorterWithListContextUsesListInstruction` | `context: "orderedList"` → list-specific condensation prompt |
+| `makeLongerWithBulletListContextUsesUlTag` | `context: "bulletList"` → list-specific expansion prompt with `<ul>` |
+| `makeLongerWithOrderedListContextUsesOlTag` | `context: "orderedList"` → list-specific expansion prompt with `<ol>` (not `<ul>`) |
+| `makeShorterWithOrderedListContextUsesOlTag` | `context: "orderedList"` → list-specific condensation prompt with `<ol>` |
+| `makeShorterWithBulletListContextUsesUlTag` | `context: "bulletList"` → list-specific condensation prompt with `<ul>` |
 | `makeLongerWithTableContextUsesTableInstruction` | `context: "table"` → table cell expansion prompt |
 | `makeShorterWithTableContextUsesTableInstruction` | `context: "table"` → table cell condensation prompt |
 | `operationPromptWithNilContextUsesDefaultInstruction` | `context: nil` → default "expand this content" (not list/table-specific) |
@@ -1018,6 +1020,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 ### 7.7 Save / publish / draft / schedule
 
 - [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally".
+- [ ] If the local draft save fails (e.g. disk full) → a red error toast appears with the failure reason.
 - [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
 - [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.
 - [ ] Press ⌘S on a remote draft → it updates on WordPress while keeping its "draft" status.
@@ -1193,6 +1196,10 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links jump back to the inline markers.
 - [ ] The footnotes `<ol>` does not receive a `wp-block-list` class (it should keep only its `wp-block-footnotes` class).
+- [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
+- [ ] With the cursor inside a footnote, pressing keyboard shortcuts for block operations (e.g. ⌘⇧7 for ordered list, ⌘⇧8 for bullet list) does nothing.
+- [ ] Drag an image from Finder onto a footnote entry → an error toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
+- [ ] Paste rich content (containing headings, lists, or images) into a footnote → block elements are stripped; only inline text and formatting survive.
 
 ---
 
@@ -1276,6 +1283,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 53 | AI Make Longer/Shorter uses list/table-specific prompts when context detected | ✅ `AIPromptBuilderTests.makeLongerWithListContextUsesListInstruction` + 3 siblings + 👁 §7.11 |
 | 54 | AI selection detection uses ProseMirror state (handles reversed/table selections) | 👁 §7.11 (select in table, right-click) |
 | 55 | AI result panel clamps to webview bounds, fallback for invalid rects | 👁 §7.11 |
+| 56 | Footnote content restricted to inline-only (no images, block elements, keyboard shortcuts) | 👁 §7.20 |
+| 57 | Image drops rejected in footnotes with error toast | 👁 §7.20 |
+| 58 | Paste in footnotes strips block elements to inline text | 👁 §7.20 |
+| 59 | Draft save failure shows error toast | 👁 §7.7 |
+| 60 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
 
 ---
 

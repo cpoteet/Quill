@@ -284,6 +284,8 @@ When you insert a footnote, two things happen automatically:
 
 **Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
 
+**Content restrictions:** Footnotes support only inline content — bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
+
 **On publish:** Quill saves footnotes as standard WordPress block footnotes (`wp-block-footnotes`), fully compatible with the Gutenberg editor.
 
 ### Tables

@@ -534,6 +534,7 @@ public struct PostEditorView: View {
                 if shouldRestoreAutosave(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
+                    toastIsError = false
                     toastMessage = "Unsaved changes restored"
                 } else {
                     try? services.autosaveStore.delete(postID: post.id)
@@ -549,7 +550,7 @@ public struct PostEditorView: View {
                 htmlContent = fresh.content
                 settings = PostSettings()
                 settings.excerpt = fresh.excerpt
-                if showToast { toastMessage = "Unsaved changes restored" }
+                if showToast { toastIsError = false; toastMessage = "Unsaved changes restored" }
             } else {
                 title = draft.title
                 htmlContent = draft.content
@@ -755,6 +756,7 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != .future { settings.publishDate = nil }
+            toastIsError = false
             toastMessage = Self.toastMessage(forStatus: status)
         } catch {
             saveError = error.localizedDescription

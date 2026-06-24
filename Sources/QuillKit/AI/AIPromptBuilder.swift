@@ -110,10 +110,11 @@ public struct AIPromptBuilder {
         let isList = context == "bulletList" || context == "orderedList"
         let isTable = context == "table"
         let instruction: String
+        let listTag = context == "orderedList" ? "<ol>" : "<ul>"
         switch operation {
         case .makeLonger:
             if isList {
-                instruction = "Expand each list item to roughly 2–3 times its current length by adding detail, examples, or explanation. Preserve the author's voice and list format. Return the result as an HTML list (<ul> with <li> tags). Return only the expanded list — no preamble, no explanation."
+                instruction = "Expand each list item to roughly 2–3 times its current length by adding detail, examples, or explanation. Preserve the author's voice and list format. Return the result as an HTML list (\(listTag) with <li> tags). Return only the expanded list — no preamble, no explanation."
             } else if isTable {
                 instruction = "Expand the content of each table cell by adding detail or explanation. Preserve the table structure and the author's voice. Return only the expanded table as HTML — no preamble, no explanation."
             } else {
@@ -121,7 +122,7 @@ public struct AIPromptBuilder {
             }
         case .makeShorter:
             if isList {
-                instruction = "Condense each list item to its essential point, removing redundancy while preserving meaning and the author's voice. Return the result as an HTML list (<ul> with <li> tags). Return only the shortened list — no preamble, no explanation."
+                instruction = "Condense each list item to its essential point, removing redundancy while preserving meaning and the author's voice. Return the result as an HTML list (\(listTag) with <li> tags). Return only the shortened list — no preamble, no explanation."
             } else if isTable {
                 instruction = "Condense each table cell to its essential content, removing redundancy while preserving meaning and the table structure. Return only the shortened table as HTML — no preamble, no explanation."
             } else {

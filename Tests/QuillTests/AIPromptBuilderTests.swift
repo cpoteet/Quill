@@ -139,15 +139,29 @@ import Testing
         #expect(prompt.contains("<ul>") && prompt.contains("<li>"))
     }
 
-    @Test func makeLongerWithListContextUsesListInstruction() {
+    @Test func makeLongerWithBulletListContextUsesUlTag() {
         let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeLonger, context: "bulletList")
         #expect(prompt.lowercased().contains("list item"))
         #expect(prompt.contains("<ul>"))
     }
 
-    @Test func makeShorterWithListContextUsesListInstruction() {
+    @Test func makeLongerWithOrderedListContextUsesOlTag() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeLonger, context: "orderedList")
+        #expect(prompt.lowercased().contains("list item"))
+        #expect(prompt.contains("<ol>"))
+        #expect(!prompt.contains("<ul>"))
+    }
+
+    @Test func makeShorterWithOrderedListContextUsesOlTag() {
         let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeShorter, context: "orderedList")
         #expect(prompt.lowercased().contains("list item"))
+        #expect(prompt.contains("<ol>"))
+    }
+
+    @Test func makeShorterWithBulletListContextUsesUlTag() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "items", operation: .makeShorter, context: "bulletList")
+        #expect(prompt.lowercased().contains("list item"))
+        #expect(prompt.contains("<ul>"))
     }
 
     @Test func makeLongerWithTableContextUsesTableInstruction() {

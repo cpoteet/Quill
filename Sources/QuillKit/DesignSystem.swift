@@ -174,6 +174,7 @@ extension View {
                         Task {
                             try? await Task.sleep(for: .seconds(2))
                             message.wrappedValue = nil
+                            isError.wrappedValue = false
                         }
                     }
             }

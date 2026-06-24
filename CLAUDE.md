@@ -27,9 +27,9 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-24 — 289 Swift + 101 JS tests, all passing)
+## Test suite status (2026-06-24 — 291 Swift + 101 JS tests, all passing)
 
-**Swift (289 tests):** 20 suites covering all models (including wpautop classic-content handling and HTML entity decoding), WordPressClient, all storage layers, AIPromptBuilder (including list/table context-aware prompts), AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, and PostStats. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
+**Swift (291 tests):** 20 suites covering all models (including wpautop classic-content handling and HTML entity decoding), WordPressClient, all storage layers, AIPromptBuilder (including list/table context-aware prompts with correct `<ul>`/`<ol>` tag selection), AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, and PostStats. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
 **JS (101 tests):** `Scripts/test-editor.js` covers `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, and `embedClassFor` via Node + jsdom (headings, lists, blockquotes, code blocks, horizontal rules, images, tables incl. Tiptap artifact cleanup, embeds, footnotes, footnote backrefs, idempotency, unicode).
 
