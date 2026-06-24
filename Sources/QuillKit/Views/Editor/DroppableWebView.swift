@@ -90,7 +90,15 @@ public final class DroppableWebView: WKWebView {
                     }
                 }
             }
-            return { spellContext: sc, hasSelection: hasSel };
+            var inFn = false;
+            if (sel) {
+                var $f = ed.state.doc.resolve(sel.from);
+                for (var d2 = $f.depth; d2 > 0; d2--) {
+                    var nn = $f.node(d2).type.name;
+                    if (nn === 'footnoteItem' || nn === 'footnotesList') { inFn = true; break; }
+                }
+            }
+            return { spellContext: sc, hasSelection: hasSel, inFootnote: inFn };
         })()
         """
         evaluateJavaScript(js) { [weak self] result, _ in
@@ -98,7 +106,8 @@ public final class DroppableWebView: WKWebView {
             let dict = result as? [String: Any]
             let spellCtx = SpellContext(dict?["spellContext"])
             let hasSelNow = dict?["hasSelection"] as? Bool ?? self.hasTextSelection
-            NSMenu.popUpContextMenu(self.buildContextMenu(spellContext: spellCtx, hasSelection: hasSelNow), with: event, for: self)
+            let inFootnote = dict?["inFootnote"] as? Bool ?? false
+            NSMenu.popUpContextMenu(self.buildContextMenu(spellContext: spellCtx, hasSelection: hasSelNow, inFootnote: inFootnote), with: event, for: self)
         }
     }
 
@@ -108,7 +117,7 @@ public final class DroppableWebView: WKWebView {
         menu.allowsContextMenuPlugIns = false
     }
 
-    private func buildContextMenu(spellContext: SpellContext? = nil, hasSelection: Bool? = nil) -> NSMenu {
+    private func buildContextMenu(spellContext: SpellContext? = nil, hasSelection: Bool? = nil, inFootnote: Bool = false) -> NSMenu {
         let menu = NSMenu()
         menu.allowsContextMenuPlugIns = false
 
@@ -128,7 +137,7 @@ public final class DroppableWebView: WKWebView {
             NSMenuItem(title: "Copy",  action: NSSelectorFromString("copy:"),  keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
-        let showAI = aiEnabled && (hasSelection ?? hasTextSelection)
+        let showAI = aiEnabled && !inFootnote && (hasSelection ?? hasTextSelection)
         if showAI {
             menu.addItem(.separator())
             let aiActions: [(String, Selector)] = [

@@ -1728,6 +1728,31 @@
         FindHighlight,
       ],
       content: '',
+      editorProps: {
+        transformPastedHTML(html) {
+          if (!_isInFootnote()) return html
+          const tmp = document.createElement('div')
+          tmp.innerHTML = html
+          const BLOCK_TAGS = new Set(['DIV','P','H1','H2','H3','H4','H5','H6',
+            'BLOCKQUOTE','PRE','TABLE','THEAD','TBODY','TR','TD','TH',
+            'UL','OL','LI','FIGURE','FIGCAPTION','HR','IMG'])
+          function flatten(el) {
+            let out = ''
+            for (const ch of el.childNodes) {
+              if (ch.nodeType === 3) { out += ch.textContent; continue }
+              if (ch.nodeType !== 1) continue
+              if (BLOCK_TAGS.has(ch.tagName)) {
+                out += flatten(ch) + ' '
+              } else {
+                ch.innerHTML = flatten(ch)
+                out += ch.outerHTML
+              }
+            }
+            return out
+          }
+          return flatten(tmp).trim()
+        },
+      },
       onTransaction: () => updateToolbar(),
       onCreate: () => {
         document.execCommand('enableObjectResizing', false, 'false')
@@ -1751,6 +1776,19 @@
       editor.view.focus()
     }
 
+    // ── Footnote context detection ────────────────────
+    function _isInFootnote() {
+      const $from = editor.state.selection.$from
+      for (let d = $from.depth; d > 0; d--) {
+        const name = $from.node(d).type.name
+        if (name === 'footnoteItem' || name === 'footnotesList') return true
+      }
+      return false
+    }
+
+    const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
+                        'insertTable','image']
+
     // ── Toolbar commands ───────────────────────────────
     const COMMANDS = {
       bold:          () => editor.chain().focus().toggleBold().run(),
@@ -1759,6 +1797,7 @@
       strike:        () => editor.chain().focus().toggleStrike().run(),
       code:          () => editor.chain().focus().toggleCode().run(),
       blockquote: () => {
+        if (_isInFootnote()) return
         if (editor.isActive('blockquote')) {
           editor.chain().focus().toggleBlockquote().run()
           return
@@ -1781,10 +1820,10 @@
           })
           .run()
       },
-      codeBlock:     () => editor.chain().focus().toggleCodeBlock().run(),
-      bulletList:    () => editor.chain().focus().toggleBulletList().run(),
-      orderedList:   () => editor.chain().focus().toggleOrderedList().run(),
-      insertTable:   () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+      codeBlock:     () => { if (!_isInFootnote()) editor.chain().focus().toggleCodeBlock().run() },
+      bulletList:    () => { if (!_isInFootnote()) editor.chain().focus().toggleBulletList().run() },
+      orderedList:   () => { if (!_isInFootnote()) editor.chain().focus().toggleOrderedList().run() },
+      insertTable:   () => { if (!_isInFootnote()) editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
       addRowAfter:   () => editor.chain().focus().addRowAfter().run(),
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
@@ -1835,6 +1874,7 @@
         }
       },
       image: () => {
+        if (_isInFootnote()) return
         if (window.webkit?.messageHandlers?.insertImage) {
           window.webkit.messageHandlers.insertImage.postMessage({})
         }
@@ -1946,6 +1986,7 @@
     }
 
     function setHeadingLevel(level) {
+      if (_isInFootnote()) { closeHeadingMenu(); return }
       if (level === 0) editor.chain().focus().setParagraph().run()
       else editor.chain().focus().setHeading({ level }).run()
       closeHeadingMenu()
@@ -1988,6 +2029,7 @@
     function _closeEmbedMenu() { embedMenu.classList.remove('visible') }
 
     function _insertEmbedFromMenu() {
+      if (_isInFootnote()) { _closeEmbedMenu(); return }
       const raw = document.getElementById('embed-url-input').value.trim()
       let parsed
       try { parsed = new URL(raw) } catch (_) { return }
@@ -2019,11 +2061,17 @@
                          'blockquote','codeBlock','bulletList','orderedList','link']
 
     function updateToolbar() {
+      const inFootnote = _isInFootnote()
       TOGGLE_CMDS.forEach(cmd => {
         const btn = document.querySelector(`[data-cmd="${cmd}"]`)
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
       })
+      BLOCK_CMDS.forEach(cmd => {
+        const btn = document.querySelector(`[data-cmd="${cmd}"]`)
+        if (btn) btn.disabled = inFootnote
+      })
       // Heading menu
+      headingButton.disabled = inFootnote
       let headingLevel = '0'
       for (let i = 1; i <= 6; i++) {
         if (editor.isActive('heading', { level: i })) { headingLevel = String(i); break }
@@ -2039,6 +2087,9 @@
       // Undo / Redo
       document.querySelector('[data-cmd="undo"]').disabled = !editor.can().undo()
       document.querySelector('[data-cmd="redo"]').disabled = !editor.can().redo()
+      // Embed / footnote buttons
+      document.getElementById('embed-button').disabled = inFootnote
+      document.getElementById('btn-footnote').disabled = inFootnote
       // Image alignment controls
       const selNode = editor.state.selection.node
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
@@ -2463,7 +2514,10 @@
     }
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
 
+    window.isInFootnote = () => _isInFootnote()
+
     window.insertImage = (url, width, height, mediaId, alt) => {
+      if (_isInFootnote()) return
       const attrs = { src: url }
       if (width   != null) attrs.width   = width
       if (height  != null) attrs.height  = height
