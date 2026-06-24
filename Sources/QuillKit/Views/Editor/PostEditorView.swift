@@ -19,6 +19,7 @@ public struct PostEditorView: View {
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
     @State private var toastMessage: String? = nil
+    @State private var toastIsError: Bool = false
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
@@ -78,6 +79,10 @@ public struct PostEditorView: View {
                         },
                         onImageFilesDropped: { urls in
                             Task { await handleDroppedImages(urls) }
+                        },
+                        onDropRejected: { message in
+                            toastIsError = true
+                            toastMessage = message
                         },
                         onSearchLinks: { query in
                             guard let creds = appState.credentials else { return [] }
@@ -199,7 +204,7 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
-        .toast(message: $toastMessage)
+        .toast(message: $toastMessage, isError: $toastIsError)
         .sheet(isPresented: $showDiscardAlert) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Revert to Server Version?")
@@ -797,8 +802,10 @@ public struct PostEditorView: View {
                 if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+                toastIsError = false
                 toastMessage = "Image inserted"
             } catch {
+                toastIsError = true
                 toastMessage = "Upload failed: \(error.localizedDescription)"
             }
         }
@@ -1035,6 +1042,7 @@ public struct PostEditorView: View {
         } catch {
             // Restore original text and show a toast
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+            toastIsError = true
             toastMessage = "Claude couldn't complete that — please try again."
         }
     }

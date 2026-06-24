@@ -38,6 +38,7 @@ cat > package.json <<'EOF'
     "@tiptap/extension-bullet-list": "^2",
     "@tiptap/extension-ordered-list": "^2",
     "@tiptap/extension-list-item": "^2",
+    "@tiptap/extension-code-block": "^2",
     "@tiptap/pm": "^2",
     "esbuild": "^0.25"
   }
@@ -62,6 +63,7 @@ export { default as Heading }          from '@tiptap/extension-heading'
 export { default as BulletList }       from '@tiptap/extension-bullet-list'
 export { default as OrderedList }      from '@tiptap/extension-ordered-list'
 export { default as ListItem }         from '@tiptap/extension-list-item'
+export { default as CodeBlock }        from '@tiptap/extension-code-block'
 export { default as Link }             from '@tiptap/extension-link'
 export { default as TaskList }         from '@tiptap/extension-task-list'
 export { default as TaskItem }         from '@tiptap/extension-task-item'
