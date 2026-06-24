@@ -8,6 +8,7 @@ public struct EditorView: NSViewRepresentable {
     var onEditorReady: (() -> Void)?
     var onInsertImage: (() -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
+    var onDropRejected: ((String) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
@@ -26,6 +27,7 @@ public struct EditorView: NSViewRepresentable {
         onEditorReady: (() -> Void)? = nil,
         onInsertImage: (() -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
+        onDropRejected: ((String) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
@@ -43,6 +45,7 @@ public struct EditorView: NSViewRepresentable {
         self.onEditorReady = onEditorReady
         self.onInsertImage = onInsertImage
         self.onImageFilesDropped = onImageFilesDropped
+        self.onDropRejected = onDropRejected
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
         self.onSelectionChanged = onSelectionChanged
@@ -76,6 +79,7 @@ public struct EditorView: NSViewRepresentable {
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.onImageFilesDropped = onImageFilesDropped
+        webView.onDropRejected = onDropRejected
         webView.onAIOperation = onAIOperation
         webView.aiEnabled = aiEnabled
         webView.hasTextSelection = hasTextSelection
@@ -114,6 +118,7 @@ public struct EditorView: NSViewRepresentable {
             nsView.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: nil)
         }
         nsView.onImageFilesDropped = onImageFilesDropped
+        nsView.onDropRejected = onDropRejected
         nsView.onAIOperation = onAIOperation
         nsView.aiEnabled = aiEnabled
         nsView.hasTextSelection = hasTextSelection

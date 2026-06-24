@@ -6,6 +6,7 @@ import WebKit
 /// drop overlay inside the web content while dragging.
 public final class DroppableWebView: WKWebView {
     public var onImageFilesDropped: (([URL]) -> Void)?
+    public var onDropRejected: ((String) -> Void)?
     public var onAIOperation: ((AIWritingOperation) -> Void)?
     public var aiEnabled: Bool = false
     public var hasTextSelection: Bool = false
@@ -54,7 +55,14 @@ public final class DroppableWebView: WKWebView {
                 .readObjects(forClasses: [NSURL.self], options: options) as? [URL],
             !urls.isEmpty
         else { return super.performDragOperation(sender) }
-        onImageFilesDropped?(urls)
+
+        evaluateJavaScript("window.isInFootnote?.() ?? false") { [weak self] result, _ in
+            if result as? Bool == true {
+                self?.onDropRejected?("Images can't be inserted in footnotes")
+                return
+            }
+            self?.onImageFilesDropped?(urls)
+        }
         return true
     }
 

@@ -135,12 +135,15 @@ struct PanelInteriorFade: View {
 
 struct ToastView: View {
     let message: String
-    var systemImage: String = "checkmark.circle.fill"
+    var isError: Bool = false
+
+    private var systemImage: String { isError ? "xmark.circle.fill" : "checkmark.circle.fill" }
+    private var iconColor: Color { isError ? .red : .green }
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
-                .foregroundStyle(.green)
+                .foregroundStyle(iconColor)
                 .font(.system(size: 13, weight: .medium))
             Text(message)
                 .font(.system(size: 13))
@@ -154,11 +157,11 @@ struct ToastView: View {
 }
 
 extension View {
-    func toast(message: Binding<String?>) -> some View {
+    func toast(message: Binding<String?>, isError: Binding<Bool> = .constant(false)) -> some View {
         ZStack(alignment: .bottom) {
             self
             if let msg = message.wrappedValue {
-                ToastView(message: msg)
+                ToastView(message: msg, isError: isError.wrappedValue)
                     .padding(.bottom, 20)
                     .transition(
                         .asymmetric(
