@@ -168,13 +168,13 @@ The formatting toolbar runs across the top of the editor and provides access to 
 
 **Block formatting:**
 
-| Button | Function |
-|---|---|
-| Paragraph / Heading | Dropdown menu to set the current block as Paragraph or Heading 1 through 6 |
-| Bullet list | Converts the current block to an unordered list |
-| Number list | Converts the current block to an ordered list |
-| Blockquote | Wraps the current block in a blockquote |
-| Code block | Converts the current block to a preformatted code block |
+| Button | Shortcut | Function |
+|---|---|---|
+| Paragraph / Heading | | Dropdown menu to set the current block as Paragraph or Heading 1 through 6 |
+| Bullet list | ⌘⇧8 | Converts the current block to an unordered list |
+| Number list | ⌘⇧7 | Converts the current block to an ordered list |
+| Blockquote | ⌘⇧B | Wraps the current block in a blockquote |
+| Code block | ⌘⌥C | Converts the current block to a preformatted code block |
 
 **Inline formatting:**
 
@@ -183,8 +183,8 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | B | ⌘B | Bold |
 | I | ⌘I | Italic |
 | U | ⌘U | Underline |
-| S | | Strikethrough |
-| `A` | | Inline code |
+| S | ⌘⇧X | Strikethrough |
+| `A` | ⌘E | Inline code |
 
 **Insert and utilities:**
 
@@ -537,6 +537,12 @@ These operations work on the selected text only and do not use web search. The r
 | ⌘B | Bold |
 | ⌘I | Italic |
 | ⌘U | Underline |
+| ⌘⇧X | Strikethrough |
+| ⌘E | Inline code |
+| ⌘⇧8 | Bullet list |
+| ⌘⇧7 | Ordered list |
+| ⌘⇧B | Blockquote |
+| ⌘⌥C | Code block |
 
 ### Find & Replace
 

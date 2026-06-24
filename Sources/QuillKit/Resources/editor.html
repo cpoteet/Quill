@@ -967,7 +967,7 @@
       Placeholder,
       Plugin, PluginKey,
       DecorationSet, Decoration,
-      Paragraph, Heading, BulletList, OrderedList, ListItem,
+      Paragraph, Heading, BulletList, OrderedList, ListItem, CodeBlock,
     } = TiptapBundle
 
     // Extend a Tiptap extension to preserve arbitrary class and id attributes
@@ -1000,8 +1000,20 @@
 
     const ParagraphWithClass  = withClassAttr(Paragraph)
     const HeadingWithClass    = withClassAttr(Heading)
-    const BulletListWithClass = withClassAttr(BulletList)
-    const OrderedListWithClass = withClassAttr(OrderedList)
+    const BulletListWithClass = withClassAttr(BulletList.extend({
+      addKeyboardShortcuts() {
+        const orig = this.parent?.()
+        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+          [k, () => _isInFootnote() ? true : fn()]))
+      },
+    }))
+    const OrderedListWithClass = withClassAttr(OrderedList.extend({
+      addKeyboardShortcuts() {
+        const orig = this.parent?.()
+        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+          [k, () => _isInFootnote() ? true : fn()]))
+      },
+    }))
     const ListItemWithClass   = withClassAttr(ListItem)
 
     // ── ImageNodeView ─────────────────────────────────
@@ -1690,6 +1702,11 @@
     // Extended blockquote: allows an optional cite as its last child.
     const CustomBlockquote = withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
+      addKeyboardShortcuts() {
+        const orig = this.parent?.()
+        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+          [k, () => _isInFootnote() ? true : fn()]))
+      },
     }))
 
     const editor = new Editor({
@@ -1702,6 +1719,14 @@
           bulletList: false,
           orderedList: false,
           listItem: false,
+          codeBlock: false,
+        }),
+        CodeBlock.extend({
+          addKeyboardShortcuts() {
+            const orig = this.parent?.()
+            return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+              [k, () => _isInFootnote() ? true : fn()]))
+          },
         }),
         ParagraphWithClass,
         HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
