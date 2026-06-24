@@ -155,6 +155,25 @@ describe('toWordPressHTML — code blocks', () => {
 })
 
 // ---------------------------------------------------------------------------
+// toWordPressHTML — horizontal rules
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — horizontal rules', () => {
+  test('hr gains wp-block-separator class', () => {
+    const out = wp('<p>above</p><hr><p>below</p>')
+    assert.match(out, /wp-block-separator/)
+    assert.match(out, /has-alpha-channel-opacity/)
+  })
+
+  test('hr class is idempotent', () => {
+    const once = wp('<hr>')
+    const twice = wp(once)
+    const count = (twice.match(/wp-block-separator/g) || []).length
+    assert.equal(count, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // toWordPressHTML — images
 // ---------------------------------------------------------------------------
 
@@ -257,6 +276,33 @@ describe('toWordPressHTML — tables', () => {
     const twice = wp(once)
     const count = (twice.match(/wp-block-table/g) || []).length
     assert.equal(count, 1)
+  })
+
+  test('Tiptap table style and colgroup are stripped', () => {
+    const out = wp('<table style="min-width: 100px;"><colgroup><col style="min-width: 25px;"><col style="min-width: 25px;"></colgroup><tbody><tr><td>a</td><td>b</td></tr></tbody></table>')
+    const dom = new JSDOM(out).window.document
+    const table = dom.querySelector('table')
+    assert.equal(table.getAttribute('style'), null, 'table style should be removed')
+    assert.equal(dom.querySelector('colgroup'), null, 'colgroup should be removed')
+  })
+
+  test('default colspan=1 and rowspan=1 are stripped from cells', () => {
+    const out = wp('<table><tbody><tr><th colspan="1" rowspan="1">H</th></tr><tr><td colspan="2" rowspan="1">wide</td></tr></tbody></table>')
+    const dom = new JSDOM(out).window.document
+    const th = dom.querySelector('th')
+    assert.equal(th.getAttribute('colspan'), null, 'colspan=1 should be removed')
+    assert.equal(th.getAttribute('rowspan'), null, 'rowspan=1 should be removed')
+    const td = dom.querySelector('td')
+    assert.equal(td.getAttribute('colspan'), '2', 'colspan=2 should be preserved')
+    assert.equal(td.getAttribute('rowspan'), null, 'rowspan=1 should be removed')
+  })
+
+  test('paragraph wrapper inside table cells is unwrapped', () => {
+    const out = wp('<table><tbody><tr><td><p>text</p></td><td><p>a</p><p>b</p></td></tr></tbody></table>')
+    const dom = new JSDOM(out).window.document
+    const cells = dom.querySelectorAll('td')
+    assert.equal(cells[0].innerHTML, 'text', 'single-p cell should be unwrapped')
+    assert.equal(cells[1].querySelectorAll('p').length, 2, 'multi-p cell should be left as-is')
   })
 })
 

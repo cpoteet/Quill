@@ -106,13 +106,27 @@ public struct AIPromptBuilder {
     }
 
     /// User-turn prompt for a selection operation.
-    public static func operationPrompt(selectedHTML: String, operation: AIWritingOperation) -> String {
+    public static func operationPrompt(selectedHTML: String, operation: AIWritingOperation, context: String? = nil) -> String {
+        let isList = context == "bulletList" || context == "orderedList"
+        let isTable = context == "table"
         let instruction: String
         switch operation {
         case .makeLonger:
-            instruction = "Expand this content to roughly 2–3 times its current length by adding detail, examples, or explanation where it feels natural. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
+            if isList {
+                instruction = "Expand each list item to roughly 2–3 times its current length by adding detail, examples, or explanation. Preserve the author's voice and list format. Return the result as an HTML list (<ul> with <li> tags). Return only the expanded list — no preamble, no explanation."
+            } else if isTable {
+                instruction = "Expand the content of each table cell by adding detail or explanation. Preserve the table structure and the author's voice. Return only the expanded table as HTML — no preamble, no explanation."
+            } else {
+                instruction = "Expand this content to roughly 2–3 times its current length by adding detail, examples, or explanation where it feels natural. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
+            }
         case .makeShorter:
-            instruction = "Condense this content to its essential points, removing redundancy while preserving meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
+            if isList {
+                instruction = "Condense each list item to its essential point, removing redundancy while preserving meaning and the author's voice. Return the result as an HTML list (<ul> with <li> tags). Return only the shortened list — no preamble, no explanation."
+            } else if isTable {
+                instruction = "Condense each table cell to its essential content, removing redundancy while preserving meaning and the table structure. Return only the shortened table as HTML — no preamble, no explanation."
+            } else {
+                instruction = "Condense this content to its essential points, removing redundancy while preserving meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
+            }
         case .convertToTable:
             instruction = "Convert this content into an HTML table. Use <table>, <thead>, <tbody>, <tr>, <th>, and <td> tags. Identify logical columns from the content. Return only the table HTML — no preamble, no explanation."
         case .convertToList:

@@ -3,6 +3,7 @@ import WebKit
 
 public struct EditorView: NSViewRepresentable {
     @Binding var html: String
+    @Binding var contentSyncPending: Bool
     var onContentChange: (String) -> Void
     var onEditorReady: (() -> Void)?
     var onInsertImage: (() -> Void)?
@@ -20,6 +21,7 @@ public struct EditorView: NSViewRepresentable {
 
     public init(
         html: Binding<String>,
+        contentSyncPending: Binding<Bool> = .constant(false),
         onContentChange: @escaping (String) -> Void,
         onEditorReady: (() -> Void)? = nil,
         onInsertImage: (() -> Void)? = nil,
@@ -36,6 +38,7 @@ public struct EditorView: NSViewRepresentable {
         hasTextSelection: Bool = false
     ) {
         self._html = html
+        self._contentSyncPending = contentSyncPending
         self.onContentChange = onContentChange
         self.onEditorReady = onEditorReady
         self.onInsertImage = onInsertImage
@@ -94,6 +97,10 @@ public struct EditorView: NSViewRepresentable {
         let ready = onEditorReady
         context.coordinator.onContentChange = onContentChange
         context.coordinator.onReady = { ready?() }
+        if contentSyncPending {
+            context.coordinator.syncAfterNextSetContent = true
+            DispatchQueue.main.async { contentSyncPending = false }
+        }
         context.coordinator.setContent(html)
         context.coordinator.onInsertImage = onInsertImage
         context.coordinator.onSearchLinks = onSearchLinks

@@ -66,9 +66,39 @@ public final class DroppableWebView: WKWebView {
     // AutoFill/Services to leak through.
     public override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        evaluateJavaScript("window.spellContextAtPoint?.(\(point.x), \(point.y))") { [weak self] result, _ in
+        // Query both spell context AND ProseMirror selection state in one JS call.
+        // The browser's hasTextSelection property can be stale for table cell
+        // selections and reversed selections — checking editor.state.selection
+        // directly is authoritative.
+        let js = """
+        (function() {
+            var sc = window.spellContextAtPoint?.(\(point.x), \(point.y)) || null;
+            var ed = window._tiptapEditor;
+            var sel = ed?.state?.selection;
+            var hasSel = sel ? (sel.to - sel.from >= 10) : false;
+            if (!hasSel && sel && ed) {
+                var ns = window.getSelection();
+                hasSel = !!(ns && !ns.isCollapsed && ns.toString().length >= 10);
+            }
+            if (!hasSel && sel && ed) {
+                var $f = ed.state.doc.resolve(sel.from);
+                for (var d = $f.depth; d > 0; d--) {
+                    var n = $f.node(d).type.name;
+                    if (n === 'table' || n === 'bulletList' || n === 'orderedList') {
+                        hasSel = true;
+                        break;
+                    }
+                }
+            }
+            return { spellContext: sc, hasSelection: hasSel };
+        })()
+        """
+        evaluateJavaScript(js) { [weak self] result, _ in
             guard let self else { return }
-            NSMenu.popUpContextMenu(self.buildContextMenu(spellContext: SpellContext(result)), with: event, for: self)
+            let dict = result as? [String: Any]
+            let spellCtx = SpellContext(dict?["spellContext"])
+            let hasSelNow = dict?["hasSelection"] as? Bool ?? self.hasTextSelection
+            NSMenu.popUpContextMenu(self.buildContextMenu(spellContext: spellCtx, hasSelection: hasSelNow), with: event, for: self)
         }
     }
 
@@ -78,7 +108,7 @@ public final class DroppableWebView: WKWebView {
         menu.allowsContextMenuPlugIns = false
     }
 
-    private func buildContextMenu(spellContext: SpellContext? = nil) -> NSMenu {
+    private func buildContextMenu(spellContext: SpellContext? = nil, hasSelection: Bool? = nil) -> NSMenu {
         let menu = NSMenu()
         menu.allowsContextMenuPlugIns = false
 
@@ -98,7 +128,8 @@ public final class DroppableWebView: WKWebView {
             NSMenuItem(title: "Copy",  action: NSSelectorFromString("copy:"),  keyEquivalent: ""),
             NSMenuItem(title: "Paste", action: NSSelectorFromString("paste:"), keyEquivalent: ""),
         ]
-        if aiEnabled && hasTextSelection {
+        let showAI = aiEnabled && (hasSelection ?? hasTextSelection)
+        if showAI {
             menu.addItem(.separator())
             let aiActions: [(String, Selector)] = [
                 ("Make Longer",  #selector(aiMakeLonger)),

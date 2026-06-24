@@ -25,6 +25,7 @@ public struct PostEditorView: View {
     @State private var editorReady = false
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
+    @State private var contentSyncPending: Bool = false
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -64,6 +65,7 @@ public struct PostEditorView: View {
                 ZStack {
                     EditorView(
                         html: $htmlContent,
+                        contentSyncPending: $contentSyncPending,
                         onContentChange: { newHTML in
                             htmlContent = newHTML
                             scheduleAutosave()
@@ -247,6 +249,7 @@ public struct PostEditorView: View {
                     aiSettings: settings
                 ) { generatedTitle, generatedHTML in
                     title = generatedTitle
+                    contentSyncPending = true
                     htmlContent = generatedHTML
                     isAISheetOpen = false
                     scheduleAutosave()
@@ -939,32 +942,67 @@ public struct PostEditorView: View {
         guard let webView = editorWebView else { return }
 
         // 1. Tell JS to capture the selection and show the loading placeholder.
-        //    JS returns the selected plain text (used as prompt input), or null.
-        let selectedText: String = await withCheckedContinuation { continuation in
+        //    JS returns { text, context, containerText, containerFrom, containerTo }.
+        let opInfo: (text: String, context: String?, containerText: String?, containerFrom: Int?, containerTo: Int?) = await withCheckedContinuation { continuation in
             webView.evaluateJavaScript("beginAIOperation()") { result, _ in
-                continuation.resume(returning: (result as? String) ?? "")
+                if let dict = result as? [String: Any] {
+                    continuation.resume(returning: (
+                        text: dict["text"] as? String ?? "",
+                        context: dict["context"] as? String,
+                        containerText: dict["containerText"] as? String,
+                        containerFrom: dict["containerFrom"] as? Int,
+                        containerTo: dict["containerTo"] as? Int
+                    ))
+                } else {
+                    continuation.resume(returning: ("", nil, nil, nil, nil))
+                }
             }
         }
-        guard !selectedText.isEmpty else { return }
+        guard !opInfo.text.isEmpty else { return }
 
-        // 2. Call Claude (selection operations never use web search — faster + cheaper)
+        // 2. Determine if this operation needs to replace the whole container
+        let isList = opInfo.context == "bulletList" || opInfo.context == "orderedList"
+        let isTable = opInfo.context == "table"
+        let needsContainerReplace = (isList || isTable) && (
+            operation == .convertToTable || operation == .convertToList ||
+            operation == .makeLonger || operation == .makeShorter
+        )
+
+        // For container operations, send the full container content to Claude
+        let promptText = needsContainerReplace ? (opInfo.containerText ?? opInfo.text) : opInfo.text
+
+        // 3. Call Claude (selection operations never use web search — faster + cheaper)
         let client = AnthropicClient(apiKey: settings.apiKey)
         let system = AIPromptBuilder.systemPrompt(styleGuide: settings.styleGuide)
-        let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: selectedText, operation: operation)
+        let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: promptText, operation: operation, context: opInfo.context)
 
         do {
-            let resultHTML = try await client.complete(
+            var resultHTML = try await client.complete(
                 userMessage: userMsg,
                 systemPrompt: system,
                 useWebSearch: false
             ).text
+            // Strip markdown code fences Claude sometimes adds despite instructions
+            if let fenceRange = resultHTML.range(of: "```html", options: .caseInsensitive) {
+                resultHTML.removeSubrange(fenceRange)
+            }
+            resultHTML = resultHTML.replacingOccurrences(of: "```", with: "")
+            resultHTML = resultHTML.trimmingCharacters(in: .whitespacesAndNewlines)
             // 4. Show result in editor — JS replaces loading placeholder with result,
             //    selects it, and returns a bounding rect for panel positioning.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),
                   let jsonStr = String(data: jsonData, encoding: .utf8) else { return }
 
+            // Pass container boundaries for structural transforms so JS replaces the whole container
+            let showArgs: String
+            if needsContainerReplace, let cf = opInfo.containerFrom, let ct = opInfo.containerTo {
+                showArgs = "\(jsonStr), \(cf), \(ct)"
+            } else {
+                showArgs = jsonStr
+            }
+
             let resultRect: CGRect? = await withCheckedContinuation { continuation in
-                webView.evaluateJavaScript("showAIResult(\(jsonStr))") { result, _ in
+                webView.evaluateJavaScript("showAIResult(\(showArgs))") { result, _ in
                     if let dict = result as? [String: Any],
                        let x = dict["x"] as? Double,
                        let y = dict["y"] as? Double,

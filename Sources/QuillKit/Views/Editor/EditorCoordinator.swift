@@ -17,6 +17,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
     var aiEnabled: Bool = false
+    var syncAfterNextSetContent: Bool = false
     private var linkPopover: NSPopover?
     private var readyWatchdogItem: DispatchWorkItem?
 
@@ -272,12 +273,17 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     func setContent(_ html: String) {
         guard let wv = webView else { return }
         if isReady {
+            let needsSync = syncAfterNextSetContent
+            syncAfterNextSetContent = false
             guard html != lastPushedHTML else { return }
             lastPushedHTML = html
             guard let jsonHTML = try? JSONEncoder().encode(html),
                 let htmlStr = String(data: jsonHTML, encoding: .utf8)
             else { return }
             wv.evaluateJavaScript("setContent(\(htmlStr))", completionHandler: nil)
+            if needsSync {
+                wv.evaluateJavaScript("window.syncContentToSwift?.()", completionHandler: nil)
+            }
         } else {
             pendingHTML = html
         }

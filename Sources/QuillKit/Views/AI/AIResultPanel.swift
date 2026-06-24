@@ -93,6 +93,19 @@ final class AIResultPanel: NSPanel {
     private func position(jsRect: CGRect, in webView: NSView) {
         guard let window = webView.window else { return }
 
+        let panelW = frame.size.width
+        let panelH = frame.size.height
+        let webViewInWindow = webView.convert(webView.bounds, to: nil)
+        let webViewOnScreen = window.convertToScreen(webViewInWindow)
+
+        // If the JS rect looks invalid, center the panel in the webview
+        if jsRect.isEmpty || (jsRect.width == 0 && jsRect.height == 0) {
+            let x = webViewOnScreen.midX - panelW / 2
+            let y = webViewOnScreen.midY - panelH / 2
+            setFrameOrigin(NSPoint(x: x, y: y))
+            return
+        }
+
         // Same flipped-coordinate conversion as SelectionPillPanel
         let flippedY = webView.bounds.height - jsRect.origin.y
         let rectInWebView = NSRect(
@@ -105,10 +118,12 @@ final class AIResultPanel: NSPanel {
         let rectOnScreen = window.convertToScreen(rectInWindow)
 
         // Place bar 8 pt below the bottom edge of the result rect
-        let panelW = frame.size.width
-        let panelH = frame.size.height
-        let x = rectOnScreen.midX - panelW / 2
-        let y = rectOnScreen.minY - panelH - 8
+        var x = rectOnScreen.midX - panelW / 2
+        var y = rectOnScreen.minY - panelH - 8
+
+        // Clamp to webview bounds so the panel stays inside the editor
+        x = max(webViewOnScreen.minX, min(x, webViewOnScreen.maxX - panelW))
+        y = max(webViewOnScreen.minY, min(y, webViewOnScreen.maxY - panelH))
         setFrameOrigin(NSPoint(x: x, y: y))
     }
 }

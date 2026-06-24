@@ -85,6 +85,25 @@ function toWordPressHTML(html, doc) {
     el.classList.add('wp-block-code')
   })
 
+  // Horizontal rules → wp-block-separator
+  div.querySelectorAll('hr').forEach(el => {
+    el.classList.add('wp-block-separator', 'has-alpha-channel-opacity')
+  })
+
+  // Tables: strip Tiptap-specific artifacts that WordPress doesn't use
+  div.querySelectorAll('table').forEach(table => {
+    table.removeAttribute('style')
+    table.querySelectorAll('colgroup').forEach(cg => cg.remove())
+    table.querySelectorAll('th, td').forEach(cell => {
+      if (cell.getAttribute('colspan') === '1') cell.removeAttribute('colspan')
+      if (cell.getAttribute('rowspan') === '1') cell.removeAttribute('rowspan')
+      const kids = Array.from(cell.children)
+      if (kids.length === 1 && kids[0].tagName === 'P') {
+        cell.innerHTML = kids[0].innerHTML
+      }
+    })
+  })
+
   // Tables: move first all-<th> row from <tbody> into a proper <thead>
   div.querySelectorAll('table').forEach(table => {
     if (table.querySelector('thead')) return

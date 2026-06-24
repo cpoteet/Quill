@@ -1737,6 +1737,7 @@
         }
       },
     })
+    window._tiptapEditor = editor
 
     function setImageAlignment(value) {
       const { state } = editor
@@ -2452,6 +2453,14 @@
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
       : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))
+    window.syncContentToSwift = () => {
+      _rawHTML = null
+      _rawHTMLOnLoad = null
+      clearTimeout(debounce)
+      if (window.webkit?.messageHandlers?.contentChanged) {
+        window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
+      }
+    }
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
 
     window.insertImage = (url, width, height, mediaId, alt) => {
@@ -2579,24 +2588,45 @@
     let _aiResultTo     = null
     let _aiInProgress   = false
 
-    // Report selection changes to Swift so it can show/hide the operation pill.
-    // Debounced to avoid flooding during drag-selection.
-    let _selChangeTimer = null
-    document.addEventListener('selectionchange', () => {
-      clearTimeout(_selChangeTimer)
-      _selChangeTimer = setTimeout(() => {
-        if (_aiInProgress) return
-        const sel = window.getSelection()
-        if (!sel || sel.isCollapsed || sel.toString().length < 10) {
-          window.webkit?.messageHandlers?.selectionChanged?.postMessage(null)
+    // Report selection changes to Swift so it can show/hide AI context menu items.
+    // Uses ProseMirror's selection (direction-independent) instead of
+    // window.getSelection() which can report collapsed for reversed selections.
+    function _reportSelectionToSwift() {
+      if (_aiInProgress) return
+      const { from, to } = editor.state.selection
+      if (to - from < 10) {
+        window.webkit?.messageHandlers?.selectionChanged?.postMessage(null)
+        return
+      }
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount > 0) {
+        const rect = sel.getRangeAt(0).getBoundingClientRect()
+        if (rect.width > 0 || rect.height > 0) {
+          window.webkit?.messageHandlers?.selectionChanged?.postMessage({
+            rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+          })
           return
         }
-        const range = sel.getRangeAt(0)
-        const rect  = range.getBoundingClientRect()
-        window.webkit?.messageHandlers?.selectionChanged?.postMessage({
-          rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
-        })
-      }, 150)
+      }
+      // Fallback: ProseMirror says there's a selection but native range has no rect.
+      // Use coordsAtPos for a valid rect.
+      const coords = editor.view.coordsAtPos(from)
+      window.webkit?.messageHandlers?.selectionChanged?.postMessage({
+        rect: { x: coords.left, y: coords.top, width: 1, height: coords.bottom - coords.top },
+      })
+    }
+
+    let _selChangeTimer = null
+    // Browser selectionchange — covers normal text selections
+    document.addEventListener('selectionchange', () => {
+      clearTimeout(_selChangeTimer)
+      _selChangeTimer = setTimeout(_reportSelectionToSwift, 150)
+    })
+    // Tiptap selectionUpdate — covers ProseMirror-managed selections (table cells,
+    // reversed selections) that don't fire the browser selectionchange event.
+    editor.on('selectionUpdate', () => {
+      clearTimeout(_selChangeTimer)
+      _selChangeTimer = setTimeout(_reportSelectionToSwift, 150)
     })
 
     // Called by Swift when the user taps a pill button.
@@ -2604,12 +2634,47 @@
     // placeholder, and returns the selected plain text for use as prompt input.
     // Returns null if there is no valid selection (≥10 chars).
     window.beginAIOperation = () => {
-      const sel = window.getSelection()
-      if (!sel || sel.isCollapsed) return null
-      const selectedText = sel.toString()
-      if (selectedText.length < 10) return null
-
       const { from, to } = editor.state.selection
+
+      // Detect parent structure (list or table) before checking selection size,
+      // since reversed table selections can collapse to a single cell.
+      const $from = editor.state.doc.resolve(from)
+      let context = null
+      let containerText = null
+      let containerFrom = null
+      let containerTo = null
+      for (let d = $from.depth; d > 0; d--) {
+        const name = $from.node(d).type.name
+        if (name === 'bulletList' || name === 'orderedList') {
+          context = name
+          containerFrom = $from.before(d)
+          containerTo = $from.after(d)
+          containerText = editor.state.doc.textBetween(containerFrom, containerTo, '\n', '')
+          break
+        }
+        if (name === 'table') {
+          context = 'table'
+          containerFrom = $from.before(d)
+          containerTo = $from.after(d)
+          const rows = []
+          $from.node(d).forEach(row => {
+            const cells = []
+            row.forEach(cell => cells.push(cell.textContent.trim()))
+            rows.push(cells.join(' | '))
+          })
+          containerText = rows.join('\n')
+          break
+        }
+      }
+
+      // For tables/lists, allow small selections (reversed drags collapse to
+      // one cell) — the container content will be used. For plain text, require ≥10.
+      if (!context && to - from < 10) return null
+
+      const selectedText = context
+        ? (containerText || editor.state.doc.textBetween(from, to, '\n', ''))
+        : editor.state.doc.textBetween(from, to, '\n', '')
+
       _aiFrom         = from
       _aiTo           = to
       _aiOriginalHTML = editor.getHTML()
@@ -2621,14 +2686,14 @@
         .insertContent('<em class="ai-loading">✶ Rewriting…</em>')
         .run()
 
-      return selectedText
+      return { text: selectedText, context, containerText, containerFrom, containerTo }
     }
 
     // Called by Swift with Claude's HTML result.
     // Restores the original document (silently), inserts the result at the original
     // range, selects it for visual feedback, and returns the bounding rect so Swift
     // can position the accept/discard panel.
-    window.showAIResult = (html) => {
+    window.showAIResult = (html, cFrom, cTo) => {
       // Clean Claude's response through the DOM so regex edge-cases can't slip through
       const _tmp = document.createElement('div')
       _tmp.innerHTML = html
@@ -2648,13 +2713,36 @@
       // Restore original without emitting a contentChanged event
       editor.commands.setContent(_aiOriginalHTML, false)
 
-      // Expand to full block-node boundaries so we replace whole paragraphs rather
-      // than splitting them mid-text (which leaves empty <p> fragments at the top).
-      const { state } = editor
-      const $from   = state.doc.resolve(_aiFrom)
-      const $to     = state.doc.resolve(_aiTo)
-      const nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
-      const nodeTo   = $to.depth > 0   ? $to.after($to.depth)      : $to.end()
+      // Determine insertion range.
+      // Re-derive container boundaries from the restored doc rather than using
+      // saved positions — the getHTML/setContent round-trip can shift positions
+      // (especially for tables with complex internal structure).
+      let nodeFrom, nodeTo
+      if (typeof cFrom === 'number' && typeof cTo === 'number') {
+        const docSize = editor.state.doc.content.size
+        const safeFrom = Math.min(_aiFrom, docSize)
+        const $from = editor.state.doc.resolve(safeFrom)
+        let found = false
+        for (let d = $from.depth; d > 0; d--) {
+          const name = $from.node(d).type.name
+          if (name === 'bulletList' || name === 'orderedList' || name === 'table') {
+            nodeFrom = $from.before(d)
+            nodeTo = $from.after(d)
+            found = true
+            break
+          }
+        }
+        if (!found) {
+          nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
+          nodeTo = $from.depth > 0 ? $from.after($from.depth) : $from.end()
+        }
+      } else {
+        const { state } = editor
+        const $from   = state.doc.resolve(_aiFrom)
+        const $to     = state.doc.resolve(_aiTo)
+        nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
+        nodeTo   = $to.depth > 0   ? $to.after($to.depth)      : $to.end()
+      }
 
       // Insert the result — this DOES emit contentChanged (marks post dirty).
       // preserveWhitespace: false prevents ProseMirror from wrapping the \n
@@ -2669,11 +2757,20 @@
       // Select the inserted range — browser selection acts as the visual highlight
       editor.chain().setTextSelection({ from: nodeFrom, to: _aiResultTo }).run()
       const s = window.getSelection()
-      if (s && !s.isCollapsed) {
+      if (s && s.rangeCount > 0 && !s.isCollapsed) {
         const r = s.getRangeAt(0).getBoundingClientRect()
-        return { x: r.left, y: r.top, width: r.width, height: r.height }
+        if (r.width > 0 || r.height > 0) {
+          return { x: r.left, y: r.top, width: r.width, height: r.height }
+        }
       }
-      return null
+      // Fallback: browser selection has no usable rect (e.g. after table replacement).
+      // Use ProseMirror coordsAtPos so the panel still appears.
+      try {
+        const coords = editor.view.coordsAtPos(nodeFrom)
+        return { x: coords.left, y: coords.top, width: 200, height: coords.bottom - coords.top }
+      } catch (_) {
+        return { x: 100, y: 100, width: 200, height: 20 }
+      }
     }
 
     // Called by Swift when the user accepts the result.
