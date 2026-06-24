@@ -643,14 +643,20 @@ public struct PostEditorView: View {
         guard case .local(let draft) = item else { return }
         isSaving = true
         defer { isSaving = false }
-        try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
-        if let updated = try? services.draftStore.load(id: draft.id),
-           let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
-            appState.localDrafts[idx] = updated
+        do {
+            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            if let updated = try? services.draftStore.load(id: draft.id),
+               let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
+                appState.localDrafts[idx] = updated
+            }
+            cleanTitle = title
+            cleanContent = htmlContent
+            toastIsError = false
+            toastMessage = "Saved locally"
+        } catch {
+            toastIsError = true
+            toastMessage = "Save failed: \(error.localizedDescription)"
         }
-        cleanTitle = title
-        cleanContent = htmlContent
-        toastMessage = "Saved locally"
     }
 
     private func publish() async {
