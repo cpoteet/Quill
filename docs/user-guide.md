@@ -70,6 +70,8 @@ Quill will open normally from this point forward. This prompt only appears once 
 
 Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner — it will not reappear for the same version.
 
+To update, download the new version from the release page, unzip it, and replace the existing **Quill.app** in your `/Applications` folder. Your credentials, drafts, and settings are stored separately and will carry over automatically.
+
 ---
 
 ## Connecting to WordPress
