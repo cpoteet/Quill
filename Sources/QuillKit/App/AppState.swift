@@ -79,6 +79,7 @@ public final class AppState: ObservableObject {
     @Published public var aiSettings: AISettings?
     @Published public var triggerMediaUpload: Bool = false
     @Published public var triggerFindBar: Bool = false
+    @Published public var updateAvailable: UpdateInfo?
 
     public var aiEnabled: Bool {
         guard let settings = aiSettings, !settings.apiKey.isEmpty else { return false }

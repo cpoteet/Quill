@@ -90,6 +90,48 @@ public struct SidebarView: View {
                 }
 
                 SoftHorizontalDivider()
+
+                if let update = appState.updateAvailable {
+                    HStack(spacing: 0) {
+                        Button {
+                            NSWorkspace.shared.open(update.url)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Color.wpAmber)
+                                Text("Quill \(update.version) available")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            UpdateChecker.dismiss(update.version)
+                            appState.updateAvailable = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.tertiary)
+                                .frame(width: 24, height: 24)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Dismiss")
+                    }
+                    .padding(.leading, 10)
+                    .padding(.trailing, 4)
+                    .padding(.vertical, 3)
+                    .background(Color.wpAmber.opacity(0.08))
+                    SoftHorizontalDivider()
+                }
+
                 HStack {
                     Button {
                         Task { await loadCurrentSection() }
@@ -164,6 +206,9 @@ public struct SidebarView: View {
         }
         .task(id: appState.credentials) {
             await loadAllSections()
+        }
+        .task {
+            appState.updateAvailable = await UpdateChecker.check()
         }
     }
 

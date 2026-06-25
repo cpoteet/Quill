@@ -14,7 +14,7 @@ struct AboutView: View {
                 Text("Quill")
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
 
-                Text("Version 1.8.0")
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
