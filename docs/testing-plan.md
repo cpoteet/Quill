@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-24 — 291 Swift tests + 101 JS editor tests, all passing._
+_Last updated: 2026-06-24 — 298 Swift tests + 101 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 291 tests across 20 suites)
+1. **Swift tests** — `swift test` (all 298 tests across 21 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (101 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
@@ -45,7 +45,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (291 tests, 20 suites)
+## Swift test suite (298 tests, 21 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -73,6 +73,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
+| 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
 
 ---
 
@@ -672,6 +673,22 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 | `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
 | `statusChangeToPendingClearsScheduledDate` | Switching from `future` to `pending` → `publishDate` cleared to `nil` |
 
+### 21. App — `UpdateCheckerTests` (7 tests)
+
+File: `Tests/QuillTests/UpdateCheckerTests.swift`
+
+Tests the `isNewer(remote:local:)` semantic version comparison used by the update checker.
+
+| Test | What it checks |
+|---|---|
+| `newerMajorVersion` | `2.0.0` > `1.0.0` → `true` |
+| `newerMinorVersion` | `1.1.0` > `1.0.0` → `true` |
+| `newerPatchVersion` | `1.0.1` > `1.0.0` → `true` |
+| `sameVersionIsNotNewer` | `1.0.0` == `1.0.0` → `false` |
+| `olderVersionIsNotNewer` | `1.0.0` < `2.0.0` → `false` |
+| `differentSegmentCounts` | `1.0.1` > `1.0` → `true`; `1.0` < `1.0.1` → `false` |
+| `largeVersionNumbers` | `10.20.30` > `10.20.29` → `true`; `10.20.30` == `10.20.30` → `false` |
+
 ---
 
 ## JS editor tests (101 tests)
@@ -1201,6 +1218,13 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Drag an image from Finder onto a footnote entry → an error toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
 - [ ] Paste rich content (containing headings, lists, or images) into a footnote → block elements are stripped; only inline text and formatting survive.
 
+### 7.21 Update checker
+
+- [ ] Launch the app → if a newer version is available at `cpoteet.github.io/Quill-Releases/version.json`, a banner appears in the sidebar with the new version number.
+- [ ] Click "View Release" → opens the changelog URL in the default browser.
+- [ ] Click the dismiss (×) button → the banner disappears and does not reappear for the same version on subsequent launches.
+- [ ] If the remote version equals or is older than the current version, no banner appears.
+
 ---
 
 ## Non-functional & resilience
@@ -1286,8 +1310,9 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 56 | Footnote content restricted to inline-only (no images, block elements, keyboard shortcuts) | 👁 §7.20 |
 | 57 | Image drops rejected in footnotes with error toast | 👁 §7.20 |
 | 58 | Paste in footnotes strips block elements to inline text | 👁 §7.20 |
-| 59 | Draft save failure shows error toast | 👁 §7.7 |
-| 60 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
+| 59 | Update checker version comparison handles all semver cases | ✅ `UpdateCheckerTests` (7 tests) |
+| 60 | Draft save failure shows error toast | 👁 §7.7 |
+| 61 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
 
 ---
 

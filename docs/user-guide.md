@@ -66,6 +66,10 @@ Quill is not notarized by Apple, so macOS will block it from opening the first t
 
 Quill will open normally from this point forward. This prompt only appears once per installation.
 
+### Updates
+
+Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner — it will not reappear for the same version.
+
 ---
 
 ## Connecting to WordPress

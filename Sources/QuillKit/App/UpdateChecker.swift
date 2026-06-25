@@ -27,6 +27,7 @@ public enum UpdateChecker {
             let config = URLSessionConfiguration.ephemeral
             config.timeoutIntervalForRequest = 10
             let session = URLSession(configuration: config)
+            defer { session.invalidateAndCancel() }
             let (data, response) = try await session.data(from: versionURL)
 
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
@@ -48,7 +49,7 @@ public enum UpdateChecker {
         }
     }
 
-    private static func isNewer(remote: String, local: String) -> Bool {
+    static func isNewer(remote: String, local: String) -> Bool {
         let r = remote.split(separator: ".").compactMap { Int($0) }
         let l = local.split(separator: ".").compactMap { Int($0) }
         for i in 0..<max(r.count, l.count) {

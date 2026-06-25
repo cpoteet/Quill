@@ -2084,17 +2084,20 @@
     // ── Active-state updates ───────────────────────────
     const TOGGLE_CMDS = ['bold','italic','underline','strike','code',
                          'blockquote','codeBlock','bulletList','orderedList','link']
+    const _toggleBtns = TOGGLE_CMDS.map(cmd => [cmd, document.querySelector(`[data-cmd="${cmd}"]`)])
+    const _blockBtns = BLOCK_CMDS.map(cmd => document.querySelector(`[data-cmd="${cmd}"]`)).filter(Boolean)
+    const _undoBtn = document.querySelector('[data-cmd="undo"]')
+    const _redoBtn = document.querySelector('[data-cmd="redo"]')
+    const _tableControls = document.getElementById('table-controls')
+    const _embedBtn = document.getElementById('embed-button')
+    const _footnoteBtn = document.getElementById('btn-footnote')
 
     function updateToolbar() {
       const inFootnote = _isInFootnote()
-      TOGGLE_CMDS.forEach(cmd => {
-        const btn = document.querySelector(`[data-cmd="${cmd}"]`)
+      _toggleBtns.forEach(([cmd, btn]) => {
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
       })
-      BLOCK_CMDS.forEach(cmd => {
-        const btn = document.querySelector(`[data-cmd="${cmd}"]`)
-        if (btn) btn.disabled = inFootnote
-      })
+      _blockBtns.forEach(btn => { btn.disabled = inFootnote })
       // Heading menu
       headingButton.disabled = inFootnote
       let headingLevel = '0'
@@ -2108,13 +2111,13 @@
       })
       // Table controls
       const inTable = editor.isActive('table')
-      document.getElementById('table-controls').style.display = inTable ? 'inline-flex' : 'none'
+      _tableControls.style.display = inTable ? 'inline-flex' : 'none'
       // Undo / Redo
-      document.querySelector('[data-cmd="undo"]').disabled = !editor.can().undo()
-      document.querySelector('[data-cmd="redo"]').disabled = !editor.can().redo()
+      _undoBtn.disabled = !editor.can().undo()
+      _redoBtn.disabled = !editor.can().redo()
       // Embed / footnote buttons
-      document.getElementById('embed-button').disabled = inFootnote
-      document.getElementById('btn-footnote').disabled = inFootnote
+      _embedBtn.disabled = inFootnote
+      _footnoteBtn.disabled = inFootnote
       // Image alignment controls
       const selNode = editor.state.selection.node
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
