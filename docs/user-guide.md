@@ -148,11 +148,9 @@ If no post or page is selected, the editor area displays a placeholder prompting
 
 Use the **File** menu to create new content:
 
-| Action | Shortcut |
-|---|---|
-| New Post | ⌘N |
-| New Page | ⌘⇧N |
-| New Media upload | ⌘⌥N |
+- **New Post** (⌘N)
+- **New Page** (⌘⇧N)
+- **New Media upload** (⌘⌥N)
 
 New posts and pages are created as **local drafts** and appear in the Drafts section of the sidebar immediately. They are saved only on your Mac until you publish them to WordPress.
 
