@@ -1006,18 +1006,19 @@
 
     const ParagraphWithClass  = withClassAttr(Paragraph)
     const HeadingWithClass    = withClassAttr(Heading)
+    const _fnPassthrough = new Set(['Backspace', 'Delete'])
     const BulletListWithClass = withClassAttr(BulletList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
+          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
     }))
     const OrderedListWithClass = withClassAttr(OrderedList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
+          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
     }))
     const ListItemWithClass   = withClassAttr(ListItem)
@@ -1738,7 +1739,7 @@
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         const wrapped = Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
+          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
         return {
           ...wrapped,
           Enter: () => {
@@ -1783,7 +1784,7 @@
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-              [k, (...args) => _isInFootnote() ? true : fn(...args)]))
+              [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
           },
         }),
         ParagraphWithClass,
