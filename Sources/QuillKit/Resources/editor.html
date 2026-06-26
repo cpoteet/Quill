@@ -1217,8 +1217,10 @@
     // ── Image toolbar helpers ──────────────────────────
     function _positionImageToolbar(tb, wrapper) {
       const wRect = wrapper.getBoundingClientRect()
+      const tbWrap = document.getElementById('toolbar-wrap')
+      const minTop = tbWrap ? tbWrap.getBoundingClientRect().bottom : 0
       tb.style.left = wRect.left + 'px'
-      tb.style.top  = (wRect.bottom + 6) + 'px'
+      tb.style.top  = Math.max(wRect.bottom + 6, minTop) + 'px'
     }
 
     function _showImageToolbar(nv) {
@@ -1246,7 +1248,10 @@
       _positionImageToolbar(tb, nv.wrapper)
       tb.style.display = 'flex'
 
-      // Reposition on scroll so the toolbar tracks the image
+      // Remove any stale scroll listener before attaching a new one
+      if (tb._scrollHandler) {
+        document.getElementById('editor-wrap').removeEventListener('scroll', tb._scrollHandler)
+      }
       tb._scrollHandler = () => _positionImageToolbar(tb, nv.wrapper)
       document.getElementById('editor-wrap').addEventListener('scroll', tb._scrollHandler)
 
@@ -1758,7 +1763,11 @@
             }
             const { tr } = state
             const paraType = state.schema.nodes.paragraph
-            tr.split($from.pos, $from.depth - bqDepth, [{type: paraType, attrs: null}])
+            if (!empty) tr.deleteSelection()
+            const $cur = tr.selection.$from
+            const curBqDepth = _ancestorDepth($cur, 'blockquote')
+            if (curBqDepth === -1) return false
+            tr.split($cur.pos, $cur.depth - curBqDepth, [{type: paraType, attrs: null}])
             tr.scrollIntoView()
             this.editor.view.dispatch(tr)
             return true
