@@ -1822,7 +1822,7 @@
       content: '',
       editorProps: {
         handleKeyDown(view, event) {
-          if (event.key === 'Enter' && !event.shiftKey && _isInFootnote()) {
+          if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && _isInFootnote()) {
             const { state, dispatch } = view
             const br = state.schema.nodes.hardBreak
             if (br) { dispatch(state.tr.replaceSelectionWith(br.create()).scrollIntoView()); return true }
@@ -1833,7 +1833,7 @@
           if (!event.metaKey) return false
           let el = event.target
           while (el && el !== view.dom) {
-            if (el.tagName === 'A' && el.href) {
+            if (el.tagName === 'A' && el.href && !el.getAttribute('href').startsWith('#')) {
               event.preventDefault()
               window.webkit?.messageHandlers?.openLink?.postMessage(el.href)
               return true

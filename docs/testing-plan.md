@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-25 — 302 Swift tests + 101 JS editor tests, all passing._
+_Last updated: 2026-06-26 — 304 Swift tests + 127 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,8 +16,9 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 302 tests across 21 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (101 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 304 tests across 21 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (111 tests via Node's built-in runner + jsdom)
+3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (16 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -45,7 +46,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (298 tests, 21 suites)
+## Swift test suite (304 tests, 21 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -64,7 +65,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 61 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 63 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -396,7 +397,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (61 tests)
+### 12. AI — `AIPromptBuilderTests` (63 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -492,6 +493,8 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `promptExcludesCodeBlockContent` | Code block content excluded from the content sent to Claude |
 | `promptExcludesEmbedFigureContent` | Embed figure content excluded from the content sent to Claude |
 | `promptExcludesFootnoteMarkersAndBackrefs` | Footnote markers and backref links excluded from content sent to Claude |
+| `promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags` | Inline tags (`<a>`) followed by commas don't leave phantom spaces in stripped text |
+| `promptStripsSpaceBeforeClosingPunctuation` | Phantom spaces before `;`, `)`, `!`, etc. from inline tag stripping are removed |
 
 ---
 
@@ -695,12 +698,12 @@ Tests the `isNewer(remote:local:)` semantic version comparison used by the updat
 
 ---
 
-## JS editor tests (101 tests)
+## JS editor tests (111 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
 
-Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, and `embedClassFor` from `editor-transforms.js`.
+Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, and `embedClassFor` from `editor-transforms.js`.
 
 ### `extractAlignment` (6 tests)
 
@@ -873,6 +876,26 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `non-overlapping matches` | `"aa"` in `"aaaa"` → 2 matches, not 3 |
 | `unicode offsets are correct` | Match positions in text containing multi-byte characters are byte-correct |
 
+### `findMatchesLoose` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `matches when editor text has a space before a comma but anchor does not` | `"DSPM , Content"` matches anchor `"DSPM, Content"` — the primary phantom-spacing case |
+| `matches when the anchor has the extra space and editor text does not` | Reverse direction: anchor `"DSPM , Content"` matches editor `"DSPM, Content"` |
+| `tolerates missing space after a comma` | `"A, B"` matches anchor `"A,B"` |
+| `collapses multiple spaces between plain words` | Multiple spaces between words match `\\s+` |
+| `still matches an exact phrase` | No regression on exact matches |
+| `empty / whitespace query returns no matches` | `""` and `"   "` → `[]` |
+| `does not require whitespace between plain words to be absent` | `"quickbrown"` does NOT match anchor `"quick brown"` — word gaps stay required |
+
+### `fuzzyAnchorRegex` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `makes whitespace around punctuation optional` | `"DSPM, Content"` → `DSPM\\s*,\\s*Content` |
+| `collapses a leading space before punctuation into \\s*` | `"DSPM , Content"` → same regex as without the space |
+| `requires a gap between plain words` | `"quick brown"` → `quick\\s+brown` (not optional) |
+
 ### `detectEmbedProvider` (5 tests)
 
 | Test | What it checks |
@@ -918,6 +941,63 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `marker sup gains id="ref-fn-UUID"` | Each `<sup data-fn="UUID">` gets `id="ref-fn-UUID"` added so backref anchors can target it |
 | `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
 | `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
+
+---
+
+## JS keyboard tests (16 tests)
+
+File: `Scripts/test-editor-keyboard.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor via `window._tiptapEditor`, dispatch real `keydown` events, and assert on the resulting ProseMirror document. This is the only automated coverage of the Enter/Backspace/Shift-Enter handlers — the code paths that caused the June 2026 regression chain.
+
+**jsdom caveat:** ProseMirror only keymap-binds Backspace at node boundaries (joinBackward/lift); mid-text character deletion is browser `beforeinput`, which jsdom does not emit — so only boundary Backspace is asserted.
+
+### `plain paragraphs` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `Enter at end of paragraph creates an empty paragraph below` | Basic paragraph splitting |
+| `Enter mid-word splits the paragraph cleanly` | Mid-text split |
+| `Backspace at start of 2nd paragraph merges into the first (joinBackward)` | Boundary backspace merges paragraphs |
+| `Shift+Enter inserts a hard break, not a new paragraph` | Hard break insertion |
+
+### `headings` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `Enter at end of a heading drops to a paragraph (not another heading)` | Heading exit behavior |
+
+### `lists` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `Enter at end of a list item creates a new item` | Normal list item creation |
+| `Enter in an empty trailing item exits the list` | Empty item → lift out to paragraph |
+| `Backspace at start of the sole list item lifts it to a paragraph` | Boundary backspace in lists |
+
+### `blockquotes & cite` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `Enter in a blockquote creates a paragraph inside the quote` | Normal blockquote paragraph splitting |
+| `Enter on an empty paragraph inside a blockquote lifts out` | Empty paragraph → exit blockquote |
+| `Enter with a selection deletes it before splitting (regression: 8a4f00f)` | Selection deleted before `tr.split`; re-derives depth after delete |
+| `Enter inside a cite exits the blockquote to a new paragraph` | Cite Enter → new paragraph below blockquote |
+
+### `footnotes` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `Enter in a footnote entry inserts a soft break and keeps text (regression: cbf3e8d)` | Footnote Enter → hardBreak, not swallowed |
+| `Backspace at the start of a footnote entry does not corrupt the doc (regression: daee820)` | Boundary backspace in footnotes |
+
+### `image captions` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `Enter in an image caption exits to a new paragraph below (regression: 91679d2)` | Caption Enter → paragraph after image |
+| `Enter in an image caption inside a blockquote stays well-formed (no image duplication)` | Nested caption Enter doesn't duplicate image |
 
 ---
 
@@ -1006,7 +1086,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Select a search result → a link is inserted on the selected text. Manually typing a URL also works.
 - [ ] Search for something with no matches → an empty state is shown; no crash.
 - [ ] Search while offline → the popover handles the error gracefully (no crash or hang).
-- [ ] Insert links with `http://` and `https://` URLs → clicking them in the editor opens the system browser. Insert a `mailto:` link → clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link via code view → clicking it in the editor does nothing (blocked for security).
+- [ ] Insert links with `http://` and `https://` URLs → Cmd+clicking them in the editor opens the system browser. Hold Cmd → links show an underline and pointer cursor. Release Cmd → cursor returns to normal. Insert a `mailto:` link → Cmd+clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link via code view → Cmd+clicking it does nothing (blocked for security).
+- [ ] Clicking a link without holding Cmd places the cursor inside the link text (for editing) — it does not open the link.
 
 ### 7.6 Editor — code view
 
@@ -1214,6 +1295,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Right-click and choose Insert Footnote → a superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
 - [ ] Insert a second footnote → it is numbered `[2]`. The numbers follow document order.
 - [ ] Delete a footnote marker from the text → its entry is automatically removed from the footnotes list.
+- [ ] Press Enter inside a footnote entry → a line break (soft break) is inserted within the entry; the text is not lost or swallowed.
 - [ ] Type text in a footnote list entry → the text is preserved on save.
 - [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text.
 - [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
@@ -1328,6 +1410,13 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 65 | Cite toggle button adds/removes cite node in blockquote | 👁 §7.3 (cite toggle) |
 | 66 | Footnote back-arrow is `contentEditable: false` (not selectable/editable) | 👁 §7.20 (↩ not part of editable text) |
 | 67 | Excerpt field does not adopt auto-generated `rendered` excerpt from WordPress | ✅ `WPPostDecodingTests.excerptText*` (4 tests) |
+| 68 | `stripHTML` phantom space before punctuation after inline tags | ✅ `AIPromptBuilderTests.promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags` + `.promptStripsSpaceBeforeClosingPunctuation` |
+| 69 | Anchor matching tolerates whitespace differences around punctuation | ✅ `findMatchesLoose` (7 JS tests) + `fuzzyAnchorRegex` (3 JS tests) |
+| 70 | Footnote Enter inserts soft break (not swallowed) | ✅ `test-editor-keyboard.js` footnote Enter test + 👁 §7.20 |
+| 71 | Blockquote Enter with selection deletes selection before split | ✅ `test-editor-keyboard.js` blockquote selection test + 👁 §7.3 |
+| 72 | Image toolbar scroll handler cleaned up before reattaching | 👁 §7.4 (select multiple images in sequence) |
+| 73 | Image toolbar clamped below main toolbar-wrap | 👁 §7.4 (scroll image near top of viewport) |
+| 74 | Cmd+click opens links (scheme-restricted via `isAllowedExternalURL`) | ✅ `EditorCoordinatorTests` + 👁 §7.5 |
 
 ---
 
