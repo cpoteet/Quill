@@ -127,6 +127,12 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             DispatchQueue.main.async { self.onTriggerGenerate?() }
         case "triggerEvaluate":
             DispatchQueue.main.async { self.onTriggerEvaluate?() }
+        case "openLink":
+            if let urlString = message.body as? String,
+               let url = URL(string: urlString),
+               EditorCoordinator.isAllowedExternalURL(url) {
+                DispatchQueue.main.async { NSWorkspace.shared.open(url) }
+            }
         default:
             break
         }

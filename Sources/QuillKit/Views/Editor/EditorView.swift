@@ -75,6 +75,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "checkSpelling")
         config.userContentController.add(context.coordinator, name: "triggerGenerate")
         config.userContentController.add(context.coordinator, name: "triggerEvaluate")
+        config.userContentController.add(context.coordinator, name: "openLink")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
