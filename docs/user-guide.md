@@ -34,7 +34,7 @@ Quill is built around a simple premise: the act of writing deserves a dedicated 
 - Optionally generate and refine content using the Anthropic Claude API
 
 **What Quill is not:**
-- A WordPress.com client — Quill requires a self-hosted WordPress installation
+- A WordPress.com client. Quill requires a self-hosted WordPress installation.
 - A full site builder or theme editor
 - A replacement for the WordPress admin dashboard
 
@@ -219,6 +219,14 @@ The image alignment buttons (left, center, right) appear in the toolbar only whe
 
 **Autosave:** Quill automatically saves your work every 30 seconds after a change, so you don't lose progress if you close the app unexpectedly. For remote posts, autosaves are stored locally and applied if you reopen a post before manually saving.
 
+### Preview
+
+Click **Preview** in the toolbar to open the current post in your browser as it will appear on your site. Preview is only available for posts and pages already on WordPress, not for local drafts.
+
+When you preview a **published** post, Quill sends your unsaved changes to WordPress as a temporary revision. The live post is not affected; only the preview shows the changes.
+
+When you preview a **draft** post, WordPress updates the draft itself with your current editor content. This is standard WordPress behavior — drafts do not have separate revision state, so previewing a draft is equivalent to saving it on WordPress.
+
 ### Find and Replace
 
 Press **⌘F** to open the find and replace bar. Type in the **Find** field to highlight matches in the document. Use the arrow buttons or press **↩** (next) and **⇧↩** (previous) to navigate between matches. Toggle **Aa** to enable case-sensitive search.
@@ -356,7 +364,7 @@ The settings panel is accessed by clicking the settings toggle button at the rig
 
 Changes made in the settings panel take effect when you next save or publish the post. They are not sent to WordPress automatically as you adjust them.
 
-> Settings are not saved for local drafts. The panel is visible but values will not be applied until you publish the post or page to WordPress.
+> Settings you configure for a local draft (categories, tags, slug, etc.) are sent to WordPress when you publish. However, they are not saved locally with the draft. If you close the app before publishing, those settings will need to be set again.
 
 ### Status
 
@@ -396,7 +404,7 @@ The slug is the URL-friendly identifier for the post or page, used in the permal
 
 ### Excerpt (Posts only)
 
-The excerpt is a short summary of the post, used by themes in archive and search result views. Type directly in the excerpt field. If left blank, WordPress will generate an automatic excerpt from the post body.
+The excerpt is a short summary of the post, shown by some themes on archive and search result pages. Type directly in the excerpt field. If you leave it blank, your theme may show the first few words of the post body instead. This happens on your site, not inside Quill.
 
 ### Parent Page (Pages only)
 
