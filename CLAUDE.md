@@ -19,7 +19,8 @@ open Quill.app
 ./test.sh                                # run ALL tests (Swift + JS editor) — use this
 swift test                               # Swift tests only
 swift test --filter WordPressClientTests # one Swift suite
-node --test Scripts/test-editor.js       # JS editor tests only
+node --test Scripts/test-editor.js          # JS transform tests only
+node --test Scripts/test-editor-keyboard.js # live editor keyboard tests only
 ```
 
 **After every code change:** quit the app, run `./build.sh`, reopen. Always.
@@ -27,11 +28,13 @@ node --test Scripts/test-editor.js       # JS editor tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-06-25 — 302 Swift + 101 JS tests, all passing)
+## Test suite status (2026-06-26 — 302 Swift + 117 JS tests, all passing)
 
 **Swift (298 tests):** 21 suites covering all models (including wpautop classic-content handling and HTML entity decoding), WordPressClient, all storage layers, AIPromptBuilder (including list/table context-aware prompts with correct `<ul>`/`<ol>` tag selection), AnthropicClient, AppState view-model logic, EditorCoordinator, status helpers, PostStats, and UpdateChecker version comparison. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
-**JS (101 tests):** `Scripts/test-editor.js` covers `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, and `embedClassFor` via Node + jsdom (headings, lists, blockquotes, code blocks, horizontal rules, images, tables incl. Tiptap artifact cleanup, embeds, footnotes, footnote backrefs, idempotency, unicode).
+**JS transforms (101 tests):** `Scripts/test-editor.js` covers `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `detectEmbedProvider`, and `embedClassFor` via Node + jsdom (headings, lists, blockquotes, code blocks, horizontal rules, images, tables incl. Tiptap artifact cleanup, embeds, footnotes, footnote backrefs, idempotency, unicode).
+
+**JS editor keyboard (16 tests):** `Scripts/test-editor-keyboard.js` loads the **real `editor.html`** in jsdom, instantiates the live Tiptap editor via the `window._tiptapEditor` global, dispatches real `keydown` events, and asserts on the resulting ProseMirror document. This is the only automated coverage of the live Enter/Backspace/Shift-Enter handlers (the code paths that caused the June 2026 regression chain). Covers plain paragraphs, headings, lists, blockquotes/cite, footnotes (soft-break Enter, Backspace), and image captions — each with the regression commit referenced inline. **jsdom caveat:** ProseMirror only keymap-binds Backspace at node boundaries (joinBackward/lift); mid-text character delete is browser `beforeinput`, which jsdom does not emit, so only boundary Backspace is asserted. Polyfills `crypto.randomUUID`/`matchMedia`/`requestAnimationFrame`/`ResizeObserver`; the `document.execCommand` jsdom error from `onCreate` is harmless.
 
 **Full reference:** `docs/testing-plan.md` — lists every test by name with what it checks, plus the manual/functional checklists for release sign-off.
 
