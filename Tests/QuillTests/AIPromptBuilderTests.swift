@@ -489,4 +489,30 @@ import Testing
         #expect(!prompt.contains("\u{21A9}"))
         #expect(prompt.contains("See reference"))
     }
+
+    @Test func promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags() {
+        // Inline tags (links) immediately followed by a comma must not leave a
+        // phantom space before the comma — otherwise Claude flags a "spaces
+        // around commas" issue that isn't in the source, and the anchor (with
+        // the phantom space) fails to match the editor text on jump-to-finding.
+        let html = "<p>experiences such as <a href=\"/dspm\">DSPM</a>, <a href=\"/ce\">Content Explorer</a>, <a href=\"/de\">Data Explorer</a>.</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(prompt.contains("DSPM, Content Explorer, Data Explorer"))
+        #expect(!prompt.contains("DSPM ,"))
+        #expect(!prompt.contains("Explorer ,"))
+        #expect(!prompt.contains("Explorer ."))
+    }
+
+    @Test func promptStripsSpaceBeforeClosingPunctuation() {
+        // Closing punctuation that ends up preceded by a phantom space (from an
+        // inline tag) should be tightened: comma, period, semicolon, colon,
+        // bang, question mark, and closing paren/bracket.
+        let html = "<p>See <a href=\"/x\">this</a>; also <a href=\"/y\">that</a> (<a href=\"/z\">ref</a>)!</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(prompt.contains("this; also"))
+        #expect(prompt.contains("(ref)!"))
+        #expect(!prompt.contains("this ;"))
+        #expect(!prompt.contains("ref )"))
+        #expect(!prompt.contains(") !"))
+    }
 }

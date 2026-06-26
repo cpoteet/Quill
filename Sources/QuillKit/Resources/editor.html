@@ -3060,6 +3060,10 @@
         let ms = findMatches(text, q, false)
         if (ms.length) return ms[0]
         ms = findMatches(normText, normTypo(q), false)
+        if (ms.length) return ms[0]
+        // Whitespace-tolerant fallback: anchors and editor text can disagree on
+        // spacing around punctuation (e.g. "DSPM , Content" vs "DSPM, Content").
+        ms = findMatchesLoose(normText, normTypo(q), false)
         return ms.length ? ms[0] : null
       }
       const m = tryFind(query)

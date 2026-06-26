@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, detectEmbedProvider, embedClassFor } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -582,6 +582,72 @@ describe('findMatches', () => {
   test('offsets are JS string indices (UTF-16)', () => {
     // 👍 occupies indices 0–1
     assert.deepEqual(findMatches('👍 hi', 'hi', false), [{ start: 3, end: 5 }])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// findMatchesLoose / fuzzyAnchorRegex (anchor navigation, whitespace-tolerant)
+// ---------------------------------------------------------------------------
+
+describe('findMatchesLoose', () => {
+  test('matches when editor text has a space before a comma but anchor does not', () => {
+    // Editor holds the flagged readability text; Claude returns the cleaned anchor.
+    assert.deepEqual(
+      findMatchesLoose('such as DSPM , Content Explorer', 'DSPM, Content', false),
+      [{ start: 8, end: 22 }]
+    )
+  })
+
+  test('matches when the anchor has the extra space and editor text does not', () => {
+    assert.deepEqual(
+      findMatchesLoose('such as DSPM, Content Explorer', 'DSPM , Content', false),
+      [{ start: 8, end: 21 }]
+    )
+  })
+
+  test('tolerates missing space after a comma', () => {
+    assert.deepEqual(
+      findMatchesLoose('A, B, C', 'A,B', false),
+      [{ start: 0, end: 4 }]
+    )
+  })
+
+  test('collapses multiple spaces between plain words', () => {
+    assert.deepEqual(
+      findMatchesLoose('the  quick   brown', 'quick brown', false),
+      [{ start: 5, end: 18 }]
+    )
+  })
+
+  test('still matches an exact phrase', () => {
+    assert.deepEqual(
+      findMatchesLoose('hello world', 'hello world', false),
+      [{ start: 0, end: 11 }]
+    )
+  })
+
+  test('empty / whitespace query returns no matches', () => {
+    assert.deepEqual(findMatchesLoose('anything', '', false), [])
+    assert.deepEqual(findMatchesLoose('anything', '   ', false), [])
+  })
+
+  test('does not require whitespace between plain words to be absent', () => {
+    // A plain word gap stays required (\\s+), so "quickbrown" must not match.
+    assert.deepEqual(findMatchesLoose('quickbrown fox', 'quick brown', false), [])
+  })
+})
+
+describe('fuzzyAnchorRegex', () => {
+  test('makes whitespace around punctuation optional', () => {
+    assert.equal(fuzzyAnchorRegex('DSPM, Content'), 'DSPM\\s*,\\s*Content')
+  })
+
+  test('collapses a leading space before punctuation into \\s*', () => {
+    assert.equal(fuzzyAnchorRegex('DSPM , Content'), 'DSPM\\s*,\\s*Content')
+  })
+
+  test('requires a gap between plain words', () => {
+    assert.equal(fuzzyAnchorRegex('quick brown'), 'quick\\s+brown')
   })
 })
 

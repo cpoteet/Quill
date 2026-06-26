@@ -324,9 +324,28 @@ public struct AIPromptBuilder {
             .replacingOccurrences(of: "&#8230;", with: "\u{2026}")
             .replacingOccurrences(of: "&hellip;", with: "\u{2026}")
         // Collapse all whitespace (spaces, tabs, newlines) and strip blank segments
-        return text
+        text = text
             .components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+        // Inline tags were replaced with spaces above, which injects a phantom
+        // space before punctuation that immediately follows an inline element —
+        // e.g. "<a>DSPM</a>, <a>Content</a>" becomes "DSPM , Content". English
+        // never puts a space before these marks, and the editor's own text-node
+        // concatenation has none, so strip it. This prevents phantom "spaces
+        // around commas" findings and keeps the plain text aligned with
+        // findAndSelectText's anchor matching for jump-to-finding.
+        text = text.replacingOccurrences(
+            of: #" +([,.;:!?)\]])"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        // Symmetric case: a phantom space after an opening bracket (e.g. an inline
+        // tag right after "(" — "(<a>ref</a>)" -> "( ref)").
+        return text.replacingOccurrences(
+            of: #"([(\[]) +"#,
+            with: "$1",
+            options: .regularExpression
+        )
     }
 }

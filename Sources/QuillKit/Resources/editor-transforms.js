@@ -242,6 +242,52 @@ function findMatches(text, query, caseSensitive) {
   return out
 }
 
+// Build a whitespace-tolerant regex source from a query string. Used for anchor
+// navigation (jump-to-finding), where Claude's verbatim "anchor" can disagree
+// with the editor text on spacing around punctuation — e.g. the editor holds
+// "DSPM , Content" (a flagged readability issue) but Claude returns the cleaned
+// "DSPM, Content". The regex collapses each run of query whitespace to `\s+`,
+// and lets whitespace around any punctuation char be optional (`\s*` on both
+// sides), so spacing differences near commas/periods/etc. no longer break the
+// match. Character positions in the searched text are preserved because the
+// regex runs against the original text (no normalization that shifts offsets).
+function fuzzyAnchorRegex(query) {
+  const PUNCT = /[,.;:!?'"“”‘’()[\]{}…—–-]/
+  let out = ''
+  let pendingSpace = false   // saw whitespace since the last emitted char
+  let lastWasPunct = false   // last emitted char was punctuation
+  for (const ch of query) {
+    if (/\s/.test(ch)) { pendingSpace = true; continue }
+    const esc = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (PUNCT.test(ch)) {
+      out += '\\s*' + esc      // optional whitespace before punctuation
+      lastWasPunct = true
+    } else {
+      if (lastWasPunct) out += '\\s*'        // optional whitespace after punctuation
+      else if (pendingSpace) out += '\\s+'   // required gap between plain words
+      out += esc
+      lastWasPunct = false
+    }
+    pendingSpace = false
+  }
+  return out
+}
+
+// Like findMatches, but whitespace-tolerant around punctuation (see
+// fuzzyAnchorRegex). Used only as an anchor-navigation fallback when the exact
+// match fails, so a single best-effort match is sufficient.
+function findMatchesLoose(text, query, caseSensitive) {
+  if (!query || !query.trim()) return []
+  const re = new RegExp(fuzzyAnchorRegex(query), caseSensitive ? 'g' : 'gi')
+  const out = []
+  let m
+  while ((m = re.exec(text)) !== null) {
+    out.push({ start: m.index, end: m.index + m[0].length })
+    if (m.index === re.lastIndex) re.lastIndex++   // avoid zero-width infinite loop
+  }
+  return out
+}
+
 // Word/character counts for the stats display. Words are whitespace-separated
 // tokens; characters are Unicode code points (so emoji count as 1).
 function countStats(text) {
@@ -285,5 +331,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, detectEmbedProvider, embedClassFor }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor }
 }
