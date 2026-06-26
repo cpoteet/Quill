@@ -792,14 +792,22 @@
       color: #555;
     }
     body.dark ol.wp-block-footnotes { border-top-color: rgba(255,255,255,0.2); color: #aaa; }
+    ol.wp-block-footnotes > li { position: relative; }
+    .fn-item-content { display: inline; }
     .fn-backref {
+      display: inline-block;
       color: #b45309;
       text-decoration: none;
-      margin-left: 0.35em;
-      font-size: 0.85em;
+      margin-left: 0;
+      font-size: 1em;
+      line-height: inherit;
+      position: absolute;
+      transform: translate(0.45em, 0.02em);
+      vertical-align: baseline;
       cursor: pointer;
       opacity: 0.65;
       user-select: none;
+      -webkit-user-select: none;
     }
     .fn-backref:hover { opacity: 1; }
     body.dark .fn-backref { color: #d97706; }
@@ -1570,6 +1578,8 @@
         this.backArrow = document.createElement('a')
         this.backArrow.className = 'fn-backref'
         this.backArrow.textContent = '↩'
+        this.backArrow.contentEditable = 'false'
+        this.backArrow.tabIndex = -1
         this.backArrow.setAttribute('aria-label', 'Back to content')
         this.backArrow.addEventListener('mousedown', e => {
           e.preventDefault()
