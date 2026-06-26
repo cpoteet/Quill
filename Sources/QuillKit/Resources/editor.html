@@ -156,7 +156,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 21px;
+      min-width: 16px;
       height: 16px;
       font-family: "SF Mono", Menlo, monospace;
       font-size: 11px;
@@ -318,11 +318,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls {
+    #table-controls, #image-align-controls, #blockquote-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button {
+    #table-controls button, #blockquote-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -400,6 +400,7 @@
       font-size: 16px;
       line-height: 1.75;
       caret-color: #007aff;
+      padding-bottom: 60vh;
     }
     .spell-error {
       text-decoration: red wavy underline;
@@ -831,6 +832,11 @@
       <button data-cmd="blockquote" title="Blockquote">
         <svg viewBox="0 0 24 24"><path d="M8 6h7"></path><path d="M8 12h9"></path><path d="M8 18h7"></path><path d="M4 6v12"></path></svg>
       </button>
+      <span id="blockquote-controls" style="display:none">
+        <button id="btn-toggle-cite" title="Toggle citation">
+          <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>
+        </button>
+      </span>
       <button data-cmd="codeBlock"  title="Code block"><span class="tb-code-text">{}</span></button>
     </span>
     <span class="tb-sep"></span>
@@ -1335,6 +1341,33 @@
           { tag: 'img[src]' },
         ]
       },
+      addProseMirrorPlugins() {
+        const ed = this.editor
+        return [new Plugin({
+          key: new PluginKey('imageCaptionExit'),
+          props: {
+            handleKeyDown(view, event) {
+              if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return false
+              const { state } = view
+              const { $from } = state.selection
+              let imgDepth = -1
+              for (let d = $from.depth; d >= 0; d--) {
+                if ($from.node(d).type.name === 'image') { imgDepth = d; break }
+              }
+              if (imgDepth === -1) return false
+              event.preventDefault()
+              const after = $from.after(imgDepth)
+              ed.chain()
+                .insertContentAt(after, { type: 'paragraph' })
+                .setTextSelection(after + 1)
+                .focus()
+                .scrollIntoView()
+                .run()
+              return true
+            },
+          },
+        })]
+      },
       addNodeView() {
         return ({ node, editor, getPos }) => new ImageNodeView(node, editor, getPos)
       },
@@ -1704,8 +1737,33 @@
       content: 'block+ cite?',
       addKeyboardShortcuts() {
         const orig = this.parent?.()
-        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+        const wrapped = Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? true : fn(...args)]))
+        return {
+          ...wrapped,
+          Enter: () => {
+            if (_isInFootnote()) return true
+            const { state } = this.editor
+            const { $from, empty } = state.selection
+            let bqDepth = -1
+            for (let d = $from.depth; d >= 0; d--) {
+              if ($from.node(d).type.name === 'blockquote') { bqDepth = d; break }
+            }
+            if (bqDepth === -1) return false
+            if ($from.node($from.depth).type.name === 'cite') return false
+            if (empty && $from.parent.content.size === 0) {
+              return this.editor.commands.liftEmptyBlock()
+            }
+            const { tr } = state
+            const pos = $from.pos
+            const paraType = state.schema.nodes.paragraph
+            const depth = $from.depth - bqDepth
+            tr.split(pos, depth, [{type: paraType, attrs: null}])
+            tr.scrollIntoView()
+            this.editor.view.dispatch(tr)
+            return true
+          },
+        }
       },
     }))
 
@@ -1824,26 +1882,20 @@
       blockquote: () => {
         if (_isInFootnote()) return
         if (editor.isActive('blockquote')) {
-          editor.chain().focus().toggleBlockquote().run()
-          return
-        }
-        // Toggle on: wrap in blockquote then append an empty cite
-        editor.chain()
-          .focus()
-          .toggleBlockquote()
-          .command(({ tr, state }) => {
-            const { $head } = state.selection
-            for (let d = $head.depth; d >= 0; d--) {
-              const node = $head.node(d)
-              if (node.type.name === 'blockquote') {
-                const end = $head.after(d) - 1
-                tr.insert(end, state.schema.nodes.cite.create())
-                return true
-              }
+          const { $from } = editor.state.selection
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'blockquote') {
+              const from = $from.before(d)
+              const to = $from.after(d)
+              editor.chain().focus()
+                .setTextSelection({ from: from + 1, to: to - 1 })
+                .toggleBlockquote()
+                .run()
+              return
             }
-            return false
-          })
-          .run()
+          }
+        }
+        editor.chain().focus().toggleBlockquote().run()
       },
       codeBlock:     () => { if (!_isInFootnote()) editor.chain().focus().toggleCodeBlock().run() },
       bulletList:    () => { if (!_isInFootnote()) editor.chain().focus().toggleBulletList().run() },
@@ -2089,6 +2141,8 @@
     const _undoBtn = document.querySelector('[data-cmd="undo"]')
     const _redoBtn = document.querySelector('[data-cmd="redo"]')
     const _tableControls = document.getElementById('table-controls')
+    const _bqControls = document.getElementById('blockquote-controls')
+    const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
 
@@ -2112,6 +2166,12 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      // Blockquote controls
+      const inBlockquote = editor.isActive('blockquote')
+      _bqControls.style.display = inBlockquote ? 'inline-flex' : 'none'
+      if (inBlockquote) {
+        _btnToggleCite.classList.toggle('active', editor.isActive('cite'))
+      }
       // Undo / Redo
       _undoBtn.disabled = !editor.can().undo()
       _redoBtn.disabled = !editor.can().redo()
@@ -2492,6 +2552,41 @@
 
     document.getElementById('btn-code-view').addEventListener('click', () => {
       codeViewActive ? _exitCodeView() : _enterCodeView()
+    })
+
+    _btnToggleCite.addEventListener('click', () => {
+      const { state } = editor
+      const { $head } = state.selection
+      let bqDepth = -1
+      for (let d = $head.depth; d >= 0; d--) {
+        if ($head.node(d).type.name === 'blockquote') { bqDepth = d; break }
+      }
+      if (bqDepth === -1) return
+      const bqNode = $head.node(bqDepth)
+      const lastChild = bqNode.lastChild
+      if (lastChild && lastChild.type.name === 'cite') {
+        // Remove the cite
+        const bqStart = $head.start(bqDepth)
+        let citePos = bqStart
+        bqNode.forEach((child, offset) => {
+          if (child === lastChild) citePos = bqStart + offset
+        })
+        editor.chain().focus()
+          .command(({ tr }) => {
+            tr.delete(citePos, citePos + lastChild.nodeSize)
+            return true
+          }).run()
+      } else {
+        // Add a cite at the end of the blockquote
+        const end = $head.after(bqDepth) - 1
+        editor.chain().focus()
+          .command(({ tr }) => {
+            tr.insert(end, state.schema.nodes.cite.create())
+            return true
+          })
+          .setTextSelection(end + 1)
+          .run()
+      }
     })
 
     // AI toolbar buttons

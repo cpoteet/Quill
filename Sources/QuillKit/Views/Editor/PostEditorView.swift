@@ -362,6 +362,7 @@ public struct PostEditorView: View {
                 Button("Save Draft") { Task { await saveDraft() } }
                     .keyboardShortcut("s", modifiers: .command)
                     .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
                     .disabled(isSaving)
             } else {
                 // ⌘S updates WordPress when editing a remote post/page
