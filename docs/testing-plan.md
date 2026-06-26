@@ -956,11 +956,14 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Save a post containing all formatting types → fetch the raw content via the WordPress REST API (`?context=edit`). Verify: headings have `wp-block-heading` class, lists have `wp-block-list`, tables are wrapped in `figure.wp-block-table`, images are wrapped in `figure.wp-block-image`, and the first all-header row in a table is promoted to `<thead>`.
 - [ ] Open a post, save it without making any changes, then fetch the raw content → it should be identical to before (no drift).
 - [ ] Multi-paragraph list items survive a save without being collapsed into a single paragraph.
-- [ ] **Blockquote attribution:**
-  - [ ] Toggle blockquote on → an empty cite line appears at the bottom (subdued, right-aligned).
+- [ ] **Blockquote behavior:**
+  - [ ] Toggle blockquote on → text is wrapped in a blockquote.
+  - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.
   - [ ] Type an author name in the cite line, save → `<cite>` persists in the saved HTML.
   - [ ] Leave the cite line blank, save → no empty `<cite>` appears in the saved HTML.
   - [ ] Press Enter inside the cite → cursor exits the blockquote into a new paragraph below.
+  - [ ] Press Enter at the end of a paragraph inside a blockquote → a new paragraph is created inside the blockquote (not outside it).
+  - [ ] Press Enter in an empty paragraph inside a blockquote → the empty paragraph exits the blockquote (lift out).
   - [ ] Press Backspace in an empty cite → the cite is deleted (not the entire blockquote).
   - [ ] Toggle blockquote off → the quote and its cite are removed cleanly.
 - [ ] Write content with curly quotes, emoji, and non-Latin scripts → save and reload → characters are preserved exactly.
@@ -978,6 +981,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
 - [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
 - [ ] Add a caption to an image, then click the image → resize handles should align to the image edges, not extend down to the bottom of the caption.
+- [ ] Click inside an image caption and press Enter → a new paragraph is created below the image; the cursor moves to it. The image and caption remain intact.
 - [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumbnail, Medium, Large, Full). Click each → the image swaps to that size.
 - [ ] Click Reset on an image with sizes loaded → the image returns to its original full-size dimensions. On an image without media sizes, Reset removes custom width/height constraints.
 - [ ] Click a classic-editor image (no explicit width/height attributes) → the image toolbar shows the image's natural dimensions (not blank fields).
@@ -1215,6 +1219,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] The footnotes `<ol>` does not receive a `wp-block-list` class (it should keep only its `wp-block-footnotes` class).
 - [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
 - [ ] With the cursor inside a footnote, pressing keyboard shortcuts for block operations (e.g. ⌘⇧7 for ordered list, ⌘⇧8 for bullet list) does nothing.
+- [ ] With the cursor inside a footnote entry, Backspace and Delete keys work normally (can delete characters and merge text).
 - [ ] Drag an image from Finder onto a footnote entry → an error toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
 - [ ] Paste rich content (containing headings, lists, or images) into a footnote → block elements are stripped; only inline text and formatting survive.
 
@@ -1313,6 +1318,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 59 | Update checker version comparison handles all semver cases | ✅ `UpdateCheckerTests` (7 tests) |
 | 60 | Draft save failure shows error toast | 👁 §7.7 |
 | 61 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
+| 62 | Backspace/Delete passthrough inside footnotes (`_fnPassthrough`) | 👁 §7.20 (delete chars in footnote entry) |
+| 63 | Image caption Enter exits to paragraph below (imageCaptionExit plugin) | 👁 §7.4 (Enter in caption) |
+| 64 | Blockquote Enter: splits paragraphs inside, lifts empty paragraph out | 👁 §7.3 (Enter behavior in blockquote) |
+| 65 | Cite toggle button adds/removes cite node in blockquote | 👁 §7.3 (cite toggle) |
+| 66 | Footnote back-arrow is `contentEditable: false` (not selectable/editable) | 👁 §7.20 (↩ not part of editable text) |
 
 ---
 

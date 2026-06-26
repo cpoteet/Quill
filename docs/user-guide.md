@@ -177,7 +177,7 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | Paragraph / Heading | | Dropdown menu to set the current block as Paragraph or Heading 1 through 6 |
 | Bullet list | ⌘⇧8 | Converts the current block to an unordered list |
 | Number list | ⌘⇧7 | Converts the current block to an ordered list |
-| Blockquote | ⌘⇧B | Wraps the current block in a blockquote |
+| Blockquote | ⌘⇧B | Wraps the current block in a blockquote. When inside a blockquote, a citation toggle button appears. See [Blockquotes](#blockquotes) in Content Elements. |
 | Code block | ⌘⌥C | Converts the current block to a preformatted code block |
 
 **Inline formatting:**
@@ -271,7 +271,17 @@ Use the alignment buttons in the main toolbar (left, center, right) to float or 
 
 **Captions:**
 
-Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block.
+Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
+
+### Blockquotes
+
+Press **⌘⇧B** or click the **Blockquote** button in the toolbar to wrap the current block in a blockquote.
+
+**Adding a citation:** When the cursor is inside a blockquote, a citation toggle button (bookmark icon) appears in the toolbar. Click it to add a citation line at the bottom of the blockquote, where you can type an author name or source. Click it again to remove the citation. Empty citations are automatically stripped when the post is saved.
+
+**Enter key behavior:** Pressing **Enter** inside a blockquote creates a new paragraph within the blockquote. Pressing **Enter** on an empty line exits the blockquote and creates a new paragraph below it.
+
+**Removing a blockquote:** Press **⌘⇧B** again or click the Blockquote button to unwrap the blockquote, returning its contents to normal paragraphs.
 
 ### Footnotes
 

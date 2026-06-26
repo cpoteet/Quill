@@ -1357,12 +1357,8 @@
           props: {
             handleKeyDown(view, event) {
               if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return false
-              const { state } = view
-              const { $from } = state.selection
-              let imgDepth = -1
-              for (let d = $from.depth; d >= 0; d--) {
-                if ($from.node(d).type.name === 'image') { imgDepth = d; break }
-              }
+              const { $from } = view.state.selection
+              const imgDepth = _ancestorDepth($from, 'image')
               if (imgDepth === -1) return false
               event.preventDefault()
               const after = $from.after(imgDepth)
@@ -1401,11 +1397,7 @@
             const { state } = this.editor
             const { $from } = state.selection
             if ($from.node($from.depth).type.name !== 'cite') return false
-            // Find blockquote ancestor depth
-            let bqDepth = -1
-            for (let d = $from.depth; d >= 0; d--) {
-              if ($from.node(d).type.name === 'blockquote') { bqDepth = d; break }
-            }
+            const bqDepth = _ancestorDepth($from, 'blockquote')
             if (bqDepth === -1) return false
             // Insert a paragraph immediately after the blockquote
             const after = $from.after(bqDepth)
@@ -1756,20 +1748,16 @@
             if (_isInFootnote()) return true
             const { state } = this.editor
             const { $from, empty } = state.selection
-            let bqDepth = -1
-            for (let d = $from.depth; d >= 0; d--) {
-              if ($from.node(d).type.name === 'blockquote') { bqDepth = d; break }
-            }
+            const bqDepth = _ancestorDepth($from, 'blockquote')
             if (bqDepth === -1) return false
             if ($from.node($from.depth).type.name === 'cite') return false
+            if ($from.depth > bqDepth + 2) return false
             if (empty && $from.parent.content.size === 0) {
               return this.editor.commands.liftEmptyBlock()
             }
             const { tr } = state
-            const pos = $from.pos
             const paraType = state.schema.nodes.paragraph
-            const depth = $from.depth - bqDepth
-            tr.split(pos, depth, [{type: paraType, attrs: null}])
+            tr.split($from.pos, $from.depth - bqDepth, [{type: paraType, attrs: null}])
             tr.scrollIntoView()
             this.editor.view.dispatch(tr)
             return true
@@ -1880,6 +1868,13 @@
       return false
     }
 
+    function _ancestorDepth($pos, typeName) {
+      for (let d = $pos.depth; d >= 0; d--) {
+        if ($pos.node(d).type.name === typeName) return d
+      }
+      return -1
+    }
+
     const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
                         'insertTable','image']
 
@@ -1894,17 +1889,26 @@
         if (_isInFootnote()) return
         if (editor.isActive('blockquote')) {
           const { $from } = editor.state.selection
-          for (let d = $from.depth; d > 0; d--) {
-            if ($from.node(d).type.name === 'blockquote') {
-              const from = $from.before(d)
-              const to = $from.after(d)
-              editor.chain().focus()
-                .setTextSelection({ from: from + 1, to: to - 1 })
-                .toggleBlockquote()
-                .run()
-              return
-            }
+          const d = _ancestorDepth($from, 'blockquote')
+          if (d === -1) return
+          const bqNode = $from.node(d)
+          const from = $from.before(d)
+          const to = $from.after(d)
+          if (bqNode.lastChild?.type.name === 'cite') {
+            const bqStart = $from.start(d)
+            let citeOff = 0
+            bqNode.forEach((child, offset) => { if (child === bqNode.lastChild) citeOff = offset })
+            editor.chain().focus()
+              .command(({ tr }) => { tr.delete(bqStart + citeOff, bqStart + citeOff + bqNode.lastChild.nodeSize); return true })
+              .toggleBlockquote()
+              .run()
+          } else {
+            editor.chain().focus()
+              .setTextSelection({ from: from + 1, to: to - 1 })
+              .toggleBlockquote()
+              .run()
           }
+          return
         }
         editor.chain().focus().toggleBlockquote().run()
       },
@@ -2568,10 +2572,7 @@
     _btnToggleCite.addEventListener('click', () => {
       const { state } = editor
       const { $head } = state.selection
-      let bqDepth = -1
-      for (let d = $head.depth; d >= 0; d--) {
-        if ($head.node(d).type.name === 'blockquote') { bqDepth = d; break }
-      }
+      const bqDepth = _ancestorDepth($head, 'blockquote')
       if (bqDepth === -1) return
       const bqNode = $head.node(bqDepth)
       const lastChild = bqNode.lastChild
