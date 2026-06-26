@@ -195,7 +195,7 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | Button | Function |
 |---|---|
 | Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. See [Tables](#tables) in Content Elements. |
-| Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. |
+| Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. To open a link in your default browser, hold ⌘ and click it. Links show a pointer cursor and underline while ⌘ is held. |
 | * (Footnote) | Inserts a footnote marker at the cursor position. See [Footnotes](#footnotes) in Content Elements. |
 | Embed | Inserts an embed (video, social post, etc.) by URL. See [Embeds](#embeds) in Content Elements. |
 | ABC (Spell check) | Runs a spell check on the document |
