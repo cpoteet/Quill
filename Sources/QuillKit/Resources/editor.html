@@ -1812,6 +1812,14 @@
       ],
       content: '',
       editorProps: {
+        handleKeyDown(view, event) {
+          if (event.key === 'Enter' && !event.shiftKey && _isInFootnote()) {
+            const { state, dispatch } = view
+            const br = state.schema.nodes.hardBreak
+            if (br) { dispatch(state.tr.replaceSelectionWith(br.create()).scrollIntoView()); return true }
+          }
+          return false
+        },
         handleClick(view, pos, event) {
           if (!event.metaKey) return false
           let el = event.target
