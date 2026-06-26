@@ -1004,14 +1004,14 @@
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, () => _isInFootnote() ? true : fn()]))
+          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
       },
     }))
     const OrderedListWithClass = withClassAttr(OrderedList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, () => _isInFootnote() ? true : fn()]))
+          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
       },
     }))
     const ListItemWithClass   = withClassAttr(ListItem)
@@ -1705,7 +1705,7 @@
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, () => _isInFootnote() ? true : fn()]))
+          [k, (...args) => _isInFootnote() ? true : fn(...args)]))
       },
     }))
 
@@ -1725,7 +1725,7 @@
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-              [k, () => _isInFootnote() ? true : fn()]))
+              [k, (...args) => _isInFootnote() ? true : fn(...args)]))
           },
         }),
         ParagraphWithClass,
