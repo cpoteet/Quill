@@ -332,6 +332,32 @@ import Testing
         #expect("&#8220;Quoted&#8221; &#38; More".decodingHTMLEntities() == "\u{201C}Quoted\u{201D} & More")
     }
 
+    // MARK: – excerptText (only uses raw, never rendered)
+
+    @Test func excerptTextReturnsRawStrippingHTML() {
+        var rs = RenderedString(raw: "<p>My excerpt</p>")
+        rs.rendered = "<p>auto generated</p>"
+        #expect(rs.excerptText == "My excerpt")
+    }
+
+    @Test func excerptTextReturnsEmptyWhenRawEmpty() {
+        var rs = RenderedString(raw: "")
+        rs.rendered = "<p>auto generated excerpt</p>"
+        #expect(rs.excerptText == "")
+    }
+
+    @Test func excerptTextReturnsEmptyWhenRawNil() {
+        var rs = RenderedString(raw: "")
+        rs.rendered = "<p>auto generated</p>"
+        rs.raw = nil
+        #expect(rs.excerptText == "")
+    }
+
+    @Test func excerptTextDecodesEntities() {
+        let rs = RenderedString(raw: "Hell&#8217;s Kitchen")
+        #expect(rs.excerptText == "Hell\u{2019}s Kitchen")
+    }
+
     @Test func missingContentAndExcerptDefaultToEmpty() throws {
         let json = """
         {"id":11,"type":"post",

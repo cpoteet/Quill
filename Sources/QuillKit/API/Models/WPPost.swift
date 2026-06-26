@@ -114,6 +114,17 @@ public struct RenderedString: Codable, Hashable, Sendable {
         return tags.contains { lower.contains($0) }
     }
 
+    public var excerptText: String {
+        if let raw {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return "" }
+            return trimmed.replacingOccurrences(
+                of: "<[^>]+>", with: "", options: .regularExpression
+            ).decodingHTMLEntities().trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return ""
+    }
+
     public var decodedTitle: String {
         rendered.decodingHTMLEntities()
     }

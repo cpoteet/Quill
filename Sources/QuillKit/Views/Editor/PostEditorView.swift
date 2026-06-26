@@ -551,12 +551,16 @@ public struct PostEditorView: View {
                 htmlContent = fresh.content
                 settings = PostSettings()
                 settings.excerpt = fresh.excerpt
+                    .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 if showToast { toastIsError = false; toastMessage = "Unsaved changes restored" }
             } else {
                 title = draft.title
                 htmlContent = draft.content
                 settings = PostSettings()
                 settings.excerpt = draft.excerpt
+                    .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
             }
             cleanTitle = title
             cleanContent = htmlContent
@@ -577,7 +581,7 @@ public struct PostEditorView: View {
         settings.slug = post.slug
         settings.commentStatus = post.commentStatus
         settings.parentID = post.parent
-        settings.excerpt = post.excerpt.editorHTML
+        settings.excerpt = post.excerpt.excerptText
         settings.publishDate = PostStatus(rawValue: post.status) == .future
             ? parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
             : nil
@@ -693,10 +697,13 @@ public struct PostEditorView: View {
             return
         }
 
+        let cleanExcerpt = settings.excerpt
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = PostPayload(
             title: title,
             content: htmlContent,
-            excerpt: settings.excerpt,
+            excerpt: cleanExcerpt,
             status: status.rawValue,
             dateGmt: settings.publishDate.map { Self.iso8601Formatter.string(from: $0) },
             featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
@@ -866,7 +873,10 @@ public struct PostEditorView: View {
             case .remote(let post) = item
         else { return }
         let client = WordPressClient(credentials: creds)
-        let payload = PostPayload(title: title, content: htmlContent, excerpt: settings.excerpt, status: post.status)
+        let cleanExcerpt = settings.excerpt
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = PostPayload(title: title, content: htmlContent, excerpt: cleanExcerpt, status: post.status)
         do {
             let autosave =
                 post.type == "page"

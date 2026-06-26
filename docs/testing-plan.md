@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-24 — 298 Swift tests + 101 JS editor tests, all passing._
+_Last updated: 2026-06-25 — 302 Swift tests + 101 JS editor tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 298 tests across 21 suites)
+1. **Swift tests** — `swift test` (all 302 tests across 21 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (101 tests via Node's built-in runner + jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
@@ -53,7 +53,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 28 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, empty content from `_fields` list fetch |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 32 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
@@ -77,7 +77,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (28 tests)
+### 1. Model decoding — `WPPostDecodingTests` (32 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -113,6 +113,10 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `decodesNamedEntities` | `&ldquo;`, `&rdquo;`, `&amp;`, `&lt;`, `&gt;` decode correctly |
 | `noEntitiesPassthrough` | Plain text without entities passes through unchanged |
 | `decodesMultipleMixed` | Multiple numeric and named entities in one string |
+| `excerptTextReturnsRawStrippingHTML` | `excerptText` strips HTML from `raw`, ignores `rendered` |
+| `excerptTextReturnsEmptyWhenRawEmpty` | `raw == ""` → `excerptText` returns `""` (no fallback to auto-generated `rendered`) |
+| `excerptTextReturnsEmptyWhenRawNil` | `raw == nil` → `excerptText` returns `""` |
+| `excerptTextDecodesEntities` | `excerptText` decodes HTML entities (e.g. `&#8217;` → `'`) |
 | `missingContentAndExcerptDefaultToEmpty` | No `content`/`excerpt` keys (list fetch with `_fields`) → both default to empty `RenderedString` without throwing |
 
 ---
@@ -1323,6 +1327,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 64 | Blockquote Enter: splits paragraphs inside, lifts empty paragraph out | 👁 §7.3 (Enter behavior in blockquote) |
 | 65 | Cite toggle button adds/removes cite node in blockquote | 👁 §7.3 (cite toggle) |
 | 66 | Footnote back-arrow is `contentEditable: false` (not selectable/editable) | 👁 §7.20 (↩ not part of editable text) |
+| 67 | Excerpt field does not adopt auto-generated `rendered` excerpt from WordPress | ✅ `WPPostDecodingTests.excerptText*` (4 tests) |
 
 ---
 
