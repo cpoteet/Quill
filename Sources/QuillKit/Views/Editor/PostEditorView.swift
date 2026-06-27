@@ -530,6 +530,25 @@ public struct PostEditorView: View {
             lastSavedServerModified = loadedPost.modified
             applyRemotePost(loadedPost)
 
+            // Refresh taxonomy cache if the post references tags/categories we don't have locally
+            if let creds = appState.credentials {
+                let knownTagIDs = Set(appState.tags.map(\.id))
+                let knownCatIDs = Set(appState.categories.map(\.id))
+                let missingTags = !Set(loadedPost.tags).subtracting(knownTagIDs).isEmpty
+                let missingCats = !Set(loadedPost.categories).subtracting(knownCatIDs).isEmpty
+                if missingTags || missingCats {
+                    let client = WordPressClient(credentials: creds)
+                    if missingTags, let allTags = try? await client.fetchAllTags() {
+                        try? services.taxonomyCache.saveTags(allTags)
+                        appState.tags = allTags
+                    }
+                    if missingCats, let allCats = try? await client.fetchAllCategories() {
+                        try? services.taxonomyCache.saveCategories(allCats)
+                        appState.categories = allCats
+                    }
+                }
+            }
+
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
             if let snap = try? services.autosaveStore.load(postID: post.id) {
                 if shouldRestoreAutosave(snap, over: loadedPost) {
