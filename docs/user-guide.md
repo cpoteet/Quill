@@ -26,15 +26,17 @@ Quill is a native macOS application for writing and publishing content on self-h
 
 Quill is built around a simple premise: the act of writing deserves a dedicated tool. Rather than competing with WordPress's block editor for layout and site-building tasks, Quill concentrates on what most WordPress authors actually spend their time doing: drafting, editing, and publishing content. The result is an interface that stays out of your way and lets you focus on the work.
 
-**What Quill does:**
+### What Quill does
+
 - Create, edit, publish, and schedule posts and pages
 - Manage media uploads and insert images into content
 - Organize content with categories, tags, slugs, and excerpts
 - Write with a rich text editor that produces clean Gutenberg-compatible HTML
 - Optionally generate and refine content using the Anthropic Claude API
 
-**What Quill is not:**
-- A WordPress.com client. Quill requires a self-hosted WordPress installation.
+### What Quill is not
+
+- A WordPress.com client. Quill requires a self-hosted WordPress installation
 - A full site builder or theme editor
 - A replacement for the WordPress admin dashboard
 
@@ -170,7 +172,7 @@ The **title field** sits above the editor canvas. Click it to type or edit the p
 
 The formatting toolbar runs across the top of the editor and provides access to all block and inline formatting tools.
 
-**Block formatting:**
+#### Block formatting
 
 | Button | Shortcut | Function |
 |---|---|---|
@@ -180,7 +182,7 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | Blockquote | ⌘⇧B | Wraps the current block in a blockquote. When inside a blockquote, a citation toggle button appears. See [Blockquotes](#blockquotes) in Content Elements. |
 | Code block | ⌘⌥C | Converts the current block to a preformatted code block |
 
-**Inline formatting:**
+#### Inline formatting
 
 | Button | Shortcut | Function |
 |---|---|---|
@@ -190,7 +192,7 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | S | ⌘⇧X | Strikethrough |
 | `A` | ⌘E | Inline code |
 
-**Insert and utilities:**
+#### Insert and utilities
 
 | Button | Function |
 |---|---|
@@ -208,11 +210,13 @@ The image alignment buttons (left, center, right) appear in the toolbar only whe
 
 ### Saving and Publishing
 
-**For local drafts:**
+#### For local drafts
+
 - Click **Save Draft** or press **⌘S** to save your work locally. The draft remains on your Mac and does not touch WordPress.
 - Click **Publish** or press **⌘⇧P** to push the post to WordPress. After publishing, the post moves from Drafts to Posts or Pages in the sidebar.
 
-**For posts and pages already on WordPress:**
+#### For posts and pages already on WordPress
+
 - Press **⌘S** or click **Publish** to sync your changes to WordPress immediately.
 - An amber dot in the toolbar indicates you have unsaved changes.
 - Click **Revert** to discard unsaved changes and restore the last saved version. A confirmation sheet appears; press **⌘↩** to confirm or **Escape** to cancel.
@@ -270,7 +274,7 @@ Click the **Image** button in the toolbar to open the media library picker and i
 
 Once an image is inserted, click it to select it. A floating image toolbar appears above the image, and alignment controls become available in the main toolbar.
 
-**Resizing:**
+#### Resizing
 
 Images can be resized in two ways:
 
@@ -278,19 +282,19 @@ Images can be resized in two ways:
 - **W and H fields:** Enter exact pixel dimensions in the width and height fields in the image toolbar.
 - **Reset:** Click Reset to restore the image to its original full-resolution dimensions.
 
-**Preset sizes:**
+#### Preset sizes
 
 If the image was inserted from your WordPress media library, the image toolbar shows preset size buttons (**Thumb**, **Medium**, **Large**, and **Full**) corresponding to the sizes WordPress has generated for that image. Click a size to jump directly to those dimensions. These buttons only appear for images with a known media ID; externally linked images show only the manual W/H fields.
 
-**Alt text:**
+#### Alt text
 
 Enter a description in the **Alt** field in the image toolbar. This text is saved with the image and used for accessibility and SEO. Alt text set in the media library is pre-populated automatically when you insert an image.
 
-**Alignment:**
+#### Alignment
 
 Use the alignment buttons in the main toolbar (left, center, right) to float or center the image. These buttons are only visible when an image is selected.
 
-**Captions:**
+#### Captions
 
 Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
 
@@ -315,17 +319,12 @@ When you insert a footnote, two things happen automatically:
 
 Here are a few things to keep in mind as you work with footnotes.
 
-**Automatic numbering:** Footnote markers are always numbered sequentially from 1 based on their position in the document. If you insert a footnote between two existing ones, or delete one, all numbers update automatically; you never need to renumber manually.
-
-**Navigating between markers and entries:** Each footnote entry at the bottom of the document has a **↩** button. Clicking it jumps your cursor back to the corresponding marker in the body text.
-
-**Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
-
-**Line breaks:** Press **Enter** inside a footnote entry to insert a line break within the entry. Unlike the main editor, Enter does not create a new block; it creates a soft break so you can write multi-line footnotes.
-
-**Content restrictions:** Footnotes support only inline content: bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
-
-**On publish:** Quill saves footnotes as standard WordPress block footnotes (`wp-block-footnotes`), fully compatible with the Gutenberg editor.
+- **Automatic numbering:** Footnote markers are always numbered sequentially from 1 based on their position in the document. If you insert a footnote between two existing ones, or delete one, all numbers update automatically; you never need to renumber manually.
+- **Navigating between markers and entries:** Each footnote entry at the bottom of the document has a **↩** button. Clicking it jumps your cursor back to the corresponding marker in the body text.
+- **Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
+- **Line breaks:** Press **Enter** inside a footnote entry to insert a line break within the entry. Unlike the main editor, Enter does not create a new block; it creates a soft break so you can write multi-line footnotes.
+- **Content restrictions:** Footnotes support only inline content: bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
+- **On publish:** Quill saves footnotes as standard WordPress block footnotes (`wp-block-footnotes`), fully compatible with the Gutenberg editor.
 
 ### Tables
 
@@ -357,7 +356,7 @@ To insert an embed:
 
 The embed appears in the editor as a card showing the URL. It will render as a live embed on your published site; Quill does not preview the embedded content.
 
-**Supported providers:**
+#### Supported providers
 
 | Provider | Content type |
 |---|---|
