@@ -108,10 +108,10 @@ Quill's window is divided into three panels: the **Sidebar** on the left, the **
 
 The sidebar organizes your content into four sections, selectable via tabs at the top:
 
-- **Posts** — Lists all posts on your site, most recently published first. A search field lets you filter by title.
-- **Pages** — Lists all pages on your site, most recently published first, with the same search capability.
-- **Drafts** — Lists local drafts saved only on your Mac, not yet published or synced to WordPress.
-- **Media** — Displays your site's media library as a thumbnail grid for browsing and uploading files.
+- **Posts:** Lists all posts on your site, most recently published first. A search field lets you filter by title.
+- **Pages:** Lists all pages on your site, most recently published first, with the same search capability.
+- **Drafts:** Lists local drafts saved only on your Mac, not yet published or synced to WordPress.
+- **Media:** Displays your site's media library as a thumbnail grid for browsing and uploading files.
 
 Click any post, page, draft, or media item to open it in the editor or detail view. Right-click a post or page for the option to move it to trash.
 
@@ -121,8 +121,8 @@ To hide the sidebar and maximize writing space, click the **sidebar icon** at th
 
 The editor area has two parts:
 
-- **Title field** — A large text field at the top for the post or page title.
-- **Editor canvas** — The main writing area below, powered by a rich text editor that produces clean WordPress-compatible HTML.
+- **Title field:** A large text field at the top for the post or page title.
+- **Editor canvas:** The main writing area below, powered by a rich text editor that produces clean WordPress-compatible HTML.
 
 Above the title field is the **toolbar**, which contains:
 
@@ -274,9 +274,9 @@ Once an image is inserted, click it to select it. A floating image toolbar appea
 
 Images can be resized in two ways:
 
-- **Drag handles** — Eight handles appear around the selected image (corners and edges). Drag any handle to resize freely.
-- **W and H fields** — Enter exact pixel dimensions in the width and height fields in the image toolbar.
-- **Reset** — Click Reset to restore the image to its original full-resolution dimensions.
+- **Drag handles:** Eight handles appear around the selected image (corners and edges). Drag any handle to resize freely.
+- **W and H fields:** Enter exact pixel dimensions in the width and height fields in the image toolbar.
+- **Reset:** Click Reset to restore the image to its original full-resolution dimensions.
 
 **Preset sizes:**
 

@@ -2706,6 +2706,7 @@
       _rawHTML = html || null
       _rawHTMLOnLoad = html || null
       editor.commands.setContent(html || '', false)
+      document.getElementById('editor-wrap').scrollTop = 0
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()
     }
