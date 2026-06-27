@@ -68,7 +68,7 @@ Quill will open normally from this point forward. This prompt only appears once 
 
 ### Updates
 
-Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner — it will not reappear for the same version.
+Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner; it will not reappear for the same version.
 
 To update, download the new version from the release page, unzip it, and replace the existing **Quill.app** in your `/Applications` folder. Your credentials, drafts, and settings are stored separately and will carry over automatically.
 
@@ -194,17 +194,17 @@ The formatting toolbar runs across the top of the editor and provides access to 
 
 | Button | Function |
 |---|---|
-| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. See [Tables](#tables) in Content Elements. |
+| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. Reference [Tables](#tables) for more details. |
 | Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. To open a link in your default browser, hold ⌘ and click it. Links show a pointer cursor and underline while ⌘ is held. |
-| * (Footnote) | Inserts a footnote marker at the cursor position. See [Footnotes](#footnotes) in Content Elements. |
-| Embed | Inserts an embed (video, social post, etc.) by URL. See [Embeds](#embeds) in Content Elements. |
-| ABC (Spell check) | Runs a spell check on the document |
-| </> (Code view) | Toggles between the rich text editor and a raw HTML view |
-| Image | Opens the media library picker to insert an image. See [Images](#images) in Content Elements. |
-| Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features). |
-| Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features). |
+| * (Footnote) | Inserts a footnote marker at the cursor position. Reference [Footnotes](#footnotes) for more details. |
+| Embed | Inserts an embed (video, social post, etc.) by URL. Reference [Embeds](#embeds) for more details. |
+| ABC (Spell check) | Runs a spell check on the document. Reference [Spell Check](#spell-check) for more details. |
+| </> (Code view) | Toggles between the rich text editor and a raw HTML view. Reference [Code View](#code-view) for more details. |
+| Image | Opens the media library picker to insert an image. Reference [Images](#images) for more details. |
+| Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
+| Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
 
-The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. See [Images](#images) in Content Elements for full detail on resizing, captions, and alt text.
+The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. Reference [Images](#images) for more details on resizing, captions, and alt text.
 
 ### Saving and Publishing
 
@@ -225,7 +225,7 @@ Click **Preview** in the toolbar to open the current post in your browser as it 
 
 When you preview a **published** post, Quill sends your unsaved changes to WordPress as a temporary revision. The live post is not affected; only the preview shows the changes.
 
-When you preview a **draft** post, WordPress updates the draft itself with your current editor content. This is standard WordPress behavior — drafts do not have separate revision state, so previewing a draft is equivalent to saving it on WordPress.
+When you preview a **draft** post, WordPress updates the draft itself with your current editor content. This is standard WordPress behavior: drafts do not have separate revision state, so previewing a draft is equivalent to saving it on WordPress.
 
 ### Find and Replace
 
@@ -239,13 +239,26 @@ Click the **ABC** button in the toolbar to check spelling. Right-clicking on any
 
 ### Code View
 
-Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML that will be saved — including Gutenberg block comments such as `<!-- wp:paragraph -->` — formatted and indented for readability.
+Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML that will be saved, including Gutenberg block comments such as `<!-- wp:paragraph -->`, formatted and indented for readability.
 
-**Block comments are preserved.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. 
+**Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type, so you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, your changes appear in the visual editor.
 
-**Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type — you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, the visual editor reloads from your edited HTML. If you enter and exit code view without making any changes, the visual editor is left exactly as it was — Quill detects the no-op and skips the reload entirely.
+**What survives visual edits.** CSS classes and IDs added to the following elements in code view will persist even after you return to the visual editor and continue editing:
 
-> If your post or page has block comments and you make visual edits, the block comments will be erased. Only edit those posts or pages in code view to retain the comments.
+- Paragraphs, headings, blockquotes, citations
+- Lists (`<ul>`, `<ol>`, `<li>`)
+- Code blocks, horizontal rules
+- Tables (`<table>`, `<tr>`, `<th>`, `<td>`)
+- Image figures (`<figure>`) and image elements (`<img>`)
+- Links (`<a>`)
+
+For example, adding `class="intro"` to a `<p>` tag in code view, switching back to the visual editor, and typing more text will not remove your class. Editing a link's URL through the link picker will also preserve any classes you added to the `<a>` tag. Classes are never copied to new elements when you press Enter to create a new block.
+
+**What survives saving but not visual edits.** Any HTML change you make in code view (including inline styles, data attributes, custom elements, or Gutenberg block comments) is preserved when you save directly from code view or without making visual edits first. The raw HTML you wrote is sent to WordPress exactly as-is. However, if you return to the visual editor and make changes, the editor reconstructs the HTML from its internal model, and anything outside the supported schema (see the list above) will be lost.
+
+The practical rule: if you need to make changes that go beyond CSS classes on supported elements, do your visual editing first, then switch to code view for your final HTML pass before saving.
+
+> **Block comments and visual editing.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. However, if you make visual edits and save, the block comments will be erased. To retain block comments, edit those posts only in code view.
 
 ---
 
@@ -300,15 +313,17 @@ When you insert a footnote, two things happen automatically:
 1. A numbered superscript marker appears inline at the cursor position.
 2. A footnote entry is added to a numbered list at the bottom of the document, where you can type the footnote text.
 
+Here are a few things to keep in mind as you work with footnotes.
+
 **Automatic numbering:** Footnote markers are always numbered sequentially from 1 based on their position in the document. If you insert a footnote between two existing ones, or delete one, all numbers update automatically; you never need to renumber manually.
 
 **Navigating between markers and entries:** Each footnote entry at the bottom of the document has a **↩** button. Clicking it jumps your cursor back to the corresponding marker in the body text.
 
 **Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
 
-**Line breaks:** Press **Enter** inside a footnote entry to insert a line break within the entry. Unlike the main editor, Enter does not create a new block — it creates a soft break so you can write multi-line footnotes.
+**Line breaks:** Press **Enter** inside a footnote entry to insert a line break within the entry. Unlike the main editor, Enter does not create a new block; it creates a soft break so you can write multi-line footnotes.
 
-**Content restrictions:** Footnotes support only inline content — bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
+**Content restrictions:** Footnotes support only inline content: bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
 
 **On publish:** Quill saves footnotes as standard WordPress block footnotes (`wp-block-footnotes`), fully compatible with the Gutenberg editor.
 
@@ -513,7 +528,7 @@ Click the **checkmark-circle icon** in the editor toolbar to evaluate the curren
 Quill sends the full content to Claude and displays an **Evaluation panel** on the right side of the editor. The panel shows:
 
 - A short prose **summary** of the overall writing quality
-- A list of specific **findings**, each tagged with a category — Grammar, Clarity, Readability, Wordiness, Passive Voice, or Tone — and an optional suggested rewrite
+- A list of specific **findings**, each tagged with a category (Grammar, Clarity, Readability, Wordiness, Passive Voice, or Tone) and an optional suggested rewrite
 
 **Jumping to a finding:** Click any finding card to jump directly to that sentence in the editor. The full sentence is selected and scrolled into view so you can read the finding in context.
 
@@ -536,7 +551,7 @@ With text selected in the editor, right-click to access AI writing operations:
 
 These operations work on the selected text only and do not use web search. The result appears inline in the editor with an **Accept** or **Discard** panel. Accept to keep the change, or discard to restore the original text.
 
-**Lists and tables:** When your selection is inside a list or table, Make Longer and Make Shorter automatically detect the structure and apply changes that preserve the format — expanding or condensing individual list items or table cells rather than converting them to plain paragraphs.
+**Lists and tables:** When your selection is inside a list or table, Make Longer and Make Shorter automatically detect the structure and apply changes that preserve the format, expanding or condensing individual list items or table cells rather than converting them to plain paragraphs.
 
 ---
 

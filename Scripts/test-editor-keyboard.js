@@ -239,3 +239,100 @@ describe('image captions', () => {
     assert.equal(doc(), 'blockquote(image["cap"],paragraph())')
   })
 })
+
+describe('class preservation through schema round-trip', () => {
+  function htmlRoundTrip(html) {
+    editor.commands.setContent(html, false)
+    return editor.getHTML()
+  }
+
+  test('custom class on paragraph survives setContent/getHTML round-trip', () => {
+    const out = htmlRoundTrip('<p class="my-custom">hello</p>')
+    assert.match(out, /class="my-custom"/)
+  })
+
+  test('custom class on heading survives round-trip', () => {
+    const out = htmlRoundTrip('<h2 class="my-heading-style">title</h2>')
+    assert.match(out, /my-heading-style/)
+  })
+
+  test('custom class on image figure survives round-trip', () => {
+    const out = htmlRoundTrip('<figure class="wp-block-image size-large my-figure-class"><img src="x.png"><figcaption></figcaption></figure>')
+    assert.match(out, /my-figure-class/)
+  })
+
+  test('custom id on image figure survives round-trip', () => {
+    const out = htmlRoundTrip('<figure class="wp-block-image" id="hero-img"><img src="x.png"><figcaption></figcaption></figure>')
+    assert.match(out, /id="hero-img"/)
+  })
+
+  test('custom class on code block survives round-trip', () => {
+    const out = htmlRoundTrip('<pre class="language-js"><code>const x = 1</code></pre>')
+    assert.match(out, /language-js/)
+  })
+
+  test('custom class on list survives round-trip', () => {
+    const out = htmlRoundTrip('<ul class="custom-list"><li><p>item</p></li></ul>')
+    assert.match(out, /custom-list/)
+  })
+
+  test('custom class on blockquote survives round-trip', () => {
+    const out = htmlRoundTrip('<blockquote class="pullquote"><p>quote</p></blockquote>')
+    assert.match(out, /pullquote/)
+  })
+
+  test('custom class on table element survives round-trip', () => {
+    const out = htmlRoundTrip('<table class="striped"><tbody><tr><td><p>cell</p></td></tr></tbody></table>')
+    assert.match(out, /striped/)
+  })
+
+  test('wp-block-image class on figure is filtered from figureClass (not duplicated)', () => {
+    editor.commands.setContent('<figure class="wp-block-image aligncenter size-large my-class"><img src="x.png"><figcaption></figcaption></figure>', false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.figureClass, 'size-large my-class')
+    assert.equal(node.attrs.alignment, 'center')
+  })
+
+  test('custom class on img element survives round-trip', () => {
+    const out = htmlRoundTrip('<figure class="wp-block-image"><img src="x.png" class="my-img-style wp-image-123 aligncenter"><figcaption></figcaption></figure>')
+    assert.match(out, /my-img-style/)
+  })
+
+  test('managed img classes (alignment, wp-image) are not duplicated in imgClass', () => {
+    editor.commands.setContent('<figure class="wp-block-image aligncenter"><img src="x.png" class="wp-image-99 custom"><figcaption></figcaption></figure>', false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.imgClass, 'custom')
+    assert.equal(node.attrs.alignment, 'center')
+    assert.equal(node.attrs.mediaId, 99)
+  })
+
+  test('custom class on cite survives round-trip', () => {
+    const out = htmlRoundTrip('<blockquote><p>quote</p><cite class="author-name">Someone</cite></blockquote>')
+    assert.match(out, /author-name/)
+  })
+
+  test('custom class on link survives round-trip', () => {
+    const out = htmlRoundTrip('<p><a href="https://example.com" class="btn cta">Click</a></p>')
+    assert.match(out, /btn/)
+    assert.match(out, /cta/)
+  })
+
+  test('custom class is not copied to new node on Enter (keepOnSplit)', () => {
+    editor.commands.setContent('<h2 class="section-title">Title</h2>')
+    editor.commands.focus('end')
+    key(editor.view, 'Enter')
+    const out = editor.getHTML()
+    assert.match(out, /section-title/)
+    const paragraphs = out.match(/<p[^>]*>/g)
+    assert.ok(paragraphs.every(p => !p.includes('section-title')), 'new paragraph should not inherit heading class')
+  })
+
+  test('applyLink preserves existing link classes', () => {
+    editor.commands.setContent('<p><a href="https://old.com" class="btn">Click</a></p>', false)
+    editor.commands.setTextSelection(2)
+    win.applyLink('https://new.com')
+    const out = editor.getHTML()
+    assert.match(out, /https:\/\/new\.com/)
+    assert.match(out, /btn/)
+  })
+})

@@ -983,6 +983,7 @@
       Plugin, PluginKey,
       DecorationSet, Decoration,
       Paragraph, Heading, BulletList, OrderedList, ListItem, CodeBlock,
+      HorizontalRule,
     } = TiptapBundle
 
     // Extend a Tiptap extension to preserve arbitrary class and id attributes
@@ -994,6 +995,7 @@
             ...this.parent?.(),
             class: {
               default: null,
+              keepOnSplit: false,
               parseHTML: element => element.getAttribute('class') || null,
               renderHTML: attributes => {
                 if (!attributes.class) return {}
@@ -1002,6 +1004,7 @@
             },
             id: {
               default: null,
+              keepOnSplit: false,
               parseHTML: element => element.getAttribute('id') || null,
               renderHTML: attributes => {
                 if (!attributes.id) return {}
@@ -1323,12 +1326,36 @@
             parseHTML: el => extractAlignment(el.getAttribute('class') || ''),
             renderHTML: attrs => attrs.alignment ? { class: `align${attrs.alignment}` } : {},
           },
+          imgClass: {
+            default: null,
+            parseHTML: el => {
+              const img = el.tagName === 'FIGURE' ? el.querySelector('img') : el
+              const cls = img?.getAttribute('class') || ''
+              const known = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
+              const custom = cls.split(/\s+/).filter(c => c && !known.test(c)).join(' ')
+              return custom || null
+            },
+            renderHTML: attrs => attrs.imgClass ? { class: attrs.imgClass } : {},
+          },
+          figureClass: {
+            default: null,
+            rendered: false,
+            parseHTML: () => null,
+          },
+          figureId: {
+            default: null,
+            rendered: false,
+            parseHTML: () => null,
+          },
         }
       },
       content: 'inline*',
 
-      renderHTML({ HTMLAttributes }) {
-        return ['figure', {}, ['img', HTMLAttributes], ['figcaption', 0]]
+      renderHTML({ node, HTMLAttributes }) {
+        const figureAttrs = {}
+        if (node.attrs.figureClass) figureAttrs.class = node.attrs.figureClass
+        if (node.attrs.figureId) figureAttrs.id = node.attrs.figureId
+        return ['figure', figureAttrs, ['img', HTMLAttributes], ['figcaption', 0]]
       },
 
       parseHTML() {
@@ -1339,7 +1366,13 @@
               const img = el.querySelector('img')
               if (!img) return false
               const dataId = img.getAttribute('data-media-id')
-              const clsMatch = (img.getAttribute('class') || '').match(/wp-image-(\d+)/)
+              const imgCls = img.getAttribute('class') || ''
+              const clsMatch = imgCls.match(/wp-image-(\d+)/)
+              const _knownImgCls = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
+              const customImgCls = imgCls.split(/\s+/).filter(c => c && !_knownImgCls.test(c)).join(' ')
+              const figCls = el.getAttribute('class') || ''
+              const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter)$/
+              const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
               return {
                 src:       img.getAttribute('src'),
                 alt:       img.getAttribute('alt') ?? null,
@@ -1348,7 +1381,10 @@
                 height:    parseInt(img.getAttribute('height'), 10) || null,
                 mediaId:   dataId ? parseInt(dataId, 10)
                                   : (clsMatch ? parseInt(clsMatch[1], 10) : null),
-                alignment: extractAlignment(el.getAttribute('class') || ''),
+                alignment: extractAlignment(figCls),
+                imgClass:    customImgCls || null,
+                figureClass: customFigCls || null,
+                figureId:  el.getAttribute('id') || null,
               }
             },
             contentElement: el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption')),
@@ -1388,7 +1424,7 @@
     // Optional last child of blockquote. Maps to <cite> in WordPress/Gutenberg.
     // No 'group' — cannot be inserted anywhere block is accepted; only blockquote
     // schema allows it via 'block+ cite?'.
-    const Cite = TiptapNode.create({
+    const Cite = withClassAttr(TiptapNode.create({
       name: 'cite',
       content: 'inline*',
       parseHTML() {
@@ -1424,7 +1460,7 @@
           },
         }
       },
-    })
+    }))
 
     // ── Embed block ───────────────────────────────────
     // Atomic block storing the embed URL. Saved HTML is the Gutenberg embed
@@ -1787,14 +1823,15 @@
           orderedList: false,
           listItem: false,
           codeBlock: false,
+          horizontalRule: false,
         }),
-        CodeBlock.extend({
+        withClassAttr(CodeBlock.extend({
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
               [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
           },
-        }),
+        })),
         ParagraphWithClass,
         HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
         BulletListWithClass,
@@ -1803,17 +1840,18 @@
         CustomBlockquote,
         Cite,
         Underline,
-        Table.configure({ resizable: false }),
-        TableRow,
-        TableHeader,
-        TableCell,
+        withClassAttr(Table).configure({ resizable: false }),
+        withClassAttr(TableRow),
+        withClassAttr(TableHeader),
+        withClassAttr(TableCell),
+        withClassAttr(HorizontalRule),
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
         FootnoteMarker,
         FootnotesList,
         FootnoteItem,
         FootnoteSync,
-        Link.configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
+        withClassAttr(Link).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
         SpellCheck,
@@ -2699,7 +2737,8 @@
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
     window.applyLink = url => {
-      editor.chain().focus().setLink({ href: url }).run()
+      const existing = editor.getAttributes('link')
+      editor.chain().focus().extendMarkRange('link').setLink({ ...existing, href: url }).run()
     }
     window.removeLink = () => {
       editor.chain().focus().unsetLink().run()
