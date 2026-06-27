@@ -531,7 +531,7 @@ public struct PostEditorView: View {
             applyRemotePost(loadedPost)
 
             // Refresh taxonomy cache if the post references tags/categories we don't have locally
-            if let creds = appState.credentials {
+            if let creds = appState.credentials, post.type != "page" {
                 let knownTagIDs = Set(appState.tags.map(\.id))
                 let knownCatIDs = Set(appState.categories.map(\.id))
                 let missingTags = !Set(loadedPost.tags).subtracting(knownTagIDs).isEmpty
@@ -548,6 +548,7 @@ public struct PostEditorView: View {
                     }
                 }
             }
+            guard !Task.isCancelled, loadedItem == requestedItem else { return }
 
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
             if let snap = try? services.autosaveStore.load(postID: post.id) {
