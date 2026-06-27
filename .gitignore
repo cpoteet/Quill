@@ -4,7 +4,8 @@
 *.d
 .DS_Store
 .swp
-.claude/
+.claude/*
+!.claude/skills/
 .superpowers/
 Scripts/node_modules/
 .agents/
