@@ -27,6 +27,7 @@ public struct PostEditorView: View {
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
     @State private var contentSyncPending: Bool = false
+    @State private var contentLoadFailed: Bool = false
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -286,7 +287,7 @@ public struct PostEditorView: View {
                     }
                     Button("Keep Local") {
                         showConflictAlert = false
-                        saveToWordPress(force: true)
+                        saveToWordPress()
                     }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: .command)
@@ -509,6 +510,7 @@ public struct PostEditorView: View {
         switch requestedItem {
         case .remote(let post):
             applyRemotePost(post)
+            contentLoadFailed = false
 
             let loadedPost: WPPost
             if let creds = appState.credentials {
@@ -521,6 +523,8 @@ public struct PostEditorView: View {
                     return
                 } catch {
                     loadedPost = post
+                    contentLoadFailed = true
+                    saveError = "Couldn't load the full post (showing cached preview only — it may be missing content). Reopen this post once your connection is back before making changes."
                 }
             } else {
                 loadedPost = post
@@ -691,27 +695,34 @@ public struct PostEditorView: View {
 
     private func save(status: PostStatus, force: Bool = false) async {
         guard let creds = appState.credentials else { return }
+        guard !contentLoadFailed else {
+            saveError = "Can't save — this post never finished loading. Reopen it before making changes."
+            return
+        }
         isSaving = true
         saveError = nil
         defer { isSaving = false }
 
         let client = WordPressClient(credentials: creds)
 
-        // Create any pending new categories/tags before building the payload
+        // Create any pending new categories/tags before building the payload.
+        // Remove each name from the pending list as soon as it succeeds — if a later
+        // name fails, retrying must not re-submit already-created names (WordPress
+        // rejects those with "term_exists", wedging the save until the user notices).
         do {
-            for name in settings.newCategoryNames {
+            while let name = settings.newCategoryNames.first {
                 let cat = try await client.createCategory(name: name)
                 settings.categoryIDs.insert(cat.id)
                 appState.categories.append(cat)
+                settings.newCategoryNames.removeFirst()
             }
-            settings.newCategoryNames = []
 
-            for name in settings.newTagNames {
+            while let name = settings.newTagNames.first {
                 let tag = try await client.createTag(name: name)
                 settings.tagIDs.insert(tag.id)
                 appState.tags.append(tag)
+                settings.newTagNames.removeFirst()
             }
-            settings.newTagNames = []
         } catch {
             saveError = "Failed to create taxonomy: \(error.localizedDescription)"
             return
@@ -791,7 +802,7 @@ public struct PostEditorView: View {
         }
     }
 
-    private func saveToWordPress(force: Bool) {
+    private func saveToWordPress() {
         Task { await save(status: settings.status, force: true) }
     }
 
@@ -829,7 +840,7 @@ public struct PostEditorView: View {
         for url in urls {
             guard url.isFileURL else { continue }
             do {
-                let mime = imageMimeType(for: url.pathExtension.lowercased())
+                let mime = MimeType.forFile(url)
                 let media = try await client.uploadMedia(
                     fileURL: url, filename: url.lastPathComponent, mimeType: mime
                 )
@@ -873,18 +884,6 @@ public struct PostEditorView: View {
         case .pending: return "Submitted for review"
         case .private: return "Published privately"
         case .draft: return "Draft saved"
-        }
-    }
-
-    private func imageMimeType(for ext: String) -> String {
-        switch ext {
-        case "jpg", "jpeg": return "image/jpeg"
-        case "png": return "image/png"
-        case "gif": return "image/gif"
-        case "webp": return "image/webp"
-        case "heic": return "image/heic"
-        case "tiff", "tif": return "image/tiff"
-        default: return "application/octet-stream"
         }
     }
 
@@ -945,6 +944,10 @@ public struct PostEditorView: View {
         evaluationResult = nil
         evaluationError = nil
         editorWebView?.evaluateJavaScript("window.setEvaluating?.(true)", completionHandler: nil)
+        defer {
+            isEvaluating = false
+            editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil)
+        }
 
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent, styleGuide: aiSettings.styleGuide)
         let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
@@ -968,9 +971,6 @@ public struct PostEditorView: View {
             guard !Task.isCancelled else { return }
             evaluationError = error.localizedDescription
         }
-
-        isEvaluating = false
-        editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil)
     }
 
     // MARK: - AI selection handling

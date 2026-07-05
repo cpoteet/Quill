@@ -282,6 +282,10 @@ public struct WordPressClient: Sendable {
         else { throw APIError.invalidURL }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            // URLComponents leaves a literal "+" unescaped (it's a valid query char per RFC 3986),
+            // but WordPress/PHP decodes "+" as a space — escape it so values round-trip literally.
+            components.percentEncodedQuery = components.percentEncodedQuery?
+                .replacingOccurrences(of: "+", with: "%2B")
         }
         guard let url = components.url else { throw APIError.invalidURL }
         return url
@@ -325,32 +329,21 @@ public struct WordPressClient: Sendable {
     /// Sends a request, mapping cancellation and HTTP errors. Returns the body data and
     /// the HTTP response (so callers can read pagination headers like `X-WP-TotalPages`).
     private func send(_ request: URLRequest) async throws -> (data: Data, http: HTTPURLResponse?) {
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            throw CancellationError()
-        } catch {
-            throw APIError.networkError(error)
-        }
-        let http = response as? HTTPURLResponse
-        if let http, http.statusCode >= 300 {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw APIError.httpError(statusCode: http.statusCode, body: body)
-        }
-        let contentType = http?.value(forHTTPHeaderField: "Content-Type") ?? ""
-        if contentType.contains("text/html") {
-            throw APIError.unexpectedHTML
-        }
-        return (data, http)
+        try await handleTransportResponse { try await session.data(for: request) }
     }
 
     private func sendUpload(_ request: URLRequest, fromFile fileURL: URL) async throws -> (data: Data, http: HTTPURLResponse?) {
+        try await handleTransportResponse { try await session.upload(for: request, fromFile: fileURL) }
+    }
+
+    /// Shared response handling for `send`/`sendUpload` — the two differ only in which
+    /// URLSession call performs the transport (plain data task vs. file upload task).
+    private func handleTransportResponse(
+        _ transport: () async throws -> (Data, URLResponse)
+    ) async throws -> (data: Data, http: HTTPURLResponse?) {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await session.upload(for: request, fromFile: fileURL)
+            (data, response) = try await transport()
         } catch is CancellationError {
             throw CancellationError()
         } catch let urlError as URLError where urlError.code == .cancelled {

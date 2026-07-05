@@ -170,12 +170,14 @@ extension View {
                         )
                     )
                     .zIndex(1)
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(2))
-                            message.wrappedValue = nil
-                            isError.wrappedValue = false
-                        }
+                    .task(id: msg) {
+                        // Keyed on the message text so a new toast shown while one is
+                        // already visible cancels the old dismissal timer and starts its own,
+                        // instead of the old timer clearing the new toast early.
+                        try? await Task.sleep(for: .seconds(2))
+                        guard !Task.isCancelled else { return }
+                        message.wrappedValue = nil
+                        isError.wrappedValue = false
                     }
             }
         }

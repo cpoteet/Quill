@@ -52,11 +52,17 @@ public struct PostListRow: View {
         }
     }
 
-    private func formattedDate(_ iso: String) -> String {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        for fmt in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"] {
+    private static let dateFormatters: [DateFormatter] = {
+        ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"].map { fmt in
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "en_US_POSIX")
             df.dateFormat = fmt
+            return df
+        }
+    }()
+
+    private func formattedDate(_ iso: String) -> String {
+        for df in Self.dateFormatters {
             if let date = df.date(from: iso) {
                 return date.formatted(date: .abbreviated, time: .omitted)
             }

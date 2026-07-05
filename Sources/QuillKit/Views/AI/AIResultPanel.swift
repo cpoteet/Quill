@@ -52,6 +52,14 @@ final class AIResultPanel: NSPanel {
         }
         orderFront(nil)
 
+        // A second AI operation can call show() again before dismiss() runs (e.g. via the
+        // right-click menu, which bypasses the left-mouse-down discard path) — remove any
+        // existing monitor first so they don't stack and double-fire on keypress.
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+
         // Local event monitor: Return = accept, Escape = discard, click outside = discard
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] event in
             guard let self else { return event }

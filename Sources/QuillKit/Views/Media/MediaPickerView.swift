@@ -142,24 +142,13 @@ public struct MediaPickerView: View {
         Task {
             defer { isUploading = false }
             do {
-                let mime = mimeType(for: url)
+                let mime = MimeType.forFile(url)
                 let uploaded = try await WordPressClient(credentials: creds)
                     .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
                 mediaItems.insert(uploaded, at: 0)
             } catch {
                 uploadError = error.localizedDescription
             }
-        }
-    }
-
-    private func mimeType(for url: URL) -> String {
-        switch url.pathExtension.lowercased() {
-        case "jpg", "jpeg": return "image/jpeg"
-        case "png": return "image/png"
-        case "gif": return "image/gif"
-        case "webp": return "image/webp"
-        case "pdf": return "application/pdf"
-        default: return "application/octet-stream"
         }
     }
 }

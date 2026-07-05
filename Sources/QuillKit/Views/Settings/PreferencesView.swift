@@ -208,18 +208,20 @@ public struct PreferencesView: View {
             }
             isSaving = true
             let creds = Credentials(siteURL: url, username: username, appPassword: appPassword)
+
+            // Validate credentials with a lightweight API call before persisting them —
+            // saving first would leave bad credentials on disk (loaded again on next launch).
             do {
-                try CredentialsStore.save(creds)
+                let client = WordPressClient(credentials: creds)
+                _ = try await client.fetchPosts(page: 1, perPage: 1)
             } catch {
                 saveError = error.localizedDescription
                 isSaving = false
                 return
             }
 
-            // Validate credentials with a lightweight API call before dismissing
             do {
-                let client = WordPressClient(credentials: creds)
-                _ = try await client.fetchPosts(page: 1, perPage: 1)
+                try CredentialsStore.save(creds)
             } catch {
                 saveError = error.localizedDescription
                 isSaving = false

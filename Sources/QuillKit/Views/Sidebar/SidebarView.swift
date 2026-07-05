@@ -205,9 +205,12 @@ public struct SidebarView: View {
             Text(deleteError ?? "")
         }
         .task(id: appState.credentials) {
+            guard appState.credentials != appState.lastLoadedCredentials else { return }
             await loadAllSections()
         }
         .task {
+            guard !appState.hasCheckedForUpdate else { return }
+            appState.hasCheckedForUpdate = true
             appState.updateAvailable = await UpdateChecker.check()
         }
     }
@@ -296,6 +299,7 @@ public struct SidebarView: View {
             await loadTaxonomiesIfNeeded(client: client)
             appState.hasLoadedList = true
             appState.isLoadingList = false
+            appState.lastLoadedCredentials = creds
         } catch is CancellationError {
             appState.isLoadingList = false
         } catch {

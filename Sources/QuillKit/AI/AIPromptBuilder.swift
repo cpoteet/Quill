@@ -94,10 +94,13 @@ public struct AIPromptBuilder {
         var html = String(cleaned[contentMarker.upperBound...])
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Strip <cite index="...">...</cite> tags injected by Anthropic web search citations
+        // Strip <cite index="..."> tags injected by Anthropic web search citations, but keep
+        // any text inside them — a 2026-07-05 real-response check found no <cite> tags in
+        // practice, but if Claude ever wraps actual sentences in one, deleting the whole match
+        // would silently drop that text from the generated post.
         html = html.replacingOccurrences(
-            of: #"<cite\s+index="[^"]*">[^<]*</cite>"#,
-            with: "",
+            of: #"<cite\s+index="[^"]*">([^<]*)</cite>"#,
+            with: "$1",
             options: .regularExpression
         )
 

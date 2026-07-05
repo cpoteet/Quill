@@ -44,7 +44,7 @@ private struct AnthropicTool: Encodable {
 
 private struct AnthropicResponse: Decodable {
     let content: [ContentBlock]
-    let stopReason: String
+    let stopReason: String?
 
     enum CodingKeys: String, CodingKey {
         case content
@@ -59,16 +59,35 @@ private struct ContentBlock: Decodable {
 
 // MARK: - Errors
 
-public enum AnthropicError: LocalizedError, Equatable {
+public enum AnthropicError: Error, LocalizedError, Equatable {
     case httpError(Int, String)
     case noTextContent
     case invalidResponse
+    case networkError(Error)
+
+    public static func == (lhs: AnthropicError, rhs: AnthropicError) -> Bool {
+        switch (lhs, rhs) {
+        case (.httpError(let lCode, let lMsg), .httpError(let rCode, let rMsg)):
+            return lCode == rCode && lMsg == rMsg
+        case (.noTextContent, .noTextContent): return true
+        case (.invalidResponse, .invalidResponse): return true
+        case (.networkError(let lError), .networkError(let rError)):
+            return String(describing: lError) == String(describing: rError)
+        default: return false
+        }
+    }
 
     public var errorDescription: String? {
         switch self {
         case .httpError(let code, let msg): return "API error \(code): \(msg)"
         case .noTextContent: return "Claude returned no text content."
         case .invalidResponse: return "Unexpected response from API."
+        case .networkError(let error):
+            let msg = error.localizedDescription
+            if msg.contains("Could not connect") || msg.contains("Cannot connect") || msg.contains("offline") {
+                return "Couldn't reach the Anthropic API. Check your internet connection and try again."
+            }
+            return msg
         }
     }
 }
@@ -134,6 +153,8 @@ public struct AnthropicClient {
             throw CancellationError()
         } catch let urlError as URLError where urlError.code == .cancelled {
             throw CancellationError()
+        } catch {
+            throw AnthropicError.networkError(error)
         }
 
         guard let http = urlResponse as? HTTPURLResponse else { throw AnthropicError.invalidResponse }

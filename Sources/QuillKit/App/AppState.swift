@@ -69,6 +69,10 @@ public final class AppState: ObservableObject {
     @Published public var isLoadingList: Bool = true
     @Published public var hasLoadedList: Bool = false
     @Published public var listError: String?
+    // Set only after a successful loadAllSections() — lets SidebarView skip
+    // refetching everything when it remounts (sidebar hide/show) with unchanged credentials.
+    @Published public var lastLoadedCredentials: Credentials?
+    @Published public var hasCheckedForUpdate: Bool = false
 
     @Published public var mediaItems: [WPMedia] = []
     @Published public var selectedMedia: WPMedia?
