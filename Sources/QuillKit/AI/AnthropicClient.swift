@@ -84,7 +84,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
         case .invalidResponse: return "Unexpected response from API."
         case .networkError(let error):
             let msg = error.localizedDescription
-            if msg.contains("Could not connect") || msg.contains("Cannot connect") || msg.contains("offline") {
+            if NetworkErrorHeuristics.isConnectivityFailure(msg) {
                 return "Couldn't reach the Anthropic API. Check your internet connection and try again."
             }
             return msg

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-06-26 — 304 Swift tests + 127 JS tests, all passing._
+_Last updated: 2026-07-05 — 324 Swift tests + 127 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 304 tests across 21 suites)
+1. **Swift tests** — `swift test` (all 323 tests across 22 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (111 tests via Node's built-in runner + jsdom)
 3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (16 tests — live Tiptap editor in jsdom)
 
@@ -46,7 +46,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (304 tests, 21 suites)
+## Swift test suite (324 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -58,15 +58,15 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 50 | URL construction, `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 63 | `parseGenerateResponse` edge cases, system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression |
-| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 17 | Request headers, web search, multi-block joining, error handling |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 66 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
@@ -75,6 +75,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
+| 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 
 ---
 
@@ -179,7 +180,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (50 tests)
+### 5. Networking — `WordPressClientTests` (51 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -254,7 +255,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `trashPostSendsDeleteRequest` | `DELETE /posts/{id}?force=false` (recoverable) |
 | `trashPageSendsDeleteRequest` | `DELETE /pages/{id}?force=false` |
 
-#### `searchLinks` (7 tests)
+#### `searchLinks` (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -265,6 +266,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `searchLinksPageSubtypeMapsToPageType` | `subtype == "page"` → `.page` result type |
 | `searchLinksTagSubtypeMapsToTagType` | `subtype == "tag"` → `.tag` result type |
 | `searchLinksUnknownTermSubtypeFallsToCategory` | Unknown term subtype → `.category` |
+| `searchQueryPlusCharacterIsPercentEscaped` | A `+` in the search term is escaped to `%2B` in the query string (WordPress/PHP decodes a literal `+` as a space) |
 
 ---
 
@@ -397,13 +399,13 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (63 tests)
+### 12. AI — `AIPromptBuilderTests` (65 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
 Pure function tests — no network, no async. `parseGenerateResponse` has been patched twice for real production bugs; these tests pin every edge case.
 
-#### `parseGenerateResponse` (11 tests)
+#### `parseGenerateResponse` (14 tests)
 
 | Test | What it checks |
 |---|---|
@@ -418,6 +420,9 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `titleIsTrimmed` | Leading/trailing whitespace stripped from title |
 | `contentIsTrimmerd` | Content trimmed via `whitespacesAndNewlines` |
 | `contentMarkerScopedAfterTitleMarker` | Stray `CONTENT:` before `TITLE:` doesn't fool parser |
+| `citeTagWrapperStrippedButTextKept` | `<cite index="…">…</cite>` wrapper from web search citations is removed but the sentence inside it is kept in the generated HTML |
+| `citeTagWithNestedInlineTagStillStripped` | A citation wrapping a nested inline tag (e.g. `<a>`) still has its `<cite>` wrapper stripped — regression guard for the `[^<]*` capture group that used to fail to match (and therefore fail to strip) any citation containing markup |
+| `emptyCiteTagRemovedEntirely` | An empty `<cite>` tag is removed with no leftover text |
 
 #### `systemPrompt` (3 tests)
 
@@ -498,7 +503,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 
 ---
 
-### 13. AI — `AnthropicClientTests` (17 tests)
+### 13. AI — `AnthropicClientTests` (21 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
 Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
@@ -527,7 +532,7 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 |---|---|
 | `systemBlockHasCacheControlEphemeral` | System block has `cache_control: {"type":"ephemeral"}` |
 
-#### Response handling (7 tests)
+#### Response handling (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -537,15 +542,19 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 | `allNonTextBlocksThrowsNoTextContent` | All non-text blocks → `AnthropicError.noTextContent` |
 | `truncatedTrueWhenStopReasonIsMaxTokens` | `stop_reason: "max_tokens"` → `truncated: true` |
 | `truncatedFalseWhenStopReasonIsEndTurn` | `stop_reason: "end_turn"` → `truncated: false` |
+| `missingStopReasonFieldDoesNotThrowAndIsNotTruncated` | Response JSON omitting `stop_reason` entirely still decodes (field is `Optional`) and reports `truncated: false` |
 | `nonOkStatusThrowsHttpError` | Non-200 → `AnthropicError.httpError(code, body)` |
 
-#### Error handling (3 tests)
+#### Error handling (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `httpErrorPreservesBodyString` | Error body string preserved |
 | `malformedJsonThrows` | Garbage JSON → decoding throws |
 | `networkFailureThrows` | `URLError` from mock → error surfaced |
+| `networkFailureWrapsAsAnthropicNetworkError` | Any transport error from `session.data(for:)` is wrapped as `AnthropicError.networkError`, not left as a raw `URLError` |
+| `networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` | `errorDescription` returns the friendly "Couldn't reach the Anthropic API…" message when the underlying error's description mentions being offline/unable to connect (tested via a controlled fake error, since `URLError.localizedDescription` under `swift test` is a generic fallback string rather than CFNetwork's real text) |
+| `networkErrorPassesThroughUnrecognizedMessage` | `errorDescription` passes through the underlying error's message verbatim when it doesn't match the offline/connectivity heuristic |
 
 ---
 
@@ -695,6 +704,27 @@ Tests the `isNewer(remote:local:)` semantic version comparison used by the updat
 | `olderVersionIsNotNewer` | `1.0.0` < `2.0.0` → `false` |
 | `differentSegmentCounts` | `1.0.1` > `1.0` → `true`; `1.0` < `1.0.1` → `false` |
 | `largeVersionNumbers` | `10.20.30` > `10.20.29` → `true`; `10.20.30` == `10.20.30` → `false` |
+
+### 22. API — `MimeTypeTests` (12 tests)
+
+File: `Tests/QuillTests/MimeTypeTests.swift`
+
+Tests the single shared `MimeType.forExtension`/`forFile` helper (backed by `UTType.preferredMIMEType`) that replaced three independently-drifted `mimeType(for:)` functions in `PostEditorView`, `MediaSidebarSection`, and `MediaPickerView`.
+
+| Test | What it checks |
+|---|---|
+| `jpegExtension` | `jpg`/`jpeg` → `image/jpeg` |
+| `pngExtension` | `png` → `image/png` |
+| `gifExtension` | `gif` → `image/gif` |
+| `webpExtension` | `webp` → `image/webp` |
+| `pdfExtension` | `pdf` → `application/pdf` |
+| `heicExtension` | `heic` → `image/heic` |
+| `tiffExtension` | `tiff`/`tif` → `image/tiff` |
+| `extensionIsCaseInsensitive` | `JPG`/`PNG` → same result as lowercase |
+| `unknownExtensionFallsBackToOctetStream` | Unrecognized extension → `application/octet-stream` |
+| `emptyExtensionFallsBackToOctetStream` | Empty string → `application/octet-stream` |
+| `forFileUsesURLPathExtension` | `forFile(url:)` reads the extension from the URL's path |
+| `forFileWithNoExtensionFallsBackToOctetStream` | File URL with no extension → `application/octet-stream` |
 
 ---
 
@@ -1013,7 +1043,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Enter a valid site URL, username, and app password → app connects and post/page lists appear.
 - [ ] Enter a site URL without `https://` (e.g. `example.com`) → app either adds the scheme automatically or shows a clear error.
 - [ ] Try a site URL with a trailing slash, a subdirectory install (`example.com/blog`), and a non-standard port → all connect successfully.
-- [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash).
+- [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash). Quit and relaunch → the app still shows the login screen (bad credentials were never written to disk, since validation now happens before the save).
 - [ ] Enter a URL for a non-WordPress site or one with the REST API disabled → a clear error appears.
 - [ ] Paste an app password that contains spaces → authentication succeeds (WordPress app passwords normally have spaces).
 - [ ] No macOS Keychain password prompt appears during normal use.
@@ -1031,6 +1061,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] The dividers between sidebar/editor and editor/settings panels have no drag cursor — they are fixed boundaries, not resizable splitters.
 - [ ] Click the sidebar toggle button in the editor toolbar → sidebar slides away; click again → it slides back. The toggle button stays visible when the sidebar is hidden. The editor expands to fill the space.
 - [ ] Upload a PDF via the Media tab → the sidebar cell shows a document icon (not a broken image); the detail panel shows a document icon with "Preview unavailable" (not "Image unavailable"); no alt text field appears.
+- [ ] Toggle the sidebar hidden then visible again repeatedly → the post list does not refetch from the server each time (no spinner flash on every toggle); it only reloads on the first load or when credentials actually change.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -1134,7 +1165,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Set a future date on a post → status changes to "future" and the post is scheduled. Check on the WordPress server that the scheduled time matches (particularly important for sites in non-UTC timezones).
 - [ ] Close and reopen a scheduled post → the correct future date appears in the settings panel.
 - [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
-- [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost.
+- [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
+- [ ] Open a post while offline (or force the full-post fetch to fail) → an error toast explains the post may be missing content; attempting to save shows "Can't save — this post never finished loading" instead of silently publishing empty content over the real post.
 - [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
 - [ ] Set a featured image → it appears on the post. Clear the featured image → it is removed on the server.
 - [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
@@ -1169,6 +1201,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
   - [ ] Click "Cancel" → editing continues; no data is lost.
 - [ ] The Revert button does not appear for local drafts.
 - [ ] The Revert button does not appear for a remote post that has not been edited.
+- [ ] Trigger two toasts in quick succession (e.g. two rapid saves) → the second toast's 2-second dismiss timer is not cut short by the first toast's timer; it stays visible for its own full duration.
 
 ### 7.10 Delete / trash
 
@@ -1205,6 +1238,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Click Accept → the AI content is kept; click Discard → the original content is restored.
 - [ ] If the AI returns tables, lists, or headings, save and fetch the raw HTML → it has proper WordPress classes (`wp-block-table`, `wp-block-list`, `wp-block-heading`, etc.).
 - [ ] If Claude errors or times out → the original text is restored, an error toast appears, and the editor is not corrupted.
+- [ ] Disconnect from the internet and trigger an AI operation → the error message reads as a clear "couldn't reach the Anthropic API" message, not a raw NSURLError string.
+- [ ] Trigger an AI operation via the right-click menu on one selection, then — while the result bar is still showing — right-click a different selection and trigger another AI operation. Only one Accept/Discard bar should be interactive; pressing Return or Escape does not double-fire.
 
 **AI result bar**
 - [ ] The Accept/Discard bar floats above the Quill window but does not float above other apps when you switch away from Quill.
@@ -1315,6 +1350,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Click "View Release" → opens the changelog URL in the default browser.
 - [ ] Click the dismiss (×) button → the banner disappears and does not reappear for the same version on subsequent launches.
 - [ ] If the remote version equals or is older than the current version, no banner appears.
+- [ ] With no internet connection at launch, toggle the sidebar hidden and visible again (or otherwise trigger a remount) once connectivity returns → the update check runs again and a banner appears if applicable (a failed first check should not permanently skip checking for the rest of the session).
 
 ---
 
@@ -1417,6 +1453,20 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 72 | Image toolbar scroll handler cleaned up before reattaching | 👁 §7.4 (select multiple images in sequence) |
 | 73 | Image toolbar clamped below main toolbar-wrap | 👁 §7.4 (scroll image near top of viewport) |
 | 74 | Cmd+click opens links (scheme-restricted via `isAllowedExternalURL`) | ✅ `EditorCoordinatorTests` + 👁 §7.5 |
+| 75 | `WordPressClient` query params escape literal `+` to `%2B` | ✅ `WordPressClientTests.searchQueryPlusCharacterIsPercentEscaped` |
+| 76 | AI-generated `<cite>` wrapper stripped but inner citation text kept, even across a nested inline tag | ✅ `AIPromptBuilderTests.citeTagWrapperStrippedButTextKept` + `.citeTagWithNestedInlineTagStillStripped` + `.emptyCiteTagRemovedEntirely` |
+| 77 | `AnthropicClient` transport errors wrapped as `AnthropicError.networkError` with friendly offline message | ✅ `AnthropicClientTests.networkFailureWrapsAsAnthropicNetworkError` + `.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
+| 78 | `AnthropicClient` decodes responses with `stop_reason` omitted (Optional) | ✅ `AnthropicClientTests.missingStopReasonFieldDoesNotThrowAndIsNotTruncated` |
+| 79 | MIME type lookups consolidated into `MimeType.forFile`/`forExtension` (no per-call-site drift) | ✅ `MimeTypeTests` (12 tests) |
+| 80 | `SidebarView.loadAllSections`/`UpdateChecker.check` don't rerun on sidebar remount when credentials unchanged | 👁 §7.2 (toggle sidebar visibility, confirm no refetch) |
+| 81 | `PostEditorView` refuses to save when the full-post load failed (`contentLoadFailed`) | 👁 §7.7 (simulate load failure, attempt save) |
+| 82 | Taxonomy creation retry doesn't resubmit already-created pending names | 👁 §7.7 (create post with 2+ new tags, force one to fail, retry save) |
+| 83 | `AIResultPanel` event monitor not double-registered across repeated `show()` calls | 👁 §7.11 (trigger AI op twice via right-click without dismissing) |
+| 84 | Toast dismiss timer restarts on every `presentToast()` call via a bumped `toastToken`, even when two consecutive toasts share identical text (keying `.task(id:)` on the message string alone couldn't detect that case) | 👁 §7.9 (drop 2+ images at once, confirm each "Image inserted" toast shows for a full 2s) |
+| 85 | `PostEditorView.loadItem()` bails out of its catch block on a stale/cancelled load instead of writing `contentLoadFailed`/`saveError` for whichever post is now displayed | 👁 §7.7 (switch away from a post before its full-content fetch fails) |
+| 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
+| 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
+| 88 | `APIError`/`AnthropicError` share one `NetworkErrorHeuristics.isConnectivityFailure` substring check instead of two independently-maintained copies | ✅ `AnthropicClientTests.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
 
 ---
 

@@ -204,6 +204,21 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(results[0].type == .post)
     }
 
+    @Test func searchQueryPlusCharacterIsPercentEscaped() async throws {
+        // URLComponents leaves a literal "+" unescaped in query values (valid per RFC 3986),
+        // but WordPress/PHP decodes "+" as a space — it must be escaped to "%2B" so the
+        // search term round-trips literally instead of becoming "C  C" server-side.
+        var capturedQuery: String?
+        MockURLProtocol.requestHandler = { request in
+            if capturedQuery == nil { capturedQuery = request.url?.query }
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.searchLinks(query: "C++")
+        #expect(capturedQuery?.contains("C%2B%2B") == true)
+        #expect(capturedQuery?.contains("+") == false)
+    }
+
     // MARK: - §2.1 URL & request construction
 
     @Test func fetchPostsIncludesRequiredQueryParams() async throws {

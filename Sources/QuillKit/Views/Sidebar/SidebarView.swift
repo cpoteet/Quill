@@ -210,8 +210,17 @@ public struct SidebarView: View {
         }
         .task {
             guard !appState.hasCheckedForUpdate else { return }
-            appState.hasCheckedForUpdate = true
-            appState.updateAvailable = await UpdateChecker.check()
+            // Only latch hasCheckedForUpdate on success (whether or not an update was found),
+            // mirroring lastLoadedCredentials above — a transient network failure should retry
+            // on the next remount, not be silently skipped for the rest of the session. Using
+            // `try?` here would collapse "checked, no update" and "check failed" into the same
+            // nil result, so an explicit do/catch is needed to tell them apart.
+            do {
+                appState.updateAvailable = try await UpdateChecker.check()
+                appState.hasCheckedForUpdate = true
+            } catch {
+                // Leave hasCheckedForUpdate false so a later remount retries.
+            }
         }
     }
 

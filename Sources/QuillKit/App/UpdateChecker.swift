@@ -13,7 +13,10 @@ public enum UpdateChecker {
         UserDefaults.standard.set(version, forKey: dismissedKey)
     }
 
-    public static func check() async -> UpdateInfo? {
+    /// Throws on a transport/decode failure (so the caller knows to retry later, e.g. on the
+    /// next sidebar remount) rather than conflating "check failed" with "no update available".
+    /// Returns `nil` for the latter — a successful check that found nothing to report.
+    public static func check() async throws -> UpdateInfo? {
         struct VersionPayload: Decodable {
             let version: String
             let url: String
@@ -23,30 +26,26 @@ public enum UpdateChecker {
             return nil
         }
 
-        do {
-            let config = URLSessionConfiguration.ephemeral
-            config.timeoutIntervalForRequest = 10
-            let session = URLSession(configuration: config)
-            defer { session.invalidateAndCancel() }
-            let (data, response) = try await session.data(from: versionURL)
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 10
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        let (data, response) = try await session.data(from: versionURL)
 
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return nil
-            }
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
 
-            let payload = try JSONDecoder().decode(VersionPayload.self, from: data)
+        let payload = try JSONDecoder().decode(VersionPayload.self, from: data)
 
-            let dismissed = UserDefaults.standard.string(forKey: dismissedKey)
-            guard isNewer(remote: payload.version, local: currentVersion),
-                  payload.version != dismissed,
-                  let changelogURL = URL(string: payload.url) else {
-                return nil
-            }
-
-            return UpdateInfo(version: payload.version, url: changelogURL)
-        } catch {
+        let dismissed = UserDefaults.standard.string(forKey: dismissedKey)
+        guard isNewer(remote: payload.version, local: currentVersion),
+              payload.version != dismissed,
+              let changelogURL = URL(string: payload.url) else {
             return nil
         }
+
+        return UpdateInfo(version: payload.version, url: changelogURL)
     }
 
     static func isNewer(remote: String, local: String) -> Bool {

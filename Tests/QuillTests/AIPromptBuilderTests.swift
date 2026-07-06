@@ -75,6 +75,31 @@ import Testing
         #expect(result?.html.contains("<p>body</p>") == true)
     }
 
+    @Test func citeTagWrapperStrippedButTextKept() {
+        // Web search citations wrap sentences in <cite index="..."> — the wrapper must be
+        // removed but the sentence itself must survive in the generated post.
+        let input = "TITLE: T\n\nCONTENT:\n<p>Water boils at 100C<cite index=\"1\">according to NIST</cite>.</p>"
+        let result = AIPromptBuilder.parseGenerateResponse(input)
+        #expect(result?.html.contains("<cite") == false)
+        #expect(result?.html.contains("according to NIST") == true)
+    }
+
+    @Test func citeTagWithNestedInlineTagStillStripped() {
+        // A citation wrapping a nested inline tag (e.g. a link) must still be stripped —
+        // a `[^<]*` capture group would fail to match here and leave the wrapper in place.
+        let input = "TITLE: T\n\nCONTENT:\n<p>See <cite index=\"1\">the <a href=\"https://nist.gov\">NIST</a> page</cite> for details.</p>"
+        let result = AIPromptBuilder.parseGenerateResponse(input)
+        #expect(result?.html.contains("<cite") == false)
+        #expect(result?.html.contains("<a href=\"https://nist.gov\">NIST</a>") == true)
+    }
+
+    @Test func emptyCiteTagRemovedEntirely() {
+        let input = "TITLE: T\n\nCONTENT:\n<p>Some fact<cite index=\"2\"></cite>.</p>"
+        let result = AIPromptBuilder.parseGenerateResponse(input)
+        #expect(result?.html.contains("<cite") == false)
+        #expect(result?.html == "<p>Some fact.</p>")
+    }
+
     // MARK: - systemPrompt
 
     @Test func systemPromptWithoutStyleGuide() {

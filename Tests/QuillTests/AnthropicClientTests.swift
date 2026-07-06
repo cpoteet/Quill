@@ -217,6 +217,15 @@ import Testing
         #expect(result.truncated == false)
     }
 
+    @Test func missingStopReasonFieldDoesNotThrowAndIsNotTruncated() async throws {
+        // stop_reason is Optional so a response that omits the field entirely still decodes.
+        let json = #"{"content":[{"type":"text","text":"x"}]}"#.data(using: .utf8)!
+        AnthropicMockURLProtocol.requestHandler = makeHandler(body: json)
+        let result = try await completeDefault()
+        #expect(result.text == "x")
+        #expect(result.truncated == false)
+    }
+
     // MARK: - Error cases
 
     @Test func nonOkStatusThrowsHttpError() async throws {
@@ -258,5 +267,37 @@ import Testing
         await #expect(throws: (any Error).self) {
             _ = try await completeDefault()
         }
+    }
+
+    @Test func networkFailureWrapsAsAnthropicNetworkError() async throws {
+        AnthropicMockURLProtocol.requestHandler = { _ in
+            throw URLError(.notConnectedToInternet)
+        }
+        do {
+            _ = try await completeDefault()
+            Issue.record("Expected throw")
+        } catch let err as AnthropicError {
+            if case .networkError = err { /* pass */ }
+            else { Issue.record("Wrong error case: \(err)") }
+        }
+    }
+
+    // errorDescription's offline-detection substring match depends on the underlying error's
+    // localizedDescription text, which varies by platform/runtime (URLError's message under
+    // `swift test` is a generic NSError fallback, not CFNetwork's real string). Test the
+    // computed property directly against a controlled error rather than a live URLError.
+    private struct FakeError: Error, LocalizedError {
+        let description: String
+        var errorDescription: String? { description }
+    }
+
+    @Test func networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline() {
+        let err = AnthropicError.networkError(FakeError(description: "The Internet connection appears to be offline."))
+        #expect(err.errorDescription == "Couldn't reach the Anthropic API. Check your internet connection and try again.")
+    }
+
+    @Test func networkErrorPassesThroughUnrecognizedMessage() {
+        let err = AnthropicError.networkError(FakeError(description: "Something else went wrong."))
+        #expect(err.errorDescription == "Something else went wrong.")
     }
 }

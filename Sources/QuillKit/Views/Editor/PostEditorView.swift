@@ -20,6 +20,10 @@ public struct PostEditorView: View {
     @State private var showImagePicker = false
     @State private var toastMessage: String? = nil
     @State private var toastIsError: Bool = false
+    // Bumped on every presentToast() call so the toast's dismiss timer restarts even when
+    // two consecutive toasts share identical text (e.g. two "Image inserted" toasts from a
+    // multi-file drop) — keying the timer on the message string alone wouldn't detect that.
+    @State private var toastToken: Int = 0
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
@@ -82,8 +86,7 @@ public struct PostEditorView: View {
                             Task { await handleDroppedImages(urls) }
                         },
                         onDropRejected: { message in
-                            toastIsError = true
-                            toastMessage = message
+                            presentToast(message, isError: true)
                         },
                         onSearchLinks: { query in
                             guard let creds = appState.credentials else { return [] }
@@ -205,7 +208,7 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
-        .toast(message: $toastMessage, isError: $toastIsError)
+        .toast(message: $toastMessage, isError: $toastIsError, token: toastToken)
         .sheet(isPresented: $showDiscardAlert) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Revert to Server Version?")
@@ -493,6 +496,12 @@ public struct PostEditorView: View {
         title != cleanTitle || htmlContent != cleanContent
     }
 
+    private func presentToast(_ text: String, isError: Bool = false) {
+        toastMessage = text
+        toastIsError = isError
+        toastToken += 1
+    }
+
     // MARK: - Load
 
     private func loadItem() async {
@@ -506,6 +515,7 @@ public struct PostEditorView: View {
             await flushToDB(for: prev)
         }
         loadedItem = item
+        saveError = nil
 
         switch requestedItem {
         case .remote(let post):
@@ -522,6 +532,11 @@ public struct PostEditorView: View {
                 } catch is CancellationError {
                     return
                 } catch {
+                    // Bail out here (instead of falling through to the staleness guard below)
+                    // if the user has already switched away — otherwise this now-irrelevant
+                    // task's failure would stomp contentLoadFailed/saveError for whichever
+                    // post is currently displayed.
+                    guard !Task.isCancelled, loadedItem == requestedItem else { return }
                     loadedPost = post
                     contentLoadFailed = true
                     saveError = "Couldn't load the full post (showing cached preview only — it may be missing content). Reopen this post once your connection is back before making changes."
@@ -559,8 +574,7 @@ public struct PostEditorView: View {
                 if shouldRestoreAutosave(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
-                    toastIsError = false
-                    toastMessage = "Unsaved changes restored"
+                    presentToast("Unsaved changes restored")
                 } else {
                     try? services.autosaveStore.delete(postID: post.id)
                 }
@@ -577,7 +591,7 @@ public struct PostEditorView: View {
                 settings.excerpt = fresh.excerpt
                     .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                if showToast { toastIsError = false; toastMessage = "Unsaved changes restored" }
+                if showToast { presentToast("Unsaved changes restored") }
             } else {
                 title = draft.title
                 htmlContent = draft.content
@@ -681,11 +695,9 @@ public struct PostEditorView: View {
             }
             cleanTitle = title
             cleanContent = htmlContent
-            toastIsError = false
-            toastMessage = "Saved locally"
+            presentToast("Saved locally")
         } catch {
-            toastIsError = true
-            toastMessage = "Save failed: \(error.localizedDescription)"
+            presentToast("Save failed: \(error.localizedDescription)", isError: true)
         }
     }
 
@@ -795,8 +807,7 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != .future { settings.publishDate = nil }
-            toastIsError = false
-            toastMessage = Self.toastMessage(forStatus: status)
+            presentToast(Self.toastMessage(forStatus: status))
         } catch {
             saveError = error.localizedDescription
         }
@@ -849,11 +860,9 @@ public struct PostEditorView: View {
                 if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
-                toastIsError = false
-                toastMessage = "Image inserted"
+                presentToast("Image inserted")
             } catch {
-                toastIsError = true
-                toastMessage = "Upload failed: \(error.localizedDescription)"
+                presentToast("Upload failed: \(error.localizedDescription)", isError: true)
             }
         }
     }
@@ -1081,8 +1090,7 @@ public struct PostEditorView: View {
         } catch {
             // Restore original text and show a toast
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
-            toastIsError = true
-            toastMessage = "Claude couldn't complete that — please try again."
+            presentToast("Claude couldn't complete that — please try again.", isError: true)
         }
     }
 

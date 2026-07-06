@@ -97,9 +97,11 @@ public struct AIPromptBuilder {
         // Strip <cite index="..."> tags injected by Anthropic web search citations, but keep
         // any text inside them — a 2026-07-05 real-response check found no <cite> tags in
         // practice, but if Claude ever wraps actual sentences in one, deleting the whole match
-        // would silently drop that text from the generated post.
+        // would silently drop that text from the generated post. The inner group uses a
+        // non-greedy `.*?` (not `[^<]*`) so citations wrapping a nested inline tag like
+        // `<a>`/`<em>` still match instead of leaving the whole `<cite>` wrapper unstripped.
         html = html.replacingOccurrences(
-            of: #"<cite\s+index="[^"]*">([^<]*)</cite>"#,
+            of: #"<cite\s+index="[^"]*">(.*?)</cite>"#,
             with: "$1",
             options: .regularExpression
         )

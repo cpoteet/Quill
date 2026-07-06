@@ -14,7 +14,7 @@ public enum APIError: Error, LocalizedError {
         case .decodingError: return "Quill couldn't read the response from WordPress. Try again, or check that your site is running a supported version."
         case .networkError(let e):
             let msg = e.localizedDescription
-            if msg.contains("Could not connect") || msg.contains("Cannot connect") || msg.contains("not found") {
+            if NetworkErrorHeuristics.isConnectivityFailure(msg) {
                 return "Couldn't reach your site. Check the URL and make sure your site is online."
             }
             return msg

@@ -157,7 +157,12 @@ struct ToastView: View {
 }
 
 extension View {
-    func toast(message: Binding<String?>, isError: Binding<Bool> = .constant(false)) -> some View {
+    /// `token` should be bumped by the caller on every toast presentation (even when the
+    /// message text is unchanged from the previous toast) — keying the dismiss timer on the
+    /// message string alone can't distinguish "still showing the first toast" from "a second,
+    /// textually-identical toast just replaced it", so an unchanged string would inherit
+    /// whatever time was left on the first toast's timer instead of a fresh 2 seconds.
+    func toast(message: Binding<String?>, isError: Binding<Bool> = .constant(false), token: Int = 0) -> some View {
         ZStack(alignment: .bottom) {
             self
             if let msg = message.wrappedValue {
@@ -170,10 +175,7 @@ extension View {
                         )
                     )
                     .zIndex(1)
-                    .task(id: msg) {
-                        // Keyed on the message text so a new toast shown while one is
-                        // already visible cancels the old dismissal timer and starts its own,
-                        // instead of the old timer clearing the new toast early.
+                    .task(id: token) {
                         try? await Task.sleep(for: .seconds(2))
                         guard !Task.isCancelled else { return }
                         message.wrappedValue = nil
