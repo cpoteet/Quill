@@ -736,6 +736,68 @@ describe('toWordPressHTML — embeds', () => {
   })
 })
 
+describe('toWordPressHTML — gallery', () => {
+  const GALLERY_FIGURE =
+    '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="" class="wp-image-145"></figure>' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/b.png" alt="" class="wp-image-146"></figure>' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/c.png" alt="" class="wp-image-147"></figure>' +
+    '</figure>'
+
+  test('gallery figure gets wp:gallery and wp:image comment wrappers', () => {
+    const out = wp(GALLERY_FIGURE)
+    assert.match(out, /<!-- wp:gallery \{"ids":\[145,146,147\],"columns":3,"linkTo":"none"\} -->/)
+    assert.match(out, /<!-- \/wp:gallery -->/)
+    const openImg = (out.match(/<!-- wp:image /g) || []).length
+    const closeImg = (out.match(/<!-- \/wp:image -->/g) || []).length
+    assert.equal(openImg, 3)
+    assert.equal(closeImg, 3)
+    assert.match(out, /<!-- wp:image \{"id":145,"sizeSlug":"large","linkDestination":"none"\} -->/)
+  })
+
+  test('gallery wrapping is idempotent', () => {
+    const once = wp(GALLERY_FIGURE)
+    assert.equal(wp(once), once)
+  })
+
+  test('outer gallery figure does not gain wp-block-image class', () => {
+    const out = wp(GALLERY_FIGURE)
+    const outerTag = out.slice(out.indexOf('<figure class="wp-block-gallery'))
+    assert.ok(!outerTag.startsWith('<figure class="wp-block-gallery has-nested-images columns-3 is-cropped wp-block-image'))
+  })
+
+  test('gallery with linkTo=media wraps images in anchors and records linkDestination', () => {
+    const linked = GALLERY_FIGURE.replace(
+      /<img src="([^"]+)"([^>]*)>/g,
+      '<a href="$1"><img src="$1"$2></a>'
+    )
+    const out = wp(linked)
+    assert.match(out, /"linkTo":"media"/)
+    assert.match(out, /"linkDestination":"media"/)
+    assert.ok(out.includes('<a href="http://x.test/a.png">'))
+  })
+
+  test('cropped=false omits is-cropped class and sets imageCrop:false', () => {
+    const uncropped = GALLERY_FIGURE.replace(' is-cropped', '')
+    const out = wp(uncropped)
+    assert.match(out, /"imageCrop":false/)
+  })
+
+  test('sizeSlug is read from the image figure class, not hardcoded', () => {
+    const medium = GALLERY_FIGURE.replace(/size-large/g, 'size-medium')
+    const out = wp(medium)
+    assert.match(out, /"sizeSlug":"medium"/)
+    assert.ok(!out.includes('"sizeSlug":"large"'))
+  })
+
+  test('an image with no wp-image-N class omits the id key instead of writing null', () => {
+    const noId = GALLERY_FIGURE.replace(' class="wp-image-145"', '')
+    const out = wp(noId)
+    assert.ok(!out.includes('"id":null'))
+    assert.match(out, /<!-- wp:image \{"sizeSlug":"large","linkDestination":"none"\} -->/)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // toWordPressHTML — footnotes
 // ---------------------------------------------------------------------------

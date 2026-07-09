@@ -18,8 +18,20 @@ function toWordPressHTML(html, doc) {
   const div = doc.createElement('div')
   // Strip existing wp:embed block comments — will re-add fresh ones below.
   div.innerHTML = html
-    .replace(/<!-- wp:embed [^\n]*-->\n?/g, '')
-    .replace(/\n?<!-- \/wp:embed -->/g, '')
+    .replace(/<!-- wp:embed [^\n]*-->\n*/g, '')
+    .replace(/\n*<!-- \/wp:embed -->/g, '')
+    .replace(/<!-- wp:gallery [^\n]*-->\n*/g, '')
+    .replace(/\n*<!-- \/wp:gallery -->/g, '')
+    // wp:image comments only ever appear nested inside a gallery today (standalone
+    // images aren't comment-wrapped at all — see the images row in CLAUDE.md's
+    // Gutenberg-compatibility table), so this strip is gallery-scoped in practice.
+    // If a future change routes raw WordPress HTML through toWordPressHTML, revisit —
+    // this would strip a standalone image's own wp:image block identity too.
+    .replace(/<!-- wp:image [^\n]*-->\n*/g, '')
+    .replace(/\n*<!-- \/wp:image -->/g, '')
+    // Remove orphaned whitespace-only text nodes that appear between gallery image
+    // figures after stripping comments — they interfere with idempotent wrapping.
+    .replace(/<\/figure>\s+<figure\s+class="wp-block-image/g, '</figure><figure class="wp-block-image')
 
   // Re-emit wp-image-{id} class so WordPress can associate images with media library entries
   div.querySelectorAll('img[data-media-id]').forEach(img => {
@@ -29,7 +41,7 @@ function toWordPressHTML(html, doc) {
 
   // Image figures: renderHTML produces <figure><img ...><figcaption/></figure>.
   // Add wp-block-image class, move alignment from img to figure, handle caption.
-  div.querySelectorAll('figure:not(.wp-block-table):not(.wp-block-embed)').forEach(figure => {
+  div.querySelectorAll('figure:not(.wp-block-table):not(.wp-block-embed):not(.wp-block-gallery)').forEach(figure => {
     const img = figure.querySelector('img')
     if (!img) return
     const align = ['alignleft', 'alignright', 'aligncenter']
@@ -174,6 +186,57 @@ function toWordPressHTML(html, doc) {
     parent.insertBefore(doc.createTextNode('\n'), figure)
     parent.insertBefore(doc.createTextNode('\n'), next)
     parent.insertBefore(close, next)
+  })
+
+  // Wrap gallery figures with Gutenberg block comments: one wp:gallery pair
+  // around the whole figure, one wp:image pair per nested image figure.
+  // Mirrors the embed-wrapping approach above — DOM-level insertion, not
+  // string replace, so repeated saves and duplicate content don't double-wrap.
+  div.querySelectorAll('figure.wp-block-gallery').forEach(figure => {
+    const columnsMatch = figure.className.match(/columns-(\d+)/)
+    const columns = columnsMatch ? parseInt(columnsMatch[1], 10) : 3
+    const cropped = figure.classList.contains('is-cropped')
+    const imageFigures = Array.from(figure.children).filter(
+      c => c.tagName === 'FIGURE' && c.classList.contains('wp-block-image')
+    )
+    const ids = []
+    let linkTo = 'none'
+    imageFigures.forEach((imgFigure, i) => {
+      const img = imgFigure.querySelector('img')
+      if (!img) return
+      const idMatch = img.className.match(/wp-image-(\d+)/)
+      const id = idMatch ? parseInt(idMatch[1], 10) : null
+      if (id !== null) ids.push(id)
+      const linkedToMedia = img.parentElement.tagName === 'A'
+      if (i === 0) linkTo = linkedToMedia ? 'media' : 'none'
+      // Read the real size slug from the image figure's own class rather than
+      // hardcoding "large" — this matters once galleryBlock can round-trip an
+      // existing gallery's original figure verbatim (Task 2's sourceHTML attr),
+      // where the true sizeSlug may not be "large".
+      const sizeMatch = imgFigure.className.match(/size-(\S+)/)
+      const sizeSlug = sizeMatch ? sizeMatch[1] : 'large'
+      const imageAttrs = {}
+      if (id !== null) imageAttrs.id = id
+      imageAttrs.sizeSlug = sizeSlug
+      imageAttrs.linkDestination = linkedToMedia ? 'media' : 'none'
+      const openImg = doc.createComment(` wp:image ${JSON.stringify(imageAttrs)} `)
+      const closeImg = doc.createComment(' /wp:image ')
+      const afterImg = imgFigure.nextElementSibling
+      if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
+      figure.insertBefore(openImg, imgFigure)
+      figure.insertBefore(doc.createTextNode('\n'), imgFigure)
+      figure.insertBefore(closeImg, afterImg)
+    })
+    const galleryAttrs = { ids, columns, linkTo }
+    if (!cropped) galleryAttrs.imageCrop = false
+    const openGallery = doc.createComment(` wp:gallery ${JSON.stringify(galleryAttrs)} `)
+    const closeGallery = doc.createComment(' /wp:gallery ')
+    const parent = figure.parentNode
+    const next = figure.nextSibling
+    parent.insertBefore(openGallery, figure)
+    parent.insertBefore(doc.createTextNode('\n'), figure)
+    parent.insertBefore(doc.createTextNode('\n'), next)
+    parent.insertBefore(closeGallery, next)
   })
 
   return div.innerHTML
