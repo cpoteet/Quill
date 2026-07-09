@@ -191,20 +191,20 @@ public struct GallerySheet: View {
 
                 Toggle("Crop images to square", isOn: $cropped)
 
-                HStack {
+                HStack(spacing: 8) {
                     Text("Link to")
-                    Spacer()
                     Picker("", selection: $linkTo) {
                         Text("None").tag("none")
                         Text("Full Image").tag("media")
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
-                    .frame(width: 130)
+                    .fixedSize()
                 }
             }
             .padding(10)
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, -10)
         }
     }
 
