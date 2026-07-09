@@ -169,7 +169,11 @@ public struct GallerySheet: View {
     private let perPage = 50
 
     private func loadMedia() async {
-        guard let creds = appState.credentials else { return }
+        guard let creds = appState.credentials else {
+            isLoading = false
+            loadError = "No WordPress site configured."
+            return
+        }
         isLoading = true
         loadError = nil
         currentPage = 1
