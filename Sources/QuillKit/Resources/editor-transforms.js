@@ -18,20 +18,17 @@ function toWordPressHTML(html, doc) {
   const div = doc.createElement('div')
   // Strip existing wp:embed block comments — will re-add fresh ones below.
   div.innerHTML = html
-    .replace(/<!-- wp:embed [^\n]*-->\n*/g, '')
-    .replace(/\n*<!-- \/wp:embed -->/g, '')
-    .replace(/<!-- wp:gallery [^\n]*-->\n*/g, '')
-    .replace(/\n*<!-- \/wp:gallery -->/g, '')
+    .replace(/<!-- wp:embed [^\n]*-->\n?/g, '')
+    .replace(/\n?<!-- \/wp:embed -->/g, '')
+    .replace(/<!-- wp:gallery [^\n]*-->\n?/g, '')
+    .replace(/\n?<!-- \/wp:gallery -->/g, '')
     // wp:image comments only ever appear nested inside a gallery today (standalone
     // images aren't comment-wrapped at all — see the images row in CLAUDE.md's
     // Gutenberg-compatibility table), so this strip is gallery-scoped in practice.
     // If a future change routes raw WordPress HTML through toWordPressHTML, revisit —
     // this would strip a standalone image's own wp:image block identity too.
-    .replace(/<!-- wp:image [^\n]*-->\n*/g, '')
-    .replace(/\n*<!-- \/wp:image -->/g, '')
-    // Remove orphaned whitespace-only text nodes that appear between gallery image
-    // figures after stripping comments — they interfere with idempotent wrapping.
-    .replace(/<\/figure>\s+<figure\s+class="wp-block-image/g, '</figure><figure class="wp-block-image')
+    .replace(/<!-- wp:image [^\n]*-->\n?/g, '')
+    .replace(/\n?<!-- \/wp:image -->/g, '')
 
   // Re-emit wp-image-{id} class so WordPress can associate images with media library entries
   div.querySelectorAll('img[data-media-id]').forEach(img => {
@@ -199,6 +196,19 @@ function toWordPressHTML(html, doc) {
     const imageFigures = Array.from(figure.children).filter(
       c => c.tagName === 'FIGURE' && c.classList.contains('wp-block-image')
     )
+    // Remove whitespace-only text node children of the gallery figure before
+    // wrapping. On a re-save, the strip step above can leave an orphaned
+    // whitespace-only text node between two image figures (the "\n\n"
+    // separator inserted below is never adjacent to either comment tag on its
+    // own, so neither strip regex consumes it). Cleaning it up here — scoped
+    // to only this gallery figure's direct children, and only whitespace-only
+    // text nodes — restores the pristine adjacency the forEach loop below
+    // expects, so wrapping stays idempotent across repeated saves.
+    Array.from(figure.childNodes).forEach(node => {
+      if (node.nodeType === 3 && node.textContent.trim() === '') {
+        figure.removeChild(node)
+      }
+    })
     const ids = []
     let linkTo = 'none'
     imageFigures.forEach((imgFigure, i) => {
@@ -221,10 +231,11 @@ function toWordPressHTML(html, doc) {
       imageAttrs.linkDestination = linkedToMedia ? 'media' : 'none'
       const openImg = doc.createComment(` wp:image ${JSON.stringify(imageAttrs)} `)
       const closeImg = doc.createComment(' /wp:image ')
-      const afterImg = imgFigure.nextElementSibling
+      const afterImg = imgFigure.nextSibling
       if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
       figure.insertBefore(openImg, imgFigure)
       figure.insertBefore(doc.createTextNode('\n'), imgFigure)
+      figure.insertBefore(doc.createTextNode('\n'), afterImg)
       figure.insertBefore(closeImg, afterImg)
     })
     const galleryAttrs = { ids, columns, linkTo }
