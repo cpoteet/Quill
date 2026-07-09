@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct GallerySheet: View {
     var onInsert: (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String) -> Void
@@ -8,6 +9,8 @@ public struct GallerySheet: View {
     @State private var mediaItems: [WPMedia] = []
     @State private var isLoading = true
     @State private var loadError: String?
+    @State private var isUploading = false
+    @State private var uploadError: String?
     @State private var currentPage: Int = 1
     @State private var hasMore: Bool = false
     @State private var isLoadingMore = false
@@ -35,6 +38,17 @@ public struct GallerySheet: View {
             }
         }
         .task { await loadMedia() }
+        .alert(
+            "Upload Failed",
+            isPresented: Binding(
+                get: { uploadError != nil },
+                set: { if !$0 { uploadError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { uploadError = nil }
+        } message: {
+            Text(uploadError ?? "")
+        }
     }
 
     private var toolbar: some View {
@@ -44,6 +58,11 @@ public struct GallerySheet: View {
             Spacer()
             Text("Insert Gallery").font(.headline)
             Spacer()
+            if isUploading {
+                ProgressView().scaleEffect(0.7)
+            }
+            Button("Upload") { uploadFromDisk() }
+                .disabled(isUploading)
             Button("Insert Gallery") {
                 onInsert(selected, columns, cropped, linkTo)
             }
@@ -167,6 +186,26 @@ public struct GallerySheet: View {
     }
 
     private let perPage = 50
+
+    private func uploadFromDisk() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.image]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let creds = appState.credentials else { return }
+        isUploading = true
+        Task {
+            defer { isUploading = false }
+            do {
+                let mime = MimeType.forFile(url)
+                let uploaded = try await WordPressClient(credentials: creds)
+                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+                mediaItems.insert(uploaded, at: 0)
+            } catch {
+                uploadError = error.localizedDescription
+            }
+        }
+    }
 
     private func loadMedia() async {
         guard let creds = appState.credentials else {
