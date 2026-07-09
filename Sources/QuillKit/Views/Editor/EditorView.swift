@@ -7,6 +7,7 @@ public struct EditorView: NSViewRepresentable {
     var onContentChange: (String) -> Void
     var onEditorReady: (() -> Void)?
     var onInsertImage: (() -> Void)?
+    var onInsertGallery: (() -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onDropRejected: ((String) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
@@ -26,6 +27,7 @@ public struct EditorView: NSViewRepresentable {
         onContentChange: @escaping (String) -> Void,
         onEditorReady: (() -> Void)? = nil,
         onInsertImage: (() -> Void)? = nil,
+        onInsertGallery: (() -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onDropRejected: ((String) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
@@ -44,6 +46,7 @@ public struct EditorView: NSViewRepresentable {
         self.onContentChange = onContentChange
         self.onEditorReady = onEditorReady
         self.onInsertImage = onInsertImage
+        self.onInsertGallery = onInsertGallery
         self.onImageFilesDropped = onImageFilesDropped
         self.onDropRejected = onDropRejected
         self.onSearchLinks = onSearchLinks
@@ -68,6 +71,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "contentChanged")
         config.userContentController.add(context.coordinator, name: "editorReady")
         config.userContentController.add(context.coordinator, name: "insertImage")
+        config.userContentController.add(context.coordinator, name: "insertGallery")
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
         config.userContentController.add(context.coordinator, name: "selectionChanged")
@@ -88,6 +92,7 @@ public struct EditorView: NSViewRepresentable {
         let onCreate = onWebViewCreated
         Task { @MainActor in onCreate?(webView) }
         context.coordinator.onInsertImage = onInsertImage
+        context.coordinator.onInsertGallery = onInsertGallery
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
@@ -108,6 +113,7 @@ public struct EditorView: NSViewRepresentable {
         }
         context.coordinator.setContent(html)
         context.coordinator.onInsertImage = onInsertImage
+        context.coordinator.onInsertGallery = onInsertGallery
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged

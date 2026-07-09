@@ -10,6 +10,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onReady: () -> Void
     weak var webView: WKWebView?
     var onInsertImage: (() -> Void)?
+    var onInsertGallery: (() -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
@@ -31,6 +32,12 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             name: .insertMediaURL,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInsertGallery(_:)),
+            name: .insertGalleryData,
+            object: nil
+        )
     }
 
     @objc private func handleInsertMedia(_ note: Notification) {
@@ -40,6 +47,16 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         let mediaId = note.userInfo?["mediaId"] as? Int
         let alt     = note.userInfo?["alt"]     as? String
         insertImage(url: url, width: width, height: height, mediaId: mediaId, alt: alt)
+    }
+
+    @objc private func handleInsertGallery(_ note: Notification) {
+        guard
+            let images  = note.userInfo?["images"] as? [[String: Any]],
+            let columns = note.userInfo?["columns"] as? Int,
+            let cropped = note.userInfo?["cropped"] as? Bool,
+            let linkTo  = note.userInfo?["linkTo"] as? String
+        else { return }
+        insertGallery(images: images, columns: columns, cropped: cropped, linkTo: linkTo)
     }
 
     // WKScriptMessageHandler
@@ -66,6 +83,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         case "insertImage":
             DispatchQueue.main.async { self.onInsertImage?() }
+        case "insertGallery":
+            DispatchQueue.main.async { self.onInsertGallery?() }
         case "showLinkPicker":
             guard
                 let body    = message.body as? [String: Any],
@@ -214,6 +233,22 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         wv.evaluateJavaScript("insertImage(\(urlStr), \(wStr), \(hStr), \(idStr), \(altStr))", completionHandler: nil)
     }
 
+    func insertGallery(images: [[String: Any]], columns: Int, cropped: Bool, linkTo: String) {
+        guard let wv = webView else { return }
+        let payload: [String: Any] = [
+            "images": images,
+            "columns": columns,
+            "cropped": cropped,
+            "linkTo": linkTo,
+        ]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonStr = String(data: jsonData, encoding: .utf8),
+              let escapedData = try? JSONEncoder().encode(jsonStr),
+              let escapedStr = String(data: escapedData, encoding: .utf8)
+        else { return }
+        wv.evaluateJavaScript("insertGallery(\(escapedStr))", completionHandler: nil)
+    }
+
     // WKNavigationDelegate
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         applyColorScheme()
@@ -311,4 +346,5 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
 extension Notification.Name {
     static let insertMediaURL = Notification.Name("Quill.insertMediaURL")
+    static let insertGalleryData = Notification.Name("Quill.insertGalleryData")
 }
