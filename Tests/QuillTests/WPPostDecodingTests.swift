@@ -262,6 +262,21 @@ import Testing
         #expect(html.contains("<p>Neat!</p>"))
     }
 
+    @Test func blockGalleryContentSurvivesEditorHTML() throws {
+        let json = """
+        {"id":170,"title":{"rendered":"T"},
+         "content":{"rendered":"<div>rendered</div>","raw":"<!-- wp:gallery {\\"ids\\":[145,146],\\"columns\\":3,\\"linkTo\\":\\"none\\"} -->\\n<figure class=\\"wp-block-gallery has-nested-images columns-3 is-cropped\\"><!-- wp:image {\\"id\\":145,\\"sizeSlug\\":\\"large\\",\\"linkDestination\\":\\"none\\"} -->\\n<figure class=\\"wp-block-image size-large\\"><img src=\\"http://localhost:8881/a.png\\" alt=\\"\\" class=\\"wp-image-145\\"/></figure>\\n<!-- /wp:image --></figure>\\n<!-- /wp:gallery -->"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        let html = post.content.editorHTML
+        #expect(html.contains("<!-- wp:gallery {\"ids\":[145,146],\"columns\":3,\"linkTo\":\"none\"} -->"))
+        #expect(html.contains("wp-image-145"))
+        #expect(html.contains("<!-- /wp:gallery -->"))
+    }
+
     @Test func classicContentListNotCorrupted() throws {
         let json = """
         {"id":28,"title":{"rendered":"T"},
