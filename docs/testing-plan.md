@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-07-05 — 324 Swift tests + 127 JS tests, all passing._
+_Last updated: 2026-07-08 — 325 Swift tests + 161 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,9 +16,10 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 323 tests across 22 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (111 tests via Node's built-in runner + jsdom)
-3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (16 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (all 325 tests across 22 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (118 tests via Node's built-in runner + jsdom)
+3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (31 tests — live Tiptap editor in jsdom)
+4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (12 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -46,7 +47,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (324 tests, 22 suites)
+## Swift test suite (325 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -54,7 +55,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 32 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 33 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
@@ -79,7 +80,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (32 tests)
+### 1. Model decoding — `WPPostDecodingTests` (33 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -120,6 +121,7 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `excerptTextReturnsEmptyWhenRawNil` | `raw == nil` → `excerptText` returns `""` |
 | `excerptTextDecodesEntities` | `excerptText` decodes HTML entities (e.g. `&#8217;` → `'`) |
 | `missingContentAndExcerptDefaultToEmpty` | No `content`/`excerpt` keys (list fetch with `_fields`) → both default to empty `RenderedString` without throwing |
+| `blockGalleryContentSurvivesEditorHTML` | `raw` content containing real `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments survives `editorHTML` unchanged (regression guard — `wpautop`'s classic-content detection must never touch content that already has `<!-- wp:` comments) |
 
 ---
 
@@ -972,9 +974,21 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
 | `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
 
+### `toWordPressHTML` — gallery (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `gallery figure gets wp:gallery and wp:image comment wrappers` | `figure.wp-block-gallery` + nested `figure.wp-block-image` gets `<!-- wp:gallery {ids,columns,linkTo} -->` and per-image `<!-- wp:image {...} -->` comments |
+| `gallery wrapping is idempotent` | Running `toWordPressHTML` twice produces byte-identical output — no compounding whitespace between images on repeated saves |
+| `outer gallery figure does not gain wp-block-image class` | The generic image-figure transform excludes `.wp-block-gallery`, so the wrapper figure isn't misclassified |
+| `gallery with linkTo=media wraps images in anchors and records linkDestination` | Images already wrapped in `<a href>` produce `"linkTo":"media"` / `"linkDestination":"media"` |
+| `cropped=false omits is-cropped class and sets imageCrop:false` | Missing `is-cropped` class → explicit `"imageCrop":false` (only emitted at the non-default) |
+| `sizeSlug is read from the image figure class, not hardcoded` | `size-medium` on the image figure produces `"sizeSlug":"medium"`, not a hardcoded `"large"` |
+| `an image with no wp-image-N class omits the id key instead of writing null` | Images without a recognized media ID omit `"id"` entirely rather than writing `"id":null` |
+
 ---
 
-## JS keyboard tests (16 tests)
+## JS keyboard tests (31 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1028,6 +1042,52 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 |---|---|
 | `Enter in an image caption exits to a new paragraph below (regression: 91679d2)` | Caption Enter → paragraph after image |
 | `Enter in an image caption inside a blockquote stays well-formed (no image duplication)` | Nested caption Enter doesn't duplicate image |
+
+---
+
+## JS gallery tests (12 tests)
+
+File: `Scripts/test-editor-gallery.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Tests load the real `editor.html` in jsdom and instantiate the live Tiptap editor via `window._tiptapEditor` — the same approach as the JS keyboard tests — because `galleryBlock`'s `parseHTML`/`renderHTML` can't be exercised through the pure `editor-transforms.js` helpers alone.
+
+### `galleryBlock` — insert and render (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `inserting a galleryBlock renders wp-block-gallery figure with nested image figures` | Sheet-style insert (`images`/`columns`/`cropped`/`linkTo` attrs) reconstructs the correct DOM shape |
+| `linkTo media wraps each image in an anchor to its own url` | `linkTo: 'media'` wraps each `<img>` in `<a href>` pointing at its own URL |
+| `cropped false omits is-cropped class` | `cropped: false` omits the `is-cropped` class from the rendered figure |
+
+### `galleryBlock` — load (parseHTML) (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `loading real gallery HTML recovers images, columns, cropped, linkTo` | Parsing a real `figure.wp-block-gallery` recovers all structured attrs correctly |
+| `loading a gallery with images linked to media recovers linkTo=media` | Images already wrapped in `<a>` are recognized as `linkTo: 'media'` on load |
+| `captures sourceHTML verbatim, including content the structured attrs do not model` | `sourceHTML` captures the original figure's `outerHTML` (e.g. a caption) that the structured attrs don't represent |
+
+### `galleryBlock` — verbatim re-render (sourceHTML) (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `a loaded gallery with a caption re-renders with the caption intact` | `sourceHTML` is re-emitted unchanged, preserving captions and other unmodeled content |
+| `sheet-inserted galleries (sourceHTML null) still use the reconstruction path` | Sheet-inserted galleries (`sourceHTML: null`) always reconstruct from structured attrs, never accidentally reuse a stale `sourceHTML` |
+
+### `galleryBlock` — code-view round-trip (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `serialize via toWordPressHTML then re-parse preserves a sheet-inserted gallery` | Save → reload round-trip preserves images/columns/cropped/linkTo for a sheet-inserted gallery |
+| `serialize then re-parse preserves a loaded, captioned gallery verbatim` | Save → reload round-trip preserves a caption on a loaded gallery via `sourceHTML` |
+
+### `window.insertGallery` bridge function (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `inserts a galleryBlock from a JSON payload` | The Swift→JS bridge function parses a JSON payload and inserts a `galleryBlock` |
+| `ignores an empty images array` | An empty `images` array is a no-op — never inserts a gallery with zero images |
 
 ---
 
@@ -1108,6 +1168,11 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
 - [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
 - [ ] If the media library has more than 50 items, a "Load More" button appears at the bottom of the picker grid. Click it → more images load and append to the grid.
+- [ ] Click the Gallery toolbar button → the `GallerySheet` opens with a media grid; tapping images toggles a checkmark and adds them to the "Selected" list; "Insert Gallery" is disabled until at least one image is selected.
+- [ ] With 2+ images selected, set columns, toggle crop, set "Link to" (None / Full Image), click Insert Gallery → a read-only thumbnail-grid card appears in the editor. Toggle code view (`</>`) and confirm `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments with the chosen settings.
+- [ ] Save a post containing a sheet-inserted gallery, then make an unrelated visual edit elsewhere in the post and save again → re-fetch the raw content and confirm the gallery block comments are still present (this is the fix for the previous `_rawHTML`-only silent-drop behavior).
+- [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a read-only thumbnail-grid card, not exploded into individual resizable images. Clicking it does not open `GallerySheet` (insert-only for v1).
+- [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
 
 ### 7.5 Editor — links
 
@@ -1467,6 +1532,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
 | 88 | `APIError`/`AnthropicError` share one `NetworkErrorHeuristics.isConnectivityFailure` substring check instead of two independently-maintained copies | ✅ `AnthropicClientTests.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
+| 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (7 tests) + `galleryBlock` load/round-trip tests (7 tests) + 👁 §7.4 |
+| 90 | `galleryBlock.parseHTML` never returns `false`/degrades to standalone images for a gallery it can partially handle (e.g. captions) — only for zero-image-figure input | ✅ `galleryBlock` — verbatim re-render tests (2 tests, caption preserved via `sourceHTML`) |
 
 ---
 

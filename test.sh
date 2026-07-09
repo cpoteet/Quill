@@ -21,6 +21,7 @@ run() {
 run "Swift tests"  swift test
 run "JS editor tests"  node --test Scripts/test-editor.js
 run "JS editor keyboard tests"  node --test Scripts/test-editor-keyboard.js
+run "JS gallery tests"  node --test Scripts/test-editor-gallery.js
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

@@ -21,6 +21,7 @@ swift test                               # Swift tests only
 swift test --filter WordPressClientTests # one Swift suite
 node --test Scripts/test-editor.js          # JS transform tests only
 node --test Scripts/test-editor-keyboard.js # live editor keyboard tests only
+node --test Scripts/test-editor-gallery.js  # gallery node insert/parse/render tests only
 ```
 
 **After every code change:** quit the app, run `./build.sh`, reopen. Always.
@@ -28,13 +29,15 @@ node --test Scripts/test-editor-keyboard.js # live editor keyboard tests only
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` (installed via `npm install` in the project root).
 
-## Test suite status (2026-07-05 — 324 Swift + 127 JS tests, all passing)
+## Test suite status (2026-07-08 — 325 Swift + 161 JS tests, all passing)
 
-**Swift (324 tests):** 22 suites covering all models (including wpautop classic-content handling and HTML entity decoding), WordPressClient (incl. `+`-in-query escaping), all storage layers, AIPromptBuilder (including list/table context-aware prompts with correct `<ul>`/`<ol>` tag selection, phantom punctuation-spacing suppression, `<cite>` wrapper stripping), AnthropicClient (incl. optional `stop_reason` decoding and `AnthropicError.networkError` friendly messaging), AppState view-model logic, EditorCoordinator, status helpers, PostStats, MimeType, and UpdateChecker version comparison. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
+**Swift (325 tests):** 22 suites covering all models (including wpautop classic-content handling and HTML entity decoding), WordPressClient (incl. `+`-in-query escaping), all storage layers, AIPromptBuilder (including list/table context-aware prompts with correct `<ul>`/`<ol>` tag selection, phantom punctuation-spacing suppression, `<cite>` wrapper stripping), AnthropicClient (incl. optional `stop_reason` decoding and `AnthropicError.networkError` friendly messaging), AppState view-model logic, EditorCoordinator, status helpers, PostStats, MimeType, UpdateChecker version comparison, and a regression guard confirming `wp:gallery`/`wp:image` block-comment content survives `editorHTML` unchanged. Each network suite uses its own MockURLProtocol subclass to avoid global-state races.
 
-**JS transforms (111 tests):** `Scripts/test-editor.js` covers `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, and `embedClassFor` via Node + jsdom (headings, lists, blockquotes, code blocks, horizontal rules, images, tables incl. Tiptap artifact cleanup, embeds, footnotes, footnote backrefs, idempotency, unicode, whitespace-tolerant anchor matching).
+**JS transforms (118 tests):** `Scripts/test-editor.js` covers `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, and `embedClassFor` via Node + jsdom (headings, lists, blockquotes, code blocks, horizontal rules, images, tables incl. Tiptap artifact cleanup, embeds, footnotes, footnote backrefs, gallery block-comment wrapping incl. idempotency, unicode, whitespace-tolerant anchor matching).
 
-**JS editor keyboard (16 tests):** `Scripts/test-editor-keyboard.js` loads the **real `editor.html`** in jsdom, instantiates the live Tiptap editor via the `window._tiptapEditor` global, dispatches real `keydown` events, and asserts on the resulting ProseMirror document. This is the only automated coverage of the live Enter/Backspace/Shift-Enter handlers (the code paths that caused the June 2026 regression chain). Covers plain paragraphs, headings, lists, blockquotes/cite, footnotes (soft-break Enter, Backspace), and image captions — each with the regression commit referenced inline. **jsdom caveat:** ProseMirror only keymap-binds Backspace at node boundaries (joinBackward/lift); mid-text character delete is browser `beforeinput`, which jsdom does not emit, so only boundary Backspace is asserted. Polyfills `crypto.randomUUID`/`matchMedia`/`requestAnimationFrame`/`ResizeObserver`; the `document.execCommand` jsdom error from `onCreate` is harmless.
+**JS editor keyboard (31 tests):** `Scripts/test-editor-keyboard.js` loads the **real `editor.html`** in jsdom, instantiates the live Tiptap editor via the `window._tiptapEditor` global, dispatches real `keydown` events, and asserts on the resulting ProseMirror document. This is the only automated coverage of the live Enter/Backspace/Shift-Enter handlers (the code paths that caused the June 2026 regression chain). Covers plain paragraphs, headings, lists, blockquotes/cite, footnotes (soft-break Enter, Backspace), image captions, and class-preservation through schema round-trips — each with the regression commit referenced inline where applicable. **jsdom caveat:** ProseMirror only keymap-binds Backspace at node boundaries (joinBackward/lift); mid-text character delete is browser `beforeinput`, which jsdom does not emit, so only boundary Backspace is asserted. Polyfills `crypto.randomUUID`/`matchMedia`/`requestAnimationFrame`/`ResizeObserver`; the `document.execCommand` jsdom error from `onCreate` is harmless.
+
+**JS gallery node (12 tests):** `Scripts/test-editor-gallery.js` uses the same real-`editor.html`-in-jsdom approach as the keyboard tests to exercise the `galleryBlock` node's insert/parseHTML/renderHTML/`sourceHTML`-round-trip behavior end-to-end — a custom Tiptap node's parse/render logic can't be exercised through the pure `editor-transforms.js` helpers alone.
 
 **Full reference:** `docs/testing-plan.md` — lists every test by name with what it checks, plus the manual/functional checklists for release sign-off.
 
@@ -42,6 +45,7 @@ Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node
 
 - **Each network test suite needs its own `URLProtocol` subclass** — `@Suite(.serialized)` only serializes within a suite; two serialized suites sharing `MockURLProtocol.requestHandler` (a global static) race against each other. Solution: give each suite its own subclass with its own `static var requestHandler` (e.g. `AnthropicMockURLProtocol` in `Tests/QuillTests/Support/`).
 - **`httpBody` is always nil in `URLProtocol.startLoading()`** — URLSession moves the body to `httpBodyStream`. To inspect request bodies in mock tests, reconstruct from the stream. See `AnthropicMockURLProtocol.startLoading()` for the pattern.
+- **DOM-wrap + string-strip round-trips can leave orphaned whitespace text nodes** — when a transform inserts a separator (e.g. `\n\n`) *between* two wrapped elements rather than adjacent to either one's own delimiter, a later strip-by-regex pass can't fully remove it (each strip regex only consumes whitespace touching its own comment tag), so the separator survives as a stray whitespace-only text node between the bare elements. Re-wrapping then stacks a new separator on top instead of replacing it, and the output grows on every save. Fix at the DOM level, scoped to the exact container being re-wrapped: strip whitespace-only child text nodes immediately before re-inserting separators, rather than adding more regex. Discovered in the gallery block-comment wrapper (`toWordPressHTML`'s `figure.wp-block-gallery` handling); relevant to any future block that wraps a repeated list of sibling elements with per-item comments.
 - **Edit tool corrupts quotes in JS test files** — when the Edit tool's `old_string` spans a region containing curly Unicode quotes (U+2018/U+2019), it can replace straight ASCII `'` delimiters with curly ones in the output, producing `SyntaxError: Invalid or unexpected token` in Node.js. If you see that error after editing `Scripts/test-editor.js`, the fix is a targeted Python byte-level replacement — do NOT use the Edit tool again to fix it, as it will re-introduce the same corruption. The existing unicode test on line 277 intentionally contains U+2019 as *content* (not delimiters) and must be left alone.
 
 ## Key decisions
@@ -71,7 +75,7 @@ Sources/QuillKit/
                     TitleTextField, LinkPickerView
     Sidebar/        SidebarView, PostListRow
     Settings/       PreferencesView, PostSettingsPanel, AboutView
-    Media/          MediaPickerView, MediaDetailView, MediaSidebarSection
+    Media/          MediaPickerView, MediaDetailView, MediaSidebarSection, GallerySheet
     AI/             GeneratePostSheet, AIResultPanel, SamplePostPickerSheet
   Resources/        editor.html (Tiptap)
                     editor-transforms.js (WordPress HTML transforms, shared with test suite)
@@ -85,6 +89,7 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
 - `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, `embedClassFor`; shared between `editor.html` and `Scripts/test-editor.js`. Loaded as `<script src="./editor-transforms.js">` before the main editor script block, so all functions are available as globals inside `editor.html`'s JS.
+- `Sources/QuillKit/Views/Media/GallerySheet.swift` — native picker for creating a WordPress gallery (multi-select media grid, reorderable selection, columns/crop/link-to controls); posts `.insertGalleryData` which `EditorCoordinator` turns into a `window.insertGallery(json)` call
 
 ## Maintaining Gutenberg HTML compatibility
 
@@ -109,6 +114,7 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 | `<figure class="wp-block-embed">` (EmbedBlock node) | passes through unchanged — classes emitted by `renderHTML` via `embedClassFor()` |
 | Footnote marker `<sup data-fn class="fn">` | anchor text renumbered 1..n in document order by `toWordPressHTML` |
 | `<ol class="wp-block-footnotes">` | excluded from `wp-block-list`; passes through unchanged |
+| `<figure class="wp-block-gallery">` (galleryBlock node, atomic) | wrapped with `<!-- wp:gallery {ids,columns,linkTo[,imageCrop]} -->`/`<!-- wp:image {[id,]sizeSlug,linkDestination} -->` comments; existing galleries round-trip via a verbatim `sourceHTML` attr (captures captions etc. the structured attrs don't model), not reconstructed — same pattern as `EmbedBlock` |
 | Bold, italic, strike, inline code, links, paragraphs | unchanged — already match Gutenberg |
 
 ### How to update when WordPress changes its HTML format
@@ -267,4 +273,6 @@ All WordPress/Gutenberg HTML compatibility lives in two files:
 - Plan (AI writing): `docs/superpowers/plans/2026-05-23-ai-writing.md`
 - Spec (AI style guide caching): `docs/superpowers/specs/2026-05-24-ai-style-guide-caching-design.md`
 - Plan (AI style guide caching): `docs/superpowers/plans/2026-05-24-ai-style-guide-caching.md`
+- Spec (gallery support): `docs/superpowers/specs/2026-07-08-gallery-support-design.md`
+- Plan (gallery support): `docs/superpowers/plans/2026-07-08-gallery-support.md`
 - End-user guide: `docs/user-guide.md`
