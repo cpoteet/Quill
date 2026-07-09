@@ -209,3 +209,29 @@ describe('galleryBlock — code-view round-trip', () => {
     assert.ok(found.attrs.sourceHTML.includes('A caption'))
   })
 })
+
+describe('window.insertGallery bridge function', () => {
+  test('inserts a galleryBlock from a JSON payload', () => {
+    editor.commands.setContent('<p></p>')
+    win.insertGallery(JSON.stringify({
+      images: [{ id: 9, url: 'http://x.test/z.png', alt: '' }],
+      columns: 4,
+      cropped: false,
+      linkTo: 'none',
+    }))
+    let found = null
+    editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
+    assert.ok(found)
+    assert.equal(found.attrs.columns, 4)
+    assert.equal(found.attrs.cropped, false)
+    assert.equal(found.attrs.images[0].id, 9)
+  })
+
+  test('ignores an empty images array', () => {
+    editor.commands.setContent('<p>unchanged</p>')
+    win.insertGallery(JSON.stringify({ images: [], columns: 3, cropped: true, linkTo: 'none' }))
+    let found = null
+    editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
+    assert.equal(found, null)
+  })
+})

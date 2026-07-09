@@ -920,6 +920,10 @@
         <svg viewBox="0 0 24 24"><rect x="4" y="7" width="14" height="14" rx="2"></rect><path d="m4 18 4.6-4.6 3.2 3.2 2.2-2.2 4 4"></path><path class="tb-image-plus-cutout" d="M18 3.5v7M14.5 7h7"></path><path class="tb-image-plus" d="M18 3.5v7M14.5 7h7"></path></svg>
         <span>Add</span>
       </button>
+      <button data-cmd="gallery" title="Insert gallery from media library" class="tb-add">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="8" rx="1"></rect><rect x="13" y="4" width="8" height="8" rx="1"></rect><rect x="3" y="14" width="8" height="8" rx="1"></rect><rect x="13" y="14" width="8" height="8" rx="1"></rect></svg>
+        <span>Gallery</span>
+      </button>
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group" id="ai-toolbar-group" style="display:none">
@@ -2082,7 +2086,7 @@
     }
 
     const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
-                        'insertTable','image']
+                        'insertTable','image','gallery']
 
     // ── Toolbar commands ───────────────────────────────
     const COMMANDS = {
@@ -2175,6 +2179,12 @@
         if (_isInFootnote()) return
         if (window.webkit?.messageHandlers?.insertImage) {
           window.webkit.messageHandlers.insertImage.postMessage({})
+        }
+      },
+      gallery: () => {
+        if (_isInFootnote()) return
+        if (window.webkit?.messageHandlers?.insertGallery) {
+          window.webkit.messageHandlers.insertGallery.postMessage({})
         }
       },
       alignLeft:   () => setImageAlignment('left'),
@@ -2871,6 +2881,21 @@
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt
       editor.chain().focus().setImage(attrs).run()
+    }
+    window.insertGallery = (json) => {
+      if (_isInFootnote()) return
+      let payload
+      try { payload = JSON.parse(json) } catch { return }
+      if (!Array.isArray(payload.images) || payload.images.length === 0) return
+      editor.chain().focus().insertContent({
+        type: 'galleryBlock',
+        attrs: {
+          images: payload.images,
+          columns: payload.columns ?? 3,
+          cropped: payload.cropped ?? true,
+          linkTo: payload.linkTo ?? 'none',
+        },
+      }).run()
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
