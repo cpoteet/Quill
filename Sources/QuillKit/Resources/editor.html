@@ -742,6 +742,28 @@
     body.dark .embed-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
     body.dark .embed-card-url { color: #999; }
     body.dark .embed-card-hint { color: #777; }
+
+    /* ── Gallery card ───────────────────────────────── */
+    .gallery-card {
+      margin: 1em 0;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.14);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.025);
+      cursor: default;
+      user-select: none;
+    }
+    .gallery-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
+    .gallery-card-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .gallery-card-grid img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    .gallery-card-hint { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; }
+    body.dark .gallery-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+    body.dark .gallery-card-hint { color: #777; }
     #embed-menu {
       display: none;
       position: fixed;
@@ -1531,6 +1553,120 @@
       },
     })
 
+    // ── Gallery block ─────────────────────────────────
+    // Atomic block storing an ordered image list + gallery-wide settings.
+    // Saved HTML is the Gutenberg gallery figure (nested wp-block-image
+    // figures, wrapped with wp:gallery/wp:image comments by toWordPressHTML);
+    // in the editor it renders as a static thumbnail-grid card — all editing
+    // happens in the native GallerySheet, not in Tiptap. Read-only: galleries
+    // loaded from existing posts render the same card but are not re-openable
+    // for editing in v1.
+    class GalleryNodeView {
+      constructor(node) {
+        this.dom = document.createElement('div')
+        this.dom.className = 'gallery-card'
+        const grid = document.createElement('div')
+        grid.className = 'gallery-card-grid'
+        node.attrs.images.forEach(image => {
+          const img = document.createElement('img')
+          img.src = image.url
+          img.alt = image.alt || ''
+          grid.appendChild(img)
+        })
+        const hint = document.createElement('div')
+        hint.className = 'gallery-card-hint'
+        const count = node.attrs.images.length
+        hint.textContent = `${count} image${count === 1 ? '' : 's'} · Renders as a WordPress gallery`
+        this.dom.append(grid, hint)
+      }
+      selectNode()   { this.dom.classList.add('selected') }
+      deselectNode() { this.dom.classList.remove('selected') }
+    }
+
+    const GalleryBlock = TiptapNode.create({
+      name: 'galleryBlock',
+      group: 'block',
+      atom: true,
+      draggable: true,
+      priority: 110,
+
+      addAttributes() {
+        return {
+          images:     { default: [] },
+          columns:    { default: 3 },
+          cropped:    { default: true },
+          linkTo:     { default: 'none' },
+          // Verbatim copy of the original figure's outerHTML, captured on load.
+          // When set, renderHTML re-emits this unchanged instead of reconstructing
+          // from the structured attrs above — preserves captions, original
+          // sizeSlug, and anything else Quill doesn't model. null for
+          // sheet-inserted galleries, which always use the reconstruction path.
+          sourceHTML: { default: null },
+        }
+      },
+
+      parseHTML() {
+        return [{
+          tag: 'figure.wp-block-gallery',
+          getAttrs: el => {
+            const imageFigures = Array.from(el.querySelectorAll('figure.wp-block-image'))
+            if (imageFigures.length === 0) return false
+            const images = imageFigures.map(fig => {
+              const img = fig.querySelector('img')
+              const idMatch = img?.className.match(/wp-image-(\d+)/)
+              return {
+                id: idMatch ? parseInt(idMatch[1], 10) : null,
+                url: img?.getAttribute('src') || '',
+                alt: img?.getAttribute('alt') || '',
+              }
+            })
+            const columnsMatch = el.className.match(/columns-(\d+)/)
+            const firstImg = imageFigures[0].querySelector('img')
+            return {
+              images,
+              columns: columnsMatch ? parseInt(columnsMatch[1], 10) : 3,
+              cropped: el.classList.contains('is-cropped'),
+              linkTo: firstImg?.parentElement.tagName === 'A' ? 'media' : 'none',
+              sourceHTML: el.outerHTML,
+            }
+          },
+        }]
+      },
+
+      renderHTML({ node }) {
+        if (node.attrs.sourceHTML) {
+          const wrapper = document.createElement('div')
+          wrapper.innerHTML = node.attrs.sourceHTML
+          return wrapper.firstElementChild
+        }
+        const figure = document.createElement('figure')
+        figure.className = `wp-block-gallery has-nested-images columns-${node.attrs.columns}` +
+          (node.attrs.cropped ? ' is-cropped' : '')
+        node.attrs.images.forEach(image => {
+          const imgFigure = document.createElement('figure')
+          imgFigure.className = 'wp-block-image size-large'
+          const img = document.createElement('img')
+          img.setAttribute('src', image.url)
+          img.setAttribute('alt', image.alt || '')
+          if (image.id) img.classList.add(`wp-image-${image.id}`)
+          if (node.attrs.linkTo === 'media') {
+            const a = document.createElement('a')
+            a.setAttribute('href', image.url)
+            a.appendChild(img)
+            imgFigure.appendChild(a)
+          } else {
+            imgFigure.appendChild(img)
+          }
+          figure.appendChild(imgFigure)
+        })
+        return figure
+      },
+
+      addNodeView() {
+        return ({ node }) => new GalleryNodeView(node)
+      },
+    })
+
     // ── Footnotes ─────────────────────────────────────
     // Self-contained HTML footnotes: markers are inline atoms
     // <sup data-fn class="fn"><a href="#id"></a></sup>; the list is a literal
@@ -1847,6 +1983,7 @@
         withClassAttr(HorizontalRule),
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
+        GalleryBlock,
         FootnoteMarker,
         FootnotesList,
         FootnoteItem,
