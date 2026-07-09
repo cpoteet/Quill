@@ -18,6 +18,7 @@ public struct PostEditorView: View {
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
+    @State private var showGallerySheet = false
     @State private var toastMessage: String? = nil
     @State private var toastIsError: Bool = false
     // Bumped on every presentToast() call so the toast's dismiss timer restarts even when
@@ -81,6 +82,9 @@ public struct PostEditorView: View {
                         },
                         onInsertImage: {
                             showImagePicker = true
+                        },
+                        onInsertGallery: {
+                            showGallerySheet = true
                         },
                         onImageFilesDropped: { urls in
                             Task { await handleDroppedImages(urls) }
@@ -170,6 +174,30 @@ public struct PostEditorView: View {
                     })
                     .environmentObject(appState)
                     .frame(minWidth: 600, minHeight: 400)
+                }
+                .sheet(isPresented: $showGallerySheet) {
+                    GallerySheet(onInsert: { images, columns, cropped, linkTo in
+                        let imagePayload: [[String: Any]] = images.map { media in
+                            let url = media.mediaDetails?.sizes?["large"]?.sourceURL ?? media.sourceURL
+                            return [
+                                "id": media.id,
+                                "url": url,
+                                "alt": media.altText,
+                            ]
+                        }
+                        let info: [String: Any] = [
+                            "images": imagePayload,
+                            "columns": columns,
+                            "cropped": cropped,
+                            "linkTo": linkTo,
+                        ]
+                        NotificationCenter.default.post(name: .insertGalleryData, object: nil, userInfo: info)
+                        showGallerySheet = false
+                    }, onCancel: {
+                        showGallerySheet = false
+                    })
+                    .environmentObject(appState)
+                    .frame(minWidth: 720, minHeight: 480)
                 }
             }
 
