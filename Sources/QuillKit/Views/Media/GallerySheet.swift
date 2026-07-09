@@ -115,66 +115,97 @@ public struct GallerySheet: View {
     }
 
     private var selectionPane: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Selected (\(selected.count))")
-                .font(.subheadline.weight(.semibold))
-                .padding(.top, 12)
-                .padding(.horizontal, 12)
-
-            if selected.isEmpty {
-                Text("Tap images to add them to the gallery.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Selected (\(selected.count))")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.top, 12)
                     .padding(.horizontal, 12)
-            } else {
-                List {
-                    ForEach(selected) { media in
-                        HStack {
-                            AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
-                                if case .success(let image) = phase {
-                                    image.resizable().aspectRatio(contentMode: .fill)
-                                } else {
-                                    Rectangle().fill(.quaternary)
+
+                if selected.isEmpty {
+                    Text("Select images to add them to the gallery.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                } else {
+                    List {
+                        ForEach(selected) { media in
+                            HStack(spacing: 8) {
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.tertiary)
+                                AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
+                                    if case .success(let image) = phase {
+                                        image.resizable().aspectRatio(contentMode: .fill)
+                                    } else {
+                                        Rectangle().fill(.quaternary)
+                                    }
                                 }
+                                .frame(width: 32, height: 32)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                Text(media.title.decodedTitle)
+                                    .font(.system(size: 12))
+                                    .lineLimit(1)
+                                Spacer()
+                                Button {
+                                    selected.removeAll { $0.id == media.id }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .frame(width: 32, height: 32)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            Text(media.title.decodedTitle)
-                                .font(.system(size: 12))
-                                .lineLimit(1)
-                            Spacer()
-                            Button {
-                                selected.removeAll { $0.id == media.id }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
+                            .onHover { hovering in
+                                if hovering { NSCursor.openHand.set() } else { NSCursor.arrow.set() }
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .onMove { indices, newOffset in
+                            selected.move(fromOffsets: indices, toOffset: newOffset)
                         }
                     }
-                    .onMove { indices, newOffset in
-                        selected.move(fromOffsets: indices, toOffset: newOffset)
-                    }
+                    .listStyle(.plain)
                 }
-                .listStyle(.plain)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
 
-            Divider().padding(.horizontal, 12)
-
-            Stepper("Columns: \(columns)", value: $columns, in: 1...8)
+            SoftHorizontalDivider()
                 .padding(.horizontal, 12)
-            Toggle("Crop images to square", isOn: $cropped)
-                .padding(.horizontal, 12)
-            Picker("Link to", selection: $linkTo) {
-                Text("None").tag("none")
-                Text("Full Image").tag("media")
-            }
-            .pickerStyle(.menu)
-            .padding(.horizontal, 12)
+                .padding(.vertical, 12)
 
-            Spacer()
+            gallerySettings
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
         }
         .frame(minWidth: 260, maxWidth: 300)
+    }
+
+    private var gallerySettings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("GALLERY SETTINGS")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .tracking(1.0)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Stepper("Columns: \(columns)", value: $columns, in: 1...8)
+
+                Toggle("Crop images to square", isOn: $cropped)
+
+                HStack {
+                    Text("Link to")
+                    Spacer()
+                    Picker("", selection: $linkTo) {
+                        Text("None").tag("none")
+                        Text("Full Image").tag("media")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 130)
+                }
+            }
+            .padding(10)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     private func toggle(_ media: WPMedia) {
