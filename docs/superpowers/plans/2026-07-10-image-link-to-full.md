@@ -488,7 +488,7 @@ Replace with:
     })()
 ```
 
-- [ ] **Step 6: Rebuild and manually verify** — rebuilt successfully; manual in-app checklist below not yet run (computer-use access to Quill was denied this session — needs a human pass).
+- [x] **Step 6: Rebuild and manually verify** — rebuilt successfully; manual in-app checklist confirmed by user.
 
 ```bash
 ./build.sh
