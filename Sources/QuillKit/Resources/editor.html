@@ -606,6 +606,15 @@
       border-color: rgba(255,255,255,0.1);
     }
     #image-toolbar button:disabled { opacity: 0.4; cursor: default; }
+    #image-toolbar button.active {
+      background: #ececef;
+      color: #3f434d;
+      border-color: transparent;
+    }
+    body.dark #image-toolbar button.active {
+      background: rgba(255,255,255,0.12);
+      color: #f4f4f5;
+    }
     #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: #ddd; margin: 0 2px; }
     body.dark #image-toolbar .img-tb-sep { background: #444; }
     #image-toolbar .img-tb-label { color: #999; }
@@ -972,6 +981,9 @@
       <span class="img-tb-label">Alt</span>
       <input type="text" id="img-tb-alt">
     </div>
+    <div class="img-tb-row">
+      <button id="img-tb-link" style="display:none">Link to Full Image</button>
+    </div>
   </div>
   <div id="find-bar">
     <input id="find-input" type="text" placeholder="Find" spellcheck="false">
@@ -1125,6 +1137,8 @@
           document.getElementById('img-tb-w').value   = node.attrs.width  ?? ''
           document.getElementById('img-tb-h').value   = node.attrs.height ?? ''
           document.getElementById('img-tb-alt').value = node.attrs.alt    ?? ''
+          const linkBtn = document.getElementById('img-tb-link')
+          if (linkBtn) linkBtn.classList.toggle('active', node.attrs.linkTo === 'media')
         }
         return true
       }
@@ -1305,6 +1319,13 @@
           btn._sizeData = sizes[btn.dataset.size]
         }
       })
+      const linkBtn = document.getElementById('img-tb-link')
+      if (linkBtn) {
+        const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
+        linkBtn.style.display = fullBtn?._sizeData ? '' : 'none'
+        const tb = document.getElementById('image-toolbar')
+        linkBtn.classList.toggle('active', tb?._activeNodeView?.node.attrs.linkTo === 'media')
+      }
     }
 
     // ── ResizableImage extension ──────────────────────
@@ -3018,6 +3039,22 @@
           document.getElementById('img-tb-w').value = width
           document.getElementById('img-tb-h').value = height
         })
+      })
+
+      document.getElementById('img-tb-link').addEventListener('click', () => {
+        const tb = document.getElementById('image-toolbar')
+        const nv = tb?._activeNodeView
+        if (!nv) return
+        const pos = nv.getPos()
+        if (typeof pos !== 'number') return
+        const turningOn = nv.node.attrs.linkTo !== 'media'
+        const newAttrs = { ...nv.node.attrs, linkTo: turningOn ? 'media' : 'none' }
+        if (turningOn) {
+          const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
+          if (fullBtn?._sizeData) newAttrs.linkHref = fullBtn._sizeData.url
+        }
+        const { state, dispatch } = nv.editor.view
+        dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))
       })
     })()
 
