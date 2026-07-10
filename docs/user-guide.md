@@ -263,8 +263,6 @@ For example, adding `class="intro"` to a `<p>` tag in code view, switching back 
 
 The practical rule: if you need to make changes that go beyond CSS classes on supported elements, do your visual editing first, then switch to code view for your final HTML pass before saving.
 
-> **Block comments and visual editing.** When you open a post created in the WordPress block editor, Quill keeps the original block comment markup intact. Switching to code view shows those comments in place, and switching back to the visual editor does not discard them. However, if you make visual edits and save, the block comments will be erased. To retain block comments, edit those posts only in code view.
-
 ---
 
 ## Content Elements
