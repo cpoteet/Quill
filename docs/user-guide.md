@@ -312,6 +312,8 @@ Gallery settings, available once you've selected at least one image:
 - **Link To:** Choose **None** or **Full Image** (each thumbnail links to its own full-resolution file).
 - **Size:** The image size to use for each thumbnail — **Thumbnail**, **Medium**, **Large**, or **Full Size**.
 
+> **A note on Size:** WordPress often automatically offers browsers a range of file sizes for each image (this is what makes photos look crisp on high-resolution displays like Retina screens), and the browser is free to pick whichever one it thinks looks best — regardless of the Size you chose here. On a modern high-density display, you may not notice a visual difference between Medium and Large for this reason. Size still reliably matters for older browsers, RSS feeds, email, and other places that don't support this automatic behavior — and it always affects file size/page weight, since it changes which image WordPress treats as the "base" file for the gallery.
+
 Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill — to change it, delete it and insert a new one with different images or settings.
 
 Galleries authored outside Quill (e.g. in the WordPress block editor) load the same way, as a read-only card, and any captions or other details not covered by the settings above are preserved even after you make unrelated edits elsewhere in the post.
