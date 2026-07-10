@@ -203,6 +203,7 @@ The formatting toolbar runs across the top of the editor and provides access to 
 | ABC (Spell check) | Runs a spell check on the document. Reference [Spell Check](#spell-check) for more details. |
 | </> (Code view) | Toggles between the rich text editor and a raw HTML view. Reference [Code View](#code-view) for more details. |
 | Image | Opens the media library picker to insert an image. Reference [Images](#images) for more details. |
+| Gallery | Opens the gallery picker to insert a multi-image gallery. Reference [Gallery](#gallery) for more details. |
 | Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
 | Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
 
@@ -297,6 +298,23 @@ Use the alignment buttons in the main toolbar (left, center, right) to float or 
 #### Captions
 
 Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
+
+### Gallery
+
+Click the **Gallery** button in the toolbar to open the gallery picker. Click images in the media grid to select them — a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the **X** next to it to remove it.
+
+Click **Upload** in the gallery picker to add a new image from disk directly to your media library; it's added to the grid and automatically selected.
+
+Gallery settings, available once you've selected at least one image:
+
+- **Columns:** Number of images per row (1–8).
+- **Crop:** Crops images to a square aspect ratio when enabled.
+- **Link To:** Choose **None** or **Full Image** (each thumbnail links to its own full-resolution file).
+- **Size:** The image size to use for each thumbnail — **Thumbnail**, **Medium**, **Large**, or **Full Size**.
+
+Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill — to change it, delete it and insert a new one with different images or settings.
+
+Galleries authored outside Quill (e.g. in the WordPress block editor) load the same way, as a read-only card, and any captions or other details not covered by the settings above are preserved even after you make unrelated edits elsewhere in the post.
 
 ### Blockquotes
 
@@ -619,9 +637,11 @@ Quill stores credentials for a single WordPress site. To switch sites, update yo
 
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, tables, embeds, footnotes, and links. Posts you write in Quill will round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill will round-trip correctly through the Gutenberg editor.
 
-However, if you open a post that was created in Gutenberg using block types Quill does not support (such as galleries, columns, cover blocks, or custom blocks) those blocks will be visible in the **Code View** (`</>`) but will not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
+However, if you open a post that was created in Gutenberg using block types Quill does not support (such as columns, cover blocks, or custom blocks) those blocks will be visible in the **Code View** (`</>`) but will not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
+
+Galleries load as a read-only thumbnail-grid card — Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
 
 To edit posts that contain unsupported blocks, use Code View to work with the raw HTML directly, or make your edits in the WordPress Gutenberg editor instead.
 

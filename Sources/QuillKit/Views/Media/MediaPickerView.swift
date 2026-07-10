@@ -133,18 +133,13 @@ public struct MediaPickerView: View {
     }
 
     private func uploadFromDisk() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.image]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }
+        guard let url = pickImageFromDisk() else { return }
         isUploading = true
         Task {
             defer { isUploading = false }
             do {
-                let mime = MimeType.forFile(url)
-                let uploaded = try await WordPressClient(credentials: creds)
-                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+                let uploaded = try await uploadPickedImage(url, credentials: creds)
                 mediaItems.insert(uploaded, at: 0)
             } catch {
                 uploadError = error.localizedDescription
@@ -153,12 +148,32 @@ public struct MediaPickerView: View {
     }
 }
 
+/// Opens an `NSOpenPanel` restricted to images and returns the user's selection,
+/// or `nil` if the panel was cancelled. Shared by `MediaPickerView` and `GallerySheet`.
+func pickImageFromDisk() -> URL? {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [UTType.image]
+    panel.allowsMultipleSelection = false
+    guard panel.runModal() == .OK else { return nil }
+    return panel.url
+}
+
+/// Uploads a locally-picked image file to the WordPress media library. Shared by
+/// `MediaPickerView` and `GallerySheet` so their upload-from-disk flows can't drift.
+func uploadPickedImage(_ url: URL, credentials: Credentials) async throws -> WPMedia {
+    let mime = MimeType.forFile(url)
+    return try await WordPressClient(credentials: credentials)
+        .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+}
+
 struct MediaThumbnail: View {
     let media: WPMedia
+    var isSelected: Bool = false
+    var size: CGFloat = 90
 
     var body: some View {
         Color.clear
-            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 90, maxHeight: 90)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: size, maxHeight: size)
             .overlay {
                 AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
                     switch phase {
@@ -175,7 +190,15 @@ struct MediaThumbnail: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
-                RoundedRectangle(cornerRadius: 6).stroke(.separator, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? Color.accentColor : Color(nsColor: .separatorColor), lineWidth: isSelected ? 2 : 0.5)
             )
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white, Color.accentColor)
+                        .padding(4)
+                }
+            }
     }
 }

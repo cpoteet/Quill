@@ -17,17 +17,26 @@ function toWordPressHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = document
   const div = doc.createElement('div')
   // Strip existing wp:embed block comments — will re-add fresh ones below.
+  // The attrs-matching group is non-greedy (`[\s\S]*?`) and stops at the first
+  // `-->`: a loaded gallery's `sourceHTML` re-emits its nested `<!-- wp:image -->`
+  // comments verbatim with no guaranteed newline between them (unlike this
+  // function's own wrap step below, which always inserts one), so a greedy
+  // `[^\n]*` here would span past the first comment's close and swallow the
+  // image figure(s) in between. `[\s\S]*?` (not `.*?`) because JS `.` excludes
+  // ALL line terminators (\n, \r, U+2028, U+2029), not just \n — a `.*?` group
+  // would fail to match at all if a stray \r ever landed inside a comment's
+  // attrs before its own `-->`.
   div.innerHTML = html
-    .replace(/<!-- wp:embed [^\n]*-->\n?/g, '')
+    .replace(/<!-- wp:embed [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:embed -->/g, '')
-    .replace(/<!-- wp:gallery [^\n]*-->\n?/g, '')
+    .replace(/<!-- wp:gallery [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:gallery -->/g, '')
     // wp:image comments only ever appear nested inside a gallery today (standalone
     // images aren't comment-wrapped at all — see the images row in CLAUDE.md's
     // Gutenberg-compatibility table), so this strip is gallery-scoped in practice.
     // If a future change routes raw WordPress HTML through toWordPressHTML, revisit —
     // this would strip a standalone image's own wp:image block identity too.
-    .replace(/<!-- wp:image [^\n]*-->\n?/g, '')
+    .replace(/<!-- wp:image [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:image -->/g, '')
 
   // Re-emit wp-image-{id} class so WordPress can associate images with media library entries

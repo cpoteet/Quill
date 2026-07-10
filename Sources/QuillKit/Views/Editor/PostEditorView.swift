@@ -176,12 +176,12 @@ public struct PostEditorView: View {
                     .frame(minWidth: 600, minHeight: 400)
                 }
                 .sheet(isPresented: $showGallerySheet) {
-                    GallerySheet(onInsert: { images, columns, cropped, linkTo in
+                    GallerySheet(onInsert: { images, columns, cropped, linkTo, sizeSlug in
                         let imagePayload: [[String: Any]] = images.map { media in
-                            let url = media.mediaDetails?.sizes?["large"]?.sourceURL ?? media.sourceURL
-                            return [
+                            [
                                 "id": media.id,
-                                "url": url,
+                                "url": media.sizedURL(for: sizeSlug),
+                                "fullUrl": media.sourceURL,
                                 "alt": media.altText,
                             ]
                         }
@@ -190,6 +190,7 @@ public struct PostEditorView: View {
                             "columns": columns,
                             "cropped": cropped,
                             "linkTo": linkTo,
+                            "sizeSlug": sizeSlug,
                         ]
                         NotificationCenter.default.post(name: .insertGalleryData, object: nil, userInfo: info)
                         showGallerySheet = false

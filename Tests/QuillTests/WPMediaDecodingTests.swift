@@ -124,4 +124,51 @@ import Testing
         let media = try decode(json)
         #expect(media.thumbnailURL == "https://example.com/img.jpg")
     }
+
+    @Test func sizedURLUsesMatchingSizeWhenPresent() throws {
+        let json = """
+        {"id":12,"source_url":"https://example.com/img.jpg",
+         "media_details":{
+           "sizes":{
+             "medium":{"source_url":"https://example.com/img-300x300.jpg","width":300,"height":300}
+           }
+         }}
+        """
+        let media = try decode(json)
+        #expect(media.sizedURL(for: "medium") == "https://example.com/img-300x300.jpg")
+    }
+
+    @Test func sizedURLFallsBackToSourceURLWhenSizeMissing() throws {
+        let json = """
+        {"id":13,"source_url":"https://example.com/img.jpg"}
+        """
+        let media = try decode(json)
+        #expect(media.sizedURL(for: "large") == "https://example.com/img.jpg")
+    }
+
+    @Test func sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL() throws {
+        let json = """
+        {"id":14,"source_url":"https://example.com/img.jpg",
+         "media_details":{
+           "sizes":{
+             "large":{"source_url":"","width":1024,"height":768}
+           }
+         }}
+        """
+        let media = try decode(json)
+        #expect(media.sizedURL(for: "large") == "https://example.com/img.jpg")
+    }
+
+    @Test func sizedURLAlwaysUsesSourceURLForFullSlugEvenWhenAFullSizeEntryExists() throws {
+        let json = """
+        {"id":15,"source_url":"https://example.com/img.jpg",
+         "media_details":{
+           "sizes":{
+             "full":{"source_url":"https://example.com/img-full-variant.jpg","width":2000,"height":1500}
+           }
+         }}
+        """
+        let media = try decode(json)
+        #expect(media.sizedURL(for: "full") == "https://example.com/img.jpg")
+    }
 }

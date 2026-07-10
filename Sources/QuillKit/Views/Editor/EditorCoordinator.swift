@@ -51,12 +51,13 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
     @objc private func handleInsertGallery(_ note: Notification) {
         guard
-            let images  = note.userInfo?["images"] as? [[String: Any]],
-            let columns = note.userInfo?["columns"] as? Int,
-            let cropped = note.userInfo?["cropped"] as? Bool,
-            let linkTo  = note.userInfo?["linkTo"] as? String
+            let images   = note.userInfo?["images"] as? [[String: Any]],
+            let columns  = note.userInfo?["columns"] as? Int,
+            let cropped  = note.userInfo?["cropped"] as? Bool,
+            let linkTo   = note.userInfo?["linkTo"] as? String,
+            let sizeSlug = note.userInfo?["sizeSlug"] as? String
         else { return }
-        insertGallery(images: images, columns: columns, cropped: cropped, linkTo: linkTo)
+        insertGallery(images: images, columns: columns, cropped: cropped, linkTo: linkTo, sizeSlug: sizeSlug)
     }
 
     // WKScriptMessageHandler
@@ -233,13 +234,14 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         wv.evaluateJavaScript("insertImage(\(urlStr), \(wStr), \(hStr), \(idStr), \(altStr))", completionHandler: nil)
     }
 
-    func insertGallery(images: [[String: Any]], columns: Int, cropped: Bool, linkTo: String) {
+    func insertGallery(images: [[String: Any]], columns: Int, cropped: Bool, linkTo: String, sizeSlug: String) {
         guard let wv = webView else { return }
         let payload: [String: Any] = [
             "images": images,
             "columns": columns,
             "cropped": cropped,
             "linkTo": linkTo,
+            "sizeSlug": sizeSlug,
         ]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
               let jsonStr = String(data: jsonData, encoding: .utf8),

@@ -18,6 +18,16 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         return sourceURL
     }
 
+    /// Resolves a WordPress size slug (e.g. "thumbnail", "medium", "large") to its URL,
+    /// falling back to the full-resolution `sourceURL` when the slug is "full", unrecognized,
+    /// or the matched size entry has no (or a blank) `source_url`.
+    public func sizedURL(for sizeSlug: String) -> String {
+        guard sizeSlug != "full", let url = mediaDetails?.sizes?[sizeSlug]?.sourceURL, !url.isEmpty else {
+            return sourceURL
+        }
+        return url
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, title
         case sourceURL = "source_url"

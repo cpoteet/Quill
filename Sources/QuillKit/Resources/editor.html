@@ -190,25 +190,6 @@
       font-weight: 700;
       letter-spacing: 0;
     }
-    #toolbar .tb-add {
-      gap: 5px;
-      min-width: auto;
-      padding: 0 5px;
-      font-size: 14px;
-      font-weight: 400;
-    }
-    #toolbar .tb-add svg {
-      width: 18px;
-      height: 18px;
-    }
-    #toolbar .tb-image-plus-cutout {
-      stroke: var(--toolbar-bg);
-      stroke-width: 5;
-    }
-    #toolbar .tb-image-plus {
-      stroke: currentColor;
-      stroke-width: 1.9;
-    }
 
     #heading-button {
       min-width: 48px;
@@ -401,6 +382,21 @@
       line-height: 1.75;
       caret-color: #007aff;
       padding-bottom: 60vh;
+    }
+    /* Gap-cursor: ProseMirror's built-in widget for caret positions next to
+       atomic nodes (e.g. right after a gallery/embed) where no adjacent
+       inline content exists for a normal text caret. Framework default is a
+       black horizontal bar; restyled to match the app's blue vertical caret.
+       Selector is scoped under .ProseMirror (not just .ProseMirror-gapcursor)
+       so its specificity reliably beats the default rule Tiptap injects into
+       <head> at runtime, regardless of injection order. */
+    .ProseMirror .ProseMirror-gapcursor:after {
+      top: 0;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      border-top: none;
+      border-left: 1.5px solid #007aff;
     }
     .spell-error {
       text-decoration: red wavy underline;
@@ -880,6 +876,12 @@
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group">
+      <button data-cmd="image" title="Insert image from media library">
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none"></circle><path d="m5 16.5 4.3-4.5 3 3 2.4-2.6 4.3 4.3"></path></svg>
+      </button>
+      <button data-cmd="gallery" title="Insert gallery from media library">
+        <svg viewBox="0 0 24 24"><path d="M7 1h11a2 2 0 0 1 2 2v10"></path><rect x="2.5" y="4.5" width="14.5" height="14.5" rx="1.5"></rect><path d="m3.5 17.5 3.8-4 2.6 2.6 2-2.2 3.8 3.8"></path></svg>
+      </button>
       <button data-cmd="insertTable" title="Insert table">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="M5 9.67h14"></path><path d="M5 14.33h14"></path><path d="M9.67 5v14"></path><path d="M14.33 5v14"></path></svg>
       </button>
@@ -913,17 +915,6 @@
       </span>
       <button id="btn-spell" title="Check spelling"><span class="tb-spell-icon">ABC</span></button>
       <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group">
-      <button data-cmd="image" title="Insert image from media library" class="tb-add">
-        <svg viewBox="0 0 24 24"><rect x="4" y="7" width="14" height="14" rx="2"></rect><path d="m4 18 4.6-4.6 3.2 3.2 2.2-2.2 4 4"></path><path class="tb-image-plus-cutout" d="M18 3.5v7M14.5 7h7"></path><path class="tb-image-plus" d="M18 3.5v7M14.5 7h7"></path></svg>
-        <span>Add</span>
-      </button>
-      <button data-cmd="gallery" title="Insert gallery from media library" class="tb-add">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="8" rx="1"></rect><rect x="13" y="4" width="8" height="8" rx="1"></rect><rect x="3" y="14" width="8" height="8" rx="1"></rect><rect x="13" y="14" width="8" height="8" rx="1"></rect></svg>
-        <span>Gallery</span>
-      </button>
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group" id="ai-toolbar-group" style="display:none">
@@ -1600,6 +1591,7 @@
           columns:    { default: 3 },
           cropped:    { default: true },
           linkTo:     { default: 'none' },
+          sizeSlug:   { default: 'large' },
           // Verbatim copy of the original figure's outerHTML, captured on load.
           // When set, renderHTML re-emits this unchanged instead of reconstructing
           // from the structured attrs above — preserves captions, original
@@ -1626,11 +1618,13 @@
             })
             const columnsMatch = el.className.match(/columns-(\d+)/)
             const firstImg = imageFigures[0].querySelector('img')
+            const sizeMatch = imageFigures[0].className.match(/size-(\S+)/)
             return {
               images,
               columns: columnsMatch ? parseInt(columnsMatch[1], 10) : 3,
               cropped: el.classList.contains('is-cropped'),
               linkTo: firstImg?.parentElement.tagName === 'A' ? 'media' : 'none',
+              sizeSlug: sizeMatch ? sizeMatch[1] : 'large',
               sourceHTML: el.outerHTML,
             }
           },
@@ -1648,14 +1642,14 @@
           (node.attrs.cropped ? ' is-cropped' : '')
         node.attrs.images.forEach(image => {
           const imgFigure = document.createElement('figure')
-          imgFigure.className = 'wp-block-image size-large'
+          imgFigure.className = `wp-block-image size-${node.attrs.sizeSlug || 'large'}`
           const img = document.createElement('img')
           img.setAttribute('src', image.url)
           img.setAttribute('alt', image.alt || '')
           if (image.id) img.classList.add(`wp-image-${image.id}`)
           if (node.attrs.linkTo === 'media') {
             const a = document.createElement('a')
-            a.setAttribute('href', image.url)
+            a.setAttribute('href', image.fullUrl || image.url)
             a.appendChild(img)
             imgFigure.appendChild(a)
           } else {
@@ -2894,6 +2888,7 @@
           columns: payload.columns ?? 3,
           cropped: payload.cropped ?? true,
           linkTo: payload.linkTo ?? 'none',
+          sizeSlug: payload.sizeSlug ?? 'large',
         },
       }).run()
     }

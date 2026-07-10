@@ -1,8 +1,7 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 public struct GallerySheet: View {
-    var onInsert: (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String) -> Void
+    var onInsert: (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void
     var onCancel: (() -> Void)?
 
     @EnvironmentObject private var appState: AppState
@@ -18,9 +17,10 @@ public struct GallerySheet: View {
     @State private var columns: Int = 3
     @State private var cropped: Bool = true
     @State private var linkTo: String = "none"
+    @State private var sizeSlug: String = "large"
 
     public init(
-        onInsert: @escaping (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String) -> Void,
+        onInsert: @escaping (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void,
         onCancel: (() -> Void)? = nil
     ) {
         self.onInsert = onInsert
@@ -30,7 +30,7 @@ public struct GallerySheet: View {
     public var body: some View {
         VStack(spacing: 0) {
             toolbar
-            Divider()
+            SoftHorizontalDivider()
             HStack(spacing: 0) {
                 mediaPane
                 SoftPanelBoundary()
@@ -64,7 +64,7 @@ public struct GallerySheet: View {
             Button("Upload") { uploadFromDisk() }
                 .disabled(isUploading)
             Button("Insert Gallery") {
-                onInsert(selected, columns, cropped, linkTo)
+                onInsert(selected, columns, cropped, linkTo, sizeSlug)
             }
             .disabled(selected.isEmpty)
             .keyboardShortcut(.defaultAction)
@@ -88,7 +88,7 @@ public struct GallerySheet: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                         ForEach(mediaItems.filter { $0.mediaType == "image" }) { media in
-                            GalleryMediaThumbnail(media: media, isSelected: selected.contains(where: { $0.id == media.id }))
+                            MediaThumbnail(media: media, isSelected: selected.contains(where: { $0.id == media.id }), size: 80)
                                 .contentShape(Rectangle())
                                 .onTapGesture { toggle(media) }
                         }
@@ -117,8 +117,10 @@ public struct GallerySheet: View {
     private var selectionPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Selected (\(selected.count))")
-                    .font(.subheadline.weight(.semibold))
+                Text("SELECTED (\(selected.count))")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.0)
                     .padding(.top, 12)
                     .padding(.horizontal, 12)
 
@@ -180,32 +182,49 @@ public struct GallerySheet: View {
     }
 
     private var gallerySettings: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("GALLERY SETTINGS")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .tracking(1.0)
-
-            VStack(alignment: .leading, spacing: 12) {
-                Stepper("Columns: \(columns)", value: $columns, in: 1...8)
-
-                Toggle("Crop images to square", isOn: $cropped)
-
-                HStack(spacing: 8) {
-                    Text("Link to")
-                    Picker("", selection: $linkTo) {
-                        Text("None").tag("none")
-                        Text("Full Image").tag("media")
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .fixedSize()
-                }
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 6) {
+                sectionLabel("Columns")
+                Stepper("\(columns)", value: $columns, in: 1...8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(10)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-            .padding(.horizontal, -10)
+
+            VStack(alignment: .leading, spacing: 6) {
+                sectionLabel("Crop")
+                Toggle("Square", isOn: $cropped)
+                    .toggleStyle(.switch)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                sectionLabel("Link To")
+                Picker("", selection: $linkTo) {
+                    Text("None").tag("none")
+                    Text("Full Image").tag("media")
+                }
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                sectionLabel("Size")
+                Picker("", selection: $sizeSlug) {
+                    Text("Thumbnail").tag("thumbnail")
+                    Text("Medium").tag("medium")
+                    Text("Large").tag("large")
+                    Text("Full Size").tag("full")
+                }
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+            .tracking(1.0)
     }
 
     private func toggle(_ media: WPMedia) {
@@ -219,19 +238,15 @@ public struct GallerySheet: View {
     private let perPage = 50
 
     private func uploadFromDisk() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.image]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }
+        guard let url = pickImageFromDisk() else { return }
         isUploading = true
         Task {
             defer { isUploading = false }
             do {
-                let mime = MimeType.forFile(url)
-                let uploaded = try await WordPressClient(credentials: creds)
-                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+                let uploaded = try await uploadPickedImage(url, credentials: creds)
                 mediaItems.insert(uploaded, at: 0)
+                selected.append(uploaded)
             } catch {
                 uploadError = error.localizedDescription
             }
@@ -270,41 +285,5 @@ public struct GallerySheet: View {
         } catch {
             loadError = error.localizedDescription
         }
-    }
-}
-
-private struct GalleryMediaThumbnail: View {
-    let media: WPMedia
-    let isSelected: Bool
-
-    var body: some View {
-        Color.clear
-            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
-            .overlay {
-                AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
-                        Rectangle().fill(.quaternary)
-                            .overlay(Image(systemName: "photo").foregroundStyle(.tertiary))
-                    @unknown default:
-                        Rectangle().fill(.quaternary)
-                    }
-                }
-                .clipped()
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? Color.accentColor : Color(nsColor: .separatorColor), lineWidth: isSelected ? 2 : 0.5)
-            )
-            .overlay(alignment: .topTrailing) {
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.white, Color.accentColor)
-                        .padding(4)
-                }
-            }
     }
 }

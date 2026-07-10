@@ -796,6 +796,44 @@ describe('toWordPressHTML — gallery', () => {
     assert.ok(!out.includes('"id":null'))
     assert.match(out, /<!-- wp:image \{"sizeSlug":"large","linkDestination":"none"\} -->/)
   })
+
+  // Regression: galleryBlock.renderHTML re-emits a loaded gallery's `sourceHTML`
+  // attr verbatim, which already contains the nested `<!-- wp:image -->` comments
+  // from the original WordPress content (unlike a freshly-inserted gallery, whose
+  // reconstruction path emits no comments at all). toWordPressHTML's upfront strip
+  // of pre-existing wp:image comments must remove exactly one comment per replace,
+  // even when no newline separates a comment from the next one — otherwise a
+  // greedy match spans multiple image figures and deletes them.
+  test('stripping pre-existing wp:image comments does not consume the images between them', () => {
+    const alreadyWrapped =
+      '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' +
+      '<!-- wp:image {"id":145,"sizeSlug":"large","linkDestination":"none"} -->' +
+      '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="" class="wp-image-145"></figure>' +
+      '<!-- /wp:image -->' +
+      '<!-- wp:image {"id":146,"sizeSlug":"large","linkDestination":"none"} -->' +
+      '<figure class="wp-block-image size-large"><img src="http://x.test/b.png" alt="" class="wp-image-146"></figure>' +
+      '<!-- /wp:image -->' +
+      '</figure>'
+    const out = wp(alreadyWrapped)
+    assert.match(out, /"ids":\[145,146\]/)
+    assert.ok(out.includes('wp-image-145'))
+    assert.ok(out.includes('wp-image-146'))
+  })
+
+  // Regression: the non-greedy attrs group must use `[\s\S]*?`, not `.*?` — JS `.`
+  // excludes ALL line-terminator characters (\n, \r, U+2028, U+2029), not just \n,
+  // so a `.*?` group fails to match at all (leaving the comment unstripped) if a
+  // stray \r ever lands inside a comment's attrs before its own `-->`.
+  test('stripping a pre-existing wp:gallery comment works even with a CR before its closing -->', () => {
+    const withCR =
+      '<!-- wp:gallery {"ids":[1]}\r -->\n' +
+      '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' +
+      '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="" class="wp-image-1"></figure>' +
+      '</figure>' +
+      '<!-- /wp:gallery -->'
+    const out = wp(withCR)
+    assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
+  })
 })
 
 // ---------------------------------------------------------------------------

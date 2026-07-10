@@ -71,6 +71,22 @@ describe('galleryBlock — insert and render', () => {
     assert.match(html, /class="wp-image-2"/)
   })
 
+  test('non-default sizeSlug is honored by the reconstruction render path', () => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.insertContent({
+      type: 'galleryBlock',
+      attrs: {
+        images: [{ id: 1, url: 'http://x.test/a.png', alt: '' }],
+        columns: 3,
+        cropped: true,
+        linkTo: 'none',
+        sizeSlug: 'medium',
+      },
+    })
+    const html = editor.getHTML()
+    assert.match(html, /class="wp-block-image size-medium"/)
+  })
+
   test('linkTo media wraps each image in an anchor to its own url', () => {
     editor.commands.setContent('<p></p>')
     editor.commands.insertContent({
@@ -84,6 +100,40 @@ describe('galleryBlock — insert and render', () => {
     })
     const html = editor.getHTML()
     assert.match(html, /<a href="http:\/\/x\.test\/full\.png"><img[^>]*class="wp-image-5"[^>]*><\/a>/)
+  })
+
+  test('linkTo media links to fullUrl (true original), not the display-size url', () => {
+    // Regression: when a non-full display Size is chosen, the anchor must still
+    // point at the full-resolution original, not the smaller displayed image.
+    editor.commands.setContent('<p></p>')
+    editor.commands.insertContent({
+      type: 'galleryBlock',
+      attrs: {
+        images: [{ id: 5, url: 'http://x.test/thumb.png', fullUrl: 'http://x.test/original-full.png', alt: '' }],
+        columns: 3,
+        cropped: true,
+        linkTo: 'media',
+        sizeSlug: 'thumbnail',
+      },
+    })
+    const html = editor.getHTML()
+    assert.match(html, /<a href="http:\/\/x\.test\/original-full\.png">/)
+    assert.match(html, /<img[^>]*src="http:\/\/x\.test\/thumb\.png"/)
+  })
+
+  test('linkTo media falls back to url when fullUrl is absent', () => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.insertContent({
+      type: 'galleryBlock',
+      attrs: {
+        images: [{ id: 5, url: 'http://x.test/only.png', alt: '' }],
+        columns: 3,
+        cropped: true,
+        linkTo: 'media',
+      },
+    })
+    const html = editor.getHTML()
+    assert.match(html, /<a href="http:\/\/x\.test\/only\.png">/)
   })
 
   test('cropped false omits is-cropped class', () => {
@@ -114,6 +164,19 @@ describe('galleryBlock — load (parseHTML)', () => {
     assert.equal(found.attrs.columns, 3)
     assert.equal(found.attrs.cropped, true)
     assert.equal(found.attrs.linkTo, 'none')
+    assert.equal(found.attrs.sizeSlug, 'large')
+  })
+
+  test('loading a gallery with a non-large size class recovers that sizeSlug', () => {
+    const medium =
+      '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' +
+      '<figure class="wp-block-image size-medium"><img src="http://x.test/a.png" alt="" class="wp-image-1"/></figure>' +
+      '</figure>'
+    editor.commands.setContent(medium)
+    let found = null
+    editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
+    assert.ok(found)
+    assert.equal(found.attrs.sizeSlug, 'medium')
   })
 
   test('loading a gallery with images linked to media recovers linkTo=media', () => {
@@ -227,11 +290,66 @@ describe('window.insertGallery bridge function', () => {
     assert.equal(found.attrs.images[0].id, 9)
   })
 
+  test('sizeSlug from the JSON payload propagates to node attrs, defaulting to large', () => {
+    editor.commands.setContent('<p></p>')
+    win.insertGallery(JSON.stringify({
+      images: [{ id: 9, url: 'http://x.test/z.png', alt: '' }],
+      columns: 3,
+      cropped: true,
+      linkTo: 'none',
+      sizeSlug: 'thumbnail',
+    }))
+    let found = null
+    editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
+    assert.equal(found.attrs.sizeSlug, 'thumbnail')
+
+    editor.commands.setContent('<p></p>')
+    win.insertGallery(JSON.stringify({
+      images: [{ id: 9, url: 'http://x.test/z.png', alt: '' }],
+      columns: 3,
+      cropped: true,
+      linkTo: 'none',
+    }))
+    found = null
+    editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
+    assert.equal(found.attrs.sizeSlug, 'large')
+  })
+
   test('ignores an empty images array', () => {
     editor.commands.setContent('<p>unchanged</p>')
     win.insertGallery(JSON.stringify({ images: [], columns: 3, cropped: true, linkTo: 'none' }))
     let found = null
     editor.state.doc.descendants(n => { if (n.type.name === 'galleryBlock') found = n })
     assert.equal(found, null)
+  })
+
+  test('inserting at the end of the doc does not synthesize a trailing paragraph', () => {
+    // The caret-after-an-atom problem is handled by restyling Tiptap's
+    // built-in gap-cursor widget (CSS in editor.html), not by editing the
+    // document model. Confirms the doc model is untouched: the gallery
+    // stays the last node, and no phantom <p></p> can leak into saved HTML.
+    editor.commands.setContent('<p>Hello world</p>')
+    win.insertGallery(JSON.stringify({
+      images: [{ id: 1, url: 'http://x.test/a.png', alt: '' }],
+      columns: 3,
+      cropped: true,
+      linkTo: 'none',
+    }))
+    const doc = editor.state.doc
+    assert.equal(doc.lastChild.type.name, 'galleryBlock')
+    const saved = win.toWordPressHTML(editor.getHTML())
+    assert.ok(!saved.includes('<p></p>'))
+  })
+})
+
+describe('gap-cursor styling', () => {
+  test('editor.html overrides the default gap-cursor widget to match the app caret', () => {
+    // Tiptap's built-in gapCursor extension (enabled via StarterKit, never
+    // disabled) renders a black horizontal bar by default wherever the caret
+    // sits next to an atomic node (e.g. right after a gallery/embed) with no
+    // adjacent inline content. Guard against silently losing the override
+    // that restyles it to the app's blue vertical caret.
+    const source = fs.readFileSync(htmlPath, 'utf8')
+    assert.match(source, /\.ProseMirror-gapcursor:after\s*\{[^}]*border-left:\s*1\.5px solid #007aff/)
   })
 })

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-07-08 — 325 Swift tests + 161 JS tests, all passing._
+_Last updated: 2026-07-09 — 329 Swift tests + 170 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -17,9 +17,9 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (all 325 tests across 22 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (118 tests via Node's built-in runner + jsdom)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (120 tests via Node's built-in runner + jsdom)
 3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (31 tests — live Tiptap editor in jsdom)
-4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (12 tests — live Tiptap editor in jsdom)
+4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (19 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -47,7 +47,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (325 tests, 22 suites)
+## Swift test suite (329 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -56,7 +56,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 33 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
-| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 11 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 15 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
 | 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
@@ -125,11 +125,11 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (11 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (15 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
-Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback. Also covers `altText` and `thumbnailURL`.
+Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback. Also covers `altText`, `thumbnailURL`, and `sizedURL(for:)`.
 
 | Test | What it checks |
 |---|---|
@@ -144,6 +144,10 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `missingAltTextDefaultsToEmpty` | `alt_text` absent → `""` |
 | `thumbnailURLUsesThumbnailSizeWhenPresent` | `sizes["thumbnail"].source_url` present → `thumbnailURL` returns it, not `sourceURL` |
 | `thumbnailURLFallsBackToSourceURLWhenNoThumbnailSize` | No `media_details` → `thumbnailURL` returns `sourceURL` |
+| `sizedURLUsesMatchingSizeWhenPresent` | `sizedURL(for: "medium")` returns that size's `source_url` when present |
+| `sizedURLFallsBackToSourceURLWhenSizeMissing` | Requested slug absent from `sizes` → falls back to `sourceURL` |
+| `sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL` | Matched size entry exists but its `source_url` is `""` → falls back to `sourceURL` (regression: a bare `??` on the optional chain would not catch this, since `""` is non-nil) |
+| `sizedURLAlwaysUsesSourceURLForFullSlugEvenWhenAFullSizeEntryExists` | `sizedURL(for: "full")` always returns `sourceURL`, ignoring any `sizes["full"]` entry |
 
 ---
 
@@ -730,7 +734,7 @@ Tests the single shared `MimeType.forExtension`/`forFile` helper (backed by `UTT
 
 ---
 
-## JS editor tests (111 tests)
+## JS editor tests (120 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -974,7 +978,7 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
 | `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
 
-### `toWordPressHTML` — gallery (7 tests)
+### `toWordPressHTML` — gallery (9 tests)
 
 | Test | What it checks |
 |---|---|
@@ -985,6 +989,8 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `cropped=false omits is-cropped class and sets imageCrop:false` | Missing `is-cropped` class → explicit `"imageCrop":false` (only emitted at the non-default) |
 | `sizeSlug is read from the image figure class, not hardcoded` | `size-medium` on the image figure produces `"sizeSlug":"medium"`, not a hardcoded `"large"` |
 | `an image with no wp-image-N class omits the id key instead of writing null` | Images without a recognized media ID omit `"id"` entirely rather than writing `"id":null` |
+| `stripping pre-existing wp:image comments does not consume the images between them` | Regression guard: a loaded gallery's `sourceHTML` can have zero characters between one image's `<!-- /wp:image -->` and the next's `<!-- wp:image -->`; the strip regex must not greedily span past the first comment and delete the images between them |
+| `stripping a pre-existing wp:gallery comment works even with a CR before its closing -->` | Regression guard: the non-greedy attrs group is `[\s\S]*?`, not `.*?` — a `\r` before a comment's own `-->` must not defeat the match entirely (JS `.` excludes all line terminators, not just `\n`) |
 
 ---
 
@@ -1045,26 +1051,30 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 
 ---
 
-## JS gallery tests (12 tests)
+## JS gallery tests (19 tests)
 
 File: `Scripts/test-editor-gallery.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
 
 Tests load the real `editor.html` in jsdom and instantiate the live Tiptap editor via `window._tiptapEditor` — the same approach as the JS keyboard tests — because `galleryBlock`'s `parseHTML`/`renderHTML` can't be exercised through the pure `editor-transforms.js` helpers alone.
 
-### `galleryBlock` — insert and render (3 tests)
+### `galleryBlock` — insert and render (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `inserting a galleryBlock renders wp-block-gallery figure with nested image figures` | Sheet-style insert (`images`/`columns`/`cropped`/`linkTo` attrs) reconstructs the correct DOM shape |
+| `non-default sizeSlug is honored by the reconstruction render path` | Inserting with `sizeSlug: 'medium'` renders `class="wp-block-image size-medium"` on each nested image figure, not the `large` default |
 | `linkTo media wraps each image in an anchor to its own url` | `linkTo: 'media'` wraps each `<img>` in `<a href>` pointing at its own URL |
+| `linkTo media links to fullUrl (true original), not the display-size url` | Regression: when Size is a non-full display size, `linkTo: 'media'`'s anchor must link to `image.fullUrl` (the true original), not `image.url` (the smaller displayed image) |
+| `linkTo media falls back to url when fullUrl is absent` | An `images[]` entry with no `fullUrl` field still produces a working anchor, linking to `url` |
 | `cropped false omits is-cropped class` | `cropped: false` omits the `is-cropped` class from the rendered figure |
 
-### `galleryBlock` — load (parseHTML) (3 tests)
+### `galleryBlock` — load (parseHTML) (4 tests)
 
 | Test | What it checks |
 |---|---|
-| `loading real gallery HTML recovers images, columns, cropped, linkTo` | Parsing a real `figure.wp-block-gallery` recovers all structured attrs correctly |
+| `loading real gallery HTML recovers images, columns, cropped, linkTo` | Parsing a real `figure.wp-block-gallery` recovers all structured attrs correctly, including `sizeSlug: 'large'` |
+| `loading a gallery with a non-large size class recovers that sizeSlug` | A loaded gallery whose image figures have `size-medium` recovers `attrs.sizeSlug === 'medium'`, not the hardcoded default |
 | `loading a gallery with images linked to media recovers linkTo=media` | Images already wrapped in `<a>` are recognized as `linkTo: 'media'` on load |
 | `captures sourceHTML verbatim, including content the structured attrs do not model` | `sourceHTML` captures the original figure's `outerHTML` (e.g. a caption) that the structured attrs don't represent |
 
@@ -1082,12 +1092,20 @@ Tests load the real `editor.html` in jsdom and instantiate the live Tiptap edito
 | `serialize via toWordPressHTML then re-parse preserves a sheet-inserted gallery` | Save → reload round-trip preserves images/columns/cropped/linkTo for a sheet-inserted gallery |
 | `serialize then re-parse preserves a loaded, captioned gallery verbatim` | Save → reload round-trip preserves a caption on a loaded gallery via `sourceHTML` |
 
-### `window.insertGallery` bridge function (2 tests)
+### `window.insertGallery` bridge function (4 tests)
 
 | Test | What it checks |
 |---|---|
 | `inserts a galleryBlock from a JSON payload` | The Swift→JS bridge function parses a JSON payload and inserts a `galleryBlock` |
+| `sizeSlug from the JSON payload propagates to node attrs, defaulting to large` | A `sizeSlug` key in the JSON payload reaches `node.attrs.sizeSlug`; an omitted key defaults to `'large'` |
 | `ignores an empty images array` | An empty `images` array is a no-op — never inserts a gallery with zero images |
+| `inserting at the end of the doc does not synthesize a trailing paragraph` | Confirms the caret-after-an-atom problem is solved purely via gap-cursor CSS, not doc-model surgery — the gallery stays the doc's last node and no phantom `<p></p>` leaks into saved HTML |
+
+### Gap-cursor styling (1 test)
+
+| Test | What it checks |
+|---|---|
+| `editor.html overrides the default gap-cursor widget to match the app caret` | Guards the CSS override (`.ProseMirror-gapcursor:after { border-left: 1.5px solid #007aff }`) that restyles Tiptap's built-in gap-cursor widget from its default black horizontal bar to the app's blue vertical caret |
 
 ---
 
@@ -1169,10 +1187,12 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
 - [ ] If the media library has more than 50 items, a "Load More" button appears at the bottom of the picker grid. Click it → more images load and append to the grid.
 - [ ] Click the Gallery toolbar button → the `GallerySheet` opens with a media grid; tapping images toggles a checkmark and adds them to the "Selected" list; "Insert Gallery" is disabled until at least one image is selected.
-- [ ] With 2+ images selected, set columns, toggle crop, set "Link to" (None / Full Image), click Insert Gallery → a read-only thumbnail-grid card appears in the editor. Toggle code view (`</>`) and confirm `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments with the chosen settings.
+- [ ] With 2+ images selected, set columns, toggle crop, set "Link to" (None / Full Image), set Size (Thumbnail / Medium / Large / Full Size), click Insert Gallery → a read-only thumbnail-grid card appears in the editor. Toggle code view (`</>`) and confirm `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments with the chosen settings, including `"sizeSlug"` matching the selected size.
+- [ ] In `GallerySheet`, click Upload → pick a new image from disk → it uploads, appears in the media grid, and is automatically added to the Selected list.
 - [ ] Save a post containing a sheet-inserted gallery, then make an unrelated visual edit elsewhere in the post and save again → re-fetch the raw content and confirm the gallery block comments are still present (this is the fix for the previous `_rawHTML`-only silent-drop behavior).
 - [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a read-only thumbnail-grid card, not exploded into individual resizable images. Clicking it does not open `GallerySheet` (insert-only for v1).
 - [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
+- [ ] Insert a gallery (or embed) at the very end of a post, then click just after it → the caret shows as a thin blue vertical bar (not a black horizontal bar). Type → a new paragraph is created at that position and text is entered normally.
 
 ### 7.5 Editor — links
 
@@ -1188,7 +1208,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 ### 7.6 Editor — code view
 
 **Entering and exiting**
-- [ ] The `</>` button appears in the toolbar to the left of the image Add button.
+- [ ] The `</>` button appears in the toolbar's utility group, alongside the spell-check and image-align controls.
 - [ ] Click `</>` → the visual editor switches to a code textarea; all other toolbar buttons become disabled; the `</>` button shows an active/highlighted state.
 - [ ] The code textarea shows nicely formatted HTML: block elements on their own lines, inline elements (`<strong>`, `<a>`, etc.) stay on the same line as their parent, list items are indented inside their list, table cells are nested under rows, and `<pre>` content is left exactly as-is. Top-level blocks are separated by blank lines.
 - [ ] Click `</>` again → the editor switches back to visual mode; toolbar buttons re-enable; any HTML changes made in the textarea are reflected in the visual editor.
@@ -1532,8 +1552,13 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
 | 88 | `APIError`/`AnthropicError` share one `NetworkErrorHeuristics.isConnectivityFailure` substring check instead of two independently-maintained copies | ✅ `AnthropicClientTests.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
-| 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (7 tests) + `galleryBlock` load/round-trip tests (7 tests) + 👁 §7.4 |
+| 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (9 tests) + `galleryBlock` load/round-trip tests (8 tests) + 👁 §7.4 |
 | 90 | `galleryBlock.parseHTML` never returns `false`/degrades to standalone images for a gallery it can partially handle (e.g. captions) — only for zero-image-figure input | ✅ `galleryBlock` — verbatim re-render tests (2 tests, caption preserved via `sourceHTML`) |
+| 91 | `toWordPressHTML`'s upfront strip of pre-existing `wp:embed`/`wp:gallery`/`wp:image` comments uses a non-greedy attrs match (`[\s\S]*?-->`) so it can't span past the first comment's close and delete image figures between two adjacent comments with no newline separator (a loaded gallery's `sourceHTML` has no such guarantee, unlike this function's own freshly-wrapped output), and stays immune to a stray `\r` before a comment's own `-->` (JS `.` excludes all line terminators, not just `\n`, so a `.*?` group — unlike `[\s\S]*?` — would fail to match at all in that case) | ✅ `toWordPressHTML — gallery.'stripping pre-existing wp:image comments does not consume the images between them'` + `.'stripping a pre-existing wp:gallery comment works even with a CR before its closing -->'` |
+| 92 | Tiptap's default gap-cursor widget (black horizontal bar) is restyled via CSS to the app's blue vertical caret wherever the caret sits next to an atomic `galleryBlock`/`embedBlock` node — fixed at the CSS layer, not by inserting/stripping a synthetic trailing paragraph in the doc model | ✅ `gap-cursor styling` (1 test) + `window.insertGallery bridge function.'inserting at the end of the doc does not synthesize a trailing paragraph'` + 👁 §7.4 |
+| 93 | Gallery `linkTo: 'media'` links to the image's `fullUrl` (true full-resolution original), not its display-size `url` — a non-full Size selection no longer silently links thumbnails to themselves instead of the original file | ✅ `galleryBlock — insert and render.'linkTo media links to fullUrl (true original), not the display-size url'` + `.'linkTo media falls back to url when fullUrl is absent'` + 👁 §7.4 |
+| 94 | `WPMedia.sizedURL(for:)` falls back to `sourceURL` when the matched size entry's `source_url` decoded to an empty string (not just when the entry is absent) — matches the existing `thumbnailURL` guard for the same WordPress API quirk | ✅ `WPMediaDecodingTests.sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL` |
+| 95 | `GallerySheet`'s Upload button adds the newly-uploaded image directly to the gallery's `selected` list, not just the media grid — matches the evident purpose of an inline upload button inside a gallery-building flow | 👁 §7.4 (click Upload, confirm the new image is already checkmarked/listed in Selected without an extra click) |
 
 ---
 
