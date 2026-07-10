@@ -31,7 +31,7 @@
 - Produces: `ResizableImage` node attrs `linkTo: 'none' | 'media'` (default `'none'`) and `linkHref: string | null` (default `null`), readable via `node.attrs.linkTo` / `node.attrs.linkHref` anywhere a `ResizableImage` node instance is in scope (used by Task 2's toolbar wiring).
 - Consumes: nothing new — builds on the existing `ResizableImage` extension already in `editor.html`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Open `Scripts/test-editor-keyboard.js`. After the `describe('class preservation through schema round-trip', ...)` block closes (ends at line 338 with `})`), add:
 
@@ -86,12 +86,12 @@ describe('image link-to-full-size', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test Scripts/test-editor-keyboard.js`
 Expected: the 4 new tests FAIL — `node.attrs.linkTo` is `undefined`, not `'media'`/`'none'`, and `getHTML()` never contains `<a href=...>` around the image.
 
-- [ ] **Step 3: Add the two new attrs**
+- [x] **Step 3: Add the two new attrs**
 
 In `editor.html`, find this block inside `ResizableImage.extend({ addAttributes() { return { ... `:
 
@@ -139,7 +139,7 @@ Replace with:
 
 (`rendered: false` keeps these off the `<img>` tag's own attributes — same treatment as `figureClass`/`figureId`. The dead-stub `parseHTML` here only matters for the bare `{ tag: 'img[src]' }` fallback rule at the bottom of `parseHTML()`, which has no custom `getAttrs`; a bare, non-figure-wrapped linked image is out of scope per the spec, so it always parses as unlinked, consistent with how that same fallback already gives bare images a null `figureClass`/`figureId`.)
 
-- [ ] **Step 4: Wrap the `<img>` in an `<a>` when linked**
+- [x] **Step 4: Wrap the `<img>` in an `<a>` when linked**
 
 Find:
 
@@ -167,7 +167,7 @@ Replace with:
       },
 ```
 
-- [ ] **Step 5: Detect an existing `<a>` wrapper on parse**
+- [x] **Step 5: Detect an existing `<a>` wrapper on parse**
 
 Find (inside `parseHTML() { return [ { tag: 'figure.wp-block-image', getAttrs: el => { ... } ...`):
 
@@ -233,17 +233,17 @@ Replace with:
             },
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `node --test Scripts/test-editor-keyboard.js`
 Expected: all tests PASS, including the 4 new ones.
 
-- [ ] **Step 7: Run the full JS suite to check for regressions**
+- [x] **Step 7: Run the full JS suite to check for regressions**
 
 Run: `node --test Scripts/test-editor.js && node --test Scripts/test-editor-keyboard.js && node --test Scripts/test-editor-gallery.js`
 Expected: all PASS (this task didn't touch `editor-transforms.js` or the gallery node, but confirms nothing else broke).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Scripts/test-editor-keyboard.js
@@ -261,7 +261,7 @@ git commit -m "feat: add linkTo/linkHref attrs to ResizableImage for link-to-ful
 - Consumes: `node.attrs.linkTo` / `node.attrs.linkHref` (Task 1), the existing `#image-toolbar [data-size="full"]` button's `_sizeData` (set by `_updateNamedSizeButtons`, existing code), the existing `nv.getPos()` / `nv.editor.view` / `setNodeMarkup` commit pattern used by the Reset and size buttons.
 - Produces: nothing consumed by a later task — this is the last task in the plan.
 
-- [ ] **Step 1: Add the third toolbar row**
+- [x] **Step 1: Add the third toolbar row**
 
 Find in `editor.html`:
 
@@ -314,7 +314,7 @@ Replace with:
   </div>
 ```
 
-- [ ] **Step 2: Add `.active` styling for image-toolbar buttons**
+- [x] **Step 2: Add `.active` styling for image-toolbar buttons**
 
 Find:
 
@@ -339,7 +339,7 @@ Replace with:
     #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: #ddd; margin: 0 2px; }
 ```
 
-- [ ] **Step 3: Sync the button's visibility and active state whenever sizes update**
+- [x] **Step 3: Sync the button's visibility and active state whenever sizes update**
 
 Find:
 
@@ -384,7 +384,7 @@ Replace with:
 
 (This function already runs at the right two times — `_showImageToolbar` calls it with `null` immediately on selection, and `window.setMediaSizes` calls it again once the real sizes arrive — so no new call sites are needed. Because `_showImageToolbar` sets `tb._activeNodeView = nv` *before* calling `_updateNamedSizeButtons(null)`, the active-state check above already reads the newly-selected image, not the previous one.)
 
-- [ ] **Step 4: Sync the button's active state on any attrs update**
+- [x] **Step 4: Sync the button's active state on any attrs update**
 
 Find in `ImageNodeView`:
 
@@ -430,7 +430,7 @@ Replace with:
       }
 ```
 
-- [ ] **Step 5: Wire the click handler**
+- [x] **Step 5: Wire the click handler**
 
 Find, inside the `;(function () { ... })()` image-toolbar-handlers block:
 
@@ -488,7 +488,7 @@ Replace with:
     })()
 ```
 
-- [ ] **Step 6: Rebuild and manually verify**
+- [ ] **Step 6: Rebuild and manually verify** — rebuilt successfully; manual in-app checklist below not yet run (computer-use access to Quill was denied this session — needs a human pass).
 
 ```bash
 ./build.sh
@@ -504,12 +504,12 @@ In the running app:
 6. Drag-and-drop or paste an image with no media-library backing (no `mediaId`) — confirm the "Link to Full Image" button never appears for it, same as the size buttons.
 7. Quit and reopen the draft (or switch away and back) — confirm a previously-linked image still shows the button in its active state when reselected.
 
-- [ ] **Step 7: Run the full test suite**
+- [x] **Step 7: Run the full test suite**
 
 Run: `./test.sh`
 Expected: all Swift and JS tests pass (no Swift changes in this plan, so this is primarily a regression check on the JS suite).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html
