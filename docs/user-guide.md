@@ -301,7 +301,7 @@ Click below an image to place the cursor in the caption field and type a caption
 
 ### Gallery
 
-Click the **Gallery** button in the toolbar to open the gallery picker. Click images in the media grid to select them — a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the **X** next to it to remove it.
+Click the **Gallery** button in the toolbar to open the gallery picker. Click images in the media grid to select them: a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the **X** next to it to remove it.
 
 Click **Upload** in the gallery picker to add a new image from disk directly to your media library; it's added to the grid and automatically selected.
 
@@ -310,11 +310,11 @@ Gallery settings, available once you've selected at least one image:
 - **Columns:** Number of images per row (1–8).
 - **Crop:** Crops images to a square aspect ratio when enabled.
 - **Link To:** Choose **None** or **Full Image** (each thumbnail links to its own full-resolution file).
-- **Size:** The image size to use for each thumbnail — **Thumbnail**, **Medium**, **Large**, or **Full Size**.
+- **Size:** The image size to use for each thumbnail: **Thumbnail**, **Medium**, **Large**, or **Full Size**.
 
-> **A note on Size:** WordPress often automatically offers browsers a range of file sizes for each image (this is what makes photos look crisp on high-resolution displays like Retina screens), and the browser is free to pick whichever one it thinks looks best — regardless of the Size you chose here. On a modern high-density display, you may not notice a visual difference between Medium and Large for this reason. Size still reliably matters for older browsers, RSS feeds, email, and other places that don't support this automatic behavior — and it always affects file size/page weight, since it changes which image WordPress treats as the "base" file for the gallery.
+> **A note on Size:** WordPress often automatically offers browsers a range of file sizes for each image (this is what makes photos look crisp on high-resolution displays like Retina screens), and the browser is free to pick whichever one it thinks looks best, regardless of the Size you chose here. On a modern high-density display, you may not notice a visual difference between Medium and Large for this reason. Size still reliably matters for older browsers, RSS feeds, email, and other places that don't support this automatic behavior, and it always affects file size/page weight, since it changes which image WordPress treats as the "base" file for the gallery.
 
-Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill — to change it, delete it and insert a new one with different images or settings.
+Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill; to change it, delete it and insert a new one with different images or settings.
 
 Galleries authored outside Quill (e.g. in the WordPress block editor) load the same way, as a read-only card, and any captions or other details not covered by the settings above are preserved even after you make unrelated edits elsewhere in the post.
 
@@ -643,7 +643,7 @@ Quill produces clean, Gutenberg-compatible HTML for the content types it support
 
 However, if you open a post that was created in Gutenberg using block types Quill does not support (such as columns, cover blocks, or custom blocks) those blocks will be visible in the **Code View** (`</>`) but will not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
 
-Galleries load as a read-only thumbnail-grid card — Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
+Galleries load as a read-only thumbnail-grid card: Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
 
 To edit posts that contain unsupported blocks, use Code View to work with the raw HTML directly, or make your edits in the WordPress Gutenberg editor instead.
 
