@@ -336,3 +336,61 @@ describe('class preservation through schema round-trip', () => {
     assert.match(out, /btn/)
   })
 })
+
+describe('image link-to-full-size', () => {
+  before(() => {
+    // Pre-existing jsdom/Tiptap quirk (reproduces on main, unrelated to linkTo/linkHref):
+    // the first setContent(figureHTML) call immediately after an
+    // editor.chain().extendMarkRange('link')...run() that extends over an *existing*
+    // link mark silently produces an empty <p></p> instead of parsing the content. The
+    // preceding 'applyLink preserves existing link classes' test above exercises exactly
+    // that pattern, so absorb the one-shot quirk here before asserting on real content.
+    editor.commands.setContent('<p></p>', false)
+  })
+
+  test('image wrapped in <a> parses to linkTo media with linkHref, and round-trips', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.linkTo, 'media')
+    assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
+    const out = editor.getHTML()
+    assert.match(out, /<a href="https:\/\/example\.com\/full\.jpg"><img[^>]*><\/a>/)
+  })
+
+  test('image without a link wrapper defaults to linkTo none and omits <a> from output', () => {
+    const html = '<figure class="wp-block-image"><img src="https://example.com/thumb.jpg"><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.linkTo, 'none')
+    assert.equal(node.attrs.linkHref, null)
+    const out = editor.getHTML()
+    assert.doesNotMatch(out, /<a /)
+  })
+
+  test('linked image preserves alignment, custom class, and mediaId alongside the link', () => {
+    const html = '<figure class="wp-block-image alignleft my-figure-class"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg" class="wp-image-42"></a><figcaption>cap</figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.linkTo, 'media')
+    assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
+    assert.equal(node.attrs.alignment, 'left')
+    assert.equal(node.attrs.figureClass, 'my-figure-class')
+    assert.equal(node.attrs.mediaId, 42)
+    const out = editor.getHTML()
+    assert.match(out, /alignleft/)
+    assert.match(out, /my-figure-class/)
+    assert.match(out, /data-media-id="42"/)
+    assert.match(out, /<a href="https:\/\/example\.com\/full\.jpg">/)
+  })
+
+  test('toggling linkTo to media via setNodeMarkup produces the <a> wrapper on save', () => {
+    editor.commands.setContent('<figure class="wp-block-image"><img src="https://example.com/thumb.jpg"><figcaption></figcaption></figure>', false)
+    const pos = posOfFirst('image')
+    const node = editor.state.doc.nodeAt(pos)
+    const { state, dispatch } = editor.view
+    dispatch(state.tr.setNodeMarkup(pos, null, { ...node.attrs, linkTo: 'media', linkHref: 'https://example.com/full.jpg' }))
+    const out = editor.getHTML()
+    assert.match(out, /<a href="https:\/\/example\.com\/full\.jpg">/)
+  })
+})

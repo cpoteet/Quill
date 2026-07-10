@@ -1364,6 +1364,16 @@
             rendered: false,
             parseHTML: () => null,
           },
+          linkTo: {
+            default: 'none',
+            rendered: false,
+            parseHTML: () => null,
+          },
+          linkHref: {
+            default: null,
+            rendered: false,
+            parseHTML: () => null,
+          },
         }
       },
       content: 'inline*',
@@ -1372,7 +1382,11 @@
         const figureAttrs = {}
         if (node.attrs.figureClass) figureAttrs.class = node.attrs.figureClass
         if (node.attrs.figureId) figureAttrs.id = node.attrs.figureId
-        return ['figure', figureAttrs, ['img', HTMLAttributes], ['figcaption', 0]]
+        const imgSpec = ['img', HTMLAttributes]
+        const imageContent = (node.attrs.linkTo === 'media' && node.attrs.linkHref)
+          ? ['a', { href: node.attrs.linkHref }, imgSpec]
+          : imgSpec
+        return ['figure', figureAttrs, imageContent, ['figcaption', 0]]
       },
 
       parseHTML() {
@@ -1390,6 +1404,8 @@
               const figCls = el.getAttribute('class') || ''
               const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter)$/
               const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
+              const linkEl = img.parentElement
+              const linkedToMedia = linkEl && linkEl.tagName === 'A'
               return {
                 src:       img.getAttribute('src'),
                 alt:       img.getAttribute('alt') ?? null,
@@ -1402,6 +1418,8 @@
                 imgClass:    customImgCls || null,
                 figureClass: customFigCls || null,
                 figureId:  el.getAttribute('id') || null,
+                linkTo:    linkedToMedia ? 'media' : 'none',
+                linkHref:  linkedToMedia ? linkEl.getAttribute('href') : null,
               }
             },
             contentElement: el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption')),
