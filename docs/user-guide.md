@@ -24,7 +24,7 @@ A reference manual for Quill, the native macOS WordPress editor.
 
 Quill is a native macOS application for writing and publishing content on self-hosted WordPress sites. It replaces the browser-based Gutenberg editor with a focused, distraction-free writing environment built for the Mac, with full support for posts, pages, media, scheduling, and AI-assisted writing.
 
-Quill is built around a simple premise: the act of writing deserves a dedicated tool. Rather than competing with WordPress's block editor for layout and site-building tasks, Quill concentrates on what most WordPress authors actually spend their time doing: drafting, editing, and publishing content. The result is an interface that stays out of your way and lets you focus on the work.
+Quill is built around a simple premise: the act of writing deserves a dedicated tool. Rather than competing with WordPress's block editor for layout and site-building tasks, Quill concentrates on what most WordPress authors actually spend their time doing: drafting, editing, and publishing content. The result is an interface that stays out of your way and lets you focus on writing.
 
 ### What Quill does
 
@@ -40,7 +40,7 @@ Quill is built around a simple premise: the act of writing deserves a dedicated 
 - A full site builder or theme editor
 - A replacement for the WordPress admin dashboard
 
-Quill is free.
+Quill is free (but not open source).
 
 ---
 
@@ -50,7 +50,6 @@ Quill is free.
 
 - **macOS:** macOS 26 (Tahoe) or later. Earlier versions of macOS may work but are not officially supported.
 - **WordPress:** A self-hosted WordPress site running WordPress 7.0 or later. Earlier versions may work but are not officially supported. Your site must be accessible over HTTPS.
-- **WordPress.com:** Not supported. Quill connects only to self-hosted WordPress installations.
 
 ### Downloading Quill
 
@@ -113,7 +112,7 @@ The sidebar organizes your content into four sections, selectable via tabs at th
 - **Posts:** Lists all posts on your site, most recently published first. A search field lets you filter by title.
 - **Pages:** Lists all pages on your site, most recently published first, with the same search capability.
 - **Drafts:** Lists local drafts saved only on your Mac, not yet published or synced to WordPress.
-- **Media:** Displays your site's media library as a thumbnail grid for browsing and uploading files.
+- **Media:** Displays your site's media library as a thumbnail grid for browsing and uploading files. These are listed by most recently uploaded.
 
 Click any post, page, draft, or media item to open it in the editor or detail view. Right-click a post or page for the option to move it to trash.
 
@@ -134,7 +133,7 @@ Above the title field is the **toolbar**, which contains:
 | Status badge | Displays the current post status (Draft, Published, Scheduled, etc.) |
 | Save Draft | Saves the current post as a local draft or syncs changes to WordPress |
 | Revert | Discards unsaved changes and restores the last saved version |
-| Preview | Opens the current post's preview URL in your browser |
+| Preview | Opens the current post's preview URL in your browser (for posts/pages in WordPress) |
 | Publish | Publishes or updates the post on your WordPress site |
 | Settings toggle | Shows or hides the right-side settings panel |
 
@@ -146,7 +145,7 @@ The settings panel slides in from the right when you click the settings toggle i
 
 ### Empty State
 
-If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu or keyboard shortcuts to create new content.
+If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu, new content buttons in the sidebar, or keyboard shortcuts to create new content.
 
 ---
 
@@ -236,7 +235,7 @@ When you preview a **draft** post, WordPress updates the draft itself with your 
 
 Press **⌘F** to open the find and replace bar. Type in the **Find** field to highlight matches in the document. Use the arrow buttons or press **↩** (next) and **⇧↩** (previous) to navigate between matches. Toggle **Aa** to enable case-sensitive search.
 
-To replace matches, type in the **Replace** field and click **Replace** to replace the current match or **All** to replace every match in the document. Press **Esc** to close the find bar.
+To replace matches, type in the **Replace** field and click **Replace** to replace the current match or **All** to replace every match in the document. Press **Esc** or click **X** to close the find bar.
 
 ### Spell Check
 
@@ -299,7 +298,7 @@ Click below an image to place the cursor in the caption field and type a caption
 
 #### Linking to the full-size image
 
-Click **Link to Full Image** in the image toolbar to wrap the image in a link to its original, full-resolution file — clicking the image on your published site opens (or downloads) the full-size version. Click it again to remove the link. This is independent of the image's displayed size, so you can show a small or resized image in the post while still linking to the original.
+Click **Link to Full Image** in the image toolbar to wrap the image in a link to its original, full-resolution file. Clicking the image on your published site opens (or downloads) the full-size version, and you may click it again to remove the link. This is independent of the image's displayed size, so you can show a small or resized image in the post while still linking to the original.
 
 ### Gallery
 
