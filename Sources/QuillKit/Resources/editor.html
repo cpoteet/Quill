@@ -1321,8 +1321,11 @@
       })
       const linkBtn = document.getElementById('img-tb-link')
       if (linkBtn) {
-        const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
-        linkBtn.style.display = fullBtn?._sizeData ? '' : 'none'
+        // Always available — falls back to the image's current src as the "full"
+        // URL when no media-library size data is known (e.g. externally-sourced
+        // images with no mediaId). Without this, an already-linked image with no
+        // mediaId would show no way to see or remove that link.
+        linkBtn.style.display = ''
         const tb = document.getElementById('image-toolbar')
         linkBtn.classList.toggle('active', tb?._activeNodeView?.node.attrs.linkTo === 'media')
       }
@@ -1388,12 +1391,23 @@
           linkTo: {
             default: 'none',
             rendered: false,
-            parseHTML: () => null,
+            // Fallback for parse rules with no getAttrs of their own (e.g. the bare
+            // `img[src]` rule matching classic/pre-Gutenberg content with no figure
+            // wrapper) — el is whatever the rule matched (figure or img directly).
+            parseHTML: el => {
+              const img = el.tagName === 'FIGURE' ? el.querySelector('img') : el
+              const linkEl = img?.parentElement
+              return (linkEl && linkEl.tagName === 'A' && linkEl.getAttribute('href')) ? 'media' : null
+            },
           },
           linkHref: {
             default: null,
             rendered: false,
-            parseHTML: () => null,
+            parseHTML: el => {
+              const img = el.tagName === 'FIGURE' ? el.querySelector('img') : el
+              const linkEl = img?.parentElement
+              return (linkEl && linkEl.tagName === 'A' && linkEl.getAttribute('href')) || null
+            },
           },
         }
       },
@@ -1426,7 +1440,7 @@
               const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter)$/
               const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
               const linkEl = img.parentElement
-              const linkedToMedia = linkEl && linkEl.tagName === 'A'
+              const linkedToMedia = linkEl && linkEl.tagName === 'A' && !!linkEl.getAttribute('href')
               return {
                 src:       img.getAttribute('src'),
                 alt:       img.getAttribute('alt') ?? null,
@@ -3050,8 +3064,13 @@
         const turningOn = nv.node.attrs.linkTo !== 'media'
         const newAttrs = { ...nv.node.attrs, linkTo: turningOn ? 'media' : 'none' }
         if (turningOn) {
+          // Prefer the known media-library full-resolution URL; fall back to the
+          // image's current src when no media size data is available (e.g. no
+          // mediaId), so the toggle still works for externally-sourced images.
           const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
-          if (fullBtn?._sizeData) newAttrs.linkHref = fullBtn._sizeData.url
+          newAttrs.linkHref = fullBtn?._sizeData?.url || nv.node.attrs.src
+        } else {
+          newAttrs.linkHref = null
         }
         const { state, dispatch } = nv.editor.view
         dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))

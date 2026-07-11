@@ -194,19 +194,35 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         linkPopover = popover
     }
 
+    /// Builds the size-name → {url,width,height} dict sent to `setMediaSizes` in the JS editor.
+    /// WordPress's `media_details.sizes` frequently omits a "full" entry (the full-resolution
+    /// URL lives at the top-level `source_url` instead) — mirrors the fallback
+    /// `WPMedia.sizedURL(for:)` already applies for the same quirk. Returns nil when there is no
+    /// usable source URL at all.
+    static func mediaSizesDict(for media: WPMedia) -> [String: [String: Any]]? {
+        guard !media.sourceURL.isEmpty else { return nil }
+        var dict: [String: [String: Any]] = [:]
+        for (name, size) in media.mediaDetails?.sizes ?? [:] {
+            dict[name] = ["url": size.sourceURL, "width": size.width, "height": size.height]
+        }
+        if dict["full"] == nil {
+            dict["full"] = [
+                "url": media.sourceURL,
+                "width": media.mediaDetails?.width as Any? ?? NSNull(),
+                "height": media.mediaDetails?.height as Any? ?? NSNull(),
+            ]
+        }
+        return dict
+    }
+
     private func handleRequestMediaSizes(mediaId: Int) {
         guard let wv = webView, let fetch = onRequestMediaSizes else { return }
         Task {
             guard let media = await fetch(mediaId),
-                  let sizes = media.mediaDetails?.sizes,
-                  !sizes.isEmpty
+                  let dict = Self.mediaSizesDict(for: media)
             else {
                 wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)", completionHandler: nil)
                 return
-            }
-            var dict: [String: Any] = [:]
-            for (name, size) in sizes {
-                dict[name] = ["url": size.sourceURL, "width": size.width, "height": size.height]
             }
             guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
                   let jsonStr  = String(data: jsonData, encoding: .utf8)

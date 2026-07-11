@@ -297,6 +297,10 @@ Use the alignment buttons in the main toolbar (left, center, right) to float or 
 
 Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
 
+#### Linking to the full-size image
+
+Click **Link to Full Image** in the image toolbar to wrap the image in a link to its original, full-resolution file — clicking the image on your published site opens (or downloads) the full-size version. Click it again to remove the link. This is independent of the image's displayed size, so you can show a small or resized image in the post while still linking to the original.
+
 ### Gallery
 
 Click the **Gallery** button in the toolbar to open the gallery picker. Click images in the media grid to select them: a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the **X** next to it to remove it.

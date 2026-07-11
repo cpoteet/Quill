@@ -393,4 +393,35 @@ describe('image link-to-full-size', () => {
     const out = editor.getHTML()
     assert.match(out, /<a href="https:\/\/example\.com\/full\.jpg">/)
   })
+
+  test('toggling linkTo back to none via setNodeMarkup clears linkHref too', () => {
+    editor.commands.setContent('<figure class="wp-block-image"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>', false)
+    const pos = posOfFirst('image')
+    const node = editor.state.doc.nodeAt(pos)
+    assert.equal(node.attrs.linkTo, 'media')
+    const { state, dispatch } = editor.view
+    dispatch(state.tr.setNodeMarkup(pos, null, { ...node.attrs, linkTo: 'none', linkHref: null }))
+    const after = editor.state.doc.nodeAt(pos)
+    assert.equal(after.attrs.linkHref, null)
+    const out = editor.getHTML()
+    assert.doesNotMatch(out, /<a /)
+  })
+
+  test('classic (non-figure) linked image is detected via the bare img[src] parse rule', () => {
+    const html = '<a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.linkTo, 'media')
+    assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
+    const out = editor.getHTML()
+    assert.match(out, /<a href="https:\/\/example\.com\/full\.jpg"><img[^>]*><\/a>/)
+  })
+
+  test('an <a> wrapper with an empty href is not treated as a full-image link', () => {
+    const html = '<figure class="wp-block-image"><a href=""><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.linkTo, 'none')
+    assert.equal(node.attrs.linkHref, null)
+  })
 })

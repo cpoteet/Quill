@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-07-09 — 329 Swift tests + 170 JS tests, all passing._
+_Last updated: 2026-07-10 — 333 Swift tests + 177 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,9 +16,9 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 325 tests across 22 suites)
+1. **Swift tests** — `swift test` (all 333 tests across 22 suites)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (120 tests via Node's built-in runner + jsdom)
-3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (31 tests — live Tiptap editor in jsdom)
+3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (38 tests — live Tiptap editor in jsdom)
 4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (19 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
@@ -47,7 +47,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (329 tests, 22 suites)
+## Swift test suite (333 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -642,11 +642,11 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SidebarEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (7 tests)
+### 19. Security — `EditorCoordinatorTests` (11 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
-Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security finding: clicked links in the editor must not be handed to `NSWorkspace.shared.open` with arbitrary schemes.
+Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security finding: clicked links in the editor must not be handed to `NSWorkspace.shared.open` with arbitrary schemes) and `mediaSizesDict(for:)`, the pure helper `handleRequestMediaSizes` uses to build the size dict sent to `setMediaSizes` in the JS editor.
 
 | Test | What it checks |
 |---|---|
@@ -657,6 +657,10 @@ Guards the `isAllowedExternalURL` scheme allowlist. Linked to the S2 security fi
 | `javascriptURLIsNotAllowed` | `javascript:` → blocked |
 | `ftpURLIsNotAllowed` | `ftp://` → blocked |
 | `schemeCheckIsCaseInsensitive` | `HTTPS://` → allowed (lowercased before compare) |
+| `mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` | `media_details.sizes` missing a `"full"` entry gets one synthesized from `source_url`/top-level width/height |
+| `mediaSizesDictPreservesExistingFullEntry` | A server-provided `"full"` entry in `sizes` is not overwritten |
+| `mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` | No `media_details.sizes` at all still yields a single `"full"` entry from `source_url` |
+| `mediaSizesDictReturnsNilWhenSourceURLIsEmpty` | Empty `source_url` → `nil` (no usable size data) |
 
 ---
 
@@ -994,7 +998,7 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 ---
 
-## JS keyboard tests (31 tests)
+## JS keyboard tests (38 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1048,6 +1052,18 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 |---|---|
 | `Enter in an image caption exits to a new paragraph below (regression: 91679d2)` | Caption Enter → paragraph after image |
 | `Enter in an image caption inside a blockquote stays well-formed (no image duplication)` | Nested caption Enter doesn't duplicate image |
+
+### `image link-to-full-size` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `image wrapped in <a> parses to linkTo media with linkHref, and round-trips` | Loading a figure whose `<img>` is wrapped in `<a href>` recovers `linkTo: 'media'`/`linkHref`, and re-serializes the same `<a>` wrapper |
+| `image without a link wrapper defaults to linkTo none and omits <a> from output` | Unwrapped `<img>` defaults to `linkTo: 'none'`, `linkHref: null`, no `<a>` in output |
+| `linked image preserves alignment, custom class, and mediaId alongside the link` | `linkTo`/`linkHref` coexist with alignment, custom figure class, and `mediaId` through the round-trip |
+| `toggling linkTo to media via setNodeMarkup produces the <a> wrapper on save` | Toolbar toggle path (`setNodeMarkup`) produces the `<a>` wrapper on save, not just the load path |
+| `toggling linkTo back to none via setNodeMarkup clears linkHref too` | Regression: turning the link off also clears the stale `linkHref`, not just `linkTo` |
+| `classic (non-figure) linked image is detected via the bare img[src] parse rule` | Regression: pre-Gutenberg `<a href><img></a>` markup with no `figure.wp-block-image` wrapper still parses `linkTo`/`linkHref` (previously silently dropped the link on save) |
+| `an <a> wrapper with an empty href is not treated as a full-image link` | Regression: `<a href="">` around an image does not set `linkTo: 'media'` (previously showed the toggle as "on" for a link that wouldn't actually save) |
 
 ---
 
@@ -1193,6 +1209,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a read-only thumbnail-grid card, not exploded into individual resizable images. Clicking it does not open `GallerySheet` (insert-only for v1).
 - [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
 - [ ] Insert a gallery (or embed) at the very end of a post, then click just after it → the caret shows as a thin blue vertical bar (not a black horizontal bar). Type → a new paragraph is created at that position and text is entered normally.
+- [ ] Click a single (non-gallery) image → in the image toolbar, toggle "Link to Full Image" on → save and check code view/raw HTML: the `<img>` is wrapped in `<a href>` pointing at the media's full-resolution URL. Toggle it back off → save again → the `<a>` wrapper is removed. Open a post with a pre-existing linked image (authored outside Quill) → the toggle shows as already on.
+- [ ] Drag an image from Finder onto the editor (or paste one) so it has no `mediaId` → select it → confirm the "Link to Full Image" button is visible and toggling it on wraps the image's current `src` in `<a href>` on save.
 
 ### 7.5 Editor — links
 
@@ -1559,6 +1577,9 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 93 | Gallery `linkTo: 'media'` links to the image's `fullUrl` (true full-resolution original), not its display-size `url` — a non-full Size selection no longer silently links thumbnails to themselves instead of the original file | ✅ `galleryBlock — insert and render.'linkTo media links to fullUrl (true original), not the display-size url'` + `.'linkTo media falls back to url when fullUrl is absent'` + 👁 §7.4 |
 | 94 | `WPMedia.sizedURL(for:)` falls back to `sourceURL` when the matched size entry's `source_url` decoded to an empty string (not just when the entry is absent) — matches the existing `thumbnailURL` guard for the same WordPress API quirk | ✅ `WPMediaDecodingTests.sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL` |
 | 95 | `GallerySheet`'s Upload button adds the newly-uploaded image directly to the gallery's `selected` list, not just the media grid — matches the evident purpose of an inline upload button inside a gallery-building flow | 👁 §7.4 (click Upload, confirm the new image is already checkmarked/listed in Selected without an extra click) |
+| 96 | Single (non-gallery) image's "Link to Full Image" toggle: `ResizableImage.linkTo`/`linkHref` attrs parse from a pre-existing `<a>` wrapper on load (figure-wrapped **and** bare `img[src]`/classic-content markup), require a non-empty `href` to count as linked, round-trip through `toWordPressHTML` on save, and coexist with alignment/custom class/`mediaId` | ✅ `test-editor-keyboard.js` `image link-to-full-size` (7 tests) + 👁 §7.4 |
+| 97 | Image toolbar's "Link to Full Image" button is always available (not hidden for images with no `mediaId` or whose media sizes lack a `"full"` entry) — toggling on falls back to the image's current `src` when no media-library size data is known, so an already-linked externally-sourced image is never stuck with an unreachable toggle; toggling off also clears the stale `linkHref` | 👁 §7.4 (select a drag-dropped/external image with no media ID, confirm the Link to Full Image button is visible and toggles correctly) |
+| 98 | `EditorCoordinator.mediaSizesDict(for:)` synthesizes a `"full"` size entry from `media.sourceURL` when WordPress's `media_details.sizes` omits one (a common API shape) — mirrors the existing `WPMedia.sizedURL(for:)` fallback for the same quirk, so the Full-size preset button and Link to Full Image toggle aren't silently disabled for images that have other sizes but no explicit `"full"` entry | ✅ `EditorCoordinatorTests.mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` + `.mediaSizesDictPreservesExistingFullEntry` + `.mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` + `.mediaSizesDictReturnsNilWhenSourceURLIsEmpty` |
 
 ---
 
