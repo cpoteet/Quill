@@ -13,6 +13,81 @@ function extractAlignment(cls) {
   return null
 }
 
+function titleCaseHyphenated(str) {
+  return str.split('-').filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+function passthroughLabelFromClass(cls) {
+  return titleCaseHyphenated(cls.replace(/^wp-block-/, ''))
+}
+
+function passthroughLabelFromBlockName(name) {
+  const base = name.includes('/') ? name.split('/').pop() : name
+  return titleCaseHyphenated(base)
+}
+
+// Given an element already known to be an unmodeled Gutenberg block (a
+// wp-block-* classed element no other parse rule claimed), extracts what's
+// needed to preserve and re-display it. Returns null if `el` has no
+// wp-block-* class at all (not a passthrough candidate).
+//
+// Checks for immediately-adjacent `<!-- wp:name --> / <!-- /wp:name -->`
+// comment siblings (skipping whitespace-only text nodes in between, since
+// real Gutenberg source has a newline between a comment and its element).
+// If found and their names match, blockName/attrsJSON are populated from the
+// comment text verbatim so toWordPressHTML can regenerate identical comments
+// on save. If not found, this is class-only markup (e.g. a live page's
+// rendered HTML) — blockName/attrsJSON stay null and no comments are
+// synthesized later.
+function parsePassthroughBlock(el) {
+  const wpClass = Array.from(el.classList).find(c => c.startsWith('wp-block-'))
+  if (!wpClass) return null
+
+  function adjacentComment(node, direction) {
+    let n = node[direction]
+    while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n[direction]
+    return (n && n.nodeType === 8) ? n : null
+  }
+
+  const openComment = adjacentComment(el, 'previousSibling')
+  const closeComment = adjacentComment(el, 'nextSibling')
+  const openMatch = openComment && openComment.nodeValue.match(/^\s*wp:(\S+?)(?:\s+(\{[\s\S]*\}))?\s*$/)
+  const closeMatch = closeComment && closeComment.nodeValue.match(/^\s*\/wp:(\S+)\s*$/)
+
+  if (openMatch && closeMatch && openMatch[1] === closeMatch[1]) {
+    return {
+      blockLabel: passthroughLabelFromBlockName(openMatch[1]),
+      blockName: openMatch[1],
+      attrsJSON: openMatch[2] || null,
+      sourceHTML: el.outerHTML,
+    }
+  }
+
+  return {
+    blockLabel: passthroughLabelFromClass(wpClass),
+    blockName: null,
+    attrsJSON: null,
+    sourceHTML: el.outerHTML,
+  }
+}
+
+// Wraps `el` with a pair of HTML comments (open/close), each separated from
+// the element by its own newline text node, via DOM sibling insertion rather
+// than string replace — so repeated saves and duplicate content don't
+// double-wrap. Shared by the embed/gallery/passthrough wp:name comment
+// wrapping below.
+function wrapElementWithComments(doc, el, openText, closeText) {
+  const open = doc.createComment(openText)
+  const close = doc.createComment(closeText)
+  const parent = el.parentNode
+  const next = el.nextSibling
+  parent.insertBefore(open, el)
+  parent.insertBefore(doc.createTextNode('\n'), el)
+  parent.insertBefore(doc.createTextNode('\n'), next)
+  parent.insertBefore(close, next)
+}
+
 function toWordPressHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = document
   const div = doc.createElement('div')
@@ -27,6 +102,28 @@ function toWordPressHTML(html, doc) {
   // would fail to match at all if a stray \r ever landed inside a comment's
   // attrs before its own `-->`.
   div.innerHTML = html
+
+  // Passthrough (gutenbergPassthrough) elements must survive this entire
+  // function byte-for-byte — not just the comment-strip regex below, but
+  // every other unconditional div.querySelectorAll(...) pass further down
+  // (heading/list/blockquote/cite/figure/table/footnote normalization). Those
+  // passes have no concept of "this subtree belongs to an opaque passthrough
+  // node" and would otherwise reach into a passthrough element's nested
+  // content (e.g. add wp-block-heading to a nested <h3>, or delete a nested
+  // empty <cite>/<figcaption>) even though it's supposed to be preserved
+  // verbatim. So passthrough elements are pulled out and replaced with
+  // placeholders here, before ANY transform pass runs, and only spliced back
+  // in — completely untouched — right before the wp:name comment
+  // regeneration pass far below, after every other whole-tree pass has run.
+  const passthroughStash = []
+  div.querySelectorAll('[data-quill-passthrough]').forEach(el => {
+    const placeholder = doc.createElement('div')
+    placeholder.setAttribute('data-quill-passthrough-placeholder', String(passthroughStash.length))
+    passthroughStash.push(el)
+    el.replaceWith(placeholder)
+  })
+
+  div.innerHTML = div.innerHTML
     .replace(/<!-- wp:embed [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:embed -->/g, '')
     .replace(/<!-- wp:gallery [\s\S]*?-->\n?/g, '')
@@ -34,8 +131,9 @@ function toWordPressHTML(html, doc) {
     // wp:image comments only ever appear nested inside a gallery today (standalone
     // images aren't comment-wrapped at all — see the images row in CLAUDE.md's
     // Gutenberg-compatibility table), so this strip is gallery-scoped in practice.
-    // If a future change routes raw WordPress HTML through toWordPressHTML, revisit —
-    // this would strip a standalone image's own wp:image block identity too.
+    // Passthrough content (which could route raw WordPress HTML with standalone
+    // wp:image comments through here) is shielded from this strip via the stash
+    // above — it's pulled out of the tree entirely before this regex runs.
     .replace(/<!-- wp:image [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:image -->/g, '')
 
@@ -184,14 +282,7 @@ function toWordPressHTML(html, doc) {
     }
     attrs.responsive = true
     if (p && p.aspect) attrs.className = 'wp-embed-aspect-16-9 wp-has-aspect-ratio'
-    const open = doc.createComment(` wp:embed ${JSON.stringify(attrs)} `)
-    const close = doc.createComment(' /wp:embed ')
-    const parent = figure.parentNode
-    const next = figure.nextSibling
-    parent.insertBefore(open, figure)
-    parent.insertBefore(doc.createTextNode('\n'), figure)
-    parent.insertBefore(doc.createTextNode('\n'), next)
-    parent.insertBefore(close, next)
+    wrapElementWithComments(doc, figure, ` wp:embed ${JSON.stringify(attrs)} `, ' /wp:embed ')
   })
 
   // Wrap gallery figures with Gutenberg block comments: one wp:gallery pair
@@ -238,25 +329,47 @@ function toWordPressHTML(html, doc) {
       if (id !== null) imageAttrs.id = id
       imageAttrs.sizeSlug = sizeSlug
       imageAttrs.linkDestination = linkedToMedia ? 'media' : 'none'
-      const openImg = doc.createComment(` wp:image ${JSON.stringify(imageAttrs)} `)
-      const closeImg = doc.createComment(' /wp:image ')
-      const afterImg = imgFigure.nextSibling
       if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
-      figure.insertBefore(openImg, imgFigure)
-      figure.insertBefore(doc.createTextNode('\n'), imgFigure)
-      figure.insertBefore(doc.createTextNode('\n'), afterImg)
-      figure.insertBefore(closeImg, afterImg)
+      wrapElementWithComments(doc, imgFigure, ` wp:image ${JSON.stringify(imageAttrs)} `, ' /wp:image ')
     })
     const galleryAttrs = { ids, columns, linkTo }
     if (!cropped) galleryAttrs.imageCrop = false
-    const openGallery = doc.createComment(` wp:gallery ${JSON.stringify(galleryAttrs)} `)
-    const closeGallery = doc.createComment(' /wp:gallery ')
-    const parent = figure.parentNode
-    const next = figure.nextSibling
-    parent.insertBefore(openGallery, figure)
-    parent.insertBefore(doc.createTextNode('\n'), figure)
-    parent.insertBefore(doc.createTextNode('\n'), next)
-    parent.insertBefore(closeGallery, next)
+    wrapElementWithComments(doc, figure, ` wp:gallery ${JSON.stringify(galleryAttrs)} `, ' /wp:gallery ')
+  })
+
+  // Splice the passthrough elements stashed out at the top of this function
+  // back in now, completely untouched by every pass above (media-id class,
+  // image/heading/list/blockquote/cite/table/footnote/embed/gallery
+  // normalization) — this is what makes passthrough content survive
+  // byte-for-byte instead of being reached into by those unconditional
+  // div.querySelectorAll(...) passes.
+  div.querySelectorAll('[data-quill-passthrough-placeholder]').forEach(placeholder => {
+    const i = Number(placeholder.getAttribute('data-quill-passthrough-placeholder'))
+    placeholder.replaceWith(passthroughStash[i])
+  })
+
+  // Regenerate wp:name block comments for passthrough (unmodeled Gutenberg
+  // block) elements. gutenbergPassthrough's renderHTML smuggles the original
+  // comment's name/attrs through as temporary data-quill-passthrough-*
+  // attributes (mirroring the data-media-id -> wp-image-{id} class
+  // conversion above); this pass wraps the element in fresh
+  // <!-- wp:name --> comments using those attributes (if the original had
+  // none, no comments are added — see the "no data-quill-passthrough-name"
+  // test), then strips the temporary attributes so they never appear in the
+  // saved HTML. DOM-level insertion, not string replace, so repeated saves
+  // don't double-wrap — same approach as the embed/gallery wrapping above.
+  div.querySelectorAll('[data-quill-passthrough-name]').forEach(el => {
+    const name = el.getAttribute('data-quill-passthrough-name')
+    const attrsJSON = el.getAttribute('data-quill-passthrough-attrs')
+    el.removeAttribute('data-quill-passthrough-name')
+    el.removeAttribute('data-quill-passthrough-attrs')
+    wrapElementWithComments(doc, el, attrsJSON ? ` wp:${name} ${attrsJSON} ` : ` wp:${name} `, ` /wp:${name} `)
+  })
+
+  // Strip the generic passthrough marker (set unconditionally in renderHTML,
+  // independent of blockName) so it never appears in saved HTML.
+  div.querySelectorAll('[data-quill-passthrough]').forEach(el => {
+    el.removeAttribute('data-quill-passthrough')
   })
 
   return div.innerHTML
@@ -266,7 +379,7 @@ function formatHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = document
   const BLOCK = new Set(['p','h1','h2','h3','h4','h5','h6',
     'ul','ol','li','blockquote','pre','figure','figcaption',
-    'table','thead','tbody','tfoot','tr','th','td','cite'])
+    'table','thead','tbody','tfoot','tr','th','td','cite','div'])
   const VOID = new Set(['img','br','hr','input','meta','link',
     'wbr','area','base','col','embed','param','source','track'])
 
@@ -296,7 +409,13 @@ function formatHTML(html, doc) {
         .join('\n')
       return `${pad}<${tag}${at}>\n${inner}\n${pad}</${tag}>`
     }
-    const inner = [...node.childNodes].map(c => serialize(c, 0)).join('')
+    // A block tag with no element children at all (pure text content, e.g.
+    // EmbedBlock's wrapper div whose text node is a literal '\n'+url+'\n')
+    // gets its text trimmed so embedded raw newlines don't push the content
+    // and closing tag onto unindented lines below the opening tag.
+    const isTextOnly = [...node.childNodes].every(c => c.nodeType !== 1)
+    let inner = [...node.childNodes].map(c => serialize(c, 0)).join('')
+    if (isTextOnly) inner = inner.trim()
     return BLOCK.has(tag)
       ? `${pad}<${tag}${at}>${inner}</${tag}>`
       : `<${tag}${at}>${inner}</${tag}>`
@@ -414,5 +533,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock }
 }

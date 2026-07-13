@@ -769,6 +769,21 @@
     .gallery-card-hint { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; }
     body.dark .gallery-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
     body.dark .gallery-card-hint { color: #777; }
+    /* ── Passthrough card (unsupported Gutenberg block) ─── */
+    .passthrough-card {
+      margin: 1em 0;
+      padding: 14px 16px;
+      border: 1px solid rgba(0,0,0,0.14);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.025);
+      cursor: default;
+      user-select: none;
+    }
+    .passthrough-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
+    .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .passthrough-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
+    body.dark .passthrough-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+    body.dark .passthrough-card-hint { color: #777; }
     #embed-menu {
       display: none;
       position: fixed;
@@ -1718,6 +1733,76 @@
       },
     })
 
+    // ── Generic Gutenberg block passthrough ────────────
+    // Catches any wp-block-* classed element (other than a <figure>, which
+    // Quill's own image/gallery/embed/table rules already own or
+    // transparently pass through) that no other, higher-priority parse rule
+    // claimed. Renders as a static, non-editable "unsupported block" card;
+    // saves the original markup back byte-for-byte, regenerating any
+    // original wp:name comments. See docs/superpowers/specs/
+    // 2026-07-12-gutenberg-passthrough-block-design.md.
+    class PassthroughNodeView {
+      constructor(node) {
+        this.dom = document.createElement('div')
+        this.dom.className = 'passthrough-card'
+        const label = document.createElement('div')
+        label.className = 'passthrough-card-label'
+        label.textContent = node.attrs.blockLabel
+        const hint = document.createElement('div')
+        hint.className = 'passthrough-card-hint'
+        hint.textContent = 'Unsupported block — edit via Code View (</>)'
+        this.dom.append(label, hint)
+      }
+      selectNode()   { this.dom.classList.add('selected') }
+      deselectNode() { this.dom.classList.remove('selected') }
+    }
+
+    const GutenbergPassthrough = TiptapNode.create({
+      name: 'gutenbergPassthrough',
+      group: 'block',
+      atom: true,
+      draggable: true,
+      priority: 1,
+
+      addAttributes() {
+        return {
+          blockLabel: { default: '' },
+          blockName:  { default: null },
+          attrsJSON:  { default: null },
+          sourceHTML: { default: '' },
+        }
+      },
+
+      parseHTML() {
+        return [{
+          tag: '[class*="wp-block-"]:not(figure)',
+          getAttrs: el => parsePassthroughBlock(el) || false,
+        }]
+      },
+
+      renderHTML({ node }) {
+        const wrapper = document.createElement('div')
+        wrapper.innerHTML = node.attrs.sourceHTML
+        const el = wrapper.firstElementChild
+        if (!el) return ['div', {}]
+        // Unconditional marker (independent of blockName) so toWordPressHTML can
+        // find and shield this element's nested content from its comment-strip
+        // pass, whether or not this element itself had its own wp:name comments.
+        el.setAttribute('data-quill-passthrough', '')
+        if (node.attrs.blockName) {
+          el.setAttribute('data-quill-passthrough-name', node.attrs.blockName)
+          if (node.attrs.attrsJSON) {
+            el.setAttribute('data-quill-passthrough-attrs', node.attrs.attrsJSON)
+          }
+        }
+        return el
+      },
+
+      addNodeView() {
+        return ({ node }) => new PassthroughNodeView(node)
+      },
+    })
+
     // ── Footnotes ─────────────────────────────────────
     // Self-contained HTML footnotes: markers are inline atoms
     // <sup data-fn class="fn"><a href="#id"></a></sup>; the list is a literal
@@ -2035,6 +2120,7 @@
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
         GalleryBlock,
+        GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
         FootnoteItem,

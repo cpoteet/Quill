@@ -16,10 +16,11 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 333 tests across 22 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (120 tests via Node's built-in runner + jsdom)
+1. **Swift tests** — `swift test` (all 334 tests across 22 suites)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (140 tests via Node's built-in runner + jsdom)
 3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (38 tests — live Tiptap editor in jsdom)
 4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (19 tests — live Tiptap editor in jsdom)
+5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (13 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -47,7 +48,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (333 tests, 22 suites)
+## Swift test suite (334 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -55,7 +56,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 33 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 34 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 15 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
@@ -80,7 +81,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (33 tests)
+### 1. Model decoding — `WPPostDecodingTests` (34 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -105,6 +106,7 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `classicContentWithInlineHTML` | Inline HTML (`<a>`, `<strong>`) preserved inside `<p>` wrapping |
 | `classicContentBlockElementNotWrapped` | Block elements (`<blockquote>`) not double-wrapped in `<p>` |
 | `gutenbergContentUnchanged` | Content with `<!-- wp:` comments passed through unchanged |
+| `classOnlyGutenbergBlockContentUnchanged` | Content consisting entirely of an unmodeled Gutenberg block (`wp-block-*` class, no `<!-- wp:` comment, no `<p>` tag — `gutenbergPassthrough`'s target case) is not misclassified as classic content and run through `wpautop()`, which would corrupt it before the JS-side parser ever sees it |
 | `contentWithParagraphTagsUnchanged` | Content already containing `<p>` tags not re-wrapped |
 | `classicContentShortcodePreserved` | WordPress shortcodes preserved inside `<p>` wrapping |
 | `classicContentListNotCorrupted` | `<ul>/<li>` not wrapped in `<p>` or injected with `<br>` |
@@ -738,12 +740,12 @@ Tests the single shared `MimeType.forExtension`/`forFile` helper (backed by `UTT
 
 ---
 
-## JS editor tests (120 tests)
+## JS editor tests (140 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
 
-Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, and `embedClassFor` from `editor-transforms.js`.
+Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, `embedClassFor`, `passthroughLabelFromClass`, `passthroughLabelFromBlockName`, and `parsePassthroughBlock` from `editor-transforms.js`.
 
 ### `extractAlignment` (6 tests)
 
@@ -849,13 +851,15 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `inline elements stay on the same line as their parent block` | `<strong>`, `<em>` etc. not moved to their own lines |
 | `links stay inline` | `<a>` treated as inline, not block |
 
-### `formatHTML` — nested block elements (3 tests)
+### `formatHTML` — nested block elements (5 tests)
 
 | Test | What it checks |
 |---|---|
 | `list items are indented inside ul` | `<li>` indented one level inside `<ul>` |
 | `table cells are indented under their row and section` | `<td>` indented inside `<tr>` inside `<tbody>` |
 | `blockquote with p and cite each on their own indented lines` | `<p>` and `<cite>` inside `<blockquote>` each on own indented line |
+| `div wrapping block children is indented like other block tags` | `<div>` (needed for `gutenbergPassthrough` code-view display) indents and recurses into children the same as `<figure>`/`<table>` |
+| `a div with only raw-newline text content (e.g. EmbedBlock's wrapper) does not leave the URL and closing tag unindented (regression)` | Adding `div` to `formatHTML`'s `BLOCK` set for the row above initially broke code-view formatting of the pre-existing `EmbedBlock` wrapper div, whose only child is a text node containing literal `'\n'+url+'\n'` — without trimming that text, the URL and closing `</div>` landed flush-left on unindented lines. Fixed by trimming a block tag's text when it has no element children at all |
 
 ### `formatHTML` — special elements (5 tests)
 
@@ -996,6 +1000,44 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `stripping pre-existing wp:image comments does not consume the images between them` | Regression guard: a loaded gallery's `sourceHTML` can have zero characters between one image's `<!-- /wp:image -->` and the next's `<!-- wp:image -->`; the strip regex must not greedily span past the first comment and delete the images between them |
 | `stripping a pre-existing wp:gallery comment works even with a CR before its closing -->` | Regression guard: the non-greedy attrs group is `[\s\S]*?`, not `.*?` — a `\r` before a comment's own `-->` must not defeat the match entirely (JS `.` excludes all line terminators, not just `\n`) |
 
+### `passthroughLabelFromClass` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `strips wp-block- prefix and title-cases` | `'wp-block-accordion'` → `'Accordion'` |
+| `splits multi-word block names on hyphens` | `'wp-block-media-text'` → `'Media Text'` |
+
+### `passthroughLabelFromBlockName` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `bare core block name` | `'accordion'` → `'Accordion'` |
+| `namespaced core block name drops the namespace` | `'core/accordion'` → `'Accordion'` |
+| `namespaced plugin block name with multiple words` | `'my-plugin/foo-bar'` → `'Foo Bar'` |
+
+### `parsePassthroughBlock` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `returns null for an element with no wp-block- class` | Not a passthrough candidate → `null` |
+| `class-only element (no adjacent comments)` | `blockLabel` derived from class, `blockName`/`attrsJSON` both `null`, `sourceHTML` is the element only |
+| `element with adjacent wp:name comments (no attrs)` | `blockName` recovered from the comment, `attrsJSON` stays `null` |
+| `element with adjacent wp:name comments including JSON attrs` | `blockName` and `attrsJSON` both recovered verbatim from the comment |
+| `mismatched open/close comment names are not treated as a pair` | Open/close comment names must match to be treated as a real wrapper; otherwise falls back to class-only label with `blockName: null` |
+
+### `toWordPressHTML` — passthrough blocks (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `an element with data-quill-passthrough-name gets wrapped in matching wp:name comments` | An element carrying the temporary marker attribute gets fresh `<!-- wp:name -->`/`<!-- /wp:name -->` comments, and the marker attribute is removed |
+| `data-quill-passthrough-attrs is emitted inside the opening comment` | The temporary attrs-JSON attribute is written into the opening comment's text, verbatim, then removed |
+| `an element with no data-quill-passthrough-name attribute is left alone` | Class-only passthrough content (no original comments) gets no comments added |
+| `wrapping is idempotent` | Running `toWordPressHTML` twice produces byte-identical output |
+| `a nested wp:image comment inside a passthrough block survives the strip (regression)` | The whole-string `wp:image` comment strip can't distinguish Quill's own pre-existing comments from a foreign comment nested inside a passthrough subtree; passthrough elements are stashed out before stripping and spliced back in verbatim so nested `wp:image` comments survive |
+| `a nested wp:gallery comment inside a passthrough block survives the strip` | Same stash/splice protection, for a nested `wp:gallery` comment |
+| `data-quill-passthrough marker is stripped even with no blockName (class-only passthrough)` | The unconditional shielding marker (set regardless of `blockName`) never leaks into saved HTML |
+| `nested content survives byte-for-byte — headings/cite/figcaption inside a passthrough block are not normalized` | Regression guard (found in code review): `toWordPressHTML`'s heading/cite/figure normalization passes ran unconditionally over the whole tree, so a splice-back that happened too early let them reach into and mutate a passthrough block's nested content (adding `wp-block-heading`, deleting an intentionally-empty `<cite>`/`<figcaption>`). Fixed by delaying the splice-back until after every other whole-tree pass has run, so passthrough content is truly untouched, not just shielded from the comment-strip regex |
+
 ---
 
 ## JS keyboard tests (38 tests)
@@ -1125,6 +1167,48 @@ Tests load the real `editor.html` in jsdom and instantiate the live Tiptap edito
 
 ---
 
+## JS passthrough tests (13 tests)
+
+File: `Scripts/test-editor-passthrough.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Tests load the real `editor.html` in jsdom and instantiate the live Tiptap editor via `window._tiptapEditor` — the same approach as the JS gallery/keyboard tests — because `gutenbergPassthrough`'s `parseHTML`/`renderHTML` can't be exercised through the pure `editor-transforms.js` helpers alone.
+
+### `gutenbergPassthrough` — class-only markup, no wp: comments (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `parses into a single gutenbergPassthrough node` | An accordion's `div.wp-block-accordion` (no adjacent comments) parses into exactly one `gutenbergPassthrough` node with `blockLabel: 'Accordion'`, `blockName: null` |
+| `round-trips the essential markup through getContent()` | `data-wp-interactive`, the heading toggle class, and list item text all survive a save with no `<!--` comments introduced |
+| `an unrelated edit elsewhere in the document does not disturb the passthrough node` | Typing into a paragraph before the accordion doesn't touch the accordion's markup — it's a real schema node, not text riding on the `_rawHTML` safety net |
+| `renders a static card, not the raw accordion markup, in the editor DOM` | The live editor DOM shows a `.passthrough-card` labeled "Accordion", not an actual clickable `<button class="wp-block-accordion-heading__toggle">` |
+
+### `gutenbergPassthrough` — comment-wrapped markup (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `recovers blockName and attrsJSON from adjacent comments` | `<!-- wp:accordion {"autoclose":false} -->`/`<!-- /wp:accordion -->` around the same markup populates `blockName: 'accordion'`, `attrsJSON: '{"autoclose":false}'` |
+| `regenerates matching wp:accordion comments on save` | Saving re-emits `<!-- wp:accordion {"autoclose":false} -->`/`<!-- /wp:accordion -->` around the element |
+
+### `gutenbergPassthrough` — nested media blocks survive save (regression) (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `a wp:image comment nested inside a passthrough wp:group survives getContent()` | A `wp:group` passthrough wrapping a real `wp:image` figure round-trips the nested `<!-- wp:image {"id":42} -->`/`<!-- /wp:image -->` comments and the `<img>` intact, with no `data-quill-passthrough*` marker leaking into the output |
+| `surviving through getContent() is stable across repeated saves (idempotent)` | Saving twice in a row produces byte-identical output |
+
+### `gutenbergPassthrough` — does not steal elements other rules already claim (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `a real gallery figure still parses as galleryBlock, not gutenbergPassthrough` | `figure.wp-block-gallery` still parses as `galleryBlock` |
+| `a real image figure still parses as image, not gutenbergPassthrough` | `figure.wp-block-image` still parses as `image` |
+| `a real embed figure still parses as embedBlock, not gutenbergPassthrough` | `figure.wp-block-embed` still parses as `embedBlock` |
+| `a table wrapped in figure.wp-block-table still parses as a table, not gutenbergPassthrough` | Regression guard for the precedence gap found during planning: the table's figure wrapper has no dedicated rule of its own and relies on `:not(figure)` to stay out of the catch-all's reach |
+| `a heading with a wp-block-heading class still parses as heading, not gutenbergPassthrough` | Bare-tag rules (heading, by extension list, quote, code, hr) keep winning regardless of their `wp-block-*` class |
+
+---
+
 ## Manual / functional test checklists
 
 Run these against a real WordPress test site (or a local Docker WordPress) using an Application Password. Build with `./build.sh` and `open Quill.app` before each pass.
@@ -1178,6 +1262,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Write content with curly quotes, emoji, and non-Latin scripts → save and reload → characters are preserved exactly.
 - [ ] Open or create a very long post (10k+ words) → the editor stays responsive; save completes successfully.
 - [ ] Paste content from Word, Google Docs, or Safari → HTML is reasonable; no script tags or unexpected elements injected.
+- [ ] **Unmodeled Gutenberg block passthrough:** open code view (`</>`), paste an unsupported block's markup (e.g. a Core Accordion block's rendered HTML — `div.wp-block-accordion` with nested items/panels), exit code view → an "Accordion" card appears instead of flattened/merged text. Make an unrelated edit elsewhere in the post, save, re-enter code view → the accordion's original markup (including any nested `data-wp-*` attributes) is still present, byte-for-byte.
 
 ### 7.4 Editor — images
 
@@ -1580,6 +1665,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 96 | Single (non-gallery) image's "Link to Full Image" toggle: `ResizableImage.linkTo`/`linkHref` attrs parse from a pre-existing `<a>` wrapper on load (figure-wrapped **and** bare `img[src]`/classic-content markup), require a non-empty `href` to count as linked, round-trip through `toWordPressHTML` on save, and coexist with alignment/custom class/`mediaId` | ✅ `test-editor-keyboard.js` `image link-to-full-size` (7 tests) + 👁 §7.4 |
 | 97 | Image toolbar's "Link to Full Image" button is always available (not hidden for images with no `mediaId` or whose media sizes lack a `"full"` entry) — toggling on falls back to the image's current `src` when no media-library size data is known, so an already-linked externally-sourced image is never stuck with an unreachable toggle; toggling off also clears the stale `linkHref` | 👁 §7.4 (select a drag-dropped/external image with no media ID, confirm the Link to Full Image button is visible and toggles correctly) |
 | 98 | `EditorCoordinator.mediaSizesDict(for:)` synthesizes a `"full"` size entry from `media.sourceURL` when WordPress's `media_details.sizes` omits one (a common API shape) — mirrors the existing `WPMedia.sizedURL(for:)` fallback for the same quirk, so the Full-size preset button and Link to Full Image toggle aren't silently disabled for images that have other sizes but no explicit `"full"` entry | ✅ `EditorCoordinatorTests.mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` + `.mediaSizesDictPreservesExistingFullEntry` + `.mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` + `.mediaSizesDictReturnsNilWhenSourceURLIsEmpty` |
+| 99 | Unmodeled Gutenberg blocks (Accordion, Columns, Group, etc.) no longer get silently flattened/merged when a post is loaded or code view is exited — a `gutenbergPassthrough` atomic node captures the element's `outerHTML` verbatim and survives unrelated edits elsewhere in the doc, instead of ProseMirror's default "no rule matched, recurse into children" behavior destroying the wrapper structure | ✅ `test-editor-passthrough.js` class-only + comment-wrapped suites (6 tests) + `parsePassthroughBlock` (5 JS tests) + 👁 §7.3 |
+| 100 | `gutenbergPassthrough`'s catch-all parse rule (`[class*="wp-block-"]:not(figure)`, priority 1) excludes all `<figure>` elements so it never claims `figure.wp-block-table` — which has no dedicated parse rule of its own and relies on transparent pass-through to the bare `<table>` — or any other figure-wrapped block Quill already models (image/gallery/embed) | ✅ `test-editor-passthrough.js` `'does not steal elements other rules already claim'` (5 tests) |
+| 101 | `toWordPressHTML`'s unconditional whole-tree passes (comment-strip regex, plus heading/cite/figure/list/table/footnote normalization) can't distinguish Quill's own content from a `gutenbergPassthrough` subtree's nested content — passthrough elements are stashed out via placeholder divs *before any pass runs* and spliced back in verbatim only after every pass has completed, so a `wp:group` wrapping a real `wp:image` keeps its nested comment, and a nested `<h3>`/`<cite>`/`<figcaption>` is never mutated by the heading-class/empty-cite/empty-figcaption passes. Splicing back too early (right after the comment-strip alone) was an initial-implementation regression caught in code review — only the comment regex was shielded, not the other passes | ✅ `toWordPressHTML — passthrough blocks` (8 JS tests, incl. nested `wp:image`/`wp:gallery` regressions and the byte-for-byte heading/cite/figcaption guard) + `test-editor-passthrough.js` `'nested media blocks survive save'` (2 tests) |
+| 102 | `RenderedString.editorHTML`'s classic-vs-block content heuristic checks for a `wp-block-` class substring, not just `<!-- wp:` comments and `<p>` tags — without it, a post consisting entirely of class-only Gutenberg block markup (`gutenbergPassthrough`'s target case: no comment, no paragraph) was misclassified as classic content and corrupted by `wpautop()` before the JS-side parser ever saw it, defeating the passthrough feature's byte-for-byte round-trip on the very next load | ✅ `WPPostDecodingTests.classOnlyGutenbergBlockContentUnchanged` |
+| 103 | `formatHTML`'s `BLOCK` set gained `div` so `gutenbergPassthrough`'s nested divs indent correctly in code view, but this also reformats the pre-existing `EmbedBlock` wrapper div (whose only child is a text node with literal `'\n'+url+'\n'`) — without trimming, the URL and closing `</div>` land on unindented lines below the opening tag. Fixed by trimming a block tag's text content when it has no element children at all | ✅ `formatHTML — nested block elements.'a div with only raw-newline text content...'` |
 
 ---
 

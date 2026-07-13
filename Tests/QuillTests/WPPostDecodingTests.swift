@@ -236,6 +236,27 @@ import Testing
         #expect(post.content.editorHTML == post.content.raw)
     }
 
+    @Test func classOnlyGutenbergBlockContentUnchanged() throws {
+        // A post consisting entirely of an unmodeled Gutenberg block
+        // (gutenbergPassthrough's target case — see editor-transforms.js)
+        // has no "<!-- wp:" comment and no "<p>"/"<p " tag, so without the
+        // "wp-block-" class check the old heuristic misclassified this as
+        // classic content and ran it through wpautop(), corrupting the
+        // passthrough feature's byte-for-byte round-trip before the content
+        // ever reached the JS-side parser.
+        let raw = "<div class='wp-block-accordion'><div class='wp-block-accordion-item'>"
+            + "<h3 class='wp-block-accordion-heading'>Title</h3></div></div>"
+        let json = """
+        {"id":27,"title":{"rendered":"T"},
+         "content":{"rendered":"<div>rendered</div>","raw":"\(raw)"},
+         "excerpt":{"rendered":""},"status":"publish",
+         "date":"2024-01-01T00:00:00","modified":"2024-01-01T00:00:00",
+         "slug":"t","link":"https://example.com/t"}
+        """
+        let post = try decode(json)
+        #expect(post.content.editorHTML == raw)
+    }
+
     @Test func contentWithParagraphTagsUnchanged() throws {
         let json = """
         {"id":25,"title":{"rendered":"T"},

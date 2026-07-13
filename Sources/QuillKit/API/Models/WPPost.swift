@@ -55,7 +55,8 @@ public struct RenderedString: Codable, Hashable, Sendable {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return rendered
         }
-        if raw.contains("<!-- wp:") || raw.contains("<p>") || raw.contains("<p ") {
+        if raw.contains("<!-- wp:") || raw.contains("<p>") || raw.contains("<p ")
+            || raw.contains("wp-block-") {
             return raw
         }
         return Self.wpautop(raw)

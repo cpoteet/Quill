@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -39,6 +39,85 @@ describe('extractAlignment', () => {
 
   test('alignment class mixed with others is still detected', () => {
     assert.equal(extractAlignment('wp-block-image alignright size-large'), 'right')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// passthroughLabelFromClass / passthroughLabelFromBlockName / parsePassthroughBlock
+// ---------------------------------------------------------------------------
+
+describe('passthroughLabelFromClass', () => {
+  test('strips wp-block- prefix and title-cases', () => {
+    assert.equal(passthroughLabelFromClass('wp-block-accordion'), 'Accordion')
+  })
+
+  test('splits multi-word block names on hyphens', () => {
+    assert.equal(passthroughLabelFromClass('wp-block-media-text'), 'Media Text')
+  })
+})
+
+describe('passthroughLabelFromBlockName', () => {
+  test('bare core block name', () => {
+    assert.equal(passthroughLabelFromBlockName('accordion'), 'Accordion')
+  })
+
+  test('namespaced core block name drops the namespace', () => {
+    assert.equal(passthroughLabelFromBlockName('core/accordion'), 'Accordion')
+  })
+
+  test('namespaced plugin block name with multiple words', () => {
+    assert.equal(passthroughLabelFromBlockName('my-plugin/foo-bar'), 'Foo Bar')
+  })
+})
+
+describe('parsePassthroughBlock', () => {
+  function el(html) {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return div.firstElementChild
+  }
+
+  test('returns null for an element with no wp-block- class', () => {
+    assert.equal(parsePassthroughBlock(el('<div class="something-else"></div>')), null)
+  })
+
+  test('class-only element (no adjacent comments)', () => {
+    const result = parsePassthroughBlock(el('<div class="wp-block-accordion"><p>x</p></div>'))
+    assert.equal(result.blockLabel, 'Accordion')
+    assert.equal(result.blockName, null)
+    assert.equal(result.attrsJSON, null)
+    assert.equal(result.sourceHTML, '<div class="wp-block-accordion"><p>x</p></div>')
+  })
+
+  test('element with adjacent wp:name comments (no attrs)', () => {
+    const container = document.createElement('div')
+    container.innerHTML =
+      '<!-- wp:accordion -->\n<div class="wp-block-accordion"><p>x</p></div>\n<!-- /wp:accordion -->'
+    const target = container.querySelector('.wp-block-accordion')
+    const result = parsePassthroughBlock(target)
+    assert.equal(result.blockLabel, 'Accordion')
+    assert.equal(result.blockName, 'accordion')
+    assert.equal(result.attrsJSON, null)
+  })
+
+  test('element with adjacent wp:name comments including JSON attrs', () => {
+    const container = document.createElement('div')
+    container.innerHTML =
+      '<!-- wp:accordion {"autoclose":false} -->\n<div class="wp-block-accordion"><p>x</p></div>\n<!-- /wp:accordion -->'
+    const target = container.querySelector('.wp-block-accordion')
+    const result = parsePassthroughBlock(target)
+    assert.equal(result.blockName, 'accordion')
+    assert.equal(result.attrsJSON, '{"autoclose":false}')
+  })
+
+  test('mismatched open/close comment names are not treated as a pair', () => {
+    const container = document.createElement('div')
+    container.innerHTML =
+      '<!-- wp:accordion -->\n<div class="wp-block-accordion"><p>x</p></div>\n<!-- /wp:columns -->'
+    const target = container.querySelector('.wp-block-accordion')
+    const result = parsePassthroughBlock(target)
+    assert.equal(result.blockName, null)
+    assert.equal(result.blockLabel, 'Accordion')
   })
 })
 
@@ -395,6 +474,35 @@ describe('formatHTML — nested block elements', () => {
     assert.match(out, /^  <p>Quote<\/p>/m)
     assert.match(out, /^  <cite>Author<\/cite>/m)
     assert.match(out, /^<\/blockquote>/m)
+  })
+
+  test('div wrapping block children is indented like other block tags', () => {
+    const html = '<div class="wp-block-accordion"><div class="wp-block-accordion-item"><h3>Title</h3></div></div>'
+    const out = fmt(html)
+    assert.equal(
+      out,
+      '<div class="wp-block-accordion">\n' +
+      '  <div class="wp-block-accordion-item">\n' +
+      '    <h3>Title</h3>\n' +
+      '  </div>\n' +
+      '</div>'
+    )
+  })
+
+  test('a div with only raw-newline text content (e.g. EmbedBlock\'s wrapper) does not leave the URL and closing tag unindented (regression)', () => {
+    // Adding 'div' to BLOCK made this figure/div combo take the recursive,
+    // indented path — but the wrapper's only child is a text node containing
+    // literal '\n'+url+'\n' (see EmbedBlock's renderHTML), which without
+    // trimming pushed the URL and closing </div> onto unindented lines below
+    // the opening tag.
+    const html = '<figure class="wp-block-embed"><div class="wp-block-embed__wrapper">\nhttps://youtu.be/abc\n</div></figure>'
+    const out = fmt(html)
+    assert.equal(
+      out,
+      '<figure class="wp-block-embed">\n' +
+      '  <div class="wp-block-embed__wrapper">https://youtu.be/abc</div>\n' +
+      '</figure>'
+    )
   })
 })
 
@@ -833,6 +941,91 @@ describe('toWordPressHTML — gallery', () => {
       '<!-- /wp:gallery -->'
     const out = wp(withCR)
     assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
+  })
+})
+
+describe('toWordPressHTML — passthrough blocks', () => {
+  test('an element with data-quill-passthrough-name gets wrapped in matching wp:name comments', () => {
+    const html = '<div data-quill-passthrough-name="accordion" class="wp-block-accordion"><p>x</p></div>'
+    const out = wp(html)
+    assert.match(out, /<!-- wp:accordion -->/)
+    assert.match(out, /<!-- \/wp:accordion -->/)
+    assert.ok(!out.includes('data-quill-passthrough-name'))
+  })
+
+  test('data-quill-passthrough-attrs is emitted inside the opening comment', () => {
+    const html = '<div data-quill-passthrough-name="accordion" data-quill-passthrough-attrs="{&quot;autoclose&quot;:false}" class="wp-block-accordion"></div>'
+    const out = wp(html)
+    assert.match(out, /<!-- wp:accordion \{"autoclose":false\} -->/)
+    assert.ok(!out.includes('data-quill-passthrough-attrs'))
+  })
+
+  test('an element with no data-quill-passthrough-name attribute is left alone', () => {
+    const html = '<div class="wp-block-accordion"><p>x</p></div>'
+    const out = wp(html)
+    assert.ok(!out.includes('<!--'))
+  })
+
+  test('wrapping is idempotent', () => {
+    const html = '<div data-quill-passthrough-name="accordion" class="wp-block-accordion"><p>x</p></div>'
+    const once = wp(html)
+    assert.equal(wp(once), once)
+  })
+
+  test('a nested wp:image comment inside a passthrough block survives the strip (regression)', () => {
+    // Mirrors what renderHTML actually emits: data-quill-passthrough is set
+    // unconditionally, data-quill-passthrough-name only when the outer
+    // element itself had its own comment pair on load.
+    const html =
+      '<div data-quill-passthrough="" data-quill-passthrough-name="core/group" class="wp-block-group">\n' +
+      '<!-- wp:image {"id":42} -->\n' +
+      '<figure class="wp-block-image"><img src="x.jpg"></figure>\n' +
+      '<!-- /wp:image -->\n' +
+      '</div>'
+    const out = wp(html)
+    assert.match(out, /<!-- wp:image \{"id":42\} -->/)
+    assert.match(out, /<!-- \/wp:image -->/)
+    assert.ok(out.includes('<img src="x.jpg">'), 'inner image markup should survive too')
+    assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes should not leak into saved HTML')
+  })
+
+  test('a nested wp:gallery comment inside a passthrough block survives the strip', () => {
+    const html =
+      '<div data-quill-passthrough="" class="wp-block-columns">\n' +
+      '<!-- wp:gallery {"columns":2} -->\n' +
+      '<figure class="wp-block-gallery"><figure class="wp-block-image"><img src="a.jpg"></figure></figure>\n' +
+      '<!-- /wp:gallery -->\n' +
+      '</div>'
+    const out = wp(html)
+    assert.match(out, /<!-- wp:gallery \{"columns":2\} -->/)
+    assert.match(out, /<!-- \/wp:gallery -->/)
+  })
+
+  test('data-quill-passthrough marker is stripped even with no blockName (class-only passthrough)', () => {
+    const html = '<div data-quill-passthrough="" class="wp-block-accordion"><p>x</p></div>'
+    const out = wp(html)
+    assert.ok(!out.includes('data-quill-passthrough'))
+  })
+
+  test('nested content survives byte-for-byte — headings/cite/figcaption inside a passthrough block are not normalized', () => {
+    // Regression guard: toWordPressHTML's heading/cite/figure normalization
+    // passes (div.querySelectorAll('h1..h6'), 'blockquote cite', 'figure...')
+    // run unconditionally over the whole tree. Passthrough content must be
+    // shielded from those passes too, not just the comment-strip regex —
+    // otherwise a nested <h3> silently gains wp-block-heading, an
+    // intentionally-empty <cite> gets deleted, and an intentionally-empty
+    // <figcaption> gets deleted, even though the whole point of passthrough
+    // is verbatim preservation.
+    const html =
+      '<div data-quill-passthrough="" class="wp-block-group">' +
+      '<h3>Nested Heading</h3>' +
+      '<blockquote><p>Quote</p><cite></cite></blockquote>' +
+      '<figure class="wp-block-image"><img src="x.jpg"><figcaption></figcaption></figure>' +
+      '</div>'
+    const out = wp(html)
+    assert.ok(out.includes('<h3>Nested Heading</h3>'), 'heading should not gain wp-block-heading class')
+    assert.ok(out.includes('<cite></cite>'), 'empty cite should not be removed')
+    assert.ok(out.includes('<figcaption></figcaption>'), 'empty figcaption should not be removed')
   })
 })
 
