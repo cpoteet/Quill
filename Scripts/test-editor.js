@@ -1083,6 +1083,12 @@ describe('toWordPressHTML — footnote backrefs', () => {
     assert.match(out, /↩/)
   })
 
+  test('backref arrow uses text-presentation variation selector, not emoji-presentation', () => {
+    const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
+    const out = wp(html)
+    assert.match(out, /class="footnote-backref"[^>]*>↩︎<\/a>/)
+  })
+
   test('backref is idempotent — not added twice on double transform', () => {
     const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>' +
       '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'

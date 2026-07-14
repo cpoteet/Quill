@@ -262,7 +262,7 @@ function toWordPressHTML(html, doc) {
     a.href = '#ref-' + li.id
     a.className = 'footnote-backref'
     a.setAttribute('aria-label', 'Back to content')
-    a.textContent = '↩'
+    a.textContent = '↩︎'
     li.appendChild(a)
   })
 
