@@ -95,7 +95,7 @@ Sources/QuillKit/
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
 - `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, `embedClassFor`, `passthroughLabelFromClass`, `passthroughLabelFromBlockName`, `parsePassthroughBlock`; shared between `editor.html` and `Scripts/test-editor.js`. Loaded as `<script src="./editor-transforms.js">` before the main editor script block, so all functions are available as globals inside `editor.html`'s JS.
 - `Sources/QuillKit/Views/Media/GallerySheet.swift` — native picker for creating a WordPress gallery (multi-select media grid, reorderable selection, columns/crop/link-to/size controls); posts `.insertGalleryData` which `EditorCoordinator` turns into a `window.insertGallery(json)` call
-- `gutenbergPassthrough` Tiptap node (`editor.html`) — catches any `wp-block-*` classed, non-`<figure>` element no other parse rule claims (Accordion, Columns, Group, third-party blocks), preserves it byte-for-byte as a static "unsupported block" card. See `docs/superpowers/specs/2026-07-12-gutenberg-passthrough-block-design.md` and the `toWordPressHTML` gotcha above about its shielding window.
+- `gutenbergPassthrough` Tiptap node (`editor.html`) — catches any `wp-block-*` classed, non-`<figure>` element no other parse rule claims (Accordion, Columns, Group, third-party blocks), preserves it byte-for-byte as a static "Not editable in the visual editor" card. See `docs/superpowers/specs/2026-07-12-gutenberg-passthrough-block-design.md` and the `toWordPressHTML` gotcha above about its shielding window.
 
 ## Maintaining Gutenberg HTML compatibility
 

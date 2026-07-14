@@ -1737,9 +1737,9 @@
     // Catches any wp-block-* classed element (other than a <figure>, which
     // Quill's own image/gallery/embed/table rules already own or
     // transparently pass through) that no other, higher-priority parse rule
-    // claimed. Renders as a static, non-editable "unsupported block" card;
-    // saves the original markup back byte-for-byte, regenerating any
-    // original wp:name comments. See docs/superpowers/specs/
+    // claimed. Renders as a static, non-editable card labeled "Not editable
+    // in the visual editor"; saves the original markup back byte-for-byte,
+    // regenerating any original wp:name comments. See docs/superpowers/specs/
     // 2026-07-12-gutenberg-passthrough-block-design.md.
     class PassthroughNodeView {
       constructor(node) {
@@ -1750,7 +1750,7 @@
         label.textContent = node.attrs.blockLabel
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
-        hint.textContent = 'Unsupported block — edit via Code View (</>)'
+        hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
         this.dom.append(label, hint)
       }
       selectNode()   { this.dom.classList.add('selected') }
