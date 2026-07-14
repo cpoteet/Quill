@@ -131,13 +131,19 @@ public final class DroppableWebView: WKWebView {
 
         if let sc = spellContext {
             let suggestions = spellingSuggestions(for: sc.word)
-            for suggestion in suggestions {
-                let item = NSMenuItem(title: suggestion, action: #selector(applySpellingSuggestion(_:)), keyEquivalent: "")
-                item.target = self
-                item.representedObject = SpellReplacement(from: sc.from, to: sc.to, suggestion: suggestion)
+            if suggestions.isEmpty {
+                let item = NSMenuItem(title: "No Suggestions", action: nil, keyEquivalent: "")
+                item.isEnabled = false
                 menu.addItem(item)
+            } else {
+                for suggestion in suggestions {
+                    let item = NSMenuItem(title: suggestion, action: #selector(applySpellingSuggestion(_:)), keyEquivalent: "")
+                    item.target = self
+                    item.representedObject = SpellReplacement(from: sc.from, to: sc.to, suggestion: suggestion)
+                    menu.addItem(item)
+                }
             }
-            if !suggestions.isEmpty { menu.addItem(.separator()) }
+            menu.addItem(.separator())
         }
 
         menu.items += [
