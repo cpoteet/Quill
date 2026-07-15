@@ -8,16 +8,19 @@ Source: [WordPress Block Editor Handbook — Core Blocks Reference](https://deve
 
 None of these have a dedicated toolbar button or visual editing UI in Quill. Once pasted via code view and saved, most will fall through to the `gutenbergPassthrough` node — Quill shows a "Not editable in the visual editor" card and preserves the block byte-for-byte on every save, so it round-trips safely to WordPress even though you can't visually tweak it. To change the content, edit it in code view.
 
-Two exceptions worth knowing about:
+Exceptions worth knowing about:
 - **Separator** already has full native support (`withClassAttr(HorizontalRule)`) — it's a real editable node, just with no toolbar button. Typing `---` then Enter also inserts one.
-- **Pullquote** and **Media & Text** render as `<figure>` elements, and the passthrough node explicitly excludes `<figure>` — it only catches non-figure `wp-block-*` elements (to stay out of the way of `ResizableImage`'s own figure parsing). Whether these two survive a round-trip cleanly hasn't been verified against the current parser; test in code view before relying on them, since they may get stripped down to their inner content instead of preserved as-is.
-- **Shortcode** serializes as bare text with no wrapping element at all (see below) — the passthrough node matches on an element's `wp-block-*` class, so there may be nothing for it to catch here either. Test before relying on it.
+- **Media & Text** renders as a `<figure>` element, which the passthrough node explicitly skips (it only catches non-figure `wp-block-*` elements, to stay out of the way of `ResizableImage`'s own figure parsing) — confirmed working in testing anyway.
+- **Pullquote** also renders as a `<figure>`, but this one confirmed *doesn't* survive: the passthrough skip means nothing claims the outer `<figure class="wp-block-pullquote">`, so Tiptap's parser recurses past it and the inner `<blockquote><cite>` matches Quill's own (unscoped) blockquote parse rule instead. The `wp-block-pullquote` wrapper and large-pulled-quote styling are lost — it loads and saves as a plain blockquote+citation. The quote text itself isn't lost, just the pullquote presentation. See `docs/future-architecture.md` (Approach G) for what real support would take.
+- **Shortcode** serializes as bare text with no wrapping element at all (see below) — the passthrough node matches on an element's `wp-block-*` class, so there may be nothing for it to catch here either. Untested — treat with the same suspicion as Pullquote until verified.
 
 ---
 
 ## Pullquote (`core/pullquote`)
 
 Large pulled-out quote, distinct from the blockquote+citation Quill already supports.
+
+**Confirmed: does not round-trip as a pullquote.** It loads and saves as a plain blockquote+citation instead — the `wp-block-pullquote` figure wrapper and large-quote styling are lost. The text content survives, just not the presentation. See `docs/future-architecture.md` (Approach G) if this is ever worth fixing properly.
 
 ```html
 <!-- wp:pullquote -->

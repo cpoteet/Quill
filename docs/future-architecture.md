@@ -90,3 +90,18 @@ Deferred design notes for Quill. None of these are in the current implementation
 - For option (b), the query-param would need to be added consistently everywhere an image URL reaches the DOM: `ResizableImage`'s `renderHTML`/parse path, `insertImageAt` (Swift→JS bridge), the gallery node's `sourceHTML` verbatim re-render, and `gutenbergPassthrough`'s byte-for-byte preserved markup — the last two are especially risky since they're designed to preserve original HTML exactly, so injecting a query param there could break round-trip fidelity or the "identical to original" assumptions their tests assert on.
 - `WPMedia` (API/Models) may already carry a `modified` timestamp from the REST API that could serve as the cache-busting value instead of `Date()`, avoiding a fresh miss on every single load.
 - Manual workaround in the meantime: quit Quill and clear `~/Library/Caches/com.quill.app/WebKit/NetworkCache` (plus `Cache.db`/`Cache.db-shm`/`Cache.db-wal`/`fsCachedData` in the same directory) on disk.
+
+---
+
+## Approach G: Native Pullquote block support
+
+**Context (as of 2026-07-15):** `docs/gutenberg-block-snippets.md` catalogs core Gutenberg blocks with no toolbar button in Quill. Testing confirmed `core/pullquote` doesn't round-trip: it renders as `<figure class="wp-block-pullquote"><blockquote>...<cite>...</cite></blockquote></figure>`, and `gutenbergPassthrough` explicitly skips `<figure>` elements (to avoid colliding with `ResizableImage`'s own figure parsing). With nothing claiming the outer figure, Tiptap's parser recurses past it and the inner `<blockquote><cite>` matches Quill's existing unscoped `CustomBlockquote` parse rule — the quote text and citation survive, but the `wp-block-pullquote` wrapper and large-pulled-quote presentation are silently dropped on load.
+
+**What Approach G would be:** A dedicated `Pullquote` Tiptap node (or a variant/attribute on the existing blockquote) with `parseHTML` scoped specifically to `figure.wp-block-pullquote` — taking priority over the generic blockquote rule — plus distinct rendering (larger type, centered, no left border) and a `toWordPressHTML` step that re-wraps it in the figure on save.
+
+**Why it wasn't done:** Low priority — pullquotes are a niche, largely decorative block. Not worth the schema/parse-priority work unless it turns out to matter in practice.
+
+**What a future implementer would need to know:**
+- `CustomBlockquote` (`editor.html`, ~line 2053) has no class/figure scoping, so it currently wins whenever a bare `<blockquote>` appears anywhere in parsed HTML — a new Pullquote node's `parseHTML` would need higher priority than it, or `CustomBlockquote` would need to explicitly refuse to match inside a `figure.wp-block-pullquote` ancestor.
+- `gutenbergPassthrough`'s `<figure>` exclusion (see its own note earlier in this doc, and `Sources/QuillKit/Resources/CLAUDE.md`) is deliberate and shouldn't be relaxed generally — a Pullquote node should claim `figure.wp-block-pullquote` directly rather than routing through passthrough.
+- Reuse the existing `Cite` node for the citation child, same as `CustomBlockquote` already does — no need to invent new citation handling.
