@@ -6,11 +6,6 @@ Native macOS app for writing and managing WordPress content. Built with Swift Pa
 
 Implementation complete and running. Active polish/iteration phase.
 
-## TODO
-
-- [ ] Post/page title bar should be white in dark mode
-- [ ] Inline command palette — slash-command style input (type `/` at the start of a block) for triggering AI operations and inserting blocks, similar to Notion
-
 ## Build & run
 
 ```bash
