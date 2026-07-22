@@ -24,8 +24,11 @@ See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output re
 3. If WordPress also changes how it *stores* the format (what the API sends back on load), check whether Tiptap still parses it correctly by loading an existing post. If not, add or update the relevant node's `parseHTML()` rule. For block elements wrapped in a `<figure>` (like images and tables), add a `getAttrs` rule that extracts the inner element's attrs.
 
 4. Rebuild and test the round-trip: load a post with the affected element → verify it displays correctly in Quill → save → verify the API-stored HTML matches the new expected format.
+   - **This is the manual GUI step** — it requires a human driving the Quill app. An autonomous session (e.g. a scheduled run) cannot do it: treat the jsdom test suites in step 5 as the automated stand-in, and report this step as not-verified rather than silently skipping it.
+   - **Draft posts only:** Quill's credentials point at the production site. Use a brand-new local draft pushed as a draft — never test against an existing post/page, and never publish.
 
 5. Add or update tests in the relevant `Scripts/test-editor*.js` file for the changed behavior, then run `./test.sh` to confirm the full suite (Swift + JS) still passes.
+   - **Edit-tool trap:** the Edit tool can corrupt straight ASCII `'` string delimiters into curly Unicode quotes when its `old_string` spans a region containing existing curly quotes, producing `SyntaxError: Invalid or unexpected token`. If that happens, fix it with a targeted Python byte-level replacement — do NOT re-edit with the Edit tool, which re-introduces the corruption (details in the root `CLAUDE.md` test-suite gotchas).
 
 6. Update `Sources/QuillKit/Resources/CLAUDE.md`'s per-element markup reference table (and the root `CLAUDE.md` test-count/status lines, if you added tests) to reflect the new behavior.
 
