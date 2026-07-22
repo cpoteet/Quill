@@ -5,19 +5,28 @@ description: Use when WordPress/Gutenberg changes the expected HTML format for a
 
 # Updating Gutenberg HTML compatibility
 
-All WordPress/Gutenberg HTML compatibility lives in two files:
+All WordPress/Gutenberg HTML compatibility lives in two files (line numbers drift as the files grow — grep for the function/rule name rather than trusting a hardcoded line):
 
-1. **`toWordPressHTML(html)`** in `Sources/QuillKit/Resources/editor-transforms.js` (line 16) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift.
-2. **`ResizableImage.parseHTML()`** (~line 1079 in `Sources/QuillKit/Resources/editor.html`) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
+1. **`toWordPressHTML(html)`** in `Sources/QuillKit/Resources/editor-transforms.js` — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. Mostly DOM operations (create element, add class, reparent), but it also has a few regex-based passes that strip pre-existing `wp:gallery`/`wp:image`/`wp:embed` comments before re-wrapping — see the regex gotcha below before touching those.
+2. **Per-node `parseHTML()` rules** in `Sources/QuillKit/Resources/editor.html` — each Tiptap node extension (`ResizableImage`, `galleryBlock`, `embedBlock`, table, footnotes, `gutenbergPassthrough`, etc.) has its own `parseHTML()`/`getAttrs` for extracting attrs from Gutenberg markup on load. Find the right one by grepping for the node's `name:` and reading its `parseHTML()` method, not by a fixed line number.
 
-See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table.
+See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table and the full gotcha list (referenced ones below are just the traps most likely to bite a format update).
 
 ## How to update when WordPress changes its HTML format
 
-1. Check the new format by inspecting a post in a live WordPress site: open a post in the WordPress block editor, add the element in question, save, then view the post's source HTML (or fetch it via the REST API: `GET /wp-json/wp/v2/posts/{id}?context=edit` and look at `content.raw`).
+1. Check the new format by inspecting a post in a live WordPress site: open a post in the WordPress block editor, add the element in question, save, then view the post's source HTML (or fetch it via the REST API: `GET /wp-json/wp/v2/posts/{id}?context=edit` and look at `content.raw`). Prefer real block-editor-serialized markup over hand-written/inferred HTML — a raw REST `POST` doesn't run through Gutenberg's client-side serialization and can miss attribute-ordering/wrapper-class quirks.
 
-2. Update `toWordPressHTML()` in `editor.html` to emit the new structure. All transforms are DOM operations (create element, add class, reparent) — no regex.
+2. Update `toWordPressHTML()` in `editor-transforms.js` to emit the new structure.
+   - **Passthrough shielding window:** if you add a new whole-tree `div.querySelectorAll(...)` pass, it must run before `gutenbergPassthrough` elements are spliced back in (they're stashed out at the very top of the function and spliced back late, right before comment regeneration). A pass added after the splice-back point will reach into passthrough subtrees and corrupt content that's supposed to be preserved byte-for-byte.
+   - **Regex comment-stripping:** if the new/changed block uses `<!-- wp:name -->` comments, use a non-greedy `[\s\S]*?-->` for the attrs group, not `.*?` (JS `.` excludes line terminators, so a stray `\r`/`\n` in the attrs breaks the match) and not a greedy `[^\n]*` (matches past the first comment's own `-->` when there's no whitespace between adjacent comments, deleting everything in between — this is what caused the gallery-images-disappearing regression).
+   - **Verbatim round-trip pattern:** for blocks that don't have full structured-attr modeling (gallery, embed, `gutenbergPassthrough`), the established pattern is to preserve a `sourceHTML`-style attr verbatim and re-emit it unchanged, rather than fully reconstructing the output from parsed attrs. Follow this pattern for a new block type unless you're deliberately adding full structured modeling for it.
 
-3. If WordPress also changes how it *stores* the format (what the API sends back on load), check whether Tiptap still parses it correctly by loading an existing post. If not, add or update a `parseHTML()` rule on the relevant Tiptap extension. For block elements wrapped in a `<figure>` (like images and tables), add a `getAttrs` rule that extracts the inner element's attrs.
+3. If WordPress also changes how it *stores* the format (what the API sends back on load), check whether Tiptap still parses it correctly by loading an existing post. If not, add or update the relevant node's `parseHTML()` rule. For block elements wrapped in a `<figure>` (like images and tables), add a `getAttrs` rule that extracts the inner element's attrs.
 
 4. Rebuild and test the round-trip: load a post with the affected element → verify it displays correctly in Quill → save → verify the API-stored HTML matches the new expected format.
+
+5. Add or update tests in the relevant `Scripts/test-editor*.js` file for the changed behavior, then run `./test.sh` to confirm the full suite (Swift + JS) still passes.
+
+6. Update `Sources/QuillKit/Resources/CLAUDE.md`'s per-element markup reference table (and the root `CLAUDE.md` test-count/status lines, if you added tests) to reflect the new behavior.
+
+7. Run `./build.sh` to confirm the app still builds before considering the update done.
