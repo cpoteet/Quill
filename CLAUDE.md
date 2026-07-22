@@ -58,7 +58,7 @@ Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node
 
 ## Future architecture options
 
-See `docs/future-architecture.md` for deferred design notes: image figure-first model (Approach C), local draft settings persistence (Approach B), and LanguageTool grammar checking (Approach D).
+See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), and a Gutenberg fixture-diff harness for automated markup-change detection (H).
 
 ## Architecture
 
