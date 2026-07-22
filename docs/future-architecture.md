@@ -105,3 +105,35 @@ Deferred design notes for Quill. None of these are in the current implementation
 - `CustomBlockquote` (`editor.html`, ~line 2053) has no class/figure scoping, so it currently wins whenever a bare `<blockquote>` appears anywhere in parsed HTML — a new Pullquote node's `parseHTML` would need higher priority than it, or `CustomBlockquote` would need to explicitly refuse to match inside a `figure.wp-block-pullquote` ancestor.
 - `gutenbergPassthrough`'s `<figure>` exclusion (see its own note earlier in this doc, and `Sources/QuillKit/Resources/CLAUDE.md`) is deliberate and shouldn't be relaxed generally — a Pullquote node should claim `figure.wp-block-pullquote` directly rather than routing through passthrough.
 - Reuse the existing `Cite` node for the citation child, same as `CustomBlockquote` already does — no need to invent new citation handling.
+
+---
+
+## Approach H: Gutenberg fixture-diff harness for automated markup-change detection
+
+**Context (as of 2026-07-22):** Keeping Quill's round-trip in sync with Gutenberg's saved HTML has three parts: *detecting* that WordPress changed its markup, *getting ground truth* for the new format, and *applying the fix*. The `update-gutenberg-html-format` skill covers the last two well (it now ranks Gutenberg's own test fixtures as primary ground truth). Detection, however, currently depends on the user hearing about a change or on hand-built one-off scheduled audits (e.g. the `wordpress-7-1-markup-audit` task firing 2026-08-20) — each of which takes real effort to write and covers exactly one release. The skill only ever runs *after* something else notices a problem.
+
+**What Approach H would be:** Make detection mechanical by turning the fixtures into a regression suite:
+
+1. **Vendor fixtures into the repo** — a `Scripts/fixtures/gutenberg/` directory holding the fixture files for the blocks Quill actually models (paragraph, heading, list, blockquote, code, separator, image, table, embed, footnotes, gallery — mirror the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`).
+2. **A fetch script** — `Scripts/fetch-gutenberg-fixtures.sh`, pinned to a Gutenberg release tag via a version variable at the top (same pattern as `Scripts/bundle-tiptap.sh`), that downloads the fixture files for the tracked blocks from the `WordPress/gutenberg` GitHub repo.
+3. **A jsdom round-trip test** — `Scripts/test-editor-fixtures.js`, using the same real-`editor.html`-in-jsdom harness as `test-editor-keyboard.js`: for each fixture, `setContent(fixtureHTML)` → `toWordPressHTML(editor.getHTML())` → assert the result equals a **committed per-block expectation file** (see caveats — not the fixture itself).
+4. Wire it into `./test.sh`.
+
+A new WordPress release then collapses the whole audit to: bump the tag in the fetch script, re-run it, run `./test.sh`, and read the diff. A changed fixture shows up as either a parse failure or a reviewable expectation diff that names the exact block — the skill handles the fix from there. A lightweight recurring scheduled task (~3×/year, matching WP's release cadence) could do the bump-and-run automatically and report only when something diverges, replacing hand-built audits like the 7.1 one entirely.
+
+**Why it wasn't done now:** A few hours of setup, mostly in curating the initial expectations (see the first caveat), and the August 2026 release is already covered by the one-off audit task. Worth doing when the next WP release after 7.1 approaches, or the first time a markup change slips through unnoticed.
+
+**Caveats (read before implementing):**
+- **Blind byte-equality against the fixtures will not work.** Quill intentionally differs from raw Gutenberg output in places: Tiptap normalizations, the annotate-don't-reconstruct approach to figures, attribute ordering, and the absence of block comments for elements Quill doesn't comment-wrap. The harness must assert against *committed Quill expectation files* ("Quill's round-trip of fixture X produces Y"), generated on first run and human-reviewed before committing. Fixture updates then surface as diffs to review, not automatic failures of correctness.
+- **Verify the fixture location at implementation time.** The skill references `packages/block-library/src/*/test/fixtures/*.html`; Gutenberg has also historically kept full-content fixtures under `test/integration/fixtures/blocks/` (as `core__*.html` with sibling `.parsed.json` / `.serialized.html` files — the `.serialized.html` variant is the canonical *re-save* output and may be the better comparison target). Check both paths in the repo at the chosen tag and document which one the fetch script uses.
+- **Tag selection is not obvious.** A WordPress core release bundles a *range* of Gutenberg plugin releases. Find the right mapping (the Gutenberg repo's `wp/X.Y` release branches exist for this) rather than assuming the latest plugin tag matches core.
+- **Scope is modeled blocks only.** Blocks Quill doesn't model are already covered by the byte-for-byte `gutenbergPassthrough` tests (`Scripts/test-editor-passthrough.js`); duplicating them here adds noise. New blocks in a WP release are still detected — they appear as new fixture files during the fetch review.
+- **Fixtures skew toward default attributes.** They won't exercise every alignment/size/link-to variant Quill handles; the existing hand-written tests in `Scripts/test-editor*.js` remain the coverage for those paths. This harness detects *format drift*, it does not replace the behavioral suites.
+- **Licensing:** Gutenberg is GPL-licensed; vendoring its fixture files into this personal project's repo is fine, but note their origin in a README line inside the fixtures directory.
+- **Rejected stronger alternative:** embedding Gutenberg's own `@wordpress/blocks` parser/serializer in the WKWebView would eliminate drift by construction, but requires rewriting the editor's entire save path — ruled out; the passthrough + verbatim patterns already contain the problem well.
+
+**What a future implementer would need to know:**
+- The real-`editor.html`-in-jsdom harness setup (polyfills, the `window._tiptapEditor` global, the one-shot `setContent` no-op quirk after `extendMarkRange`) is documented in the root `CLAUDE.md` test-suite section — copy the boot code from `Scripts/test-editor-keyboard.js`.
+- When editing/creating the JS test file, mind the Edit-tool curly-quote corruption gotcha (root `CLAUDE.md`).
+- After wiring into `./test.sh`, update the test-count/status lines in the root `CLAUDE.md` and the per-test listing in `docs/testing-plan.md`.
+- The expectation files are the contract: any deliberate change to Quill's output format (e.g. implementing a skill-driven format update) must regenerate and re-review them in the same commit, or the suite goes red for the wrong reason.
