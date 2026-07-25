@@ -4,10 +4,11 @@ import AppKit
 // Makes the title bar match the app's warm panel color instead of the stock
 // system material.
 //
-// Mechanics (verified by instrumenting the live window, 2026-07-24):
+// Mechanics (verified by instrumenting the live window, 2026-07-24 and 2026-07-25):
 //   * `titlebarAppearsTransparent = true` hides `NSTitlebarBackgroundView`, and the
-//     32pt strip then renders `window.backgroundColor` directly. Confirmed by
-//     temporarily setting that color to red and watching the title bar turn red.
+//     32pt strip then renders whatever the theme frame draws beneath it — which is
+//     `window.backgroundColor` only as long as no vibrant backdrop view sits in between
+//     (that caveat is the whole subject of `titleBarColor(for:)` below).
 //   * SwiftUI's own `AppKitWindow` sets `titlebarAppearsTransparent` back to `false`
 //     roughly 0.1s after `viewDidMoveToWindow` runs, during its window setup — which
 //     is why applying the fix only once silently reverted to a white bar. The
@@ -15,6 +16,8 @@ import AppKit
 //   * `.fullSizeContentView` must stay out of the style mask: with it, SwiftUI content
 //     sits *under* the bar and shows through as separate sidebar/editor color zones.
 //     macOS re-adds the flag on full-screen transitions, hence the exit observer.
+//   * `backgroundColor` must be assigned an *already-resolved* color, never the dynamic
+//     `wpTitleBarBg` token — see `titleBarColor(for:)`.
 private final class WindowObservingView: NSView {
     private var observers: [NSObjectProtocol] = []
 
@@ -30,9 +33,11 @@ private final class WindowObservingView: NSView {
                 queue: .main
             ) { [weak window] _ in
                 guard let window else { return }
-                // Idempotent: only touches the window when something reset the flag,
-                // so the frequent didUpdate notification stays cheap.
-                if !window.titlebarAppearsTransparent { applyTitleBarFix(to: window) }
+                // Idempotent: only touches the window when the state has actually drifted,
+                // so the frequent didUpdate notification stays cheap. The color comparison
+                // is exact — two colors resolved from the same appearance are `==`, and
+                // resolutions from different appearances never are.
+                if titleBarFixNeeded(for: window) { applyTitleBarFix(to: window) }
             })
         }
     }
@@ -42,10 +47,44 @@ private final class WindowObservingView: NSView {
     }
 }
 
+/// The title-bar color resolved for a specific appearance.
+///
+/// `window.backgroundColor` must be given a resolved color, not the dynamic
+/// `wpTitleBarBg` token, and the difference is not cosmetic. Assigning a *catalog*
+/// (dynamic) color leaves the window on AppKit's vibrant-backdrop path: the theme frame
+/// then carries a behind-window `NSVisualEffectView` sized to the whole frame —
+/// including the 32pt title-bar strip — which paints blurred desktop *over*
+/// `backgroundColor` and hides it completely. Assigning a resolved opaque color drops
+/// that backdrop view entirely (verified 2026-07-25: the theme frame's subviews go from
+/// `["NSVisualEffectView", hostingView, titlebarContainer]` to just the latter two), and
+/// the transparent strip then renders `backgroundColor` as intended.
+///
+/// Whether the window got a vibrant backdrop was decided once, at window creation, from
+/// the appearance in effect at that moment — which is why this bug only showed up when
+/// the app *launched* in dark mode, and why no later light/dark toggle recovered from it.
+///
+/// The cost of resolving is that the color no longer tracks appearance changes on its
+/// own, so it has to be re-applied on every switch: `WindowTitleBarFix.updateNSView`
+/// reads `colorScheme` for exactly that, and `titleBarFixNeeded(for:)` catches any
+/// window that drifted.
+private func titleBarColor(for appearance: NSAppearance) -> NSColor {
+    var resolved: NSColor = .wpTitleBarBg
+    appearance.performAsCurrentDrawingAppearance {
+        resolved = NSColor.wpTitleBarBg.usingColorSpace(.sRGB) ?? .wpTitleBarBg
+    }
+    return resolved
+}
+
+private func titleBarFixNeeded(for window: NSWindow) -> Bool {
+    !window.titlebarAppearsTransparent
+        || window.styleMask.contains(.fullSizeContentView)
+        || window.backgroundColor != titleBarColor(for: window.effectiveAppearance)
+}
+
 private func applyTitleBarFix(to window: NSWindow) {
     window.styleMask.remove(.fullSizeContentView)
     window.titlebarAppearsTransparent = true
-    window.backgroundColor = .wpTitleBarBg
+    window.backgroundColor = titleBarColor(for: window.effectiveAppearance)
 }
 
 private struct WindowTitleBarFix: NSViewRepresentable {
