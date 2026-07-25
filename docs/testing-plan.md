@@ -1468,6 +1468,13 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Still running, switch the system to **dark** → title bar switches with it and still matches.
 - [ ] Quit. Set the system to **dark**, launch Quill → title bar matches the panel (not too dark, no wallpaper tint showing through).
 - [ ] Still running, switch the system to **light** → title bar switches with it and still matches (not a flat gray).
+
+**Pickers across an appearance switch** — SwiftUI stamps a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshes it, so an unfixed picker keeps drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). `.rebuildsOnAppearanceChange()` is what prevents this — check both directions, since each leaves the picker wrong in a different way. See the modifier's doc comment in `DesignSystem.swift`.
+
+- [ ] Open a post's settings panel in **light**, switch the system to **dark** → the Status picker (and Parent Page picker on a page) turns dark with light text, matching the panel.
+- [ ] Open the panel in **dark**, switch the system to **light** → the pickers turn light with dark, readable text.
+- [ ] After either switch, click the Status picker → the menu opens and changing the selection still works.
+- [ ] Open the gallery sheet, switch appearance while it's open → its Link To and Size pickers follow.
 - [ ] The title field and top border spacing look correct (no extra gaps or overlap).
 - [ ] The app icon appears in the Dock and in the About window.
 - [ ] On launch, a "Loading editor…" overlay appears briefly and fades out once the editor is ready. It should never stay visible permanently.

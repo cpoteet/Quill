@@ -203,6 +203,7 @@ public struct GallerySheet: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .rebuildsOnAppearanceChange()
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -215,6 +216,7 @@ public struct GallerySheet: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .rebuildsOnAppearanceChange()
             }
         }
     }

@@ -147,6 +147,39 @@ struct PanelInteriorFade: View {
     }
 }
 
+// MARK: - Appearance-change workaround
+
+/// Rebuilds the wrapped view whenever the light/dark appearance changes.
+///
+/// SwiftUI backs `Picker` with a real AppKit `NSPopUpButton` (`SwiftUIPopupButton`), and
+/// it stamps an *explicit* `NSAppearance` on that button when it configures it. That
+/// stamp is never refreshed: on a light/dark switch the button's own host container
+/// updates (`AppKitPlatformViewHost` goes to the new appearance) while the button keeps
+/// the old one, so it goes on drawing its previous bezel and label color — a light pill
+/// with dark text sitting in a dark panel, or pale text on the light panel. Verified
+/// 2026-07-25 by dumping the live ancestor chain: `SwiftUIPopupButton explicit=DarkAqua`
+/// under `AppKitPlatformViewHost explicit=Aqua` under an all-`Aqua` window.
+///
+/// Nothing in a plain `Picker` subtree depends on `colorScheme`, so SwiftUI has no reason
+/// to re-evaluate it and the stale stamp survives indefinitely. Reading `colorScheme`
+/// here and feeding it to `.id()` gives the subtree a new identity on every switch, which
+/// forces SwiftUI to build a fresh control that gets stamped with the current appearance.
+private struct RebuildOnAppearanceChange: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.id(colorScheme)
+    }
+}
+
+extension View {
+    /// Apply to AppKit-backed controls that don't repaint on a light/dark switch —
+    /// `Picker` most notably. See `RebuildOnAppearanceChange` for why this is needed.
+    func rebuildsOnAppearanceChange() -> some View {
+        modifier(RebuildOnAppearanceChange())
+    }
+}
+
 // MARK: - Toast
 
 struct ToastView: View {
