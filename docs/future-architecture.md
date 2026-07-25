@@ -137,3 +137,19 @@ A new WordPress release then collapses the whole audit to: bump the tag in the f
 - When editing/creating the JS test file, mind the Edit-tool curly-quote corruption gotcha (root `CLAUDE.md`).
 - After wiring into `./test.sh`, update the test-count/status lines in the root `CLAUDE.md` and the per-test listing in `docs/testing-plan.md`.
 - The expectation files are the contract: any deliberate change to Quill's output format (e.g. implementing a skill-driven format update) must regenerate and re-review them in the same commit, or the suite goes red for the wrong reason.
+
+---
+
+## Approach I: Gradient-matched title bar
+
+**Context (as of 2026-07-24):** The title bar renders `window.backgroundColor` (a single flat color — currently `wpTitleBarBg`, an alias for `wpSidebarBg`). The panels immediately below it do *not* paint a flat color: `WarmPanelBackground` lays a `LinearGradient` over the token, white at 10–14% from `.topLeading`, fading through `Color.wpAmber` at 1.4–1.8% to `.clear` at `.bottomTrailing`. So the panel edge meeting the bar runs lightest at the far left and settles toward the raw token across the width, while the bar holds one value the whole way. Matching the average (the token itself) was judged a good enough match on a real display in light mode; this approach was offered at that point and deliberately not taken.
+
+**What Approach I would be:** Paint the title bar with the same gradient instead of a flat color. `NSWindow.backgroundColor` accepts `NSColor(patternImage:)`, so the implementation is: render an `NSImage` the size of the window carrying the same `topLeading → bottomTrailing` gradient over `wpSidebarBg`, assign it as the window background, and regenerate it on `NSWindow.didResizeNotification` (pattern images are tiled from the window's bottom-left and do not stretch with the window, so a stale image would tile visibly after any resize). The bar would then continue the panels' shimmer across the full width rather than approximating it.
+
+**Why it wasn't done:** The flat token matches well enough that the seam reads as continuous in light mode, and the pattern-image path adds a resize-coupled redraw plus an image allocation per resize for a difference measured in a few RGB units. Revisit only if the mismatch becomes visible — most likely on a very wide window, where the gradient has the most horizontal distance to travel and the left-edge/right-edge delta is largest.
+
+**What a future implementer would need to know:**
+- The title-bar plumbing lives in `ContentView.swift`'s `applyTitleBarFix` / `WindowObservingView` — see `Sources/QuillKit/Views/CLAUDE.md` for the SwiftUI-reverts-`titlebarAppearsTransparent` gotcha, which any change here must preserve. The re-assert observer is what makes the transparent bar hold at all.
+- Pattern-image origin is the window's **bottom-left**, but the gradient's visual origin is the **top-left**; the rendered image has to account for that flip or the shimmer will appear at the wrong end.
+- `wpSidebarBg` is a dynamic `NSColor` (light/dark providers). The generated image must be re-rendered on appearance changes too, not just resizes, or dark mode gets a light-mode gradient baked in. Deriving it inside an `NSImage(size:flipped:drawingHandler:)` block helps, since that block re-runs per draw with the current appearance.
+- Dark mode is the weaker case for the current flat approach (the white shimmer lifts the panels noticeably against a near-black `underPageBackgroundColor`, so the flat bar reads darker than the panels). If dark-mode shimmer is ever reduced or removed, that gap closes on its own and this approach loses most of its remaining value in dark mode.

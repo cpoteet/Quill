@@ -1,40 +1,67 @@
 import SwiftUI
 import AppKit
 
-// Fixes title bar color bleed after full-screen transitions.
-// The title bar is transparent and samples content beneath it; after a full-screen
-// round-trip the sidebar and editor panel colors appear as separate zones. Setting
-// a uniform window backgroundColor prevents that sampling discrepancy.
+// Makes the title bar match the app's warm panel color instead of the stock
+// system material.
+//
+// Mechanics (verified by instrumenting the live window, 2026-07-24):
+//   * `titlebarAppearsTransparent = true` hides `NSTitlebarBackgroundView`, and the
+//     32pt strip then renders `window.backgroundColor` directly. Confirmed by
+//     temporarily setting that color to red and watching the title bar turn red.
+//   * SwiftUI's own `AppKitWindow` sets `titlebarAppearsTransparent` back to `false`
+//     roughly 0.1s after `viewDidMoveToWindow` runs, during its window setup — which
+//     is why applying the fix only once silently reverted to a white bar. The
+//     `didUpdate` observer below re-asserts it, so any later reset self-heals.
+//   * `.fullSizeContentView` must stay out of the style mask: with it, SwiftUI content
+//     sits *under* the bar and shows through as separate sidebar/editor color zones.
+//     macOS re-adds the flag on full-screen transitions, hence the exit observer.
 private final class WindowObservingView: NSView {
-    private var observer: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window else { return }
         applyTitleBarFix(to: window)
-        guard observer == nil else { return }
-        observer = NotificationCenter.default.addObserver(
-            forName: NSWindow.didExitFullScreenNotification,
-            object: window,
-            queue: .main
-        ) { [weak window] _ in
-            if let window { applyTitleBarFix(to: window) }
+        guard observers.isEmpty else { return }
+        for name in [NSWindow.didExitFullScreenNotification, NSWindow.didUpdateNotification] {
+            observers.append(NotificationCenter.default.addObserver(
+                forName: name,
+                object: window,
+                queue: .main
+            ) { [weak window] _ in
+                guard let window else { return }
+                // Idempotent: only touches the window when something reset the flag,
+                // so the frequent didUpdate notification stays cheap.
+                if !window.titlebarAppearsTransparent { applyTitleBarFix(to: window) }
+            })
         }
     }
 
     deinit {
-        if let observer { NotificationCenter.default.removeObserver(observer) }
+        for observer in observers { NotificationCenter.default.removeObserver(observer) }
     }
 }
 
 private func applyTitleBarFix(to window: NSWindow) {
-    window.titlebarAppearsTransparent = false
-    window.backgroundColor = .wpSidebarBg
+    window.styleMask.remove(.fullSizeContentView)
+    window.titlebarAppearsTransparent = true
+    window.backgroundColor = .wpTitleBarBg
 }
 
 private struct WindowTitleBarFix: NSViewRepresentable {
+    // Switching between light and dark resets `titlebarAppearsTransparent` the same way
+    // SwiftUI's initial window setup does, and the notification observers only catch it
+    // once the window next updates — until then the bar shows the stock system material.
+    // Reading colorScheme here makes SwiftUI re-run updateNSView on every appearance
+    // change, so the fix re-applies immediately instead of on the next stray update.
+    @Environment(\.colorScheme) private var colorScheme
+
     func makeNSView(context: Context) -> WindowObservingView { WindowObservingView() }
-    func updateNSView(_ nsView: WindowObservingView, context: Context) {}
+
+    func updateNSView(_ nsView: WindowObservingView, context: Context) {
+        guard let window = nsView.window else { return }
+        applyTitleBarFix(to: window)
+    }
 }
 
 public struct ContentView: View {

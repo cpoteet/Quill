@@ -7,6 +7,16 @@ extension NSColor {
         default: return NSColor(red: 242 / 255, green: 241 / 255, blue: 239 / 255, alpha: 1)
         }
     }
+
+    /// Window background, which is what the transparent title bar renders.
+    ///
+    /// The panels below paint `wpSidebarBg` *plus* the `WarmPanelBackground` shimmer
+    /// — a diagonal gradient, white at 10–14% from the top-left, fading to amber and
+    /// then clear toward the bottom-right. So the panel edge meeting the title bar is
+    /// not one color: it runs lightest at the left and settles toward the raw token
+    /// across the width. A flat bar can only match the average, which lands on the
+    /// token itself. (Tuned against the live window, 2026-07-24.)
+    static let wpTitleBarBg = wpSidebarBg
 }
 
 extension Color {
@@ -36,6 +46,8 @@ extension Color {
 // MARK: - Surfaces
 
 private struct WarmPanelBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var color: Color
     var shimmerOpacity: Double
     var accentOpacity: Double
@@ -45,7 +57,11 @@ private struct WarmPanelBackground: View {
             color
             LinearGradient(
                 colors: [
-                    Color.white.opacity(shimmerOpacity),
+                    // The white stop is light-mode only. Over the near-black dark
+                    // background it reads as haze rather than shimmer, and it lifts the
+                    // panels away from the flat title bar (which paints wpTitleBarBg with
+                    // no gradient), opening a visible seam under the window chrome.
+                    colorScheme == .dark ? .clear : Color.white.opacity(shimmerOpacity),
                     Color.wpAmber.opacity(accentOpacity),
                     Color.clear,
                 ],
