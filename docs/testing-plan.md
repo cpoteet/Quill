@@ -1457,10 +1457,17 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 
 ### 7.13 Window / appearance
 
-- [ ] In light mode, the sidebar, panels, and editor have the correct warm off-white tones. In dark mode, they use the correct dark tones. Title and breadcrumb bars should be white in dark mode (this is an open TODO — verify current state).
+- [ ] In light mode, the sidebar, panels, and editor have the correct warm off-white tones. In dark mode, they use the correct dark tones. The window title bar matches the panel directly beneath it in both modes — it reads as one continuous surface, with no seam and no hint of the stock gray/white system material.
 - [ ] With the app open, toggle dark mode in System Settings → the editor, toolbar, and sidebar all switch immediately without relaunching.
 - [ ] The boundaries between sidebar/editor and editor/settings-panel render as subtle gradient transitions, not hard lines.
 - [ ] Enter and exit full screen → the title bar color remains stable.
+
+**Title bar × launch appearance** — check all four combinations, quitting and relaunching for each launch mode. The title bar must match the panel beneath it in every one. This grid exists because the 2026-07-25 bug lived exactly on the launch axis: AppKit decides the window's backdrop *once at window creation* from the appearance in effect then, so testing only the toggle (with the app already running) passes while a cold launch in the other mode is broken. See `Sources/QuillKit/Views/CLAUDE.md`.
+
+- [ ] Set the system to **light**, launch Quill → title bar matches the panel.
+- [ ] Still running, switch the system to **dark** → title bar switches with it and still matches.
+- [ ] Quit. Set the system to **dark**, launch Quill → title bar matches the panel (not too dark, no wallpaper tint showing through).
+- [ ] Still running, switch the system to **light** → title bar switches with it and still matches (not a flat gray).
 - [ ] The title field and top border spacing look correct (no extra gaps or overlap).
 - [ ] The app icon appears in the Dock and in the About window.
 - [ ] On launch, a "Loading editor…" overlay appears briefly and fades out once the editor is ready. It should never stay visible permanently.
