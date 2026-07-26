@@ -1469,6 +1469,12 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Quit. Set the system to **dark**, launch Quill → title bar matches the panel (not too dark, no wallpaper tint showing through).
 - [ ] Still running, switch the system to **light** → title bar switches with it and still matches (not a flat gray).
 
+**Title bar stability under state changes** — the title bar must hold its color *continuously*, never blinking to the stock material even for a frame. SwiftUI re-applies its own window-toolbar configuration on every view-graph update, so any state change is a chance for the bar to be reset; `.toolbarBackground(.hidden, for: .windowToolbar)` on `ContentView` is what keeps that configuration on our side. Watch the bar (don't glance away) while doing each:
+
+- [ ] Launch the app and watch through the post list arriving → no flash at any point, including the first second.
+- [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
+- [ ] Switch sections (Posts → Pages → Drafts → Media) and toggle the sidebar → no flash.
+
 **Pickers across an appearance switch** — SwiftUI stamps a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshes it, so an unfixed picker keeps drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). `.rebuildsOnAppearanceChange()` is what prevents this — check both directions, since each leaves the picker wrong in a different way. See the modifier's doc comment in `DesignSystem.swift`.
 
 - [ ] Open a post's settings panel in **light**, switch the system to **dark** → the Status picker (and Parent Page picker on a page) turns dark with light text, matching the panel.

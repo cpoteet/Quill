@@ -9,10 +9,13 @@ import AppKit
 //     32pt strip then renders whatever the theme frame draws beneath it — which is
 //     `window.backgroundColor` only as long as no vibrant backdrop view sits in between
 //     (that caveat is the whole subject of `titleBarColor(for:)` below).
-//   * SwiftUI's own `AppKitWindow` sets `titlebarAppearsTransparent` back to `false`
-//     roughly 0.1s after `viewDidMoveToWindow` runs, during its window setup — which
-//     is why applying the fix only once silently reverted to a white bar. The
-//     `didUpdate` observer below re-asserts it, so any later reset self-heals.
+//   * SwiftUI owns that flag and re-asserts its own value on *every* view-graph update.
+//     `ContentView` carries `.toolbarBackground(.hidden, for: .windowToolbar)` so the
+//     value SwiftUI re-asserts is the one we want; without it SwiftUI writes `false`
+//     back on every update and the bar flashes the stock material until the observer
+//     below repairs it a frame or two later. See that modifier's comment.
+//   * The observers below are now only a self-heal for state AppKit changes behind
+//     SwiftUI's back (full-screen exits), not the primary mechanism.
 //   * `.fullSizeContentView` must stay out of the style mask: with it, SwiftUI content
 //     sits *under* the bar and shows through as separate sidebar/editor color zones.
 //     macOS re-adds the flag on full-screen transitions, hence the exit observer.
@@ -81,18 +84,27 @@ private func titleBarFixNeeded(for window: NSWindow) -> Bool {
         || window.backgroundColor != titleBarColor(for: window.effectiveAppearance)
 }
 
+// Every assignment here is guarded: each of these three setters makes AppKit reconfigure
+// and redisplay the window frame even when handed the value it already holds, and this
+// runs from `updateNSView` on every SwiftUI update of `ContentView`.
 private func applyTitleBarFix(to window: NSWindow) {
-    window.styleMask.remove(.fullSizeContentView)
-    window.titlebarAppearsTransparent = true
-    window.backgroundColor = titleBarColor(for: window.effectiveAppearance)
+    if window.styleMask.contains(.fullSizeContentView) {
+        window.styleMask.remove(.fullSizeContentView)
+    }
+    if !window.titlebarAppearsTransparent {
+        window.titlebarAppearsTransparent = true
+    }
+    let color = titleBarColor(for: window.effectiveAppearance)
+    if window.backgroundColor != color {
+        window.backgroundColor = color
+    }
 }
 
 private struct WindowTitleBarFix: NSViewRepresentable {
-    // Switching between light and dark resets `titlebarAppearsTransparent` the same way
-    // SwiftUI's initial window setup does, and the notification observers only catch it
-    // once the window next updates — until then the bar shows the stock system material.
-    // Reading colorScheme here makes SwiftUI re-run updateNSView on every appearance
-    // change, so the fix re-applies immediately instead of on the next stray update.
+    // `backgroundColor` holds a color resolved for one appearance, so it has to be
+    // re-resolved on every light/dark switch. Reading colorScheme here makes SwiftUI
+    // re-run updateNSView on each change, so the new color lands immediately instead of
+    // waiting for whenever the window next posts didUpdate.
     @Environment(\.colorScheme) private var colorScheme
 
     func makeNSView(context: Context) -> WindowObservingView { WindowObservingView() }
@@ -164,6 +176,17 @@ public struct ContentView: View {
         .animation(.easeInOut(duration: 0.2), value: appState.isSidebarVisible)
         .frame(minWidth: 900, minHeight: 600)
         .background(Color.wpPanelBg)
+        // Stops the title bar flashing on every state change. SwiftUI's
+        // `BarAppearanceBridge` re-applies its window-toolbar configuration on every
+        // view-graph update — verified 2026-07-25 by swizzling the setter and reading the
+        // stack: `NSHostingView.updateEnvironment` → `AppKitWindowController.hostingView(_:willUpdate:)`
+        // → `BarAppearanceBridge.updateWindowToolbarConfiguration` → `titlebarAppearsTransparent = false`.
+        // So every list load, save and publish reset the bar to the stock material until
+        // `WindowObservingView` repaired it ~10–30ms later, which is what the flashing was
+        // (8 resets in the first 3 seconds of launch). This modifier makes SwiftUI's own
+        // configuration ask for a transparent bar, so its update path now re-asserts the
+        // value we want instead of fighting us.
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .background(WindowTitleBarFix())
     }
 }
