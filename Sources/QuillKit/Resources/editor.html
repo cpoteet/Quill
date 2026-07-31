@@ -203,6 +203,20 @@
       color: #3f434d;
       background: #ececef;
     }
+    /* Two IDs so these beat `body.dark #toolbar button`, which would
+       otherwise recolor the label to a pale gray on the light pill. */
+    body.dark #toolbar #heading-button {
+      color: #c6c8ce;
+      background: rgba(255,255,255,0.07);
+    }
+    body.dark #toolbar #heading-button:hover {
+      color: #e6e7ea;
+      background: rgba(255,255,255,0.12);
+    }
+    body.dark #toolbar #heading-button.heading-active {
+      color: #f4f4f5;
+      background: rgba(255,255,255,0.14);
+    }
     #heading-button svg {
       width: 11px;
       height: 11px;
