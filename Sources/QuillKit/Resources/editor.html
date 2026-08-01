@@ -1776,7 +1776,13 @@
       group: 'block',
       atom: true,
       draggable: true,
-      priority: 1,
+      // Must out-rank every core node (100) and the footnote nodes (110) so an
+      // unmodeled block sitting on a shared tag (<ul>, <pre>, <blockquote>, …)
+      // isn't claimed by the generic rule and shredded. Stays below Paragraph
+      // (1000) so paragraph remains the schema's first block node, which is
+      // what ProseMirror fills empty `block+` content with. Blocks Quill does
+      // model opt out via QUILL_MODELED_BLOCK_CLASSES in editor-transforms.js.
+      priority: 200,
 
       addAttributes() {
         return {

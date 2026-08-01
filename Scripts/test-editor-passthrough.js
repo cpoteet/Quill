@@ -149,6 +149,48 @@ describe('gutenbergPassthrough — nested media blocks survive save (regression)
   })
 })
 
+describe('gutenbergPassthrough — unmodeled blocks on tags core nodes also match', () => {
+  // Regression: gutenbergPassthrough used to sit at priority 1, below every
+  // core node, so it only ever won on tags no other rule matched (<div>,
+  // <section>, …). Any unmodeled block on a <ul>/<ol>/<pre>/<blockquote>/<hr>
+  // was claimed by the core rule first — a wp-block-social-links <ul> parsed
+  // as a bullet list, and its <a>/<svg> children were dropped on the next save.
+  const SOCIAL_LINKS =
+    '<!-- wp:social-links -->\n' +
+    '<ul class="wp-block-social-links"><!-- wp:social-link {"url":"https://x.com/me","service":"x"} /-->\n' +
+    '<li class="wp-block-social-link wp-social-link wp-social-link-x"><a class="wp-block-social-link-anchor" href="https://x.com/me"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M1 1h5"></path></svg><span class="wp-block-social-link-label screen-reader-text">X</span></a></li></ul>\n' +
+    '<!-- /wp:social-links -->'
+
+  beforeEach(() => { win.setContent('<p></p>') })
+
+  test('a wp-block-social-links <ul> parses as gutenbergPassthrough, not a bulletList', () => {
+    win.setContent(SOCIAL_LINKS)
+    const nodes = nodesOfType('gutenbergPassthrough')
+    assert.equal(nodes.length, 1)
+    assert.equal(nodes[0].attrs.blockLabel, 'Social Links')
+    assert.equal(nodes[0].attrs.blockName, 'social-links')
+    assert.equal(nodesOfType('bulletList').length, 0)
+  })
+
+  test('its anchors and icons survive a save that round-trips through Tiptap', () => {
+    win.setContent(SOCIAL_LINKS)
+    // Clear _rawHTML so getContent() goes through toWordPressHTML(editor.getHTML())
+    editor.commands.insertContentAt(editor.state.doc.content.size, '<p>edit</p>')
+    const out = win.getContent()
+    assert.match(out, /href="https:\/\/x\.com\/me"/)
+    assert.match(out, /<svg/)
+    assert.match(out, /<!-- wp:social-links -->/)
+    assert.match(out, /<!-- \/wp:social-links -->/)
+    assert.ok(!out.includes('wp-block-list'), 'must not be rewritten as a Gutenberg list')
+  })
+
+  test('an unmodeled <pre> block (wp-block-verse) is preserved, not turned into a code block', () => {
+    win.setContent('<pre class="wp-block-verse">one\ntwo</pre>')
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(nodesOfType('codeBlock').length, 0)
+  })
+})
+
 describe('gutenbergPassthrough — does not steal elements other rules already claim', () => {
   // A setContent() call right after certain prior editor operations silently
   // no-ops exactly once — a pre-existing jsdom/Tiptap quirk (see
@@ -188,6 +230,45 @@ describe('gutenbergPassthrough — does not steal elements other rules already c
   test('a heading with a wp-block-heading class still parses as heading, not gutenbergPassthrough', () => {
     win.setContent('<h2 class="wp-block-heading">Title</h2>')
     assert.equal(nodesOfType('heading').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-list <ul> still parses as a bulletList, not gutenbergPassthrough', () => {
+    win.setContent('<ul class="wp-block-list"><li>One</li></ul>')
+    assert.equal(nodesOfType('bulletList').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-list <ol> still parses as an orderedList, not gutenbergPassthrough', () => {
+    win.setContent('<ol class="wp-block-list"><li>One</li></ol>')
+    assert.equal(nodesOfType('orderedList').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-footnotes <ol> still parses as footnotesList, not gutenbergPassthrough', () => {
+    // A marker is required: FootnoteSync's appendTransaction rebuilds the list
+    // from the markers in the doc and drops a list with no matching marker.
+    win.setContent('<p>Text<sup class="fn" data-fn="a"><a href="#a"></a></sup></p>' +
+      '<ol class="wp-block-footnotes"><li id="a">Note</li></ol>')
+    assert.equal(nodesOfType('footnotesList').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-quote blockquote still parses as a blockquote, not gutenbergPassthrough', () => {
+    win.setContent('<blockquote class="wp-block-quote"><p>Quoted</p></blockquote>')
+    assert.equal(nodesOfType('blockquote').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-code <pre> still parses as a codeBlock, not gutenbergPassthrough', () => {
+    win.setContent('<pre class="wp-block-code"><code>let x = 1</code></pre>')
+    assert.equal(nodesOfType('codeBlock').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-separator <hr> still parses as a horizontalRule, not gutenbergPassthrough', () => {
+    win.setContent('<hr class="wp-block-separator has-alpha-channel-opacity">')
+    assert.equal(nodesOfType('horizontalRule').length, 1)
     assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
   })
 })

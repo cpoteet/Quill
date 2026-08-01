@@ -27,10 +27,30 @@ function passthroughLabelFromBlockName(name) {
   return titleCaseHyphenated(base)
 }
 
-// Given an element already known to be an unmodeled Gutenberg block (a
-// wp-block-* classed element no other parse rule claimed), extracts what's
-// needed to preserve and re-display it. Returns null if `el` has no
-// wp-block-* class at all (not a passthrough candidate).
+// Gutenberg blocks Quill models with a dedicated Tiptap node whose parse rule
+// matches a *non-figure* tag. gutenbergPassthrough's rule out-ranks the core
+// nodes (priority 200, above bulletList/codeBlock/blockquote/etc. at 100 and
+// the footnote nodes at 110) — otherwise an unmodeled block that happens to
+// live on a shared tag, like a wp-block-social-links <ul>, is claimed by the
+// generic 'ul' rule and its non-list children (<a>, <svg>) are destroyed on
+// the next save. Out-ranking everything means passthrough must instead opt
+// *out* explicitly, which is what this set is for.
+//
+// Figure-based blocks (image, gallery, embed, table) are not listed here —
+// the parse rule's own `:not(figure)` selector already excludes them.
+const QUILL_MODELED_BLOCK_CLASSES = new Set([
+  'wp-block-heading',
+  'wp-block-list',
+  'wp-block-footnotes',
+  'wp-block-quote',
+  'wp-block-code',
+  'wp-block-separator',
+])
+
+// Given a wp-block-* classed element that gutenbergPassthrough's parse rule
+// matched, extracts what's needed to preserve and re-display it. Returns null
+// if `el` has no wp-block-* class at all, or if any of its wp-block-* classes
+// names a block Quill models natively (which must go to its own node instead).
 //
 // Checks for immediately-adjacent `<!-- wp:name --> / <!-- /wp:name -->`
 // comment siblings (skipping whitespace-only text nodes in between, since
@@ -41,8 +61,13 @@ function passthroughLabelFromBlockName(name) {
 // rendered HTML) — blockName/attrsJSON stay null and no comments are
 // synthesized later.
 function parsePassthroughBlock(el) {
-  const wpClass = Array.from(el.classList).find(c => c.startsWith('wp-block-'))
+  const wpClasses = Array.from(el.classList).filter(c => c.startsWith('wp-block-'))
+  const wpClass = wpClasses[0]
   if (!wpClass) return null
+  // Check every wp-block-* class, not just the first: a modeled class anywhere
+  // on the element hands it back to its own node, so an ordinary list/heading
+  // can never be swallowed by the catch-all.
+  if (wpClasses.some(c => QUILL_MODELED_BLOCK_CLASSES.has(c))) return null
 
   function adjacentComment(node, direction) {
     let n = node[direction]
