@@ -204,11 +204,17 @@ function toWordPressHTML(html, doc) {
   // Strip Tiptap's paragraph wrapper inside list items: <li><p>text</p></li> → <li>text</li>
   // Only unwrap when there is exactly one child element and it is a <p> (multi-paragraph
   // list items are left as-is so their content is not mangled).
+  // A nested item serializes as <li><p>text</p><ul>…</ul></li>, so the leading <p> is
+  // also unwrapped when everything after it is a nested list — Gutenberg writes those
+  // as <li>text<ul>…</ul></li>. Without that case, opening any post containing a nested
+  // list and saving it rewrote the markup even when the list was never touched.
+  // replaceWith (not innerHTML =) so the nested list survives the unwrap.
   div.querySelectorAll('li').forEach(li => {
     const kids = Array.from(li.children)
-    if (kids.length === 1 && kids[0].tagName === 'P') {
-      li.innerHTML = kids[0].innerHTML
-    }
+    if (!kids.length || kids[0].tagName !== 'P') return
+    const restAreLists = kids.slice(1).every(el => el.tagName === 'UL' || el.tagName === 'OL')
+    if (!restAreLists) return
+    kids[0].replaceWith(...kids[0].childNodes)
   })
 
   // Blockquotes → wp-block-quote class

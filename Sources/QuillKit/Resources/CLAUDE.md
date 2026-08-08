@@ -9,8 +9,8 @@ Implementation gotchas specific to this directory, split out from the project ro
 | Tiptap internal | `toWordPressHTML()` output |
 |---|---|
 | `<h1>`–`<h6>` | `+ class="wp-block-heading"` |
-| `<ul>` | `+ class="wp-block-list"`; `<p>` inside `<li>` unwrapped to text node |
-| `<ol>` | `+ class="wp-block-list"`; `<p>` inside `<li>` unwrapped to text node |
+| `<ul>` | `+ class="wp-block-list"`; a leading `<p>` inside `<li>` unwrapped to a text node when it is the item's only child **or** when every following sibling is a nested `<ul>`/`<ol>` (matching Gutenberg's `<li>text<ul>…`); items with a second paragraph are left alone |
+| `<ol>` | `+ class="wp-block-list"`; a leading `<p>` inside `<li>` unwrapped to a text node when it is the item's only child **or** when every following sibling is a nested `<ul>`/`<ol>` (matching Gutenberg's `<li>text<ul>…`); items with a second paragraph are left alone |
 | `<blockquote>` | `+ class="wp-block-quote"` |
 | `<pre>` | `+ class="wp-block-code"` |
 | `<hr>` | `+ class="wp-block-separator has-alpha-channel-opacity"` |

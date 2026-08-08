@@ -187,6 +187,50 @@ describe('toWordPressHTML — list item p unwrap', () => {
     assert.match(out, /<p>b<\/p>/)
   })
 
+  // Nested list items arrive from ProseMirror as <li><p>text</p><ul>...</ul></li>.
+  // Gutenberg writes them as <li>text<ul>...</ul></li>, so without this the leading
+  // <p> survived and every post containing a nested list changed markup on its first
+  // save, even when the list was never edited.
+  test('leading <p> is unwrapped when the rest of the <li> is a nested list', () => {
+    const out = wp('<ul><li><p>a</p><ul><li>b</li></ul></li></ul>')
+    assert.doesNotMatch(out, /<p>a<\/p>/)
+    assert.match(out, /<li>a<ul/)
+    assert.match(out, /<li>b<\/li>/)
+  })
+
+  test('unwrapping works at every level of a deep nest', () => {
+    const out = wp('<ul><li><p>a</p><ul><li><p>b</p><ul><li><p>c</p></li></ul></li></ul></li></ul>')
+    assert.doesNotMatch(out, /<p>/)
+    assert.match(out, /<li>a<ul/)
+    assert.match(out, /<li>b<ul/)
+    assert.match(out, /<li>c<\/li>/)
+  })
+
+  test('ordered nested lists unwrap the same way', () => {
+    const out = wp('<ol><li><p>a</p><ol><li>b</li></ol></li></ol>')
+    assert.doesNotMatch(out, /<p>a<\/p>/)
+    assert.match(out, /<li>a<ol/)
+  })
+
+  test('a paragraph AFTER the nested list keeps the item untouched', () => {
+    const out = wp('<ul><li><p>a</p><ul><li>b</li></ul><p>trailing</p></li></ul>')
+    assert.match(out, /<p>a<\/p>/)
+    assert.match(out, /<p>trailing<\/p>/)
+  })
+
+  test('an <li> whose first child is a list is left untouched', () => {
+    const out = wp('<ul><li><ul><li>b</li></ul></li></ul>')
+    assert.match(out, /<li><ul/)
+  })
+
+  // Guards the transform against mangling markup that is already in Gutenberg's
+  // shape. The full editor round-trip (setContent → getHTML → toWordPressHTML) is
+  // what actually regressed here and can't be exercised from this pure-function
+  // suite; it was verified against the live editor in jsdom when this was fixed.
+  test('already-Gutenberg nested markup passes through unchanged', () => {
+    const src = '<ul class="wp-block-list"><li>a<ul class="wp-block-list"><li>b</li></ul></li></ul>'
+    assert.equal(wp(src), src)
+  })
 
 })
 
