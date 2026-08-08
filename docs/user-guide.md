@@ -274,6 +274,41 @@ If a shortcut converts something you meant to keep as literal text, press **Back
 
 This only works as the very next keystroke. Once you type anything else, Backspace behaves normally and ⌘Z will undo the surrounding typing along with the conversion.
 
+### Pasting Formatted Content
+
+When you copy from a web page, a word processor, or most chat apps, the clipboard carries HTML as well as plain text. Quill reads that HTML and rebuilds the content using its own formatting, rather than accepting the original markup as-is.
+
+The practical effect is that you never inherit another app's styling. Pasting from Google Docs or Word does not drag in font sizes, colors, line-height rules, or `<span>` wrappers the way it does in many editors. What arrives is clean content that matches the rest of your post.
+
+#### What is kept
+
+- Headings, paragraphs, lists (including nested lists), blockquotes, tables, images, and links
+- Bold, italic, underline, strikethrough, and inline code
+- Classes and IDs already on headings and other blocks
+- **Gutenberg blocks copied from another WordPress site** — these are preserved exactly, block comments and all, and appear as "Not editable in the visual editor" cards
+
+#### What is cleaned up
+
+- Inline styles, including text color and font size
+- `<div>` and `<font>` wrappers, which become ordinary paragraphs
+- Word and Google Docs `<span>` scaffolding
+
+#### What is dropped
+
+This is the part worth watching, because it happens silently:
+
+| Pasted | Result |
+|---|---|
+| `<iframe>`, `<video>`, `<audio>` | Removed entirely — nothing is inserted |
+| Highlight (`<mark>`) | Text kept, highlighting lost |
+| Superscript and subscript | Text kept, raised/lowered position lost |
+| `<small>`, `<abbr>` | Text kept, formatting lost |
+| Definition lists | Flattened into ordinary paragraphs |
+
+The most likely one to catch you out is the embed case. If you copy a YouTube embed's `<iframe>` from a page's source, nothing appears at all. Use the **Embed** toolbar button and paste the video's URL instead — see [Embeds](#embeds).
+
+After pasting a large or complex chunk, it's worth a quick look in [Code View](#code-view) to confirm everything you expected actually arrived.
+
 ### Saving and Publishing
 
 #### For local drafts
