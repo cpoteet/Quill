@@ -2174,6 +2174,15 @@
           }
           return false
         },
+        transformPastedText(text) {
+          // ProseMirror only routes through transformPastedHTML when the clipboard
+          // carries a text/html flavor; a text/plain paste takes a separate branch
+          // that splits on newlines into paragraphs. Without this, multi-line text
+          // pasted into a footnote (inline content only) put its first line in the
+          // entry and dropped the rest outside the footnotes list as siblings.
+          if (!_isInFootnote()) return text
+          return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
+        },
         transformPastedHTML(html) {
           if (!_isInFootnote()) return html
           const tmp = document.createElement('div')
