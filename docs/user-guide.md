@@ -208,6 +208,58 @@ The formatting toolbar runs across the top of the editor and provides access to 
 
 The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. Reference [Images](#images) for more details on resizing, captions, and alt text.
 
+### Markdown Shortcuts
+
+The editor recognizes common Markdown syntax as you type and converts it into real formatting. You never have to reach for the toolbar for these.
+
+#### Block shortcuts
+
+Type these at the start of an empty line:
+
+| Type this | Result |
+|---|---|
+| `# ` through `###### ` | Heading 1 through Heading 6 |
+| `- ` or `* ` or `+ ` | Bullet list |
+| `1. ` | Numbered list |
+| `5. ` | Numbered list starting at 5 (any number works) |
+| `> ` | Blockquote |
+| ```` ``` ```` followed by a space | Code block |
+| ```` ```js ```` followed by a space | Code block with a language set (`js`, `python`, etc.) |
+| `---` | Horizontal rule |
+| `*** ` or `___ ` | Horizontal rule |
+
+`---` converts as soon as you type the third hyphen. `***` and `___` need a trailing space.
+
+#### Inline shortcuts
+
+These convert the moment you type the closing characters — no trailing space needed:
+
+| Type this | Result |
+|---|---|
+| `**bold**` or `__bold__` | **Bold** |
+| `*italic*` or `_italic_` | *Italic* |
+| `~~strikethrough~~` | Strikethrough |
+| `` `code` `` | Inline code |
+
+Underline has no Markdown equivalent — use ⌘U or the toolbar.
+
+#### Automatic links
+
+Typing a URL followed by a space turns it into a link automatically. This works for full URLs (`https://example.com`), bare domains (`www.example.com`), and email addresses (`name@example.com`).
+
+#### What is not converted
+
+- `1)` for numbered lists — only `1.` works
+- `- [ ]` task lists — Quill does not support checklists
+- `==highlight==`
+- Punctuation substitutions. Quill deliberately leaves your typing alone: `--` stays two hyphens, `...` stays three dots, and straight quotes stay straight. If you want typographic characters, type or paste them directly.
+
+#### Undoing a conversion
+
+If a shortcut converts something you meant to keep as literal text, press **Backspace immediately after** the conversion happens. The block reverts and your original characters come back — `# ` stays `# `, `**bold**` stays `**bold**`. (The code block shortcut is the exception: Backspace removes the block but not the backticks.)
+
+This only works as the very next keystroke. Once you type anything else, Backspace behaves normally and ⌘Z will undo the surrounding typing along with the conversion.
+
 ### Saving and Publishing
 
 #### For local drafts
@@ -580,6 +632,8 @@ These operations work on the selected text only and do not use web search. The r
 ---
 
 ## Keyboard Reference
+
+The editor also converts Markdown syntax as you type — `# ` for a heading, `**bold**`, `---` for a horizontal rule, and more. See [Markdown Shortcuts](#markdown-shortcuts) for the full list.
 
 ### App
 
