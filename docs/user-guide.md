@@ -254,60 +254,45 @@ Typing a URL followed by a space turns it into a link automatically. This works 
 - `==highlight==`
 - Punctuation substitutions. Quill deliberately leaves your typing alone: `--` stays two hyphens, `...` stays three dots, and straight quotes stay straight. If you want typographic characters, type or paste them directly.
 
-#### Pasting Markdown
-
-The shortcuts above apply to text you *type*. Pasting Markdown is different: an ordinary ⌘V inserts it literally, so `# Heading` arrives as the characters `# Heading` rather than a heading. (Confusingly, `**bold**` and `` `code` `` *do* convert on paste, so a pasted document ends up half-formatted.)
-
-Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It reads the clipboard as Markdown and converts the whole thing at once — headings, lists, blockquotes, tables, code blocks, horizontal rules, links, and inline formatting — inserting it at the cursor as fully formatted content.
-
-Notes:
-
-- Ordinary ⌘V is unchanged. Paste as Markdown is a separate command, so nothing about normal pasting behaves differently.
-- If your clipboard came from a web page or a chat app, plain ⌘V is usually better — that content arrives as HTML and already converts correctly.
-- Markdown images (`![alt](url)`) are inserted pointing at their original URL. That image is not in your WordPress media library, so publishing the post would load it from wherever it currently lives. Replace it with an uploaded image before publishing.
-- The command is refused, with an explanation, inside footnotes and code blocks (where block content can't go) and in code view. Nothing is inserted in those cases.
-- Task list checkboxes (`- [ ]`) become plain list items, since Quill has no checklist block.
-
 #### Undoing a conversion
 
 If a shortcut converts something you meant to keep as literal text, press **Backspace immediately after** the conversion happens. The block reverts and your original characters come back — `# ` stays `# `, `**bold**` stays `**bold**`. (The code block shortcut is the exception: Backspace removes the block but not the backticks.)
 
 This only works as the very next keystroke. Once you type anything else, Backspace behaves normally and ⌘Z will undo the surrounding typing along with the conversion.
 
-### Pasting Formatted Content
+### Pasting
 
-When you copy from a web page, a word processor, or most chat apps, the clipboard carries HTML as well as plain text. Quill reads that HTML and rebuilds the content using its own formatting, rather than accepting the original markup as-is.
+What happens when you paste depends on what is on the clipboard. Content copied from a web page, word processor, or chat app carries HTML, and ⌘V handles it well. Plain-text Markdown does not, and needs its own command.
 
-The practical effect is that you never inherit another app's styling. Pasting from Google Docs or Word does not drag in font sizes, colors, line-height rules, or `<span>` wrappers the way it does in many editors. What arrives is clean content that matches the rest of your post.
+#### Formatted content (⌘V)
 
-#### What is kept
+Quill rebuilds pasted HTML using its own formatting rather than accepting the original markup, so you never inherit another app's fonts, colors, or `<span>` scaffolding. Pasting from Word or Google Docs gives you clean content that matches the rest of your post.
 
-- Headings, paragraphs, lists (including nested lists), blockquotes, tables, images, and links
-- Bold, italic, underline, strikethrough, and inline code
-- Classes and IDs already on headings and other blocks
-- **Gutenberg blocks copied from another WordPress site** — these are preserved exactly, block comments and all, and appear as "Not editable in the visual editor" cards
+Headings, paragraphs, lists (including nested ones), blockquotes, tables, images, links, and inline formatting all survive, as do classes and IDs already on your blocks. Gutenberg blocks copied from another WordPress site are preserved exactly, block comments and all.
 
-#### What is cleaned up
-
-- Inline styles, including text color and font size
-- `<div>` and `<font>` wrappers, which become ordinary paragraphs
-- Word and Google Docs `<span>` scaffolding
-
-#### What is dropped
-
-This is the part worth watching, because it happens silently:
+A few things are dropped silently, which is the part worth watching:
 
 | Pasted | Result |
 |---|---|
 | `<iframe>`, `<video>`, `<audio>` | Removed entirely — nothing is inserted |
-| Highlight (`<mark>`) | Text kept, highlighting lost |
-| Superscript and subscript | Text kept, raised/lowered position lost |
-| `<small>`, `<abbr>` | Text kept, formatting lost |
+| Highlight, superscript, subscript, `<small>`, `<abbr>` | Text kept, formatting lost |
 | Definition lists | Flattened into ordinary paragraphs |
 
-The most likely one to catch you out is the embed case. If you copy a YouTube embed's `<iframe>` from a page's source, nothing appears at all. Use the **Embed** toolbar button and paste the video's URL instead — see [Embeds](#embeds).
+The embed case is the likeliest to catch you out: copying a YouTube `<iframe>` from a page's source inserts nothing at all. Use the **Embed** toolbar button and paste the video's URL instead — see [Embeds](#embeds). After any large paste, a quick look in [Code View](#code-view) confirms everything arrived.
 
-After pasting a large or complex chunk, it's worth a quick look in [Code View](#code-view) to confirm everything you expected actually arrived.
+#### Markdown (⌘⇧V)
+
+The [Markdown shortcuts](#markdown-shortcuts) above apply to text you *type*. Pasting Markdown is different: an ordinary ⌘V inserts it literally, so `# Heading` arrives as the characters `# Heading`. (Confusingly, `**bold**` and `` `code` `` *do* convert on paste, so the result ends up half-formatted.)
+
+Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole clipboard at once — headings, lists, blockquotes, tables, code blocks, horizontal rules, links, and inline formatting — inserting it at the cursor as finished content.
+
+**Notes:**
+
+- Ordinary ⌘V is unchanged. Paste as Markdown is a separate command.
+- If your clipboard came from a web page or a chat app, plain ⌘V is usually better — that content arrives as HTML and already converts correctly.
+- Markdown images (`![alt](url)`) keep their original URL. That image is not in your media library, so publishing would load it from wherever it currently lives. Replace it with an uploaded image first.
+- The command is refused, with an explanation, inside footnotes, code blocks, and code view. Nothing is inserted in those cases.
+- Task list checkboxes (`- [ ]`) become plain list items, since Quill has no checklist block.
 
 ### Saving and Publishing
 
