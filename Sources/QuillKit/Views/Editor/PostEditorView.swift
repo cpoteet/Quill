@@ -364,6 +364,11 @@ public struct PostEditorView: View {
             appState.triggerFindBar = false
             editorWebView?.evaluateJavaScript("openFindBar()", completionHandler: nil)
         }
+        .onChange(of: appState.triggerPasteMarkdown) { newValue in
+            guard newValue else { return }
+            appState.triggerPasteMarkdown = false
+            pasteAsMarkdown()
+        }
     }
 
     private var editorHeader: some View {
@@ -529,6 +534,33 @@ public struct PostEditorView: View {
         toastMessage = text
         toastIsError = isError
         toastToken += 1
+    }
+
+    /// Backs the Edit ▸ Paste as Markdown command. Reads the clipboard here in Swift
+    /// and hands the text to `window.insertMarkdown`, so this never goes through the
+    /// web view's own paste handling — an ordinary ⌘V is completely unaffected.
+    private func pasteAsMarkdown() {
+        guard let webView = editorWebView else { return }
+        guard let text = NSPasteboard.general.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            presentToast("The clipboard has no text to paste.", isError: true)
+            return
+        }
+        guard let encoded = try? JSONEncoder().encode(text),
+              let jsString = String(data: encoded, encoding: .utf8)
+        else { return }
+
+        webView.evaluateJavaScript("insertMarkdown(\(jsString))") { result, _ in
+            guard let status = result as? String, status != "ok" else { return }
+            let message: String
+            switch status {
+            case "footnote":    message = "Markdown can't be pasted inside a footnote."
+            case "code-block":  message = "Markdown can't be pasted inside a code block."
+            case "code-view":   message = "Switch out of code view to paste Markdown."
+            case "parse-error": message = "That clipboard text couldn't be read as Markdown."
+            default:            message = "The clipboard has no text to paste."
+            }
+            presentToast(message, isError: true)
+        }
     }
 
     // MARK: - Load

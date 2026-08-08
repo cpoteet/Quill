@@ -254,6 +254,20 @@ Typing a URL followed by a space turns it into a link automatically. This works 
 - `==highlight==`
 - Punctuation substitutions. Quill deliberately leaves your typing alone: `--` stays two hyphens, `...` stays three dots, and straight quotes stay straight. If you want typographic characters, type or paste them directly.
 
+#### Pasting Markdown
+
+The shortcuts above apply to text you *type*. Pasting Markdown is different: an ordinary ⌘V inserts it literally, so `# Heading` arrives as the characters `# Heading` rather than a heading. (Confusingly, `**bold**` and `` `code` `` *do* convert on paste, so a pasted document ends up half-formatted.)
+
+Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It reads the clipboard as Markdown and converts the whole thing at once — headings, lists, blockquotes, tables, code blocks, horizontal rules, links, and inline formatting — inserting it at the cursor as fully formatted content.
+
+Notes:
+
+- Ordinary ⌘V is unchanged. Paste as Markdown is a separate command, so nothing about normal pasting behaves differently.
+- If your clipboard came from a web page or a chat app, plain ⌘V is usually better — that content arrives as HTML and already converts correctly.
+- Markdown images (`![alt](url)`) are inserted pointing at their original URL. That image is not in your WordPress media library, so publishing the post would load it from wherever it currently lives. Replace it with an uploaded image before publishing.
+- The command is refused, with an explanation, inside footnotes and code blocks (where block content can't go) and in code view. Nothing is inserted in those cases.
+- Task list checkboxes (`- [ ]`) become plain list items, since Quill has no checklist block.
+
 #### Undoing a conversion
 
 If a shortcut converts something you meant to keep as literal text, press **Backspace immediately after** the conversion happens. The block reverts and your original characters come back — `# ` stays `# `, `**bold**` stays `**bold**`. (The code block shortcut is the exception: Backspace removes the block but not the backticks.)
@@ -662,6 +676,7 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 | ⌘⇧7 | Ordered list |
 | ⌘⇧B | Blockquote |
 | ⌘⌥C | Code block |
+| ⌘⇧V | Paste as Markdown |
 
 ### Find & Replace
 

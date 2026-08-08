@@ -149,6 +149,88 @@ describe('paste into the body is unaffected', () => {
   })
 })
 
+describe('window.insertMarkdown', () => {
+  function md(text) {
+    editor.commands.setContent('<p></p>')
+    editor.commands.focus('end')
+    return win.insertMarkdown(text)
+  }
+
+  test('converts headings, lists and inline marks', () => {
+    const status = md('# Title\n\nSome **bold** text.\n\n- one\n- two')
+    assert.equal(status, 'ok')
+    assert.equal(doc(),
+      'heading("Title") | paragraph("Some ","bold"," text.") | bulletList(listItem(paragraph("one")),listItem(paragraph("two")))')
+  })
+
+  test('converts blockquotes, fenced code and horizontal rules', () => {
+    const status = md('> quoted\n\n```\ncode line\n```\n\n---')
+    assert.equal(status, 'ok')
+    assert.equal(doc(), 'blockquote(paragraph("quoted")) | codeBlock("code line") | horizontalRule()')
+  })
+
+  test('emits no blank paragraphs between blocks', () => {
+    md('para one\n\npara two\n\npara three')
+    assert.equal(doc(), 'paragraph("para one") | paragraph("para two") | paragraph("para three")')
+  })
+
+  test('converts tables', () => {
+    md('| A | B |\n|---|---|\n| 1 | 2 |')
+    assert.equal(doc(),
+      'table(tableRow(tableHeader(paragraph("A")),tableHeader(paragraph("B"))),tableRow(tableCell(paragraph("1")),tableCell(paragraph("2"))))')
+  })
+
+  test('keeps images, matching what an HTML paste does', () => {
+    md('![alt text](https://example.com/a.jpg)')
+    assert.match(doc(), /image\(/)
+  })
+
+  test('task list checkboxes degrade to plain list items', () => {
+    md('- [ ] todo\n- [x] done')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("todo")),listItem(paragraph("done")))')
+  })
+
+  test('strips raw script tags in the source', () => {
+    const status = md('text before\n\n<script>window.__pwned = 1</script>\n\ntext after')
+    assert.equal(status, 'ok')
+    assert.equal(win.__pwned, undefined)
+    assert.doesNotMatch(doc(), /pwned/)
+  })
+
+  test('refuses inside a footnote and leaves the document untouched', () => {
+    focusFootnote()
+    const before = doc()
+    const status = win.insertMarkdown('# Heading')
+    assert.equal(status, 'footnote')
+    assert.equal(doc(), before)
+  })
+
+  test('refuses inside a code block and leaves the document untouched', () => {
+    editor.commands.setContent('<pre><code>existing</code></pre>')
+    editor.commands.focus('end')
+    const before = doc()
+    const status = win.insertMarkdown('# Heading')
+    assert.equal(status, 'code-block')
+    assert.equal(doc(), before)
+  })
+
+  test('reports empty input without touching the document', () => {
+    editor.commands.setContent('<p>keep me</p>')
+    editor.commands.focus('end')
+    assert.equal(win.insertMarkdown('   \n  '), 'empty')
+    assert.equal(win.insertMarkdown(''), 'empty')
+    assert.equal(win.insertMarkdown(null), 'empty')
+    assert.equal(doc(), 'paragraph("keep me")')
+  })
+
+  test('inserts at the cursor rather than replacing the document', () => {
+    editor.commands.setContent('<p>existing</p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('## Added')
+    assert.equal(doc(), 'paragraph("existing") | heading("Added")')
+  })
+})
+
 describe('paste into a code block preserves line breaks', () => {
   test('multi-line plain text keeps its newlines inside a code block', () => {
     editor.commands.setContent('<pre><code></code></pre>')

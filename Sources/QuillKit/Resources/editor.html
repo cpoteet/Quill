@@ -1029,6 +1029,7 @@
   <div id="editor-wrap"><div id="editor"></div><textarea id="code-editor" spellcheck="false"></textarea></div>
 
   <script src="./tiptap-bundle.js"></script>
+  <script src="./marked-bundle.js"></script>
   <script src="./editor-transforms.js"></script>
   <script>
     const {
@@ -3059,6 +3060,57 @@
           sizeSlug: payload.sizeSlug ?? 'large',
         },
       }).run()
+    }
+    // Convert a Markdown string to HTML and insert it at the cursor.
+    //
+    // Backs the Edit ▸ Paste as Markdown command. Swift reads NSPasteboard itself
+    // and calls this directly, so this deliberately never touches ProseMirror's
+    // clipboard plumbing (handlePaste / transformPastedText / clipboardTextParser) —
+    // an ordinary ⌘V behaves exactly as it did before this function existed.
+    //
+    // Returns a status string; EditorCoordinator turns a non-'ok' result into a toast.
+    window.insertMarkdown = (text) => {
+      if (typeof text !== 'string' || !text.trim()) return 'empty'
+      // Contexts where block-level content cannot go: the raw-HTML textarea, a
+      // footnote entry (inline content only), and a code block (literal text is
+      // the entire point). Refuse rather than corrupting the document.
+      if (codeViewActive) return 'code-view'
+      if (_isInFootnote()) return 'footnote'
+      if (editor.isActive('codeBlock')) return 'code-block'
+
+      let html
+      try {
+        html = MarkedBundle.marked.parse(text, { gfm: true })
+      } catch {
+        return 'parse-error'
+      }
+
+      const tmp = document.createElement('div')
+      tmp.innerHTML = html
+      // marked passes raw HTML in the source straight through. The schema parse
+      // below would drop these anyway (no matching node), but strip them up front
+      // so nothing executable is ever built into a live DOM tree. <input> also
+      // covers GFM task-list checkboxes, which have no Quill equivalent — the item
+      // degrades to a plain list item rather than a broken node.
+      tmp.querySelectorAll('script, style, iframe, object, embed, form, input').forEach(el => el.remove())
+      // marked terminates fenced code with a newline, which would show as an empty
+      // last line in the code block. Drop it so the block matches what was pasted.
+      tmp.querySelectorAll('pre > code').forEach(el => {
+        el.textContent = el.textContent.replace(/\n+$/, '')
+      })
+      // Remove whitespace-only text nodes between blocks — ProseMirror wraps the
+      // first \n marked emits between block tags in a blank paragraph even with
+      // preserveWhitespace: false. Same gotcha as the AI-insert path.
+      Array.from(tmp.childNodes).forEach(n => {
+        if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n.remove()
+      })
+      const clean = tmp.innerHTML.trim()
+      if (!clean) return 'empty'
+
+      editor.chain().focus().insertContent(clean, {
+        parseOptions: { preserveWhitespace: false },
+      }).run()
+      return 'ok'
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')

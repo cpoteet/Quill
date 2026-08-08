@@ -62,6 +62,10 @@ public struct QuillApp: App {
                 }
             }
             CommandGroup(after: .pasteboard) {
+                Button("Paste as Markdown") {
+                    appState.triggerPasteMarkdown = true
+                }
+                .keyboardShortcut("v", modifiers: [.command, .shift])
                 Button("Find…") {
                     appState.triggerFindBar = true
                 }
