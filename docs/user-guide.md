@@ -22,9 +22,9 @@ A reference manual for Quill, the native macOS WordPress editor.
 
 ## Introduction
 
-Quill is a native macOS application for writing and publishing content on self-hosted WordPress sites. It replaces the browser-based Gutenberg editor with a focused, distraction-free writing environment built for the Mac, with full support for posts, pages, media, scheduling, and AI-assisted writing.
+Quill is a native macOS application for writing and publishing content on self-hosted WordPress sites. It replaces the browser-based Gutenberg editor for drafting, editing, and publishing, with support for posts, pages, media, scheduling, and AI-assisted writing.
 
-Quill is built around a simple premise: the act of writing deserves a dedicated tool. Rather than competing with WordPress's block editor for layout and site-building tasks, Quill concentrates on what most WordPress authors actually spend their time doing: drafting, editing, and publishing content. The result is an interface that stays out of your way and lets you focus on writing.
+Quill does not compete with the block editor on layout or site building. It handles the writing; you use the WordPress admin for everything else.
 
 ### What Quill does
 
@@ -57,27 +57,27 @@ Quill is available for free at [cpoteet.github.io/Quill-Releases](https://cpotee
 
 ### First Launch: macOS Security
 
-Quill is not notarized by Apple, so macOS will block it from opening the first time. This is expected. To allow it:
+Quill is not notarized by Apple, so macOS blocks it from opening the first time. This is expected. To allow it:
 
-1. Attempt to open Quill. macOS will display a message saying the app cannot be opened.
+1. Attempt to open Quill. macOS displays a message saying the app cannot be opened.
 2. Open **System Settings** and navigate to **Privacy & Security**.
-3. Scroll down to the Security section. You will see a message that Quill was blocked.
+3. Scroll down to the Security section. A message there says Quill was blocked.
 4. Click **Open Anyway**.
-5. A confirmation dialog will appear. Click **Open**.
+5. A confirmation dialog appears. Click **Open**.
 
-Quill will open normally from this point forward. This prompt only appears once per installation.
+Quill opens normally from this point forward. This prompt only appears once per installation.
 
 ### Updates
 
-Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner; it will not reappear for the same version.
+Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click **View Release** to open the release page in your browser. Click the **×** button to dismiss the banner; it does not reappear for the same version.
 
-To update, download the new version from the release page, unzip it, and replace the existing **Quill.app** in your `/Applications` folder. Your credentials, drafts, and settings are stored separately and will carry over automatically.
+To update, download the new version from the release page, unzip it, and replace the existing **Quill.app** in your `/Applications` folder. Your credentials, drafts, and settings are stored separately and carry over automatically.
 
 ---
 
 ## Connecting to WordPress
 
-Quill connects to your WordPress site using an **Application Password**, a credential type built into WordPress that grants API access without exposing your main account password. You will need three pieces of information: your site URL, your WordPress username, and an Application Password you generate in the WordPress admin.
+Quill connects to your WordPress site using an **Application Password**, a credential type built into WordPress that grants API access without exposing your main account password. You need three pieces of information: your site URL, your WordPress username, and an Application Password you generate in the WordPress admin.
 
 ### Step 1: Generate an Application Password in WordPress
 
@@ -86,7 +86,7 @@ Quill connects to your WordPress site using an **Application Password**, a crede
 3. Scroll down to the **Application Passwords** section.
 4. In the **New Application Password Name** field, enter a name to identify this connection, such as "Quill".
 5. Click **Add New Application Password**.
-6. WordPress will display the generated password. **Copy it now.** It will not be shown again.
+6. WordPress displays the generated password. **Copy it now.** WordPress does not show it again.
 
 ### Step 2: Enter Your Credentials in Quill
 
@@ -97,13 +97,13 @@ Quill connects to your WordPress site using an **Application Password**, a crede
    - **Application Password:** The password you copied from step 1.
 3. Click **Save**.
 
-Quill will store your credentials locally and connect to your site. Once saved, your posts and pages will begin loading in the sidebar.
+Quill stores your credentials locally and connects to your site. Your posts and pages then load in the sidebar.
 
 ---
 
 ## The Interface
 
-Quill's window is divided into three panels: the **Sidebar** on the left, the **Editor** in the center, and the **Settings Panel** on the right. The sidebar and settings panel can each be shown or hidden independently, giving you full control over how much screen space is dedicated to writing.
+Quill's window has three panels: the **Sidebar** on the left, the **Editor** in the center, and the **Settings Panel** on the right. You can show or hide the sidebar and the settings panel independently.
 
 ### The Sidebar
 
@@ -163,13 +163,13 @@ New posts and pages are created as **local drafts** and appear in the Drafts sec
 
 ### The Editor
 
-The editor is a rich text environment that produces clean, Gutenberg-compatible HTML. What you see is what gets published: headings, lists, blockquotes, and all formatting render as they will appear on your site.
+The editor is a rich text environment that produces clean, Gutenberg-compatible HTML. What you see is what gets published: headings, lists, blockquotes, and all formatting render as they appear on your site.
 
 The **title field** sits above the editor canvas. Click it to type or edit the post or page title.
 
 ### Formatting Toolbar
 
-The formatting toolbar runs across the top of the editor and provides access to all block and inline formatting tools.
+The formatting toolbar runs across the top of the editor.
 
 #### Block formatting
 
@@ -195,18 +195,18 @@ The formatting toolbar runs across the top of the editor and provides access to 
 
 | Button | Function |
 |---|---|
-| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. Reference [Tables](#tables) for more details. |
+| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. See [Tables](#tables) for more details. |
 | Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. To open a link in your default browser, hold ⌘ and click it. Links show a pointer cursor and underline while ⌘ is held. |
-| * (Footnote) | Inserts a footnote marker at the cursor position. Reference [Footnotes](#footnotes) for more details. |
-| Embed | Inserts an embed (video, social post, etc.) by URL. Reference [Embeds](#embeds) for more details. |
-| ABC (Spell check) | Runs a spell check on the document. Reference [Spell Check](#spell-check) for more details. |
-| </> (Code view) | Toggles between the rich text editor and a raw HTML view. Reference [Code View](#code-view) for more details. |
-| Image | Opens the media library picker to insert an image. Reference [Images](#images) for more details. |
-| Gallery | Opens the gallery picker to insert a multi-image gallery. Reference [Gallery](#gallery) for more details. |
-| Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
-| Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. Reference [AI Writing Features](#ai-writing-features) for more details. |
+| * (Footnote) | Inserts a footnote marker at the cursor position. See [Footnotes](#footnotes) for more details. |
+| Embed | Inserts an embed (video, social post, etc.) by URL. See [Embeds](#embeds) for more details. |
+| ABC (Spell check) | Runs a spell check on the document. See [Spell Check](#spell-check) for more details. |
+| </> (Code view) | Toggles between the rich text editor and a raw HTML view. See [Code View](#code-view) for more details. |
+| Image | Opens the media library picker to insert an image. See [Images](#images) for more details. |
+| Gallery | Opens the gallery picker to insert a multi-image gallery. See [Gallery](#gallery) for more details. |
+| Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
+| Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
 
-The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. Reference [Images](#images) for more details on resizing, captions, and alt text.
+The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. See [Images](#images) for more details on resizing, captions, and alt text.
 
 ### Markdown Shortcuts
 
@@ -232,7 +232,7 @@ Type these at the start of an empty line:
 
 #### Inline shortcuts
 
-These convert the moment you type the closing characters — no trailing space needed:
+These convert the moment you type the closing characters, with no trailing space needed:
 
 | Type this | Result |
 |---|---|
@@ -241,7 +241,7 @@ These convert the moment you type the closing characters — no trailing space n
 | `~~strikethrough~~` | Strikethrough |
 | `` `code` `` | Inline code |
 
-Underline has no Markdown equivalent — use ⌘U or the toolbar.
+Underline has no Markdown equivalent. Use ⌘U or the toolbar.
 
 #### Automatic links
 
@@ -258,7 +258,7 @@ Typing a URL followed by a space turns it into a link automatically. This works 
 
 If a shortcut converts something you meant to keep as literal text, press **Backspace immediately after** the conversion happens. The block reverts and your original characters come back — `# ` stays `# `, `**bold**` stays `**bold**`. (The code block shortcut is the exception: Backspace removes the block but not the backticks.)
 
-This only works as the very next keystroke. Once you type anything else, Backspace behaves normally and ⌘Z will undo the surrounding typing along with the conversion.
+This only works as the very next keystroke. Once you type anything else, Backspace behaves normally and ⌘Z undoes the surrounding typing along with the conversion.
 
 ### Pasting
 
@@ -274,22 +274,22 @@ A few things are dropped silently, which is the part worth watching:
 
 | Pasted | Result |
 |---|---|
-| `<iframe>`, `<video>`, `<audio>` | Removed entirely — nothing is inserted |
+| `<iframe>`, `<video>`, `<audio>` | Removed entirely; nothing is inserted |
 | Highlight, superscript, subscript, `<small>`, `<abbr>` | Text kept, formatting lost |
 | Definition lists | Flattened into ordinary paragraphs |
 
-The embed case is the likeliest to catch you out: copying a YouTube `<iframe>` from a page's source inserts nothing at all. Use the **Embed** toolbar button and paste the video's URL instead — see [Embeds](#embeds). After any large paste, a quick look in [Code View](#code-view) confirms everything arrived.
+The embed case is the likeliest to catch you out: copying a YouTube `<iframe>` from a page's source inserts nothing at all. Use the **Embed** toolbar button and paste the video's URL instead (see [Embeds](#embeds)). After any large paste, a quick look in [Code View](#code-view) confirms everything arrived.
 
 #### Markdown (⌘⇧V)
 
 The [Markdown shortcuts](#markdown-shortcuts) above apply to text you *type*. Pasting Markdown is different: an ordinary ⌘V inserts it literally, so `# Heading` arrives as the characters `# Heading`. (Confusingly, `**bold**` and `` `code` `` *do* convert on paste, so the result ends up half-formatted.)
 
-Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole clipboard at once — headings, lists, blockquotes, tables, code blocks, horizontal rules, links, and inline formatting — inserting it at the cursor as finished content.
+Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole clipboard at once and inserts it at the cursor as finished content: headings, lists, blockquotes, tables, code blocks, horizontal rules, links, and inline formatting.
 
 **Notes:**
 
 - Ordinary ⌘V is unchanged. Paste as Markdown is a separate command.
-- If your clipboard came from a web page or a chat app, plain ⌘V is usually better — that content arrives as HTML and already converts correctly.
+- If your clipboard came from a web page or a chat app, plain ⌘V is usually better, since that content arrives as HTML and already converts correctly.
 - Markdown images (`![alt](url)`) keep their original URL. That image is not in your media library, so publishing would load it from wherever it currently lives. Replace it with an uploaded image first.
 - The command is refused, with an explanation, inside footnotes, code blocks, and code view. Nothing is inserted in those cases.
 - Task list checkboxes (`- [ ]`) become plain list items, since Quill has no checklist block.
@@ -311,7 +311,7 @@ Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole 
 
 ### Preview
 
-Click **Preview** in the toolbar to open the current post in your browser as it will appear on your site. Preview is only available for posts and pages already on WordPress, not for local drafts.
+Click **Preview** in the toolbar to open the current post in your browser as it appears on your site. Preview is only available for posts and pages already on WordPress, not for local drafts.
 
 When you preview a **published** post, Quill sends your unsaved changes to WordPress as a temporary revision. The live post is not affected; only the preview shows the changes.
 
@@ -329,11 +329,11 @@ Click the **ABC** button in the toolbar to check spelling. Right-clicking on any
 
 ### Code View
 
-Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML that will be saved, including Gutenberg block comments such as `<!-- wp:paragraph -->`, formatted and indented for readability.
+Click the **</>** button in the toolbar to toggle between the visual editor and a raw HTML view of your post. Code view shows the exact WordPress block HTML Quill saves, including Gutenberg block comments such as `<!-- wp:paragraph -->`, formatted and indented for readability.
 
 **Editing in code view.** You can type directly in the code view textarea. Changes are synced to Quill automatically as you type, so you do not need to exit code view before saving. Pressing **⌘S** saves whatever is in the textarea. When you exit code view, your changes appear in the visual editor.
 
-**What survives visual edits.** CSS classes and IDs added to the following elements in code view will persist even after you return to the visual editor and continue editing:
+**What survives visual edits.** CSS classes and IDs added to the following elements in code view persist even after you return to the visual editor and continue editing:
 
 - Paragraphs, headings, blockquotes, citations
 - Lists (`<ul>`, `<ol>`, `<li>`)
@@ -342,13 +342,13 @@ Click the **</>** button in the toolbar to toggle between the visual editor and 
 - Image figures (`<figure>`) and image elements (`<img>`)
 - Links (`<a>`)
 
-For example, adding `class="intro"` to a `<p>` tag in code view, switching back to the visual editor, and typing more text will not remove your class. Editing a link's URL through the link picker will also preserve any classes you added to the `<a>` tag. Classes are never copied to new elements when you press Enter to create a new block.
+For example, adding `class="intro"` to a `<p>` tag in code view, switching back to the visual editor, and typing more text does not remove your class. Editing a link's URL through the link picker also preserves any classes you added to the `<a>` tag. Classes are never copied to new elements when you press Enter to create a new block.
 
-**What survives saving but not visual edits.** Any HTML change you make in code view (including inline styles, data attributes, or custom elements without a `wp-block-*` class) is preserved when you save directly from code view or without making visual edits first. The raw HTML you wrote is sent to WordPress exactly as-is. However, if you return to the visual editor and make changes, the editor reconstructs the HTML from its internal model, and anything outside the supported schema (see the list above) will be lost.
+**What survives saving but not visual edits.** Any HTML change you make in code view (including inline styles, data attributes, or custom elements without a `wp-block-*` class) is preserved when you save directly from code view or without making visual edits first. The raw HTML you wrote is sent to WordPress exactly as-is. However, if you return to the visual editor and make changes, the editor reconstructs the HTML from its internal model, and anything outside the supported schema (see the list above) is lost.
 
 **Unsupported Gutenberg blocks.** If your post contains a block Quill doesn't natively support (Accordion, Columns, Group, or a third-party plugin block), it appears in the visual editor as a card labeled with the block's name and the hint "Not editable in the visual editor; use Code View." This card preserves the block's original markup exactly, including any nested content, and survives edits you make elsewhere in the post; it's only lost if you delete the card itself. To edit the block's own content, use code view.
 
-**Tip: making your own custom HTML survive visual edits.** If you hand-write a custom element in code view, such as a disclosure box, callout, or other snippet with no `wp-block-*` class, it will be stripped down to plain text the moment you touch the visual editor, per the rule above. To protect it, add any class starting with `wp-block-` (for example `wp-block-group`) alongside your own class. Quill then treats it the same as an unsupported Gutenberg block: it survives as a preserved card, and you can still edit its contents in code view.
+**Tip: making your own custom HTML survive visual edits.** If you hand-write a custom element in code view, such as a disclosure box, callout, or other snippet with no `wp-block-*` class, it is stripped down to plain text the moment you touch the visual editor, per the rule above. To protect it, add any class starting with `wp-block-` (for example `wp-block-group`) alongside your own class. Quill then treats it the same as an unsupported Gutenberg block: it survives as a preserved card, and you can still edit its contents in code view.
 
 The practical rule: if you need to make changes that go beyond CSS classes on supported elements, do your visual editing first, then switch to code view for your final HTML pass before saving.
 
@@ -358,7 +358,7 @@ The practical rule: if you need to make changes that go beyond CSS classes on su
 
 ### Images
 
-Click the **Image** button in the toolbar to open the media library picker and insert an image at the cursor position. See [Media Library](#media-library) for details on uploading and browsing media. You can also drag an image file directly from Finder onto the editor canvas; Quill will upload it to your WordPress media library and insert it in one step.
+Click the **Image** button in the toolbar to open the media library picker and insert an image at the cursor position. See [Media Library](#media-library) for details on uploading and browsing media. You can also drag an image file directly from Finder onto the editor canvas; Quill uploads it to your WordPress media library and inserts it in one step.
 
 Once an image is inserted, click it to select it. A floating image toolbar appears above the image, and alignment controls become available in the main toolbar.
 
@@ -428,8 +428,6 @@ When you insert a footnote, two things happen automatically:
 1. A numbered superscript marker appears inline at the cursor position.
 2. A footnote entry is added to a numbered list at the bottom of the document, where you can type the footnote text.
 
-Here are a few things to keep in mind as you work with footnotes.
-
 - **Automatic numbering:** Footnote markers are always numbered sequentially from 1 based on their position in the document. If you insert a footnote between two existing ones, or delete one, all numbers update automatically; you never need to renumber manually.
 - **Navigating between markers and entries:** Each footnote entry at the bottom of the document has a **↩** button. Clicking it jumps your cursor back to the corresponding marker in the body text.
 - **Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
@@ -465,7 +463,7 @@ To insert an embed:
 2. A small input menu appears. Paste the URL of the content you want to embed.
 3. Press **Enter** or click **Insert**.
 
-The embed appears in the editor as a card showing the URL. It will render as a live embed on your published site; Quill does not preview the embedded content.
+The embed appears in the editor as a card showing the URL. It renders as a live embed on your published site; Quill does not preview the embedded content.
 
 #### Supported providers
 
@@ -479,19 +477,19 @@ The embed appears in the editor as a card showing the URL. It will render as a l
 | Spotify | Music / podcasts |
 | SoundCloud | Audio |
 
-URLs from providers not listed above are saved as generic embeds. WordPress will attempt to render them using its own oEmbed support.
+URLs from providers not listed above are saved as generic embeds. WordPress attempts to render them with its own oEmbed support.
 
-> Not all embeds may work as expected on your published site. Provider support depends on the platform's oEmbed implementation and can change without notice. X (formerly Twitter) is a known example where embed rendering is inconsistent.
+> Some embeds do not render correctly on your published site. Provider support depends on the platform's oEmbed implementation and can change without notice. X (formerly Twitter) is a known example where embed rendering is inconsistent.
 
 ---
 
 ## Post & Page Settings
 
-The settings panel is accessed by clicking the settings toggle button at the right end of the editor toolbar. It slides in from the right and contains all publishing options for the current post or page.
+Click the settings toggle at the right end of the editor toolbar to open the settings panel. It slides in from the right and contains all publishing options for the current post or page.
 
 Changes made in the settings panel take effect when you next save or publish the post. They are not sent to WordPress automatically as you adjust them.
 
-> Settings you configure for a local draft (categories, tags, slug, etc.) are sent to WordPress when you publish. However, they are not saved locally with the draft. If you close the app before publishing, those settings will need to be set again.
+> Settings you configure for a local draft (categories, tags, slug, etc.) are sent to WordPress when you publish. However, they are not saved locally with the draft. If you close the app before publishing, you need to set them again.
 
 ### Status
 
@@ -511,13 +509,13 @@ Local drafts (posts and pages not yet synced to WordPress) show a **Purple** bad
 
 The Publish Date section appears for all statuses except Private. It contains a **Schedule** toggle. When turned on, the status is set to Scheduled and a date and time picker appears. When turned off, the status reverts to Draft if it was previously set to Scheduled.
 
-You can also set scheduling by selecting **Scheduled** directly in the Status picker; the date picker will appear automatically with a default time one hour from now.
+You can also set scheduling by selecting **Scheduled** directly in the Status picker; the date picker appears automatically with a default time one hour from now.
 
-Once you have set the date and time, press **⌘⇧P** or click **Publish** to commit the scheduled post to WordPress. The post will publish automatically at the chosen time.
+Once you have set the date and time, press **⌘⇧P** or click **Publish** to commit the scheduled post to WordPress. The post then publishes automatically at the chosen time.
 
 ### Categories (Posts only)
 
-The categories section lists all categories on your site. Check a category to assign it to the post. Checked categories always sort to the top of the list (alphabetically), followed by unchecked categories (also alphabetically), making your active selections easy to see. Use the search field to filter categories by name.
+The categories section lists all categories on your site. Check a category to assign it to the post. Checked categories always sort to the top of the list (alphabetically), followed by unchecked categories (also alphabetically). Use the search field to filter categories by name.
 
 To create a new category, type its name in the search field and press Enter. New categories are created on your WordPress site when the post is saved or published.
 
@@ -543,7 +541,7 @@ The Discussion section contains a single **Allow comments** toggle. Turn it off 
 
 ### Stats
 
-The Stats section displays a live word count and character count for the current post, updated as you type. An estimated reading time is shown once the post has enough content, calculated at 238 words per minute and rounded up to the nearest minute.
+The Stats section displays a live word count and character count for the current post, updated as you type. Once the post has enough content, Quill also estimates reading time at 238 words per minute, rounded up to the nearest minute.
 
 ---
 
@@ -553,7 +551,7 @@ The Media Library gives you access to all files uploaded to your WordPress site.
 
 ### Browsing
 
-Media items are displayed as thumbnails for images. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to open its detail view in the main panel.
+Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to open its detail view in the main panel.
 
 If your library has more items than the current view, a **Load More** button appears at the bottom of the grid. Click it to fetch the next page of results.
 
@@ -591,7 +589,7 @@ You can also drag an image file directly from Finder onto the editor canvas to u
 
 ### Deleting Media
 
-Right-click any item in the media grid and select **Delete** to remove it. A confirmation prompt will appear before the deletion proceeds.
+Right-click any item in the media grid and select **Delete** to remove it. A confirmation prompt appears before the deletion proceeds.
 
 > Deleting media is permanent. WordPress does not have a trash for media items; deletion cannot be undone.
 
@@ -615,7 +613,7 @@ Once a valid key is saved, a **pencil** button (Generate) and a **checkmark-circ
 
 Quill can learn your writing style by analyzing posts from your blog. In the AI Writing section of Settings, click **Choose Posts** and select up to 5 posts that are representative of how you write. When you save, Quill sends those posts to Claude to generate a concise style guide, which is then used to inform all AI writing operations.
 
-The style guide is regenerated automatically when you change your sample post selection. If you switch to a different WordPress site, the sample selection is cleared and you will need to set it again for the new site.
+The style guide is regenerated automatically when you change your sample post selection. If you switch to a different WordPress site, Quill clears the sample selection and you need to set it again for the new site.
 
 ### Web Search
 
@@ -625,7 +623,7 @@ The **Web Search** toggle in Settings allows the Generate Content feature to sea
 
 Click the **pencil icon** in the editor toolbar to open the content generator. Type a topic, title idea, or detailed prompt describing what you want, then click **Generate**.
 
-Quill will write a complete post or page, including a title and structured body, and load it into the editor. If web search is enabled, Claude will research the topic before writing.
+Quill writes a complete post or page, including a title and structured body, and loads it into the editor. If web search is enabled, Claude researches the topic before writing.
 
 If the editor already contains content, a **Replace Content?** confirmation sheet appears first. Press **⌘↩** to proceed or **Escape** (or Cancel) to go back.
 
@@ -644,7 +642,7 @@ Quill sends the full content to Claude and displays an **Evaluation panel** on t
 
 **Re-evaluating:** Click **↺ Re-evaluate** at the bottom of the panel to run another pass after making edits.
 
-**Style awareness:** If you have configured a writing style guide using sample posts (see Writing Style above), Claude uses it during evaluation to distinguish your intentional voice from genuine issues. Stylistic choices consistent with your established writing will not be flagged.
+**Style awareness:** If you have configured a writing style guide using sample posts (see Writing Style above), Claude uses it during evaluation to distinguish your intentional voice from genuine issues. Stylistic choices consistent with your established writing are not flagged.
 
 The checkmark-circle button is highlighted while the evaluation panel is open and is disabled while an evaluation is running.
 
@@ -733,9 +731,9 @@ Quill stores credentials for a single WordPress site. To switch sites, update yo
 
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill will round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill round-trip correctly through the Gutenberg editor.
 
-However, if you open a post that was created in Gutenberg using block types Quill does not support (such as columns, cover blocks, or custom blocks) those blocks will be visible in the **Code View** (`</>`) but will not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
+However, if you open a post that was created in Gutenberg using block types Quill does not support (such as columns, cover blocks, or custom blocks) those blocks are visible in the **Code View** (`</>`) but do not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
 
 Galleries load as a read-only thumbnail-grid card: Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
 
@@ -743,7 +741,7 @@ To edit posts that contain unsupported blocks, use Code View to work with the ra
 
 ### Featured Image
 
-Quill reads and preserves a post's featured image setting. If a featured image is already assigned in WordPress, it will be maintained when you save from Quill. However, there is no UI in Quill to set or change the featured image. To assign a featured image for the first time, use the WordPress admin.
+Quill reads and preserves a post's featured image setting. If a featured image is already assigned in WordPress, Quill keeps it when you save. However, there is no UI in Quill to set or change the featured image. To assign a featured image for the first time, use the WordPress admin.
 
 ### Not a Full WordPress Admin
 
@@ -758,4 +756,4 @@ Quill is a writing tool, not a replacement for the WordPress dashboard. The foll
 
 ### Apple Notarization
 
-Quill is not notarized by Apple. macOS will require a one-time security bypass on first launch, as described in [Requirements & Installation](#requirements--installation). After that, the app opens normally.
+Quill is not notarized by Apple. macOS requires a one-time security bypass on first launch, as described in [Requirements & Installation](#requirements--installation). After that, the app opens normally.
