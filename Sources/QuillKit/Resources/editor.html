@@ -1697,6 +1697,7 @@
                 id: idMatch ? parseInt(idMatch[1], 10) : null,
                 url: img?.getAttribute('src') || '',
                 alt: img?.getAttribute('alt') || '',
+                caption: fig.querySelector('figcaption')?.textContent || '',
               }
             })
             const columnsMatch = el.className.match(/columns-(\d+)/)

@@ -412,3 +412,37 @@ describe('galleryBlock — per-image captions', () => {
     assert.match(html, /alt="Overridden alt"/)
   })
 })
+
+describe('galleryBlock — parsing captions from loaded galleries', () => {
+  const LOADED =
+    '<figure class="wp-block-gallery has-nested-images columns-2 is-cropped">' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="" class="wp-image-1">' +
+    '<figcaption class="wp-element-caption">Loaded caption</figcaption></figure>' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/b.png" alt="" class="wp-image-2"></figure>' +
+    '</figure>'
+
+  const galleryAttrs = () => {
+    let attrs = null
+    editor.state.doc.descendants(node => {
+      if (node.type.name === 'galleryBlock') attrs = node.attrs
+    })
+    return attrs
+  }
+
+  test('a caption on a loaded image figure is extracted into node attrs', () => {
+    editor.commands.setContent(LOADED, false)
+    const attrs = galleryAttrs()
+    assert.equal(attrs.images[0].caption, 'Loaded caption')
+  })
+
+  test('an image with no figcaption parses to an empty caption', () => {
+    editor.commands.setContent(LOADED, false)
+    const attrs = galleryAttrs()
+    assert.equal(attrs.images[1].caption, '')
+  })
+
+  test('a loaded gallery still re-renders verbatim from sourceHTML', () => {
+    editor.commands.setContent(LOADED, false)
+    assert.match(editor.getHTML(), /<figcaption class="wp-element-caption">Loaded caption<\/figcaption>/)
+  })
+})
