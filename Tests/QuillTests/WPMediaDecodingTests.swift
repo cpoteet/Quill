@@ -171,4 +171,44 @@ import Testing
         let media = try decode(json)
         #expect(media.sizedURL(for: "full") == "https://example.com/img.jpg")
     }
+
+    @Test func captionDecodesPlainTextFromRaw() throws {
+        let json = """
+        {"id":16,"source_url":"https://example.com/img.jpg",
+         "caption":{"rendered":"<p>A rendered caption</p>","raw":"A raw caption"}}
+        """
+        let media = try decode(json)
+        #expect(media.captionText == "A raw caption")
+    }
+
+    @Test func captionRawHasHTMLStrippedAndEntitiesDecoded() throws {
+        let json = """
+        {"id":17,"source_url":"https://example.com/img.jpg",
+         "caption":{"rendered":"<p>x</p>","raw":"Bob &amp; <em>Alice</em>"}}
+        """
+        let media = try decode(json)
+        #expect(media.captionText == "Bob & Alice")
+    }
+
+    // context=edit is always requested for media (WordPressClient.fetchMedia/fetchMediaItem),
+    // so `raw` is normally present. A rendered-only payload (e.g. the upload response)
+    // yields an empty caption rather than HTML — matching RenderedString.excerptText.
+    @Test func captionWithOnlyRenderedYieldsEmptyText() throws {
+        let json = """
+        {"id":18,"source_url":"https://example.com/img.jpg",
+         "caption":{"rendered":"<p>Rendered only</p>"}}
+        """
+        let media = try decode(json)
+        #expect(media.caption != nil)
+        #expect(media.captionText == "")
+    }
+
+    @Test func missingCaptionIsNilAndTextIsEmpty() throws {
+        let json = """
+        {"id":19,"source_url":"https://example.com/img.jpg"}
+        """
+        let media = try decode(json)
+        #expect(media.caption == nil)
+        #expect(media.captionText == "")
+    }
 }

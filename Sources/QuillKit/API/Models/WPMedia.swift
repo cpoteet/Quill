@@ -9,6 +9,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
     public var link: String       // WordPress attachment page URL
     public var date: String       // ISO8601, server local time
     public var altText: String
+    public var caption: RenderedString?
     public var mediaDetails: MediaDetails?
 
     public var thumbnailURL: String {
@@ -28,12 +29,19 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         return url
     }
 
+    /// Plain-text caption, for prefilling the gallery sheet's caption field.
+    /// Reads `caption.raw` only (present because both media fetches use
+    /// `context=edit`); returns "" when the caption is absent or rendered-only.
+    public var captionText: String {
+        caption?.excerptText ?? ""
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, title
         case sourceURL = "source_url"
         case mediaType = "media_type"
         case mimeType = "mime_type"
-        case link, date
+        case link, date, caption
         case altText = "alt_text"
         case mediaDetails = "media_details"
     }
@@ -48,6 +56,7 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         link = try c.decodeIfPresent(String.self, forKey: .link) ?? ""
         date = try c.decodeIfPresent(String.self, forKey: .date) ?? ""
         altText = try c.decodeIfPresent(String.self, forKey: .altText) ?? ""
+        caption = try c.decodeIfPresent(RenderedString.self, forKey: .caption)
         mediaDetails = try c.decodeIfPresent(MediaDetails.self, forKey: .mediaDetails)
     }
 }
