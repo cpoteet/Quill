@@ -151,6 +151,18 @@ public struct GallerySheet: View {
                                     Image(systemName: "line.3.horizontal")
                                         .font(.system(size: 11))
                                         .foregroundStyle(.tertiary)
+                                        .frame(width: 14, height: 22)
+                                        .contentShape(Rectangle())
+                                        .onHover { hovering in
+                                            // Reaching for the grip means intent to drag, and an
+                                            // expanded row is moveDisabled. Collapsing on hover —
+                                            // rather than on press — means the click that follows
+                                            // starts a real drag, instead of being spent collapsing
+                                            // a row whose drag was already ruled out at mouse-down.
+                                            guard hovering else { return }
+                                            expandedIDs.remove(sel.id)
+                                            NSCursor.openHand.set()
+                                        }
                                     AsyncImage(url: URL(string: sel.media.thumbnailURL)) { phase in
                                         if case .success(let image) = phase {
                                             image.resizable().aspectRatio(contentMode: .fill)
@@ -165,47 +177,81 @@ public struct GallerySheet: View {
                                         .lineLimit(1)
                                     Spacer()
                                     // Chevron only — the row body stays free for drag-to-reorder.
-                                    Button {
-                                        if expandedIDs.contains(sel.id) {
-                                            expandedIDs.remove(sel.id)
-                                        } else {
-                                            expandedIDs.insert(sel.id)
+                                    // Both buttons get a padded hit area and sit far enough apart
+                                    // that expanding a row can't be mistaken for removing it.
+                                    HStack(spacing: 14) {
+                                        Button {
+                                            if expandedIDs.contains(sel.id) {
+                                                expandedIDs.remove(sel.id)
+                                            } else {
+                                                expandedIDs.insert(sel.id)
+                                            }
+                                        } label: {
+                                            Image(systemName: expandedIDs.contains(sel.id) ? "chevron.down" : "chevron.right")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundStyle(.secondary)
+                                                .frame(width: 18, height: 22)
+                                                .contentShape(Rectangle())
                                         }
-                                    } label: {
-                                        Image(systemName: expandedIDs.contains(sel.id) ? "chevron.down" : "chevron.right")
-                                            .font(.system(size: 10, weight: .semibold))
-                                            .foregroundStyle(.secondary)
+                                        .buttonStyle(.plain)
+                                        .help("Alt text and caption")
+                                        Button {
+                                            expandedIDs.remove(sel.id)
+                                            selected.removeAll { $0.id == sel.id }
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.secondary)
+                                                .frame(width: 18, height: 22)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Remove from gallery")
                                     }
-                                    .buttonStyle(.plain)
-                                    .help("Alt text and caption")
-                                    Button {
-                                        expandedIDs.remove(sel.id)
-                                        selected.removeAll { $0.id == sel.id }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundStyle(.secondary)
+                                    // Buttons are click targets, not drag surfaces — keep the
+                                    // arrow over them, and hand the open hand back on the way out
+                                    // (only if this row is actually draggable).
+                                    .onHover { hovering in
+                                        if hovering {
+                                            NSCursor.arrow.set()
+                                        } else if !expandedIDs.contains(sel.id) {
+                                            NSCursor.openHand.set()
+                                        }
                                     }
-                                    .buttonStyle(.plain)
                                 }
                                 .onHover { hovering in
-                                    if hovering { NSCursor.openHand.set() } else { NSCursor.arrow.set() }
+                                    // An expanded row is moveDisabled, so it must not advertise
+                                    // itself as draggable.
+                                    if hovering && !expandedIDs.contains(sel.id) {
+                                        NSCursor.openHand.set()
+                                    } else {
+                                        NSCursor.arrow.set()
+                                    }
                                 }
 
                                 if expandedIDs.contains(sel.id) {
                                     VStack(alignment: .leading, spacing: 6) {
                                         sectionLabel("Alt text")
                                         TextField("", text: $sel.alt)
-                                            .textFieldStyle(.roundedBorder)
+                                            .textFieldStyle(.plain)
                                             .font(.system(size: 11))
+                                            .padding(5)
+                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
                                         sectionLabel("Caption")
                                         TextField("", text: $sel.caption)
-                                            .textFieldStyle(.roundedBorder)
+                                            .textFieldStyle(.plain)
                                             .font(.system(size: 11))
+                                            .padding(5)
+                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
                                     }
                                     .padding(.leading, 19)
                                     .padding(.bottom, 4)
                                 }
                             }
+                            // A row in a List with .onMove is draggable, and the drag gesture
+                            // claims mouse-down before a TextField inside it can take focus.
+                            // Reorder is meaningless while typing anyway, so an expanded row
+                            // opts out; collapsing it restores dragging.
+                            .moveDisabled(expandedIDs.contains(sel.id))
                         }
                         .onMove { indices, newOffset in
                             selected.move(fromOffsets: indices, toOffset: newOffset)
