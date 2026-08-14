@@ -394,6 +394,8 @@ Click **Link to Full Image** in the image toolbar to wrap the image in a link to
 
 Click the **Gallery** button in the toolbar to open the gallery picker. Click images in the media grid to select them: a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the **X** next to it to remove it.
 
+Click the chevron on a selected image to set its **Alt text** and **Caption**. Both start from whatever the media library holds for that image, and changes you make here apply only to this gallery — the media library item itself is untouched, so other posts using the same image are unaffected. Captions are plain text and appear beneath their image on your published site.
+
 Click **Upload** in the gallery picker to add a new image from disk directly to your media library; it's added to the grid and automatically selected.
 
 Gallery settings, available once you've selected at least one image:
@@ -405,7 +407,7 @@ Gallery settings, available once you've selected at least one image:
 
 > **A note on Size:** WordPress often automatically offers browsers a range of file sizes for each image (this is what makes photos look crisp on high-resolution displays like Retina screens), and the browser is free to pick whichever one it thinks looks best, regardless of the Size you chose here. On a modern high-density display, you may not notice a visual difference between Medium and Large for this reason. Size still reliably matters for older browsers, RSS feeds, email, and other places that don't support this automatic behavior, and it always affects file size/page weight, since it changes which image WordPress treats as the "base" file for the gallery.
 
-Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill; to change it, delete it and insert a new one with different images or settings.
+Click **Insert Gallery** to add it to the editor as a single block. A gallery appears as a read-only thumbnail grid card in Quill; to change it — including alt text and captions — delete it and insert a new one, or edit the markup directly in Code View.
 
 Galleries authored outside Quill (e.g. in the WordPress block editor) load the same way, as a read-only card, and any captions or other details not covered by the settings above are preserved even after you make unrelated edits elsewhere in the post.
 

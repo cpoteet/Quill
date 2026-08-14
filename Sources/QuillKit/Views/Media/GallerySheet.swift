@@ -27,6 +27,7 @@ public struct GallerySheet: View {
     @State private var hasMore: Bool = false
     @State private var isLoadingMore = false
     @State private var selected: [GallerySelection] = []
+    @State private var expandedIDs: Set<Int> = []
     @State private var columns: Int = 3
     @State private var cropped: Bool = true
     @State private var linkTo: String = "none"
@@ -144,34 +145,66 @@ public struct GallerySheet: View {
                         .padding(.horizontal, 12)
                 } else {
                     List {
-                        ForEach(selected) { sel in
-                            HStack(spacing: 8) {
-                                Image(systemName: "line.3.horizontal")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.tertiary)
-                                AsyncImage(url: URL(string: sel.media.thumbnailURL)) { phase in
-                                    if case .success(let image) = phase {
-                                        image.resizable().aspectRatio(contentMode: .fill)
-                                    } else {
-                                        Rectangle().fill(.quaternary)
+                        ForEach($selected) { $sel in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "line.3.horizontal")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.tertiary)
+                                    AsyncImage(url: URL(string: sel.media.thumbnailURL)) { phase in
+                                        if case .success(let image) = phase {
+                                            image.resizable().aspectRatio(contentMode: .fill)
+                                        } else {
+                                            Rectangle().fill(.quaternary)
+                                        }
                                     }
+                                    .frame(width: 32, height: 32)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    Text(sel.media.title.decodedTitle)
+                                        .font(.system(size: 12))
+                                        .lineLimit(1)
+                                    Spacer()
+                                    // Chevron only — the row body stays free for drag-to-reorder.
+                                    Button {
+                                        if expandedIDs.contains(sel.id) {
+                                            expandedIDs.remove(sel.id)
+                                        } else {
+                                            expandedIDs.insert(sel.id)
+                                        }
+                                    } label: {
+                                        Image(systemName: expandedIDs.contains(sel.id) ? "chevron.down" : "chevron.right")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Alt text and caption")
+                                    Button {
+                                        expandedIDs.remove(sel.id)
+                                        selected.removeAll { $0.id == sel.id }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .frame(width: 32, height: 32)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                                Text(sel.media.title.decodedTitle)
-                                    .font(.system(size: 12))
-                                    .lineLimit(1)
-                                Spacer()
-                                Button {
-                                    selected.removeAll { $0.id == sel.id }
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.secondary)
+                                .onHover { hovering in
+                                    if hovering { NSCursor.openHand.set() } else { NSCursor.arrow.set() }
                                 }
-                                .buttonStyle(.plain)
-                            }
-                            .onHover { hovering in
-                                if hovering { NSCursor.openHand.set() } else { NSCursor.arrow.set() }
+
+                                if expandedIDs.contains(sel.id) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        sectionLabel("Alt text")
+                                        TextField("", text: $sel.alt)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.system(size: 11))
+                                        sectionLabel("Caption")
+                                        TextField("", text: $sel.caption)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.system(size: 11))
+                                    }
+                                    .padding(.leading, 19)
+                                    .padding(.bottom, 4)
+                                }
                             }
                         }
                         .onMove { indices, newOffset in
