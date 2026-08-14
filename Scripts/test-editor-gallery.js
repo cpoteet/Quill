@@ -353,3 +353,62 @@ describe('gap-cursor styling', () => {
     assert.match(source, /\.ProseMirror-gapcursor:after\s*\{[^}]*border-left:\s*1\.5px solid #007aff/)
   })
 })
+
+describe('galleryBlock — per-image captions', () => {
+  const insert = (images, extra = {}) => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.insertContent({
+      type: 'galleryBlock',
+      attrs: { images, columns: 3, cropped: true, linkTo: 'none', ...extra },
+    })
+    return editor.getHTML()
+  }
+
+  test('a non-empty caption renders as a wp-element-caption figcaption', () => {
+    const html = insert([{ id: 1, url: 'http://x.test/a.png', alt: '', caption: 'Sunrise over the bay' }])
+    assert.match(html, /<figcaption class="wp-element-caption">Sunrise over the bay<\/figcaption>/)
+  })
+
+  test('each caption lands inside its own image figure', () => {
+    const html = insert([
+      { id: 1, url: 'http://x.test/a.png', alt: '', caption: 'First' },
+      { id: 2, url: 'http://x.test/b.png', alt: '', caption: '' },
+    ])
+    const doc = new win.DOMParser().parseFromString(html, 'text/html')
+    const figures = doc.querySelectorAll('figure.wp-block-image')
+    assert.equal(figures.length, 2)
+    assert.equal(figures[0].querySelector('figcaption').textContent, 'First')
+    assert.equal(figures[1].querySelector('figcaption'), null)
+  })
+
+  test('an omitted caption emits no figcaption at all', () => {
+    const html = insert([{ id: 1, url: 'http://x.test/a.png', alt: '' }])
+    assert.doesNotMatch(html, /figcaption/)
+  })
+
+  test('caption text containing markup is escaped, not injected', () => {
+    const html = insert([
+      { id: 1, url: 'http://x.test/a.png', alt: '', caption: '<script>x</script> & <b>bold</b>' },
+    ])
+    assert.doesNotMatch(html, /<script>/)
+    assert.doesNotMatch(html, /<b>bold<\/b>/)
+    assert.match(html, /&lt;script&gt;/)
+    assert.match(html, /&amp;/)
+  })
+
+  test('the caption follows the anchor when linkTo is media', () => {
+    const html = insert(
+      [{ id: 1, url: 'http://x.test/a.png', fullUrl: 'http://x.test/a-full.png', alt: '', caption: 'Linked' }],
+      { linkTo: 'media' }
+    )
+    const doc = new win.DOMParser().parseFromString(html, 'text/html')
+    const fig = doc.querySelector('figure.wp-block-image')
+    assert.equal(fig.children[0].tagName, 'A')
+    assert.equal(fig.children[1].tagName, 'FIGCAPTION')
+  })
+
+  test('a per-image alt override lands on the img', () => {
+    const html = insert([{ id: 1, url: 'http://x.test/a.png', alt: 'Overridden alt' }])
+    assert.match(html, /alt="Overridden alt"/)
+  })
+})

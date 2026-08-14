@@ -1738,6 +1738,14 @@
           } else {
             imgFigure.appendChild(img)
           }
+          // Plain text only — textContent, never innerHTML: caption text comes
+          // straight from a TextField in GallerySheet and must not inject markup.
+          if (image.caption) {
+            const cap = document.createElement('figcaption')
+            cap.className = 'wp-element-caption'
+            cap.textContent = image.caption
+            imgFigure.appendChild(cap)
+          }
           figure.appendChild(imgFigure)
         })
         return figure
