@@ -48,7 +48,7 @@ Requires `node` and the `jsdom` package (already installed in the project root v
 
 ---
 
-## Swift test suite (334 tests, 22 suites)
+## Swift test suite (338 tests, 22 suites)
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -57,7 +57,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 34 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
-| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 15 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
 | 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
@@ -127,11 +127,11 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (15 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (19 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
-Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback. Also covers `altText`, `thumbnailURL`, and `sizedURL(for:)`.
+Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON floats (`2560.0`) which Swift's `Int` decoder rejects without the try-Int-then-Double fallback. Also covers `altText`, `thumbnailURL`, `sizedURL(for:)`, and `caption`/`captionText` (which seed the gallery sheet's per-image Alt text and Caption fields).
 
 | Test | What it checks |
 |---|---|
@@ -150,6 +150,10 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `sizedURLFallsBackToSourceURLWhenSizeMissing` | Requested slug absent from `sizes` → falls back to `sourceURL` |
 | `sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL` | Matched size entry exists but its `source_url` is `""` → falls back to `sourceURL` (regression: a bare `??` on the optional chain would not catch this, since `""` is non-nil) |
 | `sizedURLAlwaysUsesSourceURLForFullSlugEvenWhenAFullSizeEntryExists` | `sizedURL(for: "full")` always returns `sourceURL`, ignoring any `sizes["full"]` entry |
+| `captionDecodesPlainTextFromRaw` | `caption.raw` present → `captionText` returns the raw string, not the `<p>`-wrapped `rendered` one |
+| `captionRawHasHTMLStrippedAndEntitiesDecoded` | `caption.raw` with markup/entities (`Bob &amp; <em>Alice</em>`) → `"Bob & Alice"` via `RenderedString.excerptText` |
+| `captionWithOnlyRenderedYieldsEmptyText` | Rendered-only payload (no `raw`, the shape a non-`context=edit` fetch returns) → `caption != nil` but `captionText == ""`, so the sheet never prefills a field with HTML |
+| `missingCaptionIsNilAndTextIsEmpty` | `caption` absent → `caption == nil`, `captionText == ""`, no throw |
 
 ---
 
@@ -740,7 +744,7 @@ Tests the single shared `MimeType.forExtension`/`forFile` helper (backed by `UTT
 
 ---
 
-## JS editor tests (140 tests)
+## JS editor tests (154 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -986,12 +990,19 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
 | `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
 
-### `toWordPressHTML` — gallery (9 tests)
+### `toWordPressHTML` — gallery (16 tests)
 
 | Test | What it checks |
 |---|---|
 | `gallery figure gets wp:gallery and wp:image comment wrappers` | `figure.wp-block-gallery` + nested `figure.wp-block-image` gets `<!-- wp:gallery {ids,columns,linkTo} -->` and per-image `<!-- wp:image {...} -->` comments |
 | `gallery wrapping is idempotent` | Running `toWordPressHTML` twice produces byte-identical output — no compounding whitespace between images on repeated saves |
+| `gallery image captions survive the save transform` | A `figcaption.wp-element-caption` inside a nested gallery image figure is still present after the transform — the generic figure pass reaches nested gallery figures, so no gallery-specific caption pass is needed |
+| `a gallery caption stays the last child of its own nested image figure` | DOM-structural guard (replaces a weaker substring check): the caption is not hoisted onto the `figure.wp-block-gallery` wrapper, sits after its `<img>` as the figure's last element child, and belongs to the right image — the captionless second image gains none |
+| `each gallery caption is wrapped inside its own wp:image comment pair` | Splitting the output on `<!-- wp:image ` puts each caption inside its own image's comment block, never in a sibling's — so WordPress attributes the caption to the correct image |
+| `a captionless gallery image gains no figcaption` | Exactly one `<figcaption>` is emitted for a two-image gallery where only one image has a caption — no empty placeholders |
+| `an unclassed gallery caption gains wp-element-caption` | A `<figcaption>` with no class (classic/hand-written markup) is annotated with `wp-element-caption` |
+| `an empty gallery caption is removed` | A `<figcaption>` with empty text is dropped entirely rather than emitted blank |
+| `wrapping a captioned gallery is idempotent` | Running `toWordPressHTML` twice over a captioned gallery is byte-identical — captions don't duplicate or drift across repeated saves |
 | `outer gallery figure does not gain wp-block-image class` | The generic image-figure transform excludes `.wp-block-gallery`, so the wrapper figure isn't misclassified |
 | `gallery with linkTo=media wraps images in anchors and records linkDestination` | Images already wrapped in `<a href>` produce `"linkTo":"media"` / `"linkDestination":"media"` |
 | `cropped=false omits is-cropped class and sets imageCrop:false` | Missing `is-cropped` class → explicit `"imageCrop":false` (only emitted at the non-default) |
@@ -1109,7 +1120,7 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 
 ---
 
-## JS gallery tests (19 tests)
+## JS gallery tests (36 tests)
 
 File: `Scripts/test-editor-gallery.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1164,6 +1175,49 @@ Tests load the real `editor.html` in jsdom and instantiate the live Tiptap edito
 | Test | What it checks |
 |---|---|
 | `editor.html overrides the default gap-cursor widget to match the app caret` | Guards the CSS override (`.ProseMirror-gapcursor:after { border-left: 1.5px solid #007aff }`) that restyles Tiptap's built-in gap-cursor widget from its default black horizontal bar to the app's blue vertical caret |
+
+### `galleryBlock` — per-image captions (8 tests)
+
+Covers the per-image Alt text and Caption values the gallery sheet collects, as `renderHTML`'s reconstruction path emits them.
+
+| Test | What it checks |
+|---|---|
+| `a non-empty caption renders as a wp-element-caption figcaption` | A `caption` on an `images[]` entry renders as `<figcaption class="wp-element-caption">` |
+| `each caption lands inside its own image figure` | Two images, one captioned → the caption is inside the first image's figure and the second has no `<figcaption>` |
+| `an omitted caption emits no figcaption at all` | An entry with no `caption` key emits no `<figcaption>`, not an empty one |
+| `caption text containing markup is escaped, not injected` | Caption is written via `textContent`, never `innerHTML` — `<script>`/`<b>` in the caption is escaped, not parsed as markup |
+| `the caption follows the anchor when linkTo is media` | With `linkTo: 'media'`, the figure's children are `<a>` then `<figcaption>`, matching Gutenberg's ordering |
+| `each per-image alt lands on its own img, in order` | DOM-structural guard (replaces a weaker single-image check): three images with alts `['First alt', '', 'Third alt']` produce `<img>` alt attributes in that exact order, so alts can't be shifted onto the wrong image |
+| `an omitted alt still emits an empty alt attribute` | An entry with no `alt` key still renders `alt=""` — WordPress markup always carries it, and a missing attribute is an accessibility regression |
+| `alt text containing quotes and markup is escaped, not injected` | Alt comes straight from a `TextField`; `Bob & "Al" <b>bold</b>` round-trips as the literal attribute value with no element escaping out of the quoted value and nothing extra injected into the figure |
+
+### `galleryBlock` — alt and caption round-trip (insert → save → re-parse) (4 tests)
+
+Exercises the exact JSON payload `PostEditorView` builds from `GallerySelection` (one dict per image with `id`/`url`/`fullUrl`/`alt`/`caption`) through `window.insertGallery`, then out through `toWordPressHTML` and back in.
+
+| Test | What it checks |
+|---|---|
+| `alt and caption from the JSON bridge payload reach the node attrs` | The Swift→JS bridge carries per-image `alt`/`caption` into `node.attrs.images`, including empty values and values containing quotes/markup |
+| `alt and caption survive save and re-parse, per image and in order` | Save → reload preserves ids, alts and captions per image and in order — nothing is dropped, reordered, or double-escaped |
+| `each caption is saved inside its own wp:image comment pair` | Each saved caption sits inside its own `<!-- wp:image -->`…`<!-- /wp:image -->` block; the captionless middle image's block contains no `<figcaption>` |
+| `saving a captioned gallery is idempotent` | `toWordPressHTML` over its own output is byte-identical for a captioned gallery |
+
+### `galleryBlock` — parsing captions from loaded galleries (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `a caption on a loaded image figure is extracted into node attrs` | `parseHTML` reads a loaded figure's `figcaption` back into `images[i].caption` via `textContent` |
+| `an image with no figcaption parses to an empty caption` | A sibling image with no caption parses to `''`, not `undefined`/`null` |
+| `a loaded gallery still re-renders verbatim from sourceHTML` | Extracting captions into attrs doesn't disturb the `sourceHTML` verbatim re-render path |
+
+### `galleryBlock` — captions survive load → edit → save (2 tests)
+
+Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-run with captions present: every debounced save runs `toWordPressHTML(editor.getHTML())` over a loaded gallery's verbatim `sourceHTML`, and a `<figcaption>` adds another element between two adjacent `wp:image` comments.
+
+| Test | What it checks |
+|---|---|
+| `both images and both captions are still there after an edit and save` | A two-image, fully-captioned loaded gallery plus a real intervening edit elsewhere in the doc → both image figures, both captions and both alts survive the save; the edit is asserted to have actually happened |
+| `the edited save is idempotent — captions do not duplicate or drift` | Re-saving the edited output is byte-identical, with exactly two `<figcaption>`s and two `<!-- wp:image ` comments — no compounding on repeated saves |
 
 ---
 
@@ -1290,6 +1344,16 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Click the Gallery toolbar button → the `GallerySheet` opens with a media grid; tapping images toggles a checkmark and adds them to the "Selected" list; "Insert Gallery" is disabled until at least one image is selected.
 - [ ] With 2+ images selected, set columns, toggle crop, set "Link to" (None / Full Image), set Size (Thumbnail / Medium / Large / Full Size), click Insert Gallery → a read-only thumbnail-grid card appears in the editor. Toggle code view (`</>`) and confirm `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments with the chosen settings, including `"sizeSlug"` matching the selected size.
 - [ ] In `GallerySheet`, click Upload → pick a new image from disk → it uploads, appears in the media grid, and is automatically added to the Selected list.
+- [ ] In `GallerySheet`, click the chevron on a selected image → an Alt text and a Caption field expand inline beneath it. Click the chevron again → the row collapses; the values typed are retained.
+- [ ] Select an image that already has alt text and/or a caption in the media library → expand its row → both fields are prefilled with the library values (plain text, no HTML tags or `&amp;`-style entities).
+- [ ] Type into the expanded Alt text and Caption fields → each keystroke lands in the field, the caret stays put, and the row does not collapse or start dragging. (Regression: a `List` row's drag gesture otherwise steals mouse-down from the `TextField`.)
+- [ ] With a row expanded, try to drag it by its grip → it does **not** reorder (expanded rows are `moveDisabled`). Hover the grip → the row collapses, and dragging then works normally.
+- [ ] Expand a row, then deselect that image in the media grid, then re-select it → its row comes back **collapsed** and draggable, not still expanded (regression: expanded state leaking after deselect).
+- [ ] Set alt text and captions on 2+ images, reorder them, click Insert Gallery → check code view: each `alt=""` and `<figcaption class="wp-element-caption">` is attached to the correct image, in the displayed order.
+- [ ] Enter alt text and a caption containing `&`, `<b>bold</b>` and a double quote → insert → code view shows them escaped as text, not as live markup, and the gallery card renders normally.
+- [ ] Leave alt text and caption blank on an image → insert → that image's markup has `alt=""` and no `<figcaption>` at all.
+- [ ] After editing alt text/caption in the sheet, check the image in the WordPress media library (or the Media tab) → its library alt text and caption are **unchanged** (sheet edits are insert-time only).
+- [ ] Insert a captioned gallery, make an unrelated visual edit elsewhere in the post, save, re-fetch the raw content → all captions and alts are still present and not duplicated.
 - [ ] Save a post containing a sheet-inserted gallery, then make an unrelated visual edit elsewhere in the post and save again → re-fetch the raw content and confirm the gallery block comments are still present (this is the fix for the previous `_rawHTML`-only silent-drop behavior).
 - [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a read-only thumbnail-grid card, not exploded into individual resizable images. Clicking it does not open `GallerySheet` (insert-only for v1).
 - [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
@@ -1675,7 +1739,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
 | 88 | `APIError`/`AnthropicError` share one `NetworkErrorHeuristics.isConnectivityFailure` substring check instead of two independently-maintained copies | ✅ `AnthropicClientTests.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
-| 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (9 tests) + `galleryBlock` load/round-trip tests (8 tests) + 👁 §7.4 |
+| 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (16 tests) + `galleryBlock` load/round-trip tests (13 tests) + 👁 §7.4 |
 | 90 | `galleryBlock.parseHTML` never returns `false`/degrades to standalone images for a gallery it can partially handle (e.g. captions) — only for zero-image-figure input | ✅ `galleryBlock` — verbatim re-render tests (2 tests, caption preserved via `sourceHTML`) |
 | 91 | `toWordPressHTML`'s upfront strip of pre-existing `wp:embed`/`wp:gallery`/`wp:image` comments uses a non-greedy attrs match (`[\s\S]*?-->`) so it can't span past the first comment's close and delete image figures between two adjacent comments with no newline separator (a loaded gallery's `sourceHTML` has no such guarantee, unlike this function's own freshly-wrapped output), and stays immune to a stray `\r` before a comment's own `-->` (JS `.` excludes all line terminators, not just `\n`, so a `.*?` group — unlike `[\s\S]*?` — would fail to match at all in that case) | ✅ `toWordPressHTML — gallery.'stripping pre-existing wp:image comments does not consume the images between them'` + `.'stripping a pre-existing wp:gallery comment works even with a CR before its closing -->'` |
 | 92 | Tiptap's default gap-cursor widget (black horizontal bar) is restyled via CSS to the app's blue vertical caret wherever the caret sits next to an atomic `galleryBlock`/`embedBlock` node — fixed at the CSS layer, not by inserting/stripping a synthetic trailing paragraph in the doc model | ✅ `gap-cursor styling` (1 test) + `window.insertGallery bridge function.'inserting at the end of the doc does not synthesize a trailing paragraph'` + 👁 §7.4 |
@@ -1690,6 +1754,10 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 101 | `toWordPressHTML`'s unconditional whole-tree passes (comment-strip regex, plus heading/cite/figure/list/table/footnote normalization) can't distinguish Quill's own content from a `gutenbergPassthrough` subtree's nested content — passthrough elements are stashed out via placeholder divs *before any pass runs* and spliced back in verbatim only after every pass has completed, so a `wp:group` wrapping a real `wp:image` keeps its nested comment, and a nested `<h3>`/`<cite>`/`<figcaption>` is never mutated by the heading-class/empty-cite/empty-figcaption passes. Splicing back too early (right after the comment-strip alone) was an initial-implementation regression caught in code review — only the comment regex was shielded, not the other passes | ✅ `toWordPressHTML — passthrough blocks` (8 JS tests, incl. nested `wp:image`/`wp:gallery` regressions and the byte-for-byte heading/cite/figcaption guard) + `test-editor-passthrough.js` `'nested media blocks survive save'` (2 tests) |
 | 102 | `RenderedString.editorHTML`'s classic-vs-block content heuristic checks for a `wp-block-` class substring, not just `<!-- wp:` comments and `<p>` tags — without it, a post consisting entirely of class-only Gutenberg block markup (`gutenbergPassthrough`'s target case: no comment, no paragraph) was misclassified as classic content and corrupted by `wpautop()` before the JS-side parser ever saw it, defeating the passthrough feature's byte-for-byte round-trip on the very next load | ✅ `WPPostDecodingTests.classOnlyGutenbergBlockContentUnchanged` |
 | 103 | `formatHTML`'s `BLOCK` set gained `div` so `gutenbergPassthrough`'s nested divs indent correctly in code view, but this also reformats the pre-existing `EmbedBlock` wrapper div (whose only child is a text node with literal `'\n'+url+'\n'`) — without trimming, the URL and closing `</div>` land on unindented lines below the opening tag. Fixed by trimming a block tag's text content when it has no element children at all | ✅ `formatHTML — nested block elements.'a div with only raw-newline text content...'` |
+| 104 | The greedy-comment-strip regression class (row 91) re-exercised **with captions present**: a `<figcaption>` puts another element between two adjacent `wp:image` comments inside a loaded gallery's verbatim `sourceHTML`, which every debounced save re-runs `toWordPressHTML` over. A caption must not be hoisted onto the gallery wrapper, attached to the wrong image, duplicated, or consumed along with its image figure by an unrelated edit elsewhere in the doc | ✅ `galleryBlock — captions survive load → edit → save` (2 tests) + `toWordPressHTML — gallery.'a gallery caption stays the last child of its own nested image figure'` + `.'each gallery caption is wrapped inside its own wp:image comment pair'` + `.'wrapping a captioned gallery is idempotent'` + 👁 §7.4 |
+| 105 | Per-image gallery alt text and captions come straight from `TextField`s in `GallerySheet`, so both are serialized as data, never markup: the caption is written with `textContent` (never `innerHTML`) and the alt attribute value can't be broken out of by embedded quotes or tags. Alts also stay bound to their own image in payload order, and an omitted alt still emits `alt=""` rather than dropping the attribute (an accessibility regression, not a cosmetic diff) | ✅ `galleryBlock — per-image captions.'caption text containing markup is escaped, not injected'` + `.'alt text containing quotes and markup is escaped, not injected'` + `.'each per-image alt lands on its own img, in order'` + `.'an omitted alt still emits an empty alt attribute'` + 👁 §7.4 |
+| 106 | `WPMedia.captionText` reads `caption.raw` only (via `RenderedString.excerptText`) and returns `""` for a rendered-only payload — the gallery sheet's Caption field prefills with plain text or nothing, never with the `<p>`-wrapped `rendered` HTML WordPress returns outside `context=edit` | ✅ `WPMediaDecodingTests.captionDecodesPlainTextFromRaw` + `.captionRawHasHTMLStrippedAndEntitiesDecoded` + `.captionWithOnlyRenderedYieldsEmptyText` + `.missingCaptionIsNilAndTextIsEmpty` + 👁 §7.4 |
+| 107 | `GallerySheet.toggle(_:)` removes the image's id from `expandedIDs` when deselecting, so expanded state can't leak: re-selecting the same image previously brought its row back already expanded — and therefore already `moveDisabled`, silently unable to be drag-reordered. An expanded row is `moveDisabled(true)` because a `List` row's drag gesture otherwise steals mouse-down from the inline `TextField`s; hovering the drag grip collapses the row to restore dragging. No SwiftUI test harness exists for any of this | 👁 §7.4 (expand a row, deselect it in the grid, re-select it → collapsed and draggable; and: expand a row, confirm dragging is disabled, hover the grip, confirm it collapses and drags) |
 
 ---
 
@@ -1700,4 +1768,5 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **onDisappear flush (§7.9):** The `onDisappear` closure fires in the SwiftUI view lifecycle, which can't be triggered from Swift Testing. Manual steps cover local-draft-to-Media and remote-post-to-Media scenarios.
 - **Preview URL on plain-permalink sites (§7.8):** `previewURL` logic is fully unit-tested; the manual step verifies the resulting URL actually loads in the browser on a real site.
 - **Insert-image picker file filter (§7.4):** `NSOpenPanel.allowedContentTypes` is an AppKit call; the panel itself can only be verified by running the app.
+- **`GallerySheet`'s expandable alt/caption rows (§7.4):** the chevron expand/collapse, `moveDisabled` while expanded, the grip-hover collapse, and expanded state clearing on deselect are all SwiftUI `List` row behavior with no test harness. The values those fields produce *are* covered end-to-end on the JS side; only the interaction is manual.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
