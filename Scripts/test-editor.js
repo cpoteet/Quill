@@ -912,6 +912,42 @@ describe('toWordPressHTML — gallery', () => {
     assert.equal(wp(once), once)
   })
 
+  // Captions inside a gallery are normalized by the generic figure pass, which
+  // excludes the gallery wrapper itself but still reaches its nested image
+  // figures. These guard that behavior, which is why galleryBlock can emit
+  // captions without toWordPressHTML needing a gallery-specific caption pass.
+  const CAPTIONED_GALLERY =
+    '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="" class="wp-image-145">' +
+    '<figcaption class="wp-element-caption">First caption</figcaption></figure>' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/b.png" alt="" class="wp-image-146"></figure>' +
+    '</figure>'
+
+  test('gallery image captions survive the save transform', () => {
+    const out = wp(CAPTIONED_GALLERY)
+    assert.match(out, /<figcaption class="wp-element-caption">First caption<\/figcaption>/)
+  })
+
+  test('a captionless gallery image gains no figcaption', () => {
+    const out = wp(CAPTIONED_GALLERY)
+    assert.equal((out.match(/<figcaption/g) || []).length, 1)
+  })
+
+  test('an unclassed gallery caption gains wp-element-caption', () => {
+    const out = wp(CAPTIONED_GALLERY.replace(' class="wp-element-caption"', ''))
+    assert.match(out, /<figcaption class="wp-element-caption">First caption<\/figcaption>/)
+  })
+
+  test('an empty gallery caption is removed', () => {
+    const withEmpty = CAPTIONED_GALLERY.replace('First caption', '')
+    assert.doesNotMatch(wp(withEmpty), /<figcaption/)
+  })
+
+  test('wrapping a captioned gallery is idempotent', () => {
+    const once = wp(CAPTIONED_GALLERY)
+    assert.equal(wp(once), once)
+  })
+
   test('outer gallery figure does not gain wp-block-image class', () => {
     const out = wp(GALLERY_FIGURE)
     const outerTag = out.slice(out.indexOf('<figure class="wp-block-gallery'))
