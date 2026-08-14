@@ -1,7 +1,20 @@
 import SwiftUI
 
+/// One image queued for insertion, with the alt text and caption that will be
+/// written into this gallery's markup. Seeded from the media library item;
+/// edits here never write back to the library.
+///
+/// `public` because `GallerySheet.init` is public and its `onInsert` closure
+/// references this type.
+public struct GallerySelection: Identifiable {
+    public let media: WPMedia
+    public var alt: String
+    public var caption: String
+    public var id: Int { media.id }
+}
+
 public struct GallerySheet: View {
-    var onInsert: (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void
+    var onInsert: (_ images: [GallerySelection], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void
     var onCancel: (() -> Void)?
 
     @EnvironmentObject private var appState: AppState
@@ -13,14 +26,14 @@ public struct GallerySheet: View {
     @State private var currentPage: Int = 1
     @State private var hasMore: Bool = false
     @State private var isLoadingMore = false
-    @State private var selected: [WPMedia] = []
+    @State private var selected: [GallerySelection] = []
     @State private var columns: Int = 3
     @State private var cropped: Bool = true
     @State private var linkTo: String = "none"
     @State private var sizeSlug: String = "large"
 
     public init(
-        onInsert: @escaping (_ images: [WPMedia], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void,
+        onInsert: @escaping (_ images: [GallerySelection], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void,
         onCancel: (() -> Void)? = nil
     ) {
         self.onInsert = onInsert
@@ -131,12 +144,12 @@ public struct GallerySheet: View {
                         .padding(.horizontal, 12)
                 } else {
                     List {
-                        ForEach(selected) { media in
+                        ForEach(selected) { sel in
                             HStack(spacing: 8) {
                                 Image(systemName: "line.3.horizontal")
                                     .font(.system(size: 11))
                                     .foregroundStyle(.tertiary)
-                                AsyncImage(url: URL(string: media.thumbnailURL)) { phase in
+                                AsyncImage(url: URL(string: sel.media.thumbnailURL)) { phase in
                                     if case .success(let image) = phase {
                                         image.resizable().aspectRatio(contentMode: .fill)
                                     } else {
@@ -145,12 +158,12 @@ public struct GallerySheet: View {
                                 }
                                 .frame(width: 32, height: 32)
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
-                                Text(media.title.decodedTitle)
+                                Text(sel.media.title.decodedTitle)
                                     .font(.system(size: 12))
                                     .lineLimit(1)
                                 Spacer()
                                 Button {
-                                    selected.removeAll { $0.id == media.id }
+                                    selected.removeAll { $0.id == sel.id }
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(.secondary)
@@ -233,7 +246,9 @@ public struct GallerySheet: View {
         if let idx = selected.firstIndex(where: { $0.id == media.id }) {
             selected.remove(at: idx)
         } else {
-            selected.append(media)
+            selected.append(
+                GallerySelection(media: media, alt: media.altText, caption: media.captionText)
+            )
         }
     }
 
@@ -248,7 +263,9 @@ public struct GallerySheet: View {
             do {
                 let uploaded = try await uploadPickedImage(url, credentials: creds)
                 mediaItems.insert(uploaded, at: 0)
-                selected.append(uploaded)
+                selected.append(
+                    GallerySelection(media: uploaded, alt: uploaded.altText, caption: uploaded.captionText)
+                )
             } catch {
                 uploadError = error.localizedDescription
             }

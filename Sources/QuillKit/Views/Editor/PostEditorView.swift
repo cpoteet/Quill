@@ -176,13 +176,14 @@ public struct PostEditorView: View {
                     .frame(minWidth: 600, minHeight: 400)
                 }
                 .sheet(isPresented: $showGallerySheet) {
-                    GallerySheet(onInsert: { images, columns, cropped, linkTo, sizeSlug in
-                        let imagePayload: [[String: Any]] = images.map { media in
+                    GallerySheet(onInsert: { selections, columns, cropped, linkTo, sizeSlug in
+                        let imagePayload: [[String: Any]] = selections.map { sel in
                             [
-                                "id": media.id,
-                                "url": media.sizedURL(for: sizeSlug),
-                                "fullUrl": media.sourceURL,
-                                "alt": media.altText,
+                                "id": sel.media.id,
+                                "url": sel.media.sizedURL(for: sizeSlug),
+                                "fullUrl": sel.media.sourceURL,
+                                "alt": sel.alt,
+                                "caption": sel.caption,
                             ]
                         }
                         let info: [String: Any] = [
