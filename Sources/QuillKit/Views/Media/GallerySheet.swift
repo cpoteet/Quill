@@ -323,6 +323,9 @@ public struct GallerySheet: View {
 
     private func toggle(_ media: WPMedia) {
         if let idx = selected.firstIndex(where: { $0.id == media.id }) {
+            // Drop the expanded state too, or re-selecting this image later brings
+            // its row back already expanded (and moveDisabled) with no user action.
+            expandedIDs.remove(media.id)
             selected.remove(at: idx)
         } else {
             selected.append(
