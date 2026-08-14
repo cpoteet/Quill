@@ -407,9 +407,102 @@ describe('galleryBlock — per-image captions', () => {
     assert.equal(fig.children[1].tagName, 'FIGCAPTION')
   })
 
-  test('a per-image alt override lands on the img', () => {
-    const html = insert([{ id: 1, url: 'http://x.test/a.png', alt: 'Overridden alt' }])
-    assert.match(html, /alt="Overridden alt"/)
+  test('each per-image alt lands on its own img, in order', () => {
+    const html = insert([
+      { id: 1, url: 'http://x.test/a.png', alt: 'First alt' },
+      { id: 2, url: 'http://x.test/b.png', alt: '' },
+      { id: 3, url: 'http://x.test/c.png', alt: 'Third alt' },
+    ])
+    const doc = new win.DOMParser().parseFromString(html, 'text/html')
+    const imgs = doc.querySelectorAll('figure.wp-block-gallery img')
+    assert.deepEqual(
+      Array.from(imgs, i => i.getAttribute('alt')),
+      ['First alt', '', 'Third alt']
+    )
+  })
+
+  test('an omitted alt still emits an empty alt attribute', () => {
+    // WordPress markup always carries alt=""; a missing attribute would be an
+    // accessibility regression, not just a cosmetic diff.
+    const html = insert([{ id: 1, url: 'http://x.test/a.png' }])
+    const doc = new win.DOMParser().parseFromString(html, 'text/html')
+    const img = doc.querySelector('figure.wp-block-gallery img')
+    assert.equal(img.getAttribute('alt'), '')
+  })
+
+  test('alt text containing quotes and markup is escaped, not injected', () => {
+    // Alt comes straight from a TextField in GallerySheet, same as caption.
+    // Attribute serialization must not let it break out of the quoted value.
+    const raw = 'Bob & "Al" <b>bold</b>'
+    const html = insert([{ id: 1, url: 'http://x.test/a.png', alt: raw }])
+    const doc = new win.DOMParser().parseFromString(html, 'text/html')
+    const fig = doc.querySelector('figure.wp-block-image')
+    assert.equal(fig.querySelector('img').getAttribute('alt'), raw)
+    assert.equal(fig.querySelector('b'), null, 'no element escaped out of the alt attribute')
+    assert.equal(fig.children.length, 1, 'nothing extra was injected into the figure')
+  })
+})
+
+describe('galleryBlock — alt and caption round-trip (insert → save → re-parse)', () => {
+  const images = [
+    { id: 1, url: 'http://x.test/a.png', fullUrl: 'http://x.test/a-full.png', alt: 'Alt one', caption: 'Cap one' },
+    { id: 2, url: 'http://x.test/b.png', alt: '', caption: '' },
+    { id: 3, url: 'http://x.test/c.png', alt: 'Bob & "Al" <b>', caption: 'Tom & <em>Jerry</em>' },
+  ]
+
+  const galleryAttrs = () => {
+    let attrs = null
+    editor.state.doc.descendants(node => {
+      if (node.type.name === 'galleryBlock') attrs = node.attrs
+    })
+    return attrs
+  }
+
+  // The exact payload PostEditorView builds from GallerySelection — one dict per
+  // image with id/url/fullUrl/alt/caption — handed to window.insertGallery.
+  const insertViaBridge = () => {
+    editor.commands.setContent('<p></p>')
+    win.insertGallery(JSON.stringify({
+      images, columns: 3, cropped: true, linkTo: 'none', sizeSlug: 'large',
+    }))
+  }
+
+  // Attr arrays are created inside the jsdom realm, so their prototype is not
+  // node's Array — re-materialize with node's Array.from before deep-comparing.
+  const pluck = (images, key) => Array.from(images, i => i[key])
+
+  test('alt and caption from the JSON bridge payload reach the node attrs', () => {
+    insertViaBridge()
+    const got = galleryAttrs().images
+    assert.deepEqual(pluck(got, 'alt'), ['Alt one', '', 'Bob & "Al" <b>'])
+    assert.deepEqual(pluck(got, 'caption'), ['Cap one', '', 'Tom & <em>Jerry</em>'])
+  })
+
+  test('alt and caption survive save and re-parse, per image and in order', () => {
+    insertViaBridge()
+    const saved = win.toWordPressHTML(editor.getHTML())
+    editor.commands.setContent(saved, false)
+    const got = galleryAttrs().images
+    assert.deepEqual(pluck(got, 'id'), [1, 2, 3])
+    assert.deepEqual(pluck(got, 'alt'), ['Alt one', '', 'Bob & "Al" <b>'])
+    assert.deepEqual(pluck(got, 'caption'), ['Cap one', '', 'Tom & <em>Jerry</em>'])
+  })
+
+  test('each caption is saved inside its own wp:image comment pair', () => {
+    insertViaBridge()
+    const saved = win.toWordPressHTML(editor.getHTML())
+    // Split on the opening comment: segment i+1 is image i's own block.
+    const blocks = saved.split('<!-- wp:image ').slice(1)
+    assert.equal(blocks.length, 3)
+    assert.match(blocks[0], /<figcaption class="wp-element-caption">Cap one<\/figcaption>[\s\S]*<!-- \/wp:image -->/)
+    assert.doesNotMatch(blocks[1].split('<!-- /wp:image -->')[0], /figcaption/)
+    assert.match(blocks[2], /<figcaption class="wp-element-caption">Tom &amp; &lt;em&gt;Jerry&lt;\/em&gt;<\/figcaption>/)
+  })
+
+  test('saving a captioned gallery is idempotent', () => {
+    insertViaBridge()
+    const once = win.toWordPressHTML(editor.getHTML())
+    assert.equal(win.toWordPressHTML(once), once)
   })
 })
 
@@ -444,5 +537,50 @@ describe('galleryBlock — parsing captions from loaded galleries', () => {
   test('a loaded gallery still re-renders verbatim from sourceHTML', () => {
     editor.commands.setContent(LOADED, false)
     assert.match(editor.getHTML(), /<figcaption class="wp-element-caption">Loaded caption<\/figcaption>/)
+  })
+})
+
+describe('galleryBlock — captions survive load → edit → save', () => {
+  // Every debounced save runs toWordPressHTML(editor.getHTML()) over the whole
+  // document, including a loaded gallery's verbatim sourceHTML. That is the path
+  // where the greedy comment-strip regex once ate the image figures between two
+  // wp:image comments; captions add another figcaption between them, so guard it
+  // with a multi-image, fully-captioned gallery and a real intervening edit.
+  const LOADED_TWO_CAPTIONS =
+    '<figure class="wp-block-gallery has-nested-images columns-2 is-cropped">' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/a.png" alt="A" class="wp-image-1">' +
+    '<figcaption class="wp-element-caption">Cap A</figcaption></figure>' +
+    '<figure class="wp-block-image size-large"><img src="http://x.test/b.png" alt="B" class="wp-image-2">' +
+    '<figcaption class="wp-element-caption">Cap B</figcaption></figure>' +
+    '</figure>'
+
+  const saveAfterEdit = () => {
+    editor.commands.setContent('<p>Intro</p>' + LOADED_TWO_CAPTIONS, false)
+    editor.commands.focus('start')
+    editor.commands.insertContent('X')   // an ordinary visual edit elsewhere in the doc
+    return win.toWordPressHTML(editor.getHTML())
+  }
+
+  test('both images and both captions are still there after an edit and save', () => {
+    const saved = saveAfterEdit()
+    const doc = new win.DOMParser().parseFromString(saved, 'text/html')
+    const figures = doc.querySelectorAll('figure.wp-block-gallery figure.wp-block-image')
+    assert.equal(figures.length, 2, 'no image figure was consumed by the comment strip')
+    assert.deepEqual(
+      Array.from(figures, f => f.querySelector('figcaption').textContent),
+      ['Cap A', 'Cap B']
+    )
+    assert.deepEqual(
+      Array.from(figures, f => f.querySelector('img').getAttribute('alt')),
+      ['A', 'B']
+    )
+    assert.match(saved, /<p>XIntro<\/p>/, 'the intervening edit really happened')
+  })
+
+  test('the edited save is idempotent — captions do not duplicate or drift', () => {
+    const saved = saveAfterEdit()
+    assert.equal(win.toWordPressHTML(saved), saved)
+    assert.equal((saved.match(/<figcaption/g) || []).length, 2)
+    assert.equal((saved.match(/<!-- wp:image /g) || []).length, 2)
   })
 })

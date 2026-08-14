@@ -928,6 +928,31 @@ describe('toWordPressHTML — gallery', () => {
     assert.match(out, /<figcaption class="wp-element-caption">First caption<\/figcaption>/)
   })
 
+  test('a gallery caption stays the last child of its own nested image figure', () => {
+    // Substring presence is not enough: the caption must not be hoisted onto the
+    // gallery wrapper, reordered ahead of its <img>, or attached to the wrong image.
+    const box = document.createElement('div')
+    box.innerHTML = wp(CAPTIONED_GALLERY)
+    const gallery = box.querySelector('figure.wp-block-gallery')
+    assert.equal(gallery.querySelector(':scope > figcaption'), null, 'not hoisted onto the wrapper')
+    const figures = gallery.querySelectorAll('figure.wp-block-image')
+    assert.equal(figures.length, 2)
+    assert.equal(figures[0].children[0].tagName, 'IMG')
+    assert.equal(figures[0].lastElementChild.tagName, 'FIGCAPTION')
+    assert.equal(figures[0].lastElementChild.textContent, 'First caption')
+    assert.equal(figures[1].querySelector('figcaption'), null)
+  })
+
+  test('each gallery caption is wrapped inside its own wp:image comment pair', () => {
+    const out = wp(CAPTIONED_GALLERY)
+    const blocks = out.split('<!-- wp:image ').slice(1)
+    assert.equal(blocks.length, 2)
+    const firstBlock = blocks[0].split('<!-- /wp:image -->')[0]
+    const secondBlock = blocks[1].split('<!-- /wp:image -->')[0]
+    assert.match(firstBlock, /<figcaption class="wp-element-caption">First caption<\/figcaption>/)
+    assert.doesNotMatch(secondBlock, /figcaption/)
+  })
+
   test('a captionless gallery image gains no figcaption', () => {
     const out = wp(CAPTIONED_GALLERY)
     assert.equal((out.match(/<figcaption/g) || []).length, 1)
