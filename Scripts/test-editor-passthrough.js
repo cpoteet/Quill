@@ -335,7 +335,16 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
     const out = win.toWordPressHTML(editor.getHTML())
     const doc = new JSDOM('<body>' + out + '</body>').window.document
-    assert.ok(doc.querySelector('figure.wp-block-audio > audio[src="http://x/a.mp3"]'))
+    const fig = doc.querySelector('figure.wp-block-audio')
+    assert.ok(fig, 'the audio figure survived')
+    assert.ok(fig.querySelector(':scope > audio[src="http://x/a.mp3"]'), 'the <audio> is still a direct child')
+    const cap = fig.querySelector(':scope > figcaption.wp-element-caption')
+    assert.ok(cap, 'the caption stayed a figcaption inside the figure')
+    assert.equal(cap.textContent, 'Cap')
+    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
+    // The generic figure pass adds wp-block-image to any figure containing an
+    // <img>; an audio figure has none, but the class must not appear regardless.
+    assert.ok(!fig.classList.contains('wp-block-image'))
   })
 
   test('a video figure is preserved rather than emptied', () => {
@@ -350,9 +359,19 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     win.setContent(PULLQUOTE_FIGURE)
     assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
     assert.equal(nodesOfType('blockquote').length, 0)
+    assert.equal(nodesOfType('cite').length, 0)
     const out = win.toWordPressHTML(editor.getHTML())
-    assert.match(out, /<figure class="wp-block-pullquote">/)
-    assert.doesNotMatch(out, /wp-block-quote/)
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-pullquote')
+    assert.ok(fig, 'the pullquote figure survived')
+    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
+    const bq = fig.querySelector(':scope > blockquote')
+    assert.ok(bq, 'the blockquote is still nested inside the figure')
+    assert.equal(bq.querySelector(':scope > p').textContent, 'Big idea')
+    assert.equal(bq.querySelector(':scope > cite').textContent, 'Someone')
+    // The blockquote pass would stamp wp-block-quote on a shredded pullquote,
+    // and the cite pass would delete an empty <cite>; the stash shields both.
+    assert.ok(!bq.classList.contains('wp-block-quote'))
   })
 })
 
@@ -389,5 +408,92 @@ describe('gutenbergPassthrough — modeled figures still go to their own nodes',
     win.setContent('<figure class="wp-block-table"><table><tbody><tr><td>x</td></tr></tbody></table></figure>')
     assert.equal(nodesOfType('table').length, 1)
     assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+})
+
+describe('gutenbergPassthrough - figure blocks and the rest of the document', () => {
+  // Every test here leaves the doc ending on a passthrough atom, which triggers
+  // the documented one-shot setContent no-op. Absorb it before each test.
+  beforeEach(() => { win.setContent('<p></p>') })
+
+  test('a playlist figure is stable across repeated load/save cycles', () => {
+    // The wp:name comment regeneration pass wraps passthrough elements on every
+    // save; a second pass must not stack a second comment pair or drop the
+    // nested wp:playlist-track comments.
+    win.setContent(PLAYLIST_71)
+    // Clear _rawHTML so getContent() actually re-runs toWordPressHTML.
+    editor.commands.insertContentAt(editor.state.doc.content.size, '<p>edit</p>')
+    const first = win.getContent()
+    win.setContent(first)
+    editor.commands.insertContentAt(editor.state.doc.content.size, '<p>edit</p>')
+    const second = win.getContent()
+
+    const count = (hay, needle) => hay.split(needle).length - 1
+    assert.equal(count(first, '<!-- wp:playlist '), 1, 'exactly one opening comment on the first save')
+    assert.equal(count(first, '<!-- /wp:playlist -->'), 1)
+    assert.equal(count(first, '<!-- wp:playlist-track '), 1, 'the nested track comment survived')
+    assert.equal(count(second, '<!-- wp:playlist '), 1, 'the second save did not stack a second comment pair')
+    assert.equal(count(second, '<!-- /wp:playlist -->'), 1)
+    assert.equal(count(second, '<!-- wp:playlist-track '), 1)
+    assert.equal(
+      count(second, '<figure class="wp-block-playlist">'),
+      1,
+      'the figure was not duplicated'
+    )
+  })
+
+  test('passthrough figures keep their position among modeled blocks', () => {
+    win.setContent(
+      '<p>before</p>\n' +
+      AUDIO_FIGURE + '\n' +
+      '<h2>middle</h2>\n' +
+      '<figure class="wp-block-image"><img src="http://x/b.jpg"></figure>\n' +
+      '<p>after</p>'
+    )
+    const types = []
+    editor.state.doc.forEach(n => types.push(n.type.name))
+    assert.deepEqual(types, ['paragraph', 'gutenbergPassthrough', 'heading', 'image', 'paragraph'])
+
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const shape = Array.from(doc.body.children).map(
+      el => el.tagName.toLowerCase() + (el.className ? '.' + el.className.trim().split(/\s+/)[0] : '')
+    )
+    assert.deepEqual(shape, ['p', 'figure.wp-block-audio', 'h2.wp-block-heading', 'figure.wp-block-image', 'p'])
+    assert.equal(doc.querySelector('figure.wp-block-image img').getAttribute('src'), 'http://x/b.jpg')
+  })
+
+  test('an unmodeled figure containing an img is not rewritten into an image block', () => {
+    // toWordPressHTML stamps wp-block-image on any figure holding an <img>.
+    // A third-party figure block must be shielded from that pass, or a plugin's
+    // markup silently turns into a core image block on the next save.
+    const THIRD_PARTY =
+      '<figure class="wp-block-acme-lightbox" data-zoom="true">' +
+      '<img src="http://x/c.jpg" class="acme-thumb"><figcaption></figcaption></figure>'
+    win.setContent(THIRD_PARTY)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(nodesOfType('image').length, 0)
+
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-acme-lightbox')
+    assert.ok(fig, 'the third-party figure survived')
+    assert.ok(!fig.classList.contains('wp-block-image'), 'not restamped as a core image block')
+    assert.equal(fig.getAttribute('data-zoom'), 'true', 'arbitrary attributes preserved')
+    assert.ok(fig.querySelector(':scope > figcaption'), 'the empty figcaption was not pruned')
+    assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes do not leak into saved HTML')
+  })
+
+  test('a classic figure with no wp-block class still parses as an image', () => {
+    // The new figure rule selector is [class*="wp-block-"]; classic-editor
+    // markup has no such class and must keep reaching the bare img[src] rule.
+    win.setContent('<figure><img src="http://x/d.jpg" alt="Classic"></figure>')
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+    assert.equal(nodesOfType('image').length, 1)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const img = doc.querySelector('figure.wp-block-image > img')
+    assert.ok(img, 'promoted to a Gutenberg image figure on save')
+    assert.equal(img.getAttribute('alt'), 'Classic')
   })
 })

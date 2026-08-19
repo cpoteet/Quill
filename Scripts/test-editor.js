@@ -3,7 +3,7 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -118,6 +118,76 @@ describe('parsePassthroughBlock', () => {
     const result = parsePassthroughBlock(target)
     assert.equal(result.blockName, null)
     assert.equal(result.blockLabel, 'Accordion')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// isModeledFigure
+// ---------------------------------------------------------------------------
+
+describe('isModeledFigure', () => {
+  function fig(html) {
+    const host = document.createElement('div')
+    host.innerHTML = html
+    return host.firstElementChild
+  }
+
+  test('the modeled-figure set is exactly image, gallery, embed and table', () => {
+    // Drift guard: adding a class here without giving that figure its own
+    // Tiptap parse rule silently hands the block to the generic parser, which
+    // shreds it. Removing one freezes that block into a passthrough card.
+    assert.deepEqual(
+      Array.from(QUILL_MODELED_FIGURE_CLASSES).sort(),
+      ['wp-block-embed', 'wp-block-gallery', 'wp-block-image', 'wp-block-table']
+    )
+  })
+
+  test('every class in the set is recognised on a figure', () => {
+    for (const cls of QUILL_MODELED_FIGURE_CLASSES) {
+      assert.equal(isModeledFigure(fig('<figure class="' + cls + '"></figure>')), true, cls)
+    }
+  })
+
+  test('figure blocks Quill does not model are not exempted', () => {
+    const unmodeled = [
+      'wp-block-audio', 'wp-block-video', 'wp-block-pullquote',
+      'wp-block-playlist', 'wp-block-media-text',
+    ]
+    for (const cls of unmodeled) {
+      assert.equal(isModeledFigure(fig('<figure class="' + cls + '"></figure>')), false, cls)
+    }
+  })
+
+  test('a modeled class alongside WordPress size/align classes still counts', () => {
+    assert.equal(
+      isModeledFigure(fig('<figure class="wp-block-image size-large alignwide is-resized"></figure>')),
+      true
+    )
+  })
+
+  test('matching is per-class, not substring', () => {
+    // The parse rule selector is substring-based ([class*="wp-block-"]), so a
+    // third-party block whose name merely starts with a modeled one must still
+    // reach passthrough rather than being handed to the image rule.
+    assert.equal(isModeledFigure(fig('<figure class="wp-block-image-slider"></figure>')), false)
+    assert.equal(isModeledFigure(fig('<figure class="wp-block-tableau"></figure>')), false)
+  })
+
+  test('a non-figure element carrying a modeled class is not exempted', () => {
+    // The figure-only parse rule is the sole caller; non-figure elements are
+    // filtered by QUILL_MODELED_BLOCK_CLASSES inside parsePassthroughBlock.
+    assert.equal(isModeledFigure(fig('<div class="wp-block-image"></div>')), false)
+    assert.equal(isModeledFigure(fig('<ul class="wp-block-gallery"></ul>')), false)
+  })
+
+  test('a figure with no wp-block class is not exempted', () => {
+    assert.equal(isModeledFigure(fig('<figure></figure>')), false)
+    assert.equal(isModeledFigure(fig('<figure class="wp-caption"></figure>')), false)
+  })
+
+  test('null and undefined are handled without throwing', () => {
+    assert.equal(isModeledFigure(null), false)
+    assert.equal(isModeledFigure(undefined), false)
   })
 })
 

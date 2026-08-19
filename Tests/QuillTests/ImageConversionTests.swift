@@ -63,6 +63,15 @@ import UniformTypeIdentifiers
         return CGImageSourceGetType(src) as String?
     }
 
+    private static func pixelSize(of url: URL) -> (width: Int, height: Int)? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int,
+              let h = props[kCGImagePropertyPixelHeight] as? Int
+        else { return nil }
+        return (w, h)
+    }
+
     // MARK: - HEIC conversion
 
     @Test func heicIsConvertedToJPEG() throws {
@@ -187,5 +196,84 @@ import UniformTypeIdentifiers
         #expect(prepared.filename == "photo.jpg")
         #expect(prepared.mimeType == "image/jpeg")
         #expect(Self.imageType(of: prepared.fileURL) == UTType.jpeg.identifier)
+    }
+
+    @Test func conversionPreservesPixelDimensions() throws {
+        // Type-only assertions would pass on a conversion that silently produced a
+        // thumbnail; the fixture is 64x32, and the upload must be the same picture.
+        let heic = try Self.writeImage(type: .heic)
+        let prepared = ImageConversion.prepareForUpload(heic)
+        defer { prepared.cleanup() }
+
+        let size = Self.pixelSize(of: prepared.fileURL)
+        #expect(size?.width == 64)
+        #expect(size?.height == 32)
+    }
+
+    @Test func uppercaseHEICExtensionIsConverted() throws {
+        // iPhone exports are named IMG_1234.HEIC, so the uppercase form is the
+        // common case in practice and must convert like any other HEIC.
+        let heic = try Self.writeImage(type: .heic)
+        let upper = heic.deletingLastPathComponent().appendingPathComponent("IMG_1234.HEIC")
+        try FileManager.default.moveItem(at: heic, to: upper)
+
+        let prepared = ImageConversion.prepareForUpload(upper)
+        defer { prepared.cleanup() }
+
+        #expect(prepared.didConvert)
+        #expect(prepared.filename == "IMG_1234.jpg")
+        #expect(prepared.mimeType == "image/jpeg")
+        #expect(Self.imageType(of: prepared.fileURL) == UTType.jpeg.identifier)
+    }
+
+    @Test func dotsInTheFilenameAreKeptAndOnlyTheExtensionIsReplaced() throws {
+        let heic = try Self.writeImage(type: .heic)
+        let dotted = heic.deletingLastPathComponent().appendingPathComponent("beach.day.2.heic")
+        try FileManager.default.moveItem(at: heic, to: dotted)
+
+        let prepared = ImageConversion.prepareForUpload(dotted)
+        defer { prepared.cleanup() }
+
+        #expect(prepared.filename == "beach.day.2.jpg")
+    }
+
+    @Test func twoFilesWithTheSameNameConvertToSeparateTempFiles() throws {
+        // PostEditorView converts every dropped file in one loop; two photos named
+        // photo.heic from different folders must not overwrite each other's output.
+        let first = try Self.writeImage(type: .heic, pixel: (10, 20, 30))
+        let second = try Self.writeImage(type: .heic, pixel: (200, 100, 50))
+        #expect(first.lastPathComponent == second.lastPathComponent)
+
+        let a = ImageConversion.prepareForUpload(first)
+        let b = ImageConversion.prepareForUpload(second)
+        defer { a.cleanup(); b.cleanup() }
+
+        #expect(a.fileURL != b.fileURL)
+        #expect(FileManager.default.fileExists(atPath: a.fileURL.path))
+        #expect(FileManager.default.fileExists(atPath: b.fileURL.path))
+    }
+
+    @Test func cleanupRemovesTheWholeTempDirectoryNotJustTheFile() throws {
+        // cleanup() deletes the file's parent directory, so the per-conversion
+        // directory must be exclusively ours or an upload would delete a real folder.
+        let heic = try Self.writeImage(type: .heic)
+        let prepared = ImageConversion.prepareForUpload(heic)
+        let directory = prepared.fileURL.deletingLastPathComponent()
+        #expect(directory != heic.deletingLastPathComponent())
+        #expect(FileManager.default.fileExists(atPath: directory.path))
+
+        prepared.cleanup()
+
+        #expect(!FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @Test func aFileWithNoExtensionPassesThroughWithoutCrashing() throws {
+        let bare = try Self.writeRawFile(named: "screenshot", bytes: Array("not an image".utf8))
+        let prepared = ImageConversion.prepareForUpload(bare)
+        defer { prepared.cleanup() }
+
+        #expect(!prepared.didConvert)
+        #expect(prepared.fileURL == bare)
+        #expect(prepared.filename == "screenshot")
     }
 }

@@ -474,4 +474,48 @@ describe('image marked as decorative (WP 7.1)', () => {
     assert.equal(imgs[0].attrs.imgRole, 'presentation')
     assert.match(editor.getHTML(), /role="presentation"/)
   })
+
+  test('a classic bare img keeps its role through the save transform', () => {
+    // The getHTML() assertion above stops short of the save path; role must
+    // land on the <img> of the figure toWordPressHTML promotes it into, not
+    // on the figure it just created.
+    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', false)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-image')
+    assert.ok(fig, 'promoted to a Gutenberg image figure')
+    assert.ok(!fig.hasAttribute('role'), 'role stays on the img, not the figure')
+    assert.equal(fig.querySelector(':scope > img').getAttribute('role'), 'presentation')
+  })
+
+  test('role stays on the img when the image also links to its full size', () => {
+    // renderHTML nests the img inside an <a> for linkTo: 'media'. The role is
+    // an image semantic, so it must not migrate onto the anchor.
+    const html = '<figure class="wp-block-image size-large">' +
+      '<a href="http://x/p-full.jpg"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"></a>' +
+      '<figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.attrs.imgRole, 'none')
+    assert.equal(node.attrs.linkTo, 'media')
+
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const a = doc.querySelector('figure.wp-block-image > a')
+    assert.ok(a, 'the link wrapper survived')
+    assert.equal(a.getAttribute('href'), 'http://x/p-full.jpg')
+    assert.ok(!a.hasAttribute('role'), 'role did not migrate onto the anchor')
+    const img = a.querySelector(':scope > img')
+    assert.ok(img, 'the img is still nested inside the anchor')
+    assert.equal(img.getAttribute('role'), 'none')
+  })
+
+  test('an empty role attribute is dropped rather than emitted as role=""', () => {
+    // Mirrors the empty-href handling for linkHref: '' is falsy, so imgRole
+    // parses to null and nothing is written back.
+    const html = '<figure class="wp-block-image"><img src="http://x/p.jpg" alt="" role=""><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    assert.equal(editor.state.doc.firstChild.attrs.imgRole, null)
+    assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /role=/)
+  })
 })

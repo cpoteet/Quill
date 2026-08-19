@@ -16,11 +16,12 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 334 tests across 22 suites)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (140 tests via Node's built-in runner + jsdom)
-3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (38 tests — live Tiptap editor in jsdom)
-4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (19 tests — live Tiptap editor in jsdom)
-5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (13 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (all 355 tests)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (162 tests via Node's built-in runner + jsdom)
+3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (45 tests — live Tiptap editor in jsdom)
+4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
+5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
+6. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -44,11 +45,13 @@ swift test --filter AIPromptBuilderTests
 node --test Scripts/test-editor.js
 ```
 
-Requires `node` and the `jsdom` package (already installed in the project root via `npm install`).
+Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/package.json` + `Scripts/node_modules/`), not the repo root — the root has no `package.json` at all.
 
 ---
 
-## Swift test suite (338 tests, 22 suites)
+## Swift test suite (355 tests, 23 suites)
+
+`swift test` reports 25 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -74,10 +77,11 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 7 | `isAllowedExternalURL` URL scheme allowlist |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 11 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
+| 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 
 ---
 
@@ -744,12 +748,41 @@ Tests the single shared `MimeType.forExtension`/`forFile` helper (backed by `UTT
 
 ---
 
-## JS editor tests (154 tests)
+### 23. API — `ImageConversionTests` (17 tests)
+
+File: `Tests/QuillTests/ImageConversionTests.swift`
+Source: `Sources/QuillKit/API/ImageConversion.swift`
+
+Tests `ImageConversion.prepareForUpload(_:)` and `Prepared.cleanup()`. WordPress 7.1 accepts HEIC over the REST API but cannot generate sub-sizes for it, so the attachment lands with no dimensions and no sizes; Quill converts HEIC/HEIF to JPEG locally before upload. Test images are written with ImageIO into a temp directory, so the suite exercises the real decode/re-encode path rather than a stub.
+
+| Test | What it checks |
+|---|---|
+| `heicIsConvertedToJPEG` | A `.heic` input comes back as a JPEG (`public.jpeg` type) with `didConvert == true` |
+| `heifExtensionIsConvertedToJPEG` | `.heif` is treated the same as `.heic` |
+| `uppercaseHEICExtensionIsConverted` | `IMG_1234.HEIC` (the real camera-roll casing) still converts — extension match is case-insensitive |
+| `convertedFilenameUsesJPGExtension` | Output filename swaps the extension to `.jpg` |
+| `dotsInTheFilenameAreKeptAndOnlyTheExtensionIsReplaced` | `my.photo.v2.heic` → `my.photo.v2.jpg`; only the final extension is replaced |
+| `conversionWritesToADifferentFileAndLeavesTheOriginalInPlace` | The source file is never mutated or moved |
+| `conversionPreservesEXIFOrientation` | Orientation metadata survives the re-encode, so photos do not upload sideways |
+| `conversionPreservesPixelDimensions` | Output pixel width/height match the input — guards against a silent downscale that an output-type-only assertion would miss |
+| `twoFilesWithTheSameNameConvertToSeparateTempFiles` | Two different `photo.heic` files converted in one pass land in separate per-upload temp directories and do not clobber each other |
+| `cleanupRemovesTheConvertedTempFile` | `cleanup()` deletes the converted file after upload |
+| `cleanupRemovesTheWholeTempDirectoryNotJustTheFile` | `cleanup()` removes the per-upload UUID directory, leaving no empty dirs behind |
+| `cleanupOnAPassedThroughFileDoesNotDeleteIt` | `cleanup()` is a no-op when nothing was converted — a user's own file on disk is never deleted |
+| `jpegPassesThroughUntouched` | `.jpg` returns the original URL, `didConvert == false` |
+| `pngPassesThroughUntouched` | `.png` passes through |
+| `pdfPassesThroughUntouched` | `.pdf` passes through (media library uploads are not images only) |
+| `unreadableHEICFallsBackToTheOriginalFile` | A file ImageIO cannot decode falls back to uploading the original — conversion never blocks an upload |
+| `aFileWithNoExtensionPassesThroughWithoutCrashing` | Extensionless file passes through instead of trapping |
+
+---
+
+## JS editor tests (162 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
 
-Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, `embedClassFor`, `passthroughLabelFromClass`, `passthroughLabelFromBlockName`, and `parsePassthroughBlock` from `editor-transforms.js`.
+Tests run under Node's built-in test runner with jsdom for DOM support. They test `toWordPressHTML`, `extractAlignment`, `formatHTML`, `countStats`, `findMatches`, `findMatchesLoose`, `fuzzyAnchorRegex`, `detectEmbedProvider`, `embedClassFor`, `passthroughLabelFromClass`, `passthroughLabelFromBlockName`, `parsePassthroughBlock`, and `isModeledFigure`/`QUILL_MODELED_FIGURE_CLASSES` from `editor-transforms.js`.
 
 ### `extractAlignment` (6 tests)
 
@@ -778,12 +811,18 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `ul gains wp-block-list` | `<ul>` → `wp-block-list` |
 | `ol gains wp-block-list` | `<ol>` → `wp-block-list` |
 
-### `toWordPressHTML` — list item `<p>` unwrapping (2 tests)
+### `toWordPressHTML` — list item `<p>` unwrapping (8 tests)
 
 | Test | What it checks |
 |---|---|
 | `single-child <p> inside <li> is unwrapped` | `<li><p>text</p></li>` → `<li>text</li>` |
 | `multi-child <li> is left untouched` | Two `<p>` in one `<li>` → unchanged |
+| `leading <p> is unwrapped when the rest of the <li> is a nested list` | `<li><p>text</p><ul>…</ul></li>` → text unwrapped, nested list kept |
+| `unwrapping works at every level of a deep nest` | Applies recursively, not just at the top level |
+| `ordered nested lists unwrap the same way` | `<ol>` nesting behaves identically to `<ul>` |
+| `a paragraph AFTER the nested list keeps the item untouched` | `<li><ul>…</ul><p>text</p></li>` → unchanged |
+| `an <li> whose first child is a list is left untouched` | Leading nested list → no unwrap |
+| `already-Gutenberg nested markup passes through unchanged` | Idempotency on markup WordPress already produced |
 
 ### `toWordPressHTML` — blockquote & cite (5 tests)
 
@@ -982,12 +1021,13 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `footnotes list does not get wp-block-list` | `<ol class="wp-block-footnotes">` → no `wp-block-list` added |
 | `ordinary ol still gets wp-block-list` | Regular `<ol>` without `wp-block-footnotes` still receives `wp-block-list` |
 
-### `toWordPressHTML` — footnote backrefs (3 tests)
+### `toWordPressHTML` — footnote backrefs (4 tests)
 
 | Test | What it checks |
 |---|---|
 | `marker sup gains id="ref-fn-UUID"` | Each `<sup data-fn="UUID">` gets `id="ref-fn-UUID"` added so backref anchors can target it |
 | `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
+| `backref arrow uses text-presentation variation selector, not emoji-presentation` | The ↩ renders as a glyph, not a color emoji |
 | `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
 
 ### `toWordPressHTML` — gallery (16 tests)
@@ -1036,6 +1076,21 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `element with adjacent wp:name comments including JSON attrs` | `blockName` and `attrsJSON` both recovered verbatim from the comment |
 | `mismatched open/close comment names are not treated as a pair` | Open/close comment names must match to be treated as a real wrapper; otherwise falls back to class-only label with `blockName: null` |
 
+### `isModeledFigure` (8 tests)
+
+`isModeledFigure(el)` answers the one question `gutenbergPassthrough`'s figure-only parse rule asks: is this `wp-block-*` figure one of the four Quill actually models (`QUILL_MODELED_FIGURE_CLASSES` — image, gallery, embed, table)? Everything else must fall through to a passthrough card instead of being shredded by the generic parser.
+
+| Test | What it checks |
+|---|---|
+| `the modeled-figure set is exactly image, gallery, embed and table` | Drift guard on `QUILL_MODELED_FIGURE_CLASSES` — adding a class without also giving that figure a real parse rule silently sends the block to the generic parser; removing one freezes a working block into a passthrough card |
+| `every class in the set is recognised on a figure` | Each modeled class → `true` |
+| `figure blocks Quill does not model are not exempted` | `wp-block-audio`/`video`/`pullquote`/`playlist`/`media-text` → `false`, so they reach passthrough |
+| `a modeled class alongside WordPress size/align classes still counts` | `wp-block-image size-large alignwide is-resized` → `true` |
+| `matching is per-class, not substring` | The parse selector is substring-based (`[class*="wp-block-"]`) while the exemption is exact `classList` membership, so `wp-block-image-slider` and `wp-block-tableau` → `false` (a third-party block must not be handed to the image/table rule) |
+| `a non-figure element carrying a modeled class is not exempted` | `div.wp-block-image`, `ul.wp-block-gallery` → `false` (non-figures are filtered separately) |
+| `a figure with no wp-block class is not exempted` | Bare `<figure>` and classic `figure.wp-caption` → `false` |
+| `null and undefined are handled without throwing` | Both → `false` |
+
 ### `toWordPressHTML` — passthrough blocks (8 tests)
 
 | Test | What it checks |
@@ -1051,7 +1106,7 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 ---
 
-## JS keyboard tests (38 tests)
+## JS keyboard tests (45 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1117,6 +1172,42 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 | `toggling linkTo back to none via setNodeMarkup clears linkHref too` | Regression: turning the link off also clears the stale `linkHref`, not just `linkTo` |
 | `classic (non-figure) linked image is detected via the bare img[src] parse rule` | Regression: pre-Gutenberg `<a href><img></a>` markup with no `figure.wp-block-image` wrapper still parses `linkTo`/`linkHref` (previously silently dropped the link on save) |
 | `an <a> wrapper with an empty href is not treated as a full-image link` | Regression: `<a href="">` around an image does not set `linkTo: 'media'` (previously showed the toggle as "on" for a link that wouldn't actually save) |
+
+### `class preservation through schema round-trip` (15 tests)
+
+Every block extension is wrapped by `withClassAttr()` so author-authored `class`/`id` attributes survive `setContent` → `getHTML()`. These tests assert that per node type, plus the filters that stop Quill's own managed classes from being duplicated into the preserved attribute.
+
+| Test | What it checks |
+|---|---|
+| `custom class on paragraph survives setContent/getHTML round-trip` | `<p class="...">` preserved |
+| `custom class on heading survives round-trip` | Heading class preserved |
+| `custom class on image figure survives round-trip` | `figure` class preserved |
+| `custom id on image figure survives round-trip` | `figure` `id` preserved |
+| `custom class on code block survives round-trip` | `<pre>`/`<code>` class preserved |
+| `custom class on list survives round-trip` | List class preserved |
+| `custom class on blockquote survives round-trip` | Blockquote class preserved |
+| `custom class on table element survives round-trip` | Table class preserved |
+| `wp-block-image class on figure is filtered from figureClass (not duplicated)` | Quill's own managed class is not re-added by the preservation attribute |
+| `custom class on img element survives round-trip` | `<img>` class preserved separately from the figure's |
+| `managed img classes (alignment, wp-image) are not duplicated in imgClass` | `alignleft`/`wp-image-N` are re-derived on save, not stored twice |
+| `custom class on cite survives round-trip` | `<cite>` class preserved |
+| `custom class on link survives round-trip` | `<a>` class preserved |
+| `custom class is not copied to new node on Enter (keepOnSplit)` | Splitting a block does not clone the author's class onto the new block |
+| `applyLink preserves existing link classes` | The link picker's `applyLink` keeps classes already on the anchor |
+
+### `image marked as decorative (WP 7.1)` (7 tests)
+
+WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<img>`. The `imgRole` attribute on `ResizableImage` parses it and round-trips it through `toWordPressHTML`, under both the `figure.wp-block-image` parse rule and the bare `img[src]` fallback.
+
+| Test | What it checks |
+|---|---|
+| `role="none" on the <img> parses into imgRole and round-trips` | `role` is read into the `imgRole` attr on load and re-emitted on the `<img>` |
+| `role survives the toWordPressHTML save transform` | The save transform does not strip the attribute while annotating the figure |
+| `an image with no role attribute emits no role on save` | No `role` is invented for images that never had one |
+| `role is preserved on a classic linked image with no figure wrapper` | The bare `img[src]` fallback rule also carries `role` through |
+| `a classic bare img keeps its role through the save transform` | Classic (non-Gutenberg) `<img>` markup keeps `role` on save |
+| `role stays on the img when the image also links to its full size` | With `linkTo: 'media'`, `role` lands on the `<img>` nested in the `<a>`, not on the anchor |
+| `an empty role attribute is dropped rather than emitted as role=""` | `role=""` is treated as absent, not serialized as an empty attribute |
 
 ---
 
@@ -1221,12 +1312,14 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
-## JS passthrough tests (13 tests)
+## JS passthrough tests (35 tests)
 
 File: `Scripts/test-editor-passthrough.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
 
 Tests load the real `editor.html` in jsdom and instantiate the live Tiptap editor via `window._tiptapEditor` — the same approach as the JS gallery/keyboard tests — because `gutenbergPassthrough`'s `parseHTML`/`renderHTML` can't be exercised through the pure `editor-transforms.js` helpers alone.
+
+`gutenbergPassthrough` has two parse rules: a non-figure catch-all (`[class*="wp-block-"]:not(figure)`) and, since 2026-08-19, a figure-only rule (`figure[class*="wp-block-"]`) that claims every `wp-block-*` figure except the four in `QUILL_MODELED_FIGURE_CLASSES`. Both halves are covered here, along with guards that neither rule steals an element a real node already claims.
 
 ### `gutenbergPassthrough` — class-only markup, no wp: comments (4 tests)
 
@@ -1251,7 +1344,7 @@ Tests load the real `editor.html` in jsdom and instantiate the live Tiptap edito
 | `a wp:image comment nested inside a passthrough wp:group survives getContent()` | A `wp:group` passthrough wrapping a real `wp:image` figure round-trips the nested `<!-- wp:image {"id":42} -->`/`<!-- /wp:image -->` comments and the `<img>` intact, with no `data-quill-passthrough*` marker leaking into the output |
 | `surviving through getContent() is stable across repeated saves (idempotent)` | Saving twice in a row produces byte-identical output |
 
-### `gutenbergPassthrough` — does not steal elements other rules already claim (5 tests)
+### `gutenbergPassthrough` — does not steal elements other rules already claim (11 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1260,6 +1353,52 @@ Tests load the real `editor.html` in jsdom and instantiate the live Tiptap edito
 | `a real embed figure still parses as embedBlock, not gutenbergPassthrough` | `figure.wp-block-embed` still parses as `embedBlock` |
 | `a table wrapped in figure.wp-block-table still parses as a table, not gutenbergPassthrough` | Regression guard for the precedence gap found during planning: the table's figure wrapper has no dedicated rule of its own and relies on `:not(figure)` to stay out of the catch-all's reach |
 | `a heading with a wp-block-heading class still parses as heading, not gutenbergPassthrough` | Bare-tag rules (heading, by extension list, quote, code, hr) keep winning regardless of their `wp-block-*` class |
+| `a wp-block-list <ul> still parses as a bulletList, not gutenbergPassthrough` | `ul.wp-block-list` → `bulletList` |
+| `a wp-block-list <ol> still parses as an orderedList, not gutenbergPassthrough` | `ol.wp-block-list` → `orderedList` |
+| `a wp-block-footnotes <ol> still parses as footnotesList, not gutenbergPassthrough` | `ol.wp-block-footnotes` → `footnotesList` |
+| `a wp-block-quote blockquote still parses as a blockquote, not gutenbergPassthrough` | `blockquote.wp-block-quote` → `blockquote` |
+| `a wp-block-code <pre> still parses as a codeBlock, not gutenbergPassthrough` | `pre.wp-block-code` → `codeBlock` |
+| `a wp-block-separator <hr> still parses as a horizontalRule, not gutenbergPassthrough` | `hr.wp-block-separator` → `horizontalRule` |
+
+### `gutenbergPassthrough` — unmodeled blocks on tags core nodes also match (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `a wp-block-social-links <ul> parses as gutenbergPassthrough, not a bulletList` | A `<ul>` the list extension would otherwise claim is recognised as an unmodeled block instead |
+| `its anchors and icons survive a save that round-trips through Tiptap` | The social links' `<a>`s and inline SVG icons come back unchanged |
+| `an unmodeled <pre> block (wp-block-verse) is preserved, not turned into a code block` | `pre.wp-block-verse` stays a verse block rather than being rewritten as a code block |
+
+### `gutenbergPassthrough` — figure-rooted blocks Quill does not model (5 tests)
+
+Before 2026-08-19 the catch-all excluded every `<figure>`, on the assumption Quill modeled them all. It models four. Every other `wp-block-*` figure was destroyed on save; these tests pin the fix.
+
+| Test | What it checks |
+|---|---|
+| `a wp:playlist figure parses to gutenbergPassthrough, not shredded into loose nodes` | WordPress 7.1's new Playlist block becomes one passthrough node instead of a pile of loose paragraphs |
+| `a wp:playlist figure survives a save byte-for-byte, comments and all` | The figure, its `<!-- wp:playlist -->` comment pair, and its `<figcaption>` all come back intact |
+| `an audio figure is preserved rather than reduced to its caption text` | Regression: `figure.wp-block-audio` used to collapse to a bare `<p>` holding only the caption. Asserts `<audio>` and `figcaption.wp-element-caption` are still direct children with the right caption text, nothing hoisted out, and no `wp-block-image` class added |
+| `a video figure is preserved rather than emptied` | Regression: `figure.wp-block-video` used to collapse to an empty `<p>` |
+| `a pullquote figure stays a pullquote instead of being rewritten as a quote` | Regression: `figure.wp-block-pullquote` was silently rewritten as `blockquote.wp-block-quote`. Asserts `figure > blockquote > p`/`cite` nesting and text, the body child count, and that no `wp-block-quote` class is stamped on |
+
+### `gutenbergPassthrough` — modeled figures still go to their own nodes (4 tests)
+
+Specificity guards for the new figure rule: the four figures Quill does model must never reach the catch-all.
+
+| Test | What it checks |
+|---|---|
+| `a wp-block-image figure still parses as an image` | `figure.wp-block-image` → `image` |
+| `a wp-block-gallery figure still parses as a galleryBlock, nested image figures included` | `figure.wp-block-gallery` → `galleryBlock`, with its nested image figures intact |
+| `a wp-block-embed figure still parses as an embedBlock` | `figure.wp-block-embed` → `embedBlock` |
+| `a wp-block-table figure still parses as a table` | `figure.wp-block-table` → `table` |
+
+### `gutenbergPassthrough` — figure blocks and the rest of the document (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `a playlist figure is stable across repeated load/save cycles` | Idempotency: the `wp:playlist` comment-pair count is unchanged across two save cycles (no comment stacking) |
+| `passthrough figures keep their position among modeled blocks` | Asserts the exact top-level node-type sequence and output element/class sequence `p, figure.wp-block-audio, h2.wp-block-heading, figure.wp-block-image, p` — a passthrough figure does not migrate to the top or bottom of the document |
+| `an unmodeled figure containing an img is not rewritten into an image block` | The passthrough stash shields a third-party figure that happens to hold an `<img>`: arbitrary attributes are kept, an empty `<figcaption>` is not pruned, and no `data-quill-passthrough*` marker leaks |
+| `a classic figure with no wp-block class still parses as an image` | Guards the new `figure[class*="wp-block-"]` selector against claiming classic-editor image markup |
 
 ---
 
@@ -1317,6 +1456,9 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Open or create a very long post (10k+ words) → the editor stays responsive; save completes successfully.
 - [ ] Paste content from Word, Google Docs, or Safari → HTML is reasonable; no script tags or unexpected elements injected.
 - [ ] **Unmodeled Gutenberg block passthrough:** open code view (`</>`), paste an unsupported block's markup (e.g. a Core Accordion block's rendered HTML — `div.wp-block-accordion` with nested items/panels), exit code view → an "Accordion" card appears instead of flattened/merged text. Make an unrelated edit elsewhere in the post, save, re-enter code view → the accordion's original markup (including any nested `data-wp-*` attributes) is still present, byte-for-byte.
+- [ ] **Figure-rooted blocks (Audio / Video / Pullquote / Playlist):** in WordPress, add an Audio block, a Video block, a Pullquote block, and (on WP 7.1+) a Playlist block to a test post. Open that post in Quill → each appears as a non-editable card, not as flattened text, an empty paragraph, or a plain quote. Make an unrelated edit elsewhere in the post, save, re-fetch the raw content via the REST API (`?context=edit`) → each block's original markup, `<!-- wp:… -->` comments and `<figcaption>` are unchanged. Confirm the blocks are still in their original positions relative to the surrounding paragraphs and images.
+- [ ] Save that same post a second and third time without touching the passthrough cards → the raw content does not grow and no block comments are duplicated.
+- [ ] Confirm the four blocks Quill *does* model still behave normally in the same post: an image is still selectable/resizable, a gallery still shows its thumbnail grid, an embed still renders, and a table is still editable.
 
 ### 7.4 Editor — images
 
@@ -1337,6 +1479,13 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] With an image selected, scroll the editor → the image toolbar moves with the image. Click elsewhere to deselect → the toolbar disappears.
 - [ ] Click inside the alt text or caption field in the image toolbar → the toolbar stays open (doesn't close when you click its own controls).
 - [ ] Insert images of different formats (`.jpg`, `.png`, `.gif`, `.webp`, `.heic`, `.tiff`) → each uploads successfully.
+- [ ] **HEIC conversion:** drag an iPhone `.heic` photo (try one named `IMG_1234.HEIC`, uppercase) onto the editor → it uploads and inserts, and the toast reads "Converted to JPEG · Image inserted". Check the WordPress media library → the attachment is a `.jpg` with real dimensions and the usual generated sub-sizes (thumbnail/medium/large), not a size-less HEIC.
+- [ ] Upload the same `.heic` from the Media tab's upload button and from the media picker inside `GallerySheet` → both also land as JPEGs with sub-sizes. (Only the drag-and-drop path mentions the conversion in its toast; the other two do not.)
+- [ ] Confirm the converted photo is right-side up and at full resolution (EXIF orientation and pixel dimensions are preserved), and that the original `.heic` file on disk is untouched.
+- [ ] Drag a large HEIC photo (10+ MB) onto the editor → the editor stays responsive while it converts and uploads (no beachball).
+- [ ] Upload a `.jpg`, `.png` and `.pdf` → each uploads unchanged, with no conversion toast and no extension change.
+- [ ] **Decorative images:** in WordPress, mark an image as decorative (the image block's "Mark as decorative" toggle, WP 7.1+). Open that post in Quill, make an unrelated edit, save → re-fetch the raw content and confirm the `<img>` still carries `role="none"`. Do the same for a decorative image that also links to its full size → the `role` stays on the `<img>`, not on the `<a>`.
+- [ ] Insert a fresh image in Quill and save → its `<img>` has no `role` attribute at all (Quill never invents one).
 - [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
 - [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
 - [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
@@ -1750,7 +1899,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 97 | Image toolbar's "Link to Full Image" button is always available (not hidden for images with no `mediaId` or whose media sizes lack a `"full"` entry) — toggling on falls back to the image's current `src` when no media-library size data is known, so an already-linked externally-sourced image is never stuck with an unreachable toggle; toggling off also clears the stale `linkHref` | 👁 §7.4 (select a drag-dropped/external image with no media ID, confirm the Link to Full Image button is visible and toggles correctly) |
 | 98 | `EditorCoordinator.mediaSizesDict(for:)` synthesizes a `"full"` size entry from `media.sourceURL` when WordPress's `media_details.sizes` omits one (a common API shape) — mirrors the existing `WPMedia.sizedURL(for:)` fallback for the same quirk, so the Full-size preset button and Link to Full Image toggle aren't silently disabled for images that have other sizes but no explicit `"full"` entry | ✅ `EditorCoordinatorTests.mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` + `.mediaSizesDictPreservesExistingFullEntry` + `.mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` + `.mediaSizesDictReturnsNilWhenSourceURLIsEmpty` |
 | 99 | Unmodeled Gutenberg blocks (Accordion, Columns, Group, etc.) no longer get silently flattened/merged when a post is loaded or code view is exited — a `gutenbergPassthrough` atomic node captures the element's `outerHTML` verbatim and survives unrelated edits elsewhere in the doc, instead of ProseMirror's default "no rule matched, recurse into children" behavior destroying the wrapper structure | ✅ `test-editor-passthrough.js` class-only + comment-wrapped suites (6 tests) + `parsePassthroughBlock` (5 JS tests) + 👁 §7.3 |
-| 100 | `gutenbergPassthrough`'s catch-all parse rule (`[class*="wp-block-"]:not(figure)`, priority 1) excludes all `<figure>` elements so it never claims `figure.wp-block-table` — which has no dedicated parse rule of its own and relies on transparent pass-through to the bare `<table>` — or any other figure-wrapped block Quill already models (image/gallery/embed) | ✅ `test-editor-passthrough.js` `'does not steal elements other rules already claim'` (5 tests) |
+| 100 | `gutenbergPassthrough`'s catch-all parse rule (`[class*="wp-block-"]:not(figure)`, priority 1) never claims an element another node already owns — headings, lists, footnote lists, quotes, code blocks and separators keep winning despite their `wp-block-*` class, and `figure.wp-block-table` (which has no dedicated parse rule of its own and relies on transparent pass-through to the bare `<table>`) still reaches the table node via the figure rule's `QUILL_MODELED_FIGURE_CLASSES` exemption | ✅ `test-editor-passthrough.js` `'does not steal elements other rules already claim'` (11 tests) + `'modeled figures still go to their own nodes'` (4 tests) |
 | 101 | `toWordPressHTML`'s unconditional whole-tree passes (comment-strip regex, plus heading/cite/figure/list/table/footnote normalization) can't distinguish Quill's own content from a `gutenbergPassthrough` subtree's nested content — passthrough elements are stashed out via placeholder divs *before any pass runs* and spliced back in verbatim only after every pass has completed, so a `wp:group` wrapping a real `wp:image` keeps its nested comment, and a nested `<h3>`/`<cite>`/`<figcaption>` is never mutated by the heading-class/empty-cite/empty-figcaption passes. Splicing back too early (right after the comment-strip alone) was an initial-implementation regression caught in code review — only the comment regex was shielded, not the other passes | ✅ `toWordPressHTML — passthrough blocks` (8 JS tests, incl. nested `wp:image`/`wp:gallery` regressions and the byte-for-byte heading/cite/figcaption guard) + `test-editor-passthrough.js` `'nested media blocks survive save'` (2 tests) |
 | 102 | `RenderedString.editorHTML`'s classic-vs-block content heuristic checks for a `wp-block-` class substring, not just `<!-- wp:` comments and `<p>` tags — without it, a post consisting entirely of class-only Gutenberg block markup (`gutenbergPassthrough`'s target case: no comment, no paragraph) was misclassified as classic content and corrupted by `wpautop()` before the JS-side parser ever saw it, defeating the passthrough feature's byte-for-byte round-trip on the very next load | ✅ `WPPostDecodingTests.classOnlyGutenbergBlockContentUnchanged` |
 | 103 | `formatHTML`'s `BLOCK` set gained `div` so `gutenbergPassthrough`'s nested divs indent correctly in code view, but this also reformats the pre-existing `EmbedBlock` wrapper div (whose only child is a text node with literal `'\n'+url+'\n'`) — without trimming, the URL and closing `</div>` land on unindented lines below the opening tag. Fixed by trimming a block tag's text content when it has no element children at all | ✅ `formatHTML — nested block elements.'a div with only raw-newline text content...'` |
@@ -1758,6 +1907,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 105 | Per-image gallery alt text and captions come straight from `TextField`s in `GallerySheet`, so both are serialized as data, never markup: the caption is written with `textContent` (never `innerHTML`) and the alt attribute value can't be broken out of by embedded quotes or tags. Alts also stay bound to their own image in payload order, and an omitted alt still emits `alt=""` rather than dropping the attribute (an accessibility regression, not a cosmetic diff) | ✅ `galleryBlock — per-image captions.'caption text containing markup is escaped, not injected'` + `.'alt text containing quotes and markup is escaped, not injected'` + `.'each per-image alt lands on its own img, in order'` + `.'an omitted alt still emits an empty alt attribute'` + 👁 §7.4 |
 | 106 | `WPMedia.captionText` reads `caption.raw` only (via `RenderedString.excerptText`) and returns `""` for a rendered-only payload — the gallery sheet's Caption field prefills with plain text or nothing, never with the `<p>`-wrapped `rendered` HTML WordPress returns outside `context=edit` | ✅ `WPMediaDecodingTests.captionDecodesPlainTextFromRaw` + `.captionRawHasHTMLStrippedAndEntitiesDecoded` + `.captionWithOnlyRenderedYieldsEmptyText` + `.missingCaptionIsNilAndTextIsEmpty` + 👁 §7.4 |
 | 107 | `GallerySheet.toggle(_:)` removes the image's id from `expandedIDs` when deselecting, so expanded state can't leak: re-selecting the same image previously brought its row back already expanded — and therefore already `moveDisabled`, silently unable to be drag-reordered. An expanded row is `moveDisabled(true)` because a `List` row's drag gesture otherwise steals mouse-down from the inline `TextField`s; hovering the drag grip collapses the row to restore dragging. No SwiftUI test harness exists for any of this | 👁 §7.4 (expand a row, deselect it in the grid, re-select it → collapsed and draggable; and: expand a row, confirm dragging is disabled, hover the grip, confirm it collapses and drags) |
+| 108 | `gutenbergPassthrough` gained a second, figure-only parse rule (`figure[class*="wp-block-"]`, priority 1). The original catch-all excluded every `<figure>` on the assumption Quill modeled them all — it models four. Every other `wp-block-*` figure was destroyed on save: `figure.wp-block-audio` collapsed to a bare `<p>` holding only its caption text, `figure.wp-block-video` to an empty `<p>`, `figure.wp-block-pullquote` was silently rewritten as `blockquote.wp-block-quote`, and WordPress 7.1's `figure.wp-block-playlist` lost its wrapper, block comments and `<figcaption>`. All four are now preserved byte-for-byte as passthrough cards, keep their position among modeled blocks, and are stable across repeated load/save cycles | ✅ `test-editor-passthrough.js` `'figure-rooted blocks Quill does not model'` (5 tests) + `'figure blocks and the rest of the document'` (4 tests) + 👁 §7.3 |
+| 109 | `isModeledFigure(el)`/`QUILL_MODELED_FIGURE_CLASSES` is the sole exemption list for the figure rule, and the two sides use different matching: the parse selector is substring-based (`[class*="wp-block-"]`) while the exemption is exact `classList` membership. A third-party `wp-block-image-slider` or `wp-block-tableau` must therefore reach passthrough rather than be handed to the image/table rule, and the set itself is drift-guarded — adding a class without also giving that figure a real parse rule sends the block to the generic parser, removing one freezes a working block into a static card | ✅ `isModeledFigure` (8 JS tests) |
+| 110 | WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<img>`; the `imgRole` attr parses it and round-trips it through `toWordPressHTML` under both the `figure.wp-block-image` rule and the bare `img[src]` classic-markup fallback, stays on the `<img>` rather than the `<a>` when the image also links to full size, emits nothing when the source had no role, and treats `role=""` as absent | ✅ `test-editor-keyboard.js` `'image marked as decorative (WP 7.1)'` (7 tests) + 👁 §7.4 |
+| 111 | WordPress 7.1 accepts HEIC over the REST API but cannot generate sub-sizes for it, so the attachment lands with no dimensions and no sizes. `ImageConversion.prepareForUpload` converts HEIC/HEIF to JPEG locally first (quality 0.9), preserving EXIF orientation and pixel dimensions, writing to a per-upload UUID temp directory that `cleanup()` removes whole; JPEG/PNG/PDF pass through untouched, a file ImageIO cannot decode falls back to the original rather than blocking the upload, and two same-named files converted in one drop don't collide | ✅ `ImageConversionTests` (17 tests) + 👁 §7.4 |
+| 112 | `ImageConversion.prepareForUpload` is a synchronous decode + re-encode, so the two MainActor-isolated callers (`PostEditorView.handleDroppedImages`, `MediaSidebarSection.uploadFromDisk`) run it inside `await Task.detached(priority: .userInitiated) { … }.value` rather than inline — calling it directly froze the UI for the length of the conversion. `uploadPickedImage` was already off the main thread | 👁 §7.4 (drop a large HEIC photo, confirm the editor stays responsive and does not beachball while it converts) |
 
 ---
 

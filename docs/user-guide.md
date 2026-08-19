@@ -346,7 +346,7 @@ For example, adding `class="intro"` to a `<p>` tag in code view, switching back 
 
 **What survives saving but not visual edits.** Any HTML change you make in code view (including inline styles, data attributes, or custom elements without a `wp-block-*` class) is preserved when you save directly from code view or without making visual edits first. The raw HTML you wrote is sent to WordPress exactly as-is. However, if you return to the visual editor and make changes, the editor reconstructs the HTML from its internal model, and anything outside the supported schema (see the list above) is lost.
 
-**Unsupported Gutenberg blocks.** If your post contains a block Quill doesn't natively support (Accordion, Columns, Group, or a third-party plugin block), it appears in the visual editor as a card labeled with the block's name and the hint "Not editable in the visual editor; use Code View." This card preserves the block's original markup exactly, including any nested content, and survives edits you make elsewhere in the post; it's only lost if you delete the card itself. To edit the block's own content, use code view.
+**Unsupported Gutenberg blocks.** If your post contains a block Quill doesn't natively support (Audio, Video, Pullquote, Playlist, Accordion, Columns, Group, or a third-party plugin block), it appears in the visual editor as a card labeled with the block's name and the hint "Not editable in the visual editor; use Code View." This card preserves the block's original markup exactly, including any nested content, and survives edits you make elsewhere in the post; it's only lost if you delete the card itself. To edit the block's own content, use code view.
 
 **Tip: making your own custom HTML survive visual edits.** If you hand-write a custom element in code view, such as a disclosure box, callout, or other snippet with no `wp-block-*` class, it is stripped down to plain text the moment you touch the visual editor, per the rule above. To protect it, add any class starting with `wp-block-` (for example `wp-block-group`) alongside your own class. Quill then treats it the same as an unsupported Gutenberg block: it survives as a preserved card, and you can still edit its contents in code view.
 
@@ -358,7 +358,7 @@ The practical rule: if you need to make changes that go beyond CSS classes on su
 
 ### Images
 
-Click the **Image** button in the toolbar to open the media library picker and insert an image at the cursor position. See [Media Library](#media-library) for details on uploading and browsing media. You can also drag an image file directly from Finder onto the editor canvas; Quill uploads it to your WordPress media library and inserts it in one step.
+Click the **Image** button in the toolbar to open the media library picker and insert an image at the cursor position. See [Media Library](#media-library) for details on uploading and browsing media. You can also drag an image file directly from Finder onto the editor canvas; Quill uploads it to your WordPress media library and inserts it in one step. If the file is a HEIC photo (the format iPhones use by default), Quill converts it to JPEG before uploading, so WordPress can generate the usual thumbnail and preview sizes.
 
 Once an image is inserted, click it to select it. A floating image toolbar appears above the image, and alignment controls become available in the main toolbar.
 
@@ -377,6 +377,8 @@ If the image was inserted from your WordPress media library, the image toolbar s
 #### Alt text
 
 Enter a description in the **Alt** field in the image toolbar. This text is saved with the image and used for accessibility and SEO. Alt text set in the media library is pre-populated automatically when you insert an image.
+
+If an image was marked as decorative in the WordPress block editor, that setting is preserved. Quill keeps the image marked decorative when you edit and save the post; it doesn't add or remove the setting on its own, and there's no control for it in Quill's image toolbar.
 
 #### Alignment
 
@@ -583,6 +585,8 @@ To upload new media:
 
 Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and its detail view opens automatically.
 
+HEIC photos are converted to JPEG automatically before they're sent to WordPress. WordPress accepts HEIC files but can't produce thumbnail and preview sizes from them, so an unconverted HEIC would appear in your media library with no dimensions and no resized versions. Conversion happens on your Mac, keeps the photo's full resolution and orientation, and leaves the original file on disk untouched. It applies wherever you upload: the Media sidebar, the image picker, the gallery picker, and drag-and-drop onto the editor. Other formats (JPEG, PNG, GIF, WebP, PDF, and so on) are uploaded as-is.
+
 ### Inserting Images into Posts
 
 To insert an image from your media library into a post or page, click the **Image** button in the editor toolbar while editing. This opens a picker sheet showing your media library. Click an image to insert it at the cursor position.
@@ -735,11 +739,9 @@ Quill stores credentials for a single WordPress site. To switch sites, update yo
 
 Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill round-trip correctly through the Gutenberg editor.
 
-However, if you open a post that was created in Gutenberg using block types Quill does not support (such as columns, cover blocks, or custom blocks) those blocks are visible in the **Code View** (`</>`) but do not render in the visual editor. If you make visual edits to the post and save, unsupported block markup may be lost.
+Blocks Quill doesn't support natively (Audio, Video, Pullquote, Playlist, Accordion, Columns, Cover, Group, and third-party plugin blocks) are preserved rather than edited. Each appears in the visual editor as a labeled card marked "Not editable in the visual editor; use Code View." You can move or delete the card, and you can keep editing the rest of the post freely: the block's original markup is saved back to WordPress exactly as it arrived. To change what's inside one of these blocks, use **Code View** (`</>`) to edit the raw HTML, or make that edit in the WordPress editor.
 
 Galleries load as a read-only thumbnail-grid card: Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
-
-To edit posts that contain unsupported blocks, use Code View to work with the raw HTML directly, or make your edits in the WordPress Gutenberg editor instead.
 
 ### Featured Image
 
