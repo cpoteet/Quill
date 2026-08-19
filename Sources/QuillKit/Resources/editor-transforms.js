@@ -139,6 +139,21 @@ function wrapElementWithComments(doc, el, openText, closeText) {
   parent.insertBefore(close, next)
 }
 
+// Attributes WordPress writes on a core/image block comment. Each key is
+// omitted when it can't be determined from the figure, which is what core does
+// too — an image with no attributes saves as a bare `<!-- wp:image -->`.
+function imageBlockAttrs(figure, img) {
+  const attrs = {}
+  const id = (img.getAttribute('class') || '').match(/wp-image-(\d+)/)
+  if (id) attrs.id = parseInt(id[1], 10)
+  const size = (figure.getAttribute('class') || '').match(/(?:^|\s)size-([\w-]+)/)
+  if (size) attrs.sizeSlug = size[1]
+  const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
+  if (align) attrs.align = align
+  if (img.parentNode && img.parentNode.tagName === 'A') attrs.linkDestination = 'media'
+  return attrs
+}
+
 function toWordPressHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = document
   const div = doc.createElement('div')
@@ -179,9 +194,10 @@ function toWordPressHTML(html, doc) {
     .replace(/\n?<!-- \/wp:embed -->/g, '')
     .replace(/<!-- wp:gallery [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:gallery -->/g, '')
-    // wp:image comments only ever appear nested inside a gallery today (standalone
-    // images aren't comment-wrapped at all — see the images row in CLAUDE.md's
-    // Gutenberg-compatibility table), so this strip is gallery-scoped in practice.
+    // Both standalone and gallery-nested images are comment-wrapped further down,
+    // so this strip clears the previous save's pairs before fresh ones are added
+    // — the same strip-then-rewrap cycle the gallery and embed passes rely on for
+    // idempotency.
     // Passthrough content (which could route raw WordPress HTML with standalone
     // wp:image comments through here) is shielded from this strip via the stash
     // above — it's pulled out of the tree entirely before this regex runs.
@@ -192,6 +208,9 @@ function toWordPressHTML(html, doc) {
   div.querySelectorAll('img[data-media-id]').forEach(img => {
     const id = img.getAttribute('data-media-id')
     if (id) img.classList.add(`wp-image-${id}`)
+    // Editor-internal attribute — the class carries the id from here on, and
+    // ResizableImage's mediaId parseHTML reads it back off that class on load.
+    img.removeAttribute('data-media-id')
   })
 
   // Image figures: renderHTML produces <figure><img ...><figcaption/></figure>.
@@ -215,6 +234,21 @@ function toWordPressHTML(html, doc) {
         caption.remove()
       }
     }
+  })
+
+  // Standalone images → wp:image block comments. Without them WordPress parses
+  // the figure as classic HTML rather than a core/image block, so the block
+  // editor offers no image controls for it. Gallery-nested images are skipped —
+  // the gallery pass below wraps those itself, in the same save.
+  div.querySelectorAll('figure.wp-block-image').forEach(figure => {
+    if (figure.closest('.wp-block-gallery')) return
+    const img = figure.querySelector('img')
+    if (!img) return
+    const attrs = imageBlockAttrs(figure, img)
+    const open = Object.keys(attrs).length
+      ? ` wp:image ${JSON.stringify(attrs)} `
+      : ' wp:image '
+    wrapElementWithComments(doc, figure, open, ' /wp:image ')
   })
 
   // Headings → wp-block-heading class

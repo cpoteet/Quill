@@ -1271,3 +1271,90 @@ describe('toWordPressHTML — footnote backrefs', () => {
     assert.equal((twice.match(/footnote-backref/g) || []).length, 1)
   })
 })
+
+
+// ---------------------------------------------------------------------------
+// standalone image block comments
+// ---------------------------------------------------------------------------
+
+describe('standalone image block comments', () => {
+  const PLAIN = '<figure class="wp-block-image"><img src="https://example.com/photo.jpg" alt="A photo" data-media-id="201"></figure>'
+
+  // Significant child nodes of a fragment, whitespace-only text dropped.
+  function nodesOf(html) {
+    const d = document.createElement('div')
+    d.innerHTML = html
+    return Array.from(d.childNodes)
+      .filter(n => !(n.nodeType === 3 && !n.textContent.trim()))
+  }
+
+  function attrsOf(commentNode) {
+    const m = commentNode.nodeValue.match(/^\s*wp:image\s*(\{.*\})?\s*$/)
+    return m && m[1] ? JSON.parse(m[1]) : null
+  }
+
+  test('a standalone image figure is wrapped in a wp:image comment pair', () => {
+    const nodes = nodesOf(wp(PLAIN))
+    assert.equal(nodes.length, 3)
+    assert.equal(nodes[0].nodeType, 8)
+    assert.match(nodes[0].nodeValue, /^\s*wp:image/)
+    assert.equal(nodes[1].tagName, 'FIGURE')
+    assert.ok(nodes[1].classList.contains('wp-block-image'))
+    assert.equal(nodes[2].nodeType, 8)
+    assert.match(nodes[2].nodeValue, /^\s*\/wp:image\s*$/)
+  })
+
+  test('the wp:image comment carries the media id', () => {
+    const nodes = nodesOf(wp(PLAIN))
+    assert.deepEqual(attrsOf(nodes[0]), { id: 201 })
+  })
+
+  test('an image with no media id is wrapped with no attributes', () => {
+    const html = '<figure class="wp-block-image"><img src="https://example.com/p.jpg" alt=""></figure>'
+    const nodes = nodesOf(wp(html))
+    assert.equal(nodes.length, 3)
+    assert.equal(attrsOf(nodes[0]), null)
+  })
+
+  test('a size class is carried into the comment as sizeSlug', () => {
+    const html = '<figure class="wp-block-image size-large"><img src="https://example.com/p.jpg" alt="" data-media-id="7"></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, sizeSlug: 'large' })
+  })
+
+  test('a linked image records linkDestination media', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/p.jpg"><img src="https://example.com/p.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
+  test('an aligned image records its alignment', () => {
+    const html = '<figure class="wp-block-image"><img class="alignleft" src="https://example.com/p.jpg" alt="" data-media-id="7"></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, align: 'left' })
+  })
+
+  test('gallery images keep exactly one wp:image pair and the gallery is not image-wrapped', () => {
+    const html = '<figure class="wp-block-gallery has-nested-images columns-2">' +
+      '<figure class="wp-block-image"><img src="https://example.com/one.jpg" alt="One" data-media-id="301"></figure>' +
+      '<figure class="wp-block-image"><img src="https://example.com/two.jpg" alt="Two" data-media-id="302"></figure>' +
+      '</figure>'
+    const out = wp(html)
+    assert.equal((out.match(/<!-- wp:image/g) || []).length, 2)
+    assert.equal((out.match(/<!-- \/wp:image -->/g) || []).length, 2)
+    // The gallery figure itself is wrapped by wp:gallery, never by wp:image.
+    const top = nodesOf(out)
+    assert.equal(top[0].nodeType, 8)
+    assert.match(top[0].nodeValue, /^\s*wp:gallery/)
+  })
+
+  test('wrapping a standalone image is idempotent across repeated saves', () => {
+    const once = wp(PLAIN)
+    const twice = wp(once)
+    assert.equal(twice, once)
+    assert.equal((twice.match(/<!-- wp:image/g) || []).length, 1)
+  })
+
+  test('data-media-id never reaches the saved output', () => {
+    const out = wp(PLAIN)
+    assert.ok(!out.includes('data-media-id'))
+    assert.match(out, /class="[^"]*wp-image-201/)
+  })
+})

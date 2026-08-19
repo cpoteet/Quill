@@ -17,7 +17,7 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (all 355 tests)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (162 tests via Node's built-in runner + jsdom)
+2. **JS editor tests** — `node --test Scripts/test-editor.js` (171 tests via Node's built-in runner + jsdom)
 3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (45 tests — live Tiptap editor in jsdom)
 4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
 5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
@@ -777,7 +777,7 @@ Tests `ImageConversion.prepareForUpload(_:)` and `Prepared.cleanup()`. WordPress
 
 ---
 
-## JS editor tests (162 tests)
+## JS editor tests (171 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1105,6 +1105,21 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `nested content survives byte-for-byte — headings/cite/figcaption inside a passthrough block are not normalized` | Regression guard (found in code review): `toWordPressHTML`'s heading/cite/figure normalization passes ran unconditionally over the whole tree, so a splice-back that happened too early let them reach into and mutate a passthrough block's nested content (adding `wp-block-heading`, deleting an intentionally-empty `<cite>`/`<figcaption>`). Fixed by delaying the splice-back until after every other whole-tree pass has run, so passthrough content is truly untouched, not just shielded from the comment-strip regex |
 
 ---
+
+### standalone image block comments (9 tests)
+
+| Test | What it checks |
+|---|---|
+| a standalone image figure is wrapped in a wp:image comment pair | Output is exactly comment / `figure.wp-block-image` / comment, asserted on nodes rather than substrings |
+| the wp:image comment carries the media id | Attrs JSON is `{id:201}`, read off the `wp-image-{id}` class |
+| an image with no media id is wrapped with no attributes | Bare `<!-- wp:image -->`, matching what core writes when it has nothing to record |
+| a size class is carried into the comment as sizeSlug | `size-large` on the figure becomes `sizeSlug:'large'` |
+| a linked image records linkDestination media | An `<a>` parent of the `<img>` becomes `linkDestination:'media'` |
+| an aligned image records its alignment | `alignleft` (moved to the figure by the pass above) becomes `align:'left'` |
+| gallery images keep exactly one wp:image pair and the gallery is not image-wrapped | Guard: the standalone pass skips anything inside `.wp-block-gallery`, so nested images are wrapped once by the gallery pass and the gallery figure itself gets `wp:gallery`, never `wp:image` |
+| wrapping a standalone image is idempotent across repeated saves | `wp(wp(html))` is byte-identical to `wp(html)`, one comment pair — the strip-then-rewrap cycle does not stack |
+| data-media-id never reaches the saved output | The attribute is gone and `wp-image-201` is present |
+
 
 ## JS keyboard tests (45 tests)
 
@@ -1912,6 +1927,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 110 | WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<img>`; the `imgRole` attr parses it and round-trips it through `toWordPressHTML` under both the `figure.wp-block-image` rule and the bare `img[src]` classic-markup fallback, stays on the `<img>` rather than the `<a>` when the image also links to full size, emits nothing when the source had no role, and treats `role=""` as absent | ✅ `test-editor-keyboard.js` `'image marked as decorative (WP 7.1)'` (7 tests) + 👁 §7.4 |
 | 111 | WordPress 7.1 accepts HEIC over the REST API but cannot generate sub-sizes for it, so the attachment lands with no dimensions and no sizes. `ImageConversion.prepareForUpload` converts HEIC/HEIF to JPEG locally first (quality 0.9), preserving EXIF orientation and pixel dimensions, writing to a per-upload UUID temp directory that `cleanup()` removes whole; JPEG/PNG/PDF pass through untouched, a file ImageIO cannot decode falls back to the original rather than blocking the upload, and two same-named files converted in one drop don't collide | ✅ `ImageConversionTests` (17 tests) + 👁 §7.4 |
 | 112 | `ImageConversion.prepareForUpload` is a synchronous decode + re-encode, so the two MainActor-isolated callers (`PostEditorView.handleDroppedImages`, `MediaSidebarSection.uploadFromDisk`) run it inside `await Task.detached(priority: .userInitiated) { … }.value` rather than inline — calling it directly froze the UI for the length of the conversion. `uploadPickedImage` was already off the main thread | 👁 §7.4 (drop a large HEIC photo, confirm the editor stays responsive and does not beachball while it converts) |
+| 113 | Standalone (non-gallery) images saved without `<!-- wp:image -->` comments, so WordPress parsed them as classic HTML rather than core/image blocks and offered no image controls; `data-media-id`, an editor-internal attribute, also shipped in post content. `toWordPressHTML` now wraps every standalone `figure.wp-block-image` in a `wp:image` pair with the attributes it can derive, skips gallery-nested figures so the gallery pass keeps owning those, and removes `data-media-id` once the `wp-image-{id}` class is emitted | ✅ `test-editor.js` `'standalone image block comments'` (9 tests) |
 
 ---
 
