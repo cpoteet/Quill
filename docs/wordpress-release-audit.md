@@ -46,7 +46,7 @@ The audit still runs without the local site — it falls back to Gutenberg's Git
 
 The 7.1 run found a better source than the one the skill documents. Use this order.
 
-1. **Core's own shipped `save()` source, read from the live Studio install.** `/wp-includes/js/dist/block-library.js` — the unminified build, about 3 MB. This is the exact code that install runs, so it beats the GitHub fixtures, which need a tag-to-release mapping you have to guess at. The Studio install path was `/Users/Chris/Studio/codex/`.
+1. **Core's own shipped `save()` source, read from the live Studio install.** `/wp-includes/js/dist/block-library.js` — the unminified build, about 3 MB. This is the exact code that install runs, so it beats the GitHub fixtures, which need a tag-to-release mapping you have to guess at. The Studio install path is **`/Users/Chris/Dev/Studio/`**. Confirm it before reading anything: `/Users/Chris/Studio/codex/` is a *different, older* checkout that still sits at 7.0, and reading it silently yields wrong answers. Verify with `grep wp_version /Users/Chris/Dev/Studio/wp-includes/version.php`, or locate the tree that owns a known upload under `wp-content/uploads/`.
 2. **The live REST API for attribute schemas.** `GET /wp-json/wp/v2/block-types` lists every *server-registered* block. This is how the 7.1 run caught that Table of Contents ships `save()` code but is not registered — `/wp-json/wp/v2/block-types/core/table-of-contents` returned 404.
 3. **WordPress's own PHP parser, for validating markup you assemble by hand.** PHP is available on this machine. Running candidate markup through the install's `WP_Block_Parser` proves the block tree parses correctly with no stray freeform text. The 7.1 run used this to validate the Tabs snippet.
 4. **Quill's real `editor.html` in jsdom, to replay the markup.** Load the real markup, save it back, and compare. This is what turns "WordPress emits X" into "Quill does or does not survive X".
@@ -110,6 +110,7 @@ Ran a day early, on release day. Studio site was on 7.1, so this was full ground
 | `wp-elements-*` collision fix | No effect on block output. The class map is still singular and unchanged. |
 | Classic block deprecation | Inserter-only. `core/freeform` still registered; the `wp-block-` gate in `WPPost` unaffected. |
 | Heading, list, quote, code, separator, table, embed, preformatted | All unchanged. |
+| Client-side media processing | **Real behavior change for uploads.** No saved-markup change. Broke HEIC uploads for non-browser clients. Fixed. See below. |
 
 ### What changed in Quill
 
@@ -117,7 +118,17 @@ Ran a day early, on release day. Studio site was on 7.1, so this was full ground
 
 **2. Decorative images lost `role="none"`** — `ResizableImage` did not model `role`, so the accessibility semantic vanished on the first save after any visual edit. Added an `imgRole` attribute that round-trips it under both the figure rule and the bare `img[src]` fallback.
 
-Verification: 13 new JS tests, full suite 338 Swift + 282 JS passing, `./build.sh` succeeded.
+**3. HEIC uploads produced unusable attachments** — found on a follow-up pass over the client-side media processing post, after the markup audit had closed.
+
+The upload endpoint gained `generate_sub_sizes`, `convert_format` and `url` parameters, plus `/sideload` and `/finalize` routes. All of it is opt-in and browser-driven. Both new booleans default to `true`, so Quill's plain `POST /wp/v2/media` keeps the old server-side behavior. Verified by uploading a JPEG in Quill's exact request shape: six sizes generated, `missing_image_sizes` empty. **Quill should not send any of the three parameters.** `generate_sub_sizes: false` promises sub-sizes Quill does not produce, `convert_format: false` overrides the site owner's own WebP setting, and `url` has no caller — every Quill upload passes a local file.
+
+The damage was elsewhere. 7.1 added an exemption letting still HEIC/HEIF past the unsupported-mime gate, assuming the *browser* converts them first. 7.0 rejected HEIC cleanly with `rest_upload_image_type_not_supported`. Quill is not a browser, so nothing converted the file: the attachment stored with `width=NULL`, `height=NULL` and no sizes. Quill then inserted the raw `.heic` into the post, which most browsers cannot display. Quill accepts HEIC explicitly — `DroppableWebView` lists `public.heic`, and the pickers use `UTType.image`.
+
+Fixed with `Sources/QuillKit/API/ImageConversion.swift`: HEIC/HEIF convert to JPEG locally via ImageIO before upload, carrying EXIF orientation across so WordPress still rotates correctly. Any failure falls back to uploading the original, which is the pre-fix behavior. The three upload call sites (`uploadPickedImage`, `PostEditorView.handleDroppedImages`, `MediaSidebarSection.uploadFromDisk`) call it and clean up the temp file in a `defer`. The editor drop path adds a "Converted to JPEG" toast; the picker and sidebar have no toast system, only an error alert, so they stay silent.
+
+Verified end to end against the live 7.1 site: the same source HEIC went from `width=NULL, sizes=NONE` to `1600x1000` with five sub-sizes.
+
+Verification: 13 new JS tests for the markup fixes, 11 new Swift tests for the conversion, full suite 349 Swift + 282 JS passing, `./build.sh` succeeded.
 
 ### Open items to carry into the next audit
 
@@ -125,6 +136,8 @@ Verification: 13 new JS tests, full suite 338 Swift + 282 JS passing, `./build.s
 - **The Shortcode block is still untested.** It serializes as bare text with no wrapping element, so passthrough may have nothing to catch. Noted in `docs/gutenberg-block-snippets.md`.
 - **Table of Contents may ship in a later release.** It is `nav`-rooted, so passthrough should handle it, but confirm when it registers.
 - **Any new figure-rooted block is the high-risk case.** Check it first.
+- **Audit the upload path, not just the markup.** The 7.1 HEIC break shipped no markup change at all, so a fixture diff would have missed it entirely. Add a standing step: upload a JPEG and a HEIC in Quill's exact request shape, then read the stored attachment metadata with PHP. Check `width`, `height` and `sizes` are populated. Watch for core relaxing a rule on the assumption that a browser does the work — that assumption is exactly where a native client falls through.
+- **Other formats may break the same way.** Only HEIC/HEIF convert today. TIFF and similar depend on the host's image editor, so a site with a thin GD build can still store an unusable attachment. Re-check if users report it.
 
 ---
 

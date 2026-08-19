@@ -161,9 +161,12 @@ func pickImageFromDisk() -> URL? {
 /// Uploads a locally-picked image file to the WordPress media library. Shared by
 /// `MediaPickerView` and `GallerySheet` so their upload-from-disk flows can't drift.
 func uploadPickedImage(_ url: URL, credentials: Credentials) async throws -> WPMedia {
-    let mime = MimeType.forFile(url)
+    let prepared = ImageConversion.prepareForUpload(url)
+    defer { prepared.cleanup() }
     return try await WordPressClient(credentials: credentials)
-        .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+        .uploadMedia(
+            fileURL: prepared.fileURL, filename: prepared.filename, mimeType: prepared.mimeType
+        )
 }
 
 struct MediaThumbnail: View {

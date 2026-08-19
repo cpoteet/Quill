@@ -306,9 +306,14 @@ struct MediaSidebarSection: View {
         Task {
             defer { isUploading = false }
             do {
-                let mime = MimeType.forFile(url)
+                let prepared = ImageConversion.prepareForUpload(url)
+                defer { prepared.cleanup() }
                 let uploaded = try await WordPressClient(credentials: creds)
-                    .uploadMedia(fileURL: url, filename: url.lastPathComponent, mimeType: mime)
+                    .uploadMedia(
+                        fileURL: prepared.fileURL,
+                        filename: prepared.filename,
+                        mimeType: prepared.mimeType
+                    )
                 appState.mediaItems.insert(uploaded, at: 0)
                 appState.selectedMedia = uploaded
             } catch {

@@ -913,16 +913,21 @@ public struct PostEditorView: View {
         for url in urls {
             guard url.isFileURL else { continue }
             do {
-                let mime = MimeType.forFile(url)
+                let prepared = ImageConversion.prepareForUpload(url)
+                defer { prepared.cleanup() }
                 let media = try await client.uploadMedia(
-                    fileURL: url, filename: url.lastPathComponent, mimeType: mime
+                    fileURL: prepared.fileURL,
+                    filename: prepared.filename,
+                    mimeType: prepared.mimeType
                 )
                 var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
                 if let w = media.mediaDetails?.width  { info["width"]  = w }
                 if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
-                presentToast("Image inserted")
+                presentToast(
+                    prepared.didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
+                )
             } catch {
                 presentToast("Upload failed: \(error.localizedDescription)", isError: true)
             }
