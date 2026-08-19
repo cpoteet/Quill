@@ -1408,6 +1408,18 @@
             },
             renderHTML: attrs => attrs.imgClass ? { class: attrs.imgClass } : {},
           },
+          // WP 7.1's "Mark as decorative" image toggle saves role="none" on the
+          // <img>. Preserved verbatim so the accessibility semantic survives a
+          // Quill edit; works under the bare `img[src]` rule too, which has no
+          // getAttrs of its own.
+          imgRole: {
+            default: null,
+            parseHTML: el => {
+              const img = el.tagName === 'FIGURE' ? el.querySelector('img') : el
+              return img?.getAttribute('role') || null
+            },
+            renderHTML: attrs => attrs.imgRole ? { role: attrs.imgRole } : {},
+          },
           figureClass: {
             default: null,
             rendered: false,
@@ -1804,10 +1816,20 @@
       },
 
       parseHTML() {
-        return [{
-          tag: '[class*="wp-block-"]:not(figure)',
-          getAttrs: el => parsePassthroughBlock(el) || false,
-        }]
+        return [
+          {
+            tag: '[class*="wp-block-"]:not(figure)',
+            getAttrs: el => parsePassthroughBlock(el) || false,
+          },
+          {
+            // Figures too. Only image/gallery/embed/table have figure rules of
+            // their own (QUILL_MODELED_FIGURE_CLASSES); every other wp-block-*
+            // figure — audio, video, pullquote, playlist — has none, and the
+            // generic parser destroys it rather than leaving it alone.
+            tag: 'figure[class*="wp-block-"]',
+            getAttrs: el => isModeledFigure(el) ? false : (parsePassthroughBlock(el) || false),
+          },
+        ]
       },
 
       renderHTML({ node }) {

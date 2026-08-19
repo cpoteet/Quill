@@ -425,3 +425,53 @@ describe('image link-to-full-size', () => {
     assert.equal(node.attrs.linkHref, null)
   })
 })
+
+describe('image marked as decorative (WP 7.1)', () => {
+  before(() => {
+    // Absorb the pre-existing one-shot setContent quirk documented on the
+    // 'image link-to-full-size' block above.
+    editor.commands.setContent('<p></p>', false)
+  })
+
+  test('role="none" on the <img> parses into imgRole and round-trips', () => {
+    // Real WP 7.1 save() output: "Mark as decorative" emits role="none" and alt="".
+    const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const node = editor.state.doc.firstChild
+    assert.equal(node.type.name, 'image')
+    assert.equal(node.attrs.imgRole, 'none')
+    const out = editor.getHTML()
+    assert.match(out, /<img[^>]*role="none"/)
+  })
+
+  test('role survives the toWordPressHTML save transform', () => {
+    const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const img = doc.querySelector('figure.wp-block-image img')
+    assert.ok(img, 'the image figure survived')
+    assert.equal(img.getAttribute('role'), 'none')
+    assert.equal(img.getAttribute('alt'), '')
+    assert.ok(img.classList.contains('wp-image-99'))
+  })
+
+  test('an image with no role attribute emits no role on save', () => {
+    const html = '<figure class="wp-block-image"><img src="http://x/p.jpg" alt="A cat"><figcaption></figcaption></figure>'
+    editor.commands.setContent(html, false)
+    assert.equal(editor.state.doc.firstChild.attrs.imgRole, null)
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /role=/)
+  })
+
+  test('role is preserved on a classic linked image with no figure wrapper', () => {
+    // The bare img[src] parse rule has no getAttrs, so imgRole must come from
+    // its own per-attribute parseHTML fallback.
+    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', false)
+    const imgs = []
+    editor.state.doc.descendants(n => { if (n.type.name === 'image') imgs.push(n) })
+    assert.equal(imgs.length, 1)
+    assert.equal(imgs[0].attrs.imgRole, 'presentation')
+    assert.match(editor.getHTML(), /role="presentation"/)
+  })
+})

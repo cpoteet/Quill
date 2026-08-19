@@ -36,8 +36,8 @@ function passthroughLabelFromBlockName(name) {
 // the next save. Out-ranking everything means passthrough must instead opt
 // *out* explicitly, which is what this set is for.
 //
-// Figure-based blocks (image, gallery, embed, table) are not listed here —
-// the parse rule's own `:not(figure)` selector already excludes them.
+// Figure-rooted blocks are listed separately in QUILL_MODELED_FIGURE_CLASSES,
+// which the passthrough node's second (figure-only) parse rule consults.
 const QUILL_MODELED_BLOCK_CLASSES = new Set([
   'wp-block-heading',
   'wp-block-list',
@@ -46,6 +46,27 @@ const QUILL_MODELED_BLOCK_CLASSES = new Set([
   'wp-block-code',
   'wp-block-separator',
 ])
+
+// Gutenberg blocks Quill models with a dedicated Tiptap node whose parse rule
+// matches a <figure>. Every *other* wp-block-* figure (audio, video,
+// pullquote, playlist, …) has no rule of its own, so the generic parser
+// shreds it: the wrapper and its block comments are dropped, <audio>/<video>
+// children vanish entirely, and a pullquote is silently rewritten as a plain
+// quote. gutenbergPassthrough claims those instead; this set is how the
+// blocks Quill really does model opt back out.
+const QUILL_MODELED_FIGURE_CLASSES = new Set([
+  'wp-block-image',
+  'wp-block-gallery',
+  'wp-block-embed',
+  'wp-block-table',
+])
+
+// True when `el` is a <figure> rooted at a block Quill models natively, and
+// so must be left to that block's own parse rule.
+function isModeledFigure(el) {
+  if (!el || el.tagName !== 'FIGURE') return false
+  return Array.from(el.classList).some(c => QUILL_MODELED_FIGURE_CLASSES.has(c))
+}
 
 // Given a wp-block-* classed element that gutenbergPassthrough's parse rule
 // matched, extracts what's needed to preserve and re-display it. Returns null
@@ -564,5 +585,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock }
+  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES }
 }

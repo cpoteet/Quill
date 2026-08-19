@@ -272,3 +272,122 @@ describe('gutenbergPassthrough — does not steal elements other rules already c
     assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
   })
 })
+
+// Real WP 7.1 markup, taken from core's shipped block-library.js save() output
+// (verified 2026-08-19 against a live WordPress 7.1 install). Playlist saves as
+// a <figure>, which the passthrough rule's original `:not(figure)` selector
+// excluded — the whole block was shredded on save.
+const PLAYLIST_71 =
+  '<!-- wp:playlist {"showNumbers":true} -->\n' +
+  '<figure class="wp-block-playlist">' +
+  '<ol class="wp-block-playlist__tracklist wp-block-playlist__tracklist-show-numbers">' +
+  '<!-- wp:playlist-track {"id":42,"url":"http://x/a.mp3","title":"Track A"} -->\n' +
+  '<li class="wp-block-playlist-track"><button type="button">Track A</button></li>\n' +
+  '<!-- /wp:playlist-track -->' +
+  '</ol><figcaption class="wp-element-caption">My playlist</figcaption></figure>\n' +
+  '<!-- /wp:playlist -->'
+
+const AUDIO_FIGURE =
+  '<figure class="wp-block-audio"><audio controls src="http://x/a.mp3"></audio>' +
+  '<figcaption class="wp-element-caption">Cap</figcaption></figure>'
+
+const VIDEO_FIGURE =
+  '<figure class="wp-block-video"><video controls src="http://x/v.mp4"></video></figure>'
+
+const PULLQUOTE_FIGURE =
+  '<figure class="wp-block-pullquote"><blockquote><p>Big idea</p><cite>Someone</cite></blockquote></figure>'
+
+describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', () => {
+  before(() => {
+    // Absorb the pre-existing jsdom/Tiptap one-shot quirk: the first setContent
+    // after a doc that is a single atom node silently yields an empty <p>.
+    // Reproduces on unmodified editor.html, so it is not caused by these rules.
+    editor.commands.setContent('<p></p>', false)
+  })
+
+  test('a wp:playlist figure parses to gutenbergPassthrough, not shredded into loose nodes', () => {
+    win.setContent(PLAYLIST_71)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(nodesOfType('bulletList').length, 0)
+    assert.equal(nodesOfType('orderedList').length, 0)
+    assert.equal(nodesOfType('paragraph').length, 0)
+  })
+
+  test('a wp:playlist figure survives a save byte-for-byte, comments and all', () => {
+    win.setContent(PLAYLIST_71)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-playlist')
+    assert.ok(fig, 'the playlist figure survived')
+    assert.ok(fig.querySelector('ol.wp-block-playlist__tracklist'), 'tracklist survived')
+    assert.equal(fig.querySelectorAll('li.wp-block-playlist-track').length, 1)
+    assert.equal(
+      fig.querySelector('figcaption.wp-element-caption').textContent,
+      'My playlist',
+      'the figcaption stayed a figcaption inside the figure, not hoisted to a <p>'
+    )
+    assert.match(out, /<!-- wp:playlist \{"showNumbers":true\} -->/)
+    assert.match(out, /<!-- \/wp:playlist -->/)
+  })
+
+  test('an audio figure is preserved rather than reduced to its caption text', () => {
+    win.setContent(AUDIO_FIGURE)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    assert.ok(doc.querySelector('figure.wp-block-audio > audio[src="http://x/a.mp3"]'))
+  })
+
+  test('a video figure is preserved rather than emptied', () => {
+    win.setContent(VIDEO_FIGURE)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    assert.ok(doc.querySelector('figure.wp-block-video > video[src="http://x/v.mp4"]'))
+  })
+
+  test('a pullquote figure stays a pullquote instead of being rewritten as a quote', () => {
+    win.setContent(PULLQUOTE_FIGURE)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(nodesOfType('blockquote').length, 0)
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<figure class="wp-block-pullquote">/)
+    assert.doesNotMatch(out, /wp-block-quote/)
+  })
+})
+
+describe('gutenbergPassthrough — modeled figures still go to their own nodes', () => {
+  before(() => {
+    // Same one-shot jsdom quirk as above: the preceding describe leaves the doc
+    // as a single atom node, which makes the next setContent no-op.
+    editor.commands.setContent('<p></p>', false)
+  })
+
+  test('a wp-block-image figure still parses as an image', () => {
+    win.setContent('<figure class="wp-block-image"><img src="http://x/a.jpg"></figure>')
+    assert.equal(nodesOfType('image').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-gallery figure still parses as a galleryBlock, nested image figures included', () => {
+    win.setContent('<figure class="wp-block-gallery has-nested-images columns-2 is-cropped">' +
+      '<figure class="wp-block-image size-large"><img src="http://x/1.jpg" class="wp-image-1"></figure>' +
+      '<figure class="wp-block-image size-large"><img src="http://x/2.jpg" class="wp-image-2"></figure>' +
+      '</figure>')
+    assert.equal(nodesOfType('galleryBlock').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-embed figure still parses as an embedBlock', () => {
+    win.setContent('<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube">' +
+      '<div class="wp-block-embed__wrapper">\nhttps://www.youtube.com/watch?v=abc\n</div></figure>')
+    assert.equal(nodesOfType('embedBlock').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a wp-block-table figure still parses as a table', () => {
+    win.setContent('<figure class="wp-block-table"><table><tbody><tr><td>x</td></tr></tbody></table></figure>')
+    assert.equal(nodesOfType('table').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+})
