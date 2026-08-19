@@ -167,3 +167,4 @@ Most file-specific gotchas moved to per-directory `CLAUDE.md` files on 2026-07-1
 - Spec (Gutenberg passthrough block): `docs/superpowers/specs/2026-07-12-gutenberg-passthrough-block-design.md`
 - Plan (Gutenberg passthrough block): `docs/superpowers/plans/2026-07-12-gutenberg-passthrough-block.md`
 - End-user guide: `docs/user-guide.md`
+- WordPress release markup audit routine (run once per WP major release; includes the WP 7.1 run record): `docs/wordpress-release-audit.md`

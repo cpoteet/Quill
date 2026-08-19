@@ -12,6 +12,8 @@ All WordPress/Gutenberg HTML compatibility lives in two files (line numbers drif
 
 See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table and the full gotcha list (referenced ones below are just the traps most likely to bite a format update).
 
+**Auditing a whole WordPress release** (rather than fixing one known block) has its own routine: `docs/wordpress-release-audit.md` — pre-flight steps, the ground-truth source order that worked for WP 7.1, the standing checklist, and the 7.1 run record.
+
 ## How to update when WordPress changes its HTML format
 
 1. Check the new format against real sources, in priority order:
