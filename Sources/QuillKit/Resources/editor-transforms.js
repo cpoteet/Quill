@@ -47,8 +47,13 @@ const QUILL_MODELED_BLOCK_CLASSES = new Set([
   'wp-block-separator',
 ])
 
-// Gutenberg blocks Quill models with a dedicated Tiptap node whose parse rule
-// matches a <figure>. Every *other* wp-block-* figure (audio, video,
+// Figure-rooted Gutenberg blocks Quill already handles. Image, gallery and
+// embed each have their own `figure.wp-block-*` parse rule. Table has none —
+// it relies on the parser descending past the figure so Tiptap's bare `table`
+// rule claims the inner element, with toWordPressHTML re-wrapping the figure
+// on save — so it must be listed here too, or passthrough (priority 200)
+// would claim the whole figure as an atom and freeze every table into a
+// non-editable card. Every *other* wp-block-* figure (audio, video,
 // pullquote, playlist, …) has no rule of its own, so the generic parser
 // shreds it: the wrapper and its block comments are dropped, <audio>/<video>
 // children vanish entirely, and a pullquote is silently rewritten as a plain
