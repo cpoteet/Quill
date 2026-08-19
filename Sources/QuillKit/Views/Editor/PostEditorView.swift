@@ -913,7 +913,11 @@ public struct PostEditorView: View {
         for url in urls {
             guard url.isFileURL else { continue }
             do {
-                let prepared = ImageConversion.prepareForUpload(url)
+                // Off the main actor: decode + re-encode is CPU-bound and this
+                // function is MainActor-isolated via SwiftUI's View conformance.
+                let prepared = await Task.detached(priority: .userInitiated) {
+                    ImageConversion.prepareForUpload(url)
+                }.value
                 defer { prepared.cleanup() }
                 let media = try await client.uploadMedia(
                     fileURL: prepared.fileURL,

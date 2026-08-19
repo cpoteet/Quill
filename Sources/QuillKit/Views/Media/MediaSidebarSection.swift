@@ -306,7 +306,10 @@ struct MediaSidebarSection: View {
         Task {
             defer { isUploading = false }
             do {
-                let prepared = ImageConversion.prepareForUpload(url)
+                // Off the main actor — see the same call in PostEditorView.
+                let prepared = await Task.detached(priority: .userInitiated) {
+                    ImageConversion.prepareForUpload(url)
+                }.value
                 defer { prepared.cleanup() }
                 let uploaded = try await WordPressClient(credentials: creds)
                     .uploadMedia(
