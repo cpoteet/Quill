@@ -25,6 +25,8 @@ public struct PostEditorView: View {
     // two consecutive toasts share identical text (e.g. two "Image inserted" toasts from a
     // multi-file drop) — keying the timer on the message string alone wouldn't detect that.
     @State private var toastToken: Int = 0
+    // Non-nil while a dropped image is being converted/uploaded; drives the bottom pill.
+    @State private var uploadStatus: String? = nil
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
@@ -238,6 +240,7 @@ public struct PostEditorView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
         .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
+        .uploadStatus($uploadStatus)
         .toast(message: $toastMessage, isError: $toastIsError, token: toastToken)
         .sheet(isPresented: $showDiscardAlert) {
             VStack(alignment: .leading, spacing: 16) {
@@ -910,8 +913,15 @@ public struct PostEditorView: View {
     private func handleDroppedImages(_ urls: [URL]) async {
         guard let creds = appState.credentials else { return }
         let client = WordPressClient(credentials: creds)
-        for url in urls {
-            guard url.isFileURL else { continue }
+        let files = urls.filter { $0.isFileURL }
+        guard !files.isEmpty else { return }
+
+        var inserted = 0
+        var didConvert = false
+        var firstError: String? = nil
+
+        for (index, url) in files.enumerated() {
+            uploadStatus = Self.uploadStatusText(index: index + 1, total: files.count)
             do {
                 // Off the main actor: decode + re-encode is CPU-bound and this
                 // function is MainActor-isolated via SwiftUI's View conformance.
@@ -929,13 +939,37 @@ public struct PostEditorView: View {
                 if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
-                presentToast(
-                    prepared.didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
-                )
+                inserted += 1
+                if prepared.didConvert { didConvert = true }
             } catch {
-                presentToast("Upload failed: \(error.localizedDescription)", isError: true)
+                if firstError == nil { firstError = error.localizedDescription }
             }
         }
+
+        // Clear the pill before any toast — both use the same bottom slot.
+        uploadStatus = nil
+        let failed = files.count - inserted
+        if failed > 0, let firstError {
+            presentToast(
+                Self.uploadFailureMessage(failed: failed, total: files.count, firstError: firstError),
+                isError: true
+            )
+        } else {
+            presentToast(Self.uploadSuccessMessage(inserted: inserted, didConvert: didConvert))
+        }
+    }
+
+    static func uploadStatusText(index: Int, total: Int) -> String {
+        total == 1 ? "Uploading image…" : "Uploading image \(index) of \(total)…"
+    }
+
+    static func uploadSuccessMessage(inserted: Int, didConvert: Bool) -> String {
+        guard inserted == 1 else { return "\(inserted) images inserted" }
+        return didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
+    }
+
+    static func uploadFailureMessage(failed: Int, total: Int, firstError: String) -> String {
+        total == 1 ? "Upload failed: \(firstError)" : "\(failed) of \(total) images failed to upload"
     }
 
     static func previewURL(from link: String) -> URL? {

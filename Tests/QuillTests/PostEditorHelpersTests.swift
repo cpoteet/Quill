@@ -54,6 +54,42 @@ import Testing
         #expect(PostEditorView.toastMessage(forStatus: .draft) == "Draft saved")
     }
 
+    // MARK: - Dropped-image upload feedback
+
+    @Test func uploadStatusTextForSingleFile() {
+        #expect(PostEditorView.uploadStatusText(index: 1, total: 1) == "Uploading image…")
+    }
+
+    @Test func uploadStatusTextForMultipleFiles() {
+        #expect(PostEditorView.uploadStatusText(index: 1, total: 3) == "Uploading image 1 of 3…")
+        #expect(PostEditorView.uploadStatusText(index: 2, total: 3) == "Uploading image 2 of 3…")
+        #expect(PostEditorView.uploadStatusText(index: 3, total: 3) == "Uploading image 3 of 3…")
+    }
+
+    @Test func uploadSuccessMessageForSingleFile() {
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 1, didConvert: false) == "Image inserted")
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 1, didConvert: true) == "Converted to JPEG · Image inserted")
+    }
+
+    @Test func uploadSuccessMessageForMultipleFiles() {
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 3, didConvert: false) == "3 images inserted")
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 3, didConvert: true) == "3 images inserted")
+    }
+
+    @Test func uploadFailureMessageForSingleFileKeepsUnderlyingError() {
+        #expect(
+            PostEditorView.uploadFailureMessage(failed: 1, total: 1, firstError: "The network connection was lost.")
+                == "Upload failed: The network connection was lost."
+        )
+    }
+
+    @Test func uploadFailureMessageForMultipleFilesSummarizes() {
+        #expect(
+            PostEditorView.uploadFailureMessage(failed: 2, total: 3, firstError: "boom")
+                == "2 of 3 images failed to upload"
+        )
+    }
+
     @Test func statusChangeToFutureSetsDefaultDate() {
         var s = PostSettings()
         s.status = .future

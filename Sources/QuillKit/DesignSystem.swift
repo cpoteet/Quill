@@ -205,6 +205,48 @@ struct ToastView: View {
     }
 }
 
+/// Shown while a dropped image is converted and uploaded, before it is inserted.
+/// Matches `ToastView`'s surface so the two read as one family.
+struct UploadStatusPill: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text(message)
+                .font(.system(size: 13))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 0)
+    }
+}
+
+extension View {
+    /// Bottom-center progress pill. Uses the same slot as `toast(message:isError:token:)`;
+    /// callers must clear the status before presenting a toast so the two never overlap.
+    func uploadStatus(_ message: Binding<String?>) -> some View {
+        ZStack(alignment: .bottom) {
+            self
+            if let msg = message.wrappedValue {
+                UploadStatusPill(message: msg)
+                    .padding(.bottom, 20)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .opacity.combined(with: .scale(scale: 0.92))
+                        )
+                    )
+                    .zIndex(1)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: message.wrappedValue != nil)
+    }
+}
+
 extension View {
     /// `token` should be bumped by the caller on every toast presentation (even when the
     /// message text is unchanged from the previous toast) — keying the dismiss timer on the
