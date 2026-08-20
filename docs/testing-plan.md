@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-07-10 — 333 Swift tests + 177 JS tests, all passing._
+_Last updated: 2026-08-20 — 365 Swift tests + 320 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,9 +16,9 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 355 tests)
+1. **Swift tests** — `swift test` (all 365 tests)
 2. **JS editor tests** — `node --test Scripts/test-editor.js` (171 tests via Node's built-in runner + jsdom)
-3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (45 tests — live Tiptap editor in jsdom)
+3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (59 tests — live Tiptap editor in jsdom)
 4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
 5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
 6. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
@@ -49,7 +49,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (355 tests, 23 suites)
+## Swift test suite (365 tests, 23 suites)
 
 `swift test` reports 25 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
 
@@ -78,7 +78,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 11 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 14 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 24 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time; dropped-image upload progress/summary message builders |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -674,7 +674,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (14 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (24 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -708,6 +708,23 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 | `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
 | `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
 | `statusChangeToPendingClearsScheduledDate` | Switching from `future` to `pending` → `publishDate` cleared to `nil` |
+
+#### Dropped-image upload feedback (10 tests)
+
+Static message builders behind the Finder-drop progress pill and its summary toast. The pill and toast themselves are SwiftUI view state and are covered manually (§7.4).
+
+| Test | What it checks |
+|---|---|
+| `uploadStatusTextForSingleFile` | A one-file drop reads `"Uploading image…"` — no "1 of 1" counter |
+| `uploadStatusTextForMultipleFiles` | A multi-file drop counts up: `"Uploading image 2 of 3…"` |
+| `uploadSuccessMessageForSingleFile` | One file → `"Image inserted"`, or `"Converted to JPEG · Image inserted"` when HEIC conversion ran |
+| `uploadSuccessMessageForTwoFilesUsesThePluralForm` | Two files → `"2 images inserted"` (one summary toast, not one per file) |
+| `uploadSuccessMessageForMultipleFiles` | Three files → `"3 images inserted"`; the conversion note is dropped for batches |
+| `uploadSuccessMessageWithNothingInsertedFallsThroughToPlural` | `inserted: 0` → `"0 images inserted"`. Unreachable from `handleDroppedImages`; pinned deliberately so the branch can't drift into a crash or a singular string |
+| `uploadFailureMessageForSingleFileKeepsUnderlyingError` | One failed file → `"Upload failed: <error>"` with the underlying error text intact |
+| `uploadFailureMessageForMultipleFilesSummarizes` | Two of three failed → `"2 of 3 images failed to upload"` |
+| `uploadFailureMessageWhenEveryFileInAMultiDropFails` | All three failed → `"3 of 3 images failed to upload"` |
+| `uploadFailureMessageForPartialMultiDropOmitsTheErrorText` | Partial batch failure summarizes as a count and deliberately drops the per-file error text |
 
 ### 21. App — `UpdateCheckerTests` (7 tests)
 
@@ -1121,7 +1138,7 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | data-media-id never reaches the saved output | The attribute is gone and `wp-image-201` is present |
 
 
-## JS keyboard tests (45 tests)
+## JS keyboard tests (59 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1223,6 +1240,27 @@ WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<
 | `a classic bare img keeps its role through the save transform` | Classic (non-Gutenberg) `<img>` markup keeps `role` on save |
 | `role stays on the img when the image also links to its full size` | With `linkTo: 'media'`, `role` lands on the `<img>` nested in the `<a>`, not on the anchor |
 | `an empty role attribute is dropped rather than emitted as role=""` | `role=""` is treated as absent, not serialized as an empty attribute |
+
+### `window.insertImage cursor placement` (14 tests)
+
+`window.insertImage` used to leave the cursor inside the new figure's empty `<figcaption>`, so typing straight after an insert wrote caption text. It now inserts an empty paragraph after the image and puts the cursor there; the caption is left untouched and still clickable, so captioning is opt-in. All three insert paths share this function (toolbar insert, post-upload insert, Finder drop). Intended consequence: the saved WordPress HTML gains an empty `<p></p>` after the image block.
+
+| Test | What it checks |
+|---|---|
+| `inserting into an empty document leaves the cursor in a paragraph below` | Baseline: cursor lands in a paragraph, not the caption |
+| `inserting after existing text appends the paragraph after the image` | Existing content is preserved; the new paragraph follows the figure |
+| `the caption is left empty and still holds the image attrs` | `figcaption` stays empty while `src`/`mediaId`/`alt` land on the image node |
+| `three consecutive inserts stack in order with one trailing paragraph` | Consecutive inserts reuse the previous paragraph rather than stacking blank ones |
+| `a multi-image drop saves one wp:image pair per image, in drop order` | Ids in drop order, two closing comments, no blank paragraph wedged between figures, save transform idempotent |
+| `the saved figure carries no caption and no empty paragraph` | The new paragraph is a sibling *after* `<!-- /wp:image -->`, never inside the figure |
+| `the paragraph below the image accepts typing` | Typed text lands in the paragraph, not the caption |
+| `inserting with the cursor in an existing caption appends below, leaving the caption intact` | Inserting from inside a caption doesn't clobber that caption |
+| `inserting while an image node is selected replaces it and still lands below` | Node-selection replace path also ends below the new image |
+| `inside a list item the image and its paragraph stay in the item` | The figure serializes inside `<li>` — insert doesn't break out of the list |
+| `inside a blockquote the image and its paragraph stay in the quote` | Insert stays scoped to the blockquote |
+| `inside a table cell the image and its paragraph stay in that cell` | Insert stays scoped to the cell |
+| `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
+| `inside a footnote the insert is refused and the document is unchanged` | Footnote entries reject image insertion outright |
 
 ---
 
@@ -1479,9 +1517,16 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 
 - [ ] Click the insert image button in the toolbar → select an image from the picker → it appears at the cursor position in the editor.
 - [ ] In the image picker grid, click a specific thumbnail → it selects that exact image (not an adjacent one).
-- [ ] Drag an image file from Finder onto the editor → the image uploads, appears in the editor, and a success toast is shown.
+- [ ] Drag an image file from Finder onto the editor → a progress pill reading "Uploading image…" appears at the bottom **before** the upload finishes, then the image inserts and a success toast replaces it.
 - [ ] Drag a non-image file (e.g. a `.txt` or `.pdf`) onto the editor → nothing happens (file is ignored).
-- [ ] Drag multiple image files onto the editor at once → all upload and insert.
+- [ ] Drag multiple image files onto the editor at once → all upload and insert; the pill counts up ("Uploading image 2 of 3…") and the drop ends in **one** summary toast ("3 images inserted"), not one toast per file.
+- [ ] Drop a `.heic` alongside two ordinary images → the batch still ends in a single "3 images inserted" toast (the "Converted to JPEG" note only appears on a single-file drop).
+- [ ] Disconnect the network and drop one image → the toast reads "Upload failed: …" with the underlying error. Reconnect, then drop three images with one deliberately unusable → the toast summarizes as "1 of 3 images failed to upload".
+- [ ] Drop a batch of images, and while the pill is still counting, drop a second batch → the two batches run one after the other: the pill never disappears early, and a toast and the pill are never visible on top of each other in the bottom slot.
+- [ ] After any image insert (toolbar button, media picker, or Finder drop), start typing immediately → the text goes into a new paragraph **below** the image, not into the caption. Click the caption area under the image → the caret moves there and a caption can be typed.
+- [ ] Insert two images back to back → only one empty paragraph sits between/after them (blank paragraphs don't stack).
+- [ ] Save a post with an inserted image and check code view → an empty `<p></p>` follows the `<!-- /wp:image -->` block. This is expected, not a bug.
+- [ ] Insert an image with the cursor inside a list item, a blockquote, and a table cell → in each case the image and its new paragraph stay inside that container.
 - [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
 - [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
@@ -1898,7 +1943,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 81 | `PostEditorView` refuses to save when the full-post load failed (`contentLoadFailed`) | 👁 §7.7 (simulate load failure, attempt save) |
 | 82 | Taxonomy creation retry doesn't resubmit already-created pending names | 👁 §7.7 (create post with 2+ new tags, force one to fail, retry save) |
 | 83 | `AIResultPanel` event monitor not double-registered across repeated `show()` calls | 👁 §7.11 (trigger AI op twice via right-click without dismissing) |
-| 84 | Toast dismiss timer restarts on every `presentToast()` call via a bumped `toastToken`, even when two consecutive toasts share identical text (keying `.task(id:)` on the message string alone couldn't detect that case) | 👁 §7.9 (drop 2+ images at once, confirm each "Image inserted" toast shows for a full 2s) |
+| 84 | Toast dismiss timer restarts on every `presentToast()` call via a bumped `toastToken`, even when two consecutive toasts share identical text (keying `.task(id:)` on the message string alone couldn't detect that case) | 👁 §7.9 (trigger two consecutive same-text toasts — e.g. save twice with no changes — and confirm the second shows for a full 2s. Note: a multi-image drop now raises one summary toast, so it no longer exercises this) |
 | 85 | `PostEditorView.loadItem()` bails out of its catch block on a stale/cancelled load instead of writing `contentLoadFailed`/`saveError` for whichever post is now displayed | 👁 §7.7 (switch away from a post before its full-content fetch fails) |
 | 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
@@ -1927,6 +1972,9 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 110 | WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<img>`; the `imgRole` attr parses it and round-trips it through `toWordPressHTML` under both the `figure.wp-block-image` rule and the bare `img[src]` classic-markup fallback, stays on the `<img>` rather than the `<a>` when the image also links to full size, emits nothing when the source had no role, and treats `role=""` as absent | ✅ `test-editor-keyboard.js` `'image marked as decorative (WP 7.1)'` (7 tests) + 👁 §7.4 |
 | 111 | WordPress 7.1 accepts HEIC over the REST API but cannot generate sub-sizes for it, so the attachment lands with no dimensions and no sizes. `ImageConversion.prepareForUpload` converts HEIC/HEIF to JPEG locally first (quality 0.9), preserving EXIF orientation and pixel dimensions, writing to a per-upload UUID temp directory that `cleanup()` removes whole; JPEG/PNG/PDF pass through untouched, a file ImageIO cannot decode falls back to the original rather than blocking the upload, and two same-named files converted in one drop don't collide | ✅ `ImageConversionTests` (17 tests) + 👁 §7.4 |
 | 112 | `ImageConversion.prepareForUpload` is a synchronous decode + re-encode, so the two MainActor-isolated callers (`PostEditorView.handleDroppedImages`, `MediaSidebarSection.uploadFromDisk`) run it inside `await Task.detached(priority: .userInitiated) { … }.value` rather than inline — calling it directly froze the UI for the length of the conversion. `uploadPickedImage` was already off the main thread | 👁 §7.4 (drop a large HEIC photo, confirm the editor stays responsive and does not beachball while it converts) |
+| 114 | `window.insertImage` leaves the cursor in an empty paragraph *after* the new figure instead of inside its empty `<figcaption>` — typing straight after an insert used to silently write caption text. The caption is untouched and still clickable, so captioning is opt-in; consecutive inserts reuse the previous trailing paragraph rather than stacking blank ones; and the insert stays scoped to its container (list item, blockquote, table cell) or is refused outright (footnotes). Intended consequence: saved content gains an empty `<p></p>` after the image block. All three insert paths (toolbar, post-upload, Finder drop) share the function | ✅ `test-editor-keyboard.js` `'window.insertImage cursor placement'` (14 tests) + 👁 §7.4 |
+| 115 | A Finder drop shows an `UploadStatusPill` before HEIC conversion even starts, and a multi-file drop ends in **one** summary toast rather than one toast per file — per-file toasts overwrote each other so a 3-image drop effectively reported nothing. The message builders are pure statics so the wording (singular vs plural, the "Converted to JPEG" note, partial-failure counts) is pinned by tests even though the pill itself is untestable SwiftUI state | ✅ `PostEditorHelpersTests` "Dropped-image upload feedback" (10 tests) + 👁 §7.4 |
+| 116 | `UploadStatusPill` and the toast share one bottom slot, so overlapping Finder drops raced on `uploadStatus`: a second batch dropped mid-upload cleared the pill early and let a toast and the pill render on top of each other. `PostEditorView` holds a `@State private var dropTask: Task<Void, Never>?` and the `onImageFilesDropped` callback chains each batch onto the previous one (`await previous?.value`), so drop batches never interleave. Any future code that writes `uploadStatus` must go through the same queue. Pure SwiftUI view plumbing with no extractable helper — manual only | 👁 §7.4 (drop a batch, drop a second batch while the pill is still counting, confirm pill and toast never overlap) |
 | 113 | Standalone (non-gallery) images saved without `<!-- wp:image -->` comments, so WordPress parsed them as classic HTML rather than core/image blocks and offered no image controls; `data-media-id`, an editor-internal attribute, also shipped in post content. `toWordPressHTML` now wraps every standalone `figure.wp-block-image` in a `wp:image` pair with the attributes it can derive, skips gallery-nested figures so the gallery pass keeps owning those, and removes `data-media-id` once the `wp-image-{id}` class is emitted | ✅ `test-editor.js` `'standalone image block comments'` (9 tests) |
 
 ---
@@ -1939,4 +1987,5 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **Preview URL on plain-permalink sites (§7.8):** `previewURL` logic is fully unit-tested; the manual step verifies the resulting URL actually loads in the browser on a real site.
 - **Insert-image picker file filter (§7.4):** `NSOpenPanel.allowedContentTypes` is an AppKit call; the panel itself can only be verified by running the app.
 - **`GallerySheet`'s expandable alt/caption rows (§7.4):** the chevron expand/collapse, `moveDisabled` while expanded, the grip-hover collapse, and expanded state clearing on deselect are all SwiftUI `List` row behavior with no test harness. The values those fields produce *are* covered end-to-end on the JS side; only the interaction is manual.
+- **Dropped-image progress pill and drop-batch serialization (§7.4):** `UploadStatusPill`, the shared bottom slot it occupies with the toast, and the `dropTask` chaining that keeps overlapping Finder drops from interleaving are all SwiftUI view state with no test harness. The *messages* the pill and toast display are unit-tested; only the timing and layering are manual.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.

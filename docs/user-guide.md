@@ -360,6 +360,10 @@ The practical rule: if you need to make changes that go beyond CSS classes on su
 
 Click the **Image** button in the toolbar to open the media library picker and insert an image at the cursor position. See [Media Library](#media-library) for details on uploading and browsing media. You can also drag an image file directly from Finder onto the editor canvas; Quill uploads it to your WordPress media library and inserts it in one step. If the file is a HEIC photo (the format iPhones use by default), Quill converts it to JPEG before uploading, so WordPress can generate the usual thumbnail and preview sizes.
 
+While a dropped file uploads, a small progress pill appears at the bottom of the window. If you drop several images at once, it counts through them ("Uploading image 2 of 3…") and the drop finishes with a single message such as "3 images inserted" rather than one message per file. If something goes wrong, the message names the problem for a single file, or reports how many of the batch failed. Dropping another batch while one is still uploading is fine: Quill finishes the first batch before starting the second.
+
+**Where the cursor goes:** after an image is inserted, the cursor moves to a new empty paragraph below it, so you can keep typing straight away. Adding a caption is optional; see [Captions](#captions).
+
 Once an image is inserted, click it to select it. A floating image toolbar appears above the image, and alignment controls become available in the main toolbar.
 
 #### Resizing
@@ -386,7 +390,7 @@ Use the alignment buttons in the main toolbar (left, center, right) to float or 
 
 #### Captions
 
-Click below an image to place the cursor in the caption field and type a caption. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
+Captions are optional. A newly inserted image has an empty caption and the cursor sits in a new paragraph below the image, so typing right after an insert adds body text, not a caption. To add one, click the caption area directly beneath the image to place the cursor there, then type. Captions are saved as part of the Gutenberg image block. Pressing **Enter** inside a caption exits the image and creates a new paragraph below it.
 
 #### Linking to the full-size image
 
@@ -591,7 +595,7 @@ HEIC photos are converted to JPEG automatically before they're sent to WordPress
 
 To insert an image from your media library into a post or page, click the **Image** button in the editor toolbar while editing. This opens a picker sheet showing your media library. Click an image to insert it at the cursor position.
 
-You can also drag an image file directly from Finder onto the editor canvas to upload and insert it in one step.
+You can also drag one or more image files directly from Finder onto the editor canvas to upload and insert them in one step. A progress pill at the bottom of the window tracks the upload, and a multi-file drop reports a single summary message when it's done.
 
 ### Deleting Media
 

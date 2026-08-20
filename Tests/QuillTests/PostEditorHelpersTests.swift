@@ -90,6 +90,33 @@ import Testing
         )
     }
 
+    @Test func uploadSuccessMessageForTwoFilesUsesThePluralForm() {
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 2, didConvert: false) == "2 images inserted")
+    }
+
+    // handleDroppedImages never reaches this: an all-failed drop routes to the
+    // failure branch, and an empty drop returns before any message is built.
+    // Pinned so the plural fallthrough stays sane if the guard is ever relaxed.
+    @Test func uploadSuccessMessageWithNothingInsertedFallsThroughToPlural() {
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 0, didConvert: false) == "0 images inserted")
+        #expect(PostEditorView.uploadSuccessMessage(inserted: 0, didConvert: true) == "0 images inserted")
+    }
+
+    @Test func uploadFailureMessageWhenEveryFileInAMultiDropFails() {
+        #expect(
+            PostEditorView.uploadFailureMessage(failed: 3, total: 3, firstError: "boom")
+                == "3 of 3 images failed to upload"
+        )
+    }
+
+    // A partial multi-file failure deliberately drops the underlying error text:
+    // the count is the useful signal, and only the first error was captured.
+    @Test func uploadFailureMessageForPartialMultiDropOmitsTheErrorText() {
+        let msg = PostEditorView.uploadFailureMessage(failed: 1, total: 2, firstError: "The network connection was lost.")
+        #expect(msg == "1 of 2 images failed to upload")
+        #expect(msg.contains("network") == false)
+    }
+
     @Test func statusChangeToFutureSetsDefaultDate() {
         var s = PostSettings()
         s.status = .future

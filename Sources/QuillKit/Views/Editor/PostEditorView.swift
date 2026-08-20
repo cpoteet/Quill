@@ -27,6 +27,8 @@ public struct PostEditorView: View {
     @State private var toastToken: Int = 0
     // Non-nil while a dropped image is being converted/uploaded; drives the bottom pill.
     @State private var uploadStatus: String? = nil
+    // Tail of the drop queue. Each new drop awaits it, so batches never interleave.
+    @State private var dropTask: Task<Void, Never>? = nil
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var loadedItem: PostItem? = nil
@@ -89,7 +91,13 @@ public struct PostEditorView: View {
                             showGallerySheet = true
                         },
                         onImageFilesDropped: { urls in
-                            Task { await handleDroppedImages(urls) }
+                            // Serialized: overlapping drops share `uploadStatus`, so a second
+                            // batch must not clear the pill while the first is still uploading.
+                            let previous = dropTask
+                            dropTask = Task {
+                                await previous?.value
+                                await handleDroppedImages(urls)
+                            }
                         },
                         onDropRejected: { message in
                             presentToast(message, isError: true)

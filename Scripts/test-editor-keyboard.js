@@ -553,4 +553,123 @@ describe('window.insertImage cursor placement', () => {
     assert.equal(img.attrs.mediaId, 42)
     assert.equal(img.attrs.alt, 'alt text')
   })
+
+  test('three consecutive inserts stack in order with one trailing paragraph', () => {
+    // The real multi-file drop path: PostEditorView posts one .insertMediaURL
+    // per uploaded file, so insertImage runs back to back. Each call must land
+    // in the paragraph the previous call created, not stack blank paragraphs.
+    editor.commands.setContent('<p></p>', false)
+    editor.commands.focus()
+    win.insertImage('http://x/a.jpg', 100, 50, 1)
+    win.insertImage('http://x/b.jpg', 100, 50, 2)
+    win.insertImage('http://x/c.jpg', 100, 50, 3)
+    assert.equal(doc(), 'image[] | image[] | image[] | paragraph()')
+    const srcs = []
+    editor.state.doc.descendants(n => { if (n.type.name === 'image') srcs.push(n.attrs.src) })
+    assert.deepEqual(srcs, ['http://x/a.jpg', 'http://x/b.jpg', 'http://x/c.jpg'])
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('a multi-image drop saves one wp:image pair per image, in drop order', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.commands.focus()
+    win.insertImage('http://x/a.jpg', 100, 50, 1)
+    win.insertImage('http://x/b.jpg', 100, 50, 2)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const ids = [...out.matchAll(/<!-- wp:image \{"id":(\d+)\} -->/g)].map(m => m[1])
+    assert.deepEqual(ids, ['1', '2'])
+    assert.equal((out.match(/<!-- \/wp:image -->/g) || []).length, 2)
+    // No blank paragraph wedged between the two figures by the cursor move.
+    assert.doesNotMatch(out, /<!-- \/wp:image -->\s*<p><\/p>\s*<!-- wp:image/)
+    assert.equal(out, win.toWordPressHTML(out), 'save transform is idempotent')
+  })
+
+  test('the saved figure carries no caption and no empty paragraph', () => {
+    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/r.jpg', 800, 600, 42, 'alt text')
+    const out = win.toWordPressHTML(editor.getHTML())
+    const figure = out.match(/<figure class="wp-block-image">[\s\S]*?<\/figure>/)[0]
+    assert.doesNotMatch(figure, /<figcaption/)
+    assert.doesNotMatch(figure, /<p>/)
+    assert.match(figure, /<img src="http:\/\/x\/r\.jpg"/)
+    // The new paragraph is a sibling after the block, not part of it.
+    assert.match(out, /<!-- \/wp:image --><p><\/p>$/)
+  })
+
+  test('the paragraph below the image accepts typing', () => {
+    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/r.jpg')
+    editor.commands.insertContent('typed')
+    assert.equal(doc(), 'paragraph("before") | image[] | paragraph("typed")')
+  })
+
+  test('inserting with the cursor in an existing caption appends below, leaving the caption intact', () => {
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/o.jpg"><figcaption>cap</figcaption></figure>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/n.jpg')
+    assert.equal(doc(), 'image["cap"] | image[] | paragraph()')
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('inserting while an image node is selected replaces it and still lands below', () => {
+    editor.commands.setContent('<p>a</p><figure class="wp-block-image"><img src="http://x/old.jpg"></figure><p>b</p>', false)
+    editor.commands.setNodeSelection(posOfFirst('image'))
+    win.insertImage('http://x/new.jpg')
+    assert.equal(doc(), 'paragraph("a") | image[] | paragraph() | paragraph("b")')
+    const srcs = []
+    editor.state.doc.descendants(n => { if (n.type.name === 'image') srcs.push(n.attrs.src) })
+    assert.deepEqual(srcs, ['http://x/new.jpg'])
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('inside a list item the image and its paragraph stay in the item', () => {
+    editor.commands.setContent('<ul><li><p>one</p></li></ul>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/l.jpg')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("one"),image[],paragraph()))')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<li><p>one<\/p><!-- wp:image -->[\s\S]*<\/figure>\s*<!-- \/wp:image --><p><\/p><\/li>/)
+  })
+
+  test('inside a blockquote the image and its paragraph stay in the quote', () => {
+    editor.commands.setContent('<blockquote><p>quoted</p></blockquote>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/q.jpg')
+    assert.equal(doc(), 'blockquote(paragraph("quoted"),image[],paragraph())')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<blockquote class="wp-block-quote">[\s\S]*<figure class="wp-block-image">[\s\S]*<\/blockquote>/)
+  })
+
+  test('inside a table cell the image and its paragraph stay in that cell', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>cell</p></td><td><p>b</p></td></tr></tbody></table>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/t.jpg')
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("cell")),tableCell(paragraph("b"),image[],paragraph())))')
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('from a code block the image lands after the block, leaving the code untouched', () => {
+    editor.commands.setContent('<pre><code>let x = 1</code></pre>', false)
+    editor.commands.focus('end')
+    win.insertImage('http://x/c2.jpg')
+    assert.equal(doc(), 'codeBlock("let x = 1") | image[] | paragraph()')
+    assert.equal(selParent(), 'paragraph')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<pre class="wp-block-code"><code>let x = 1<\/code><\/pre>/)
+  })
+
+  test('inside a footnote the insert is refused and the document is unchanged', () => {
+    editor.commands.setContent('<p>text</p>', false)
+    editor.commands.focus('end')
+    win.insertFootnote()
+    const before = doc()
+    assert.equal(win.isInFootnote(), true)
+    win.insertImage('http://x/f.jpg')
+    assert.equal(doc(), before)
+    let hasImage = false
+    editor.state.doc.descendants(n => { if (n.type.name === 'image') hasImage = true })
+    assert.equal(hasImage, false)
+  })
 })
