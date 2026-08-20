@@ -519,3 +519,38 @@ describe('image marked as decorative (WP 7.1)', () => {
     assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /role=/)
   })
 })
+
+describe('window.insertImage cursor placement', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  function selParent() { return editor.state.selection.$from.parent.type.name }
+
+  test('inserting into an empty document leaves the cursor in a paragraph below', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.commands.focus()
+    win.insertImage('http://x/p.jpg', 800, 600, 42, 'alt text')
+    assert.equal(doc(), 'image[] | paragraph()')
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('inserting after existing text appends the paragraph after the image', () => {
+    editor.commands.setContent('<p>hello</p>', false)
+    editor.commands.setTextSelection(6)
+    editor.commands.focus()
+    win.insertImage('http://x/p.jpg')
+    assert.equal(doc(), 'paragraph("hello") | image[] | paragraph()')
+    assert.equal(selParent(), 'paragraph')
+  })
+
+  test('the caption is left empty and still holds the image attrs', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.commands.focus()
+    win.insertImage('http://x/p.jpg', 800, 600, 42, 'alt text')
+    const img = editor.state.doc.firstChild
+    assert.equal(img.type.name, 'image')
+    assert.equal(img.content.size, 0)
+    assert.equal(img.attrs.src, 'http://x/p.jpg')
+    assert.equal(img.attrs.mediaId, 42)
+    assert.equal(img.attrs.alt, 'alt text')
+  })
+})

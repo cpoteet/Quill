@@ -3075,6 +3075,18 @@
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt
       editor.chain().focus().setImage(attrs).run()
+      // setImage leaves the cursor inside the figure's empty figcaption. Move it
+      // to a fresh paragraph after the image instead; the caption stays clickable.
+      const { $from } = editor.state.selection
+      const imgDepth = _ancestorDepth($from, 'image')
+      if (imgDepth === -1) return
+      const after = $from.after(imgDepth)
+      editor.chain()
+        .insertContentAt(after, { type: 'paragraph' })
+        .setTextSelection(after + 1)
+        .focus()
+        .scrollIntoView()
+        .run()
     }
     window.insertGallery = (json) => {
       if (_isInFootnote()) return
