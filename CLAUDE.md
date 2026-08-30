@@ -21,7 +21,13 @@ node --test Scripts/test-editor-passthrough.js # unmodeled Gutenberg block passt
 node --test Scripts/test-editor-paste.js    # clipboard paste + insertMarkdown tests only
 ```
 
-**After every code change:** quit the app, run `./build.sh`, reopen. Always.
+**After every code change:** quit the app, run `./build.sh`, reopen. Always — `build.sh` replaces the binary under a running process, so skipping the quit leaves the old app running and no visible change. If the build fails, report the error instead of opening.
+
+```bash
+osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+```
+
+**Computer-use testing goes on a new local draft.** Click "+ New Post" (or File → New Post) first, and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
 **After major changes:** run the `claude-md-management:revise-claude-md` skill to keep this file current.
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` — installed in **`Scripts/`** (`Scripts/package.json` + `Scripts/node_modules/`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`; one written to the scratchpad or the repo root dies with `Cannot find module 'jsdom'`.
