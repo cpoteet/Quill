@@ -1118,3 +1118,224 @@ describe('editor chrome stays out of saved markup', () => {
     assert.doesNotMatch(out, /is-collapsed|is-active-tab/)
   })
 })
+
+// The heading markup Quill emitted was copied from post 17780, which an older
+// WordPress wrote. Current core/accordion-heading save() emits has-icon
+// classes and a "+" icon span and never emits wp-block-heading, so the old
+// shape matches no registered save or deprecation and Gutenberg rejects it.
+// Expected markup verified against wp-includes/js/dist/block-library.js on
+// the live site (accordion-heading/save.mjs, showIcon default true,
+// iconPosition default right).
+describe('accordion headings match current core save markup', () => {
+  const save = () => win.toWordPressHTML(editor.getHTML(), win.document)
+
+  const headingOf = out =>
+    new JSDOM('<body>' + out + '</body>').window.document
+      .querySelector('.wp-block-accordion-heading')
+
+  const wrap = (commentAttrs, headingHTML) =>
+    '<!-- wp:accordion -->' +
+    '<div role="group" class="wp-block-accordion">' +
+    '<!-- wp:accordion-item --><div class="wp-block-accordion-item">' +
+    `<!-- wp:accordion-heading${commentAttrs ? ' ' + commentAttrs : ''} -->` +
+    headingHTML +
+    '<!-- /wp:accordion-heading -->' +
+    '<!-- wp:accordion-panel --><div role="region" class="wp-block-accordion-panel"><p>B</p></div><!-- /wp:accordion-panel -->' +
+    '</div><!-- /wp:accordion-item --></div><!-- /wp:accordion -->'
+
+  const OLD_FORMAT_HEADING =
+    '<h3 class="wp-block-accordion-heading wp-block-heading">' +
+    '<button type="button" class="wp-block-accordion-heading__toggle">' +
+    '<span class="wp-block-accordion-heading__toggle-title">Title</span></button></h3>'
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('an accordion Quill inserts saves the heading exactly as core writes it', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const h = headingOf(save())
+    assert.deepEqual([...h.classList].sort(), ['has-icon', 'has-icon-right', 'wp-block-accordion-heading'])
+    const btn = h.querySelector('button')
+    assert.equal(btn.getAttribute('type'), 'button')
+    assert.equal(btn.getAttribute('class'), 'wp-block-accordion-heading__toggle')
+    assert.deepEqual([...btn.children].map(c => c.getAttribute('class')), [
+      'wp-block-accordion-heading__toggle-title',
+      'wp-block-accordion-heading__toggle-icon',
+    ])
+    const icon = btn.lastElementChild
+    assert.equal(icon.getAttribute('aria-hidden'), 'true')
+    assert.equal(icon.textContent, '+')
+  })
+
+  test('wp-block-heading is never emitted', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.doesNotMatch(save(), /wp-block-heading/)
+  })
+
+  test('an old-format heading is upgraded on an edited save', () => {
+    editor.commands.setContent(wrap(null, OLD_FORMAT_HEADING), false)
+    editor.commands.insertContent('x')
+    const h = headingOf(save())
+    assert.equal(h.classList.contains('has-icon'), true)
+    assert.equal(h.classList.contains('has-icon-right'), true)
+    assert.equal(h.classList.contains('wp-block-heading'), false)
+    assert.equal(h.querySelectorAll('.wp-block-accordion-heading__toggle-icon').length, 1)
+    assert.equal(h.querySelector('.wp-block-accordion-heading__toggle-title').textContent, 'Title')
+  })
+
+  test('showIcon false in the block comment suppresses the icon and its classes', () => {
+    editor.commands.setContent(wrap('{"showIcon":false}', OLD_FORMAT_HEADING), false)
+    const h = headingOf(save())
+    assert.equal(h.classList.contains('has-icon'), false)
+    assert.equal(h.classList.contains('has-icon-right'), false)
+    assert.equal(h.querySelectorAll('.wp-block-accordion-heading__toggle-icon').length, 0)
+    assert.equal(h.querySelector('.wp-block-accordion-heading__toggle-title').textContent, 'Title')
+  })
+
+  test('iconPosition left puts the icon before the title, as core does', () => {
+    editor.commands.setContent(wrap('{"iconPosition":"left"}', OLD_FORMAT_HEADING), false)
+    const h = headingOf(save())
+    assert.equal(h.classList.contains('has-icon-left'), true)
+    assert.equal(h.classList.contains('has-icon-right'), false)
+    assert.deepEqual([...h.querySelector('button').children].map(c => c.getAttribute('class')), [
+      'wp-block-accordion-heading__toggle-icon',
+      'wp-block-accordion-heading__toggle-title',
+    ])
+  })
+
+  test('saving a showIcon-false accordion twice is idempotent', () => {
+    editor.commands.setContent(wrap('{"showIcon":false}', OLD_FORMAT_HEADING), false)
+    const once = save()
+    editor.commands.setContent(once, false)
+    assert.equal(save(), once)
+  })
+
+  // A copy/paste inside the editor re-parses the node's rendered markup with
+  // no delimiter comment, so the has-icon class is the only surviving copy.
+  test('showIcon false is recovered from the markup when the comment is gone', () => {
+    editor.commands.setContent(wrap('{"showIcon":false}', OLD_FORMAT_HEADING), false)
+    editor.commands.setContent(save().replace(/<!--[\s\S]*?-->/g, ''), false)
+    const h = headingOf(save())
+    assert.equal(h.classList.contains('has-icon'), false)
+    assert.equal(h.querySelectorAll('.wp-block-accordion-heading__toggle-icon').length, 0)
+  })
+
+  test('the icon span is not typed into and the title still takes the text', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const hits = []
+    editor.state.doc.descendants((node, pos) => { if (node.type.name === 'accordionHeading') hits.push(pos) })
+    editor.commands.setTextSelection(hits[0] + 1)
+    editor.commands.insertContent('Hello')
+    const h = headingOf(save())
+    assert.equal(h.querySelector('.wp-block-accordion-heading__toggle-title').textContent, 'Hello')
+    assert.equal(h.querySelector('.wp-block-accordion-heading__toggle-icon').textContent, '+')
+  })
+
+  test('the editor hides the icon span so the ::after affordance still reads', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const icon = win.document.querySelector('#editor .wp-block-accordion-heading__toggle-icon')
+    assert.ok(icon)
+    const css = fs.readFileSync(htmlPath, 'utf8')
+    assert.match(css, /\.wp-block-accordion-heading__toggle-icon\s*\{[^}]*display:\s*none/)
+  })
+})
+
+// The toggle used to be a narrow hit zone (right 32px of an accordion header,
+// left 22px of a details summary) with no cursor affordance, so nothing about
+// the row said it could be clicked. The whole row is the target now, with the
+// row's own text as the one exception so a title can still be typed into.
+// jsdom gives every element a zeroed getBoundingClientRect and empty Range
+// client rects, so the geometry half of this is verified in a real browser,
+// not here — these cover the parts that do not need measurement.
+describe('container rows read as clickable', () => {
+  const source = fs.readFileSync(htmlPath, 'utf8')
+
+  const ACCORDION_TWO_ITEMS = '<div role="group" class="wp-block-accordion">' +
+    '<div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">One</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>First</p></div></div>' +
+    '<div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Two</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>Second</p></div></div>' +
+    '</div>'
+
+  const ACCORDION_EMPTY_TITLE =
+    '<!-- wp:accordion --><div role="group" class="wp-block-accordion">' +
+    '<!-- wp:accordion-item --><div class="wp-block-accordion-item">' +
+    '<!-- wp:accordion-heading --><h3 class="wp-block-accordion-heading has-icon has-icon-right">' +
+    '<button type="button" class="wp-block-accordion-heading__toggle">' +
+    '<span class="wp-block-accordion-heading__toggle-title"></span>' +
+    '<span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span>' +
+    '</button></h3><!-- /wp:accordion-heading -->' +
+    '<!-- wp:accordion-panel --><div role="region" class="wp-block-accordion-panel"><p>B</p></div><!-- /wp:accordion-panel -->' +
+    '</div><!-- /wp:accordion-item --></div><!-- /wp:accordion -->'
+
+  const mousedownOn = el =>
+    el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }))
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('the accordion row cursor sits on the toggle button, which covers the row', () => {
+    assert.match(source, /\.wp-block-accordion-heading__toggle\s*\{[^}]*cursor:\s*pointer/)
+    assert.doesNotMatch(source, /\.wp-block-accordion-heading__toggle\s*\{[^}]*cursor:\s*text/)
+  })
+
+  test('the accordion title keeps a text cursor, because clicking it types', () => {
+    assert.match(source, /\.wp-block-accordion-heading__toggle-title\s*\{[^}]*cursor:\s*text/)
+  })
+
+  test('only the details arrow is a pointer target, not the summary text', () => {
+    assert.match(source, /\.wp-block-details\s*>\s*summary::before\s*\{[^}]*cursor:\s*pointer/)
+    assert.match(source, /\.wp-block-details\s*>\s*summary\s*\{[^}]*cursor:\s*text/)
+  })
+
+  // Verified in a browser: a clip-path box is hit-tested only where it paints,
+  // so the pointer appeared over the triangle alone; a masked box paints the
+  // same shape and stays hittable across all of it.
+  test('the details arrow box is big enough to hit', () => {
+    const rule = source.match(/\.wp-block-details\s*>\s*summary::before\s*\{([^}]*)\}/)[1]
+    assert.ok(parseInt(rule.match(/width:\s*(\d+)px/)[1], 10) >= 22, 'arrow box width')
+    assert.ok(parseInt(rule.match(/height:\s*(\d+)px/)[1], 10) >= 22, 'arrow box height')
+    assert.match(rule, /\bmask:/)
+    assert.doesNotMatch(rule, /clip-path/)
+  })
+
+  test('an accordion header has no hover tint', () => {
+    assert.doesNotMatch(source, /\.wp-block-accordion-heading:hover\s*\{[^}]*background/)
+  })
+
+  test('tab labels are pointer targets', () => {
+    assert.match(source, /button\[role="tab"\]\s*\{[^}]*cursor:\s*pointer/)
+    assert.doesNotMatch(source, /button\[role="tab"\]\s*\{[^}]*cursor:\s*text/)
+  })
+
+  test('pressing an accordion header row collapses the item', () => {
+    editor.commands.setContent(ACCORDION_TWO_ITEMS, false)
+    mousedownOn(win.document.querySelector('#editor .wp-block-accordion-heading'))
+    assert.ok(win.document.querySelector('#editor .wp-block-accordion-item.is-collapsed'))
+  })
+
+  test('pressing the details arrow collapses it', () => {
+    editor.commands.setContent('<details class="wp-block-details"><summary>S</summary><p>Body</p></details>', false)
+    mousedownOn(win.document.querySelector('#editor .wp-block-details > summary'))
+    assert.ok(win.document.querySelector('#editor details.wp-block-details.is-collapsed'))
+  })
+
+  // An empty title has no text to aim at, so the row must yield the click or a
+  // new accordion could never be given a name.
+  test('pressing a header row with an empty title places the caret instead of collapsing', () => {
+    editor.commands.setContent(ACCORDION_EMPTY_TITLE, false)
+    mousedownOn(win.document.querySelector('#editor .wp-block-accordion-heading'))
+    assert.equal(win.document.querySelectorAll('#editor .wp-block-accordion-item.is-collapsed').length, 0)
+  })
+
+  test('collapse state still never reaches saved markup', () => {
+    editor.commands.setContent(ACCORDION_TWO_ITEMS, false)
+    mousedownOn(win.document.querySelector('#editor .wp-block-accordion-heading'))
+    assert.ok(win.document.querySelector('#editor .wp-block-accordion-item.is-collapsed'), 'press collapsed it')
+    assert.doesNotMatch(win.toWordPressHTML(editor.getHTML(), win.document), /is-collapsed/)
+  })
+})

@@ -372,9 +372,11 @@ function toWordPressHTML(html, doc) {
     wrapElementWithComments(doc, figure, open, ' /wp:image ')
   })
 
-  // Headings → wp-block-heading class
-  div.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(el => {
-    el.classList.add('wp-block-heading')
+  // Headings → wp-block-heading class (core/accordion-heading is its own block
+  // and core's save never puts wp-block-heading on it)
+  const HEADING_TAGS = 'h1, h2, h3, h4, h5, h6'
+  div.querySelectorAll(HEADING_TAGS).forEach(el => {
+    if (!el.classList.contains('wp-block-accordion-heading')) el.classList.add('wp-block-heading')
   })
 
   // Lists → wp-block-list class (footnotes list excluded — it has its own class)

@@ -924,11 +924,9 @@
       padding: 11px 34px 11px 4px;
       font: inherit;
       color: inherit;
-      cursor: text;
+      cursor: pointer;
       border-radius: 4px;
     }
-    .ProseMirror .wp-block-accordion-heading:hover { background: rgba(0,0,0,0.022); }
-    body.dark .ProseMirror .wp-block-accordion-heading:hover { background: rgba(255,255,255,0.03); }
     /* Plus rotating into a cross, matching core's toggle icon. */
     .ProseMirror .wp-block-accordion-heading::after {
       content: '+';
@@ -947,6 +945,8 @@
       transform: translateY(-50%) rotate(0deg);
     }
     .ProseMirror .wp-block-accordion-heading:hover::after { opacity: 0.9; }
+    .ProseMirror .wp-block-accordion-heading__toggle-icon { display: none; }
+    .ProseMirror .wp-block-accordion-heading__toggle-title { cursor: text; }
     .ProseMirror .wp-block-accordion-panel { padding: 0 34px 12px 4px; }
     .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-panel { display: none; }
 
@@ -969,7 +969,7 @@
       padding: 7px 13px;
       margin-bottom: -1px;
       color: #8a8a8f;
-      cursor: text;
+      cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: color 0.13s ease, border-color 0.13s ease;
     }
@@ -993,18 +993,20 @@
     .ProseMirror .wp-block-details > summary::before {
       content: '';
       position: absolute;
-      left: 3px;
+      left: -4px;
       top: 50%;
-      width: 0;
-      height: 0;
-      border-left: 5px solid currentColor;
-      border-top: 4px solid transparent;
-      border-bottom: 4px solid transparent;
+      width: 24px;
+      height: 24px;
+      margin-top: -12px;
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 6L16.5 12L8 18Z'/%3E%3C/svg%3E") no-repeat center / 24px 24px;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 6L16.5 12L8 18Z'/%3E%3C/svg%3E") no-repeat center / 24px 24px;
       opacity: 0.45;
-      transform: translateY(-50%) rotate(90deg);
+      cursor: pointer;
+      transform: rotate(90deg);
       transition: transform 0.18s ease, opacity 0.13s ease;
     }
-    .ProseMirror .wp-block-details.is-collapsed > summary::before { transform: translateY(-50%) rotate(0deg); }
+    .ProseMirror .wp-block-details.is-collapsed > summary::before { transform: rotate(0deg); }
     .ProseMirror .wp-block-details > summary:hover::before { opacity: 0.85; }
     .ProseMirror .wp-block-details.is-collapsed > :not(summary) { display: none; }
     /* showContent is a publishing choice, so it is a label here and never a hidden body. */
@@ -2175,11 +2177,36 @@
           contentElement: el => el.querySelector('.wp-block-accordion-heading__toggle-title') || el,
         }]
       },
-      addAttributes() { return { level: { default: 3 } } },
+      addAttributes() {
+        return {
+          level: { default: 3 },
+          showIcon: {
+            default: true,
+            parseHTML: el => {
+              const carried = blockCommentAttr(el, 'showIcon')
+              if (typeof carried === 'boolean') return carried
+              return hasBlockComment(el) ? true : el.classList.contains('has-icon')
+            },
+          },
+          iconPosition: {
+            default: 'right',
+            parseHTML: el => {
+              const carried = blockCommentAttr(el, 'iconPosition')
+              if (carried === 'left' || carried === 'right') return carried
+              return el.classList.contains('has-icon-left') ? 'left' : 'right'
+            },
+          },
+        }
+      },
       renderHTML({ node }) {
-        return [`h${node.attrs.level}`, { class: 'wp-block-accordion-heading wp-block-heading' },
-          ['button', { type: 'button', class: 'wp-block-accordion-heading__toggle' },
-            ['span', { class: 'wp-block-accordion-heading__toggle-title' }, 0]]]
+        const { level, showIcon, iconPosition } = node.attrs
+        const classes = ['wp-block-accordion-heading']
+        if (showIcon) classes.push('has-icon', iconPosition === 'left' ? 'has-icon-left' : 'has-icon-right')
+        const title = ['span', { class: 'wp-block-accordion-heading__toggle-title' }, 0]
+        const icon = ['span', { class: 'wp-block-accordion-heading__toggle-icon', 'aria-hidden': 'true' }, '+']
+        const children = !showIcon ? [title] : (iconPosition === 'left' ? [icon, title] : [title, icon])
+        return [`h${level}`, { class: classes.join(' ') },
+          ['button', { type: 'button', class: 'wp-block-accordion-heading__toggle' }, ...children]]
       },
     })
 
@@ -2327,6 +2354,12 @@
     // attribute: an element Quill itself rendered has no preceding comment, so
     // its own DOM attribute is the live value and a stale carrier cannot
     // resurrect an attribute the user just turned off.
+    function hasBlockComment(element) {
+      let n = element.previousSibling
+      while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
+      return !!(n && n.nodeType === 8 && /^\s*wp:/.test(n.nodeValue))
+    }
+
     function blockCommentAttr(element, key) {
       const raw = blockCommentAttrsJSON(element)
       if (!raw) return undefined
@@ -2627,6 +2660,22 @@
 
     const COLLAPSIBLE = new Set(['accordionItem', 'detailsBlock'])
 
+    // The whole accordion row toggles, so its title is the one place a press
+    // must fall through and land a caret instead.
+    function _onOwnText(el, x, y) {
+      const range = el.ownerDocument.createRange()
+      range.selectNodeContents(el)
+      // Absent wherever there is no layout engine, jsdom included.
+      if (!range.getClientRects) return false
+      const rects = range.getClientRects()
+      for (let i = 0; i < rects.length; i++) {
+        const r = rects[i]
+        if (!r.width || !r.height) continue
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true
+      }
+      return false
+    }
+
     function _tabDecorations(node, pos, head, decos) {
       if (node.childCount < 2) return
       const list = node.child(0)
@@ -2728,11 +2777,13 @@
                   const el = event.target.closest && event.target.closest(
                     '.wp-block-accordion-heading, .wp-block-details > summary')
                   if (!el) return false
-                  const box = el.getBoundingClientRect()
-                  const onMarker = el.tagName === 'SUMMARY'
-                    ? event.clientX - box.left < 22
-                    : box.right - event.clientX < 32
-                  if (!onMarker) return false
+                  if (el.tagName === 'SUMMARY') {
+                    if (event.clientX - el.getBoundingClientRect().left > 22) return false
+                  } else {
+                    const title = el.querySelector('.wp-block-accordion-heading__toggle-title')
+                    if (!title || !title.textContent.trim()) return false
+                    if (_onOwnText(title, event.clientX, event.clientY)) return false
+                  }
                   const pos = view.posAtDOM(el, 0)
                   if (pos < 0) return false
                   event.preventDefault()
