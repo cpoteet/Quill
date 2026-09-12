@@ -84,3 +84,40 @@ describe('fixture round-trips', () => {
     })
   }
 })
+
+function loadDescriptors() {
+  const src = fs.readFileSync(
+    path.resolve(__dirname, '../Sources/QuillKit/Resources/block-descriptors.js'), 'utf8')
+  const sandbox = {}
+  new Function('module', 'exports', src + '\nmodule.exports = { BLOCK_DESCRIPTORS, descriptorFor }')(
+    sandbox, sandbox)
+  return sandbox.exports
+}
+
+describe('block descriptors', () => {
+  const { descriptorFor } = loadDescriptors()
+
+  test('maps heading to core/heading with its level attribute', () => {
+    const d = descriptorFor('heading')
+    assert.equal(d.blockName, 'core/heading')
+    assert.equal(d.shape, 'text')
+    const el = { tagName: 'H3', className: 'wp-block-heading', getAttribute: () => null }
+    assert.deepEqual(d.attrsFrom(el), { level: 3 })
+  })
+
+  test('maps paragraph to core/paragraph with no attributes', () => {
+    const d = descriptorFor('paragraph')
+    assert.equal(d.blockName, 'core/paragraph')
+    const el = { tagName: 'P', className: '', getAttribute: () => null }
+    assert.deepEqual(d.attrsFrom(el), {})
+  })
+
+  test('returns null for an unknown node', () => {
+    assert.equal(descriptorFor('nonesuch'), null)
+  })
+
+  test('level 2 headings emit level 2, not a default', () => {
+    const el = { tagName: 'H2', className: '', getAttribute: () => null }
+    assert.deepEqual(descriptorFor('heading').attrsFrom(el), { level: 2 })
+  })
+})

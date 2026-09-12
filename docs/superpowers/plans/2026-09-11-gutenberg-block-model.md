@@ -446,7 +446,7 @@ A descriptor is:
 { blockName: 'core/heading', shape: 'text', attrsFrom: (el) => ({...}), childBlockName: null }
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 describe('block descriptors', () => {
@@ -491,7 +491,7 @@ function loadDescriptors() {
 }
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -499,7 +499,7 @@ node --test Scripts/test-block-serializer.js
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the registry**
+- [x] **Step 3: Write the registry**
 
 Create `Sources/QuillKit/Resources/block-descriptors.js`:
 
@@ -534,7 +534,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 Image, gallery and embed are deliberately absent — they already emit correct delimiters through `toWordPressHTML` and are not being rewritten in this plan.
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -542,7 +542,7 @@ node --test Scripts/test-block-serializer.js
 
 Expected: all passing.
 
-- [ ] **Step 5: Add build.sh line and script tag**
+- [x] **Step 5: Add build.sh line and script tag**
 
 ```bash
 cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descriptors.js"
@@ -552,7 +552,7 @@ cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descr
 <script src="./block-descriptors.js"></script>
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/block-descriptors.js build.sh Sources/QuillKit/Resources/editor.html Scripts/test-block-serializer.js
