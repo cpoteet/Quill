@@ -71,3 +71,16 @@ describe('block serializer', () => {
     assert.doesNotMatch(out, /core\//)
   })
 })
+
+describe('fixture round-trips', () => {
+  const { serializeBlocks } = loadSerializer()
+  const parse = loadParser().parse
+  const fixturesDir = path.resolve(__dirname, 'fixtures')
+
+  for (const name of fs.readdirSync(fixturesDir).filter(f => f.endsWith('.html'))) {
+    test(`${name} survives parse → serialize byte-identically`, () => {
+      const src = fs.readFileSync(path.join(fixturesDir, name), 'utf8')
+      assert.equal(serializeBlocks(parse(src)), src)
+    })
+  }
+})

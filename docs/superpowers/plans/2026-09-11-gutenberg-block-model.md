@@ -365,13 +365,13 @@ The single highest-value test in the project. Everything downstream depends on i
 - Consumes: `serializeBlocks` (Task 2), `window.BlockParser.parse` (Task 1)
 - Produces: a fixtures directory later tasks reuse
 
-- [ ] **Step 1: Capture the real post as a fixture**
+- [x] **Step 1: Capture the real post as a fixture**
 
 Save the full `post_content` of post 17780 verbatim to `Scripts/fixtures/post-17780.html`. It is the canonical old-Quill post: classic paragraphs and headings, an un-delimited standalone image carrying `data-media-id`, a correctly delimited gallery, two correctly delimited accordions, and an un-delimited footnotes list.
 
 Fetch it with the WordPress MCP (`wp_get_post` with id 17780) and write the `content` field byte-for-byte. Do not reformat, re-indent, or normalize newlines — the whole point is byte fidelity.
 
-- [ ] **Step 2: Extract two focused fixtures**
+- [x] **Step 2: Extract two focused fixtures**
 
 `Scripts/fixtures/gallery-block.html` — just the `<!-- wp:gallery -->` … `<!-- /wp:gallery -->` span from that post.
 
@@ -379,7 +379,7 @@ Fetch it with the WordPress MCP (`wp_get_post` with id 17780) and write the `con
 
 Both copied verbatim from the same source.
 
-- [ ] **Step 3: Write the failing corpus test**
+- [x] **Step 3: Write the failing corpus test**
 
 Append to `Scripts/test-block-serializer.js`:
 
@@ -400,7 +400,7 @@ describe('fixture round-trips', () => {
 
 The loop means a new fixture file is automatically covered — dropping a problem post into the directory is how future regressions get pinned.
 
-- [ ] **Step 4: Run it**
+- [x] **Step 4: Run it**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -410,7 +410,7 @@ Expected: PASS for all three fixtures.
 
 A failure here is a real serializer bug, not a fixture problem. Diff the output against the input and fix `block-serializer.js`. Do not edit the fixture to make the test pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Scripts/fixtures Scripts/test-block-serializer.js
