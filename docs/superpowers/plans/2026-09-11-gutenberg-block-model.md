@@ -1730,6 +1730,120 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
+## Phase 5 — Block attribute projection
+
+Closes the gap found while building Task 9: a block attribute that exists only inside the comment delimiter is invisible to ProseMirror's DOM parser, so it is silently dropped the first time the user edits that block.
+
+### Task 13: Carry comment attributes onto their nodes
+
+**Problem, measured.** Loading the real accordion fixture, editing it, and saving produces:
+
+```
+source: <!-- wp:accordion {"autoclose":true} -->
+saved:  <!-- wp:accordion -->
+```
+
+The content survives intact (both headings, all 12 list items). Only the attributes are lost. The cause is structural: `getAttrs` in every container node reads DOM attributes such as `data-autoclose`, but WordPress never writes those — `autoclose` lives in the comment, and comments are not elements. The same applies to `core/column`'s `width`, `core/details`'s `showContent`, `core/tabs`'s `activeTabIndex`, and any attribute of a container block Phase 3 made editable.
+
+**Scope of the risk.** Load-and-save with *no* edits stays byte-identical — that path returns `_rawHTML` and never re-serializes, verified directly through the live editor. The loss occurs only on an actual edit to a container block that carried comment-only attributes. Before Phase 3 these blocks were frozen passthrough cards, so their attributes survived by being uneditable; that is the trade Phase 3 made and this task repays.
+
+**Approach.** `gutenbergPassthrough` already solves this problem for unmodeled blocks — `parsePassthroughBlock` reads the adjacent comment and smuggles its name and attrs through as `data-quill-passthrough-*` attributes, which `toWordPressHTML` converts back into comments and then strips. Generalize that mechanism rather than inventing a second one.
+
+**Files:**
+- Modify: `Sources/QuillKit/Resources/editor.html` (pre-parse hoist in `setContent`; `addAttributes`/`renderHTML` on each container node)
+- Modify: `Sources/QuillKit/Resources/editor-transforms.js` (`attrsFrom` reads the hoisted attribute; strip it on save)
+- Test: `Scripts/test-editor-containers.js`, `Scripts/test-block-serializer.js`
+
+**Interfaces:**
+- Consumes: the descriptor registry (Task 4), the container nodes (Tasks 6-10)
+- Produces: `data-quill-block-attrs` as the carrier for comment-only attributes
+
+- [ ] **Step 1: Write the failing tests**
+
+Assert the measured loss above is gone, one test per container that has attributes:
+
+```js
+test('accordion autoclose survives an edit', () => {
+  const src = fs.readFileSync(
+    path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')
+  editor.commands.setContent(src, false)
+  editor.commands.insertContent('x')
+  const out = win.toWordPressHTML(editor.getHTML(), win.document)
+  assert.match(out, /<!-- wp:accordion \{"autoclose":true\} -->/)
+})
+
+test('a column width survives an edit', () => {
+  editor.commands.setContent(
+    '<!-- wp:columns --><div class="wp-block-columns">' +
+    '<!-- wp:column {"width":"33.33%"} --><div class="wp-block-column"><p>A</p></div><!-- /wp:column -->' +
+    '</div><!-- /wp:columns -->', false)
+  editor.commands.insertContent('x')
+  const out = win.toWordPressHTML(editor.getHTML(), win.document)
+  assert.match(out, /<!-- wp:column \{"width":"33\.33%"\} -->/)
+})
+
+test('an attribute Quill does not model is still preserved', () => {
+  editor.commands.setContent(
+    '<!-- wp:details {"showContent":true,"metadata":{"name":"FAQ"}} -->' +
+    '<details class="wp-block-details"><summary>S</summary><p>B</p></details>' +
+    '<!-- /wp:details -->', false)
+  editor.commands.insertContent('x')
+  const out = win.toWordPressHTML(editor.getHTML(), win.document)
+  assert.match(out, /"metadata":\{"name":"FAQ"\}/)
+})
+```
+
+The third test is the important one: the carrier must round-trip the *whole* attribute object, not a hand-listed subset, or every future WordPress attribute becomes a new bug.
+
+- [ ] **Step 2: Run to verify failure**
+
+```bash
+node --test Scripts/test-editor-containers.js
+```
+
+Expected: FAIL — attributes dropped, exactly as measured.
+
+- [ ] **Step 3: Hoist comment attributes before Tiptap parses**
+
+In `setContent`, before handing HTML to the editor, walk the string's block comments and copy each one's JSON attrs onto the element that follows it as `data-quill-block-attrs`. Reuse `parsePassthroughBlock`'s comment-reading logic rather than writing a second parser.
+
+Comment-matching regexes use `[\s\S]*?` — never `.*?` or `[^\n]*`. Both have shipped as silent data-loss bugs in this file.
+
+- [ ] **Step 4: Round-trip the carrier through each node**
+
+Give every container node an `blockAttrs` attribute parsed from `data-quill-block-attrs`, and re-emit it from `renderHTML` so it survives the Tiptap round-trip. Then in `editor-transforms.js`, have the delimiter pass prefer the carrier over `descriptor.attrsFrom(el)`, merging any attribute the node genuinely owns, and strip `data-quill-block-attrs` from the saved HTML the way `data-quill-passthrough-*` is stripped today.
+
+- [ ] **Step 5: Run to verify pass**
+
+```bash
+node --test Scripts/test-editor-containers.js && ./test.sh
+```
+
+- [ ] **Step 6: Confirm byte-identity is still intact**
+
+```bash
+node --test Scripts/test-block-serializer.js
+```
+
+Then load each fixture through the live editor and save with no edits; all three must stay byte-identical. A carrier attribute leaking into saved HTML would show up here.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js
+git commit -m "fix: preserve block attributes through an edit
+
+A block attribute living only in the comment delimiter was invisible to
+ProseMirror's DOM parser, so editing a container block dropped it -- an
+accordion's autoclose, a column's width. The whole attribute object is now
+carried onto the node and re-emitted, generalizing the mechanism
+gutenbergPassthrough already used for unmodeled blocks.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Final verification
 
 Run before considering the plan complete.
