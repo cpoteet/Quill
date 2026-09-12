@@ -23,6 +23,8 @@ const NODE_FOR_TAG = {
 const NODE_FOR_BLOCK_CLASS = [
   ['wp-block-columns', 'columnsBlock'],
   ['wp-block-column', 'columnBlock'],
+  ['wp-block-buttons', 'buttonsBlock'],
+  ['wp-block-button', 'buttonBlock'],
 ]
 
 function nodeNameForElement(el) {

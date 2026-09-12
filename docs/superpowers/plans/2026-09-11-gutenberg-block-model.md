@@ -1022,7 +1022,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the container pattern from Task 6
 - Produces: `window.insertButtons()`; Tiptap nodes `buttonsBlock`, `buttonBlock`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('buttons block', () => {
@@ -1061,7 +1061,7 @@ describe('buttons block', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1069,7 +1069,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `insertButtons` undefined.
 
-- [ ] **Step 3: Add the nodes**
+- [x] **Step 3: Add the nodes**
 
 ```js
 const ButtonBlock = TiptapNode.create({
@@ -1107,7 +1107,7 @@ window.insertButtons = () => {
 }
 ```
 
-- [ ] **Step 4: Add the descriptors**
+- [x] **Step 4: Add the descriptors**
 
 ```js
   buttonsBlock: { blockName: 'core/buttons', shape: 'container', childBlockName: 'core/button', attrsFrom: () => ({}) },
@@ -1123,7 +1123,7 @@ In `nodeNameForElement`:
 
 Order matters — check `wp-block-buttons` before `wp-block-button`, since the latter is a prefix of the former's class token only by string containment, not by `classList` membership. Using `classList.contains` avoids that trap, but keep the order for readability.
 
-- [ ] **Step 5: Add the contextual toolbar group**
+- [x] **Step 5: Add the contextual toolbar group**
 
 ```html
 <span id="buttons-controls" style="display:none">
@@ -1134,13 +1134,13 @@ Order matters — check `wp-block-buttons` before `wp-block-button`, since the l
 
 Reveal when `editor.isActive('buttonsBlock')`.
 
-- [ ] **Step 6: Run to verify pass**
+- [x] **Step 6: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js

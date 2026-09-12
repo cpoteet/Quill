@@ -313,11 +313,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls {
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -934,6 +934,10 @@
       <span id="columns-controls" style="display:none">
         <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
         <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
+      </span>
+      <span id="buttons-controls" style="display:none">
+        <button data-cmd="addButton"    title="Add button">+Button</button>
+        <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
       </span>
       <button data-cmd="link"  title="Insert / remove link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
@@ -1839,6 +1843,31 @@
       renderHTML() { return ['details', { class: 'wp-block-details' }, 0] },
     })
 
+    const ButtonBlock = TiptapNode.create({
+      name: 'buttonBlock',
+      group: 'button',
+      content: 'inline*',
+      priority: 210,
+      addAttributes() {
+        return { href: { default: null, parseHTML: el => el.querySelector('a')?.getAttribute('href') || null } }
+      },
+      parseHTML() { return [{ tag: 'div.wp-block-button' }] },
+      renderHTML({ node }) {
+        const attrs = { class: 'wp-block-button__link wp-element-button' }
+        if (node.attrs.href) attrs.href = node.attrs.href
+        return ['div', { class: 'wp-block-button' }, ['a', attrs, 0]]
+      },
+    })
+
+    const ButtonsBlock = TiptapNode.create({
+      name: 'buttonsBlock',
+      group: 'block',
+      content: 'button+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-buttons' }] },
+      renderHTML() { return ['div', { class: 'wp-block-buttons' }, 0] },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2222,6 +2251,8 @@
         ColumnBlock,
         DetailsBlock,
         DetailsSummary,
+        ButtonsBlock,
+        ButtonBlock,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
@@ -2382,6 +2413,20 @@
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
       deleteColumn:  () => editor.chain().focus().deleteColumn().run(),
+      addButton: () => {
+        const info = _ancestorOfType('buttonsBlock')
+        if (!info) return
+        const btn = editor.schema.nodes.buttonBlock.createAndFill()
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, btn))
+        editor.commands.focus()
+      },
+      deleteButton: () => {
+        const group = _ancestorOfType('buttonsBlock')
+        const btn = _ancestorOfType('buttonBlock')
+        if (!group || !btn || group.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(btn.pos, btn.pos + btn.node.nodeSize))
+        editor.commands.focus()
+      },
       addColumnBlock: () => {
         const info = _ancestorOfType('columnsBlock')
         if (!info) return
@@ -2640,6 +2685,7 @@
     const _tableControls = document.getElementById('table-controls')
     const _bqControls = document.getElementById('blockquote-controls')
     const _columnsControls = document.getElementById('columns-controls')
+    const _buttonsControls = document.getElementById('buttons-controls')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
@@ -2664,6 +2710,8 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      // Buttons controls
+      _buttonsControls.style.display = editor.isActive('buttonsBlock') ? 'inline-flex' : 'none'
       // Columns controls
       _columnsControls.style.display = editor.isActive('columnsBlock') ? 'inline-flex' : 'none'
       // Blockquote controls
@@ -3179,6 +3227,15 @@
         },
       }).run()
     }
+    window.insertButtons = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'buttonsBlock',
+        content: [{ type: 'buttonBlock' }],
+      }).run()
+      return true
+    }
+
     window.insertDetails = () => {
       if (_isInFootnote()) return false
       editor.chain().focus().insertContent({

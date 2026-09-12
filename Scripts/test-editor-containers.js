@@ -156,3 +156,54 @@ describe('details block', () => {
     assert.match(out, /<summary>Mine<\/summary>/)
   })
 })
+
+describe('buttons block', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('inserts one button by default', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'buttonsBlock')
+    assert.equal(node.childCount, 1)
+  })
+
+  test('parses WordPress buttons markup', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons">' +
+      '<div class="wp-block-button"><a class="wp-block-button__link">Go</a></div></div>', false)
+    assert.equal(editor.state.doc.child(0).type.name, 'buttonsBlock')
+  })
+
+  test('preserves the button href on save', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link" href="https://x.test">Go</a></div></div>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /href="https:\/\/x\.test"/)
+  })
+
+  test('saves with wp:buttons and wp:button delimiters', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:buttons -->/)
+    assert.match(out, /<!-- wp:button -->/)
+  })
+})
+
+describe('buttons toolbar controls', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('+Button adds a button and -Button never removes the last', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    press('addButton')
+    assert.equal(editor.state.doc.child(0).childCount, 2)
+    press('deleteButton')
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+    press('deleteButton')
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+  })
+})
