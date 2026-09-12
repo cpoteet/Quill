@@ -316,11 +316,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #tabs-controls {
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #details-controls, #tabs-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #tabs-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #details-controls button, #tabs-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -945,6 +945,10 @@
       <span id="accordion-controls" style="display:none">
         <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
         <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
+        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Autoclose</button>
+      </span>
+      <span id="details-controls" style="display:none">
+        <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
       </span>
       <span id="tabs-controls" style="display:none">
         <button data-cmd="addTab"    title="Add tab">+Tab</button>
@@ -1861,9 +1865,23 @@
       group: 'block',
       content: 'detailsSummary block+',
       priority: 210,
-      addAttributes() { return { showContent: { default: false } } },
+      addAttributes() {
+        return {
+          showContent: {
+            default: false,
+            parseHTML: el => el.hasAttribute('open') || blockCommentAttr(el, 'showContent') === true,
+          },
+        }
+      },
       parseHTML() { return [{ tag: 'details.wp-block-details' }] },
-      renderHTML() { return ['details', { class: 'wp-block-details' }, 0] },
+      renderHTML({ node }) {
+        const attrs = { class: 'wp-block-details' }
+        if (node.attrs.showContent) attrs.open = ''
+        return ['details', attrs, 0]
+      },
+      addCommands() {
+        return { toggleDetailsOpen: toggleBlockAttrCommand('detailsBlock', 'showContent') }
+      },
     })
 
     const ButtonBlock = TiptapNode.create({
@@ -1932,11 +1950,23 @@
       group: 'block',
       content: 'accordionItemGroup+',
       priority: 210,
-      addAttributes() { return { autoclose: { default: false } } },
-      parseHTML() {
-        return [{ tag: 'div.wp-block-accordion', getAttrs: el => ({ autoclose: el.hasAttribute('data-autoclose') }) }]
+      addAttributes() {
+        return {
+          autoclose: {
+            default: false,
+            parseHTML: el => el.hasAttribute('data-autoclose') || blockCommentAttr(el, 'autoclose') === true,
+          },
+        }
       },
-      renderHTML() { return ['div', { role: 'group', class: 'wp-block-accordion' }, 0] },
+      parseHTML() { return [{ tag: 'div.wp-block-accordion' }] },
+      renderHTML({ node }) {
+        const attrs = { role: 'group', class: 'wp-block-accordion' }
+        if (node.attrs.autoclose) attrs['data-autoclose'] = ''
+        return ['div', attrs, 0]
+      },
+      addCommands() {
+        return { toggleAccordionAutoclose: toggleBlockAttrCommand('accordionBlock', 'autoclose') }
+      },
     })
 
     const TabButton = TiptapNode.create({
@@ -2014,6 +2044,45 @@
     // toWordPressHTML re-emits it. Each container node renders a fixed
     // attribute object and ignores HTMLAttributes, so the carrier is injected
     // into the parent's own output rather than via addGlobalAttributes.
+    function toggleBlockAttrCommand(typeName, attr) {
+      return () => ({ state, tr, dispatch }) => {
+        const $from = state.selection.$from
+        for (let d = $from.depth; d >= 1; d--) {
+          const node = $from.node(d)
+          if (node.type.name !== typeName) continue
+          if (dispatch) {
+            dispatch(tr.setNodeMarkup($from.before(d), undefined,
+              { ...node.attrs, [attr]: !node.attrs[attr] }))
+          }
+          return true
+        }
+        return false
+      }
+    }
+
+    function blockCommentAttrsJSON(element) {
+      let n = element.previousSibling
+      while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
+      if (!n || n.nodeType !== 8) return null
+      const m = n.nodeValue.match(/^\s*wp:\S+\s+(\{[\s\S]*\})\s*$/)
+      return m ? m[1] : null
+    }
+
+    // Read one key from the delimiter comment only, never from the carrier
+    // attribute: an element Quill itself rendered has no preceding comment, so
+    // its own DOM attribute is the live value and a stale carrier cannot
+    // resurrect an attribute the user just turned off.
+    function blockCommentAttr(element, key) {
+      const raw = blockCommentAttrsJSON(element)
+      if (!raw) return undefined
+      try {
+        const parsed = JSON.parse(raw)
+        return (parsed && typeof parsed === 'object') ? parsed[key] : undefined
+      } catch (e) {
+        return undefined
+      }
+    }
+
     function withBlockAttrs(extension) {
       return extension.extend({
         addAttributes() {
@@ -2025,11 +2094,7 @@
               parseHTML: element => {
                 const existing = element.getAttribute('data-quill-block-attrs')
                 if (existing) return existing
-                let n = element.previousSibling
-                while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
-                if (!n || n.nodeType !== 8) return null
-                const m = n.nodeValue.match(/^\s*wp:\S+\s+(\{[\s\S]*\})\s*$/)
-                return m ? m[1] : null
+                return blockCommentAttrsJSON(element)
               },
               renderHTML: () => ({}),
             },
@@ -2638,6 +2703,8 @@
         editor.view.dispatch(tr)
         editor.commands.focus()
       },
+      toggleAccordionAutoclose: () => editor.chain().focus().toggleAccordionAutoclose().run(),
+      toggleDetailsOpen:        () => editor.chain().focus().toggleDetailsOpen().run(),
       addAccordionItem: () => {
         const info = _ancestorOfType('accordionBlock')
         if (!info) return
@@ -2976,6 +3043,9 @@
     const _columnsControls = document.getElementById('columns-controls')
     const _buttonsControls = document.getElementById('buttons-controls')
     const _accordionControls = document.getElementById('accordion-controls')
+    const _detailsControls = document.getElementById('details-controls')
+    const _btnAccordionAutoclose = document.getElementById('btn-accordion-autoclose')
+    const _btnDetailsOpen = document.getElementById('btn-details-open')
     const _tabsControls = document.getElementById('tabs-controls')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
@@ -3004,7 +3074,17 @@
       // Tabs controls
       _tabsControls.style.display = editor.isActive('tabsBlock') ? 'inline-flex' : 'none'
       // Accordion controls
-      _accordionControls.style.display = editor.isActive('accordionBlock') ? 'inline-flex' : 'none'
+      const inAccordion = editor.isActive('accordionBlock')
+      _accordionControls.style.display = inAccordion ? 'inline-flex' : 'none'
+      if (inAccordion) {
+        _btnAccordionAutoclose.classList.toggle('active', !!editor.getAttributes('accordionBlock').autoclose)
+      }
+      // Details controls
+      const inDetails = editor.isActive('detailsBlock')
+      _detailsControls.style.display = inDetails ? 'inline-flex' : 'none'
+      if (inDetails) {
+        _btnDetailsOpen.classList.toggle('active', !!editor.getAttributes('detailsBlock').showContent)
+      }
       // Buttons controls
       _buttonsControls.style.display = editor.isActive('buttonsBlock') ? 'inline-flex' : 'none'
       // Columns controls

@@ -536,3 +536,141 @@ describe('the attribute carrier never reaches saved HTML', () => {
     })
   }
 })
+
+// WordPress writes accordion's autoclose only into the block comment (verified
+// against gutenberg accordion/save.jsx, which emits no attribute for it), so
+// the carrier is the only copy on load and data-autoclose is Quill-internal.
+describe('accordion autoclose is a real attribute', () => {
+  const SRC =
+    '<!-- wp:accordion {"autoclose":true} -->' +
+    '<div role="group" class="wp-block-accordion">' +
+    '<!-- wp:accordion-item --><div class="wp-block-accordion-item">' +
+    '<!-- wp:accordion-heading --><h3 class="wp-block-accordion-heading wp-block-heading">H</h3><!-- /wp:accordion-heading -->' +
+    '<!-- wp:accordion-panel --><div role="region" class="wp-block-accordion-panel"><p>B</p></div><!-- /wp:accordion-panel -->' +
+    '</div><!-- /wp:accordion-item --></div><!-- /wp:accordion -->'
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('autoclose is parsed from the block comment, not data-autoclose', () => {
+    editor.commands.setContent(SRC, false)
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, true)
+  })
+
+  test('autoclose renders into the editor DOM so attrsFrom can read it', () => {
+    editor.commands.setContent(SRC, false)
+    assert.match(editor.getHTML(), /data-autoclose/)
+  })
+
+  test('toggling autoclose off clears the node attribute', () => {
+    editor.commands.setContent(SRC, false)
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, false)
+  })
+
+  test('toggling autoclose on sets the node attribute', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, false)
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, true)
+  })
+
+  test('data-autoclose never reaches saved HTML', () => {
+    editor.commands.setContent(SRC, false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal(out.includes('data-autoclose'), false)
+    assert.match(out, /<!-- wp:accordion \{"autoclose":true\} -->/)
+  })
+})
+
+// core/details is the opposite case: gutenberg details/save.jsx renders
+// open={showContent}, so `open` is real saved markup and must survive.
+describe('details showContent is a real attribute', () => {
+  const COMMENT_ONLY =
+    '<!-- wp:details {"showContent":true} -->' +
+    '<details class="wp-block-details"><summary>S</summary><p>B</p></details>' +
+    '<!-- /wp:details -->'
+  const AS_WORDPRESS_SAVES_IT =
+    '<!-- wp:details {"showContent":true} -->' +
+    '<details class="wp-block-details" open><summary>S</summary><p>B</p></details>' +
+    '<!-- /wp:details -->'
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('showContent is parsed from the block comment', () => {
+    editor.commands.setContent(COMMENT_ONLY, false)
+    assert.equal(editor.state.doc.child(0).attrs.showContent, true)
+  })
+
+  test('showContent is parsed from the open attribute WordPress saves', () => {
+    editor.commands.setContent(AS_WORDPRESS_SAVES_IT, false)
+    assert.equal(editor.state.doc.child(0).attrs.showContent, true)
+  })
+
+  test('showContent renders open into the editor DOM so attrsFrom can read it', () => {
+    editor.commands.setContent(AS_WORDPRESS_SAVES_IT, false)
+    assert.match(editor.getHTML(), /<details[^>]*\bopen\b/)
+  })
+
+  test('toggling showContent off clears the node attribute', () => {
+    editor.commands.setContent(AS_WORDPRESS_SAVES_IT, false)
+    editor.commands.command(({ commands }) => commands.toggleDetailsOpen())
+    assert.equal(editor.state.doc.child(0).attrs.showContent, false)
+  })
+
+  test('toggling showContent on sets the node attribute', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    assert.equal(editor.state.doc.child(0).attrs.showContent, false)
+    editor.commands.command(({ commands }) => commands.toggleDetailsOpen())
+    assert.equal(editor.state.doc.child(0).attrs.showContent, true)
+  })
+
+  test('open stays in saved HTML when showContent is true', () => {
+    editor.commands.setContent(AS_WORDPRESS_SAVES_IT, false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<details[^>]*\bopen\b/)
+    assert.match(out, /<!-- wp:details \{"showContent":true\} -->/)
+  })
+
+  test('no open attribute is saved once showContent is turned off', () => {
+    editor.commands.setContent(AS_WORDPRESS_SAVES_IT, false)
+    editor.commands.command(({ commands }) => commands.toggleDetailsOpen())
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.doesNotMatch(out, /<details[^>]*\bopen\b/)
+  })
+})
+
+describe('attribute toggles in the contextual toolbar', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('the autoclose button flips the accordion attribute', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    press('toggleAccordionAutoclose')
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, true)
+    press('toggleAccordionAutoclose')
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, false)
+  })
+
+  test('the open button flips the details attribute', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    press('toggleDetailsOpen')
+    assert.equal(editor.state.doc.child(0).attrs.showContent, true)
+    press('toggleDetailsOpen')
+    assert.equal(editor.state.doc.child(0).attrs.showContent, false)
+  })
+
+  test('each control group is revealed only inside its own block', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.equal(win.document.getElementById('accordion-controls').style.display, 'inline-flex')
+    assert.equal(win.document.getElementById('details-controls').style.display, 'none')
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    assert.equal(win.document.getElementById('details-controls').style.display, 'inline-flex')
+    assert.equal(win.document.getElementById('accordion-controls').style.display, 'none')
+  })
+})

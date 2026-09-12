@@ -552,6 +552,13 @@ function toWordPressHTML(html, doc) {
 
   wrapInDelimiters(div, doc)
 
+  // Quill-internal: WordPress stores autoclose only in the block comment, so
+  // the editor DOM carries it just long enough for attrsFrom to read it above.
+  // <details open> is the opposite case and stays -- WordPress saves it.
+  div.querySelectorAll('.wp-block-accordion[data-autoclose]').forEach(el => {
+    el.removeAttribute('data-autoclose')
+  })
+
   // Splice the passthrough elements stashed out at the top of this function
   // back in now, completely untouched by every pass above (media-id class,
   // image/heading/list/blockquote/cite/table/footnote/embed/gallery

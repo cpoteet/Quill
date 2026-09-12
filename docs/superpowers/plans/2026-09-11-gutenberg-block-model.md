@@ -1894,7 +1894,7 @@ which is why this is two tasks.
 - Consumes: the `blockAttrs` carrier (Task 13)
 - Produces: `toggleAccordionAutoclose`, `toggleDetailsOpen` commands; `open` / `data-autoclose` present in the editor DOM
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('accordion autoclose is a real attribute', () => {
@@ -1923,7 +1923,7 @@ describe('accordion autoclose is a real attribute', () => {
 Mirror all three for `detailsBlock` / `showContent` / `toggleDetailsOpen`,
 asserting `open` rather than `data-autoclose`.
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1932,7 +1932,7 @@ node --test Scripts/test-editor-containers.js
 Expected: FAIL on the first test — `autoclose` is `false`, because nothing
 reads it from the comment.
 
-- [ ] **Step 3: Parse the attribute from the carrier**
+- [x] **Step 3: Parse the attribute from the carrier**
 
 The carrier already holds the comment's whole attribute object as JSON on the
 node. Read the specific key out of it in each node's `getAttrs`, falling back
@@ -1949,7 +1949,7 @@ getAttrs: el => {
 Wrap the `JSON.parse` — a malformed carrier must not throw during a parse.
 `DetailsBlock` needs a `getAttrs` added; it currently has none.
 
-- [ ] **Step 4: Render it back out**
+- [x] **Step 4: Render it back out**
 
 ```js
 renderHTML({ node }) {
@@ -1959,25 +1959,27 @@ renderHTML({ node }) {
 }
 ```
 
-`data-autoclose` and `open` are Quill-internal editor markup, not saved output
-— `toWordPressHTML` reads them via `attrsFrom` and must strip both, the way it
-strips `data-quill-block-attrs`. Assert that explicitly: neither may appear in
-saved HTML.
+`data-autoclose` is Quill-internal editor markup and is stripped on save.
+`open` is **not** — Gutenberg's `details/save.jsx` renders `open={showContent}`,
+so WordPress writes it into `post_content` and stripping it would collapse
+every published details block. Corrected during implementation (2026-09-12):
+only `data-autoclose` is stripped; `open` is asserted present exactly when
+`showContent` is true and absent when it is false.
 
-- [ ] **Step 5: Add the toolbar toggles**
+- [x] **Step 5: Add the toolbar toggles**
 
 `#accordion-controls` gains an open-by-default toggle and `#details-controls`
 is added alongside it, following `#blockquote-controls`' `btn-toggle-cite`
 pattern — a button that reflects state via `.active` in `updateToolbar`. Both
 commands go in the same command map as `addAccordionItem` (editor.html:2641).
 
-- [ ] **Step 6: Run every suite**
+- [x] **Step 6: Run every suite**
 
 ```bash
 ./test.sh
 ```
 
-- [ ] **Step 7: Build and check**
+- [x] **Step 7: Build and check**
 
 ```bash
 osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
@@ -1986,7 +1988,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 Load an accordion, toggle open-by-default, check code view shows the attribute
 changing. Use a new local draft, never a published post.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Scripts/test-editor-containers.js
