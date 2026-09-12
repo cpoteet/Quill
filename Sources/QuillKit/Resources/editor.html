@@ -76,7 +76,8 @@
       border-color: rgba(255, 255, 255, 0.13);
     }
 
-    #toolbar button {
+    #toolbar button,
+    #toolbar-row2 button {
       font-family: inherit;
       font-size: 12px;
       font-weight: 500;
@@ -94,38 +95,46 @@
       line-height: 1;
       transition: background 0.12s ease, color 0.12s ease;
     }
-    #toolbar button:hover {
+    #toolbar button:hover,
+    #toolbar-row2 button:hover {
       background: rgba(0,0,0,0.045);
       color: #3f434d;
     }
-    body.dark #toolbar button:hover {
+    body.dark #toolbar button:hover,
+    body.dark #toolbar-row2 button:hover {
       background: rgba(255,255,255,0.08);
       color: #d3d4d8;
     }
-    #toolbar button.active {
+    #toolbar button.active,
+    #toolbar-row2 button.active {
       background: #ececef;
       color: #3f434d;
       border-color: transparent;
       box-shadow: none;
     }
-    body.dark #toolbar button.active {
+    body.dark #toolbar button.active,
+    body.dark #toolbar-row2 button.active {
       background: rgba(255,255,255,0.12);
       color: #f4f4f5;
     }
-    #toolbar button:disabled {
+    #toolbar button:disabled,
+    #toolbar-row2 button:disabled {
       opacity: 0.28;
       cursor: default;
       box-shadow: none;
     }
-    #toolbar button:disabled:hover {
+    #toolbar button:disabled:hover,
+    #toolbar-row2 button:disabled:hover {
       background: transparent;
       border-color: transparent;
     }
-    #toolbar button:focus-visible {
+    #toolbar button:focus-visible,
+    #toolbar-row2 button:focus-visible {
       outline: 2px solid rgba(123,92,255,0.35);
       outline-offset: 1px;
     }
-    #toolbar svg {
+    #toolbar svg,
+    #toolbar-row2 svg {
       width: 16px;
       height: 16px;
       display: block;
@@ -191,7 +200,8 @@
       letter-spacing: 0;
     }
 
-    #heading-button {
+    #heading-button,
+    #insert-button {
       min-width: 48px;
       padding: 0 8px 0 10px;
       border-radius: 14px;
@@ -205,11 +215,13 @@
     }
     /* Two IDs so these beat `body.dark #toolbar button`, which would
        otherwise recolor the label to a pale gray on the light pill. */
-    body.dark #toolbar #heading-button {
+    body.dark #toolbar #heading-button,
+    body.dark #toolbar #insert-button {
       color: #c6c8ce;
       background: rgba(255,255,255,0.07);
     }
-    body.dark #toolbar #heading-button:hover {
+    body.dark #toolbar #heading-button:hover,
+    body.dark #toolbar #insert-button:hover {
       color: #e6e7ea;
       background: rgba(255,255,255,0.12);
     }
@@ -217,16 +229,19 @@
       color: #f4f4f5;
       background: rgba(255,255,255,0.14);
     }
-    #heading-button svg {
+    #heading-button svg,
+    #insert-button svg {
       width: 11px;
       height: 11px;
       stroke-width: 2;
     }
-    .heading-current {
+    .heading-current,
+    .insert-current {
       font-size: 15px;
       font-weight: 600;
       line-height: 1;
     }
+    .insert-current { font-size: 17px; font-weight: 400; }
     #heading-menu,
     #insert-menu {
       display: none;
@@ -313,7 +328,8 @@
       flex-shrink: 0;
     }
     body.dark .tb-sep { background: #3a3a3d; }
-    body.dark #toolbar button {
+    body.dark #toolbar button,
+    body.dark #toolbar-row2 button {
       color: #b9bbc2;
     }
     #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #details-controls, #tabs-controls {
@@ -323,6 +339,23 @@
     #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #details-controls button, #tabs-controls button {
       min-width: auto;
       padding: 0 9px;
+    }
+    #toolbar-row2 {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      min-height: 34px;
+      padding: 4px 16px;
+      background: rgba(247, 247, 248, 0.96);
+      border-top: 1px solid rgba(0,0,0,0.055);
+      flex-shrink: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    #toolbar-row2.visible { display: flex; }
+    body.dark #toolbar-row2 {
+      background: rgba(36, 36, 38, 0.96);
+      border-top-color: rgba(255,255,255,0.09);
     }
     #toolbar-tooltip {
       position: fixed;
@@ -835,6 +868,222 @@
     body.dark #embed-menu { background: #2e2e2e; border-color: rgba(255,255,255,0.15); }
     body.dark #embed-menu input { background: #3a3a3a; border-color: rgba(255,255,255,0.15); color: #eee; }
 
+    /* ── Container blocks ───────────────────────────── */
+    .ProseMirror .wp-block-columns,
+    .ProseMirror .wp-block-accordion,
+    .ProseMirror .wp-block-tabs,
+    .ProseMirror .wp-block-buttons,
+    .ProseMirror .wp-block-details {
+      position: relative;
+      margin: 1.35em 0;
+    }
+    .ProseMirror .wp-block-accordion,
+    .ProseMirror .wp-block-tabs,
+    .ProseMirror .wp-block-details {
+      padding: 12px 14px;
+      border: 1px solid rgba(0,0,0,0.085);
+      border-radius: 7px;
+      background: rgba(0,0,0,0.012);
+    }
+    body.dark .ProseMirror .wp-block-accordion,
+    body.dark .ProseMirror .wp-block-tabs,
+    body.dark .ProseMirror .wp-block-details {
+      border-color: rgba(255,255,255,0.11);
+      background: rgba(255,255,255,0.022);
+    }
+
+    .ProseMirror .wp-block-column > :last-child,
+    .ProseMirror .wp-block-accordion-panel > :last-child,
+    .ProseMirror .wp-block-tab-panel > :last-child,
+    .ProseMirror .wp-block-details > :last-child { margin-bottom: 0; }
+
+    /* Columns */
+    .ProseMirror .wp-block-columns { display: flex; gap: 0; align-items: flex-start; }
+    .ProseMirror .wp-block-column { flex: 1 1 0; min-width: 0; padding: 0 18px; }
+    .ProseMirror .wp-block-column:first-child { padding-left: 4px; }
+    .ProseMirror .wp-block-column:last-child  { padding-right: 4px; }
+    .ProseMirror .wp-block-column + .wp-block-column { border-left: 1px dashed rgba(0,0,0,0.16); }
+    body.dark .ProseMirror .wp-block-column + .wp-block-column { border-left-color: rgba(255,255,255,0.18); }
+
+    /* Accordion */
+    .ProseMirror .wp-block-accordion-item + .wp-block-accordion-item { border-top: 1px solid rgba(0,0,0,0.08); }
+    body.dark .ProseMirror .wp-block-accordion-item + .wp-block-accordion-item { border-top-color: rgba(255,255,255,0.1); }
+    .ProseMirror .wp-block-accordion-heading {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.5;
+      margin: 0;
+      position: relative;
+    }
+    .ProseMirror .wp-block-accordion-heading__toggle {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 11px 34px 11px 4px;
+      font: inherit;
+      color: inherit;
+      cursor: text;
+      border-radius: 4px;
+    }
+    .ProseMirror .wp-block-accordion-heading:hover { background: rgba(0,0,0,0.022); }
+    body.dark .ProseMirror .wp-block-accordion-heading:hover { background: rgba(255,255,255,0.03); }
+    /* Plus rotating into a cross, matching core's toggle icon. */
+    .ProseMirror .wp-block-accordion-heading::after {
+      content: '+';
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 0;
+      opacity: 0.5;
+      transform: translateY(-50%) rotate(45deg);
+      transition: transform 0.18s ease, opacity 0.13s ease;
+      pointer-events: none;
+    }
+    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-heading::after {
+      transform: translateY(-50%) rotate(0deg);
+    }
+    .ProseMirror .wp-block-accordion-heading:hover::after { opacity: 0.9; }
+    .ProseMirror .wp-block-accordion-panel { padding: 0 34px 12px 4px; }
+    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-panel { display: none; }
+
+    /* Tabs */
+    .ProseMirror .wp-block-tab-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      border-bottom: 1px solid rgba(0,0,0,0.11);
+      margin: 0 -6px;
+    }
+    body.dark .ProseMirror .wp-block-tab-list { border-bottom-color: rgba(255,255,255,0.13); }
+    .ProseMirror .wp-block-tab-list button[role="tab"] {
+      background: none;
+      border: none;
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      padding: 7px 13px;
+      margin-bottom: -1px;
+      color: #8a8a8f;
+      cursor: text;
+      border-bottom: 2px solid transparent;
+      transition: color 0.13s ease, border-color 0.13s ease;
+    }
+    .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #1a1a1a; border-bottom-color: #32323a; }
+    body.dark .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #f4f4f5; border-bottom-color: #e7e7ea; }
+    .ProseMirror .wp-block-tab-panel { display: none; padding: 14px 2px 2px; }
+    .ProseMirror .wp-block-tab-panel.is-active-tab { display: block; }
+
+    /* Details */
+    .ProseMirror .wp-block-details > summary {
+      list-style: none;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.5;
+      padding: 2px 4px 2px 20px;
+      margin: 0 0 4px;
+      position: relative;
+      cursor: text;
+    }
+    .ProseMirror .wp-block-details > summary::-webkit-details-marker { display: none; }
+    .ProseMirror .wp-block-details > summary::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 50%;
+      width: 0;
+      height: 0;
+      border-left: 5px solid currentColor;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      opacity: 0.45;
+      transform: translateY(-50%) rotate(90deg);
+      transition: transform 0.18s ease, opacity 0.13s ease;
+    }
+    .ProseMirror .wp-block-details.is-collapsed > summary::before { transform: translateY(-50%) rotate(0deg); }
+    .ProseMirror .wp-block-details > summary:hover::before { opacity: 0.85; }
+    .ProseMirror .wp-block-details.is-collapsed > :not(summary) { display: none; }
+    /* showContent is a publishing choice, so it is a label here and never a hidden body. */
+    .ProseMirror .wp-block-details:not(.shows-content) > summary::after {
+      content: 'closed on the site';
+      margin-left: 0.6em;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+    }
+
+    /* Buttons */
+    .ProseMirror .wp-block-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+    .ProseMirror .wp-block-button { display: inline-flex; }
+    .ProseMirror .wp-block-button__link {
+      display: inline-block;
+      background: #32323a;
+      color: #ffffff;
+      padding: 7px 17px;
+      border-radius: 6px;
+      font-size: 14.5px;
+      font-weight: 500;
+      line-height: 1.45;
+      text-decoration: none;
+      cursor: text;
+    }
+    body.dark .ProseMirror .wp-block-button__link { background: #e7e7ea; color: #1c1c1e; }
+
+    /* Pullquote */
+    .ProseMirror figure.wp-block-pullquote {
+      margin: 1.9em 0;
+      padding: 1.15em 0;
+      border-top: 2px solid rgba(0,0,0,0.22);
+      border-bottom: 2px solid rgba(0,0,0,0.22);
+      text-align: center;
+    }
+    body.dark .ProseMirror figure.wp-block-pullquote { border-color: rgba(255,255,255,0.24); }
+    .ProseMirror figure.wp-block-pullquote > blockquote {
+      border-left: none;
+      padding-left: 0;
+      margin: 0;
+      color: inherit;
+      font-style: normal;
+    }
+    .ProseMirror figure.wp-block-pullquote > blockquote > p {
+      font-size: 1.3em;
+      font-weight: 500;
+      line-height: 1.4;
+      margin: 0 0 0.4em;
+    }
+    .ProseMirror figure.wp-block-pullquote > blockquote > p:last-child { margin-bottom: 0; }
+    .ProseMirror figure.wp-block-pullquote cite {
+      text-align: center;
+      font-size: 0.8em;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #999;
+    }
+
+    /* Preformatted */
+    .ProseMirror pre.wp-block-preformatted {
+      background: rgba(0,0,0,0.028);
+      border: none;
+      border-left: 3px solid rgba(0,0,0,0.17);
+      border-radius: 0 4px 4px 0;
+      padding: 11px 15px;
+      margin: 1em 0;
+      font-family: inherit;
+      font-size: 0.95em;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    body.dark .ProseMirror pre.wp-block-preformatted {
+      background: rgba(255,255,255,0.035);
+      border-left-color: rgba(255,255,255,0.2);
+    }
+
     /* ── Footnotes ──────────────────────────────────── */
     #editor { counter-reset: quill-footnote; }
     sup.fn { counter-increment: quill-footnote; }
@@ -901,11 +1150,6 @@
       <button data-cmd="blockquote" title="Blockquote">
         <svg viewBox="0 0 24 24"><path d="M8 6h7"></path><path d="M8 12h9"></path><path d="M8 18h7"></path><path d="M4 6v12"></path></svg>
       </button>
-      <span id="blockquote-controls" style="display:none">
-        <button id="btn-toggle-cite" title="Toggle citation">
-          <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>
-        </button>
-      </span>
       <button data-cmd="codeBlock"  title="Code block"><span class="tb-code-text">{}</span></button>
     </span>
     <span class="tb-sep"></span>
@@ -927,33 +1171,6 @@
       <button data-cmd="insertTable" title="Insert table">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="M5 9.67h14"></path><path d="M5 14.33h14"></path><path d="M9.67 5v14"></path><path d="M14.33 5v14"></path></svg>
       </button>
-      <span id="table-controls" style="display:none">
-        <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
-        <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
-        <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
-        <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
-        <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
-      </span>
-      <span id="columns-controls" style="display:none">
-        <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
-        <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
-      </span>
-      <span id="buttons-controls" style="display:none">
-        <button data-cmd="addButton"    title="Add button">+Button</button>
-        <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
-      </span>
-      <span id="accordion-controls" style="display:none">
-        <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
-        <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
-        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Autoclose</button>
-      </span>
-      <span id="details-controls" style="display:none">
-        <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
-      </span>
-      <span id="tabs-controls" style="display:none">
-        <button data-cmd="addTab"    title="Add tab">+Tab</button>
-        <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
-      </span>
       <button data-cmd="link"  title="Insert / remove link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
       </button>
@@ -962,22 +1179,12 @@
         <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m10 9 5 3-5 3z"></path></svg>
       </button>
       <button id="insert-button" title="Insert block" aria-haspopup="menu" aria-expanded="false">
-        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect><path d="M16.5 13v7"></path><path d="M13 16.5h7"></path></svg>
+        <span class="insert-current">+</span>
+        <svg viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"></path></svg>
       </button>
     </span>
     <span class="tb-sep"></span>
     <span class="tb-group">
-      <span id="image-align-controls" style="display:none">
-        <button data-cmd="alignLeft"   title="Float image left (text wraps right)">
-          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>
-        </button>
-        <button data-cmd="alignCenter" title="Center image">
-          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M4 18h16"></path></svg>
-        </button>
-        <button data-cmd="alignRight"  title="Float image right (text wraps left)">
-          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
-        </button>
-      </span>
       <button id="btn-spell" title="Check spelling"><span class="tb-spell-icon">ABC</span></button>
       <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
     </span>
@@ -990,6 +1197,52 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
       </button>
     </span>
+  </div>
+  <div id="toolbar-row2">
+    <span id="blockquote-controls" style="display:none">
+        <button id="btn-toggle-cite" title="Toggle citation">
+          <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>
+        </button>
+      </span>
+    <span id="table-controls" style="display:none">
+        <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
+        <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
+        <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
+        <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
+        <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
+      </span>
+    <span id="columns-controls" style="display:none">
+        <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
+        <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
+      </span>
+    <span id="buttons-controls" style="display:none">
+        <button data-cmd="addButton"    title="Add button">+Button</button>
+        <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
+        <button data-cmd="buttonLink"   title="Link this button">Link</button>
+      </span>
+    <span id="accordion-controls" style="display:none">
+        <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
+        <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
+        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Autoclose</button>
+      </span>
+    <span id="details-controls" style="display:none">
+        <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
+      </span>
+    <span id="tabs-controls" style="display:none">
+        <button data-cmd="addTab"    title="Add tab">+Tab</button>
+        <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
+      </span>
+    <span id="image-align-controls" style="display:none">
+        <button data-cmd="alignLeft"   title="Float image left (text wraps right)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <button data-cmd="alignCenter" title="Center image">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <button data-cmd="alignRight"  title="Float image right (text wraps left)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
+        </button>
+      </span>
   </div>
   <div id="heading-menu" role="menu">
     <button class="heading-menu-item active" data-heading-level="0" role="menuitem">
@@ -1015,13 +1268,13 @@
     </button>
   </div>
   <div id="insert-menu" role="menu">
-    <button class="heading-menu-item" data-insert="columns"      role="menuitem">Columns</button>
-    <button class="heading-menu-item" data-insert="accordion"    role="menuitem">Accordion</button>
-    <button class="heading-menu-item" data-insert="tabs"         role="menuitem">Tabs</button>
-    <button class="heading-menu-item" data-insert="details"      role="menuitem">Details</button>
-    <button class="heading-menu-item" data-insert="buttons"      role="menuitem">Buttons</button>
-    <button class="heading-menu-item" data-insert="pullquote"    role="menuitem">Pullquote</button>
-    <button class="heading-menu-item" data-insert="preformatted" role="menuitem">Preformatted</button>
+    <button class="heading-menu-item" data-insert="columns" role="menuitem"><span class="heading-menu-label">Columns</span></button>
+    <button class="heading-menu-item" data-insert="accordion" role="menuitem"><span class="heading-menu-label">Accordion</span></button>
+    <button class="heading-menu-item" data-insert="tabs" role="menuitem"><span class="heading-menu-label">Tabs</span></button>
+    <button class="heading-menu-item" data-insert="details" role="menuitem"><span class="heading-menu-label">Details</span></button>
+    <button class="heading-menu-item" data-insert="buttons" role="menuitem"><span class="heading-menu-label">Buttons</span></button>
+    <button class="heading-menu-item" data-insert="pullquote" role="menuitem"><span class="heading-menu-label">Pullquote</span></button>
+    <button class="heading-menu-item" data-insert="preformatted" role="menuitem"><span class="heading-menu-label">Preformatted</span></button>
   </div>
   <div id="embed-menu">
     <input id="embed-url-input" type="text" placeholder="Insert media link" spellcheck="false">
@@ -1892,7 +2145,9 @@
       addAttributes() {
         return { href: { default: null, parseHTML: el => el.querySelector('a')?.getAttribute('href') || null } }
       },
-      parseHTML() { return [{ tag: 'div.wp-block-button' }] },
+      // contentElement consumes the anchor so the Link mark never claims it and
+      // renderHTML stays the only thing that emits one.
+      parseHTML() { return [{ tag: 'div.wp-block-button', contentElement: 'a' }] },
       renderHTML({ node }) {
         const attrs = { class: 'wp-block-button__link wp-element-button' }
         if (node.attrs.href) attrs.href = node.attrs.href
@@ -2363,6 +2618,133 @@
     })
 
     // ── Spell check ───────────────────────────────────────
+    // ── Container chrome ─────────────────────────────
+    // Every visual affordance the container blocks need — a <details> forced
+    // open so its body stays editable, collapsed-for-preview, the active tab —
+    // is a decoration. Decorations are not part of the document, so none of it
+    // can reach getHTML() and therefore a save.
+    const containerChromeKey = new PluginKey('containerChrome')
+
+    const COLLAPSIBLE = new Set(['accordionItem', 'detailsBlock'])
+
+    function _tabDecorations(node, pos, head, decos) {
+      if (node.childCount < 2) return
+      const list = node.child(0)
+      const panels = node.child(1)
+      const listContent = pos + 2
+      const panelsContent = pos + 1 + list.nodeSize + 1
+      const spans = []
+      list.forEach((child, offset, i) => spans.push([listContent + offset, child.nodeSize, i]))
+      panels.forEach((child, offset, i) => spans.push([panelsContent + offset, child.nodeSize, i]))
+      let active = 0
+      for (const [from, size, i] of spans) {
+        if (head > from && head < from + size) { active = i; break }
+      }
+      for (const [from, size, i] of spans) {
+        if (i === active) decos.push(Decoration.node(from, from + size, { class: 'is-active-tab' }))
+      }
+    }
+
+    function _chromeDecorations(state) {
+      const decos = []
+      const head = state.selection.head
+      state.doc.descendants((node, pos) => {
+        const name = node.type.name
+        if (name === 'detailsBlock') {
+          decos.push(Decoration.node(pos, pos + node.nodeSize, { open: '' }))
+          if (node.attrs.showContent) {
+            decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'shows-content' }))
+          }
+        }
+        if (name === 'tabsBlock') _tabDecorations(node, pos, head, decos)
+        return true
+      })
+      return decos
+    }
+
+    function _collapsibleAt($pos) {
+      for (let d = $pos.depth; d > 0; d--) {
+        if (COLLAPSIBLE.has($pos.node(d).type.name)) return { pos: $pos.before(d), node: $pos.node(d) }
+      }
+      return null
+    }
+
+    function _toggleCollapseAt(view, $pos) {
+      const target = _collapsibleAt($pos)
+      if (!target) return false
+      view.dispatch(view.state.tr.setMeta(containerChromeKey, {
+        pos: target.pos, nodeSize: target.node.nodeSize,
+      }))
+      return true
+    }
+
+    const ContainerChrome = Extension.create({
+      name: 'containerChrome',
+      addCommands() {
+        return {
+          toggleContainerCollapse: () => ({ state, dispatch }) => {
+            const target = _collapsibleAt(state.selection.$head)
+            if (!target) return false
+            if (dispatch) {
+              dispatch(state.tr.setMeta(containerChromeKey, {
+                pos: target.pos, nodeSize: target.node.nodeSize,
+              }))
+            }
+            return true
+          },
+        }
+      },
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: containerChromeKey,
+            state: {
+              init() { return DecorationSet.empty },
+              apply(tr, set) {
+                let next = set.map(tr.mapping, tr.doc)
+                const toggle = tr.getMeta(containerChromeKey)
+                if (toggle) {
+                  const at = next.find(toggle.pos, toggle.pos + toggle.nodeSize)
+                                 .filter(d => d.from === toggle.pos)
+                  next = at.length
+                    ? next.remove(at)
+                    : next.add(tr.doc, [Decoration.node(
+                        toggle.pos, toggle.pos + toggle.nodeSize, { class: 'is-collapsed' })])
+                }
+                return next
+              },
+            },
+            props: {
+              decorations(state) {
+                return containerChromeKey.getState(state).add(state.doc, _chromeDecorations(state))
+              },
+              handleDOMEvents: {
+                // <details> is forced open by decoration; let nothing flip it back.
+                click(view, event) {
+                  return !!(event.target.closest && event.target.closest('.wp-block-details > summary'))
+                    && (event.preventDefault(), true)
+                },
+                mousedown(view, event) {
+                  const el = event.target.closest && event.target.closest(
+                    '.wp-block-accordion-heading, .wp-block-details > summary')
+                  if (!el) return false
+                  const box = el.getBoundingClientRect()
+                  const onMarker = el.tagName === 'SUMMARY'
+                    ? event.clientX - box.left < 22
+                    : box.right - event.clientX < 32
+                  if (!onMarker) return false
+                  const pos = view.posAtDOM(el, 0)
+                  if (pos < 0) return false
+                  event.preventDefault()
+                  return _toggleCollapseAt(view, view.state.doc.resolve(pos))
+                },
+              },
+            },
+          }),
+        ]
+      },
+    })
+
     const spellCheckKey = new PluginKey('spellCheck')
 
     const SpellCheck = Extension.create({
@@ -2516,6 +2898,7 @@
         withClassAttr(Link).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
+        ContainerChrome,
         SpellCheck,
         FindHighlight,
       ],
@@ -2621,6 +3004,25 @@
         if ($pos.node(d).type.name === typeName) return d
       }
       return -1
+    }
+
+    function _buttonBlockTarget(state) {
+      const $head = state.selection.$head
+      for (let d = $head.depth; d > 0; d--) {
+        if ($head.node(d).type.name === 'buttonBlock') {
+          return { pos: $head.before(d), node: $head.node(d) }
+        }
+      }
+      return null
+    }
+
+    function _setButtonHref(url) {
+      const button = _buttonBlockTarget(editor.state)
+      if (!button) return false
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(
+        button.pos, null, { ...button.node.attrs, href: url || null }))
+      editor.commands.focus()
+      return true
     }
 
     const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
@@ -2751,6 +3153,22 @@
       undo:          () => editor.chain().focus().undo().run(),
       redo:          () => editor.chain().focus().redo().run(),
       link: () => {
+        // A button carries its link as a node attribute; the Link mark would
+        // emit a second anchor beside the button's own and leave it unlinked.
+        const button = _buttonBlockTarget(editor.state)
+        if (button) {
+          const dom = editor.view.nodeDOM(button.pos)
+          const r = (dom && dom.getBoundingClientRect)
+            ? dom.getBoundingClientRect()
+            : document.querySelector('[data-cmd="link"]').getBoundingClientRect()
+          if (window.webkit?.messageHandlers?.showLinkPicker) {
+            window.webkit.messageHandlers.showLinkPicker.postMessage({
+              href: button.node.attrs.href || '',
+              rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+            })
+          }
+          return
+        }
         const href = editor.getAttributes('link').href || ''
         const sel  = window.getSelection()
         let rect
@@ -2792,6 +3210,7 @@
           window.webkit.messageHandlers.showLinkPicker.postMessage({ href, rect })
         }
       },
+      buttonLink: () => COMMANDS.link(),
       image: () => {
         if (_isInFootnote()) return
         if (window.webkit?.messageHandlers?.insertImage) {
@@ -2872,7 +3291,7 @@
         tip.classList.remove('visible')
       }
 
-      document.querySelectorAll('#toolbar button[title]').forEach(el => {
+      document.querySelectorAll('#toolbar button[title], #toolbar-row2 button[title]').forEach(el => {
         el.dataset.tooltip = el.getAttribute('title')
         el.setAttribute('aria-label', el.dataset.tooltip)
         el.removeAttribute('title')
@@ -3047,6 +3466,10 @@
     const _btnAccordionAutoclose = document.getElementById('btn-accordion-autoclose')
     const _btnDetailsOpen = document.getElementById('btn-details-open')
     const _tabsControls = document.getElementById('tabs-controls')
+    const _row2 = document.getElementById('toolbar-row2')
+    const _row2Groups = Array.from(_row2.children)
+    const _linkBtn = document.querySelector('[data-cmd="link"]')
+    const _buttonLinkBtn = document.querySelector('[data-cmd="buttonLink"]')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
@@ -3056,6 +3479,12 @@
       _toggleBtns.forEach(([cmd, btn]) => {
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
       })
+      // A button keeps its link in a node attribute, so isActive('link') is
+      // always false there and the generic pass above leaves both controls dark.
+      const linkedButton = _buttonBlockTarget(editor.state)
+      const buttonIsLinked = !!(linkedButton && linkedButton.node.attrs.href)
+      if (linkedButton) _linkBtn.classList.toggle('active', buttonIsLinked)
+      _buttonLinkBtn.classList.toggle('active', buttonIsLinked)
       _blockBtns.forEach(btn => { btn.disabled = inFootnote })
       // Heading menu
       headingButton.disabled = inFootnote
@@ -3101,6 +3530,9 @@
       // Embed / footnote buttons
       _embedBtn.disabled = inFootnote
       _footnoteBtn.disabled = inFootnote
+      // Row 2 exists only while one of its groups does.
+      _row2.classList.toggle('visible',
+        _row2Groups.some(el => el && el.style.display !== 'none'))
       // Image alignment controls
       const selNode = editor.state.selection.node
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
@@ -3717,10 +4149,12 @@
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
     window.applyLink = url => {
+      if (_setButtonHref(url)) return
       const existing = editor.getAttributes('link')
       editor.chain().focus().extendMarkRange('link').setLink({ ...existing, href: url }).run()
     }
     window.removeLink = () => {
+      if (_setButtonHref(null)) return
       editor.chain().focus().unsetLink().run()
     }
     window.setMediaSizes = (mediaId, sizes) => {

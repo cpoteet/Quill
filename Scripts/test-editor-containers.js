@@ -190,6 +190,189 @@ describe('buttons block', () => {
     assert.match(out, /<!-- wp:buttons -->/)
     assert.match(out, /<!-- wp:button -->/)
   })
+
+  // The Link mark also matches a[href], so without contentElement it claimed
+  // the button's anchor: the label saved twice over, and a button with no href
+  // lost its label out of the block entirely.
+  test('a button emits exactly one anchor', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div></div>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal((out.match(/<a /g) || []).length, 1)
+    assert.match(out, /<a class="wp-block-button__link wp-element-button" href="https:\/\/x\.test">Go<\/a>/)
+  })
+
+  test('a button with no href keeps its label inside the block', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button">Go</a></div></div>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<div class="wp-block-button"><a class="wp-block-button__link wp-element-button">Go<\/a><\/div>/)
+    assert.doesNotMatch(out.split('<!-- \/wp:buttons -->')[1] || '', /Go/)
+  })
+
+  test('two buttons keep their own labels and order', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons">' +
+      '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://a.test">Alpha</a></div>' +
+      '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://b.test">Beta</a></div></div>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal((out.match(/<a /g) || []).length, 2)
+    assert.ok(out.indexOf('Alpha') < out.indexOf('Beta'))
+    assert.match(out, /href="https:\/\/a\.test">Alpha</)
+    assert.match(out, /href="https:\/\/b\.test">Beta</)
+  })
+
+  test('a typed button label survives a save and reload', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    const first = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(first, /Contact/)
+    editor.commands.setContent(first, false)
+    const second = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal(second, first)
+    assert.match(second, /<div class="wp-block-button"><a[^>]*>Contact<\/a><\/div>/)
+  })
+
+  // Applying the Link mark inside a button emitted a second, bare anchor beside
+  // the button's own and left the button unlinked, so the link picker writes
+  // the node's href attribute instead whenever the cursor is in a button.
+  test('applyLink inside a button sets the node href, not a mark', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    win.applyLink('https://example.test')
+    const button = editor.state.doc.child(0).child(0)
+    assert.equal(button.attrs.href, 'https://example.test')
+    assert.equal(button.child(0).marks.length, 0)
+    assert.equal(button.textContent, 'Contact')
+  })
+
+  test('a linked button still emits exactly one anchor', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    win.applyLink('https://example.test')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal((out.match(/<a /g) || []).length, 1)
+    assert.match(out, /<a class="wp-block-button__link wp-element-button" href="https:\/\/example\.test">Contact<\/a>/)
+  })
+
+  test('removeLink inside a button clears the href', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div></div>', false)
+    editor.commands.setTextSelection(2)
+    win.removeLink()
+    assert.equal(editor.state.doc.child(0).child(0).attrs.href, null)
+    assert.doesNotMatch(win.toWordPressHTML(editor.getHTML(), win.document), /href=/)
+  })
+
+  test('a button link survives a save and reload', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    win.applyLink('https://example.test')
+    const first = win.toWordPressHTML(editor.getHTML(), win.document)
+    editor.commands.setContent(first, false)
+    assert.equal(win.toWordPressHTML(editor.getHTML(), win.document), first)
+    assert.equal(editor.state.doc.child(0).child(0).attrs.href, 'https://example.test')
+  })
+
+  test('applyLink outside a button still applies a link mark', () => {
+    editor.commands.setContent('<p>plain text</p>', false)
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    win.applyLink('https://example.test')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<a href="https:\/\/example\.test">plain<\/a>/)
+  })
+
+  // The earlier link tests called window.applyLink directly, so a broken
+  // toolbar control still passed them. These press the actual buttons.
+  const pressToolbar = cmd => {
+    const sent = []
+    win.webkit = { messageHandlers: { showLinkPicker: { postMessage: m => sent.push(m) } } }
+    const el = win.document.querySelector(`[data-cmd="${cmd}"]`)
+    assert.ok(el, `[data-cmd="${cmd}"] exists`)
+    el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+    return sent
+  }
+
+  test('the Buttons group Link control opens the link picker', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    const sent = pressToolbar('buttonLink')
+    assert.equal(sent.length, 1)
+    assert.equal(sent[0].href, '')
+  })
+
+  test('the Buttons group Link control seeds the picker with the current href', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div></div>', false)
+    editor.commands.setTextSelection(2)
+    const sent = pressToolbar('buttonLink')
+    assert.equal(sent.length, 1)
+    assert.equal(sent[0].href, 'https://x.test')
+  })
+
+  test('the main toolbar link control opens the picker from inside a button', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    const sent = pressToolbar('link')
+    assert.equal(sent.length, 1)
+  })
+
+  const linkBtnActive = () => ({
+    main: win.document.querySelector('[data-cmd="link"]').classList.contains('active'),
+    group: win.document.querySelector('[data-cmd="buttonLink"]').classList.contains('active'),
+  })
+
+  test('a linked button lights up both link controls', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div></div>', false)
+    editor.commands.setTextSelection(2)
+    assert.deepEqual(linkBtnActive(), { main: true, group: true })
+  })
+
+  test('an unlinked button lights up neither', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    assert.deepEqual(linkBtnActive(), { main: false, group: false })
+  })
+
+  test('the controls follow applyLink and removeLink', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Contact')
+    win.applyLink('https://example.test')
+    assert.deepEqual(linkBtnActive(), { main: true, group: true })
+    win.removeLink()
+    assert.deepEqual(linkBtnActive(), { main: false, group: false })
+  })
+
+  test('the group control goes dark outside a button', () => {
+    editor.commands.setContent('<p><a href="https://x.test">linked text</a></p>', false)
+    editor.commands.setTextSelection(3)
+    assert.deepEqual(linkBtnActive(), { main: true, group: false })
+  })
+
+  test('the button label is plain text, not a link mark', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div></div>', false)
+    const button = editor.state.doc.child(0).child(0)
+    assert.equal(button.textContent, 'Go')
+    assert.equal(button.child(0).marks.length, 0)
+    assert.equal(button.attrs.href, 'https://x.test')
+  })
 })
 
 describe('buttons toolbar controls', () => {
@@ -387,12 +570,94 @@ describe('insert menu', () => {
     assert.equal(editor.state.doc.child(0).type.name, 'detailsBlock')
   })
 
+  // The label lives in a span now, so a real pointer lands on the span, not
+  // the button the earlier tests click.
+  test('clicking a menu item label inserts that block', () => {
+    editor.commands.setContent('<p></p>', false)
+    openMenu()
+    const label = win.document.querySelector('#insert-menu [data-insert="columns"] .heading-menu-label')
+    assert.ok(label, 'menu items carry a heading-menu-label span')
+    label.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+    assert.equal(editor.state.doc.child(0).type.name, 'columnsBlock')
+  })
+
+  test('every menu item uses the heading menu label typography', () => {
+    const items = Array.from(win.document.querySelectorAll('#insert-menu [data-insert]'))
+    assert.equal(items.length, 7)
+    for (const el of items) {
+      assert.ok(el.querySelector('.heading-menu-label'), `${el.dataset.insert} has no label span`)
+    }
+  })
+
+  test('the insert button is a labelled pill like the heading dropdown', () => {
+    const btn = win.document.getElementById('insert-button')
+    assert.ok(btn.querySelector('.insert-current'), 'has a text label')
+    assert.equal(btn.querySelectorAll('svg').length, 1, 'one chevron, no icon glyph')
+  })
+
   test('the menu closes after an insertion', () => {
     editor.commands.setContent('<p></p>', false)
     openMenu()
     assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), true)
     win.document.querySelector('#insert-menu [data-insert="buttons"]').click()
     assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), false)
+  })
+})
+
+describe('contextual toolbar row', () => {
+  const row = () => win.document.getElementById('toolbar-row2')
+  const rowVisible = () => row().classList.contains('visible')
+  const shown = () => Array.from(row().children)
+    .filter(el => el.style.display !== 'none').map(el => el.id)
+
+  test('every contextual group lives in row 2, not the main toolbar', () => {
+    for (const id of ['blockquote-controls', 'table-controls', 'columns-controls',
+                      'buttons-controls', 'accordion-controls', 'details-controls',
+                      'tabs-controls', 'image-align-controls']) {
+      const el = win.document.getElementById(id)
+      assert.ok(el, `${id} exists`)
+      assert.equal(el.parentElement.id, 'toolbar-row2', `${id} is in row 2`)
+    }
+  })
+
+  test('the row is hidden in ordinary prose', () => {
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(2)
+    assert.equal(rowVisible(), false)
+    assert.deepEqual(shown(), [])
+  })
+
+  test('the row appears for a container and names only that group', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.equal(rowVisible(), true)
+    assert.deepEqual(shown(), ['accordion-controls'])
+  })
+
+  test('the row disappears again when the cursor leaves', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.equal(rowVisible(), true)
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(2)
+    assert.equal(rowVisible(), false)
+  })
+
+  test('nested containers show both groups at once', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-columns"><div class="wp-block-column">' +
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link wp-element-button">Go</a></div></div>' +
+      '</div></div>', false)
+    editor.commands.setTextSelection(4)
+    assert.equal(rowVisible(), true)
+    assert.deepEqual(shown().sort(), ['buttons-controls', 'columns-controls'])
+  })
+
+  test('the main toolbar keeps the groups that are not cursor-contextual', () => {
+    const main = win.document.getElementById('toolbar')
+    assert.ok(main.querySelector('#ai-toolbar-group'), 'AI group stays in row 1')
+    assert.ok(main.querySelector('#insert-button'), 'insert menu stays in row 1')
   })
 })
 
@@ -725,5 +990,131 @@ describe('a descriptor owns its declared attributes', () => {
     editor.commands.insertContent('x')
     const out = win.toWordPressHTML(editor.getHTML(), win.document)
     assert.match(out, /<!-- wp:column \{"width":"33\.33%"\} -->/)
+  })
+})
+
+// Accordion, tabs and details carry editor-only chrome: a forced-open
+// <details>, a collapsed-for-preview class, the active tab. All of it is
+// applied as ProseMirror decorations, which live outside the document —
+// these tests are the guard that none of it can reach a save.
+describe('editor chrome stays out of saved markup', () => {
+  const ACCORDION = '<div role="group" class="wp-block-accordion">' +
+    '<div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading wp-block-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">One</span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>First</p></div></div>' +
+    '<div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading wp-block-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Two</span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>Second</p></div></div>' +
+    '</div>'
+
+  const TABS = '<div class="wp-block-tabs">' +
+    '<div role="tablist" class="wp-block-tab-list">' +
+    '<button type="button" role="tab">Alpha</button><button type="button" role="tab">Beta</button></div>' +
+    '<div class="wp-block-tab-panels">' +
+    '<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p>A body</p></section>' +
+    '<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p>B body</p></section>' +
+    '</div></div>'
+
+  const save = () => win.toWordPressHTML(editor.getHTML(), win.document)
+
+  const posInside = (typeName, index = 0) => {
+    const hits = []
+    editor.state.doc.descendants((node, pos) => { if (node.type.name === typeName) hits.push(pos) })
+    return hits[index] + 1
+  }
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('a details block is open in the DOM even when showContent is false', () => {
+    editor.commands.setContent('<details class="wp-block-details"><summary>S</summary><p>Body</p></details>', false)
+    const dom = win.document.querySelector('#editor details.wp-block-details')
+    assert.ok(dom, 'details rendered')
+    assert.ok(dom.hasAttribute('open'), 'forced open so the body stays editable')
+    assert.doesNotMatch(save(), /<details[^>]*\sopen/)
+  })
+
+  test('showContent true still saves the open attribute', () => {
+    editor.commands.setContent('<details class="wp-block-details" open><summary>S</summary><p>Body</p></details>', false)
+    assert.match(save(), /<details[^>]*\sopen/)
+  })
+
+  test('collapsing an accordion item changes the DOM and not the document', () => {
+    editor.commands.setContent(ACCORDION, false)
+    const before = save()
+    editor.commands.setTextSelection(posInside('accordionHeading', 0))
+    editor.commands.toggleContainerCollapse()
+    assert.ok(win.document.querySelector('#editor .wp-block-accordion-item.is-collapsed'), 'item collapsed in the DOM')
+    assert.equal(save(), before)
+    assert.doesNotMatch(save(), /is-collapsed/)
+  })
+
+  test('collapsing is a toggle', () => {
+    editor.commands.setContent(ACCORDION, false)
+    editor.commands.setTextSelection(posInside('accordionHeading', 0))
+    editor.commands.toggleContainerCollapse()
+    editor.commands.toggleContainerCollapse()
+    assert.equal(win.document.querySelectorAll('#editor .wp-block-accordion-item.is-collapsed').length, 0)
+  })
+
+  test('collapsing one item leaves its sibling expanded', () => {
+    editor.commands.setContent(ACCORDION, false)
+    editor.commands.setTextSelection(posInside('accordionHeading', 1))
+    editor.commands.toggleContainerCollapse()
+    const items = win.document.querySelectorAll('#editor .wp-block-accordion-item')
+    assert.equal(items[0].classList.contains('is-collapsed'), false)
+    assert.equal(items[1].classList.contains('is-collapsed'), true)
+  })
+
+  test('a details block collapses for preview the same way', () => {
+    editor.commands.setContent('<details class="wp-block-details"><summary>S</summary><p>Body</p></details>', false)
+    editor.commands.setTextSelection(posInside('detailsSummary', 0))
+    editor.commands.toggleContainerCollapse()
+    const dom = win.document.querySelector('#editor details.wp-block-details')
+    assert.ok(dom.classList.contains('is-collapsed'))
+    assert.ok(dom.hasAttribute('open'), 'still open in the DOM; CSS does the hiding')
+    assert.doesNotMatch(save(), /is-collapsed/)
+  })
+
+  test('the first tab is active when the cursor is elsewhere', () => {
+    editor.commands.setContent('<p>outside</p>' + TABS, false)
+    editor.commands.setTextSelection(1)
+    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list button[role="tab"]')
+    assert.equal(btns[0].classList.contains('is-active-tab'), true)
+    assert.equal(btns[1].classList.contains('is-active-tab'), false)
+  })
+
+  test('putting the cursor in a tab panel activates that tab', () => {
+    editor.commands.setContent(TABS, false)
+    editor.commands.setTextSelection(posInside('tabPanel', 1) + 1)
+    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list button[role="tab"]')
+    const panels = win.document.querySelectorAll('#editor .wp-block-tab-panel')
+    assert.equal(btns[1].classList.contains('is-active-tab'), true)
+    assert.equal(panels[1].classList.contains('is-active-tab'), true)
+    assert.equal(panels[0].classList.contains('is-active-tab'), false)
+  })
+
+  test('putting the cursor in a tab label activates that tab', () => {
+    editor.commands.setContent(TABS, false)
+    editor.commands.setTextSelection(posInside('tabButton', 1))
+    const panels = win.document.querySelectorAll('#editor .wp-block-tab-panel')
+    assert.equal(panels[1].classList.contains('is-active-tab'), true)
+  })
+
+  test('the active tab class never reaches saved markup', () => {
+    editor.commands.setContent(TABS, false)
+    editor.commands.setTextSelection(posInside('tabPanel', 1) + 1)
+    assert.doesNotMatch(save(), /is-active-tab/)
+  })
+
+  test('an accordion survives collapse, edit and save without losing an item', () => {
+    editor.commands.setContent(ACCORDION, false)
+    editor.commands.setTextSelection(posInside('accordionHeading', 0))
+    editor.commands.toggleContainerCollapse()
+    editor.commands.setTextSelection(posInside('accordionPanel', 1) + 1)
+    editor.commands.insertContent('edited')
+    const out = save()
+    assert.equal((out.match(/wp-block-accordion-item/g) || []).length, 2)
+    assert.match(out, /edited/)
+    assert.doesNotMatch(out, /is-collapsed|is-active-tab/)
   })
 })
