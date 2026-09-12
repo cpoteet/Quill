@@ -2115,13 +2115,13 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Run before considering the plan complete.
 
-- [ ] **Full suite**
+- [x] **Full suite**
 
 ```bash
 ./test.sh
 ```
 
-- [ ] **Round-trip on every fixture**
+- [x] **Round-trip on every fixture**
 
 ```bash
 node --test Scripts/test-block-serializer.js
