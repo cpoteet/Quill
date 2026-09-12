@@ -216,7 +216,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `window.BlockParser.parse` from Task 1
 - Produces: `serializeBlocks(blocks)` → string; `serializeBlock(block)` → string. Both exposed as globals from `block-serializer.js`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `Scripts/test-block-serializer.js`:
 
@@ -264,7 +264,7 @@ describe('block serializer', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -272,7 +272,7 @@ node --test Scripts/test-block-serializer.js
 
 Expected: FAIL — `block-serializer.js` does not exist.
 
-- [ ] **Step 3: Write the serializer**
+- [x] **Step 3: Write the serializer**
 
 Create `Sources/QuillKit/Resources/block-serializer.js`:
 
@@ -311,7 +311,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -321,7 +321,7 @@ Expected: 7 passing.
 
 If the attribute test fails on spacing, compare the exact bytes — WordPress emits one space between the name and the JSON and none inside. Do not "fix" it by normalizing the input.
 
-- [ ] **Step 5: Add build.sh line and script tag**
+- [x] **Step 5: Add build.sh line and script tag**
 
 In `build.sh`, after the parser bundle line:
 
@@ -335,7 +335,7 @@ In `editor.html`, after the parser bundle tag:
 <script src="./block-serializer.js"></script>
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/block-serializer.js build.sh Sources/QuillKit/Resources/editor.html Scripts/test-block-serializer.js
