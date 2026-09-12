@@ -313,11 +313,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls {
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button, #blockquote-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -930,6 +930,10 @@
         <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
         <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
         <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
+      </span>
+      <span id="columns-controls" style="display:none">
+        <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
+        <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
       </span>
       <button data-cmd="link"  title="Insert / remove link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
@@ -1797,6 +1801,26 @@
       deselectNode() { this.dom.classList.remove('selected') }
     }
 
+    // Priority 210 out-ranks gutenbergPassthrough (200) so the catch-all stops
+    // claiming these as frozen cards.
+    const ColumnBlock = TiptapNode.create({
+      name: 'columnBlock',
+      group: 'column',
+      content: 'block+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-column' }] },
+      renderHTML() { return ['div', { class: 'wp-block-column' }, 0] },
+    })
+
+    const ColumnsBlock = TiptapNode.create({
+      name: 'columnsBlock',
+      group: 'block',
+      content: 'column+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-columns' }] },
+      renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2176,6 +2200,8 @@
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
         GalleryBlock,
+        ColumnsBlock,
+        ColumnBlock,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
@@ -2267,6 +2293,14 @@
     }
 
     // ── Footnote context detection ────────────────────
+    function _ancestorOfType(typeName) {
+      const { $from } = editor.state.selection
+      for (let d = $from.depth; d > 0; d--) {
+        if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
+      }
+      return null
+    }
+
     function _isInFootnote() {
       const $from = editor.state.selection.$from
       for (let d = $from.depth; d > 0; d--) {
@@ -2328,6 +2362,20 @@
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
       deleteColumn:  () => editor.chain().focus().deleteColumn().run(),
+      addColumnBlock: () => {
+        const info = _ancestorOfType('columnsBlock')
+        if (!info) return
+        const col = editor.schema.nodes.columnBlock.createAndFill()
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, col))
+        editor.commands.focus()
+      },
+      deleteColumnBlock: () => {
+        const cols = _ancestorOfType('columnsBlock')
+        const col = _ancestorOfType('columnBlock')
+        if (!cols || !col || cols.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(col.pos, col.pos + col.node.nodeSize))
+        editor.commands.focus()
+      },
       deleteTable:   () => editor.chain().focus().deleteTable().run(),
       undo:          () => editor.chain().focus().undo().run(),
       redo:          () => editor.chain().focus().redo().run(),
@@ -2571,6 +2619,7 @@
     const _redoBtn = document.querySelector('[data-cmd="redo"]')
     const _tableControls = document.getElementById('table-controls')
     const _bqControls = document.getElementById('blockquote-controls')
+    const _columnsControls = document.getElementById('columns-controls')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
@@ -2595,6 +2644,8 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      // Columns controls
+      _columnsControls.style.display = editor.isActive('columnsBlock') ? 'inline-flex' : 'none'
       // Blockquote controls
       const inBlockquote = editor.isActive('blockquote')
       _bqControls.style.display = inBlockquote ? 'inline-flex' : 'none'
@@ -3107,6 +3158,21 @@
           sizeSlug: payload.sizeSlug ?? 'large',
         },
       }).run()
+    }
+    window.insertColumns = (count) => {
+      if (_isInFootnote()) return false
+      const columns = Array.from({ length: count }, () => ({
+        type: 'columnBlock',
+        content: [{ type: 'paragraph' }],
+      }))
+      const at = editor.state.selection.from
+      editor.chain().focus().insertContent({ type: 'columnsBlock', content: columns }).run()
+      let target = null
+      editor.state.doc.descendants((node, pos) => {
+        if (target === null && node.type.name === 'columnBlock' && pos >= at - 1) target = pos + 2
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
+      return true
     }
     // Convert a Markdown string to HTML and insert it at the cursor.
     //

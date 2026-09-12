@@ -719,7 +719,7 @@ Each task delivers one editable container. They are independent and can be done 
 - Consumes: `descriptorFor` (Task 4)
 - Produces: `window.insertColumns(count)`; Tiptap nodes `columnsBlock`, `columnBlock`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `Scripts/test-editor-containers.js` using the same real-`editor.html`-in-jsdom harness as `Scripts/test-editor-gallery.js` — copy its `before()` block verbatim, including the `crypto.randomUUID`, `matchMedia`, `requestAnimationFrame` and `ResizeObserver` polyfills and the `_tiptapEditor` poll.
 
@@ -780,7 +780,7 @@ describe('columns block', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -788,7 +788,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `insertColumns` undefined.
 
-- [ ] **Step 3: Add the nodes**
+- [x] **Step 3: Add the nodes**
 
 In `editor.html`, near `GalleryBlock`:
 
@@ -828,7 +828,7 @@ window.insertColumns = (count) => {
 }
 ```
 
-- [ ] **Step 4: Add the descriptors**
+- [x] **Step 4: Add the descriptors**
 
 In `block-descriptors.js`:
 
@@ -849,7 +849,7 @@ function nodeNameForElement(el) {
 
 Use `nodeNameForElement` in `wrapInDelimiters` in place of the bare `NODE_FOR_TAG` lookup, and recurse into container children so nested columns get their own delimiters.
 
-- [ ] **Step 5: Add the contextual toolbar group**
+- [x] **Step 5: Add the contextual toolbar group**
 
 In the toolbar's utility group, following the `#table-controls` pattern:
 
@@ -862,7 +862,7 @@ In the toolbar's utility group, following the `#table-controls` pattern:
 
 Reveal it from the existing selection-change handler when `editor.isActive('columnsBlock')`, exactly as `#table-controls` is revealed for tables.
 
-- [ ] **Step 6: Run to verify pass**
+- [x] **Step 6: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
@@ -870,7 +870,7 @@ node --test Scripts/test-editor-containers.js && ./test.sh
 
 Expected: all passing, including `test-editor-passthrough.js` — its specificity guards must still hold.
 
-- [ ] **Step 7: Build and check**
+- [x] **Step 7: Build and check**
 
 ```bash
 osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
@@ -878,7 +878,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 
 On a **new local draft** (never a published post), insert columns, type into each, save, and confirm in Gutenberg.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js

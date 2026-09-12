@@ -19,6 +19,19 @@ const NODE_FOR_TAG = {
   BLOCKQUOTE: 'blockquote', PRE: 'codeBlock', HR: 'horizontalRule',
 }
 
+// Container blocks are identified by class, not tag name.
+const NODE_FOR_BLOCK_CLASS = [
+  ['wp-block-columns', 'columnsBlock'],
+  ['wp-block-column', 'columnBlock'],
+]
+
+function nodeNameForElement(el) {
+  for (const [cls, node] of NODE_FOR_BLOCK_CLASS) {
+    if (el.classList.contains(cls)) return node
+  }
+  return NODE_FOR_TAG[el.tagName] || null
+}
+
 function shortBlockName(blockName) {
   return blockName.replace(/^core\//, '')
 }
@@ -72,12 +85,13 @@ function wrapInDelimiters(root, doc) {
     if (el.hasAttribute('data-quill-passthrough-placeholder')) return
     if (el.classList.contains('wp-block-footnotes')) return
 
-    const nodeName = NODE_FOR_TAG[el.tagName]
+    const nodeName = nodeNameForElement(el)
     const descriptor = nodeName ? blockDescriptorRegistry.descriptorFor(nodeName) : null
     if (!descriptor) return
 
     if (descriptor.childBlockName === 'core/list-item') wrapListItems(doc, el)
     if (nodeName === 'blockquote') wrapQuoteParagraphs(doc, el)
+    if (descriptor.shape === 'container' && descriptor.blockName !== 'core/list') wrapInDelimiters(el, doc)
 
     wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptor.attrsFrom(el))
   })

@@ -23,6 +23,7 @@ run "JS block serializer tests"  node --test Scripts/test-block-serializer.js
 run "JS editor tests"  node --test Scripts/test-editor.js
 run "JS editor keyboard tests"  node --test Scripts/test-editor-keyboard.js
 run "JS gallery tests"  node --test Scripts/test-editor-gallery.js
+run "JS container tests"  node --test Scripts/test-editor-containers.js
 run "JS passthrough tests"  node --test Scripts/test-editor-passthrough.js
 run "JS paste tests"  node --test Scripts/test-editor-paste.js
 
