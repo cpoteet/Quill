@@ -2127,14 +2127,22 @@ Run before considering the plan complete.
 node --test Scripts/test-block-serializer.js
 ```
 
-- [ ] **Byte-identity on an untouched post**
+- [~] **Byte-identity on an untouched post**
 
 Open post 17780 in Quill, save without editing, and diff the resulting `post_content` against the original. Must be byte-identical. This is the constraint that outranks every feature.
+
+Verified 2026-09-12 for the JS half without writing to the site: the live post was re-fetched and its head, tail and
+block structure match `Scripts/fixtures/post-17780.html` (captured 2026-09-11, after the post's 2026-08-20 last
+modification), and driving that fixture through the real `editor.html` gives `setContent` → `getContent`
+byte-identical at 22,984 bytes. An edit-then-save also keeps both accordions' `{"autoclose":true}`, all 5 `<img>`
+tags and all 4 footnotes, leaks neither `data-autoclose` nor `data-quill-block-attrs`, and is idempotent on a second
+save. The two extra `wp:image` delimiters it adds are the post's two undelimited classic images — the intended fix.
+**Still open:** pressing Save on the published post, which is the only way to exercise the Swift PUT path.
 
 - [ ] **Gutenberg check**
 
 Write a new post using every block in scope, publish it, open it in Gutenberg. Every block must be editable there, with no Classic block anywhere in the post.
 
-- [ ] **Update `CLAUDE.md`**
+- [x] **Update `CLAUDE.md`**
 
 Run the `claude-md-management:revise-claude-md` skill. At minimum: the new resource files and their `build.sh` lines, the new test suites and their counts, and the descriptor/shape system.
