@@ -904,7 +904,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the container pattern from Task 6
 - Produces: `window.insertDetails()`; Tiptap node `detailsBlock`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('details block', () => {
@@ -941,7 +941,7 @@ describe('details block', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -949,7 +949,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `insertDetails` undefined.
 
-- [ ] **Step 3: Add the nodes**
+- [x] **Step 3: Add the nodes**
 
 ```js
 const DetailsSummary = TiptapNode.create({
@@ -980,7 +980,7 @@ window.insertDetails = () => {
 }
 ```
 
-- [ ] **Step 4: Add the descriptor**
+- [x] **Step 4: Add the descriptor**
 
 ```js
   detailsBlock: { blockName: 'core/details', shape: 'container', childBlockName: null, attrsFrom: el => (el.hasAttribute('open') ? { showContent: true } : {}) },
@@ -992,13 +992,13 @@ And in `nodeNameForElement`:
   if (el.tagName === 'DETAILS') return 'detailsBlock'
 ```
 
-- [ ] **Step 5: Run to verify pass**
+- [x] **Step 5: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js

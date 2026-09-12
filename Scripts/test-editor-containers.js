@@ -123,3 +123,36 @@ describe('columns block', () => {
     assert.equal(editor.state.doc.child(0).type.name, 'columnsBlock')
   })
 })
+
+describe('details block', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('inserts a summary and a body', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'detailsBlock')
+    assert.equal(node.child(0).type.name, 'detailsSummary')
+  })
+
+  test('parses WordPress details markup', () => {
+    editor.commands.setContent(
+      '<!-- wp:details --><details class="wp-block-details">' +
+      '<summary>S</summary><p>B</p></details><!-- /wp:details -->', false)
+    assert.equal(editor.state.doc.child(0).type.name, 'detailsBlock')
+  })
+
+  test('saves with wp:details delimiters', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:details -->/)
+  })
+
+  test('summary text stays in the summary on save', () => {
+    editor.commands.setContent(
+      '<details class="wp-block-details"><summary>Mine</summary><p>Body</p></details>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<summary>Mine<\/summary>/)
+  })
+})

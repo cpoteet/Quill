@@ -1821,6 +1821,24 @@
       renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] },
     })
 
+    const DetailsSummary = TiptapNode.create({
+      name: 'detailsSummary',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() { return [{ tag: 'summary' }] },
+      renderHTML() { return ['summary', 0] },
+    })
+
+    const DetailsBlock = TiptapNode.create({
+      name: 'detailsBlock',
+      group: 'block',
+      content: 'detailsSummary block+',
+      priority: 210,
+      addAttributes() { return { showContent: { default: false } } },
+      parseHTML() { return [{ tag: 'details.wp-block-details' }] },
+      renderHTML() { return ['details', { class: 'wp-block-details' }, 0] },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2202,6 +2220,8 @@
         GalleryBlock,
         ColumnsBlock,
         ColumnBlock,
+        DetailsBlock,
+        DetailsSummary,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
@@ -3159,6 +3179,15 @@
         },
       }).run()
     }
+    window.insertDetails = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'detailsBlock',
+        content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
+      }).run()
+      return true
+    }
+
     window.insertColumns = (count) => {
       if (_isInFootnote()) return false
       const columns = Array.from({ length: count }, () => ({

@@ -17,6 +17,7 @@ const BLOCK_DESCRIPTORS = {
   footnotesList: { blockName: 'core/footnotes',  shape: 'media',     childBlockName: null,             attrsFrom: () => ({}) },
   columnsBlock: { blockName: 'core/columns', shape: 'container', childBlockName: 'core/column', attrsFrom: () => ({}) },
   columnBlock:  { blockName: 'core/column',  shape: 'container', childBlockName: null,          attrsFrom: () => ({}) },
+  detailsBlock: { blockName: 'core/details', shape: 'container', childBlockName: null, attrsFrom: el => (el.hasAttribute('open') ? { showContent: true } : {}) },
 }
 
 function descriptorFor(nodeName) {

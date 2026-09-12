@@ -26,6 +26,7 @@ const NODE_FOR_BLOCK_CLASS = [
 ]
 
 function nodeNameForElement(el) {
+  if (el.tagName === 'DETAILS') return 'detailsBlock'
   for (const [cls, node] of NODE_FOR_BLOCK_CLASS) {
     if (el.classList.contains(cls)) return node
   }
