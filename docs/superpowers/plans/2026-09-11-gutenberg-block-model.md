@@ -66,7 +66,7 @@ No user-visible change. Ends with a proven lossless round-trip.
 - Consumes: nothing
 - Produces: `window.BlockParser.parse(html)` → `Array<{blockName: string|null, attrs: object, innerBlocks: Array, innerHTML: string, innerContent: Array<string|null>}>`
 
-- [ ] **Step 1: Write the bundle script**
+- [x] **Step 1: Write the bundle script**
 
 ```bash
 #!/usr/bin/env bash
@@ -119,7 +119,7 @@ echo "✓ Bundle written to Sources/QuillKit/Resources/block-parser-bundle.js ($
 echo "  Rebuild the app to pick up the new bundle."
 ```
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 ```bash
 chmod +x Scripts/bundle-block-parser.sh && ./Scripts/bundle-block-parser.sh
@@ -127,7 +127,7 @@ chmod +x Scripts/bundle-block-parser.sh && ./Scripts/bundle-block-parser.sh
 
 Expected: a bundle well under 100 KB. If it is megabytes, the wrong package was pulled — this parser has no dependencies.
 
-- [ ] **Step 3: Add the build.sh copy line**
+- [x] **Step 3: Add the build.sh copy line**
 
 Immediately after line 33 in `build.sh`:
 
@@ -135,7 +135,7 @@ Immediately after line 33 in `build.sh`:
 cp "Sources/QuillKit/Resources/block-parser-bundle.js" "$RESOURCES_DIR/block-parser-bundle.js"
 ```
 
-- [ ] **Step 4: Load it in editor.html**
+- [x] **Step 4: Load it in editor.html**
 
 Next to the existing `editor-transforms.js` tag, before the main editor script block:
 
@@ -143,7 +143,7 @@ Next to the existing `editor-transforms.js` tag, before the main editor script b
 <script src="./block-parser-bundle.js"></script>
 ```
 
-- [ ] **Step 5: Write the smoke test**
+- [x] **Step 5: Write the smoke test**
 
 Create `Scripts/test-block-serializer.js`:
 
@@ -181,7 +181,7 @@ describe('block parser bundle', () => {
 })
 ```
 
-- [ ] **Step 6: Run it**
+- [x] **Step 6: Run it**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -189,7 +189,7 @@ node --test Scripts/test-block-serializer.js
 
 Expected: 2 passing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Scripts/bundle-block-parser.sh Sources/QuillKit/Resources/block-parser-bundle.js build.sh Sources/QuillKit/Resources/editor.html Scripts/test-block-serializer.js

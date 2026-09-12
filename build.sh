@@ -31,6 +31,7 @@ cp "Sources/QuillKit/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp "Sources/QuillKit/Resources/tiptap-bundle.js" "$RESOURCES_DIR/tiptap-bundle.js"
 cp "Sources/QuillKit/Resources/marked-bundle.js" "$RESOURCES_DIR/marked-bundle.js"
 cp "Sources/QuillKit/Resources/editor-transforms.js" "$RESOURCES_DIR/editor-transforms.js"
+cp "Sources/QuillKit/Resources/block-parser-bundle.js" "$RESOURCES_DIR/block-parser-bundle.js"
 
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF
