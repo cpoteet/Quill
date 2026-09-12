@@ -24,6 +24,21 @@ const BLOCK_DESCRIPTORS = {
   accordionItem:    { blockName: 'core/accordion-item',    shape: 'container', childBlockName: null,                  attrsFrom: () => ({}) },
   accordionHeading: { blockName: 'core/accordion-heading', shape: 'text',      childBlockName: null,                  attrsFrom: () => ({}) },
   accordionPanel:   { blockName: 'core/accordion-panel',   shape: 'container', childBlockName: null,                  attrsFrom: () => ({}) },
+  tabsBlock: { blockName: 'core/tabs',       shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
+  tabList:   { blockName: 'core/tab-list',   shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
+  tabPanels: { blockName: 'core/tab-panels', shape: 'container', childBlockName: 'core/tab-panel', attrsFrom: () => ({}) },
+  // A tab's label is stored twice by WordPress: as the tab-list button's text
+  // and as this attribute. It is read back off the button so the two stay in sync.
+  tabPanel:  { blockName: 'core/tab-panel',  shape: 'container', childBlockName: null,             attrsFrom: el => {
+    const panels = el.parentElement
+    if (!panels) return {}
+    const index = Array.prototype.indexOf.call(panels.children, el)
+    const tabs = panels.closest ? panels.closest('.wp-block-tabs') : null
+    const list = tabs ? tabs.querySelector('.wp-block-tab-list') : null
+    const button = list ? list.children[index] : null
+    const label = button ? button.textContent : ''
+    return label ? { label } : {}
+  } },
 }
 
 function descriptorFor(nodeName) {

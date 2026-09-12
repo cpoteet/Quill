@@ -1352,6 +1352,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Sequenced last: `core/tabs` only became core in WP 7.1 and was structurally refactored on the way in, so its markup is the least settled in scope.
 
+> **Implementation note (2026-09-11):** the real WP 7.1 markup, captured as
+> `Scripts/fixtures/tabs-block.html`, is `core/tabs` → `core/tab-list` +
+> `core/tab-panels` → `core/tab-panel`. `core/tab` does not exist, so the
+> two-node `tabsBlock`/`tabBlock` model below was replaced by five nodes:
+> `tabsBlock`, `tabList`, `tabButton`, `tabPanels`, `tabPanel`. A tab's label is
+> stored twice by WordPress — as the tab-list button's text and as the panel's
+> `label` attribute — so `tabPanel`'s `attrsFrom` reads it back off the button,
+> keeping the two in sync and sidestepping the Phase 5 attribute loss.
+
 **Files:**
 - Modify: `Sources/QuillKit/Resources/editor.html`, `block-descriptors.js`
 - Create: `Scripts/fixtures/tabs-block.html`
@@ -1361,13 +1370,13 @@ Sequenced last: `core/tabs` only became core in WP 7.1 and was structurally refa
 - Consumes: the container pattern from Task 6
 - Produces: `window.insertTabs(count)`; Tiptap nodes `tabsBlock`, `tabBlock`
 
-- [ ] **Step 1: Capture real Tabs markup first**
+- [x] **Step 1: Capture real Tabs markup first**
 
 Before writing any code, create a Tabs block in Gutenberg on the live site, save it, and fetch the resulting `post_content` via the WordPress MCP (`wp_get_post`). Write the `<!-- wp:tabs -->` … `<!-- /wp:tabs -->` span verbatim to `Scripts/fixtures/tabs-block.html`.
 
 Do not write the node from memory or from documentation. This block's markup changed during its path into core, and the fixture is the only trustworthy source.
 
-- [ ] **Step 2: Add the fixture to the round-trip corpus**
+- [x] **Step 2: Add the fixture to the round-trip corpus**
 
 No code change needed — `Scripts/test-block-serializer.js`'s fixture loop picks up any `.html` in the directory automatically. Run it:
 
@@ -1377,7 +1386,7 @@ node --test Scripts/test-block-serializer.js
 
 Expected: PASS. A failure means the serializer mishandles something in the Tabs markup and must be fixed before continuing.
 
-- [ ] **Step 3: Write the failing tests**
+- [x] **Step 3: Write the failing tests**
 
 ```js
 describe('tabs block', () => {
@@ -1415,7 +1424,7 @@ describe('tabs block', () => {
 })
 ```
 
-- [ ] **Step 4: Run to verify failure**
+- [x] **Step 4: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1423,7 +1432,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `insertTabs` undefined.
 
-- [ ] **Step 5: Write the nodes from the fixture**
+- [x] **Step 5: Write the nodes from the fixture**
 
 Model `tabsBlock` and `tabBlock` on the exact structure in `Scripts/fixtures/tabs-block.html`, following the shape of `ColumnsBlock`/`ColumnBlock` from Task 6: `group: 'block'` with `content: 'tab+'` on the parent, `priority: 210` on both so `gutenbergPassthrough` does not claim them, `parseHTML` keyed on the fixture's actual wrapper classes, and `renderHTML` regenerating exactly the fixture's markup.
 
@@ -1441,7 +1450,7 @@ window.insertTabs = (count) => {
 }
 ```
 
-- [ ] **Step 6: Add the descriptors and toolbar group**
+- [x] **Step 6: Add the descriptors and toolbar group**
 
 ```js
   tabsBlock: { blockName: 'core/tabs', shape: 'container', childBlockName: 'core/tab', attrsFrom: () => ({}) },
@@ -1455,13 +1464,13 @@ window.insertTabs = (count) => {
 </span>
 ```
 
-- [ ] **Step 7: Run to verify pass**
+- [x] **Step 7: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/fixtures/tabs-block.html Scripts/test-editor-containers.js

@@ -313,11 +313,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls {
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #tabs-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #tabs-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -942,6 +942,10 @@
       <span id="accordion-controls" style="display:none">
         <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
         <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
+      </span>
+      <span id="tabs-controls" style="display:none">
+        <button data-cmd="addTab"    title="Add tab">+Tab</button>
+        <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
       </span>
       <button data-cmd="link"  title="Insert / remove link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
@@ -1920,6 +1924,48 @@
       renderHTML() { return ['div', { role: 'group', class: 'wp-block-accordion' }, 0] },
     })
 
+    const TabButton = TiptapNode.create({
+      name: 'tabButton',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() { return [{ tag: 'button[role="tab"]' }] },
+      renderHTML() { return ['button', { type: 'button', role: 'tab' }, 0] },
+    })
+
+    const TabList = TiptapNode.create({
+      name: 'tabList',
+      content: 'tabButton+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tab-list' }] },
+      renderHTML() { return ['div', { role: 'tablist', class: 'wp-block-tab-list' }, 0] },
+    })
+
+    const TabPanel = TiptapNode.create({
+      name: 'tabPanel',
+      content: 'block+',
+      priority: 210,
+      addAttributes() { return { label: { default: '' } } },
+      parseHTML() { return [{ tag: 'section.wp-block-tab-panel' }] },
+      renderHTML() { return ['section', { role: 'tabpanel', tabindex: '0', class: 'wp-block-tab-panel' }, 0] },
+    })
+
+    const TabPanels = TiptapNode.create({
+      name: 'tabPanels',
+      content: 'tabPanel+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tab-panels' }] },
+      renderHTML() { return ['div', { class: 'wp-block-tab-panels' }, 0] },
+    })
+
+    const TabsBlock = TiptapNode.create({
+      name: 'tabsBlock',
+      group: 'block',
+      content: 'tabList tabPanels',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tabs' }] },
+      renderHTML() { return ['div', { class: 'wp-block-tabs' }, 0] },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2309,6 +2355,11 @@
         AccordionItem,
         AccordionHeading,
         AccordionPanel,
+        TabsBlock,
+        TabList,
+        TabButton,
+        TabPanels,
+        TabPanel,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
@@ -2469,6 +2520,41 @@
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
       deleteColumn:  () => editor.chain().focus().deleteColumn().run(),
+      addTab: () => {
+        const tabs = _ancestorOfType('tabsBlock')
+        if (!tabs) return
+        const list = tabs.pos + 1
+        const panels = list + tabs.node.child(0).nodeSize
+        const label = `Tab ${tabs.node.child(0).childCount + 1}`
+        const tr = editor.state.tr
+        tr.insert(panels + tabs.node.child(1).nodeSize - 1,
+          editor.schema.nodes.tabPanel.createAndFill({ label }))
+        tr.insert(list + tabs.node.child(0).nodeSize - 1,
+          editor.schema.nodes.tabButton.create(null, editor.schema.text(label)))
+        editor.view.dispatch(tr)
+        editor.commands.focus()
+      },
+      deleteTab: () => {
+        const tabs = _ancestorOfType('tabsBlock')
+        if (!tabs || tabs.node.child(0).childCount <= 1) return
+        const here = _ancestorOfType('tabPanel') || _ancestorOfType('tabButton')
+        if (!here) return
+        const parent = here.node.type.name === 'tabPanel' ? tabs.node.child(1) : tabs.node.child(0)
+        let index = -1
+        parent.forEach((child, _offset, i) => { if (child === here.node) index = i })
+        if (index < 0) return
+        const listStart = tabs.pos + 1
+        const panelsStart = listStart + tabs.node.child(0).nodeSize
+        let buttonPos = listStart + 1
+        tabs.node.child(0).forEach((child, offset, i) => { if (i < index) buttonPos += child.nodeSize })
+        let panelPos = panelsStart + 1
+        tabs.node.child(1).forEach((child, offset, i) => { if (i < index) panelPos += child.nodeSize })
+        const tr = editor.state.tr
+        tr.delete(panelPos, panelPos + tabs.node.child(1).child(index).nodeSize)
+        tr.delete(buttonPos, buttonPos + tabs.node.child(0).child(index).nodeSize)
+        editor.view.dispatch(tr)
+        editor.commands.focus()
+      },
       addAccordionItem: () => {
         const info = _ancestorOfType('accordionBlock')
         if (!info) return
@@ -2757,6 +2843,7 @@
     const _columnsControls = document.getElementById('columns-controls')
     const _buttonsControls = document.getElementById('buttons-controls')
     const _accordionControls = document.getElementById('accordion-controls')
+    const _tabsControls = document.getElementById('tabs-controls')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
@@ -2781,6 +2868,8 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      // Tabs controls
+      _tabsControls.style.display = editor.isActive('tabsBlock') ? 'inline-flex' : 'none'
       // Accordion controls
       _accordionControls.style.display = editor.isActive('accordionBlock') ? 'inline-flex' : 'none'
       // Buttons controls
@@ -3300,6 +3389,19 @@
         },
       }).run()
     }
+    window.insertTabs = (count) => {
+      if (_isInFootnote()) return false
+      const labels = Array.from({ length: count }, (_, i) => `Tab ${i + 1}`)
+      editor.chain().focus().insertContent({
+        type: 'tabsBlock',
+        content: [
+          { type: 'tabList', content: labels.map(l => ({ type: 'tabButton', content: [{ type: 'text', text: l }] })) },
+          { type: 'tabPanels', content: labels.map(l => ({ type: 'tabPanel', attrs: { label: l }, content: [{ type: 'paragraph' }] })) },
+        ],
+      }).run()
+      return true
+    }
+
     window.insertAccordion = () => {
       if (_isInFootnote()) return false
       editor.chain().focus().insertContent({

@@ -273,3 +273,90 @@ describe('accordion toolbar controls', () => {
     assert.equal(editor.state.doc.child(0).childCount, 1)
   })
 })
+
+// Real WP 7.1 structure: tabs > tab-list (a button per tab) + tab-panels >
+// tab-panel. The label is stored twice — as the button's text and as each
+// panel's `label` attribute — so the save transform keeps the two in sync.
+describe('tabs block', () => {
+  const tabsFixture = fs.readFileSync(
+    path.resolve(__dirname, 'fixtures/tabs-block.html'), 'utf8')
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('inserts the requested number of tabs', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'tabsBlock')
+    assert.equal(node.child(0).type.name, 'tabList')
+    assert.equal(node.child(1).type.name, 'tabPanels')
+    assert.equal(node.child(0).childCount, 2)
+    assert.equal(node.child(1).childCount, 2)
+  })
+
+  test('parses the real fixture into editable nodes', () => {
+    editor.commands.setContent(tabsFixture, false)
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'tabsBlock')
+    assert.equal(node.child(0).childCount, 2)
+    assert.equal(node.child(0).child(0).textContent, 'Tab 1')
+    assert.match(node.child(1).child(1).textContent, /tab 2 content/)
+  })
+
+  test('round-trips the fixture through the save transform', () => {
+    editor.commands.setContent(tabsFixture, false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:tabs/)
+    assert.match(out, /<!-- wp:tab-list -->/)
+    assert.match(out, /<!-- wp:tab-panels -->/)
+    assert.equal((out.match(/<!-- wp:tab-panel /g) || []).length, 2)
+    assert.match(out, /<button type="button" role="tab">Tab 1<\/button>/)
+  })
+
+  test('a panel label follows its tab button text', () => {
+    editor.commands.setContent(tabsFixture, false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:tab-panel \{"label":"Tab 1"\} -->/)
+    assert.match(out, /<!-- wp:tab-panel \{"label":"tab 2"\} -->/)
+  })
+
+  test('does not stack delimiters across repeated saves', () => {
+    editor.commands.setContent(tabsFixture, false)
+    const once = win.toWordPressHTML(editor.getHTML(), win.document)
+    editor.commands.setContent(once, false)
+    const twice = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal((twice.match(/<!-- wp:tabs/g) || []).length, 1)
+    assert.equal((twice.match(/<!-- wp:tab-panel /g) || []).length, 2)
+  })
+
+  test('passthrough does not claim a tabs block', () => {
+    editor.commands.setContent(tabsFixture, false)
+    assert.equal(editor.state.doc.child(0).type.name, 'tabsBlock')
+  })
+})
+
+describe('tabs toolbar controls', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('+Tab adds a button and a panel together', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    press('addTab')
+    const node = editor.state.doc.child(0)
+    assert.equal(node.child(0).childCount, 3)
+    assert.equal(node.child(1).childCount, 3)
+  })
+
+  test('-Tab removes the pair and never the last tab', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    press('deleteTab')
+    let node = editor.state.doc.child(0)
+    assert.equal(node.child(0).childCount, 1)
+    assert.equal(node.child(1).childCount, 1)
+    press('deleteTab')
+    node = editor.state.doc.child(0)
+    assert.equal(node.child(0).childCount, 1)
+  })
+})
