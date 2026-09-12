@@ -2007,6 +2007,46 @@
       },
     })
 
+    // A block attribute that lives only in the <!-- wp:name {...} --> delimiter
+    // is invisible to ProseMirror's DOM parser, so editing the block used to
+    // drop it. The comment node is still reachable from the element being
+    // parsed, so the whole attribute object rides along on the node and
+    // toWordPressHTML re-emits it. Each container node renders a fixed
+    // attribute object and ignores HTMLAttributes, so the carrier is injected
+    // into the parent's own output rather than via addGlobalAttributes.
+    function withBlockAttrs(extension) {
+      return extension.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            blockAttrs: {
+              default: null,
+              keepOnSplit: false,
+              parseHTML: element => {
+                const existing = element.getAttribute('data-quill-block-attrs')
+                if (existing) return existing
+                let n = element.previousSibling
+                while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
+                if (!n || n.nodeType !== 8) return null
+                const m = n.nodeValue.match(/^\s*wp:\S+\s+(\{[\s\S]*\})\s*$/)
+                return m ? m[1] : null
+              },
+              renderHTML: () => ({}),
+            },
+          }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const carried = props.node && props.node.attrs && props.node.attrs.blockAttrs
+          if (!carried || !Array.isArray(out)) return out
+          const attrs = out[1]
+          if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) return out
+          out[1] = { ...attrs, 'data-quill-block-attrs': carried }
+          return out
+        },
+      })
+    }
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2386,23 +2426,23 @@
         ResizableImage.configure({ inline: false }),
         EmbedBlock,
         GalleryBlock,
-        ColumnsBlock,
-        ColumnBlock,
-        DetailsBlock,
+        withBlockAttrs(ColumnsBlock),
+        withBlockAttrs(ColumnBlock),
+        withBlockAttrs(DetailsBlock),
         DetailsSummary,
-        ButtonsBlock,
-        ButtonBlock,
-        AccordionBlock,
-        AccordionItem,
-        AccordionHeading,
-        AccordionPanel,
-        TabsBlock,
-        TabList,
+        withBlockAttrs(ButtonsBlock),
+        withBlockAttrs(ButtonBlock),
+        withBlockAttrs(AccordionBlock),
+        withBlockAttrs(AccordionItem),
+        withBlockAttrs(AccordionHeading),
+        withBlockAttrs(AccordionPanel),
+        withBlockAttrs(TabsBlock),
+        withBlockAttrs(TabList),
         TabButton,
-        TabPanels,
-        TabPanel,
-        Pullquote,
-        Preformatted,
+        withBlockAttrs(TabPanels),
+        withBlockAttrs(TabPanel),
+        withBlockAttrs(Pullquote),
+        withBlockAttrs(Preformatted),
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,

@@ -65,9 +65,23 @@ function alreadyDelimited(el, name) {
   return text === `wp:${name}` || text.startsWith(`wp:${name} `)
 }
 
+// Attributes WordPress wrote into the block comment, carried through the
+// Tiptap round-trip on the element. Node-owned attributes override them.
+function carriedBlockAttrs(el) {
+  const raw = el.getAttribute && el.getAttribute('data-quill-block-attrs')
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null
+  } catch (e) {
+    return null
+  }
+}
+
 function wrapBlock(doc, el, name, attrs) {
   if (alreadyDelimited(el, name)) return
-  const attrsStr = attrs && Object.keys(attrs).length ? ' ' + JSON.stringify(attrs) : ''
+  const merged = { ...(carriedBlockAttrs(el) || {}), ...(attrs || {}) }
+  const attrsStr = Object.keys(merged).length ? ' ' + JSON.stringify(merged) : ''
   wrapElementWithComments(doc, el, ` wp:${name}${attrsStr} `, ` /wp:${name} `)
 }
 
@@ -571,6 +585,10 @@ function toWordPressHTML(html, doc) {
   // independent of blockName) so it never appears in saved HTML.
   div.querySelectorAll('[data-quill-passthrough]').forEach(el => {
     el.removeAttribute('data-quill-passthrough')
+  })
+
+  div.querySelectorAll('[data-quill-block-attrs]').forEach(el => {
+    el.removeAttribute('data-quill-block-attrs')
   })
 
   return div.innerHTML

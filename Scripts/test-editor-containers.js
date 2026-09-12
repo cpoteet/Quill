@@ -254,7 +254,10 @@ describe('accordion block', () => {
     const once = win.toWordPressHTML(editor.getHTML(), win.document)
     editor.commands.setContent(once, false)
     const twice = win.toWordPressHTML(editor.getHTML(), win.document)
-    assert.equal((twice.match(/<!-- wp:accordion -->/g) || []).length, 1)
+    assert.equal(twice, once)
+    // Not /wp:accordion -->/ — the block carries {"autoclose":true}, and the
+    // trailing space keeps this off wp:accordion-item.
+    assert.equal((twice.match(/<!-- wp:accordion(?: \{[\s\S]*?\})? -->/g) || []).length, 1)
   })
 })
 
@@ -477,4 +480,59 @@ describe('pullquote and preformatted round-trips', () => {
     editor.commands.setContent(first, false)
     assert.equal(save(), first)
   })
+})
+
+describe('block attributes survive an edit', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('accordion autoclose survives an edit', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')
+    editor.commands.setContent(src, false)
+    editor.commands.insertContent('x')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:accordion \{"autoclose":true\} -->/)
+  })
+
+  test('a column width survives an edit', () => {
+    editor.commands.setContent(
+      '<!-- wp:columns --><div class="wp-block-columns">' +
+      '<!-- wp:column {"width":"33.33%"} --><div class="wp-block-column"><p>A</p></div><!-- /wp:column -->' +
+      '</div><!-- /wp:columns -->', false)
+    editor.commands.insertContent('x')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:column \{"width":"33\.33%"\} -->/)
+  })
+
+  test('an attribute Quill does not model is still preserved', () => {
+    editor.commands.setContent(
+      '<!-- wp:details {"showContent":true,"metadata":{"name":"FAQ"}} -->' +
+      '<details class="wp-block-details"><summary>S</summary><p>B</p></details>' +
+      '<!-- /wp:details -->', false)
+    editor.commands.insertContent('x')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /"metadata":\{"name":"FAQ"\}/)
+  })
+})
+
+describe('the attribute carrier never reaches saved HTML', () => {
+  const FIXTURES = ['accordion-block.html', 'tabs-block.html', 'gallery-block.html', 'post-17780.html']
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  for (const name of FIXTURES) {
+    test(`${name} round-trips byte-identically with no edit`, () => {
+      const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', name), 'utf8')
+      win.setContent(src)
+      assert.equal(win.getContent(), src)
+    })
+
+    test(`${name} leaks no carrier attribute after an edit`, () => {
+      const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', name), 'utf8')
+      win.setContent(src)
+      editor.commands.insertContent('x')
+      const out = win.toWordPressHTML(editor.getHTML(), win.document)
+      assert.equal(out.includes('data-quill-block-attrs'), false)
+    })
+  }
 })

@@ -1767,7 +1767,7 @@ The content survives intact (both headings, all 12 list items). Only the attribu
 - Consumes: the descriptor registry (Task 4), the container nodes (Tasks 6-10)
 - Produces: `data-quill-block-attrs` as the carrier for comment-only attributes
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Assert the measured loss above is gone, one test per container that has attributes:
 
@@ -1804,7 +1804,7 @@ test('an attribute Quill does not model is still preserved', () => {
 
 The third test is the important one: the carrier must round-trip the *whole* attribute object, not a hand-listed subset, or every future WordPress attribute becomes a new bug.
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1812,23 +1812,23 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — attributes dropped, exactly as measured.
 
-- [ ] **Step 3: Hoist comment attributes before Tiptap parses**
+- [x] **Step 3: Hoist comment attributes before Tiptap parses**
 
 In `setContent`, before handing HTML to the editor, walk the string's block comments and copy each one's JSON attrs onto the element that follows it as `data-quill-block-attrs`. Reuse `parsePassthroughBlock`'s comment-reading logic rather than writing a second parser.
 
 Comment-matching regexes use `[\s\S]*?` — never `.*?` or `[^\n]*`. Both have shipped as silent data-loss bugs in this file.
 
-- [ ] **Step 4: Round-trip the carrier through each node**
+- [x] **Step 4: Round-trip the carrier through each node**
 
 Give every container node an `blockAttrs` attribute parsed from `data-quill-block-attrs`, and re-emit it from `renderHTML` so it survives the Tiptap round-trip. Then in `editor-transforms.js`, have the delimiter pass prefer the carrier over `descriptor.attrsFrom(el)`, merging any attribute the node genuinely owns, and strip `data-quill-block-attrs` from the saved HTML the way `data-quill-passthrough-*` is stripped today.
 
-- [ ] **Step 5: Run to verify pass**
+- [x] **Step 5: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
 ```
 
-- [ ] **Step 6: Confirm byte-identity is still intact**
+- [x] **Step 6: Confirm byte-identity is still intact**
 
 ```bash
 node --test Scripts/test-block-serializer.js
@@ -1836,7 +1836,7 @@ node --test Scripts/test-block-serializer.js
 
 Then load each fixture through the live editor and save with no edits; all three must stay byte-identical. A carrier attribute leaking into saved HTML would show up here.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js
