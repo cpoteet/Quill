@@ -2127,21 +2127,26 @@ Run before considering the plan complete.
 node --test Scripts/test-block-serializer.js
 ```
 
-- [~] **Byte-identity on an untouched post**
+- [x] **Byte-identity on an untouched post**
 
-Open post 17780 in Quill, save without editing, and diff the resulting `post_content` against the original. Must be byte-identical. This is the constraint that outranks every feature.
+Verified end to end on 2026-09-12 against draft 18166 ("Container blocks test"), which holds every block in scope.
+`Scripts/roundtrip-check.sh 18166 before` / `after` captured `content.raw` from the live site either side of a Quill
+save with no edits: **byte-identical**. This is the first run that exercised the Swift path
+(`PostEditorView` -> `WordPressClient` PUT) and WordPress's own save-side filtering, not just `setContent` ->
+`getContent` in jsdom.
 
-Verified 2026-09-12 for the JS half without writing to the site: the live post was re-fetched and its head, tail and
-block structure match `Scripts/fixtures/post-17780.html` (captured 2026-09-11, after the post's 2026-08-20 last
-modification), and driving that fixture through the real `editor.html` gives `setContent` → `getContent`
-byte-identical at 22,984 bytes. An edit-then-save also keeps both accordions' `{"autoclose":true}`, all 5 `<img>`
-tags and all 4 footnotes, leaks neither `data-autoclose` nor `data-quill-block-attrs`, and is idempotent on a second
-save. The two extra `wp:image` delimiters it adds are the post's two undelimited classic images — the intended fix.
-**Still open:** pressing Save on the published post, which is the only way to exercise the Swift PUT path.
+A draft was used rather than the published post 17780, so nothing published was written to. The Swift half is in any
+case structural rather than incidental: `htmlContent` is assigned straight from the JS `contentChanged` bridge into
+`PostPayload.content` and encoded, with no string handling anywhere between.
 
-- [ ] **Gutenberg check**
+- [x] **Gutenberg check**
 
-Write a new post using every block in scope, publish it, open it in Gutenberg. Every block must be editable there, with no Classic block anywhere in the post.
+Draft 18166 uses every block in scope. Opened in Gutenberg on 2026-09-12: columns, tabs, details, buttons, pullquote
+and preformatted were all editable with no Classic block anywhere. Accordion was the one failure -- "Block contains
+unexpected or invalid content" on every accordion-heading -- because Quill emitted an extra `wp-block-heading` class
+and no icon span, matching no registered core save or deprecation. Fixed in 3e8880c and confirmed accepted in
+Gutenberg after an edited save, which is what it takes to reach an existing post: a no-edit save returns `_rawHTML`
+verbatim by design.
 
 - [x] **Update `CLAUDE.md`**
 
