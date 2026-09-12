@@ -25,6 +25,10 @@ const NODE_FOR_BLOCK_CLASS = [
   ['wp-block-column', 'columnBlock'],
   ['wp-block-buttons', 'buttonsBlock'],
   ['wp-block-button', 'buttonBlock'],
+  ['wp-block-accordion-heading', 'accordionHeading'],
+  ['wp-block-accordion-panel', 'accordionPanel'],
+  ['wp-block-accordion-item', 'accordionItem'],
+  ['wp-block-accordion', 'accordionBlock'],
 ]
 
 function nodeNameForElement(el) {

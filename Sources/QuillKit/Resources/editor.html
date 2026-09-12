@@ -313,11 +313,11 @@
     body.dark #toolbar button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls {
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls {
       align-items: center;
       gap: 5px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button {
       min-width: auto;
       padding: 0 9px;
     }
@@ -938,6 +938,10 @@
       <span id="buttons-controls" style="display:none">
         <button data-cmd="addButton"    title="Add button">+Button</button>
         <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
+      </span>
+      <span id="accordion-controls" style="display:none">
+        <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
+        <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
       </span>
       <button data-cmd="link"  title="Insert / remove link">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
@@ -1868,6 +1872,54 @@
       renderHTML() { return ['div', { class: 'wp-block-buttons' }, 0] },
     })
 
+    const AccordionHeading = TiptapNode.create({
+      name: 'accordionHeading',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() {
+        return [{
+          tag: 'h1.wp-block-accordion-heading, h2.wp-block-accordion-heading, h3.wp-block-accordion-heading, h4.wp-block-accordion-heading, h5.wp-block-accordion-heading, h6.wp-block-accordion-heading',
+          getAttrs: el => ({ level: parseInt(el.tagName.slice(1), 10) }),
+          contentElement: el => el.querySelector('.wp-block-accordion-heading__toggle-title') || el,
+        }]
+      },
+      addAttributes() { return { level: { default: 3 } } },
+      renderHTML({ node }) {
+        return [`h${node.attrs.level}`, { class: 'wp-block-accordion-heading wp-block-heading' },
+          ['button', { type: 'button', class: 'wp-block-accordion-heading__toggle' },
+            ['span', { class: 'wp-block-accordion-heading__toggle-title' }, 0]]]
+      },
+    })
+
+    const AccordionPanel = TiptapNode.create({
+      name: 'accordionPanel',
+      content: 'block+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-accordion-panel' }] },
+      renderHTML() { return ['div', { role: 'region', class: 'wp-block-accordion-panel' }, 0] },
+    })
+
+    const AccordionItem = TiptapNode.create({
+      name: 'accordionItem',
+      group: 'accordionItemGroup',
+      content: 'accordionHeading accordionPanel',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-accordion-item' }] },
+      renderHTML() { return ['div', { class: 'wp-block-accordion-item' }, 0] },
+    })
+
+    const AccordionBlock = TiptapNode.create({
+      name: 'accordionBlock',
+      group: 'block',
+      content: 'accordionItemGroup+',
+      priority: 210,
+      addAttributes() { return { autoclose: { default: false } } },
+      parseHTML() {
+        return [{ tag: 'div.wp-block-accordion', getAttrs: el => ({ autoclose: el.hasAttribute('data-autoclose') }) }]
+      },
+      renderHTML() { return ['div', { role: 'group', class: 'wp-block-accordion' }, 0] },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2253,6 +2305,10 @@
         DetailsSummary,
         ButtonsBlock,
         ButtonBlock,
+        AccordionBlock,
+        AccordionItem,
+        AccordionHeading,
+        AccordionPanel,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
@@ -2413,6 +2469,20 @@
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
       deleteColumn:  () => editor.chain().focus().deleteColumn().run(),
+      addAccordionItem: () => {
+        const info = _ancestorOfType('accordionBlock')
+        if (!info) return
+        const item = editor.schema.nodes.accordionItem.createAndFill()
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, item))
+        editor.commands.focus()
+      },
+      deleteAccordionItem: () => {
+        const group = _ancestorOfType('accordionBlock')
+        const item = _ancestorOfType('accordionItem')
+        if (!group || !item || group.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(item.pos, item.pos + item.node.nodeSize))
+        editor.commands.focus()
+      },
       addButton: () => {
         const info = _ancestorOfType('buttonsBlock')
         if (!info) return
@@ -2686,6 +2756,7 @@
     const _bqControls = document.getElementById('blockquote-controls')
     const _columnsControls = document.getElementById('columns-controls')
     const _buttonsControls = document.getElementById('buttons-controls')
+    const _accordionControls = document.getElementById('accordion-controls')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
@@ -2710,6 +2781,8 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      // Accordion controls
+      _accordionControls.style.display = editor.isActive('accordionBlock') ? 'inline-flex' : 'none'
       // Buttons controls
       _buttonsControls.style.display = editor.isActive('buttonsBlock') ? 'inline-flex' : 'none'
       // Columns controls
@@ -3227,6 +3300,21 @@
         },
       }).run()
     }
+    window.insertAccordion = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'accordionBlock',
+        content: [{
+          type: 'accordionItem',
+          content: [
+            { type: 'accordionHeading' },
+            { type: 'accordionPanel', content: [{ type: 'paragraph' }] },
+          ],
+        }],
+      }).run()
+      return true
+    }
+
     window.insertButtons = () => {
       if (_isInFootnote()) return false
       editor.chain().focus().insertContent({

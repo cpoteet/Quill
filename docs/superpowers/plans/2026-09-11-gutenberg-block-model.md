@@ -1165,7 +1165,7 @@ Four block types: `core/accordion` → `accordion-item` → `accordion-heading` 
 - Consumes: the container pattern from Task 6
 - Produces: `window.insertAccordion()`; Tiptap nodes `accordionBlock`, `accordionItem`, `accordionHeading`, `accordionPanel`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('accordion block', () => {
@@ -1219,7 +1219,7 @@ describe('accordion block', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1227,7 +1227,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `insertAccordion` undefined.
 
-- [ ] **Step 3: Add the nodes**
+- [x] **Step 3: Add the nodes**
 
 ```js
 const AccordionHeading = TiptapNode.create({
@@ -1296,7 +1296,7 @@ window.insertAccordion = () => {
 
 The `contentElement` on the heading's parse rule is what pulls the editable text out of the nested `<button><span>` wrapper rather than treating the button markup as content.
 
-- [ ] **Step 4: Add the descriptors**
+- [x] **Step 4: Add the descriptors**
 
 ```js
   accordionBlock:   { blockName: 'core/accordion',         shape: 'container', childBlockName: 'core/accordion-item', attrsFrom: el => (el.hasAttribute('data-autoclose') ? { autoclose: true } : {}) },
@@ -1314,7 +1314,7 @@ In `nodeNameForElement`, checking the most specific class first:
   if (el.classList.contains('wp-block-accordion'))         return 'accordionBlock'
 ```
 
-- [ ] **Step 5: Add the contextual toolbar group**
+- [x] **Step 5: Add the contextual toolbar group**
 
 ```html
 <span id="accordion-controls" style="display:none">
@@ -1323,7 +1323,7 @@ In `nodeNameForElement`, checking the most specific class first:
 </span>
 ```
 
-- [ ] **Step 6: Run to verify pass**
+- [x] **Step 6: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
@@ -1331,7 +1331,7 @@ node --test Scripts/test-editor-containers.js && ./test.sh
 
 The fixture test is the important one — it proves a real accordion written by WordPress parses into editable nodes rather than a passthrough card.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js

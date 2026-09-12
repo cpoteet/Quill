@@ -55,69 +55,71 @@ function nodesOfType(typeName) {
   return out
 }
 
-const ACCORDION_CLASS_ONLY =
-  '<div class="wp-block-accordion" data-wp-interactive="core/accordion">' +
-  '<div class="wp-block-accordion-item">' +
-  '<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle">Features</button></h3>' +
-  '<div class="wp-block-accordion-panel"><ul class="wp-block-list"><li>One</li></ul></div>' +
+// core/media-text stands in for any block Quill does not model. Accordion filled
+// this role until it gained real nodes.
+const MEDIA_TEXT_CLASS_ONLY =
+  '<div class="wp-block-media-text" data-wp-interactive="core/media-text">' +
+  '<div class="wp-block-media-text__content">' +
+  '<h3 class="wp-block-media-text__title"><button type="button" class="wp-block-media-text__toggle">Features</button></h3>' +
+  '<div class="wp-block-media-text__body"><ul class="wp-block-list"><li>One</li></ul></div>' +
   '</div></div>'
 
 describe('gutenbergPassthrough — class-only markup (no wp: comments)', () => {
   test('parses into a single gutenbergPassthrough node', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
-    assert.equal(nodes[0].attrs.blockLabel, 'Accordion')
+    assert.equal(nodes[0].attrs.blockLabel, 'Media Text')
     assert.equal(nodes[0].attrs.blockName, null)
   })
 
   test('round-trips the essential markup through getContent()', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const out = win.getContent()
-    assert.match(out, /data-wp-interactive="core\/accordion"/)
-    assert.match(out, /wp-block-accordion-heading__toggle/)
+    assert.match(out, /data-wp-interactive="core\/media-text"/)
+    assert.match(out, /wp-block-media-text__toggle/)
     assert.match(out, /<li>One<\/li>/)
     assert.ok(!out.includes('<!--'))
   })
 
   test('an unrelated edit elsewhere in the document does not disturb the passthrough node', () => {
-    win.setContent('<p>hello</p>' + ACCORDION_CLASS_ONLY)
+    win.setContent('<p>hello</p>' + MEDIA_TEXT_CLASS_ONLY)
     editor.commands.setTextSelection(1)
     editor.commands.insertContent('X')
     const out = win.getContent()
     assert.match(out, /Xhello|helloX/)
-    assert.match(out, /wp-block-accordion-heading__toggle/)
+    assert.match(out, /wp-block-media-text__toggle/)
   })
 
-  test('renders a static card, not the raw accordion markup, in the editor DOM', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+  test('renders a static card, not the raw media-text markup, in the editor DOM', () => {
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const card = win.document.querySelector('.passthrough-card')
     assert.ok(card, 'expected a .passthrough-card element in the editor DOM')
-    assert.match(card.textContent, /Accordion/)
-    assert.equal(win.document.querySelector('#editor button.wp-block-accordion-heading__toggle'), null)
+    assert.match(card.textContent, /Media Text/)
+    assert.equal(win.document.querySelector('#editor button.wp-block-media-text__toggle'), null)
   })
 })
 
 describe('gutenbergPassthrough — comment-wrapped markup', () => {
-  const ACCORDION_WITH_COMMENTS =
-    '<!-- wp:accordion {"autoclose":false} -->\n' +
-    ACCORDION_CLASS_ONLY +
-    '\n<!-- /wp:accordion -->'
+  const MEDIA_TEXT_WITH_COMMENTS =
+    '<!-- wp:media-text {"align":"right"} -->\n' +
+    MEDIA_TEXT_CLASS_ONLY +
+    '\n<!-- /wp:media-text -->'
 
   test('recovers blockName and attrsJSON from adjacent comments', () => {
-    win.setContent(ACCORDION_WITH_COMMENTS)
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
-    assert.equal(nodes[0].attrs.blockName, 'accordion')
-    assert.equal(nodes[0].attrs.attrsJSON, '{"autoclose":false}')
-    assert.equal(nodes[0].attrs.blockLabel, 'Accordion')
+    assert.equal(nodes[0].attrs.blockName, 'media-text')
+    assert.equal(nodes[0].attrs.attrsJSON, '{"align":"right"}')
+    assert.equal(nodes[0].attrs.blockLabel, 'Media Text')
   })
 
-  test('regenerates matching wp:accordion comments on save', () => {
-    win.setContent(ACCORDION_WITH_COMMENTS)
+  test('regenerates matching wp:media-text comments on save', () => {
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
     const out = win.getContent()
-    assert.match(out, /<!-- wp:accordion \{"autoclose":false\} -->/)
-    assert.match(out, /<!-- \/wp:accordion -->/)
+    assert.match(out, /<!-- wp:media-text \{"align":"right"\} -->/)
+    assert.match(out, /<!-- \/wp:media-text -->/)
   })
 })
 

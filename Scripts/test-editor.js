@@ -1149,7 +1149,7 @@ describe('toWordPressHTML — passthrough blocks', () => {
   })
 
   test('an element with no data-quill-passthrough-name attribute is left alone', () => {
-    const html = '<div class="wp-block-accordion"><p>x</p></div>'
+    const html = '<div class="wp-block-media-text"><p>x</p></div>'
     const out = wp(html)
     assert.ok(!out.includes('<!--'))
   })

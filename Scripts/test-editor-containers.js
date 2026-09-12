@@ -207,3 +207,69 @@ describe('buttons toolbar controls', () => {
     assert.equal(editor.state.doc.child(0).childCount, 1)
   })
 })
+
+describe('accordion block', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('inserts one item with a heading and a panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'accordionBlock')
+    assert.equal(node.child(0).type.name, 'accordionItem')
+    assert.equal(node.child(0).child(0).type.name, 'accordionHeading')
+    assert.equal(node.child(0).child(1).type.name, 'accordionPanel')
+  })
+
+  test('parses the real accordion fixture', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')
+    editor.commands.setContent(src, false)
+    const node = editor.state.doc.child(0)
+    assert.equal(node.type.name, 'accordionBlock')
+    assert.equal(node.childCount, 2)
+  })
+
+  test('heading text round-trips', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')
+    editor.commands.setContent(src, false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /Features/)
+  })
+
+  test('saves with all four delimiter types', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    for (const n of ['accordion', 'accordion-item', 'accordion-heading', 'accordion-panel']) {
+      assert.match(out, new RegExp(`<!-- wp:${n}[ -]`))
+    }
+  })
+
+  test('does not stack delimiters across repeated saves', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')
+    editor.commands.setContent(src, false)
+    const once = win.toWordPressHTML(editor.getHTML(), win.document)
+    editor.commands.setContent(once, false)
+    const twice = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.equal((twice.match(/<!-- wp:accordion -->/g) || []).length, 1)
+  })
+})
+
+describe('accordion toolbar controls', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('+Item adds a section and -Item never removes the last', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    press('addAccordionItem')
+    assert.equal(editor.state.doc.child(0).childCount, 2)
+    press('deleteAccordionItem')
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+    press('deleteAccordionItem')
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+  })
+})
