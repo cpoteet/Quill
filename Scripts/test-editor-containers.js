@@ -360,3 +360,35 @@ describe('tabs toolbar controls', () => {
     assert.equal(node.child(0).childCount, 1)
   })
 })
+
+describe('insert menu', () => {
+  const openMenu = () => win.document.getElementById('insert-button')
+    .dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+
+  test('the toolbar exposes an insert button', () => {
+    assert.ok(win.document.getElementById('insert-button'))
+  })
+
+  test('the menu lists every container block', () => {
+    const items = Array.from(win.document.querySelectorAll('#insert-menu [data-insert]'))
+      .map(el => el.dataset.insert)
+    for (const n of ['columns', 'accordion', 'tabs', 'details', 'buttons']) {
+      assert.ok(items.includes(n), `missing ${n}`)
+    }
+  })
+
+  test('clicking a menu item inserts that block', () => {
+    editor.commands.setContent('<p></p>', false)
+    openMenu()
+    win.document.querySelector('#insert-menu [data-insert="details"]').click()
+    assert.equal(editor.state.doc.child(0).type.name, 'detailsBlock')
+  })
+
+  test('the menu closes after an insertion', () => {
+    editor.commands.setContent('<p></p>', false)
+    openMenu()
+    assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), true)
+    win.document.querySelector('#insert-menu [data-insert="buttons"]').click()
+    assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), false)
+  })
+})

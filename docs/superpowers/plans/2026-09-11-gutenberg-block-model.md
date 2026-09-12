@@ -1497,7 +1497,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `insertColumns`, `insertDetails`, `insertButtons`, `insertAccordion`, `insertTabs` (Tasks 8-12)
 - Produces: `#insert-button`, `#insert-menu`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('insert menu', () => {
@@ -1527,7 +1527,7 @@ describe('insert menu', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1535,7 +1535,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — no `#insert-button`.
 
-- [ ] **Step 3: Add the button and menu**
+- [x] **Step 3: Add the button and menu**
 
 In the toolbar's insert group, after `#embed-button`:
 
@@ -1582,13 +1582,13 @@ document.getElementById('insert-menu').addEventListener('click', e => {
 
 Pullquote and Preformatted are wired here but their commands land in Task 12; until then those two entries are inert, which the tests do not assert against.
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor-containers.js && ./test.sh
 ```
 
-- [ ] **Step 5: Build and check both appearances**
+- [x] **Step 5: Build and check both appearances**
 
 ```bash
 osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
