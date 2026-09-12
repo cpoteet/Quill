@@ -134,13 +134,13 @@ describe('isModeledFigure', () => {
     return host.firstElementChild
   }
 
-  test('the modeled-figure set is exactly image, gallery, embed and table', () => {
+  test('the modeled-figure set is exactly image, gallery, embed, table and pullquote', () => {
     // Drift guard: adding a class here without giving that figure its own
     // Tiptap parse rule silently hands the block to the generic parser, which
     // shreds it. Removing one freezes that block into a passthrough card.
     assert.deepEqual(
       Array.from(QUILL_MODELED_FIGURE_CLASSES).sort(),
-      ['wp-block-embed', 'wp-block-gallery', 'wp-block-image', 'wp-block-table']
+      ['wp-block-embed', 'wp-block-gallery', 'wp-block-image', 'wp-block-pullquote', 'wp-block-table']
     )
   })
 
@@ -152,7 +152,7 @@ describe('isModeledFigure', () => {
 
   test('figure blocks Quill does not model are not exempted', () => {
     const unmodeled = [
-      'wp-block-audio', 'wp-block-video', 'wp-block-pullquote',
+      'wp-block-audio', 'wp-block-video',
       'wp-block-playlist', 'wp-block-media-text',
     ]
     for (const cls of unmodeled) {

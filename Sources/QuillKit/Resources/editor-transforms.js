@@ -37,6 +37,8 @@ const NODE_FOR_BLOCK_CLASS = [
 
 function nodeNameForElement(el) {
   if (el.tagName === 'DETAILS') return 'detailsBlock'
+  if (el.classList.contains('wp-block-pullquote'))    return 'pullquote'
+  if (el.classList.contains('wp-block-preformatted')) return 'preformatted'
   for (const [cls, node] of NODE_FOR_BLOCK_CLASS) {
     if (el.classList.contains(cls)) return node
   }
@@ -166,6 +168,7 @@ const QUILL_MODELED_FIGURE_CLASSES = new Set([
   'wp-block-gallery',
   'wp-block-embed',
   'wp-block-table',
+  'wp-block-pullquote',
 ])
 
 // True when `el` is a <figure> rooted at a block Quill models natively, and
@@ -379,8 +382,10 @@ function toWordPressHTML(html, doc) {
     kids[0].replaceWith(...kids[0].childNodes)
   })
 
-  // Blockquotes → wp-block-quote class
+  // Blockquotes → wp-block-quote class. A pullquote's own blockquote is part
+  // of core/pullquote's markup, not a nested core/quote.
   div.querySelectorAll('blockquote').forEach(el => {
+    if (el.closest('figure.wp-block-pullquote')) return
     el.classList.add('wp-block-quote')
   })
 
@@ -391,6 +396,7 @@ function toWordPressHTML(html, doc) {
 
   // Code blocks → wp-block-code class on the <pre> wrapper
   div.querySelectorAll('pre').forEach(el => {
+    if (el.classList.contains('wp-block-preformatted')) return
     el.classList.add('wp-block-code')
   })
 

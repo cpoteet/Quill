@@ -1596,7 +1596,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 
 Open the menu in light and dark mode. It is a plain DOM menu, not an `NSPopUpButton`, so the `.rebuildsOnAppearanceChange()` requirement does not apply — but confirm the colors follow the editor's existing dark-mode rules.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Scripts/test-editor-containers.js
@@ -1621,7 +1621,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the insert menu (Task 11)
 - Produces: Tiptap nodes `pullquote`, `preformatted`; commands `setPullquote()`, `setPreformatted()`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 describe('pullquote and preformatted', () => {
@@ -1660,7 +1660,7 @@ describe('pullquote and preformatted', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -1668,7 +1668,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — `setPullquote` is not a function.
 
-- [ ] **Step 3: Add the nodes**
+- [x] **Step 3: Add the nodes**
 
 ```js
 const Pullquote = TiptapNode.create({
@@ -1702,7 +1702,7 @@ const Preformatted = TiptapNode.create({
 
 `preserveWhitespace: 'full'` on preformatted is the point of the block; without it the parse collapses the whitespace it exists to preserve.
 
-- [ ] **Step 4: Add the descriptors**
+- [x] **Step 4: Add the descriptors**
 
 ```js
   pullquote:    { blockName: 'core/pullquote',    shape: 'text', childBlockName: null, attrsFrom: () => ({}) },
@@ -1716,7 +1716,7 @@ In `nodeNameForElement`:
   if (el.classList.contains('wp-block-preformatted')) return 'preformatted'
 ```
 
-- [ ] **Step 5: Run every suite**
+- [x] **Step 5: Run every suite**
 
 ```bash
 ./test.sh
@@ -1724,7 +1724,7 @@ In `nodeNameForElement`:
 
 Expected: all passing. `test-editor-passthrough.js` has an explicit drift guard asserting `QUILL_MODELED_FIGURE_CLASSES` is exactly image/gallery/embed/table — that guard must be updated to include pullquote, and updating it is correct here rather than a test being weakened.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor.html Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js Scripts/test-editor-passthrough.js

@@ -392,3 +392,89 @@ describe('insert menu', () => {
     assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), false)
   })
 })
+
+describe('pullquote and preformatted', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('setPullquote produces a pullquote node', () => {
+    editor.commands.setContent('<p>Q</p>', false)
+    editor.chain().focus().setPullquote().run()
+    assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
+  })
+
+  test('a pullquote saves with wp:pullquote delimiters', () => {
+    editor.commands.setContent(
+      '<figure class="wp-block-pullquote"><blockquote><p>Q</p></blockquote></figure>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:pullquote -->/)
+  })
+
+  test('setPreformatted produces a preformatted node', () => {
+    editor.commands.setContent('<p>X</p>', false)
+    editor.chain().focus().setPreformatted().run()
+    assert.equal(editor.state.doc.child(0).type.name, 'preformatted')
+  })
+
+  test('preformatted saves with wp:preformatted delimiters', () => {
+    editor.commands.setContent('<pre class="wp-block-preformatted">X</pre>', false)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:preformatted -->/)
+  })
+
+  test('a pullquote is not claimed by passthrough', () => {
+    editor.commands.setContent(
+      '<figure class="wp-block-pullquote"><blockquote><p>Q</p></blockquote></figure>', false)
+    assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
+  })
+})
+
+describe('pullquote and preformatted round-trips', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  const PULLQUOTE =
+    '<figure class="wp-block-pullquote"><blockquote><p>Big idea</p>' +
+    '<cite>Someone</cite></blockquote></figure>'
+
+  const save = () => win.toWordPressHTML(editor.getHTML(), win.document)
+
+  test('a pullquote wraps its content in exactly one blockquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    const doc = new JSDOM('<body>' + save() + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-pullquote')
+    assert.ok(fig)
+    assert.equal(fig.querySelectorAll('blockquote').length, 1)
+    assert.equal(fig.querySelector('blockquote > p').textContent, 'Big idea')
+    assert.equal(fig.querySelector('blockquote > cite').textContent, 'Someone')
+  })
+
+  test('a pullquote is not stamped with wp-block-quote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    const doc = new JSDOM('<body>' + save() + '</body>').window.document
+    assert.equal(doc.querySelector('.wp-block-quote'), null)
+  })
+
+  test('repeated save cycles do not grow the pullquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    const first = save()
+    for (let i = 0; i < 3; i++) {
+      editor.commands.setContent(first, false)
+      assert.equal(save(), first, `save cycle ${i + 2} drifted`)
+    }
+  })
+
+  test('preformatted is not stamped with wp-block-code', () => {
+    editor.commands.setContent('<pre class="wp-block-preformatted">a\n  b</pre>', false)
+    const doc = new JSDOM('<body>' + save() + '</body>').window.document
+    const pre = doc.querySelector('pre.wp-block-preformatted')
+    assert.ok(pre)
+    assert.equal(pre.classList.contains('wp-block-code'), false)
+  })
+
+  test('preformatted keeps its whitespace through a save cycle', () => {
+    editor.commands.setContent('<pre class="wp-block-preformatted">a\n  b\n    c</pre>', false)
+    const first = save()
+    assert.match(first, /a\n {2}b\n {4}c/)
+    editor.commands.setContent(first, false)
+    assert.equal(save(), first)
+  })
+})

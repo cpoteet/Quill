@@ -357,24 +357,6 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     assert.ok(doc.querySelector('figure.wp-block-video > video[src="http://x/v.mp4"]'))
   })
 
-  test('a pullquote figure stays a pullquote instead of being rewritten as a quote', () => {
-    win.setContent(PULLQUOTE_FIGURE)
-    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
-    assert.equal(nodesOfType('blockquote').length, 0)
-    assert.equal(nodesOfType('cite').length, 0)
-    const out = win.toWordPressHTML(editor.getHTML())
-    const doc = new JSDOM('<body>' + out + '</body>').window.document
-    const fig = doc.querySelector('figure.wp-block-pullquote')
-    assert.ok(fig, 'the pullquote figure survived')
-    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
-    const bq = fig.querySelector(':scope > blockquote')
-    assert.ok(bq, 'the blockquote is still nested inside the figure')
-    assert.equal(bq.querySelector(':scope > p').textContent, 'Big idea')
-    assert.equal(bq.querySelector(':scope > cite').textContent, 'Someone')
-    // The blockquote pass would stamp wp-block-quote on a shredded pullquote,
-    // and the cite pass would delete an empty <cite>; the stash shields both.
-    assert.ok(!bq.classList.contains('wp-block-quote'))
-  })
 })
 
 describe('gutenbergPassthrough — modeled figures still go to their own nodes', () => {
@@ -410,6 +392,25 @@ describe('gutenbergPassthrough — modeled figures still go to their own nodes',
     win.setContent('<figure class="wp-block-table"><table><tbody><tr><td>x</td></tr></tbody></table></figure>')
     assert.equal(nodesOfType('table').length, 1)
     assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a pullquote figure parses as a pullquote, not shredded into a plain quote', () => {
+    win.setContent(PULLQUOTE_FIGURE)
+    assert.equal(nodesOfType('pullquote').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+    assert.equal(nodesOfType('blockquote').length, 0)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-pullquote')
+    assert.ok(fig, 'the pullquote figure survived')
+    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
+    const bq = fig.querySelector(':scope > blockquote')
+    assert.ok(bq, 'the blockquote is still nested inside the figure')
+    assert.equal(bq.querySelector(':scope > p').textContent, 'Big idea')
+    assert.equal(bq.querySelector(':scope > cite').textContent, 'Someone')
+    // A shredded pullquote would come back stamped wp-block-quote by the
+    // blockquote pass; core/pullquote owns this blockquote, so it must not be.
+    assert.ok(!bq.classList.contains('wp-block-quote'))
   })
 })
 

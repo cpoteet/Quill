@@ -1981,6 +1981,32 @@
       renderHTML() { return ['div', { class: 'wp-block-tabs' }, 0] },
     })
 
+    const Pullquote = TiptapNode.create({
+      name: 'pullquote',
+      group: 'block',
+      content: 'block+ cite?',
+      priority: 210,
+      parseHTML() { return [{ tag: 'figure.wp-block-pullquote', contentElement: 'blockquote' }] },
+      renderHTML() { return ['figure', { class: 'wp-block-pullquote' }, ['blockquote', {}, 0]] },
+      addCommands() {
+        return { setPullquote: () => ({ commands }) => commands.wrapIn(this.name) }
+      },
+    })
+
+    const Preformatted = TiptapNode.create({
+      name: 'preformatted',
+      group: 'block',
+      content: 'text*',
+      marks: '',
+      code: true,
+      priority: 210,
+      parseHTML() { return [{ tag: 'pre.wp-block-preformatted', preserveWhitespace: 'full' }] },
+      renderHTML() { return ['pre', { class: 'wp-block-preformatted' }, 0] },
+      addCommands() {
+        return { setPreformatted: () => ({ commands }) => commands.setNode(this.name) }
+      },
+    })
+
     const GutenbergPassthrough = TiptapNode.create({
       name: 'gutenbergPassthrough',
       group: 'block',
@@ -2375,6 +2401,8 @@
         TabButton,
         TabPanels,
         TabPanel,
+        Pullquote,
+        Preformatted,
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
