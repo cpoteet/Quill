@@ -1853,6 +1853,262 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
+## Phase 6 — Attribute ownership
+
+Closes the gap left by Task 13. The carrier preserves every attribute WordPress
+wrote, which is what makes unmodeled attributes safe — but it also means an
+attribute the user turns *off* in Quill keeps its old value, because
+`attrsFrom` returning `{}` is indistinguishable from "this block has no such
+attribute."
+
+**Measured before writing this phase** (2026-09-11, against the code as
+committed in `428738a`):
+
+- `DetailsBlock` declares `showContent: { default: false }` and
+  `AccordionBlock` declares `autoclose: { default: false }`, but **neither
+  attribute has a working round-trip**. `DetailsBlock.parseHTML` has no
+  `getAttrs` at all, so `showContent` is always `false`. `AccordionBlock`
+  reads `data-autoclose`, an attribute WordPress never writes. Neither
+  `renderHTML` emits `open` or `data-autoclose`.
+- Consequently `detailsBlock.attrsFrom` (reads `open`) and
+  `accordionBlock.attrsFrom` (reads `data-autoclose`) have **never** been able
+  to return anything but `{}`. Task 13's carrier is the only reason
+  `autoclose` survives a save today.
+- There is no UI to toggle either attribute. `#accordion-controls` has `+Item`
+  and `−Item` only; the spec's "open-by-default" control was never built.
+
+So ownership cannot simply be declared: dropping an owned key from the carrier
+when `attrsFrom` returns `{}` would *delete* `autoclose` from every accordion
+on first edit — strictly worse than today. The round-trip has to exist first,
+which is why this is two tasks.
+
+---
+
+### Task 14: Give showContent and autoclose a real round-trip
+
+**Files:**
+- Modify: `Sources/QuillKit/Resources/editor.html` (`DetailsBlock`, `AccordionBlock`, `#accordion-controls`, `#details-controls`, command map, `updateToolbar`)
+- Test: `Scripts/test-editor-containers.js`
+
+**Interfaces:**
+- Consumes: the `blockAttrs` carrier (Task 13)
+- Produces: `toggleAccordionAutoclose`, `toggleDetailsOpen` commands; `open` / `data-autoclose` present in the editor DOM
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+describe('accordion autoclose is a real attribute', () => {
+  test('autoclose is parsed from the block comment, not data-autoclose', () => {
+    editor.commands.setContent(
+      '<!-- wp:accordion {"autoclose":true} -->' +
+      '<div role="group" class="wp-block-accordion">' +
+      '<!-- wp:accordion-item --><div class="wp-block-accordion-item">' +
+      '<!-- wp:accordion-heading --><h3 class="wp-block-accordion-heading wp-block-heading">H</h3><!-- /wp:accordion-heading -->' +
+      '<!-- wp:accordion-panel --><div role="region" class="wp-block-accordion-panel"><p>B</p></div><!-- /wp:accordion-panel -->' +
+      '</div><!-- /wp:accordion-item --></div><!-- /wp:accordion -->', false)
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, true)
+  })
+
+  test('autoclose renders into the editor DOM so attrsFrom can read it', () => {
+    assert.match(editor.getHTML(), /data-autoclose/)
+  })
+
+  test('toggling autoclose off clears the node attribute', () => {
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    assert.equal(editor.state.doc.child(0).attrs.autoclose, false)
+  })
+})
+```
+
+Mirror all three for `detailsBlock` / `showContent` / `toggleDetailsOpen`,
+asserting `open` rather than `data-autoclose`.
+
+- [ ] **Step 2: Run to verify failure**
+
+```bash
+node --test Scripts/test-editor-containers.js
+```
+
+Expected: FAIL on the first test — `autoclose` is `false`, because nothing
+reads it from the comment.
+
+- [ ] **Step 3: Parse the attribute from the carrier**
+
+The carrier already holds the comment's whole attribute object as JSON on the
+node. Read the specific key out of it in each node's `getAttrs`, falling back
+to the DOM attribute so a second parse of Quill's own output still works:
+
+```js
+getAttrs: el => {
+  const carried = el.getAttribute('data-quill-block-attrs')
+  const parsed = carried ? JSON.parse(carried) : null
+  return { autoclose: parsed ? !!parsed.autoclose : el.hasAttribute('data-autoclose') }
+}
+```
+
+Wrap the `JSON.parse` — a malformed carrier must not throw during a parse.
+`DetailsBlock` needs a `getAttrs` added; it currently has none.
+
+- [ ] **Step 4: Render it back out**
+
+```js
+renderHTML({ node }) {
+  const attrs = { role: 'group', class: 'wp-block-accordion' }
+  if (node.attrs.autoclose) attrs['data-autoclose'] = ''
+  return ['div', attrs, 0]
+}
+```
+
+`data-autoclose` and `open` are Quill-internal editor markup, not saved output
+— `toWordPressHTML` reads them via `attrsFrom` and must strip both, the way it
+strips `data-quill-block-attrs`. Assert that explicitly: neither may appear in
+saved HTML.
+
+- [ ] **Step 5: Add the toolbar toggles**
+
+`#accordion-controls` gains an open-by-default toggle and `#details-controls`
+is added alongside it, following `#blockquote-controls`' `btn-toggle-cite`
+pattern — a button that reflects state via `.active` in `updateToolbar`. Both
+commands go in the same command map as `addAccordionItem` (editor.html:2641).
+
+- [ ] **Step 6: Run every suite**
+
+```bash
+./test.sh
+```
+
+- [ ] **Step 7: Build and check**
+
+```bash
+osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+```
+
+Load an accordion, toggle open-by-default, check code view shows the attribute
+changing. Use a new local draft, never a published post.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add Sources/QuillKit/Resources/editor.html Scripts/test-editor-containers.js
+git commit -m "feat: make accordion autoclose and details showContent real
+
+Both were declared as node attributes but had no round-trip: nothing parsed
+them from the block comment, nothing rendered them, and the DOM attributes
+their attrsFrom read were ones WordPress never writes. They are now read from
+the carrier, rendered into the editor DOM for attrsFrom, stripped on save, and
+toggleable from the contextual toolbar.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 15: Let a descriptor own its attributes
+
+**Files:**
+- Modify: `Sources/QuillKit/Resources/block-descriptors.js` (`ownedAttrs` per descriptor)
+- Modify: `Sources/QuillKit/Resources/editor-transforms.js` (`wrapBlock` merge)
+- Test: `Scripts/test-editor-containers.js`, `Scripts/test-block-serializer.js`
+
+**Interfaces:**
+- Consumes: a working round-trip for every owned attribute (Task 14)
+- Produces: `descriptor.ownedAttrs`
+
+**Do not start this until Task 14 is green.** Ownership is only safe for an
+attribute the node can actually read back; declaring a key owned without that
+deletes it on first edit.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+test('turning off an owned attribute removes it from the saved delimiter', () => {
+  editor.commands.setContent(ACCORDION_WITH_AUTOCLOSE, false)
+  editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+  const out = win.toWordPressHTML(editor.getHTML(), win.document)
+  assert.doesNotMatch(out, /"autoclose"/)
+})
+
+test('an unowned attribute is still preserved when an owned one changes', () => {
+  editor.commands.setContent(
+    '<!-- wp:details {"showContent":true,"metadata":{"name":"FAQ"}} -->' +
+    '<details class="wp-block-details"><summary>S</summary><p>B</p></details>' +
+    '<!-- /wp:details -->', false)
+  editor.commands.command(({ commands }) => commands.toggleDetailsOpen())
+  const out = win.toWordPressHTML(editor.getHTML(), win.document)
+  assert.doesNotMatch(out, /"showContent"/)
+  assert.match(out, /"metadata":\{"name":"FAQ"\}/)
+})
+```
+
+The second test is the one that matters: it proves ownership is scoped to
+declared keys and has not become a blanket "trust the DOM" rule, which would
+undo Task 13.
+
+- [ ] **Step 2: Run to verify failure**
+
+```bash
+node --test Scripts/test-editor-containers.js
+```
+
+Expected: FAIL — the carried `autoclose` / `showContent` survives the toggle.
+
+- [ ] **Step 3: Declare ownership**
+
+Add `ownedAttrs` to the descriptors whose `attrsFrom` reads a DOM attribute
+that may legitimately be absent:
+
+```js
+detailsBlock:   { ..., ownedAttrs: ['showContent'] },
+accordionBlock: { ..., ownedAttrs: ['autoclose'] },
+tabPanel:       { ..., ownedAttrs: ['label'] },
+```
+
+Leave every other descriptor without the key. `columnBlock` in particular must
+**not** own `width` — Quill has no width UI, so the carried value is the only
+copy and dropping it would lose column widths. Task 13's column-width test
+covers exactly this and must stay green.
+
+- [ ] **Step 4: Apply it in the merge**
+
+`wrapBlock` currently merges `{ ...carried, ...attrsFrom(el) }`. Owned keys are
+removed from the carried object first, so an owned attribute that is absent
+from the DOM is absent from the output:
+
+```js
+const carried = { ...(carriedBlockAttrs(el) || {}) }
+for (const key of descriptor.ownedAttrs || []) delete carried[key]
+const merged = { ...carried, ...(attrs || {}) }
+```
+
+`wrapBlock` takes `name` and `attrs`, not the descriptor — pass `ownedAttrs`
+through from `wrapInDelimiters` rather than re-deriving the descriptor inside.
+
+- [ ] **Step 5: Run every suite**
+
+```bash
+./test.sh
+```
+
+Expected: all passing, including Task 13's four-fixture byte-identity and
+no-leak tests.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js
+git commit -m "fix: let a block turn its own attributes off
+
+The carrier preserved every attribute the comment held, so an attribute the
+user switched off in Quill kept its old value -- attrsFrom returning {} could
+not be told apart from a block with no such attribute. A descriptor now
+declares the keys it owns, and those are dropped from the carrier before the
+DOM values are merged in. Attributes Quill does not model are untouched.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Final verification
 
 Run before considering the plan complete.
