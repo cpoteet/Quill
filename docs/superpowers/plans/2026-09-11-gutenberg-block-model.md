@@ -2020,7 +2020,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 attribute the node can actually read back; declaring a key owned without that
 deletes it on first edit.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 test('turning off an owned attribute removes it from the saved delimiter', () => {
@@ -2046,7 +2046,7 @@ The second test is the one that matters: it proves ownership is scoped to
 declared keys and has not become a blanket "trust the DOM" rule, which would
 undo Task 13.
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor-containers.js
@@ -2054,7 +2054,7 @@ node --test Scripts/test-editor-containers.js
 
 Expected: FAIL — the carried `autoclose` / `showContent` survives the toggle.
 
-- [ ] **Step 3: Declare ownership**
+- [x] **Step 3: Declare ownership**
 
 Add `ownedAttrs` to the descriptors whose `attrsFrom` reads a DOM attribute
 that may legitimately be absent:
@@ -2070,7 +2070,7 @@ Leave every other descriptor without the key. `columnBlock` in particular must
 copy and dropping it would lose column widths. Task 13's column-width test
 covers exactly this and must stay green.
 
-- [ ] **Step 4: Apply it in the merge**
+- [x] **Step 4: Apply it in the merge**
 
 `wrapBlock` currently merges `{ ...carried, ...attrsFrom(el) }`. Owned keys are
 removed from the carried object first, so an owned attribute that is absent
@@ -2085,7 +2085,7 @@ const merged = { ...carried, ...(attrs || {}) }
 `wrapBlock` takes `name` and `attrs`, not the descriptor — pass `ownedAttrs`
 through from `wrapInDelimiters` rather than re-deriving the descriptor inside.
 
-- [ ] **Step 5: Run every suite**
+- [x] **Step 5: Run every suite**
 
 ```bash
 ./test.sh
@@ -2094,7 +2094,7 @@ through from `wrapInDelimiters` rather than re-deriving the descriptor inside.
 Expected: all passing, including Task 13's four-fixture byte-identity and
 no-leak tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/block-descriptors.js Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor-containers.js

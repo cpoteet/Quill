@@ -78,9 +78,11 @@ function carriedBlockAttrs(el) {
   }
 }
 
-function wrapBlock(doc, el, name, attrs) {
+function wrapBlock(doc, el, name, attrs, ownedAttrs) {
   if (alreadyDelimited(el, name)) return
-  const merged = { ...(carriedBlockAttrs(el) || {}), ...(attrs || {}) }
+  const carried = { ...(carriedBlockAttrs(el) || {}) }
+  for (const key of ownedAttrs || []) delete carried[key]
+  const merged = { ...carried, ...(attrs || {}) }
   const attrsStr = Object.keys(merged).length ? ' ' + JSON.stringify(merged) : ''
   wrapElementWithComments(doc, el, ` wp:${name}${attrsStr} `, ` /wp:${name} `)
 }
@@ -92,7 +94,7 @@ function wrapListItems(doc, listEl) {
       if (child.tagName !== 'UL' && child.tagName !== 'OL') return
       wrapListItems(doc, child)
       const nested = blockDescriptorRegistry.descriptorFor(NODE_FOR_TAG[child.tagName])
-      wrapBlock(doc, child, shortBlockName(nested.blockName), nested.attrsFrom(child))
+      wrapBlock(doc, child, shortBlockName(nested.blockName), nested.attrsFrom(child), nested.ownedAttrs)
     })
     wrapBlock(doc, li, 'list-item', {})
   })
@@ -120,7 +122,7 @@ function wrapInDelimiters(root, doc) {
     if (nodeName === 'blockquote') wrapQuoteParagraphs(doc, el)
     if (descriptor.shape === 'container' && descriptor.blockName !== 'core/list') wrapInDelimiters(el, doc)
 
-    wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptor.attrsFrom(el))
+    wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptor.attrsFrom(el), descriptor.ownedAttrs)
   })
 }
 

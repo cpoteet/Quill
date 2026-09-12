@@ -674,3 +674,56 @@ describe('attribute toggles in the contextual toolbar', () => {
     assert.equal(win.document.getElementById('accordion-controls').style.display, 'none')
   })
 })
+
+// The carrier preserves every attribute the delimiter held, which is what keeps
+// unmodeled attributes safe -- but it also means attrsFrom returning {} cannot
+// be told apart from "this block has no such attribute". A descriptor names the
+// keys it owns; those are dropped from the carrier before the DOM values merge.
+describe('a descriptor owns its declared attributes', () => {
+  const ACCORDION_WITH_AUTOCLOSE =
+    '<!-- wp:accordion {"autoclose":true} -->' +
+    '<div role="group" class="wp-block-accordion">' +
+    '<!-- wp:accordion-item --><div class="wp-block-accordion-item">' +
+    '<!-- wp:accordion-heading --><h3 class="wp-block-accordion-heading wp-block-heading">H</h3><!-- /wp:accordion-heading -->' +
+    '<!-- wp:accordion-panel --><div role="region" class="wp-block-accordion-panel"><p>B</p></div><!-- /wp:accordion-panel -->' +
+    '</div><!-- /wp:accordion-item --></div><!-- /wp:accordion -->'
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('turning off an owned attribute removes it from the saved delimiter', () => {
+    editor.commands.setContent(ACCORDION_WITH_AUTOCLOSE, false)
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.doesNotMatch(out, /"autoclose"/)
+  })
+
+  test('an unowned attribute is still preserved when an owned one changes', () => {
+    editor.commands.setContent(
+      '<!-- wp:details {"showContent":true,"metadata":{"name":"FAQ"}} -->' +
+      '<details class="wp-block-details"><summary>S</summary><p>B</p></details>' +
+      '<!-- /wp:details -->', false)
+    editor.commands.command(({ commands }) => commands.toggleDetailsOpen())
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.doesNotMatch(out, /"showContent"/)
+    assert.match(out, /"metadata":\{"name":"FAQ"\}/)
+  })
+
+  test('turning an owned attribute back on restores it', () => {
+    editor.commands.setContent(ACCORDION_WITH_AUTOCLOSE, false)
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    editor.commands.command(({ commands }) => commands.toggleAccordionAutoclose())
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:accordion \{"autoclose":true\} -->/)
+  })
+
+  // Quill has no column-width UI, so the carried value is the only copy.
+  test('a column width is not owned and survives an edit', () => {
+    editor.commands.setContent(
+      '<!-- wp:columns --><div class="wp-block-columns">' +
+      '<!-- wp:column {"width":"33.33%"} --><div class="wp-block-column"><p>A</p></div><!-- /wp:column -->' +
+      '</div><!-- /wp:columns -->', false)
+    editor.commands.insertContent('x')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:column \{"width":"33\.33%"\} -->/)
+  })
+})
