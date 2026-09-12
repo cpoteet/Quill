@@ -6,6 +6,83 @@
 // toWordPressHTML accepts an optional `doc` argument so tests can supply a
 // jsdom document. In the browser the global `document` is used by default.
 
+// block-descriptors.js is a plain global script in the browser and a CommonJS
+// module under the Node test harness, so it is resolved both ways.
+const blockDescriptorRegistry = (typeof module !== 'undefined' && module.exports)
+  ? require('./block-descriptors.js')
+  : globalThis
+
+const NODE_FOR_TAG = {
+  P: 'paragraph', H1: 'heading', H2: 'heading', H3: 'heading',
+  H4: 'heading', H5: 'heading', H6: 'heading',
+  UL: 'bulletList', OL: 'orderedList', LI: 'listItem',
+  BLOCKQUOTE: 'blockquote', PRE: 'codeBlock', HR: 'horizontalRule',
+}
+
+function shortBlockName(blockName) {
+  return blockName.replace(/^core\//, '')
+}
+
+// The element's nearest preceding sibling that is not whitespace-only text.
+function precedingSignificantNode(el) {
+  let node = el.previousSibling
+  while (node && node.nodeType === 3 && node.textContent.trim() === '') {
+    node = node.previousSibling
+  }
+  return node
+}
+
+function alreadyDelimited(el, name) {
+  const node = precedingSignificantNode(el)
+  if (!node || node.nodeType !== 8) return false
+  const text = node.textContent.trim()
+  return text === `wp:${name}` || text.startsWith(`wp:${name} `)
+}
+
+function wrapBlock(doc, el, name, attrs) {
+  if (alreadyDelimited(el, name)) return
+  const attrsStr = attrs && Object.keys(attrs).length ? ' ' + JSON.stringify(attrs) : ''
+  wrapElementWithComments(doc, el, ` wp:${name}${attrsStr} `, ` /wp:${name} `)
+}
+
+function wrapListItems(doc, listEl) {
+  Array.from(listEl.children).forEach(li => {
+    if (li.tagName !== 'LI') return
+    Array.from(li.children).forEach(child => {
+      if (child.tagName !== 'UL' && child.tagName !== 'OL') return
+      wrapListItems(doc, child)
+      const nested = blockDescriptorRegistry.descriptorFor(NODE_FOR_TAG[child.tagName])
+      wrapBlock(doc, child, shortBlockName(nested.blockName), nested.attrsFrom(child))
+    })
+    wrapBlock(doc, li, 'list-item', {})
+  })
+}
+
+// core/quote holds inner paragraph blocks, not bare markup, so its prose is
+// delimited too — an undelimited <p> inside makes Gutenberg flag the quote.
+function wrapQuoteParagraphs(doc, quoteEl) {
+  Array.from(quoteEl.children).forEach(child => {
+    if (child.tagName !== 'P') return
+    wrapBlock(doc, child, 'paragraph', {})
+  })
+}
+
+function wrapInDelimiters(root, doc) {
+  Array.from(root.children).forEach(el => {
+    if (el.hasAttribute('data-quill-passthrough-placeholder')) return
+    if (el.classList.contains('wp-block-footnotes')) return
+
+    const nodeName = NODE_FOR_TAG[el.tagName]
+    const descriptor = nodeName ? blockDescriptorRegistry.descriptorFor(nodeName) : null
+    if (!descriptor) return
+
+    if (descriptor.childBlockName === 'core/list-item') wrapListItems(doc, el)
+    if (nodeName === 'blockquote') wrapQuoteParagraphs(doc, el)
+
+    wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptor.attrsFrom(el))
+  })
+}
+
 function extractAlignment(cls) {
   if (cls.includes('alignleft'))   return 'left'
   if (cls.includes('alignright'))  return 'right'
@@ -427,6 +504,8 @@ function toWordPressHTML(html, doc) {
     if (!cropped) galleryAttrs.imageCrop = false
     wrapElementWithComments(doc, figure, ` wp:gallery ${JSON.stringify(galleryAttrs)} `, ' /wp:gallery ')
   })
+
+  wrapInDelimiters(div, doc)
 
   // Splice the passthrough elements stashed out at the top of this function
   // back in now, completely untouched by every pass above (media-id class,

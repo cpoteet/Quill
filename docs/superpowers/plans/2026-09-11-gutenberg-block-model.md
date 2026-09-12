@@ -577,7 +577,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `descriptorFor` (Task 4)
 - Produces: `toWordPressHTML` output now carries delimiters for every descriptor-backed block
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `Scripts/test-editor.js`:
 
@@ -614,7 +614,7 @@ describe('block delimiters', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 ```bash
 node --test Scripts/test-editor.js
@@ -622,7 +622,7 @@ node --test Scripts/test-editor.js
 
 Expected: FAIL — no delimiters emitted for paragraph/heading/list.
 
-- [ ] **Step 3: Add the delimiter pass**
+- [x] **Step 3: Add the delimiter pass**
 
 In `editor-transforms.js`, at the end of `toWordPressHTML` — after every existing class-adding pass and after the image/gallery/embed comment wrapping, so those keep ownership of their own blocks:
 
@@ -662,7 +662,7 @@ Call it with the working `div` and `doc` before the final serialization, and gua
 
 Using `doc.createComment` rather than string concatenation is deliberate: it is the DOM-level fix the root `CLAUDE.md` prescribes for exactly this class of problem, and it cannot produce the greedy-match or compounding-whitespace failures that string wrapping has produced three times in this file.
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 ```bash
 node --test Scripts/test-editor.js
@@ -670,7 +670,7 @@ node --test Scripts/test-editor.js
 
 Expected: all passing, including the existing suite.
 
-- [ ] **Step 5: Run every suite**
+- [x] **Step 5: Run every suite**
 
 ```bash
 ./test.sh
@@ -678,7 +678,7 @@ Expected: all passing, including the existing suite.
 
 Expected: all Swift and JS tests pass. The passthrough and gallery suites are the ones most likely to break; if either does, the new pass is claiming elements it should not.
 
-- [ ] **Step 6: Build and verify against a real post**
+- [x] **Step 6: Build and verify against a real post**
 
 ```bash
 osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
@@ -686,7 +686,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 
 Create a new local draft, type a heading, a paragraph and a list, publish it, then open it in Gutenberg. Expected: three separate blocks, no Classic block. This is the acceptance test for the whole phase.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Sources/QuillKit/Resources/editor-transforms.js Scripts/test-editor.js

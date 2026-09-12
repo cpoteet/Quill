@@ -3,6 +3,8 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
+const fs = require('fs')
+const path = require('path')
 const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
@@ -264,22 +266,22 @@ describe('toWordPressHTML — list item p unwrap', () => {
   test('leading <p> is unwrapped when the rest of the <li> is a nested list', () => {
     const out = wp('<ul><li><p>a</p><ul><li>b</li></ul></li></ul>')
     assert.doesNotMatch(out, /<p>a<\/p>/)
-    assert.match(out, /<li>a<ul/)
+    assert.match(out, /<li>a<!-- wp:list -->/)
     assert.match(out, /<li>b<\/li>/)
   })
 
   test('unwrapping works at every level of a deep nest', () => {
     const out = wp('<ul><li><p>a</p><ul><li><p>b</p><ul><li><p>c</p></li></ul></li></ul></li></ul>')
     assert.doesNotMatch(out, /<p>/)
-    assert.match(out, /<li>a<ul/)
-    assert.match(out, /<li>b<ul/)
+    assert.match(out, /<li>a<!-- wp:list -->/)
+    assert.match(out, /<li>b<!-- wp:list -->/)
     assert.match(out, /<li>c<\/li>/)
   })
 
   test('ordered nested lists unwrap the same way', () => {
     const out = wp('<ol><li><p>a</p><ol><li>b</li></ol></li></ol>')
     assert.doesNotMatch(out, /<p>a<\/p>/)
-    assert.match(out, /<li>a<ol/)
+    assert.match(out, /<li>a<!-- wp:list \{"ordered":true\} -->/)
   })
 
   test('a paragraph AFTER the nested list keeps the item untouched', () => {
@@ -290,7 +292,7 @@ describe('toWordPressHTML — list item p unwrap', () => {
 
   test('an <li> whose first child is a list is left untouched', () => {
     const out = wp('<ul><li><ul><li>b</li></ul></li></ul>')
-    assert.match(out, /<li><ul/)
+    assert.match(out, /<li><!-- wp:list -->/)
   })
 
   // Guards the transform against mangling markup that is already in Gutenberg's
@@ -298,7 +300,17 @@ describe('toWordPressHTML — list item p unwrap', () => {
   // what actually regressed here and can't be exercised from this pure-function
   // suite; it was verified against the live editor in jsdom when this was fixed.
   test('already-Gutenberg nested markup passes through unchanged', () => {
-    const src = '<ul class="wp-block-list"><li>a<ul class="wp-block-list"><li>b</li></ul></li></ul>'
+    const src = [
+      '<!-- wp:list -->',
+      '<ul class="wp-block-list"><!-- wp:list-item -->',
+      '<li>a<!-- wp:list -->',
+      '<ul class="wp-block-list"><!-- wp:list-item -->',
+      '<li>b</li>',
+      '<!-- /wp:list-item --></ul>',
+      '<!-- /wp:list --></li>',
+      '<!-- /wp:list-item --></ul>',
+      '<!-- /wp:list -->',
+    ].join('\n')
     assert.equal(wp(src), src)
   })
 
@@ -521,7 +533,8 @@ describe('toWordPressHTML — idempotency and edge cases', () => {
 
   test('empty paragraph is stable', () => {
     const out = wp('<p></p>')
-    assert.equal(out, '<p></p>')
+    assert.equal(out, '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    assert.equal(wp(out), out)
   })
 
   test('unicode and emoji in text are preserved', () => {
@@ -1356,5 +1369,36 @@ describe('standalone image block comments', () => {
     const out = wp(PLAIN)
     assert.ok(!out.includes('data-media-id'))
     assert.match(out, /class="[^"]*wp-image-201/)
+  })
+})
+
+describe('block delimiters', () => {
+  test('wraps a paragraph in wp:paragraph', () => {
+    const out = toWordPressHTML('<p>Hello</p>', document)
+    assert.match(out, /<!-- wp:paragraph -->[\s\S]*<p>Hello<\/p>[\s\S]*<!-- \/wp:paragraph -->/)
+  })
+
+  test('wraps a heading with its level attribute', () => {
+    const out = toWordPressHTML('<h2>Title</h2>', document)
+    assert.match(out, /<!-- wp:heading \{"level":2\} -->/)
+  })
+
+  test('wraps a list and each of its items', () => {
+    const out = toWordPressHTML('<ul><li>One</li></ul>', document)
+    assert.match(out, /<!-- wp:list -->/)
+    assert.match(out, /<!-- wp:list-item -->/)
+  })
+
+  test('does not double-wrap already-delimited content', () => {
+    const src = '<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->'
+    const once = toWordPressHTML(src, document)
+    assert.equal(toWordPressHTML(once, document), once)
+  })
+
+  test('leaves gallery delimiters exactly as they are', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8')
+    const out = toWordPressHTML(src, document)
+    assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
   })
 })
