@@ -14,6 +14,22 @@ in adds it to the corpus. Anything that is not a fixture must not end in
 | `post-17780.html` | A whole published post: classic prose, images, footnotes, two accordions |
 | `tabs-block.html` | A `core/tabs` with a tab list and panels |
 | `unsupported-blocks.html` | Hand-written, not a site capture: one of each block shape Quill cannot model, so Custom HTML, a shortcode, three self-closing dynamic blocks, a synced pattern, a page break, a read-more, and a third-party block with no `wp-block-` class |
+| `settings-paragraph.html` | A `core/paragraph` with `dropCap` |
+| `settings-list.html` | A `core/list`, ordered, with `start`, `reversed` and `type: upper-roman` |
+| `settings-quote.html` | A `core/quote` in the Plain style, with a `<cite>` |
+| `settings-separator.html` | A `core/separator` in the Dots style |
+| `settings-table.html` | A `core/table` with a head and foot section, a caption, the Stripes style and `hasFixedLayout: false` |
+| `settings-image.html` | A `core/image` linked to the media file in a new tab, with a `title` and the Rounded style |
+| `settings-columns.html` | A `core/columns` with `isStackedOnMobile: false`, unequal widths, and one column vertically centred |
+| `settings-buttons.html` | A `core/buttons` with a Fill button opening in a new tab and an Outline button |
+| `settings-accordion.html` | A `core/accordion` with left icons and a first item `openByDefault` |
+| `settings-details.html` | A `core/details` with a `name`, and a panel paragraph carrying a `placeholder` |
+| `settings-tabs.html` | A `core/tabs` with two tabs |
+| `settings-embed.html` | A responsive YouTube `core/embed`, whose URL holds the `\u0026` escape |
+
+The twelve `settings-*.html` files were captured together from one throwaway
+draft on WordPress 7.1 (`block-library.js` of 2026-08-20), which was deleted
+afterwards. They are the regression subjects for block-settings preservation.
 
 ## These are subjects, not specifications
 

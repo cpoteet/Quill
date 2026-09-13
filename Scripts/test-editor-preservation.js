@@ -335,3 +335,29 @@ describe('a modeled block that saves no markup is preserved, not reported', () =
     assert.equal(editor.state.doc.child(0).type.name, 'horizontalRule')
   })
 })
+
+// Harness-only: verified not to reproduce in the app, where loading a post
+// leaves no NodeSelection on the atom. Kept so these suites can drive the real
+// window.setContent instead of each one prefixing a reset of its own.
+describe('loading an image post after an atom-only post', () => {
+  const IMG = '<!-- wp:image {"id":9} -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt="" class="wp-image-9"/></figure>\n<!-- /wp:image -->'
+  const firstType = () => editor.state.doc.child(0).type.name
+
+  test('an image loads after a gallery-only post', () => {
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8'))
+    win.setContent(IMG)
+    assert.equal(firstType(), 'image')
+  })
+
+  test('an image loads after an embed-only post', () => {
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/settings-embed.html'), 'utf8'))
+    win.setContent(IMG)
+    assert.equal(firstType(), 'image')
+  })
+
+  test('the gallery-only post itself still loads', () => {
+    win.setContent(IMG)
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8'))
+    assert.equal(firstType(), 'galleryBlock')
+  })
+})

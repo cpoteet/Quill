@@ -1422,24 +1422,24 @@
       })
     }
 
-    const ParagraphWithClass  = withClassAttr(Paragraph)
-    const HeadingWithClass    = withClassAttr(Heading)
+    const ParagraphWithClass  = withBlockAttrs(withClassAttr(Paragraph))
+    const HeadingWithClass    = withBlockAttrs(withClassAttr(Heading))
     const _fnPassthrough = new Set(['Backspace', 'Delete'])
-    const BulletListWithClass = withClassAttr(BulletList.extend({
+    const BulletListWithClass = withBlockAttrs(withClassAttr(BulletList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
-    }))
-    const OrderedListWithClass = withClassAttr(OrderedList.extend({
+    })))
+    const OrderedListWithClass = withBlockAttrs(withClassAttr(OrderedList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
-    }))
-    const ListItemWithClass   = withClassAttr(ListItem)
+    })))
+    const ListItemWithClass   = withBlockAttrs(withClassAttr(ListItem))
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {
@@ -2434,6 +2434,15 @@
       }
     }
 
+    function carriedClassName(raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        return (parsed && typeof parsed.className === 'string') ? parsed.className : ''
+      } catch (e) {
+        return ''
+      }
+    }
+
     function withBlockAttrs(extension) {
       return extension.extend({
         addAttributes() {
@@ -2454,10 +2463,20 @@
         renderHTML(props) {
           const out = this.parent?.(props)
           const carried = props.node && props.node.attrs && props.node.attrs.blockAttrs
-          if (!carried || !Array.isArray(out)) return out
+          if (!carried) return out
+          // Gallery and embed build their own element rather than a spec array.
+          if (out && out.nodeType === 1) {
+            out.setAttribute('data-quill-block-attrs', carried)
+            const cls = mergeClassNames(out.getAttribute('class'), carriedClassName(carried))
+            if (cls) out.setAttribute('class', cls)
+            return out
+          }
+          if (!Array.isArray(out)) return out
           const attrs = out[1]
           if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) return out
+          const merged = mergeClassNames(attrs.class, carriedClassName(carried))
           out[1] = { ...attrs, 'data-quill-block-attrs': carried }
+          if (merged) out[1].class = merged
           return out
         },
       })
@@ -3077,7 +3096,7 @@
     })
 
     // Extended blockquote: allows an optional cite as its last child.
-    const CustomBlockquote = withClassAttr(Blockquote.extend({
+    const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
       addKeyboardShortcuts() {
         const orig = this.parent?.()
@@ -3109,7 +3128,7 @@
           },
         }
       },
-    }))
+    })))
 
     const editor = new Editor({
       element: document.getElementById('editor'),
@@ -3124,13 +3143,13 @@
           codeBlock: false,
           horizontalRule: false,
         }),
-        withClassAttr(CodeBlock.extend({
+        withBlockAttrs(withClassAttr(CodeBlock.extend({
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
               [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
           },
-        })),
+        }))),
         ParagraphWithClass,
         HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
         BulletListWithClass,
@@ -3139,14 +3158,14 @@
         CustomBlockquote,
         Cite,
         Underline,
-        withClassAttr(Table).configure({ resizable: false }),
-        withClassAttr(TableRow),
-        withClassAttr(TableHeader),
-        withClassAttr(TableCell),
-        withClassAttr(HorizontalRule),
-        ResizableImage.configure({ inline: false }),
-        EmbedBlock,
-        GalleryBlock,
+        withBlockAttrs(withClassAttr(Table)).configure({ resizable: false }),
+        withBlockAttrs(withClassAttr(TableRow)),
+        withBlockAttrs(withClassAttr(TableHeader)),
+        withBlockAttrs(withClassAttr(TableCell)),
+        withBlockAttrs(withClassAttr(HorizontalRule)),
+        withBlockAttrs(ResizableImage).configure({ inline: false }),
+        withBlockAttrs(EmbedBlock),
+        withBlockAttrs(GalleryBlock),
         withBlockAttrs(ColumnsBlock),
         withBlockAttrs(ColumnBlock),
         withBlockAttrs(DetailsBlock),
@@ -4202,6 +4221,7 @@
         _rawHTMLOnLoad = html
         let stored = []
         try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
+        editor.commands.setTextSelection(0)
         editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
       }
       document.getElementById('editor').style.display = ''
@@ -4325,6 +4345,9 @@
       // back byte-identically and code view shows real post_content.
       _rawHTML = html || null
       _rawHTMLOnLoad = html || null
+      // Clear any NodeSelection before replacing the whole document: under jsdom
+      // a stale one makes the replace drop incoming figure content.
+      editor.commands.setTextSelection(0)
       editor.commands.setContent(wrapped || '', false)
       _reportBlocksAtRisk(html)
       document.getElementById('editor-wrap').scrollTop = 0

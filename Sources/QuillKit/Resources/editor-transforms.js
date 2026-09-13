@@ -79,6 +79,20 @@ function carriedBlockAttrs(el) {
   }
 }
 
+// The image, gallery and embed passes rebuild their attrs from the rendered
+// figure instead of going through wrapBlock, so the carrier is merged in here.
+function mergeCarried(el, attrs, ownedKeys) {
+  const carried = { ...(carriedBlockAttrs(el) || {}) }
+  for (const key of ownedKeys || []) delete carried[key]
+  return { ...carried, ...attrs }
+}
+
+function mergeClassNames(existing, extra) {
+  const seen = new Set(String(existing || '').split(/\s+/).filter(Boolean))
+  for (const token of String(extra || '').split(/\s+/)) if (token) seen.add(token)
+  return Array.from(seen).join(' ')
+}
+
 function wrapBlock(doc, el, name, attrs, ownedAttrs) {
   if (alreadyDelimited(el, name)) return
   const carried = { ...(carriedBlockAttrs(el) || {}) }
@@ -476,7 +490,8 @@ function toWordPressHTML(html, doc) {
     if (figure.closest('.wp-block-gallery')) return
     const img = figure.querySelector('img')
     if (!img) return
-    const attrs = imageBlockAttrs(figure, img)
+    const attrs = mergeCarried(figure, imageBlockAttrs(figure, img),
+      ['id', 'sizeSlug', 'width', 'height', 'align', 'linkDestination', 'isDecorative'])
     const open = Object.keys(attrs).length
       ? ` wp:image ${JSON.stringify(attrs)} `
       : ' wp:image '
@@ -602,7 +617,8 @@ function toWordPressHTML(html, doc) {
     }
     attrs.responsive = true
     if (p && p.aspect) attrs.className = 'wp-embed-aspect-16-9 wp-has-aspect-ratio'
-    wrapElementWithComments(doc, figure, ` wp:embed ${JSON.stringify(attrs)} `, ' /wp:embed ')
+    const merged = mergeCarried(figure, attrs, ['url', 'type', 'providerNameSlug'])
+    wrapElementWithComments(doc, figure, ` wp:embed ${JSON.stringify(merged)} `, ' /wp:embed ')
   })
 
   // Wrap gallery figures with Gutenberg block comments: one wp:gallery pair
@@ -654,7 +670,9 @@ function toWordPressHTML(html, doc) {
     })
     const galleryAttrs = { ids, columns, linkTo }
     if (!cropped) galleryAttrs.imageCrop = false
-    wrapElementWithComments(doc, figure, ` wp:gallery ${JSON.stringify(galleryAttrs)} `, ' /wp:gallery ')
+    const mergedGallery = mergeCarried(figure, galleryAttrs,
+      ['columns', 'imageCrop', 'linkTo', 'sizeSlug', 'ids'])
+    wrapElementWithComments(doc, figure, ` wp:gallery ${JSON.stringify(mergedGallery)} `, ' /wp:gallery ')
   })
 
   wrapInDelimiters(div, doc)
@@ -930,5 +948,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
+  module.exports = { extractAlignment, toWordPressHTML, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
 }
