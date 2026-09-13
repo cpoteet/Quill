@@ -53,6 +53,22 @@ describe('block serializer', () => {
     assert.equal(serializeBlocks(parse(src)), src)
   })
 
+  // Core escapes these so an attribute value can never break its own delimiter.
+  test('escapes an ampersand the way core does', () => {
+    const src = '<!-- wp:embed {"url":"https://y.test/?v=a\\u0026t=10s"} --><figure></figure><!-- /wp:embed -->'
+    assert.equal(serializeBlocks(parse(src)), src)
+  })
+
+  test('escapes angle brackets and double hyphens', () => {
+    const src = '<!-- wp:paragraph {"a":"\\u003cb\\u003e","b":"x\\u002d\\u002dy"} --><p>T</p><!-- /wp:paragraph -->'
+    assert.equal(serializeBlocks(parse(src)), src)
+  })
+
+  test('escapes a backslash and an embedded quote', () => {
+    const src = '<!-- wp:paragraph {"a":"c:\\u005cpath","b":"say \\u0022hi\\u0022"} --><p>T</p><!-- /wp:paragraph -->'
+    assert.equal(serializeBlocks(parse(src)), src)
+  })
+
   test('round-trips nested blocks at their innerContent slots', () => {
     const src = '<!-- wp:group --><div class="wp-block-group">' +
       '<!-- wp:paragraph --><p>In</p><!-- /wp:paragraph -->' +
