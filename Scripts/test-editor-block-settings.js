@@ -133,3 +133,22 @@ describe('image, gallery and embed keep unmodeled attributes', () => {
     assert.match(out, /"randomOrder":true/)
   })
 })
+
+// The bug class CLAUDE.md records: a top-level const is reachable by bare
+// identifier but never as a property of globalThis, so it reads undefined in
+// the app while every pure-Node test passes. Only this harness catches it.
+describe('the settings registry is live in the editor', () => {
+  test('settingsFor is callable as a global', () => {
+    assert.equal(typeof win.settingsFor, 'function')
+  })
+
+  test('it returns a real entry, not an empty object', () => {
+    const entry = win.settingsFor('accordionItem')
+    assert.equal(entry.openByDefault.kind, 'flagClass')
+    assert.equal(entry.openByDefault.class, 'is-open')
+  })
+
+  test('settingKinds reaches the browser too', () => {
+    assert.ok(win.settingKinds().includes('flagClass'))
+  })
+})

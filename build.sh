@@ -34,6 +34,7 @@ cp "Sources/QuillKit/Resources/editor-transforms.js" "$RESOURCES_DIR/editor-tran
 cp "Sources/QuillKit/Resources/block-parser-bundle.js" "$RESOURCES_DIR/block-parser-bundle.js"
 cp "Sources/QuillKit/Resources/block-serializer.js" "$RESOURCES_DIR/block-serializer.js"
 cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descriptors.js"
+cp "Sources/QuillKit/Resources/block-settings.js" "$RESOURCES_DIR/block-settings.js"
 
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF
