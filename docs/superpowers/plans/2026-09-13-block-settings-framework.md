@@ -15,6 +15,36 @@ that does not need redrawing.
 
 ---
 
+## State of play (2026-09-13)
+
+Committed on `gutenberg-block-model`, 12 test suites green:
+
+| Commit | What |
+|---|---|
+| `01ec015` | Delimiter attribute escaping, matching core's six escapes |
+| `b6a2e8e` | The carrier on every node, `className` splicing, twelve fixtures |
+| `f90234c` | This plan |
+| `4f0f9b7` | **Task A1 done** — the registry, with one entry and two guards |
+
+**Next: task A2.** Everything from A2 onward is unstarted.
+
+The registry ships with exactly one entry — `accordionItem.openByDefault` — on
+purpose, so A2 through A4 have a real subject to build the machinery against
+before any bulk of settings is added in stage B.
+
+Two things not repeated below that are worth knowing:
+
+- The scope cuts came from scanning all 158 posts and pages on the site. Drop
+  caps, list numbering, column widths, text direction, details names, image link
+  settings, lightbox and aspect ratio appear in **zero** of them. Block styles
+  appear in 9, YouTube embeds in 8, an image `title` in 22 (already safe), a
+  table footer row in 1. Re-run that scan before adding anything back.
+- WordPress draft **18195** ("Block Test") is still on the live site. It is the
+  source of the `settings-*.html` fixtures and is kept so stage B and D can
+  re-check markup in Gutenberg. Task G1 deletes it.
+
+---
+
 ## The three tiers
 
 A setting sits in exactly one. Moving between them is editing one line.
