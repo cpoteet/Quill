@@ -16,7 +16,7 @@ private func makePost(id: Int = 1, title: String = "Post Title", status: String 
 }
 
 private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: String = "post") -> LocalDraft {
-    LocalDraft(id: id, title: title, content: "", excerpt: "", type: type,
+    LocalDraft(id: id, title: title, content: "", excerpt: "", type: type, footnotes: "",
                createdAt: Date(), updatedAt: Date())
 }
 

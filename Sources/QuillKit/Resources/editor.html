@@ -6,6 +6,11 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Every link in the editor -- prose, footnote markers, backrefs -- uses
+       these two and nothing else. */
+    :root { --link: #1380c3; }
+    body.dark { --link: #5ab4f5; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f4f3f1;
@@ -492,7 +497,7 @@
       margin: 0.8em 0;
     }
     body.dark .ProseMirror pre { background: #2a2a2a; }
-    body.dark .ProseMirror a { color: #5ab4f5; }
+    .ProseMirror a { color: var(--link); }
     body.cmd-held .ProseMirror a { cursor: pointer; text-decoration: underline; }
     .ProseMirror pre code { background: none; padding: 0; }
     .ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
@@ -1128,7 +1133,7 @@
     sup.fn { counter-increment: quill-footnote; }
     sup.fn a::before { content: counter(quill-footnote); }
     sup.fn a {
-      color: #b45309;
+      color: var(--link);
       text-decoration: none;
       font-weight: 600;
       cursor: pointer;
@@ -1143,9 +1148,17 @@
     body.dark ol.wp-block-footnotes { border-top-color: rgba(255,255,255,0.2); color: #aaa; }
     ol.wp-block-footnotes > li { position: relative; }
     .fn-item-content { display: inline; }
+    /* ProseMirror's trailing break is the only caret target an empty item has,
+       so it must stay in layout -- hiding it makes the item uneditable in
+       WebKit. It does push the backref, which sits at its static position, onto
+       a second line, so the backref is hidden until the item has content. The
+       empty state is a class the node view sets, not :has() on the break --
+       WebKit does not re-evaluate that :has() when the break is removed, so the
+       backref never came back. */
+    li.fn-item-empty > .fn-backref { display: none; }
     .fn-backref {
       display: inline-block;
-      color: #b45309;
+      color: var(--link);
       text-decoration: none;
       margin-left: 0;
       font-size: 1em;
@@ -1159,7 +1172,10 @@
       -webkit-user-select: none;
     }
     .fn-backref:hover { opacity: 1; }
-    body.dark .fn-backref { color: #d97706; }
+    /* Neither the backref nor a footnote marker is a link you can ⌘-click to
+       open, so both opt out of the ⌘-held underline affordance above. */
+    body.cmd-held .ProseMirror .fn-backref,
+    body.cmd-held .ProseMirror sup.fn a { text-decoration: none; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -2631,12 +2647,18 @@
 
         this.dom.appendChild(this.contentDOM)
         this.dom.appendChild(this.backArrow)
+        this._syncEmpty(node)
+      }
+
+      _syncEmpty(node) {
+        this.dom.classList.toggle('fn-item-empty', node.content.size === 0)
       }
 
       update(node) {
         if (node.type.name !== 'footnoteItem') return false
         this.node = node
         this.dom.id = node.attrs.fnId || ''
+        this._syncEmpty(node)
         return true
       }
 
@@ -3700,9 +3722,7 @@
       if (_findOpen) _refreshFind(false)
       clearTimeout(debounce)
       debounce = setTimeout(() => {
-        if (window.webkit?.messageHandlers?.contentChanged) {
-          window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
-        }
+        _postContent(toWordPressHTML(editor.getHTML()), true)
         _postStats()
       }, 500)
     })
@@ -3964,6 +3984,25 @@
       insertFootnote()
     })
 
+    // Footnote bodies as WordPress stores them: a JSON array in post meta, not
+    // in post_content. See docs/footnotes-meta.md.
+    let _footnotes = '[]'
+
+    // post_content and the footnote meta are produced together -- the delimiter
+    // left in the content stands in for the bodies sent alongside it. Only the
+    // visual document is authoritative for those bodies; code view shows the
+    // delimiter alone, so an edit there must not clear what it stands for.
+    function _postContent(html, footnotesAuthoritative) {
+      const split = extractFootnotes(html)
+      if (footnotesAuthoritative) _footnotes = JSON.stringify(split.footnotes)
+      if (window.webkit?.messageHandlers?.contentChanged) {
+        window.webkit.messageHandlers.contentChanged.postMessage(split.content)
+      }
+      if (window.webkit?.messageHandlers?.footnotesChanged) {
+        window.webkit.messageHandlers.footnotesChanged.postMessage(_footnotes)
+      }
+    }
+
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
     // Authoritative HTML that bypasses Tiptap's schema parser. Set when content
@@ -3983,10 +4022,7 @@
     function _codeViewChanged() {
       clearTimeout(debounce)
       debounce = setTimeout(() => {
-        const html = document.getElementById('code-editor').value
-        if (window.webkit?.messageHandlers?.contentChanged) {
-          window.webkit.messageHandlers.contentChanged.postMessage(html)
-        }
+        _postContent(document.getElementById('code-editor').value, false)
       }, 500)
     }
 
@@ -4004,7 +4040,7 @@
       const hasVisualEdits = _rawHTML === null
       const sourceHTML = (!hasVisualEdits && _rawHTMLOnLoad !== null)
         ? _rawHTMLOnLoad
-        : toWordPressHTML(editor.getHTML())
+        : extractFootnotes(toWordPressHTML(editor.getHTML())).content
       const codeViewHTML = formatHTML(sourceHTML)
       _codeViewOriginal = codeViewHTML
       document.getElementById('code-editor').value = codeViewHTML
@@ -4031,7 +4067,9 @@
         // User changed the HTML — parse it back into Tiptap and update raw stores.
         _rawHTML = html
         _rawHTMLOnLoad = html
-        editor.commands.setContent(_wrapIncoming(html), false)
+        let stored = []
+        try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
+        editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
       }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -4040,11 +4078,7 @@
       editor.commands.focus()
       // Always fire contentChanged so Swift's htmlContent stays current.
       // If not edited, getContent() returns the pre-code-view value unchanged.
-      if (window.webkit?.messageHandlers?.contentChanged) {
-        window.webkit.messageHandlers.contentChanged.postMessage(
-          userEdited ? html : window.getContent()
-        )
-      }
+      _postContent(userEdited ? html : window.getContent(), false)
       _postStats()
     }
 
@@ -4141,7 +4175,7 @@
       }
     }
 
-    window.setContent = html => {
+    window.setContent = (html, footnotesJSON) => {
       if (codeViewActive) {
         codeViewActive = false
         document.getElementById('editor').style.display = ''
@@ -4150,7 +4184,10 @@
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
       _closeFindBar()
-      const wrapped = _wrapIncoming(html)
+      _footnotes = footnotesJSON || '[]'
+      let storedFootnotes = []
+      try { storedFootnotes = JSON.parse(_footnotes) } catch (e) { storedFootnotes = [] }
+      const wrapped = _wrapIncoming(inlineFootnotes(html, storedFootnotes, document))
       // The raw stores keep the unwrapped original, so an unedited post saves
       // back byte-identically and code view shows real post_content.
       _rawHTML = html || null
@@ -4164,14 +4201,14 @@
     window.openFindBar = _openFindBar
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
-      : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))
+      : (_rawHTML !== null ? _rawHTML : extractFootnotes(toWordPressHTML(editor.getHTML())).content)
+    window.getFootnotes = () => _footnotes
+    window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {
       _rawHTML = null
       _rawHTMLOnLoad = null
       clearTimeout(debounce)
-      if (window.webkit?.messageHandlers?.contentChanged) {
-        window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
-      }
+      _postContent(toWordPressHTML(editor.getHTML()), true)
     }
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
 

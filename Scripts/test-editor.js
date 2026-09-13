@@ -5,7 +5,7 @@ const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
 const fs = require('fs')
 const path = require('path')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -474,6 +474,17 @@ describe('toWordPressHTML — tables', () => {
     const dom = new JSDOM(out).window.document
     // Should still have exactly one thead
     assert.equal(dom.querySelectorAll('thead').length, 1)
+  })
+
+  test('table figure is wrapped in wp:table block comments', () => {
+    const out = wp('<table><tbody><tr><td>cell</td></tr></tbody></table>')
+    assert.match(out, /<!-- wp:table -->/)
+    assert.match(out, /<!-- \/wp:table -->/)
+  })
+
+  test('re-saving a delimited table does not stack wp:table comments', () => {
+    const twice = wp(wp('<table><tbody><tr><td>cell</td></tr></tbody></table>'))
+    assert.equal((twice.match(/<!-- wp:table/g) || []).length, 1)
   })
 
   test('table already inside wp-block-table is not double-wrapped', () => {
@@ -1254,34 +1265,103 @@ describe('toWordPressHTML — footnotes', () => {
 
 
 // ---------------------------------------------------------------------------
-// toWordPressHTML — footnote backrefs
+// toWordPressHTML — footnote marker anchors
 // ---------------------------------------------------------------------------
 
-describe('toWordPressHTML — footnote backrefs', () => {
-  test('marker sup gains id="ref-fn-UUID"', () => {
+describe('toWordPressHTML — footnote marker anchors', () => {
+  test('marker sup gains core\'s id="<fnId>-link"', () => {
     const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>'
-    assert.match(wp(html), /id="ref-fn-a"/)
+    assert.match(wp(html), /id="fn-a-link"/)
   })
 
-  test('footnote list item gains backref link', () => {
+  test('no backref is written into the list — WordPress renders it from meta', () => {
     const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
     const out = wp(html)
-    assert.match(out, /href="#ref-fn-a"/)
-    assert.match(out, /class="footnote-backref"/)
-    assert.match(out, /↩/)
+    assert.doesNotMatch(out, /footnote-backref/)
+    assert.doesNotMatch(out, /↩/)
   })
 
-  test('backref arrow uses text-presentation variation selector, not emoji-presentation', () => {
-    const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
-    const out = wp(html)
-    assert.match(out, /class="footnote-backref"[^>]*>↩︎<\/a>/)
-  })
-
-  test('backref is idempotent — not added twice on double transform', () => {
-    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>' +
-      '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
+  test('marker id is idempotent across repeated transforms', () => {
+    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>'
     const twice = wp(wp(html))
-    assert.equal((twice.match(/footnote-backref/g) || []).length, 1)
+    assert.equal((twice.match(/fn-a-link/g) || []).length, 1)
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// extractFootnotes / inlineFootnotes
+// ---------------------------------------------------------------------------
+
+describe('extractFootnotes', () => {
+  const split = h => extractFootnotes(h, new JSDOM('<!doctype html><body>').window.document)
+
+  test('replaces the list with core\'s self-closing delimiter', () => {
+    const r = split('<p>x</p><ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>')
+    assert.match(r.content, /<!-- wp:footnotes \/-->/)
+    assert.doesNotMatch(r.content, /wp-block-footnotes/)
+  })
+
+  test('returns each footnote body keyed by its id, in document order', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">First</li><li id="fn-b">Second</li></ol>')
+    assert.deepEqual(r.footnotes, [
+      { id: 'fn-a', content: 'First' },
+      { id: 'fn-b', content: 'Second' },
+    ])
+  })
+
+  test('keeps inline markup inside a footnote body', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">See <a href="https://e.com"><em>this</em></a>.</li></ol>')
+    assert.equal(r.footnotes[0].content, 'See <a href="https://e.com"><em>this</em></a>.')
+  })
+
+  test('strips a legacy backref anchor from the stored body', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">Note<a href="#ref-fn-a" class="footnote-backref">↩︎</a></li></ol>')
+    assert.equal(r.footnotes[0].content, 'Note')
+  })
+
+  test('content with no footnotes is returned untouched', () => {
+    const html = '<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->'
+    const r = split(html)
+    assert.equal(r.content, html)
+    assert.deepEqual(r.footnotes, [])
+  })
+
+  test('leaves the rest of the block comments intact', () => {
+    const r = split('<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>')
+    assert.match(r.content, /<!-- wp:paragraph -->/)
+    assert.match(r.content, /<!-- \/wp:paragraph -->/)
+  })
+})
+
+describe('inlineFootnotes', () => {
+  const inline = (h, f) => inlineFootnotes(h, f, new JSDOM('<!doctype html><body>').window.document)
+
+  test('materialises the list from meta at the delimiter', () => {
+    const out = inline('<p>x</p><!-- wp:footnotes /-->', [{ id: 'fn-a', content: 'Note' }])
+    assert.match(out, /<ol class="wp-block-footnotes"><li id="fn-a">Note<\/li><\/ol>/)
+    assert.doesNotMatch(out, /wp:footnotes/)
+  })
+
+  test('restores footnotes in meta order', () => {
+    const out = inline('<!-- wp:footnotes /-->', [{ id: 'fn-a', content: 'A' }, { id: 'fn-b', content: 'B' }])
+    assert.ok(out.indexOf('fn-a') < out.indexOf('fn-b'))
+  })
+
+  test('round-trips with extractFootnotes', () => {
+    const original = '<p>x</p><ol class="wp-block-footnotes"><li id="fn-a">A <em>note</em></li></ol>'
+    const r = extractFootnotes(original, new JSDOM('<!doctype html><body>').window.document)
+    assert.equal(inline(r.content, r.footnotes), original)
+  })
+
+  test('empty meta leaves the delimiter alone for the passthrough card', () => {
+    const html = '<p>x</p><!-- wp:footnotes /-->'
+    assert.equal(inline(html, []), html)
+  })
+
+  test('meta without a delimiter in the content changes nothing', () => {
+    const html = '<p>x</p>'
+    assert.equal(inline(html, [{ id: 'fn-a', content: 'N' }]), html)
   })
 })
 

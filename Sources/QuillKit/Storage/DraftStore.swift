@@ -7,6 +7,7 @@ public struct LocalDraft: Identifiable, Hashable, Sendable {
     public var content: String
     public var excerpt: String
     public var type: String  // "post" or "page"
+    public var footnotes: String  // core/footnotes bodies as JSON
     public var createdAt: Date
     public var updatedAt: Date
 }
@@ -19,7 +20,7 @@ public final class DraftStore: @unchecked Sendable {
     }
 
     @discardableResult
-    public func create(title: String, content: String, excerpt: String, type: String = "post") throws -> Int64 {
+    public func create(title: String, content: String, excerpt: String, type: String = "post", footnotes: String = "") throws -> Int64 {
         let now = Date().timeIntervalSince1970
         return try db.db.run(
             db.drafts.insert(
@@ -27,6 +28,7 @@ public final class DraftStore: @unchecked Sendable {
                 db.draftContent <- content,
                 db.draftExcerpt <- excerpt,
                 db.draftType <- type,
+                db.draftFootnotes <- footnotes,
                 db.draftCreatedAt <- now,
                 db.draftUpdatedAt <- now
             ))
@@ -40,6 +42,7 @@ public final class DraftStore: @unchecked Sendable {
                 content: row[db.draftContent],
                 excerpt: row[db.draftExcerpt],
                 type: row[db.draftType],
+                footnotes: row[db.draftFootnotes],
                 createdAt: Date(timeIntervalSince1970: row[db.draftCreatedAt]),
                 updatedAt: Date(timeIntervalSince1970: row[db.draftUpdatedAt])
             )
@@ -55,18 +58,20 @@ public final class DraftStore: @unchecked Sendable {
             content: row[db.draftContent],
             excerpt: row[db.draftExcerpt],
             type: row[db.draftType],
+            footnotes: row[db.draftFootnotes],
             createdAt: Date(timeIntervalSince1970: row[db.draftCreatedAt]),
             updatedAt: Date(timeIntervalSince1970: row[db.draftUpdatedAt])
         )
     }
 
-    public func update(id: Int64, title: String, content: String, excerpt: String) throws {
+    public func update(id: Int64, title: String, content: String, excerpt: String, footnotes: String = "") throws {
         let row = db.drafts.filter(db.draftID == id)
         try db.db.run(
             row.update(
                 db.draftTitle <- title,
                 db.draftContent <- content,
                 db.draftExcerpt <- excerpt,
+                db.draftFootnotes <- footnotes,
                 db.draftUpdatedAt <- Date().timeIntervalSince1970
             ))
     }

@@ -21,6 +21,7 @@ const NODE_FOR_TAG = {
 
 // Container blocks are identified by class, not tag name.
 const NODE_FOR_BLOCK_CLASS = [
+  ['wp-block-table', 'table'],
   ['wp-block-columns', 'columnsBlock'],
   ['wp-block-column', 'columnBlock'],
   ['wp-block-buttons', 'buttonsBlock'],
@@ -532,19 +533,11 @@ function toWordPressHTML(html, doc) {
     a.textContent = String(i + 1)
   })
 
-  // Footnote backrefs: give each marker sup an id and add a return link to
-  // its matching list item so published WordPress posts have working ↩ anchors.
+  // Footnote markers carry core's `<fnId>-link` id, which is the anchor
+  // core/footnotes' server-side render points its ↩︎ backref at. The backref
+  // itself is never written here -- WordPress builds it from post meta.
   div.querySelectorAll('sup.fn[data-fn]').forEach(sup => {
-    sup.id = 'ref-' + sup.getAttribute('data-fn')
-  })
-  div.querySelectorAll('ol.wp-block-footnotes > li[id]').forEach(li => {
-    if (li.querySelector('.footnote-backref')) return
-    const a = doc.createElement('a')
-    a.href = '#ref-' + li.id
-    a.className = 'footnote-backref'
-    a.setAttribute('aria-label', 'Back to content')
-    a.textContent = '↩︎'
-    li.appendChild(a)
+    sup.id = sup.getAttribute('data-fn') + '-link'
   })
 
   // Wrap embed figures with Gutenberg block comments so WordPress enqueues
@@ -807,6 +800,58 @@ function countStats(text) {
   }
 }
 
+// core/footnotes is a dynamic block: WordPress keeps the footnote bodies in the
+// post's `footnotes` meta and renders the <ol> itself, so post_content carries
+// only the self-closing delimiter. These two functions are that split and its
+// inverse -- the editor edits a real list, the wire format never sees one.
+
+function footnotesComment(root) {
+  return Array.from(root.childNodes).find(
+    n => n.nodeType === 8 && n.textContent.trim() === 'wp:footnotes /') || null
+}
+
+// Returns { content, footnotes } -- the list swapped for the delimiter, and the
+// bodies to store in meta.
+function extractFootnotes(html, doc) {
+  doc = doc || document
+  const div = doc.createElement('div')
+  div.innerHTML = html || ''
+  const list = div.querySelector('ol.wp-block-footnotes')
+  if (!list) return { content: html || '', footnotes: [] }
+
+  const footnotes = []
+  Array.from(list.children).forEach(li => {
+    if (!li.id) return
+    li.querySelectorAll('.footnote-backref').forEach(a => a.remove())
+    footnotes.push({ id: li.id, content: li.innerHTML.trim() })
+  })
+  list.replaceWith(doc.createComment(' wp:footnotes /'))
+  return { content: div.innerHTML, footnotes }
+}
+
+// Rebuilds the editable list from meta. A post whose meta is empty keeps the
+// bare delimiter, which wrapUnsupportedBlocks then preserves as a card.
+function inlineFootnotes(html, footnotes, doc) {
+  doc = doc || document
+  if (!Array.isArray(footnotes) || footnotes.length === 0) return html || ''
+  const div = doc.createElement('div')
+  div.innerHTML = html || ''
+  const comment = footnotesComment(div)
+  if (!comment) return html || ''
+
+  const ol = doc.createElement('ol')
+  ol.className = 'wp-block-footnotes'
+  footnotes.forEach(fn => {
+    if (!fn || !fn.id) return
+    const li = doc.createElement('li')
+    li.id = fn.id
+    li.innerHTML = fn.content || ''
+    ol.appendChild(li)
+  })
+  comment.replaceWith(ol)
+  return div.innerHTML
+}
+
 // Embed provider table. `aspect: true` providers get Gutenberg's 16:9 classes.
 const EMBED_PROVIDERS = [
   { slug: 'youtube',    type: 'video', aspect: true,  hosts: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'] },
@@ -839,5 +884,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES }
+  module.exports = { extractAlignment, toWordPressHTML, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
 }

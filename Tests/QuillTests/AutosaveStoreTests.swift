@@ -63,4 +63,15 @@ import Testing
         let second = try store.load(postID: 1)!
         #expect(second.savedAt > first.savedAt)
     }
+
+    @Test func footnotesSurviveTheStash() throws {
+        try store.save(postID: 42, title: "P", content: "<p>Hi</p>",
+                       footnotes: #"[{"id":"fn-a","content":"Note"}]"#, serverModified: "m")
+        #expect(try store.load(postID: 42)?.footnotes == #"[{"id":"fn-a","content":"Note"}]"#)
+    }
+
+    @Test func omittedFootnotesDefaultToEmpty() throws {
+        try store.save(postID: 43, title: "P", content: "<p>Hi</p>", serverModified: "m")
+        #expect(try store.load(postID: 43)?.footnotes == "")
+    }
 }

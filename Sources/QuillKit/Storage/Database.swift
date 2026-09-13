@@ -27,6 +27,8 @@ public final class AppDatabase: @unchecked Sendable {
     let taxType = Expression<String>("type")  // "category" or "tag"
     let taxID = Expression<Int>("wp_id")
     let taxName = Expression<String>("name")
+    public let draftFootnotes = Expression<String>("footnotes")
+    public let autosaveFootnotes = Expression<String>("footnotes")
     let taxSlug = Expression<String>("slug")
     let taxFetchedAt = Expression<Double>("fetched_at")
 
@@ -45,9 +47,12 @@ public final class AppDatabase: @unchecked Sendable {
                 t.column(draftCreatedAt)
                 t.column(draftUpdatedAt)
                 t.column(draftType, defaultValue: "post")
+                t.column(draftFootnotes, defaultValue: "")
             })
         // Migration for existing databases: silently ignored if column already exists
         try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
+        try? db.run("ALTER TABLE local_drafts ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
+        try? db.run("ALTER TABLE autosaves ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
 
         try db.run(
             autosaves.create(ifNotExists: true) { t in
@@ -56,6 +61,7 @@ public final class AppDatabase: @unchecked Sendable {
                 t.column(autosaveContent)
                 t.column(autosaveSavedAt)
                 t.column(autosaveServerModified)
+                t.column(autosaveFootnotes, defaultValue: "")
             })
 
         try db.run(

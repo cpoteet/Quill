@@ -88,7 +88,7 @@ For each release, list the changes the release notes claim, then verify each one
 Always include these standing items, whatever the release notes say:
 
 - **Every new block.** Confirm its `wp-block-*` class and its root element. A `div` root is caught by `gutenbergPassthrough` automatically. **A `<figure>` root needs checking against `QUILL_MODELED_FIGURE_CLASSES`** — this is where 7.1 broke.
-- **The blocks Quill models natively** — heading, list, quote, code, separator, image, gallery, table, embed, footnotes. Confirm their `save()` output is unchanged.
+- **The blocks Quill models natively** — heading, list, quote, code, separator, image, gallery, table, embed. Confirm their `save()` output is unchanged. `core/footnotes` has no `save()` at all: check instead that its meta key, marker anchor and server-rendered list still match `docs/footnotes-meta.md`.
 - **New attributes on existing blocks.** An attribute that lives only in the block-comment JSON is harmless. An attribute that reaches the HTML is not.
 
 ---

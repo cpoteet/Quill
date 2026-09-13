@@ -109,4 +109,22 @@ import Testing
         #expect(draft?.title == title)
         #expect(draft?.content == content)
     }
+
+    @Test func footnotesSurviveCreateAndLoad() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "",
+                                  footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        #expect(try store.load(id: id)?.footnotes == #"[{"id":"fn-a","content":"Note"}]"#)
+    }
+
+    @Test func updateReplacesFootnotes() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "",
+                                  footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        try store.update(id: id, title: "T", content: "<p>x</p>", excerpt: "", footnotes: "[]")
+        #expect(try store.load(id: id)?.footnotes == "[]")
+    }
+
+    @Test func draftCreatedWithoutFootnotesReadsBackEmpty() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "")
+        #expect(try store.load(id: id)?.footnotes == "")
+    }
 }

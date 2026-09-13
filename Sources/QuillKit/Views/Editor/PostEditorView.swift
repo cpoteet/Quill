@@ -8,6 +8,7 @@ public struct PostEditorView: View {
 
     @State private var title: String = ""
     @State private var htmlContent: String = ""
+    @State private var footnotesMeta: String = ""
     @State private var settings = PostSettings()
     @State private var stats = PostStats()
     @State private var isSettingsOpen: Bool = false
@@ -80,6 +81,7 @@ public struct PostEditorView: View {
                 ZStack {
                     EditorView(
                         html: $htmlContent,
+                        footnotes: footnotesMeta,
                         contentSyncPending: $contentSyncPending,
                         onContentChange: { newHTML in
                             htmlContent = newHTML
@@ -131,6 +133,7 @@ public struct PostEditorView: View {
                         onBlocksAtRisk: { names in
                             blockRiskAlarm = BlockRiskAlarm(names: names, stage: .unacknowledged)
                         },
+                        onFootnotesChange: { footnotesMeta = $0 },
                         onWebViewCreated: { webView in
                             editorWebView = webView
                         },
@@ -725,6 +728,7 @@ public struct PostEditorView: View {
                 if shouldRestoreAutosave(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
+                    footnotesMeta = snap.footnotes
                     presentToast("Unsaved changes restored")
                 } else {
                     try? services.autosaveStore.delete(postID: post.id)
@@ -738,6 +742,7 @@ public struct PostEditorView: View {
                 let showToast = fresh.title != draft.title || fresh.content != draft.content
                 title = fresh.title
                 htmlContent = fresh.content
+                footnotesMeta = fresh.footnotes
                 settings = PostSettings()
                 settings.excerpt = fresh.excerpt
                     .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -746,6 +751,7 @@ public struct PostEditorView: View {
             } else {
                 title = draft.title
                 htmlContent = draft.content
+                footnotesMeta = draft.footnotes
                 settings = PostSettings()
                 settings.excerpt = draft.excerpt
                     .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -762,6 +768,7 @@ public struct PostEditorView: View {
         let wpContent = post.content.editorHTML
         title = wpTitle
         htmlContent = wpContent
+        footnotesMeta = post.footnotes
         lastSavedServerModified = post.modified
         settings.status = PostStatus(rawValue: post.status) ?? .draft
         settings.categoryIDs = Set(post.categories)
@@ -796,9 +803,9 @@ public struct PostEditorView: View {
         case .remote(let post):
             try? services.autosaveStore.save(
                 postID: post.id, title: title, content: htmlContent,
-                serverModified: lastSavedServerModified)
+                footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
             if let updated = try? services.draftStore.load(id: draft.id),
                let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
                 appState.localDrafts[idx] = updated
@@ -821,9 +828,10 @@ public struct PostEditorView: View {
         switch item {
         case .remote(let post):
             try? services.autosaveStore.save(
-                postID: post.id, title: title, content: htmlContent, serverModified: lastSavedServerModified)
+                postID: post.id, title: title, content: htmlContent,
+                footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
         }
     }
 
@@ -841,7 +849,7 @@ public struct PostEditorView: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
             if let updated = try? services.draftStore.load(id: draft.id),
                let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
                 appState.localDrafts[idx] = updated
@@ -911,7 +919,8 @@ public struct PostEditorView: View {
             tags: Array(settings.tagIDs),
             slug: settings.slug.isEmpty ? nil : settings.slug,
             commentStatus: settings.commentStatus,
-            parent: postType == "page" ? settings.parentID : nil
+            parent: postType == "page" ? settings.parentID : nil,
+            footnotes: footnotesMeta
         )
 
         do {
@@ -1278,10 +1287,7 @@ public struct PostEditorView: View {
                 onAccept: {
                     webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)
                     // Trigger contentChanged so Swift gets the accepted HTML
-                    webView.evaluateJavaScript(
-                        "window.webkit?.messageHandlers?.contentChanged?.postMessage(window.getContent())",
-                        completionHandler: nil
-                    )
+                    webView.evaluateJavaScript("window.pushContentToSwift?.()", completionHandler: nil)
                 },
                 onDiscard: {
                     webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)

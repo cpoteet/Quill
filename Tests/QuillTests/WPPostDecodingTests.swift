@@ -410,4 +410,24 @@ import Testing
         #expect(post.content.editorHTML == "")
         #expect(post.excerpt.rendered == "")
     }
+
+    @Test func footnotesMetaDecodes() throws {
+        let post = try decode(#"""
+        {"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"footnotes":"[{\"id\":\"fn-a\",\"content\":\"Note\"}]"}}
+        """#)
+        #expect(post.footnotes == #"[{"id":"fn-a","content":"Note"}]"#)
+    }
+
+    @Test func absentMetaLeavesFootnotesEmpty() throws {
+        #expect(try decode(fullJSON).footnotes == "")
+    }
+
+    @Test func metaWithoutFootnotesKeyLeavesFootnotesEmpty() throws {
+        let post = try decode(#"""
+        {"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"jetpack_publicize_message":""}}
+        """#)
+        #expect(post.footnotes == "")
+    }
 }
