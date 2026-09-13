@@ -15,6 +15,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
+    var onBlocksAtRisk: (([String]) -> Void)?
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
     var aiEnabled: Bool = false
@@ -121,6 +122,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                let words = body["words"] as? Int,
                let characters = body["characters"] as? Int {
                 DispatchQueue.main.async { self.onStatsChanged?(words, characters) }
+            }
+        case "blocksAtRisk":
+            if let body = message.body as? [String: Any],
+               let names = body["names"] as? [String] {
+                DispatchQueue.main.async { self.onBlocksAtRisk?(names) }
             }
         case "checkSpelling":
             guard let text = message.body as? String else { return }

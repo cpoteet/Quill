@@ -13,6 +13,7 @@ in adds it to the corpus. Anything that is not a fixture must not end in
 | `gallery-block.html` | A `core/gallery` with captions |
 | `post-17780.html` | A whole published post: classic prose, images, footnotes, two accordions |
 | `tabs-block.html` | A `core/tabs` with a tab list and panels |
+| `unsupported-blocks.html` | Hand-written, not a site capture: one of each block shape Quill cannot model, so Custom HTML, a shortcode, three self-closing dynamic blocks, a synced pattern, a page break, a read-more, and a third-party block with no `wp-block-` class |
 
 ## These are subjects, not specifications
 

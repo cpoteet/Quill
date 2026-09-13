@@ -37,6 +37,7 @@ public struct PostEditorView: View {
     @State private var showDiscardAlert: Bool = false
     @State private var contentSyncPending: Bool = false
     @State private var contentLoadFailed: Bool = false
+    @State private var blockRiskAlarm: BlockRiskAlarm? = nil
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -72,6 +73,9 @@ public struct PostEditorView: View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 editorHeader
+                // The alarm sits above the save error, which refers to it as
+                // "the warning above".
+                if let alarm = blockRiskAlarm { blockRiskBanner(alarm) }
                 if saveError != nil { errorBanner }
                 ZStack {
                     EditorView(
@@ -123,6 +127,9 @@ public struct PostEditorView: View {
                         },
                         onStatsChanged: { words, characters in
                             stats = PostStats(words: words, characters: characters)
+                        },
+                        onBlocksAtRisk: { names in
+                            blockRiskAlarm = BlockRiskAlarm(names: names, stage: .unacknowledged)
                         },
                         onWebViewCreated: { webView in
                             editorWebView = webView
@@ -477,6 +484,72 @@ public struct PostEditorView: View {
             .background(color.opacity(0.12), in: Capsule())
     }
 
+    // Distinct danger styling, not the amber of a recoverable save error:
+    // this is content about to be deleted.
+    private func blockRiskBanner(_ alarm: BlockRiskAlarm) -> some View {
+        let danger = alarm.stage != .saved
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: danger ? "exclamationmark.triangle.fill" : "clock.arrow.circlepath")
+                .foregroundStyle(danger ? Color.red : Color.secondary)
+                .font(.system(size: 13))
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                if !alarm.title.isEmpty {
+                    Text(alarm.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(boldingNames(in: alarm.body, names: alarm.names))
+                    .font(.system(size: 12))
+                    .lineSpacing(1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+                if alarm.blocksSaving {
+                    // The app's amber accent makes .bordered nearly invisible
+                    // on this background, so the button is drawn explicitly.
+                    Button {
+                        blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .acknowledged)
+                    } label: {
+                        Text("Save anyway, I understand")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(NSColor.controlBackgroundColor),
+                                        in: RoundedRectangle(cornerRadius: 5))
+                            .overlay(RoundedRectangle(cornerRadius: 5)
+                                .stroke(.separator, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 9)
+                }
+            }
+            Spacer(minLength: 8)
+            if alarm.stage == .saved {
+                Button { blockRiskAlarm = nil } label: {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background((danger ? Color.red : Color.secondary).opacity(0.08))
+        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
+    }
+
+    private func boldingNames(in text: String, names: [String]) -> AttributedString {
+        var attributed = AttributedString(text)
+        for display in names.map(BlockRiskAlarm.displayName(for:)) {
+            var search = attributed.startIndex..<attributed.endIndex
+            while let found = attributed[search].range(of: display) {
+                attributed[found].inlinePresentationIntent = .stronglyEmphasized
+                search = found.upperBound..<attributed.endIndex
+            }
+        }
+        return attributed
+    }
+
     // #1 Dismissible amber error banner
     private var errorBanner: some View {
         HStack(spacing: 8) {
@@ -738,6 +811,8 @@ public struct PostEditorView: View {
     }
 
     private func performAutosave() async {
+        // Or the squashed content silently becomes the local draft.
+        if blockRiskAlarm?.blocksSaving == true { return }
         switch item {
         case .remote(let post):
             try? services.autosaveStore.save(
@@ -782,6 +857,10 @@ public struct PostEditorView: View {
         guard let creds = appState.credentials else { return }
         guard !contentLoadFailed else {
             saveError = "Can't save — this post never finished loading. Reopen it before making changes."
+            return
+        }
+        guard blockRiskAlarm?.blocksSaving != true else {
+            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
             return
         }
         isSaving = true
@@ -880,6 +959,9 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != .future { settings.publishDate = nil }
+            if let alarm = blockRiskAlarm {
+                blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
+            }
             presentToast(Self.toastMessage(forStatus: status))
         } catch {
             saveError = error.localizedDescription

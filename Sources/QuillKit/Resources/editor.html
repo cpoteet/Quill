@@ -832,8 +832,19 @@
     }
     .passthrough-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
     .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .passthrough-card-peek {
+      font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #555;
+      background: rgba(0,0,0,0.04);
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-top: 7px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
     .passthrough-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
     body.dark .passthrough-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+    body.dark .passthrough-card-peek { color: #aaa; background: rgba(255,255,255,0.06); }
     body.dark .passthrough-card-hint { color: #777; }
     #embed-menu {
       display: none;
@@ -2071,6 +2082,12 @@
     // in the visual editor"; saves the original markup back byte-for-byte,
     // regenerating any original wp:name comments. See docs/superpowers/specs/
     // 2026-07-12-gutenberg-passthrough-block-design.md.
+    function _peekText(source) {
+      const inner = source.replace(/^<!--[\s\S]*?-->/, '').replace(/<!-- \/wp:[\s\S]*?-->$/, '').trim()
+      const text = inner || source.trim()
+      return text.length > 120 ? text.slice(0, 120) + '…' : text
+    }
+
     class PassthroughNodeView {
       constructor(node) {
         this.dom = document.createElement('div')
@@ -2078,10 +2095,18 @@
         const label = document.createElement('div')
         label.className = 'passthrough-card-label'
         label.textContent = node.attrs.blockLabel
+        this.dom.append(label)
+        if (node.attrs.unsupportedSource) {
+          const peek = document.createElement('div')
+          peek.className = 'passthrough-card-peek'
+          // textContent, never innerHTML: the peek shows markup, it must not become it.
+          peek.textContent = _peekText(node.attrs.unsupportedSource)
+          this.dom.append(peek)
+        }
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
         hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
-        this.dom.append(label, hint)
+        this.dom.append(hint)
       }
       selectNode()   { this.dom.classList.add('selected') }
       deselectNode() { this.dom.classList.remove('selected') }
@@ -2419,11 +2444,25 @@
           blockName:  { default: null },
           attrsJSON:  { default: null },
           sourceHTML: { default: '' },
+          unsupportedSource: { default: null },
         }
       },
 
       parseHTML() {
         return [
+          {
+            // First, so it out-ranks the class catch-all below. blockName stays
+            // null: this block's own comments are already inside its source, so
+            // regenerating them would double them.
+            tag: 'div.wp-block-quill-unsupported',
+            getAttrs: el => ({
+              blockLabel: el.getAttribute('data-quill-unsupported-label') || 'Block',
+              blockName: null,
+              attrsJSON: null,
+              sourceHTML: el.outerHTML,
+              unsupportedSource: el.getAttribute('data-quill-unsupported-source'),
+            }),
+          },
           {
             tag: '[class*="wp-block-"]:not(figure)',
             getAttrs: el => parsePassthroughBlock(el) || false,
@@ -3944,7 +3983,7 @@
         // User changed the HTML — parse it back into Tiptap and update raw stores.
         _rawHTML = html
         _rawHTMLOnLoad = html
-        editor.commands.setContent(html, false)
+        editor.commands.setContent(_wrapIncoming(html), false)
       }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -4016,6 +4055,44 @@
       window.webkit.messageHandlers.triggerEvaluate.postMessage({})
     })
 
+    // Only the entry points that receive post_content wrap; the AI reject
+    // paths restore editor.getHTML(), which is already wrapped.
+    const _wrapIncoming = html =>
+      html ? wrapUnsupportedBlocks(html, BlockParser.parse, serializeBlock, document) : html
+
+    // Image, gallery and embed model a block through bespoke passes in
+    // toWordPressHTML rather than a descriptor entry, so they need naming here.
+    const BLOCK_NAME_FOR_NODE = { image: 'image', galleryBlock: 'gallery', embedBlock: 'embed' }
+
+    function _accountedBlockNames() {
+      const names = new Set()
+      editor.state.doc.descendants(node => {
+        if (node.type.name === 'gutenbergPassthrough') {
+          if (node.attrs.blockName) names.add(node.attrs.blockName)
+          if (node.attrs.unsupportedSource) {
+            const m = node.attrs.unsupportedSource.match(/^<!--\s*wp:([^\s/]+(?:\/[^\s/]+)?)/)
+            if (m) names.add(shortBlockName(m[1]))
+          }
+          // Its nested blocks ride along in its verbatim source, so stop here.
+          return false
+        }
+        const descriptor = blockDescriptorRegistry.descriptorFor(node.type.name)
+        if (descriptor) names.add(shortBlockName(descriptor.blockName))
+        if (BLOCK_NAME_FOR_NODE[node.type.name]) names.add(BLOCK_NAME_FOR_NODE[node.type.name])
+        return true
+      })
+      return names
+    }
+
+    function _reportBlocksAtRisk(originalHTML) {
+      if (!originalHTML) return
+      const slices = blockSourceSlices(originalHTML, BlockParser.parse, serializeBlock)
+      const names = unrepresentedBlockNames(slices, _accountedBlockNames())
+      if (names.length && window.webkit?.messageHandlers?.blocksAtRisk) {
+        window.webkit.messageHandlers.blocksAtRisk.postMessage({ names })
+      }
+    }
+
     window.setContent = html => {
       if (codeViewActive) {
         codeViewActive = false
@@ -4025,9 +4102,13 @@
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
       _closeFindBar()
+      const wrapped = _wrapIncoming(html)
+      // The raw stores keep the unwrapped original, so an unedited post saves
+      // back byte-identically and code view shows real post_content.
       _rawHTML = html || null
       _rawHTMLOnLoad = html || null
-      editor.commands.setContent(html || '', false)
+      editor.commands.setContent(wrapped || '', false)
+      _reportBlocksAtRisk(html)
       document.getElementById('editor-wrap').scrollTop = 0
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()

@@ -53,6 +53,14 @@ function descriptorFor(nodeName) {
   return BLOCK_DESCRIPTORS[nodeName] || null
 }
 
+const MODELED_BLOCK_NAMES = new Set(Object.values(BLOCK_DESCRIPTORS).map(d => d.blockName))
+
+// A function, not the set itself: only function declarations reach globalThis
+// from a classic script, which is how editor.html resolves this registry.
+function modelsBlockName(blockName) {
+  return MODELED_BLOCK_NAMES.has(blockName)
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { BLOCK_DESCRIPTORS, descriptorFor }
+  module.exports = { BLOCK_DESCRIPTORS, descriptorFor, modelsBlockName }
 }

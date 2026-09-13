@@ -202,6 +202,70 @@ function isModeledFigure(el) {
 // Checks for immediately-adjacent `<!-- wp:name --> / <!-- /wp:name -->`
 // comment siblings (skipping whitespace-only text nodes in between, since
 // real Gutenberg source has a newline between a comment and its element).
+// Each top-level block paired with a literal slice of `html` where the
+// original continues with exactly the serialised bytes, otherwise with the
+// serialisation itself. The parser exposes no byte offsets, so the cursor
+// walk is what turns a reconstruction into a byte-for-byte copy.
+function blockSourceSlices(html, parse, serializeBlock) {
+  const out = []
+  let cursor = 0
+  for (const block of parse(html)) {
+    const text = serializeBlock(block)
+    const exact = html.startsWith(text, cursor)
+    const attrs = block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null
+    if (exact) {
+      out.push({ blockName: block.blockName, attrsJSON: attrs, source: html.slice(cursor, cursor + text.length), exact: true })
+      cursor += text.length
+    } else {
+      // Advance past the block's real bytes, not the reconstruction's, or every later block misaligns.
+      const found = html.indexOf('<!-- /wp:', cursor)
+      out.push({ blockName: block.blockName, attrsJSON: attrs, source: text, exact: false })
+      cursor = found === -1 ? cursor + text.length : html.indexOf('-->', found) + 3
+    }
+  }
+  return out
+}
+
+// A block is at risk when nothing in the editor can hold it: Quill models no
+// node for it, and its markup carries no wp-block-* class for the
+// gutenbergPassthrough catch-all to match. Freeform content is ordinary prose.
+function blockNeedsWrapping(slice, doc) {
+  if (!slice.blockName) return false
+  const probe = doc.createElement('div')
+  probe.innerHTML = slice.source.replace(/<!--[\s\S]*?-->/g, '')
+  // A block that saves no markup has nothing for any node to parse, so the
+  // modeled exemption below must not reach it.
+  if (probe.children.length === 0) return true
+  if (blockDescriptorRegistry.modelsBlockName(slice.blockName)) return false
+  return !Array.from(probe.children).some(el =>
+    Array.from(el.classList).some(c => c.startsWith('wp-block-')))
+}
+
+// Verifies the outcome rather than the wrap, so a bug in the wrap surfaces as
+// a warning instead of silent loss.
+function unrepresentedBlockNames(slices, accountedNames) {
+  const missing = []
+  for (const slice of slices) {
+    if (!slice.blockName) continue
+    const short = shortBlockName(slice.blockName)
+    if (!accountedNames.has(short) && !missing.includes(short)) missing.push(short)
+  }
+  return missing
+}
+
+function wrapUnsupportedBlocks(html, parse, serializeBlock, doc) {
+  const slices = blockSourceSlices(html, parse, serializeBlock)
+  if (!slices.some(s => blockNeedsWrapping(s, doc))) return html
+  return slices.map(slice => {
+    if (!blockNeedsWrapping(slice, doc)) return slice.source
+    const el = doc.createElement('div')
+    el.className = 'wp-block-quill-unsupported'
+    el.setAttribute('data-quill-unsupported-source', slice.source)
+    el.setAttribute('data-quill-unsupported-label', passthroughLabelFromBlockName(slice.blockName))
+    return el.outerHTML
+  }).join('')
+}
+
 // If found and their names match, blockName/attrsJSON are populated from the
 // comment text verbatim so toWordPressHTML can regenerate identical comments
 // on save. If not found, this is class-only markup (e.g. a live page's
@@ -602,7 +666,19 @@ function toWordPressHTML(html, doc) {
     el.removeAttribute('data-quill-block-attrs')
   })
 
-  return div.innerHTML
+  // A text node would escape the stored markup, so each wrapper leaves an
+  // alphanumeric sentinel innerHTML won't touch, substituted back afterwards.
+  const unsupported = []
+  div.querySelectorAll('[data-quill-unsupported-source]').forEach(el => {
+    const token = `QUILLUNSUPPORTED${unsupported.length}QUILLEND`
+    unsupported.push(el.getAttribute('data-quill-unsupported-source'))
+    el.replaceWith(doc.createTextNode(token))
+  })
+  let out = div.innerHTML
+  unsupported.forEach((source, i) => {
+    out = out.replace(`QUILLUNSUPPORTED${i}QUILLEND`, () => source)
+  })
+  return out
 }
 
 function formatHTML(html, doc) {
@@ -763,5 +839,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES }
+  module.exports = { extractAlignment, toWordPressHTML, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES }
 }

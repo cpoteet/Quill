@@ -14,6 +14,7 @@ public struct EditorView: NSViewRepresentable {
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
+    var onBlocksAtRisk: (([String]) -> Void)?
     var onWebViewCreated: ((WKWebView) -> Void)?
     var onAIOperation: ((AIWritingOperation) -> Void)?
     var onTriggerGenerate: (() -> Void)?
@@ -34,6 +35,7 @@ public struct EditorView: NSViewRepresentable {
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
         onStatsChanged: ((Int, Int) -> Void)? = nil,
+        onBlocksAtRisk: (([String]) -> Void)? = nil,
         onWebViewCreated: ((WKWebView) -> Void)? = nil,
         onAIOperation: ((AIWritingOperation) -> Void)? = nil,
         onTriggerGenerate: (() -> Void)? = nil,
@@ -53,6 +55,7 @@ public struct EditorView: NSViewRepresentable {
         self.onRequestMediaSizes = onRequestMediaSizes
         self.onSelectionChanged = onSelectionChanged
         self.onStatsChanged = onStatsChanged
+        self.onBlocksAtRisk = onBlocksAtRisk
         self.onWebViewCreated = onWebViewCreated
         self.onAIOperation = onAIOperation
         self.onTriggerGenerate = onTriggerGenerate
@@ -76,6 +79,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
         config.userContentController.add(context.coordinator, name: "selectionChanged")
         config.userContentController.add(context.coordinator, name: "statsChanged")
+        config.userContentController.add(context.coordinator, name: "blocksAtRisk")
         config.userContentController.add(context.coordinator, name: "checkSpelling")
         config.userContentController.add(context.coordinator, name: "triggerGenerate")
         config.userContentController.add(context.coordinator, name: "triggerEvaluate")
@@ -97,6 +101,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
+        context.coordinator.onBlocksAtRisk = onBlocksAtRisk
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
         loadEditorHTML(in: webView)
@@ -118,6 +123,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
+        context.coordinator.onBlocksAtRisk = onBlocksAtRisk
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
         if context.coordinator.aiEnabled != aiEnabled {

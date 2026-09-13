@@ -1402,3 +1402,52 @@ describe('block delimiters', () => {
     assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
   })
 })
+
+describe('unsupported block unwrapping', () => {
+  const wrapper = (source, label) => {
+    const el = document.createElement('div')
+    el.className = 'wp-block-quill-unsupported'
+    el.setAttribute('data-quill-passthrough', '')
+    el.setAttribute('data-quill-unsupported-source', source)
+    el.setAttribute('data-quill-unsupported-label', label)
+    return el.outerHTML
+  }
+
+  test('restores a shortcode block exactly', () => {
+    const src = '<!-- wp:shortcode -->[gallery ids="1,2"]<!-- /wp:shortcode -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Shortcode'), document), src)
+  })
+
+  test('restores markup with quotes and entities exactly', () => {
+    const src = '<!-- wp:html --><div data-x="a&amp;b">&lt;hi&gt;</div><!-- /wp:html -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Custom HTML'), document), src)
+  })
+
+  test('leaves no marker attributes behind', () => {
+    const out = toWordPressHTML(wrapper('<!-- wp:calendar /-->', 'Calendar'), document)
+    assert.doesNotMatch(out, /data-quill-unsupported|wp-block-quill-unsupported|data-quill-passthrough/)
+  })
+
+  test('is idempotent', () => {
+    const src = '<!-- wp:shortcode -->[x]<!-- /wp:shortcode -->'
+    const once = toWordPressHTML(wrapper(src, 'Shortcode'), document)
+    assert.equal(toWordPressHTML(once, document), once)
+  })
+
+  test('restores two wrappers in document order', () => {
+    const a = '<!-- wp:calendar /-->'
+    const b = '<!-- wp:shortcode -->[y]<!-- /wp:shortcode -->'
+    const out = toWordPressHTML(wrapper(a, 'Calendar') + wrapper(b, 'Shortcode'), document)
+    assert.equal(out, a + b)
+  })
+
+  test('restores a source containing a dollar sequence', () => {
+    const src = '<!-- wp:shortcode -->[price amount="$1.00" note="$&"]<!-- /wp:shortcode -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Shortcode'), document), src)
+  })
+
+  test('a post with no wrappers is unchanged by the pass', () => {
+    const out = toWordPressHTML('<p>Hi</p>', document)
+    assert.match(out, /<p>Hi<\/p>/)
+  })
+})
