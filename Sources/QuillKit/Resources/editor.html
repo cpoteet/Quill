@@ -2791,6 +2791,73 @@
       return true
     }
 
+    // Esc belongs to whatever overlay is open before it belongs to the editor.
+    function _overlayOpen() {
+      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible')
+    }
+
+    // Land the caret in typable space just past the container, making that
+    // paragraph when the container is the last thing there is.
+    function _exitContainerBlock(tr, target) {
+      target = target || _deletableBlockAt(editor.state.selection.$from)
+      if (!target) return false
+      tr = tr || editor.state.tr
+      const after = tr.mapping.map(target.pos + target.node.nodeSize)
+      const next = tr.doc.nodeAt(after)
+      if (!next || !next.isTextblock) tr.insert(after, editor.schema.nodes.paragraph.create())
+      editor.view.dispatch(tr)
+      editor.commands.setTextSelection(after + 1)
+      editor.commands.focus()
+      return true
+    }
+
+    // Without this every container answers Enter differently: ProseMirror's
+    // lift escapes only where the schema lets it, so an earlier tab panel
+    // ignored it and a column split itself in half.
+    function _containerEnter() {
+      if (_isInFootnote()) return false
+      const { $from, empty } = editor.state.selection
+      if (!empty) return false
+
+      if ($from.parent.type.name === 'preformatted') {
+        if ($from.parentOffset !== $from.parent.content.size) return false
+        if (!$from.parent.textContent.endsWith('\n\n')) return false
+        return _exitContainerBlock(editor.state.tr.delete($from.pos - 2, $from.pos))
+      }
+
+      const target = _deletableBlockAt($from)
+      // A cell legitimately holds paragraphs, and escaping a whole table from
+      // the middle of one would surprise more than it helps.
+      if (!target || target.node.type.name === 'table') return false
+
+      if ($from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
+          && $from.after() === $from.end(-1)) {
+        const tr = editor.state.tr
+        if ($from.node(-1).childCount > 1) tr.delete($from.before(), $from.after())
+        return _exitContainerBlock(tr, target)
+      }
+
+      if (target.node.type.name === 'pullquote' && $from.parent.type.name === 'paragraph'
+          && $from.node(-1).type.name === 'pullquote') {
+        const tr = editor.state.tr
+        tr.split($from.pos, 1, [{ type: editor.schema.nodes.paragraph }])
+        editor.view.dispatch(tr)
+        return true
+      }
+      return false
+    }
+
+    const ContainerExit = Extension.create({
+      name: 'containerExit',
+      priority: 250,
+      addKeyboardShortcuts() {
+        return {
+          Escape: () => (_overlayOpen() ? false : _exitContainerBlock()),
+          Enter: () => _containerEnter(),
+        }
+      },
+    })
+
     // A class, never a widget: a contenteditable=false node next to the caret
     // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
     const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary'])
@@ -3106,6 +3173,7 @@
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
         ContainerChrome,
+        ContainerExit,
         SpellCheck,
         FindHighlight,
       ],

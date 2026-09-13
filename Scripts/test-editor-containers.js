@@ -1615,3 +1615,262 @@ describe('delete block control', () => {
     assert.equal(editor.state.doc.child(0).childCount, 1)
   })
 })
+
+// Every container used to answer a double-Enter differently — details and the
+// last tab panel escaped, an earlier tab panel piled up empty paragraphs, and a
+// column split itself in two. Esc is the one gesture that always leaves.
+describe('leaving a container block', () => {
+  const key = (k, mods = {}) => {
+    const code = { Enter: 13, Escape: 27, Backspace: 8 }
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+      key: k, code: k, keyCode: code[k] || 0, which: code[k] || 0,
+      bubbles: true, cancelable: true,
+      shiftKey: !!mods.shift, metaKey: !!mods.meta,
+    }))
+  }
+
+  const enter = (n = 1) => { for (let i = 0; i < n; i++) key('Enter') }
+
+  // Inside the first text position of the nth node of this type.
+  const into = (typeName, index = 0) => {
+    let seen = -1, target = null
+    editor.state.doc.descendants((n, p) => {
+      if (n.type.name === typeName) { seen++; if (seen === index && target === null) target = p + 2 }
+    })
+    editor.commands.setTextSelection(target)
+  }
+
+  const countOf = typeName => {
+    let n = 0
+    editor.state.doc.descendants(node => { if (node.type.name === typeName) n++ })
+    return n
+  }
+
+  const CONTAINERS = new Set(['table', 'tabsBlock', 'accordionBlock', 'detailsBlock',
+                              'columnsBlock', 'buttonsBlock', 'pullquote', 'preformatted'])
+  const atTopLevel = () => {
+    const $h = editor.state.selection.$head
+    for (let d = $h.depth; d > 0; d--) if (CONTAINERS.has($h.node(d).type.name)) return false
+    return true
+  }
+  const caretText = () => editor.state.selection.$head.parent.textContent
+
+  before(() => { editor.view.dom.blur() })
+
+  test('Esc leaves a tab panel for the body below', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('tabsBlock'), 1)
+  })
+
+  test('Esc leaves the first tab panel, not just the last', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(3)
+    into('tabPanel', 0)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('tabPanel'), 3)
+  })
+
+  test('Esc leaves a column without breaking the columns block apart', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertColumns(2)
+    into('columnBlock', 0)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('columnsBlock'), 1)
+    assert.equal(countOf('columnBlock'), 2)
+  })
+
+  test('Esc leaves a table', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().insertTable({ rows: 2, cols: 2 }).run()
+    into('tableCell', 0)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('table'), 1)
+  })
+
+  test('Esc leaves a preformatted block', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().setPreformatted().run()
+    editor.commands.insertContent('code')
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('preformatted'), 1)
+    assert.equal(editor.state.doc.child(0).textContent, 'code')
+  })
+
+  test('Esc leaves a details body', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('detailsBlock'), 1)
+  })
+
+  test('Esc makes the paragraph to land in when the block is last', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    assert.equal(editor.state.doc.childCount, 1)
+    key('Escape')
+    assert.equal(editor.state.doc.childCount, 2)
+    assert.equal(editor.state.doc.child(1).type.name, 'paragraph')
+    editor.commands.insertContent('after')
+    assert.equal(editor.state.doc.child(1).textContent, 'after')
+  })
+
+  test('Esc reuses the paragraph already below instead of stacking a blank one', () => {
+    editor.commands.setContent('<p>x</p><p>below</p>', false)
+    editor.commands.setTextSelection(2)
+    win.insertTabs(2)
+    const before = editor.state.doc.childCount
+    into('tabPanel', 0)
+    key('Escape')
+    assert.equal(editor.state.doc.childCount, before)
+    assert.equal(caretText(), 'below')
+  })
+
+  test('Esc steps out one container at a time when nested', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-columns"><div class="wp-block-column">' +
+      '<table><tbody><tr><td><p>A</p></td></tr></tbody></table></div>' +
+      '<div class="wp-block-column"><p>B</p></div></div>', false)
+    into('tableCell', 0)
+    assert.equal(editor.state.selection.$head.node(-4).type.name, 'columnBlock')
+    key('Escape')
+    assert.equal(atTopLevel(), false)
+    assert.equal(editor.state.selection.$head.node(-1).type.name, 'columnBlock')
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('columnsBlock'), 1)
+  })
+
+  test('Esc does nothing in ordinary body text', () => {
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(3)
+    key('Escape')
+    assert.equal(editor.state.doc.childCount, 1)
+    assert.equal(editor.state.selection.head, 3)
+  })
+
+  test('Esc closes an open menu rather than leaving the block', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    win.document.getElementById('insert-menu').classList.add('visible')
+    key('Escape')
+    assert.equal(atTopLevel(), false)
+    win.document.getElementById('insert-menu').classList.remove('visible')
+  })
+
+  test('Enter twice leaves the first tab panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    editor.commands.insertContent('one')
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('tabPanel'), 2)
+    assert.equal(countOf('paragraph'), 3)
+  })
+
+  test('Enter twice leaves a column with the columns block intact', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertColumns(2)
+    editor.commands.insertContent('left')
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('columnsBlock'), 1)
+    assert.equal(countOf('columnBlock'), 2)
+  })
+
+  test('Enter twice still leaves a details body', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    editor.commands.insertContent('body')
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('detailsBlock'), 1)
+  })
+
+  test('Enter twice still leaves an accordion panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    into('accordionPanel', 0)
+    editor.commands.insertContent('body')
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('accordionBlock'), 1)
+  })
+
+  test('Enter on a panel’s only empty paragraph leaves without emptying it', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    into('tabPanel', 0)
+    key('Enter')
+    assert.equal(atTopLevel(), true)
+    let panel = null
+    editor.state.doc.descendants(n => { if (!panel && n.type.name === 'tabPanel') panel = n })
+    assert.equal(panel.childCount, 1)
+  })
+
+  test('Enter in a table cell still just adds a paragraph', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().insertTable({ rows: 2, cols: 2 }).run()
+    into('tableCell', 0)
+    enter(2)
+    assert.equal(atTopLevel(), false)
+    assert.equal(countOf('table'), 1)
+  })
+
+  test('Enter mid-panel still splits the paragraph normally', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    editor.commands.insertContent('one')
+    editor.commands.setTextSelection(editor.state.selection.head - 1)
+    key('Enter')
+    assert.equal(atTopLevel(), false)
+    let panel = null
+    editor.state.doc.descendants(n => { if (!panel && n.type.name === 'tabPanel') panel = n })
+    assert.equal(panel.childCount, 2)
+  })
+
+  test('Enter in a preformatted block adds a line, not a paragraph', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().setPreformatted().run()
+    editor.commands.insertContent('one')
+    key('Enter')
+    editor.commands.insertContent('two')
+    assert.equal(countOf('preformatted'), 1)
+    assert.equal(editor.state.doc.child(0).textContent, 'one\ntwo')
+  })
+
+  test('three Enters leave a preformatted block, trailing blank lines trimmed', () => {
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().setPreformatted().run()
+    editor.commands.insertContent('code')
+    enter(3)
+    assert.equal(atTopLevel(), true)
+    assert.equal(editor.state.doc.child(0).textContent, 'code')
+  })
+
+  test('Enter in a pullquote makes a paragraph, never a citation', () => {
+    editor.commands.setContent(
+      '<figure class="wp-block-pullquote"><blockquote><p>Q</p></blockquote></figure>', false)
+    editor.commands.setTextSelection(4)
+    key('Enter')
+    assert.equal(countOf('cite'), 0)
+    assert.equal(editor.state.doc.child(0).childCount, 2)
+    assert.equal(editor.state.doc.child(0).child(1).type.name, 'paragraph')
+  })
+
+  test('Enter twice leaves a pullquote', () => {
+    editor.commands.setContent(
+      '<figure class="wp-block-pullquote"><blockquote><p>Q</p></blockquote></figure>', false)
+    editor.commands.setTextSelection(4)
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('pullquote'), 1)
+  })
+})
