@@ -661,12 +661,17 @@ public struct PostEditorView: View {
             await flushToDB(for: prev)
         }
         loadedItem = item
+        // Every per-post banner and save guard resets here, for both branches.
+        // A local draft opened after a remote post failed to load must not
+        // inherit its blocked state. The editor re-posts blocksAtRisk after the
+        // content below lands, so a real alarm for this post still arrives.
         saveError = nil
+        blockRiskAlarm = nil
+        contentLoadFailed = false
 
         switch requestedItem {
         case .remote(let post):
             applyRemotePost(post)
-            contentLoadFailed = false
 
             let loadedPost: WPPost
             if let creds = appState.credentials {
