@@ -480,6 +480,15 @@ describe('tabs block', () => {
     assert.equal(node.child(1).childCount, 2)
   })
 
+  test('typing after insert lands in the first tab panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    editor.commands.insertContent('First')
+    const panels = editor.state.doc.child(0).child(1)
+    assert.match(panels.child(0).textContent, /First/)
+    assert.equal(panels.child(1).textContent, '')
+  })
+
   test('parses the real fixture into editable nodes', () => {
     editor.commands.setContent(tabsFixture, false)
     const node = editor.state.doc.child(0)

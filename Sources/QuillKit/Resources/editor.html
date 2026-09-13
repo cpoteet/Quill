@@ -4250,6 +4250,7 @@
     window.insertTabs = (count) => {
       if (_isInFootnote()) return false
       const labels = Array.from({ length: count }, (_, i) => `Tab ${i + 1}`)
+      const at = editor.state.selection.from
       editor.chain().focus().insertContent({
         type: 'tabsBlock',
         content: [
@@ -4257,6 +4258,11 @@
           { type: 'tabPanels', content: labels.map(l => ({ type: 'tabPanel', attrs: { label: l }, content: [{ type: 'paragraph' }] })) },
         ],
       }).run()
+      let target = null
+      editor.state.doc.descendants((node, pos) => {
+        if (target === null && node.type.name === 'tabPanel' && pos >= at - 1) target = pos + 2
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
       return true
     }
 
