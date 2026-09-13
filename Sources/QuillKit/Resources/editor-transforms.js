@@ -328,15 +328,60 @@ function wrapElementWithComments(doc, el, openText, closeText) {
 // Attributes WordPress writes on a core/image block comment. Each key is
 // omitted when it can't be determined from the figure, which is what core does
 // too — an image with no attributes saves as a bare `<!-- wp:image -->`.
+// Pixel dimension from either the legacy width/height attribute or the inline
+// style core now writes. `auto` and percentages yield null, matching core's
+// treatment of an unset dimension.
+function imgPixelDimension(img, prop) {
+  const attr = img.getAttribute(prop)
+  if (attr) {
+    const n = parseInt(attr, 10)
+    if (n) return n
+  }
+  const m = (img.getAttribute('style') || '').match(styleDimensionRegex(prop))
+  return m ? Math.round(parseFloat(m[1])) : null
+}
+
+function styleDimensionRegex(prop) {
+  return new RegExp('(?:^|;)\\s*' + prop + '\\s*:\\s*([0-9.]+)px', 'i')
+}
+
+// core/image's save() renders dimensions as an inline style plus an is-resized
+// class on the figure, never as HTML width/height attributes. Markup carrying
+// either form without the other fails Gutenberg's block validation, so the two
+// are rebuilt together here from whichever form the editor produced.
+function applyImageDimensions(figure, img) {
+  const width = imgPixelDimension(img, 'width')
+  const height = imgPixelDimension(img, 'height')
+  img.removeAttribute('width')
+  img.removeAttribute('height')
+  figure.classList.remove('is-resized')
+  if (width == null && height == null) {
+    img.removeAttribute('style')
+    return
+  }
+  const parts = []
+  if (width != null) parts.push(`width:${width}px`)
+  parts.push(height != null ? `height:${height}px` : 'height:auto')
+  img.setAttribute('style', parts.join(';'))
+  figure.classList.add('is-resized')
+}
+
 function imageBlockAttrs(figure, img) {
   const attrs = {}
   const id = (img.getAttribute('class') || '').match(/wp-image-(\d+)/)
   if (id) attrs.id = parseInt(id[1], 10)
+  const style = img.getAttribute('style') || ''
+  const width = style.match(styleDimensionRegex('width'))
+  if (width) attrs.width = width[1] + 'px'
+  const height = style.match(styleDimensionRegex('height'))
+  if (height) attrs.height = height[1] + 'px'
   const size = (figure.getAttribute('class') || '').match(/(?:^|\s)size-([\w-]+)/)
   if (size) attrs.sizeSlug = size[1]
   const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
   if (align) attrs.align = align
   if (img.parentNode && img.parentNode.tagName === 'A') attrs.linkDestination = 'media'
+  const role = img.getAttribute('role')
+  if (role === 'none' || role === 'presentation') attrs.isDecorative = true
   return attrs
 }
 
@@ -420,6 +465,7 @@ function toWordPressHTML(html, doc) {
         caption.remove()
       }
     }
+    applyImageDimensions(figure, img)
   })
 
   // Standalone images → wp:image block comments. Without them WordPress parses

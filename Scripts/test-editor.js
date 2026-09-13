@@ -444,6 +444,112 @@ describe('toWordPressHTML — images', () => {
 })
 
 // ---------------------------------------------------------------------------
+// toWordPressHTML — image dimensions and decorative flag
+//
+// core/image's save() puts dimensions in an inline style plus an is-resized
+// class, never in HTML width/height attributes, and emits role only when the
+// isDecorative attribute is set. Markup that carries either without the
+// matching wp:image comment attribute fails Gutenberg's block validation with
+// "Block contains unexpected or invalid content."
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — image dimensions', () => {
+  const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
+  const figureOf = out => new JSDOM(out).window.document.querySelector('figure')
+  const imgOf = out => new JSDOM(out).window.document.querySelector('img')
+
+  test('width and height attributes become an inline style on the img', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:480px')
+  })
+
+  test('width and height attributes are removed from the img', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    const img = imgOf(out)
+    assert.ok(!img.hasAttribute('width'), 'img kept a width attribute')
+    assert.ok(!img.hasAttribute('height'), 'img kept a height attribute')
+  })
+
+  test('width alone forces height:auto, matching core save()', () => {
+    const out = wp('<figure><img src="a.jpg" width="640"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:auto')
+  })
+
+  test('height alone emits height only', () => {
+    const out = wp('<figure><img src="a.jpg" height="480"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'height:480px')
+  })
+
+  test('dimensions add is-resized to the figure', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.ok(figureOf(out).classList.contains('is-resized'))
+  })
+
+  test('no dimensions means no is-resized and no style', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.ok(!figureOf(out).classList.contains('is-resized'))
+    assert.ok(!imgOf(out).hasAttribute('style'))
+  })
+
+  test('stale is-resized is stripped when the image has no dimensions', () => {
+    const out = wp('<figure class="is-resized"><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.ok(!figureOf(out).classList.contains('is-resized'))
+  })
+
+  test('dimensions are carried into the wp:image comment attributes as px strings', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { width: '640px', height: '480px' })
+  })
+
+  // core leaves height undefined when only a width is set; save() then forces
+  // height:auto in the style, so the attribute stays absent on both sides.
+  test('width alone carries only width into the comment attributes', () => {
+    const out = wp('<figure><img src="a.jpg" width="640"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { width: '640px' })
+  })
+
+  test('an unresized image carries no width or height comment attribute', () => {
+    const out = wp('<figure><img src="a.jpg" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { id: 42 })
+  })
+
+  test('an existing width style on the img survives without duplicating', () => {
+    const out = wp('<figure><img src="a.jpg" style="width:640px;height:auto"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:auto')
+    assert.deepEqual(attrsOf(out), { width: '640px' })
+  })
+
+  test('dimension handling is idempotent across a second save', () => {
+    const once = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.equal(wp(once), once)
+  })
+})
+
+describe('toWordPressHTML — decorative images', () => {
+  const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
+
+  test('role="none" on the img sets isDecorative in the comment attributes', () => {
+    const out = wp('<figure><img src="a.jpg" role="none" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { id: 42, isDecorative: true })
+  })
+
+  test('role="presentation" also sets isDecorative', () => {
+    const out = wp('<figure><img src="a.jpg" role="presentation"><figcaption></figcaption></figure>')
+    assert.equal(attrsOf(out).isDecorative, true)
+  })
+
+  test('an image with no role carries no isDecorative attribute', () => {
+    const out = wp('<figure><img src="a.jpg" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.ok(!('isDecorative' in attrsOf(out)))
+  })
+
+  test('the role attribute stays on the img', () => {
+    const out = wp('<figure><img src="a.jpg" role="none"><figcaption></figcaption></figure>')
+    assert.match(out, /role="none"/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // toWordPressHTML — tables
 // ---------------------------------------------------------------------------
 

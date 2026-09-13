@@ -518,6 +518,96 @@ describe('image marked as decorative (WP 7.1)', () => {
     assert.equal(editor.state.doc.firstChild.attrs.imgRole, null)
     assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /role=/)
   })
+
+  test('role="none" sets isDecorative in the wp:image comment attributes', () => {
+    // Without it, save() regenerates no role and Gutenberg rejects the block.
+    const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption>cap</figcaption></figure>'
+    editor.commands.setContent(html, false)
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.equal(JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1]).isDecorative, true)
+  })
+})
+
+describe('image dimensions round-trip', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  const save = () => win.toWordPressHTML(editor.getHTML())
+  const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
+  const docOf = out => new JSDOM('<body>' + out + '</body>').window.document
+
+  // Real core/image save() output for a resized image.
+  const RESIZED = '<figure class="wp-block-image size-full is-resized">'
+    + '<img src="http://x/p.jpg" alt="" class="wp-image-99" style="width:640px;height:auto">'
+    + '<figcaption class="wp-element-caption">cap</figcaption></figure>'
+
+  test('a style width on the img parses into the width attr', () => {
+    editor.commands.setContent(RESIZED, false)
+    assert.equal(editor.state.doc.firstChild.attrs.width, 640)
+  })
+
+  test('height:auto parses as no height', () => {
+    editor.commands.setContent(RESIZED, false)
+    assert.equal(editor.state.doc.firstChild.attrs.height, null)
+  })
+
+  test('a resized image saves back with its style and is-resized intact', () => {
+    editor.commands.setContent(RESIZED, false)
+    const doc = docOf(save())
+    assert.equal(doc.querySelector('img').getAttribute('style'), 'width:640px;height:auto')
+    assert.ok(doc.querySelector('figure').classList.contains('is-resized'))
+  })
+
+  test('a resized image saves its dimensions into the comment attributes', () => {
+    editor.commands.setContent(RESIZED, false)
+    assert.equal(attrsOf(save()).width, '640px')
+  })
+
+  test('the saved img carries no width or height attribute', () => {
+    editor.commands.setContent(RESIZED, false)
+    const img = docOf(save()).querySelector('img')
+    assert.ok(!img.hasAttribute('width') && !img.hasAttribute('height'))
+  })
+
+  test('is-resized is dropped when the image loses its dimensions', () => {
+    editor.commands.setContent(RESIZED, false)
+    const pos = 0
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, null, {
+      ...editor.state.doc.firstChild.attrs, width: null, height: null,
+    }))
+    const out = save()
+    assert.ok(!docOf(out).querySelector('figure').classList.contains('is-resized'))
+    assert.ok(!('width' in attrsOf(out)))
+  })
+
+  test('is-resized is not carried as a stale figure class', () => {
+    editor.commands.setContent(RESIZED, false)
+    assert.ok(!(editor.state.doc.firstChild.attrs.figureClass || '').includes('is-resized'))
+  })
+
+  test('a resized image round-trips idempotently', () => {
+    editor.commands.setContent(RESIZED, false)
+    const once = save()
+    editor.commands.setContent(once, false)
+    assert.equal(save(), once)
+  })
+
+  test('legacy width/height attributes are converted to a style on save', () => {
+    const legacy = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" width="640" height="480"><figcaption></figcaption></figure>'
+    editor.commands.setContent(legacy, false)
+    const doc = docOf(save())
+    assert.equal(doc.querySelector('img').getAttribute('style'), 'width:640px;height:480px')
+    assert.ok(!doc.querySelector('img').hasAttribute('width'))
+  })
+
+  test('an image inserted by Quill with dimensions saves core-compatible markup', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertImage('http://x/p.jpg', 640, 480, 99, 'alt text')
+    const out = save()
+    const img = docOf(out).querySelector('img')
+    assert.equal(img.getAttribute('style'), 'width:640px;height:480px')
+    assert.ok(!img.hasAttribute('width') && !img.hasAttribute('height'))
+    assert.deepEqual(attrsOf(out), { id: 99, width: '640px', height: '480px' })
+  })
 })
 
 describe('window.insertImage cursor placement', () => {
@@ -576,7 +666,7 @@ describe('window.insertImage cursor placement', () => {
     win.insertImage('http://x/a.jpg', 100, 50, 1)
     win.insertImage('http://x/b.jpg', 100, 50, 2)
     const out = win.toWordPressHTML(editor.getHTML())
-    const ids = [...out.matchAll(/<!-- wp:image \{"id":(\d+)\} -->/g)].map(m => m[1])
+    const ids = [...out.matchAll(/<!-- wp:image \{"id":(\d+)[^}]*\} -->/g)].map(m => m[1])
     assert.deepEqual(ids, ['1', '2'])
     assert.equal((out.match(/<!-- \/wp:image -->/g) || []).length, 2)
     // No blank paragraph wedged between the two figures by the cursor move.
@@ -589,7 +679,7 @@ describe('window.insertImage cursor placement', () => {
     editor.commands.focus('end')
     win.insertImage('http://x/r.jpg', 800, 600, 42, 'alt text')
     const out = win.toWordPressHTML(editor.getHTML())
-    const figure = out.match(/<figure class="wp-block-image">[\s\S]*?<\/figure>/)[0]
+    const figure = out.match(/<figure class="wp-block-image[^"]*">[\s\S]*?<\/figure>/)[0]
     assert.doesNotMatch(figure, /<figcaption/)
     assert.doesNotMatch(figure, /<p>/)
     assert.match(figure, /<img src="http:\/\/x\/r\.jpg"/)
