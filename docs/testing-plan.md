@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-08-20 — 365 Swift tests + 320 JS tests, all passing._
+_Last updated: 2026-09-12 — 376 Swift tests + 544 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,12 +16,17 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 365 tests)
-2. **JS editor tests** — `node --test Scripts/test-editor.js` (171 tests via Node's built-in runner + jsdom)
-3. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (59 tests — live Tiptap editor in jsdom)
-4. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
-5. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
-6. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (all 376 tests)
+2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (52 tests — pure Node, no DOM)
+3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (29 tests — live Tiptap editor in jsdom)
+4. **JS editor tests** — `node --test Scripts/test-editor.js` (183 tests via Node's built-in runner + jsdom)
+5. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (59 tests — live Tiptap editor in jsdom)
+6. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
+7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (131 tests — live Tiptap editor in jsdom)
+8. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
+9. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
+
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nine passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -49,9 +54,9 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (365 tests, 23 suites)
+## Swift test suite (376 tests, 24 suites)
 
-`swift test` reports 25 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
+`swift test` reports 26 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -82,6 +87,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
+| 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 11 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, and that only the unacknowledged stage blocks saving |
 
 ---
 
@@ -794,7 +800,184 @@ Tests `ImageConversion.prepareForUpload(_:)` and `Prepared.cleanup()`. WordPress
 
 ---
 
-## JS editor tests (171 tests)
+## JS block serializer tests (52 tests)
+
+File: `Scripts/test-block-serializer.js`
+Under test: `Sources/QuillKit/Resources/block-parser-bundle.js`, `block-serializer.js`, `block-descriptors.js`
+
+Pure Node — no DOM, no jsdom, no Tiptap — which makes this the cheapest suite in the project and the fastest guard against the round-trip regression class that produced the three shipped comment-stripping bugs. Each file is read off disk and evaluated in its own `new Function` sandbox, so the suite tests the shipped source rather than a copy.
+
+**What is live:** all three files are loaded by `editor.html`. `block-descriptors.js` is read by `toWordPressHTML` — that is how saves get their `wp:` delimiters. `block-parser-bundle.js` (WordPress's own block parser, bundled by `Scripts/bundle-block-parser.sh`) and `block-serializer.js` (block tree → `post_content`) were re-hooked on 2026-09-12 for unsupported-block preservation: the parser enumerates a post's top-level blocks on load and the serializer produces each one's stored text. The ordinary save path is still `toWordPressHTML`, not the serializer.
+
+### `block parser bundle` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `parses a delimited paragraph` | `<!-- wp:paragraph -->` markup yields one block with `blockName: 'core/paragraph'` and its `innerHTML` intact |
+| `parses undelimited HTML as a freeform block` | Classic content with no delimiters yields a single `blockName: null` freeform block |
+
+### `block serializer` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `round-trips a paragraph byte-identically` | parse → serialize returns the input unchanged |
+| `round-trips attributes without reordering or re-spacing` | `{"level":3}` comes back with identical key order and spacing — the serializer re-emits attributes, so any drift here is silent data change |
+| `round-trips nested blocks at their innerContent slots` | A `wp:paragraph` inside a `wp:group` is re-inserted at its `null` slot in the parent's `innerContent`, not appended |
+| `passes freeform content through untouched` | A block with no `blockName` emits its content with no delimiters added |
+| `strips the core/ prefix in delimiters` | `core/separator` is written as `wp:separator`, matching what WordPress writes |
+
+### `fixture round-trips` (5 tests)
+
+One test per `Scripts/fixtures/*.html`, globbed at load time — dropping a new capture in adds a test with no code change. Each asserts the file survives parse → serialize byte-identically. The corpus is real `post_content` from the live site: a two-item accordion, a captioned gallery, a tabs block, and one whole published post (classic prose, images, footnotes, two accordions), plus the hand-written `unsupported-blocks.html`.
+
+See `Scripts/fixtures/README.md` before changing a fixture — they are recordings of what one WordPress version wrote, never a specification of what core emits now, and `accordion-block.html` deliberately holds the old heading shape.
+
+### `block descriptors` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `maps heading to core/heading with its level attribute` | `descriptorFor('heading')` returns `core/heading`, shape `text`, and `attrsFrom` reads `{ level: 3 }` off an `<h3>` |
+| `maps paragraph to core/paragraph with no attributes` | The common case emits an empty attribute object, so no `{}` is written into the delimiter |
+| `returns null for an unknown node` | An unregistered node name gets no descriptor, which is how `toWordPressHTML` knows to leave it alone |
+| `level 2 headings emit level 2, not a default` | Guards against a hardcoded level slipping in behind the `<h3>` case |
+
+### `blockSourceSlices` (9 tests)
+
+The cursor walk that gives each top-level block a literal slice of the original `post_content`. The parser exposes no byte offsets, so the block's text has to come from `serializeBlock`, which is a reconstruction — the walk tests whether the original continues with exactly those bytes at the cursor and stores the real slice when it does.
+
+| Test | What it checks |
+|---|---|
+| `a canonical block yields an exact slice of the original` | The common case is `exact: true` with `blockName` and `attrsJSON` populated |
+| `slices concatenate back to the original` | The walk loses nothing between blocks |
+| `inter-block whitespace is preserved as a freeform slice` | The `\n\n` WordPress writes between blocks comes back as a `blockName: null` slice, not dropped |
+| `a self-closing block yields an exact slice` | `<!-- wp:calendar /-->` round-trips |
+| `freeform content is reported with a null blockName` | Classic prose is not a block |
+| `non-canonical attribute formatting falls back, marked inexact` | `{"width":33.0}` serialises to `{"width":33}`, so the slice is marked inexact and stores the serialisation |
+| `an inexact block does not desynchronise the blocks after it` | The cursor recovers past the fallback, so the next block is still exact |
+| `an inexact nested block still yields faithful sources for what follows` | The recovery heuristic mis-lands on a nested block's closing delimiter, so this pins the consequence: later blocks may go inexact, but an inexact block's source is always a faithful serialisation, never a wrong slice |
+| `an inexact self-closing block still yields a faithful source for what follows` | Same guarantee where there is no closing delimiter to find at all |
+
+### `blockSourceSlices over the real fixtures` (5 tests)
+
+One test per fixture: every block comes back `exact: true` and the slices concatenate to the file byte-for-byte. This is the evidence that canonical WordPress output never takes the fallback path.
+
+### `blockNeedsWrapping` (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `a block with a wp-block class root is left alone` | The existing `gutenbergPassthrough` catch-all already holds it |
+| `a paragraph is left alone even though its markup carries no class` | `core/paragraph` saves bare `<p>`, so the class test alone would freeze every paragraph into a card |
+| `a modeled block that saves no markup is wrapped` | A self-closing `<!-- wp:separator /-->` carries a name Quill models but no markup for any node to parse, so the modeled exemption must not reach it. Found by the alarm firing on a real draft |
+| `a modeled block that does save markup is still left alone` | The separator WordPress actually writes stays an editable rule |
+| `every block Quill models is left alone` | Paragraph, heading, list, quote, code and separator all stay editable |
+| `core/html is wrapped, because its markup has no wp-block class` | |
+| `core/shortcode is wrapped, because it has no element at all` | |
+| `a self-closing dynamic block is wrapped` | Calendar and friends save no markup to attach to |
+| `a page break is wrapped` | |
+| `freeform prose is never wrapped` | |
+| `a nested block inside a claimed block does not make the parent wrap` | A `wp:query` holding a `wp:post-title` is one top-level block, not two |
+
+### `wrapUnsupportedBlocks` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `leaves a fully supported post untouched` | Returns the input string identically when nothing needs wrapping |
+| `leaves every real-site fixture untouched` | The four live-site captures are unaffected by the new pass |
+| `wraps exactly the eight unsupported blocks in the corpus fixture` | The counter-example: eight wrappers, prose untouched |
+| `replaces a shortcode block with a wrapper carrying its source` | The wrapper carries `data-quill-unsupported-source` and a readable label |
+| `stores quotes and ampersands in the source without corruption` | Setting the attribute through the DOM escapes correctly and `getAttribute` returns the original |
+| `keeps supported blocks in place around a wrapped one` | Document order survives |
+
+### `unrepresentedBlockNames` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `reports nothing when every block is accounted for` | |
+| `reports a block the document does not hold` | |
+| `ignores freeform blocks, which are prose not blocks` | |
+| `strips the core prefix and de-duplicates` | |
+| `keeps a third-party namespace intact` | `acme/widget` is reported whole, not truncated to `acme` |
+
+---
+
+## JS preservation tests (29 tests)
+
+File: `Scripts/test-editor-preservation.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `window.getContent`, the same approach as the container and gallery suites. The pure helpers above cannot reach this path: preservation crosses `setContent`'s wrap, the `gutenbergPassthrough` parse rule, the node view, and `toWordPressHTML`'s unwrap. It is also the only layer that catches the classic-script `const`-is-not-on-`window` class of bug (see the root `CLAUDE.md` gotcha) — the pure-Node suite `require`s the module and so cannot see it.
+
+### `block parser and serializer are live in the editor` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `window.BlockParser.parse is callable` | The re-hooked `<script>` tag is present and the bundle exposes its global |
+| `window.serializeBlock is callable` | Same for the serializer, round-tripping a paragraph |
+
+### `unsupported blocks become passthrough cards` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `a wrapped shortcode parses into one gutenbergPassthrough node` | One node, with `unsupportedSource` holding the exact original and the right label |
+| `the card shows the label and a peek at the content` | A bare "Shortcode" label cannot tell two shortcodes apart, so the card carries the text |
+| `the peek is truncated for a long block` | Capped at 120 characters plus an ellipsis |
+| `the peek renders markup as text, never as live DOM` | `textContent`, not `innerHTML` — a Custom HTML block must not execute in the editor |
+| `the card keeps the existing hint line` | The Code View hint is unchanged |
+| `an ordinary passthrough block still renders a card with no peek` | A classed block like `wp:spacer` takes the old path, no peek added |
+
+### `the wrap applies at post_content entry points only` (5 tests)
+
+Four call sites set editor content; two receive `post_content` and must wrap, two restore `editor.getHTML()` and must not. Getting this wrong is silent, so each is pinned.
+
+| Test | What it checks |
+|---|---|
+| `setContent wraps, so an edit elsewhere cannot destroy the block` | The shortcode survives a keystroke in another paragraph |
+| `an unedited post still round-trips byte-identically` | The raw-HTML store keeps the unwrapped original |
+| `code view shows the real source, not the wrapper` | The user never sees Quill's placeholder markup |
+| `a block hand-edited in code view is re-wrapped on exit` | Missing this would mean a hand-edited Custom HTML block is shredded by the next visual edit |
+| `the AI reject path does not double-wrap` | Restoring already-wrapped internal HTML adds no second wrapper |
+
+### `the unsupported-block corpus survives an edit` (6 tests)
+
+Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used to be destroyed — through load, edit elsewhere, save.
+
+| Test | What it checks |
+|---|---|
+| `round-trips byte-identically with no edit` | |
+| `every unsupported block survives an edit elsewhere` | All eight delimiters and all three inner-markup shapes intact |
+| `the edit itself lands in the prose` | The test is actually editing the document, not silently no-opping |
+| `saving twice is idempotent` | No growth or drift across repeated saves |
+| `no wrapper markup reaches the saved output` | No `quill-unsupported` string in what goes to WordPress |
+| `each unsupported block renders its own card` | Eight cards, so paragraphs are not being swallowed |
+
+### `the alarm reports only genuine loss` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `the transform helpers the editor needs are on window` | Guards the classic-script global-exposure boundary |
+| `a fully preserved post posts nothing` | |
+| `an ordinary post posts nothing` | |
+| `every real fixture posts nothing` | No false alarm on any live-site capture |
+| `a post whose block the wrap missed is reported` | Stubs `wrapUnsupportedBlocks` to a no-op and asserts the exact eight names are posted — the only way to prove the tripwire does not share the wrap's assumptions |
+| `the tripwire goes quiet again once the wrap is restored` | The stub did not leave state behind |
+
+### `reopening a post that already lost a block is quiet` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `content saved with the wrap disabled reloads with no alarm` | Banner state 4: once a block really is gone from the saved content, reopening the post finds nothing missing and stays silent, so the author is not nagged about a loss they already accepted |
+
+### `a modeled block that saves no markup is preserved, not reported` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `it raises no alarm on load` | The gap the alarm found on a live draft is closed |
+| `it survives an edit elsewhere` | `<!-- wp:separator /-->` comes back intact, with no wrapper markup in the output |
+| `a separator WordPress actually wrote stays an editable rule` | The fix does not freeze ordinary separators into cards |
+
+---
+
+## JS editor tests (183 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1138,6 +1321,32 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | data-media-id never reaches the saved output | The attribute is gone and `wp-image-201` is present |
 
 
+### `block delimiters` (5 tests)
+
+The descriptor-driven delimiter pass added in the Gutenberg block-model work. `toWordPressHTML` used to emit `<!-- wp: -->` comments for only `wp:image`, `wp:gallery` and `wp:embed`; every other block got a `wp-block-*` class and nothing else, which is what Gutenberg reads as classic content.
+
+| Test | What it checks |
+|---|---|
+| `wraps a paragraph in wp:paragraph` | A bare `<p>` comes out inside a `wp:paragraph` delimiter pair |
+| `wraps a heading with its level attribute` | An `<h2>` emits `<!-- wp:heading {"level":2} -->`, with the level read off the tag |
+| `wraps a list and each of its items` | Both `wp:list` and the per-item `wp:list-item` delimiters are emitted |
+| `does not double-wrap already-delimited content` | Saving already-delimited content twice is byte-identical — the guard against the comment-stacking regression class |
+| `leaves gallery delimiters exactly as they are` | The gallery fixture still ends up with exactly one `wp:gallery` opener, so the new pass does not collide with the three blocks that already had delimiters |
+
+### `unsupported block unwrapping` (7 tests)
+
+The save side of unsupported-block preservation. Each wrapper element is replaced by a sentinel text node before `innerHTML` is taken, then the sentinel is substituted for the stored source, so markup is restored byte for byte instead of being escaped as text.
+
+| Test | What it checks |
+|---|---|
+| `restores a shortcode block exactly` | The stored source comes back, delimiters and all |
+| `restores markup with quotes and entities exactly` | `&amp;` and `&lt;` survive the attribute round-trip unchanged |
+| `leaves no marker attributes behind` | No `data-quill-unsupported`, `wp-block-quill-unsupported` or `data-quill-passthrough` in the output |
+| `is idempotent` | Saving twice produces the same bytes |
+| `restores two wrappers in document order` | Sentinels are substituted in order, not swapped |
+| `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
+| `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
+
 ## JS keyboard tests (59 tests)
 
 File: `Scripts/test-editor-keyboard.js`
@@ -1365,6 +1574,267 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
+## JS container tests (131 tests)
+
+File: `Scripts/test-editor-containers.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Tests load the real `editor.html` in jsdom and drive the live Tiptap editor through `window._tiptapEditor` — the same approach as the gallery, keyboard and passthrough suites. A container node's `parseHTML`/`renderHTML`, its priority against `gutenbergPassthrough`, and the toolbar controls that add and remove children can't be exercised through the pure `editor-transforms.js` helpers.
+
+Five container blocks are covered end to end — **Columns**, **Details**, **Buttons**, **Accordion**, **Tabs** — plus **Pullquote** and **Preformatted**. Each block is checked on four concerns: insert, type into, parse from real WordPress markup, and save with correct `wp:` delimiters that do not stack across repeated saves. Beyond that, three cross-cutting groups: block-attribute carrying and ownership (Phase 5/6), editor-only chrome staying out of saved markup, and the click affordances on container rows.
+
+**jsdom caveat:** every element reports a zeroed `getBoundingClientRect` and Ranges have no client rects, so the *geometry* half of the click-target work — hit-box size as rendered, which character a pointer lands on — is verified in a real browser, not here. What this suite asserts instead is the CSS rule text and the dispatched-event behavior.
+
+### `columns block` (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `inserts the requested number of columns` | `window.insertColumns(3)` produces one `columnsBlock` with three children |
+| `typing lands in the targeted column only` | Text goes into the first column; the second stays empty |
+| `parses a real columns block from WordPress markup` | Comment-delimited `wp:columns`/`wp:column` markup parses to `columnsBlock` with two children |
+| `saves with wp:columns and wp:column delimiters` | One `wp:columns` opener and one `wp:column` per column |
+| `does not stack delimiters across repeated saves` | save → reload → save leaves exactly one `wp:columns` |
+| `+Col adds a column to the block the cursor is in` | Pressing the real `[data-cmd="addColumnBlock"]` control takes two columns to three |
+| `-Col removes the current column but never the last one` | `deleteColumnBlock` goes 2 → 1, then refuses to go lower |
+| `passthrough does not claim a columns block` | Class-only `div.wp-block-columns` still parses as `columnsBlock`, not `gutenbergPassthrough` |
+
+### `details block` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `inserts a summary and a body` | `insertDetails()` produces a `detailsBlock` whose first child is a `detailsSummary` |
+| `parses WordPress details markup` | `wp:details`-delimited `<details class="wp-block-details">` parses to `detailsBlock` |
+| `saves with wp:details delimiters` | The delimiter pair is emitted on save |
+| `summary text stays in the summary on save` | `<summary>Mine</summary>` survives as a summary rather than being hoisted into the body |
+
+### `buttons block` (21 tests)
+
+The Link mark also matches `a[href]`, so without a `contentElement` it claimed the button's own anchor: the label saved twice over, and a button with no href lost its label out of the block entirely. Most of this group exists to pin that fix and the link-picker behavior built on it.
+
+| Test | What it checks |
+|---|---|
+| `inserts one button by default` | `insertButtons()` produces a `buttonsBlock` with one child |
+| `parses WordPress buttons markup` | Real `wp-block-buttons`/`wp-block-button` markup parses to `buttonsBlock` |
+| `preserves the button href on save` | A loaded button's `href` survives the save transform |
+| `saves with wp:buttons and wp:button delimiters` | Both delimiter types are emitted |
+| `a button emits exactly one anchor` | Regression: exactly one `<a>` in the output, with the full core class list and href intact |
+| `a button with no href keeps its label inside the block` | Regression: the label stays inside `div.wp-block-button` and nothing leaks past the closing `wp:buttons` delimiter |
+| `two buttons keep their own labels and order` | Two anchors, Alpha before Beta, each with its own href |
+| `a typed button label survives a save and reload` | A typed label round-trips, and the second save is byte-identical to the first |
+| `applyLink inside a button sets the node href, not a mark` | The link picker writes the node's `href` attribute; the label text carries no marks |
+| `a linked button still emits exactly one anchor` | Linking via `applyLink` does not add a second bare anchor |
+| `removeLink inside a button clears the href` | `href` becomes `null` and no `href=` appears in the save |
+| `a button link survives a save and reload` | Output is stable and the node attribute is recovered on reload |
+| `applyLink outside a button still applies a link mark` | Ordinary prose still gets a normal `<a href>` link mark |
+| `the Buttons group Link control opens the link picker` | Pressing the real `[data-cmd="buttonLink"]` posts once to `showLinkPicker` with an empty href |
+| `the Buttons group Link control seeds the picker with the current href` | An already-linked button opens the picker pre-filled |
+| `the main toolbar link control opens the picker from inside a button` | The row-1 link control works inside a button too |
+| `a linked button lights up both link controls` | Main and group controls both carry `.active` |
+| `an unlinked button lights up neither` | Neither control is active |
+| `the controls follow applyLink and removeLink` | Both light up on link and go dark on unlink |
+| `the group control goes dark outside a button` | Linked prose lights the main control only |
+| `the button label is plain text, not a link mark` | The label has no marks; the href lives on the node |
+
+### `buttons toolbar controls` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
+
+### `accordion block` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `inserts one item with a heading and a panel` | `accordionBlock > accordionItem > accordionHeading + accordionPanel` |
+| `parses the real accordion fixture` | `fixtures/accordion-block.html` becomes one `accordionBlock` with two items |
+| `heading text round-trips` | The fixture's heading text survives a save |
+| `saves with all four delimiter types` | `wp:accordion`, `wp:accordion-item`, `wp:accordion-heading`, `wp:accordion-panel` |
+| `does not stack delimiters across repeated saves` | The second save is byte-identical, with exactly one `wp:accordion` opener despite its `{"autoclose":true}` attributes |
+
+### `accordion toolbar controls` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `+Item adds a section and -Item never removes the last` | 1 → 2 → 1, then a further press is refused |
+
+### `tabs block` (6 tests)
+
+Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > tab-panel`. The label is stored twice — as the button's text and as each panel's `label` attribute — so the save transform reads it back off the button to keep the two in sync.
+
+| Test | What it checks |
+|---|---|
+| `inserts the requested number of tabs` | `tabsBlock > tabList + tabPanels`, each with the requested child count |
+| `parses the real fixture into editable nodes` | Tab button text and panel body text land in the right nodes |
+| `round-trips the fixture through the save transform` | `wp:tabs`, `wp:tab-list`, `wp:tab-panels`, one `wp:tab-panel` per panel, and the `<button type="button" role="tab">` shape |
+| `a panel label follows its tab button text` | Each `wp:tab-panel` delimiter carries the `label` read off its own button |
+| `does not stack delimiters across repeated saves` | One `wp:tabs`, two `wp:tab-panel` after a reload-and-resave |
+| `passthrough does not claim a tabs block` | The fixture parses as `tabsBlock` |
+
+### `tabs toolbar controls` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `+Tab adds a button and a panel together` | Both the tab list and the panel list grow to three — they can never drift out of step |
+| `-Tab removes the pair and never the last tab` | Both drop to one, then a further press is refused |
+
+### `insert menu` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `the toolbar exposes an insert button` | `#insert-button` exists |
+| `the menu lists every container block` | columns, accordion, tabs, details and buttons all present as `[data-insert]` items |
+| `clicking a menu item inserts that block` | Clicking the Details item produces a `detailsBlock` |
+| `clicking a menu item label inserts that block` | The label lives in a span, so a real pointer lands on the span rather than the button the previous test clicks |
+| `every menu item uses the heading menu label typography` | All seven items carry a `.heading-menu-label` span |
+| `the insert button is a labelled pill like the heading dropdown` | A text label plus exactly one chevron SVG — no icon glyph |
+| `the menu closes after an insertion` | The `visible` class is dropped once a block is inserted |
+
+### `contextual toolbar row` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `every contextual group lives in row 2, not the main toolbar` | All eight groups (blockquote, table, columns, buttons, accordion, details, tabs, image-align) are children of `#toolbar-row2` |
+| `the row is hidden in ordinary prose` | Not visible, and no group is shown |
+| `the row appears for a container and names only that group` | An accordion shows `accordion-controls` and nothing else |
+| `the row disappears again when the cursor leaves` | Moving to a paragraph hides the row |
+| `nested containers show both groups at once` | A button inside a column reveals both `buttons-controls` and `columns-controls` |
+| `the main toolbar keeps the groups that are not cursor-contextual` | The AI group and the insert menu stay in row 1 |
+
+### `pullquote and preformatted` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `setPullquote produces a pullquote node` | The command creates a real node, not a styled blockquote |
+| `a pullquote saves with wp:pullquote delimiters` | The delimiter pair is emitted |
+| `setPreformatted produces a preformatted node` | The command creates a `preformatted` node |
+| `preformatted saves with wp:preformatted delimiters` | The delimiter pair is emitted |
+| `a pullquote is not claimed by passthrough` | `figure.wp-block-pullquote` reaches its own node |
+
+### `pullquote and preformatted round-trips` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `a pullquote wraps its content in exactly one blockquote` | `figure > blockquote > p`/`cite` with no doubled blockquote |
+| `a pullquote is not stamped with wp-block-quote` | Regression: pullquotes used to be silently rewritten as quotes |
+| `repeated save cycles do not grow the pullquote` | Three further load/save cycles stay byte-identical |
+| `preformatted is not stamped with wp-block-code` | The two blocks stay distinct |
+| `preformatted keeps its whitespace through a save cycle` | Leading indentation survives and the second save matches the first |
+
+### `block attributes survive an edit` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `accordion autoclose survives an edit` | `{"autoclose":true}` is still in the delimiter after typing |
+| `a column width survives an edit` | `{"width":"33.33%"}` survives, though Quill has no width UI at all |
+| `an attribute Quill does not model is still preserved` | `{"metadata":{"name":"FAQ"}}` comes back untouched |
+
+### `the attribute carrier never reaches saved HTML` (8 tests)
+
+Two tests per fixture, over `accordion-block.html`, `tabs-block.html`, `gallery-block.html` and `post-17780.html`.
+
+| Test | What it checks |
+|---|---|
+| `<fixture> round-trips byte-identically with no edit` | `window.setContent` → `window.getContent` returns the file unchanged — the full editor path, not just the transform |
+| `<fixture> leaks no carrier attribute after an edit` | `data-quill-block-attrs`, the internal carrier for delimiter attributes, never appears in saved output |
+
+### `accordion autoclose is a real attribute` (5 tests)
+
+WordPress writes `autoclose` only into the block comment — verified against core's `accordion/save.jsx`, which emits no DOM attribute for it — so the carrier is the only copy on load and `data-autoclose` is Quill-internal.
+
+| Test | What it checks |
+|---|---|
+| `autoclose is parsed from the block comment, not data-autoclose` | The node attribute is `true` after loading comment-only markup |
+| `autoclose renders into the editor DOM so attrsFrom can read it` | `data-autoclose` appears in the editor's own HTML |
+| `toggling autoclose off clears the node attribute` | The toggle command sets it `false` |
+| `toggling autoclose on sets the node attribute` | A freshly inserted accordion starts `false` and toggles to `true` |
+| `data-autoclose never reaches saved HTML` | The internal attribute is stripped while the delimiter keeps `{"autoclose":true}` |
+
+### `details showContent is a real attribute` (7 tests)
+
+The opposite case to autoclose: core's `details/save.jsx` renders `open={showContent}`, so `open` is real saved markup and must survive.
+
+| Test | What it checks |
+|---|---|
+| `showContent is parsed from the block comment` | Comment-only markup sets the node attribute |
+| `showContent is parsed from the open attribute WordPress saves` | Markup as WordPress actually writes it also sets it |
+| `showContent renders open into the editor DOM so attrsFrom can read it` | `<details open>` in the editor's HTML |
+| `toggling showContent off clears the node attribute` | The toggle command sets it `false` |
+| `toggling showContent on sets the node attribute` | A freshly inserted details block starts `false` and toggles to `true` |
+| `open stays in saved HTML when showContent is true` | Both the `open` attribute and the delimiter attribute are written |
+| `no open attribute is saved once showContent is turned off` | Turning it off removes `open` from the markup |
+
+### `attribute toggles in the contextual toolbar` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `the autoclose button flips the accordion attribute` | Pressing the real control toggles the node attribute both ways |
+| `the open button flips the details attribute` | Same for details |
+| `each control group is revealed only inside its own block` | Accordion controls show and details controls hide inside an accordion, and vice versa |
+
+### `a descriptor owns its declared attributes` (4 tests)
+
+The carrier preserves every attribute the delimiter held, which is what keeps unmodeled attributes safe — but it also means `attrsFrom` returning `{}` can't be told apart from "this block has no such attribute". A descriptor names the keys it owns; those are dropped from the carrier before the DOM values merge.
+
+| Test | What it checks |
+|---|---|
+| `turning off an owned attribute removes it from the saved delimiter` | `autoclose` disappears entirely rather than sticking at its loaded value |
+| `an unowned attribute is still preserved when an owned one changes` | `showContent` goes, `metadata` stays |
+| `turning an owned attribute back on restores it` | The delimiter comes back with `{"autoclose":true}` |
+| `a column width is not owned and survives an edit` | `columnBlock` deliberately does not own `width` — Quill has no UI for it, so the carried value is the only copy |
+
+### `editor chrome stays out of saved markup` (11 tests)
+
+Accordion, tabs and details carry editor-only chrome: a forced-open `<details>`, a collapsed-for-preview class, the active tab. All of it is applied as ProseMirror decorations, which live outside the document — this group is the guard that none of it can reach a save.
+
+| Test | What it checks |
+|---|---|
+| `a details block is open in the DOM even when showContent is false` | Forced open so the body stays editable, with no `open` in the save |
+| `showContent true still saves the open attribute` | The real attribute is not suppressed along with the chrome |
+| `collapsing an accordion item changes the DOM and not the document` | The DOM gains `is-collapsed`; the save is byte-identical to before |
+| `collapsing is a toggle` | A second press clears it |
+| `collapsing one item leaves its sibling expanded` | Collapse is per-item |
+| `a details block collapses for preview the same way` | Stays `open` in the DOM — CSS does the hiding — and `is-collapsed` never saves |
+| `the first tab is active when the cursor is elsewhere` | Default active tab with the cursor outside the block |
+| `putting the cursor in a tab panel activates that tab` | Button and panel both gain `is-active-tab`; the sibling panel does not |
+| `putting the cursor in a tab label activates that tab` | Same from the tab-list side |
+| `the active tab class never reaches saved markup` | No `is-active-tab` in the output |
+| `an accordion survives collapse, edit and save without losing an item` | Both items and the edit are present, with no chrome classes |
+
+### `accordion headings match current core save markup` (9 tests)
+
+Quill's heading markup was copied from `post-17780.html`, which an older WordPress wrote. Current `core/accordion-heading` emits `has-icon` classes and a `+` icon span and never emits `wp-block-heading`, so the old shape matched no registered save or deprecation and Gutenberg rejected every accordion Quill saved. Expected markup was verified against the live site's own bundled `block-library.js` (`showIcon` defaults true, `iconPosition` defaults right).
+
+| Test | What it checks |
+|---|---|
+| `an accordion Quill inserts saves the heading exactly as core writes it` | Exact class set, button `type`/`class`, title-then-icon child order, and an `aria-hidden` `+` icon span |
+| `wp-block-heading is never emitted` | The class core dropped is not written |
+| `an old-format heading is upgraded on an edited save` | Loading old markup and typing produces current markup |
+| `showIcon false in the block comment suppresses the icon and its classes` | No `has-icon*` classes, no icon span, title text kept |
+| `iconPosition left puts the icon before the title, as core does` | `has-icon-left` and icon-then-title child order |
+| `saving a showIcon-false accordion twice is idempotent` | The second save matches the first |
+| `showIcon false is recovered from the markup when the comment is gone` | An in-editor copy/paste re-parses rendered markup with no delimiter, so the `has-icon` class is the only surviving copy of the setting |
+| `the icon span is not typed into and the title still takes the text` | Typing lands in the title span; the icon keeps its `+` |
+| `the editor hides the icon span so the ::after affordance still reads` | The stylesheet sets `display: none` on the icon span inside the editor |
+
+### `container rows read as clickable` (10 tests)
+
+The toggle used to be a narrow hit zone — the right 32px of an accordion header, the left 22px of a details summary — with no cursor affordance, so nothing about the row said it could be clicked. The whole row is the target now, with the row's own text as the one exception so a title can still be typed into.
+
+| Test | What it checks |
+|---|---|
+| `the accordion row cursor sits on the toggle button, which covers the row` | The toggle rule sets `cursor: pointer` and not `text` |
+| `the accordion title keeps a text cursor, because clicking it types` | The title span rule sets `cursor: text` |
+| `only the details arrow is a pointer target, not the summary text` | `summary::before` is `pointer`; `summary` itself is `text` |
+| `the details arrow box is big enough to hit` | At least 22px square, and drawn with `mask` rather than `clip-path` — a clipped box is hit-tested only where it paints, so the pointer appeared over the triangle alone |
+| `an accordion header has no hover tint` | No `:hover` background rule |
+| `tab labels are pointer targets` | `button[role="tab"]` is `pointer`, not `text` |
+| `pressing an accordion header row collapses the item` | A real `mousedown` on the header collapses it |
+| `pressing the details arrow collapses it` | A real `mousedown` on the summary collapses the block |
+| `pressing a header row with an empty title places the caret instead of collapsing` | An empty title has no text to aim at, so the row must yield the click or a new accordion could never be named |
+| `collapse state still never reaches saved markup` | A press-driven collapse leaves no `is-collapsed` in the save |
+
+---
+
 ## JS passthrough tests (35 tests)
 
 File: `Scripts/test-editor-passthrough.js`
@@ -1452,6 +1922,56 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 | `passthrough figures keep their position among modeled blocks` | Asserts the exact top-level node-type sequence and output element/class sequence `p, figure.wp-block-audio, h2.wp-block-heading, figure.wp-block-image, p` — a passthrough figure does not migrate to the top or bottom of the document |
 | `an unmodeled figure containing an img is not rewritten into an image block` | The passthrough stash shields a third-party figure that happens to hold an `<img>`: arbitrary attributes are kept, an empty `<figcaption>` is not pruned, and no `data-quill-passthrough*` marker leaks |
 | `a classic figure with no wp-block class still parses as an image` | Guards the new `figure[class*="wp-block-"]` selector against claiming classic-editor image markup |
+
+---
+
+## JS paste tests (19 tests)
+
+File: `Scripts/test-editor-paste.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Loads the real `editor.html` in jsdom and drives the live Tiptap editor, covering both clipboard branches — `transformPastedText` and `transformPastedHTML` (see the paste-path gotcha in `Sources/QuillKit/Resources/CLAUDE.md`) — plus `window.insertMarkdown`. Assertions are made against a flattened string form of the resulting ProseMirror document, so structure and text are both pinned.
+
+**jsdom caveat:** jsdom has no `DataTransfer`, so the suite hand-builds `event.clipboardData`. It therefore exercises the flavors the tests construct, not what WKWebView actually delivers (RTF, webarchive, Word conditional-comment HTML, syntax-highlighted HTML from code editors). Treat green here as weaker evidence than the keyboard suite, and confirm real pastes in the app.
+
+### `paste into footnotes` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `multi-line plain text stays inside the footnote` | Blank-line-separated text collapses into the one footnote item instead of breaking out into body paragraphs |
+| `single-line plain text is inserted unchanged` | Surrounding whitespace is trimmed, text lands in the footnote |
+| `block HTML is flattened into the footnote` | A heading and a list paste in as plain text — the pre-existing `transformPastedHTML` guard |
+| `CRLF and lone-CR line endings collapse the same way` | Windows and old-Mac line endings behave like `\n` |
+
+### `paste into the body is unaffected` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `multi-line plain text still becomes one paragraph per line` | The footnote handling did not change ordinary paste |
+| `single-line plain text is inserted as-is` | One paragraph, no wrapping |
+| `block HTML keeps its structure` | A heading and a list arrive as a heading and a list |
+
+### `window.insertMarkdown` (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `converts headings, lists and inline marks` | Headings, list items and bold/italic all survive conversion |
+| `converts blockquotes, fenced code and horizontal rules` | Each becomes its own node type |
+| `emits no blank paragraphs between blocks` | No empty paragraphs padding the output |
+| `converts tables` | GFM tables become real table nodes |
+| `keeps images, matching what an HTML paste does` | Image handling is consistent with the HTML paste path |
+| `task list checkboxes degrade to plain list items` | Quill has no task-list node, so checkboxes become ordinary items rather than raw text |
+| `strips raw script tags in the source` | `<script>` in Markdown source does not reach the document |
+| `refuses inside a footnote and leaves the document untouched` | Refusal is total — no partial insert |
+| `refuses inside a code block and leaves the document untouched` | Same for code blocks |
+| `reports empty input without touching the document` | Empty input is reported, not inserted |
+| `inserts at the cursor rather than replacing the document` | Existing content survives the insert |
+
+### `paste into a code block preserves line breaks` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
 
 ---
 
@@ -1988,4 +2508,5 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **Insert-image picker file filter (§7.4):** `NSOpenPanel.allowedContentTypes` is an AppKit call; the panel itself can only be verified by running the app.
 - **`GallerySheet`'s expandable alt/caption rows (§7.4):** the chevron expand/collapse, `moveDisabled` while expanded, the grip-hover collapse, and expanded state clearing on deselect are all SwiftUI `List` row behavior with no test harness. The values those fields produce *are* covered end-to-end on the JS side; only the interaction is manual.
 - **Dropped-image progress pill and drop-batch serialization (§7.4):** `UploadStatusPill`, the shared bottom slot it occupies with the toast, and the `dropTask` chaining that keeps overlapping Finder drops from interleaving are all SwiftUI view state with no test harness. The *messages* the pill and toast display are unit-tested; only the timing and layering are manual.
+- **Container row hit geometry (JS container tests):** jsdom reports a zeroed `getBoundingClientRect` for every element and gives Ranges no client rects, so how big a toggle's hit box renders and which character a pointer lands on can only be checked in a real browser. The CSS rules and the `mousedown` behavior behind those affordances *are* asserted.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
