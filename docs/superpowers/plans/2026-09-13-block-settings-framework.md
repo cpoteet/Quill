@@ -25,12 +25,28 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `b6a2e8e` | The carrier on every node, `className` splicing, twelve fixtures |
 | `f90234c` | This plan |
 | `4f0f9b7` | **Task A1 done** — the registry, with one entry and two guards |
+| `669eeff` | **Task A2 done** — `withBlockSettings`, the generated Tiptap attributes |
+| `c5130b5` | **Tasks A3 and A4 done** — the delimiter half and the generated controls |
 
-**Next: task A2.** Everything from A2 onward is unstarted.
+**Stage A is complete. Next: task B1.**
 
-The registry ships with exactly one entry — `accordionItem.openByDefault` — on
-purpose, so A2 through A4 have a real subject to build the machinery against
-before any bulk of settings is added in stage B.
+The registry still ships with exactly one entry — `accordionItem.openByDefault`
+— which was the machinery's subject through A2–A4.
+
+Two deviations from the tasks as written, both deliberate:
+
+- **`withBlockAttrs` composes `withBlockSettings`** rather than being a third
+  wrapper applied at each node's call site. The stage-A completion test caught
+  the reason: added per node, a second registry entry produced its toolbar
+  control but neither its class nor its comment attribute — two edits, not one.
+  The nesting order the plan specifies is unchanged.
+- **Only the `toggle` control type is built.** `_buildSettingControl` is a
+  switch with one case; `blockStyle` belongs with B1's five entries and
+  `choice` with C/D, where each has a subject and a test. Building them now
+  would have meant untested code.
+
+Proven, then reverted: adding `columnsBlock.isStackedOnMobile` as one registry
+line produced the class, the comment key and the control with no other edit.
 
 Two things not repeated below that are worth knowing:
 
