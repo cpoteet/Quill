@@ -1492,12 +1492,15 @@ describe('delete block control', () => {
     table:        () => editor.chain().focus().insertTable({ rows: 2, cols: 2 }).run(),
     pullquote:    () => editor.chain().setPullquote().run(),
     preformatted: () => editor.chain().setPreformatted().run(),
+    blockquote:   () => editor.chain().toggleBlockquote().run(),
+    codeBlock:    () => editor.chain().toggleCodeBlock().run(),
   }
 
   const names = {
     columns: 'columnsBlock', tabs: 'tabsBlock', accordion: 'accordionBlock',
     buttons: 'buttonsBlock', details: 'detailsBlock', table: 'table',
     pullquote: 'pullquote', preformatted: 'preformatted',
+    blockquote: 'blockquote', codeBlock: 'codeBlock',
   }
 
   for (const [label, insert] of Object.entries(blocks)) {
@@ -1647,7 +1650,8 @@ describe('leaving a container block', () => {
   }
 
   const CONTAINERS = new Set(['table', 'tabsBlock', 'accordionBlock', 'detailsBlock',
-                              'columnsBlock', 'buttonsBlock', 'pullquote', 'preformatted'])
+                              'columnsBlock', 'buttonsBlock', 'pullquote', 'preformatted',
+                              'blockquote', 'codeBlock'])
   const atTopLevel = () => {
     const $h = editor.state.selection.$head
     for (let d = $h.depth; d > 0; d--) if (CONTAINERS.has($h.node(d).type.name)) return false
@@ -1746,6 +1750,41 @@ describe('leaving a container block', () => {
     key('Escape')
     assert.equal(atTopLevel(), true)
     assert.equal(countOf('columnsBlock'), 1)
+  })
+
+  test('Esc leaves a blockquote', () => {
+    editor.commands.setContent('<blockquote><p>quoted</p></blockquote>', false)
+    editor.commands.setTextSelection(4)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('blockquote'), 1)
+    assert.equal(editor.state.doc.child(0).textContent, 'quoted')
+  })
+
+  test('Esc leaves a code block', () => {
+    editor.commands.setContent('<pre><code>x = 1</code></pre>', false)
+    editor.commands.setTextSelection(3)
+    key('Escape')
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('codeBlock'), 1)
+    assert.equal(editor.state.doc.child(0).textContent, 'x = 1')
+  })
+
+  test('Enter twice still lifts out of a blockquote', () => {
+    editor.commands.setContent('<blockquote><p>q</p></blockquote>', false)
+    editor.commands.setTextSelection(3)
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('blockquote'), 1)
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+  })
+
+  test('three Enters still leave a code block', () => {
+    editor.commands.setContent('<pre><code>x</code></pre>', false)
+    editor.commands.setTextSelection(2)
+    enter(3)
+    assert.equal(atTopLevel(), true)
+    assert.equal(editor.state.doc.child(0).textContent, 'x')
   })
 
   test('Esc does nothing in ordinary body text', () => {
