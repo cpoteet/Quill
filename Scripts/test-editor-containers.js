@@ -1339,3 +1339,124 @@ describe('container rows read as clickable', () => {
     assert.doesNotMatch(win.toWordPressHTML(editor.getHTML(), win.document), /is-collapsed/)
   })
 })
+
+describe('empty titles show a hint', () => {
+  const source = fs.readFileSync(htmlPath, 'utf8')
+
+  const EMPTY_ACCORDION = '<div role="group" class="wp-block-accordion">' +
+    '<div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"></span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>Body</p></div></div></div>'
+
+  const EMPTY_DETAILS = '<details class="wp-block-details"><summary></summary><p>Body</p></details>'
+
+  const hinted = () => Array.from(win.document.querySelectorAll('#editor .is-untitled'))
+
+  const tick = () => new Promise(r => setTimeout(r, 80))
+
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  test('a freshly inserted accordion marks its own title as untitled', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.deepEqual(hinted().map(el => el.tagName), ['H3'])
+  })
+
+  test('a freshly inserted details marks its own title as untitled', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    assert.deepEqual(hinted().map(el => el.tagName), ['SUMMARY'])
+  })
+
+  test('a loaded title with text is not marked', () => {
+    editor.commands.setContent(
+      '<details class="wp-block-details"><summary>Named</summary><p>Body</p></details>', false)
+    assert.equal(hinted().length, 0)
+  })
+
+  test('typing a title clears the mark and an empty one brings it back', () => {
+    editor.commands.setContent(EMPTY_ACCORDION, false)
+    const pos = []
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'accordionHeading') pos.push(at) })
+    editor.commands.insertContentAt(pos[0] + 1, 'Features')
+    assert.equal(hinted().length, 0)
+    editor.commands.setContent(EMPTY_ACCORDION, false)
+    assert.equal(hinted().length, 1)
+  })
+
+  test('every empty title in a multi-item accordion is marked, not just the focused one', () => {
+    const item = EMPTY_ACCORDION.match(/<div class="wp-block-accordion-item">[\s\S]*<\/div>/)[0]
+    editor.commands.setContent(EMPTY_ACCORDION.replace(item, item + item), false)
+    assert.equal(hinted().length, 2)
+  })
+
+  test('the mark is decoration only and never reaches saved markup', () => {
+    editor.commands.setContent(EMPTY_ACCORDION, false)
+    assert.equal(hinted().length, 1, 'mark is present')
+    assert.doesNotMatch(win.toWordPressHTML(editor.getHTML(), win.document), /is-untitled/)
+  })
+
+  // A widget decoration here put a contenteditable=false node beside the caret,
+  // and WebKit then dropped every keystroke aimed at the title — the hint has to
+  // stay generated content.
+  test('the hint is drawn in CSS, never inserted into the document', () => {
+    assert.match(source, /\.wp-block-accordion-heading\.is-untitled[^{]*::before/)
+    assert.match(source, /summary\.is-untitled::after/)
+    assert.doesNotMatch(source, /Decoration\.widget\([^)]*title/i)
+  })
+
+  test('the hint names each block', () => {
+    assert.match(source, /content:\s*'Accordion title'/)
+    assert.match(source, /content:\s*'Details title'/)
+  })
+
+  test('the hint cannot swallow the click that would place the caret in it', () => {
+    const rule = source.match(
+      /\.wp-block-details > summary\.is-untitled::after,?[\s\S]*?\{([^}]*)\}/)[1]
+    assert.match(rule, /pointer-events:\s*none/)
+  })
+
+  test('the hint is out of flow, so an untitled row is no taller', () => {
+    const rule = source.match(
+      /\.wp-block-details > summary\.is-untitled::after,?[\s\S]*?\{([^}]*)\}/)[1]
+    assert.match(rule, /position:\s*absolute/)
+  })
+
+  test('the hint is legible in dark mode too', () => {
+    assert.match(source, /body\.dark [\s\S]{0,400}?summary\.is-untitled::after\s*\{[^}]*color:/)
+  })
+
+  // The summary's own ::after draws the hint, so the status badge had to move
+  // onto the box; left where it was, the two collided.
+  test('the details status badge is drawn on the box, not the summary', () => {
+    assert.match(source, /\.wp-block-details:not\(\.shows-content\)::after\s*\{[^}]*'closed on the site'/)
+    assert.doesNotMatch(source, /summary::after\s*\{[^}]*'closed on the site'/)
+  })
+
+  test('pressing an untitled accordion row seats the caret in the title, not the panel', async () => {
+    editor.commands.setContent(EMPTY_ACCORDION, false)
+    win.document.querySelector('#editor .wp-block-accordion-heading__toggle')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 60, clientY: 0 }))
+    await tick()
+    assert.equal(editor.state.selection.$head.parent.type.name, 'accordionHeading')
+    editor.commands.insertContent('Typed')
+    assert.match(win.toWordPressHTML(editor.getHTML(), win.document), /toggle-title">Typed</)
+  })
+
+  test('pressing an untitled details summary seats the caret in the summary', async () => {
+    editor.commands.setContent(EMPTY_DETAILS, false)
+    win.document.querySelector('#editor .wp-block-details > summary')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 200, clientY: 0 }))
+    await tick()
+    assert.equal(editor.state.selection.$head.parent.type.name, 'detailsSummary')
+  })
+
+  // The arrow keeps its job, or an untitled details could never be collapsed.
+  test('the details arrow still collapses an untitled details', async () => {
+    editor.commands.setContent(EMPTY_DETAILS, false)
+    win.document.querySelector('#editor .wp-block-details > summary')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }))
+    await tick()
+    assert.ok(win.document.querySelector('#editor details.wp-block-details.is-collapsed'))
+  })
+})

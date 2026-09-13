@@ -1021,14 +1021,40 @@
     .ProseMirror .wp-block-details > summary:hover::before { opacity: 0.85; }
     .ProseMirror .wp-block-details.is-collapsed > :not(summary) { display: none; }
     /* showContent is a publishing choice, so it is a label here and never a hidden body. */
-    .ProseMirror .wp-block-details:not(.shows-content) > summary::after {
+    /* On the box, not the summary: summary::after draws the untitled hint. */
+    .ProseMirror .wp-block-details:not(.shows-content)::after {
       content: 'closed on the site';
-      margin-left: 0.6em;
+      position: absolute;
+      right: 14px;
+      top: 14px;
       font-size: 9.5px;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       color: #a0a0a6;
+    }
+
+    /* An empty title is invisible chrome otherwise, so the hint is the only cue it can be typed into. */
+    .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
+    .ProseMirror .wp-block-details > summary.is-untitled::after {
+      position: absolute;
+      pointer-events: none;
+      user-select: none;
+      font-weight: 400;
+      color: #cbcbd1;
+      white-space: nowrap;
+    }
+    body.dark .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
+    body.dark .ProseMirror .wp-block-details > summary.is-untitled::after { color: #56565e; }
+    .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before {
+      content: 'Accordion title';
+      left: 4px;
+      top: 11px;
+    }
+    .ProseMirror .wp-block-details > summary.is-untitled::after {
+      content: 'Details title';
+      left: 20px;
+      top: 2px;
     }
 
     /* Buttons */
@@ -2699,6 +2725,10 @@
 
     const COLLAPSIBLE = new Set(['accordionItem', 'detailsBlock'])
 
+    // A class, never a widget: a contenteditable=false node next to the caret
+    // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
+    const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary'])
+
     // The whole accordion row toggles, so its title is the one place a press
     // must fall through and land a caret instead.
     function _onOwnText(el, x, y) {
@@ -2745,6 +2775,9 @@
           }
         }
         if (name === 'tabsBlock') _tabDecorations(node, pos, head, decos)
+        if (HINTED_TITLES.has(name) && node.content.size === 0) {
+          decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'is-untitled' }))
+        }
         return true
       })
       return decos
@@ -2816,11 +2849,26 @@
                   const el = event.target.closest && event.target.closest(
                     '.wp-block-accordion-heading, .wp-block-details > summary')
                   if (!el) return false
-                  if (el.tagName === 'SUMMARY') {
-                    if (event.clientX - el.getBoundingClientRect().left > 22) return false
+                  const isSummary = el.tagName === 'SUMMARY'
+                  const title = isSummary
+                    ? el : el.querySelector('.wp-block-accordion-heading__toggle-title')
+                  if (!title) return false
+                  const onArrow = isSummary && event.clientX - el.getBoundingClientRect().left <= 22
+                  // An untitled row is zero-width, so the browser seats the
+                  // caret in the panel below instead. Deferred past WebKit's own
+                  // click handling, and without preventDefault, which would
+                  // leave nothing focused and drop every keystroke.
+                  if (!onArrow && el.classList.contains('is-untitled')) {
+                    const at = view.posAtDOM(title, 0)
+                    if (at >= 0) {
+                      setTimeout(() => editor.chain().focus().setTextSelection(at).run(), 60)
+                    }
+                    return false
+                  }
+                  if (isSummary) {
+                    if (!onArrow) return false
                   } else {
-                    const title = el.querySelector('.wp-block-accordion-heading__toggle-title')
-                    if (!title || !title.textContent.trim()) return false
+                    if (!title.textContent.trim()) return false
                     if (_onOwnText(title, event.clientX, event.clientY)) return false
                   }
                   const pos = view.posAtDOM(el, 0)
