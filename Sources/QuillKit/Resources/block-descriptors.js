@@ -6,9 +6,18 @@
 //
 // ownedAttrs names the keys whose absence from the element is meaningful, so
 // they are dropped from the carried delimiter attributes before attrsFrom's
-// values merge in. Only declare a key the node genuinely round-trips -- a key
-// listed here with no UI behind it is deleted on the first edit. columnBlock
-// does not own width for exactly that reason.
+// values merge in. Ask ownedAttrsFor rather than reading the field: the real
+// owned set is this list plus every non-sourced, non-carried setting the
+// block-settings registry declares for the node.
+//
+// A hand-written attrsFrom entry stays only for what the registry cannot
+// express. Anything the registry covers is derived by attrsFromSettings.
+
+// block-settings.js is a plain global script in the browser and a CommonJS
+// module under Node, so it is resolved both ways.
+const blockSettingsRegistry = (typeof module !== 'undefined' && module.exports)
+  ? require('./block-settings.js')
+  : globalThis
 
 const BLOCK_DESCRIPTORS = {
   paragraph:   { blockName: 'core/paragraph',    shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
@@ -53,6 +62,26 @@ function descriptorFor(nodeName) {
   return BLOCK_DESCRIPTORS[nodeName] || null
 }
 
+function delimiterSettingsFor(nodeName) {
+  return Object.entries(blockSettingsRegistry.settingsFor(nodeName))
+    .filter(([, def]) => blockSettingsRegistry.settingWritesDelimiter(def))
+}
+
+function attrsFromSettings(nodeName, el) {
+  const attrs = {}
+  for (const [name, def] of delimiterSettingsFor(nodeName)) {
+    const value = blockSettingsRegistry.readSettingFromElement(el, def)
+    if (value !== undefined && value !== null && value !== def.default) attrs[name] = value
+  }
+  return attrs
+}
+
+function ownedAttrsFor(nodeName) {
+  const descriptor = BLOCK_DESCRIPTORS[nodeName]
+  const declared = (descriptor && descriptor.ownedAttrs) || []
+  return Array.from(new Set([...declared, ...delimiterSettingsFor(nodeName).map(([name]) => name)]))
+}
+
 const MODELED_BLOCK_NAMES = new Set(Object.values(BLOCK_DESCRIPTORS).map(d => d.blockName))
 
 // A function, not the set itself: only function declarations reach globalThis
@@ -62,5 +91,5 @@ function modelsBlockName(blockName) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { BLOCK_DESCRIPTORS, descriptorFor, modelsBlockName }
+  module.exports = { BLOCK_DESCRIPTORS, descriptorFor, modelsBlockName, attrsFromSettings, ownedAttrsFor }
 }

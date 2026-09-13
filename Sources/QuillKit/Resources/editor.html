@@ -2540,23 +2540,14 @@
       else target.setAttribute('class', mergeClassNames(target.getAttribute('class'), settingClass(def, value)))
     }
 
+    // The delimiter is Gutenberg's own source of truth; the markup is only its
+    // output, so it is the fallback. A sourced setting has no comment to read.
     function parseBlockSetting(el, name, def) {
       if (!def.sourced) {
         const carried = blockCommentAttr(el, name)
         if (carried !== undefined) return carried
       }
-      const target = def.on ? el.querySelector(def.on) : el
-      if (!target) return def.default
-      if (def.kind === 'carried') return def.default
-      if (def.kind === 'attr') {
-        const value = target.getAttribute(def.attr)
-        return value === null ? def.default : value
-      }
-      if (def.kind === 'style') return target.style.getPropertyValue(def.property) || def.default
-      if (def.kind === 'flagClass') return target.classList.contains(def.class) ? def.when : def.default
-      const pattern = def.pattern.replace('{}', '([^\\s]+)')
-      const m = new RegExp('(?:^|\\s)' + pattern + '(?:\\s|$)').exec(target.getAttribute('class') || '')
-      return m ? m[1] : def.default
+      return readSettingFromElement(el, def)
     }
 
     function withBlockSettings(extension) {
@@ -3714,6 +3705,71 @@
       window.addEventListener('resize', () => hide(activeEl))
     }
 
+    // ── Registry-driven toolbar controls ──────────────
+    // One span per node that declares a control, generated into row 2 beside
+    // the hand-written groups. The hand-written ones keep their own wiring.
+
+    function _settingBlockAt($from, typeName) {
+      for (let d = $from.depth; d >= 1; d--) {
+        if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
+      }
+      return null
+    }
+
+    function _setSettingValue(typeName, name, value) {
+      const target = _settingBlockAt(editor.state.selection.$from, typeName)
+      if (!target) return
+      const { state, view } = editor
+      view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, [name]: value }))
+      editor.commands.focus()
+    }
+
+    function _buildSettingControl(typeName, name, def) {
+      if (def.control.type !== 'toggle') return null
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = def.control.label
+      if (def.control.title) btn.title = def.control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state.selection.$from, typeName)
+        if (target) _setSettingValue(typeName, name, target.node.attrs[name] === def.when ? def.default : def.when)
+      })
+      return { name, def, btn }
+    }
+
+    function _buildSettingGroups() {
+      const groups = []
+      for (const typeName of settingsNodeNames()) {
+        const controls = Object.entries(settingsFor(typeName))
+          .filter(([, def]) => def.control)
+          .map(([name, def]) => _buildSettingControl(typeName, name, def))
+          .filter(Boolean)
+        if (!controls.length) continue
+        const span = document.createElement('span')
+        span.id = `settings-${typeName}-controls`
+        span.style.display = 'none'
+        controls.forEach(c => span.appendChild(c.btn))
+        document.getElementById('toolbar-row2').appendChild(span)
+        groups.push({ typeName, span, controls })
+      }
+      return groups
+    }
+
+    const _settingGroups = _buildSettingGroups()
+
+    function _updateSettingControls() {
+      const $from = editor.state.selection.$from
+      for (const group of _settingGroups) {
+        const target = _settingBlockAt($from, group.typeName)
+        group.span.style.display = target ? 'inline-flex' : 'none'
+        if (!target) continue
+        for (const c of group.controls) {
+          c.btn.classList.toggle('active', target.node.attrs[c.name] === c.def.when)
+        }
+      }
+    }
+
     initToolbarTooltips()
 
     const headingButton = document.getElementById('heading-button')
@@ -3947,6 +4003,7 @@
       // Embed / footnote buttons
       _embedBtn.disabled = inFootnote
       _footnoteBtn.disabled = inFootnote
+      _updateSettingControls()
       // Row 2 exists only while one of its groups does.
       _row2.classList.toggle('visible',
         _row2Groups.some(el => el && el.style.display !== 'none'))

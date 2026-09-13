@@ -205,3 +205,142 @@ describe('registry-generated attributes: accordionItem.openByDefault', () => {
     assert.ok(classes.includes('mine'), `mine missing from "${m[1]}"`)
   })
 })
+
+// Toggling the attribute, rather than editing the HTML, is the only way to
+// reach the state the delimiter half exists for: the carrier still holds the
+// old value while the markup holds the new one.
+function setNodeAttr(typeName, attr, value) {
+  const { state, view } = editor
+  let done = false
+  state.doc.descendants((node, pos) => {
+    if (done || node.type.name !== typeName) return
+    view.dispatch(state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: value }))
+    done = true
+  })
+  return done
+}
+
+describe('the delimiter half comes from the registry too', () => {
+  const item = `<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item {"openByDefault":true} -->
+<div class="wp-block-accordion-item is-open"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">T</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->`
+
+  test('the registry contributes the owned key', () => {
+    assert.ok(win.ownedAttrsFor('accordionItem').includes('openByDefault'))
+  })
+
+  test('a hand-written ownedAttrs entry is kept alongside it', () => {
+    assert.deepEqual(Array.from(win.ownedAttrsFor('accordionBlock')), ['autoclose'])
+  })
+
+  test('turning the setting off clears the class and the stale carried key', () => {
+    win.setContent(item)
+    assert.ok(setNodeAttr('accordionItem', 'openByDefault', false))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /is-open/)
+    assert.doesNotMatch(out, /wp:accordion-item \{/)
+  })
+
+  test('turning it on writes both the class and the key', () => {
+    win.setContent(item.replace(' {"openByDefault":true}', '').replace('wp-block-accordion-item is-open', 'wp-block-accordion-item'))
+    assert.ok(setNodeAttr('accordionItem', 'openByDefault', true))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /class="wp-block-accordion-item is-open"/)
+    assert.match(out, /wp:accordion-item \{"openByDefault":true\}/)
+  })
+
+  test('an unmodeled carried attribute is not swept away with it', () => {
+    win.setContent(item.replace('{"openByDefault":true}', '{"openByDefault":true,"metadata":{"name":"One"}}'))
+    assert.ok(setNodeAttr('accordionItem', 'openByDefault', false))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /"metadata":\{"name":"One"\}/)
+    assert.doesNotMatch(out, /openByDefault/)
+  })
+})
+
+describe('the toolbar control comes from the registry', () => {
+  const item = `<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item -->
+<div class="wp-block-accordion-item"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">T</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->
+
+<p>Outside</p>`
+
+  const group = () => win.document.getElementById('settings-accordionItem-controls')
+  const button = () => group().querySelector('[data-setting="openByDefault"]')
+
+  function caretAt(text) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found || !node.isTextblock || node.textContent !== text) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, `no textblock reading "${text}"`)
+    editor.commands.setTextSelection(found)
+  }
+
+  function press(el) {
+    el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  }
+
+  test('the group is generated for a node that declares a control', () => {
+    assert.ok(group(), 'no generated group for accordionItem')
+    assert.equal(group().parentElement.id, 'toolbar-row2')
+  })
+
+  test('the control carries the label the registry gave it', () => {
+    assert.equal(button().textContent, 'Open')
+  })
+
+  test('it is hidden when the cursor is outside the block', () => {
+    win.setContent(item)
+    caretAt('Outside')
+    assert.equal(group().style.display, 'none')
+  })
+
+  test('it appears when the cursor is inside the block', () => {
+    win.setContent(item)
+    caretAt('Body')
+    assert.equal(group().style.display, 'inline-flex')
+  })
+
+  test('it reflects the current value', () => {
+    win.setContent(item)
+    caretAt('Body')
+    assert.equal(button().classList.contains('active'), false)
+    setNodeAttr('accordionItem', 'openByDefault', true)
+    caretAt('Body')
+    assert.equal(button().classList.contains('active'), true)
+  })
+
+  test('pressing it flips the attribute and the saved markup', () => {
+    win.setContent(item)
+    caretAt('Body')
+    press(button())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /class="wp-block-accordion-item is-open"/)
+    assert.match(out, /wp:accordion-item \{"openByDefault":true\}/)
+    press(button())
+    const back = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(back, /is-open/)
+  })
+})

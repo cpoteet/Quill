@@ -640,7 +640,7 @@ describe('contextual toolbar row', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertAccordion()
     assert.equal(rowVisible(), true)
-    assert.deepEqual(shown(), ['accordion-controls', 'block-controls'])
+    assert.deepEqual(shown(), ['accordion-controls', 'block-controls', 'settings-accordionItem-controls'])
   })
 
   test('the row disappears again when the cursor leaves', () => {

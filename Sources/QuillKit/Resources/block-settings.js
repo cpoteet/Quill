@@ -34,6 +34,30 @@ const BLOCK_SETTINGS = {
 
 const SETTING_KINDS = ['carried', 'flagClass', 'valueClass', 'style', 'attr']
 
+// The one definition of how a setting reads back out of rendered markup, used
+// by the editor's parse fallback and by the delimiter derivation.
+function readSettingFromElement(el, def) {
+  const target = def.on ? el.querySelector(def.on) : el
+  if (!target) return def.default
+  if (def.kind === 'carried') return def.default
+  if (def.kind === 'attr') {
+    const value = target.getAttribute(def.attr)
+    return value === null ? def.default : value
+  }
+  if (def.kind === 'style') return target.style.getPropertyValue(def.property) || def.default
+  if (def.kind === 'flagClass') return target.classList.contains(def.class) ? def.when : def.default
+  const pattern = def.pattern.replace('{}', '([^\\s]+)')
+  const m = new RegExp('(?:^|\\s)' + pattern + '(?:\\s|$)').exec(target.getAttribute('class') || '')
+  return m ? m[1] : def.default
+}
+
+// A setting that draws nothing is already preserved by the carrier, and a
+// sourced one is read back out of the markup by WordPress itself. Neither may
+// reach the delimiter.
+function settingWritesDelimiter(def) {
+  return !def.sourced && def.kind !== 'carried'
+}
+
 // Function declarations, not consts: only these reach globalThis from a classic
 // script, which is how editor.html resolves this registry.
 function settingsFor(nodeName) {
@@ -49,5 +73,5 @@ function settingsNodeNames() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { BLOCK_SETTINGS, settingsFor, settingKinds, settingsNodeNames }
+  module.exports = { BLOCK_SETTINGS, settingsFor, settingKinds, settingsNodeNames, readSettingFromElement, settingWritesDelimiter }
 }

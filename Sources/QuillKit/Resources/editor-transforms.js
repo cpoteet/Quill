@@ -108,8 +108,10 @@ function wrapListItems(doc, listEl) {
     Array.from(li.children).forEach(child => {
       if (child.tagName !== 'UL' && child.tagName !== 'OL') return
       wrapListItems(doc, child)
-      const nested = blockDescriptorRegistry.descriptorFor(NODE_FOR_TAG[child.tagName])
-      wrapBlock(doc, child, shortBlockName(nested.blockName), nested.attrsFrom(child), nested.ownedAttrs)
+      const nestedName = NODE_FOR_TAG[child.tagName]
+      const nested = blockDescriptorRegistry.descriptorFor(nestedName)
+      wrapBlock(doc, child, shortBlockName(nested.blockName), descriptorAttrs(nestedName, nested, child),
+        blockDescriptorRegistry.ownedAttrsFor(nestedName))
     })
     wrapBlock(doc, li, 'list-item', {})
   })
@@ -122,6 +124,10 @@ function wrapQuoteParagraphs(doc, quoteEl) {
     if (child.tagName !== 'P') return
     wrapBlock(doc, child, 'paragraph', {})
   })
+}
+
+function descriptorAttrs(nodeName, descriptor, el) {
+  return { ...descriptor.attrsFrom(el), ...blockDescriptorRegistry.attrsFromSettings(nodeName, el) }
 }
 
 function wrapInDelimiters(root, doc) {
@@ -137,7 +143,8 @@ function wrapInDelimiters(root, doc) {
     if (nodeName === 'blockquote') wrapQuoteParagraphs(doc, el)
     if (descriptor.shape === 'container' && descriptor.blockName !== 'core/list') wrapInDelimiters(el, doc)
 
-    wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptor.attrsFrom(el), descriptor.ownedAttrs)
+    wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptorAttrs(nodeName, descriptor, el),
+      blockDescriptorRegistry.ownedAttrsFor(nodeName))
   })
 }
 
