@@ -1255,9 +1255,7 @@
   </div>
   <div id="toolbar-row2">
     <span id="blockquote-controls" style="display:none">
-        <button id="btn-toggle-cite" title="Toggle citation">
-          <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>
-        </button>
+        <button id="btn-toggle-cite" title="Toggle citation">Cite</button>
       </span>
     <span id="table-controls" style="display:none">
         <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
@@ -1896,7 +1894,7 @@
             const { state } = this.editor
             const { $from } = state.selection
             if ($from.node($from.depth).type.name !== 'cite') return false
-            const bqDepth = _ancestorDepth($from, 'blockquote')
+            const bqDepth = _citeHostDepth($from)
             if (bqDepth === -1) return false
             // Insert a paragraph immediately after the blockquote
             const after = $from.after(bqDepth)
@@ -3274,6 +3272,16 @@
       return false
     }
 
+    // Both quote blocks allow a trailing cite, so both get the control.
+    const CITE_HOSTS = new Set(['blockquote', 'pullquote'])
+
+    function _citeHostDepth($pos) {
+      for (let d = $pos.depth; d >= 0; d--) {
+        if (CITE_HOSTS.has($pos.node(d).type.name)) return d
+      }
+      return -1
+    }
+
     function _ancestorDepth($pos, typeName) {
       for (let d = $pos.depth; d >= 0; d--) {
         if ($pos.node(d).type.name === typeName) return d
@@ -3801,10 +3809,10 @@
       if (deletable) {
         _deleteBlockBtn.title = `Delete ${DELETABLE_BLOCKS.get(deletable.node.type.name)}`
       }
-      // Blockquote controls
-      const inBlockquote = editor.isActive('blockquote')
-      _bqControls.style.display = inBlockquote ? 'inline-flex' : 'none'
-      if (inBlockquote) {
+      // Citation control
+      const inQuote = editor.isActive('blockquote') || editor.isActive('pullquote')
+      _bqControls.style.display = inQuote ? 'inline-flex' : 'none'
+      if (inQuote) {
         _btnToggleCite.classList.toggle('active', editor.isActive('cite'))
       }
       // Undo / Redo
@@ -4212,7 +4220,7 @@
     _btnToggleCite.addEventListener('click', () => {
       const { state } = editor
       const { $head } = state.selection
-      const bqDepth = _ancestorDepth($head, 'blockquote')
+      const bqDepth = _citeHostDepth($head)
       if (bqDepth === -1) return
       const bqNode = $head.node(bqDepth)
       const lastChild = bqNode.lastChild

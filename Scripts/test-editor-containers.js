@@ -1874,3 +1874,101 @@ describe('leaving a container block', () => {
     assert.equal(countOf('pullquote'), 1)
   })
 })
+
+// The citation control was written against blockquote only, so a pullquote —
+// whose schema allows a cite just the same — had no way to get one.
+describe('citation control', () => {
+  const citeBtn = () => win.document.getElementById('btn-toggle-cite')
+  const press = () => citeBtn().dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+  const group = () => win.document.getElementById('blockquote-controls')
+
+  const countOf = typeName => {
+    let n = 0
+    editor.state.doc.descendants(node => { if (node.type.name === typeName) n++ })
+    return n
+  }
+
+  const PULLQUOTE = '<figure class="wp-block-pullquote"><blockquote><p>Q</p></blockquote></figure>'
+
+  before(() => { editor.view.dom.blur() })
+
+  test('the control reads Cite rather than showing an icon', () => {
+    assert.equal(citeBtn().textContent.trim(), 'Cite')
+    assert.equal(citeBtn().querySelector('svg'), null)
+  })
+
+  test('the control is offered inside a pullquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    assert.notEqual(group().style.display, 'none')
+  })
+
+  test('it adds a citation to a pullquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    const pq = editor.state.doc.child(0)
+    assert.equal(pq.lastChild.type.name, 'cite')
+    assert.equal(countOf('cite'), 1)
+  })
+
+  test('the caret lands in the pullquote citation ready to type', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    editor.commands.insertContent('Someone')
+    assert.equal(editor.state.doc.child(0).lastChild.textContent, 'Someone')
+  })
+
+  test('it removes a pullquote citation again', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    assert.equal(countOf('cite'), 1)
+    press()
+    assert.equal(countOf('cite'), 0)
+    assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
+  })
+
+  test('a pullquote citation saves inside the blockquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    editor.commands.insertContent('Someone')
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.match(out, /<!-- wp:pullquote -->/)
+    assert.match(out, /<cite>Someone<\/cite>\s*<\/blockquote>/)
+  })
+
+  test('Enter in a pullquote citation leaves the pullquote', () => {
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    editor.commands.insertContent('Someone')
+    citeBtn().dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+    editor.commands.setContent(PULLQUOTE, false)
+    editor.commands.setTextSelection(4)
+    press()
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+      key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true,
+    }))
+    assert.equal(editor.state.selection.$head.depth, 1)
+    assert.equal(countOf('pullquote'), 1)
+    assert.equal(countOf('cite'), 1)
+  })
+
+  test('it still adds and removes a blockquote citation', () => {
+    editor.commands.setContent('<blockquote><p>Q</p></blockquote>', false)
+    editor.commands.setTextSelection(4)
+    press()
+    assert.equal(countOf('cite'), 1)
+    press()
+    assert.equal(countOf('cite'), 0)
+  })
+
+  test('the control stays hidden in ordinary body text', () => {
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(3)
+    assert.equal(group().style.display, 'none')
+  })
+})
