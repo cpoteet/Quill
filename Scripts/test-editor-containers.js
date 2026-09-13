@@ -622,7 +622,7 @@ describe('contextual toolbar row', () => {
   test('every contextual group lives in row 2, not the main toolbar', () => {
     for (const id of ['blockquote-controls', 'table-controls', 'columns-controls',
                       'buttons-controls', 'accordion-controls', 'details-controls',
-                      'tabs-controls', 'image-align-controls']) {
+                      'tabs-controls', 'image-align-controls', 'block-controls']) {
       const el = win.document.getElementById(id)
       assert.ok(el, `${id} exists`)
       assert.equal(el.parentElement.id, 'toolbar-row2', `${id} is in row 2`)
@@ -640,7 +640,7 @@ describe('contextual toolbar row', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertAccordion()
     assert.equal(rowVisible(), true)
-    assert.deepEqual(shown(), ['accordion-controls'])
+    assert.deepEqual(shown(), ['accordion-controls', 'block-controls'])
   })
 
   test('the row disappears again when the cursor leaves', () => {
@@ -660,7 +660,7 @@ describe('contextual toolbar row', () => {
       '</div></div>', false)
     editor.commands.setTextSelection(4)
     assert.equal(rowVisible(), true)
-    assert.deepEqual(shown().sort(), ['buttons-controls', 'columns-controls'])
+    assert.deepEqual(shown().sort(), ['block-controls', 'buttons-controls', 'columns-controls'])
   })
 
   test('the main toolbar keeps the groups that are not cursor-contextual', () => {
@@ -1467,5 +1467,151 @@ describe('empty titles show a hint', () => {
       .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0 }))
     await tick()
     assert.ok(win.document.querySelector('#editor details.wp-block-details.is-collapsed'))
+  })
+})
+
+// One rule for every container: the minus buttons remove one part, the ✕
+// removes the whole block. The ✕ is a single shared control, so a block type
+// can only be forgotten by leaving it out of DELETABLE_BLOCKS.
+describe('delete block control', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  const deleteKey = () => win.document.querySelector('#block-controls [data-cmd="deleteBlock"]')
+
+  // jsdom has no Range.getClientRects, so any dispatch made while the view
+  // really holds focus dies inside ProseMirror's scroll-into-view.
+  before(() => { editor.view.dom.blur() })
+
+  const blocks = {
+    columns:      () => win.insertColumns(2),
+    tabs:         () => win.insertTabs(2),
+    accordion:    () => win.insertAccordion(),
+    buttons:      () => win.insertButtons(),
+    details:      () => win.insertDetails(),
+    table:        () => editor.chain().focus().insertTable({ rows: 2, cols: 2 }).run(),
+    pullquote:    () => editor.chain().setPullquote().run(),
+    preformatted: () => editor.chain().setPreformatted().run(),
+  }
+
+  const names = {
+    columns: 'columnsBlock', tabs: 'tabsBlock', accordion: 'accordionBlock',
+    buttons: 'buttonsBlock', details: 'detailsBlock', table: 'table',
+    pullquote: 'pullquote', preformatted: 'preformatted',
+  }
+
+  for (const [label, insert] of Object.entries(blocks)) {
+    test(`the ✕ deletes a ${label} block`, () => {
+      editor.commands.setContent('<p>x</p>', false)
+      insert()
+      let found = false
+      editor.state.doc.descendants(n => { if (n.type.name === names[label]) found = true })
+      assert.ok(found, `${label} was never inserted`)
+      press('deleteBlock')
+      let still = false
+      editor.state.doc.descendants(n => { if (n.type.name === names[label]) still = true })
+      assert.equal(still, false)
+    })
+
+    test(`the ✕ is offered inside a ${label} block`, () => {
+      editor.commands.setContent('<p></p>', false)
+      insert()
+      assert.notEqual(win.document.getElementById('block-controls').style.display, 'none')
+    })
+  }
+
+  test('the ✕ is hidden in ordinary body text', () => {
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(2)
+    assert.equal(win.document.getElementById('block-controls').style.display, 'none')
+  })
+
+  test('the table group no longer carries its own delete button', () => {
+    assert.equal(win.document.querySelector('#table-controls [data-cmd="deleteTable"]'), null)
+  })
+
+  test('the ✕ names the block it will remove', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    assert.match(deleteKey().title, /tabs/i)
+    editor.commands.setContent('<p></p>', false)
+    editor.chain().focus().insertTable({ rows: 2, cols: 2 }).run()
+    assert.match(deleteKey().title, /table/i)
+  })
+
+  test('a nested block is removed before the one holding it', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertColumns(2)
+    editor.chain().focus().insertTable({ rows: 2, cols: 2 }).run()
+    press('deleteBlock')
+    let hasTable = false, hasColumns = false
+    editor.state.doc.descendants(n => {
+      if (n.type.name === 'table') hasTable = true
+      if (n.type.name === 'columnsBlock') hasColumns = true
+    })
+    assert.equal(hasTable, false)
+    assert.equal(hasColumns, true)
+    press('deleteBlock')
+    let stillColumns = false
+    editor.state.doc.descendants(n => { if (n.type.name === 'columnsBlock') stillColumns = true })
+    assert.equal(stillColumns, false)
+  })
+
+  test('the cursor lands in the block after the deleted one', () => {
+    editor.commands.setContent('<p>before</p><p>after</p>', false)
+    editor.commands.setTextSelection(8)
+    win.insertTabs(2)
+    press('deleteBlock')
+    assert.equal(editor.state.selection.$head.parent.textContent, 'after')
+  })
+
+  test('the cursor falls back to the block before when nothing follows', () => {
+    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    win.insertTabs(2)
+    press('deleteBlock')
+    assert.equal(editor.state.selection.$head.parent.textContent, 'before')
+  })
+
+  test('deleting the only block leaves an empty paragraph to type in', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    press('deleteBlock')
+    assert.equal(editor.state.doc.childCount, 1)
+    assert.equal(editor.state.doc.child(0).type.name, 'paragraph')
+    editor.commands.insertContent('typed')
+    assert.equal(editor.state.doc.child(0).textContent, 'typed')
+  })
+
+  test('⌘⇧⌫ removes the block the cursor is in', () => {
+    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    win.insertAccordion()
+    const ev = new win.KeyboardEvent('keydown', {
+      key: 'Backspace', code: 'Backspace', keyCode: 8, which: 8,
+      bubbles: true, cancelable: true, metaKey: true, shiftKey: true,
+    })
+    editor.view.dom.dispatchEvent(ev)
+    let still = false
+    editor.state.doc.descendants(n => { if (n.type.name === 'accordionBlock') still = true })
+    assert.equal(still, false)
+  })
+
+  test('⌘⇧⌫ leaves ordinary body text alone', () => {
+    editor.commands.setContent('<p>plain text</p>', false)
+    editor.commands.setTextSelection(3)
+    const ev = new win.KeyboardEvent('keydown', {
+      key: 'Backspace', code: 'Backspace', keyCode: 8, which: 8,
+      bubbles: true, cancelable: true, metaKey: true, shiftKey: true,
+    })
+    editor.view.dom.dispatchEvent(ev)
+    assert.equal(editor.state.doc.child(0).textContent, 'plain text')
+  })
+
+  test('the minus buttons still refuse to remove the last part', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    press('deleteAccordionItem')
+    assert.equal(editor.state.doc.child(0).childCount, 1)
   })
 })

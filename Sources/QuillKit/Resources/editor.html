@@ -1264,7 +1264,6 @@
         <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
         <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
         <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
-        <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
       </span>
     <span id="columns-controls" style="display:none">
         <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
@@ -1297,6 +1296,9 @@
         <button data-cmd="alignRight"  title="Float image right (text wraps left)">
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
+      </span>
+    <span id="block-controls" style="display:none">
+        <button data-cmd="deleteBlock" title="Delete block">&#10005;</button>
       </span>
   </div>
   <div id="heading-menu" role="menu">
@@ -2743,6 +2745,52 @@
 
     const COLLAPSIBLE = new Set(['accordionItem', 'detailsBlock'])
 
+    // The minus buttons remove one part; this removes the whole block. A block
+    // type is deletable only by being named here, so the ✕ and ⌘⇧⌫ can never
+    // disagree about what they cover.
+    const DELETABLE_BLOCKS = new Map([
+      ['table', 'table'],
+      ['tabsBlock', 'tabs'],
+      ['accordionBlock', 'accordion'],
+      ['detailsBlock', 'details'],
+      ['columnsBlock', 'columns'],
+      ['buttonsBlock', 'buttons'],
+      ['pullquote', 'pullquote'],
+      ['preformatted', 'preformatted'],
+    ])
+
+    function _deletableBlockAt($pos) {
+      for (let d = $pos.depth; d > 0; d--) {
+        const node = $pos.node(d)
+        if (DELETABLE_BLOCKS.has(node.type.name)) return { node, pos: $pos.before(d) }
+      }
+      return null
+    }
+
+    function _caretAfterDeleting(doc, pos) {
+      let after = null, before = null
+      doc.descendants((node, at) => {
+        if (!node.isTextblock) return true
+        if (at >= pos) { if (after === null) after = at + 1 }
+        else before = at + 1 + node.content.size
+        return false
+      })
+      return after !== null ? after : before
+    }
+
+    function _deleteContainerBlock() {
+      const target = _deletableBlockAt(editor.state.selection.$from)
+      if (!target) return false
+      const tr = editor.state.tr.delete(target.pos, target.pos + target.node.nodeSize)
+      const $at = tr.doc.resolve(Math.min(target.pos, tr.doc.content.size))
+      if ($at.parent.content.size === 0) tr.insert($at.pos, editor.schema.nodes.paragraph.create())
+      editor.view.dispatch(tr)
+      const caret = _caretAfterDeleting(editor.state.doc, target.pos)
+      if (caret !== null) editor.commands.setTextSelection(caret)
+      editor.commands.focus()
+      return true
+    }
+
     // A class, never a widget: a contenteditable=false node next to the caret
     // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
     const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary'])
@@ -2819,6 +2867,9 @@
 
     const ContainerChrome = Extension.create({
       name: 'containerChrome',
+      addKeyboardShortcuts() {
+        return { 'Meta-Shift-Backspace': () => _deleteContainerBlock() }
+      },
       addCommands() {
         return {
           toggleContainerCollapse: () => ({ state, dispatch }) => {
@@ -3305,7 +3356,7 @@
         editor.view.dispatch(editor.state.tr.delete(col.pos, col.pos + col.node.nodeSize))
         editor.commands.focus()
       },
-      deleteTable:   () => editor.chain().focus().deleteTable().run(),
+      deleteBlock:   () => { _deleteContainerBlock() },
       undo:          () => editor.chain().focus().undo().run(),
       redo:          () => editor.chain().focus().redo().run(),
       link: () => {
@@ -3622,6 +3673,8 @@
     const _btnAccordionAutoclose = document.getElementById('btn-accordion-autoclose')
     const _btnDetailsOpen = document.getElementById('btn-details-open')
     const _tabsControls = document.getElementById('tabs-controls')
+    const _blockControls = document.getElementById('block-controls')
+    const _deleteBlockBtn = document.querySelector('[data-cmd="deleteBlock"]')
     const _row2 = document.getElementById('toolbar-row2')
     const _row2Groups = Array.from(_row2.children)
     const _linkBtn = document.querySelector('[data-cmd="link"]')
@@ -3674,6 +3727,12 @@
       _buttonsControls.style.display = editor.isActive('buttonsBlock') ? 'inline-flex' : 'none'
       // Columns controls
       _columnsControls.style.display = editor.isActive('columnsBlock') ? 'inline-flex' : 'none'
+      // Delete-block control
+      const deletable = _deletableBlockAt(editor.state.selection.$from)
+      _blockControls.style.display = deletable ? 'inline-flex' : 'none'
+      if (deletable) {
+        _deleteBlockBtn.title = `Delete ${DELETABLE_BLOCKS.get(deletable.node.type.name)}`
+      }
       // Blockquote controls
       const inBlockquote = editor.isActive('blockquote')
       _bqControls.style.display = inBlockquote ? 'inline-flex' : 'none'
