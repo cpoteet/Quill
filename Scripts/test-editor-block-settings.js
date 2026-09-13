@@ -152,3 +152,56 @@ describe('the settings registry is live in the editor', () => {
     assert.ok(win.settingKinds().includes('flagClass'))
   })
 })
+
+describe('registry-generated attributes: accordionItem.openByDefault', () => {
+  const open = `<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item {"openByDefault":true} -->
+<div class="wp-block-accordion-item is-open"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">T</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->`
+
+  const shut = open
+    .replace(' {"openByDefault":true}', '')
+    .replace('wp-block-accordion-item is-open', 'wp-block-accordion-item')
+
+  test('an open item keeps its is-open class through a save', () => {
+    assert.match(save(open), /class="wp-block-accordion-item is-open"/)
+  })
+
+  test('an open item keeps its delimiter key', () => {
+    assert.match(save(open), /wp:accordion-item \{"openByDefault":true\}/)
+  })
+
+  test('a closed item gains neither the class nor the key', () => {
+    const out = save(shut)
+    assert.doesNotMatch(out, /is-open/)
+    assert.doesNotMatch(out, /wp:accordion-item \{/)
+  })
+
+  test('the class is not doubled across two save cycles', () => {
+    const once = save(open)
+    win.setContent(once)
+    const twice = win.toWordPressHTML(editor.getHTML())
+    assert.equal((twice.match(/is-open/g) || []).length, 1)
+  })
+
+  // Settles the wrapper nesting: withBlockSettings must run inside
+  // withBlockAttrs, so the carried className merges onto a class list the
+  // setting has already contributed to rather than replacing it.
+  test('a carried className and the setting class land together', () => {
+    const out = save(open.replace('{"openByDefault":true}', '{"openByDefault":true,"className":"mine"}'))
+    const m = out.match(/<div class="([^"]*wp-block-accordion-item[^"]*)"/)
+    assert.ok(m, 'the item div should still be there')
+    const classes = m[1].split(/\s+/)
+    assert.ok(classes.includes('is-open'), `is-open missing from "${m[1]}"`)
+    assert.ok(classes.includes('mine'), `mine missing from "${m[1]}"`)
+  })
+})

@@ -2444,8 +2444,10 @@
       }
     }
 
+    // Composes withBlockSettings so a node cannot be added without its registry
+    // settings, which is what keeps adding a setting to one line.
     function withBlockAttrs(extension) {
-      return extension.extend({
+      return withBlockSettings(extension).extend({
         addAttributes() {
           return {
             ...this.parent?.(),
@@ -2478,6 +2480,108 @@
           const merged = mergeClassNames(attrs.class, carriedClassName(carried))
           out[1] = { ...attrs, 'data-quill-block-attrs': carried }
           if (merged) out[1].class = merged
+          return out
+        },
+      })
+    }
+
+    // ── Registry-driven block settings ────────────────
+    // block-settings.js says how each setting draws; these turn that into a
+    // Tiptap attribute, so a node's parse and render come from data. Wrap as
+    // withBlockAttrs(withBlockSettings(withClassAttr(X))): the class carrier
+    // innermost, the delimiter carrier outermost, so the carried className
+    // merges onto a class list the settings have already contributed to.
+
+    function settingIsSet(def, value) {
+      if (def.kind === 'flagClass') return value === def.when
+      return value !== undefined && value !== null && value !== '' && value !== def.default
+    }
+
+    function settingClass(def, value) {
+      if (def.kind === 'flagClass') return def.class
+      return def.pattern.replace('{}', value)
+    }
+
+    // `on` is a tag name, not a selector: a render spec is an array tree with
+    // no querySelector, and every setting Quill declares targets its element
+    // or one descendant tag.
+    function settingTargetSpec(spec, tag) {
+      if (!tag) return spec
+      if (!Array.isArray(spec)) return null
+      if (spec[0] === tag) return spec
+      for (const child of spec) {
+        if (!Array.isArray(child)) continue
+        const hit = settingTargetSpec(child, tag)
+        if (hit) return hit
+      }
+      return null
+    }
+
+    function specAttrs(spec) {
+      const second = spec[1]
+      if (!second || typeof second !== 'object' || Array.isArray(second)) spec.splice(1, 0, {})
+      return spec[1]
+    }
+
+    function applySettingToSpec(spec, def, value) {
+      const target = settingTargetSpec(spec, def.on)
+      if (!target) return
+      const attrs = specAttrs(target)
+      if (def.kind === 'attr') attrs[def.attr] = String(value)
+      else if (def.kind === 'style') attrs.style = [attrs.style, `${def.property}:${value}`].filter(Boolean).join(';')
+      else attrs.class = mergeClassNames(attrs.class, settingClass(def, value))
+    }
+
+    function applySettingToElement(el, def, value) {
+      const target = def.on ? el.querySelector(def.on) : el
+      if (!target) return
+      if (def.kind === 'attr') target.setAttribute(def.attr, String(value))
+      else if (def.kind === 'style') target.style.setProperty(def.property, value)
+      else target.setAttribute('class', mergeClassNames(target.getAttribute('class'), settingClass(def, value)))
+    }
+
+    function parseBlockSetting(el, name, def) {
+      if (!def.sourced) {
+        const carried = blockCommentAttr(el, name)
+        if (carried !== undefined) return carried
+      }
+      const target = def.on ? el.querySelector(def.on) : el
+      if (!target) return def.default
+      if (def.kind === 'carried') return def.default
+      if (def.kind === 'attr') {
+        const value = target.getAttribute(def.attr)
+        return value === null ? def.default : value
+      }
+      if (def.kind === 'style') return target.style.getPropertyValue(def.property) || def.default
+      if (def.kind === 'flagClass') return target.classList.contains(def.class) ? def.when : def.default
+      const pattern = def.pattern.replace('{}', '([^\\s]+)')
+      const m = new RegExp('(?:^|\\s)' + pattern + '(?:\\s|$)').exec(target.getAttribute('class') || '')
+      return m ? m[1] : def.default
+    }
+
+    function withBlockSettings(extension) {
+      return extension.extend({
+        addAttributes() {
+          const generated = {}
+          for (const [name, def] of Object.entries(settingsFor(this.name))) {
+            generated[name] = {
+              default: 'default' in def ? def.default : null,
+              keepOnSplit: false,
+              parseHTML: el => parseBlockSetting(el, name, def),
+              renderHTML: () => ({}),
+            }
+          }
+          return { ...this.parent?.(), ...generated }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const settings = settingsFor(props.node.type.name)
+          for (const [name, def] of Object.entries(settings)) {
+            const value = props.node.attrs[name]
+            if (def.kind === 'carried' || !settingIsSet(def, value)) continue
+            if (out && out.nodeType === 1) applySettingToElement(out, def, value)
+            else if (Array.isArray(out)) applySettingToSpec(out, def, value)
+          }
           return out
         },
       })
