@@ -1574,7 +1574,7 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
-## JS container tests (131 tests)
+## JS container tests (254 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1972,6 +1972,41 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | Test | What it checks |
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
+
+---
+
+## JS block settings registry tests (13 tests)
+
+File: `Scripts/test-block-settings-registry.js`
+Source: `Sources/QuillKit/Resources/block-settings.js`
+
+Pure Node, no DOM. Guards the registry's own shape before any consumer touches it: every entry names a known `kind`, every `flagClass` declares `class`/`when`/`default`, every `valueClass` pattern contains `{}`, every `attr` names an attribute, and no entry names a block `block-descriptors.js` has no descriptor for. It also reads its own source to fail on a **repeated block key** — a second `buttonBlock:` literal silently discards the first with no runtime error, which cost a real bug.
+
+---
+
+## JS block settings tests (119 tests)
+
+File: `Scripts/test-editor-block-settings.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes, delimiter keys and toolbar controls, so each half has to be exercised where it actually runs.
+
+| Group | What it checks |
+|---|---|
+| `className survives on container blocks` | The carried class is spliced into the rendered class list and back into the comment, never doubled |
+| `registry-generated attributes` | `accordionItem.openByDefault` parses comment-first, renders `is-open`, and settles the wrapper nesting order |
+| `the delimiter half comes from the registry` | `attrsFromSettings`/`ownedAttrsFor` replace a hand-written `attrsFrom` |
+| `the toolbar control comes from the registry` | A generated control appears only inside its block, reflects the value, and flips it |
+| `block styles` | Button, quote, separator, image and table each keep a style through a save, replace rather than stack, and leave the user's own classes alone |
+| `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block |
+| `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
+| `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
+| `the whole settings fixture corpus` | All twelve `settings-*.html` come back untouched with no edit, and save idempotently once edited |
+| `every registry entry is covered` | Fails if a registry entry's name appears in no test — the drift guard |
+
+**Recorded limit — sections plus colspan.** When a table has explicit `<thead>`/`<tfoot>` *and* a colspanned body cell, ProseMirror pads every row to a uniform cell count at parse time, so the header and footer each gain a phantom empty cell. This is upstream of anything the save transform can reach; in isolation colspan round-trips correctly and sections round-trip correctly, and only the combination fails. `test-editor-containers.js`'s `RECORDED LIMIT: sections plus a colspan gain a phantom cell` **asserts the phantom cell**, so if it is ever fixed upstream that test fails and points here.
+
+**Known whitespace difference, pre-existing.** Gutenberg separates sibling blocks inside a container with a blank line; Quill writes them adjacent. It affects every container block, predates this work, and is why the corpus test asserts idempotency after an edit rather than byte-identity against the fixture.
 
 ---
 

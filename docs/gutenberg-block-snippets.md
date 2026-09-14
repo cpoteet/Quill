@@ -9,9 +9,9 @@ Source: [WordPress Block Editor Handbook — Core Blocks Reference](https://deve
 None of these have a dedicated toolbar button or visual editing UI in Quill. Once pasted via code view and saved, most will fall through to the `gutenbergPassthrough` node — Quill shows a "Not editable in the visual editor" card and preserves the block byte-for-byte on every save, so it round-trips safely to WordPress even though you can't visually tweak it. To change the content, edit it in code view.
 
 Exceptions worth knowing about:
-- **Separator** already has full native support (`withClassAttr(HorizontalRule)`) — it's a real editable node, just with no toolbar button. Typing `---` then Enter also inserts one.
+- **Separator** has full native support (`withClassAttr(HorizontalRule)`) and, since 2026-09-14, its own entry in the insert dropdown. Typing `---` then Enter also inserts one.
 - **Media & Text** round-trips correctly. Its outer element is a `<div class="wp-block-media-text">`, which the passthrough node catches directly; the nested `<figure class="wp-block-media-text__media">` is preserved inside it verbatim and is never parsed on its own. (An earlier note here claimed the block's root was a `<figure>` — it is not.)
-- **Pullquote** renders as a `<figure>` and now round-trips safely (changed 2026-08-19, commit `f552d07`). Passthrough used to skip every `<figure>`, so nothing claimed `<figure class="wp-block-pullquote">`, Tiptap's parser recursed past it, and the inner `<blockquote><cite>` matched Quill's unscoped blockquote rule — the block loaded and saved as a plain quote, losing the pullquote wrapper and styling. Passthrough now catches any `wp-block-*` figure outside `QUILL_MODELED_FIGURE_CLASSES` (image, gallery, embed, table), so a pullquote is preserved byte-for-byte as a card. It is still not visually editable; see `docs/future-architecture.md` (Approach G) for what native support would take.
+- **Pullquote** renders as a `<figure>` and is a **natively editable block** (`f552d07` made it round-trip safely; it has had its own Tiptap node since). Before `f552d07`, passthrough skipped every `<figure>`, nothing claimed `<figure class="wp-block-pullquote">`, Tiptap's parser recursed past it, and the inner `<blockquote><cite>` matched Quill's unscoped blockquote rule — the block loaded and saved as a plain quote. Passthrough now catches any `wp-block-*` figure outside `QUILL_MODELED_FIGURE_CLASSES` (image, gallery, embed, table, pullquote).
 - **Shortcode** serializes as bare text with no wrapping element at all (see below) — the passthrough node matches on an element's `wp-block-*` class, so there may be nothing for it to catch here either. Untested — treat with the same suspicion as Pullquote until verified.
 
 ---
@@ -20,7 +20,7 @@ Exceptions worth knowing about:
 
 Large pulled-out quote, distinct from the blockquote+citation Quill already supports.
 
-**Confirmed: round-trips byte-for-byte as a passthrough card** (since 2026-08-19, commit `f552d07`). Before that it loaded and saved as a plain blockquote+citation, losing the `wp-block-pullquote` figure wrapper and large-quote styling. It is preserved now but still not visually editable — edit it in code view. See `docs/future-architecture.md` (Approach G) if native editing is ever worth the cost.
+**Confirmed: natively editable, and round-trips byte-for-byte.** It has its own Tiptap node (`parseHTML` on `figure.wp-block-pullquote` with `contentElement: 'blockquote'`), an insert-menu entry and a citation control. Before `f552d07` it loaded and saved as a plain blockquote+citation, losing the figure wrapper and large-quote styling.
 
 ```html
 <!-- wp:pullquote -->

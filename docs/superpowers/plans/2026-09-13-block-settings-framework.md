@@ -15,7 +15,7 @@ that does not need redrawing.
 
 ---
 
-## State of play (2026-09-13)
+## State of play (2026-09-14)
 
 Committed on `gutenberg-block-model`, 12 test suites green:
 
@@ -29,8 +29,22 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `c5130b5` | **Tasks A3 and A4 done** — the delimiter half and the generated controls |
 | `43047b2` | **Task B1 done** — the style picker, on four blocks of five |
 | `923405a` | **Task C1 and C2 done** — tabs default tab, open-in-new-tab |
+| *uncommitted* | **Task D1 done** — accordion icons, propagating to every heading |
+| *uncommitted* | **Tasks E1 and E2 done** — separator menu entry, table size picker |
+| *uncommitted* | **Tasks F1 and F2 done** — the table figure, caption, row sections, section toggles, table style |
+| *uncommitted* | **Task G1 done** — corpus test, drift guard, docs, cleanup |
 
-**Stages A, B and C are complete. Next: stage D, task D1.**
+**Stages A-G are complete**, except the WordPress draft deletion in G1, which
+needs the user.
+
+**Next: stage H**, the generic attribute carrier — added 2026-09-14 and not
+started. It is the answer to "does every Gutenberg attribute survive, even the
+ones Quill cannot edit?", which today is only half true: the block comment is
+carried automatically, the markup is not. Build it before adding any further
+tier-2 registry entries.
+
+Nothing since `923405a` is committed — the plan's Global Constraints say not to
+commit unless asked, so stages D through G sit in the working tree.
 
 ### What the registry holds now
 
@@ -43,11 +57,17 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `blockquote` | `className` | carried | blockStyle (Default / Plain) |
 | `horizontalRule` | `className` | carried | blockStyle (Default / Wide Line / Dots) |
 | `image` | `className` | carried | blockStyle (Default / Rounded) |
+| `accordionBlock` | `showIcon` | carried | toggle, propagating to `accordionHeading` |
+| `accordionBlock` | `iconPosition` | carried | choice, propagating to `accordionHeading` |
 
-Control types built: `toggle`, `blockStyle`, `ancestorIndex`, `newTab`. A
-`choice` type does not exist yet — stage D is the first to need one. The prose
-link's new-tab toggle is hand-written (`#link-controls` in `editor.html`),
-because a link is a mark and not a block.
+Control types built: `toggle`, `blockStyle`, `ancestorIndex`, `newTab`,
+`choice`. The prose link's new-tab toggle is hand-written (`#link-controls` in
+`editor.html`), because a link is a mark and not a block.
+
+A control declares `propagate: '<node>'` to write its value to every descendant
+of that type as well as to the block itself, in one transaction. The descendant
+both draws the setting and carries it, so its markup and its comment stay in
+agreement — which is the whole point, since core stores these settings twice.
 
 ### Corrections to this plan, made from installed core
 
@@ -63,16 +83,22 @@ because a link is a mark and not a block.
 
 ### Deferred, with reasons
 
-- **Table's Stripes style waits for F1.** Its `className` lives on the
-  `<figure class="wp-block-table">`, which nothing in Quill sees, so the style
-  is *lost on any edit today* — data loss, not a missing control. Probed
-  2026-09-13: buttons, quotes, separators and images all keep their style
-  through load → edit → save; table comes back with none. Add the fifth
-  registry entry as part of F1.
+- ~~**Table's Stripes style waits for F1.**~~ Done with F1: the figure parse
+  rule makes the table's `className` visible, so the fifth registry entry
+  landed with it. Before that the style was lost on any edit.
 - **G1:** `settings-separator.html` does not round-trip byte-identically —
   Quill emits `<hr ...>` where the fixture has `<hr .../>`. Confirmed
   pre-existing against `HEAD`, unrelated to this work.
-- **G1:** `Scripts/probe-attrs.js` is still untracked and still wants deleting.
+- ~~**G1:** `Scripts/probe-attrs.js`~~ — deleted.
+- **Sibling blocks inside a container.** Gutenberg separates them with a blank
+  line; Quill writes them adjacent. Pre-existing, affects every container block,
+  and is why the corpus test asserts idempotency after an edit rather than
+  byte-identity against the fixture. Out of this plan's scope: changing the
+  separator risks the orphaned-whitespace-node bug `CLAUDE.md` records.
+- **Still open, needs the user:** delete WordPress draft **18195**.
+- **Three attributes are still lost on save** — columns' `is-not-stacked-on-mobile`,
+  details' `name`, and an ordered list's `reversed`/`list-style-type`. Recorded as
+  `KNOWN_DIFFERENCES` in the corpus test, and fixed as a class by stage H.
 
 ### Deviations from the tasks as written, all deliberate
 
@@ -129,6 +155,12 @@ attributes and whatever a future WordPress adds. Tier 2 exists only because
 Quill rebuilds the visible HTML on save: a setting that draws something would
 otherwise come back as a comment that disagrees with its own markup, which is
 what makes Gutenberg report a block as invalid.
+
+**Tier 1 covers the comment, not the markup.** An attribute WordPress reads back
+out of the HTML (`source: "attribute"`) never appears in the comment at all, so
+tier 1 cannot reach it, and an attribute that draws a class loses the class even
+when the comment survives. Stage H closes that gap generically; until it lands,
+every such attribute needs its own tier-2 entry.
 
 ### What the registry cannot express
 
@@ -561,6 +593,127 @@ a lurking surprise — if it is ever fixed, that test fails and points here.
 - [ ] **`CLAUDE.md`** — re-run each suite and correct the counts; add the new files to the command list; record the registry as the way to add a block setting.
 - [ ] **`rm Scripts/probe-attrs.js`**
 - [ ] **Delete WordPress draft 18195** ("Block Test"), kept through this work so its settings could be re-checked in Gutenberg. Ask first — it is on the live site.
+
+---
+
+## Stage H — the generic attribute carrier (NOT STARTED)
+
+**Raised 2026-09-14, by the question this framework should have answered from
+the start:** does every Gutenberg attribute survive automatically, including the
+ones Quill cannot edit? Today the answer is "the comment does, the markup does
+not", and that gap is the whole reason tier 2 exists. Closing it shrinks tier 2
+to the handful of settings that draw *child elements*, and makes the next
+attribute WordPress invents a non-event rather than a registry entry.
+
+Build this before adding any more tier-2 entries. Each one added first is work
+this stage would have made unnecessary.
+
+### The diagnosis
+
+Quill rebuilds the visible HTML from the Tiptap document on every save, and each
+node's `renderHTML` writes a fixed list of attributes. Anything else that was on
+the original element is never written back. The comment then says one thing and
+the markup says another, which is exactly what makes Gutenberg report a block as
+invalid.
+
+Three known losses, all the same cause, all currently recorded as
+`KNOWN_DIFFERENCES` in `Scripts/test-editor-block-settings.js`:
+
+| Fixture | Lost | In the comment? |
+|---|---|---|
+| `settings-columns.html` | `is-not-stacked-on-mobile` on the columns div | yes — `isStackedOnMobile:false` survives; only the class is dropped |
+| `settings-details.html` | `name="faq"` on the `<details>` | no — `source: "attribute"`, WordPress reads it back out of the HTML |
+| `settings-list.html` | `reversed`, `style="list-style-type:upper-roman"` on the `<ol>` | no — both sourced, same reason |
+
+So two of the three cannot be fixed by carrying the comment at all. Only a
+markup-level carrier reaches them.
+
+### The measured constraint — read this before designing
+
+**Adding the existing `withClassAttr` to `ColumnsBlock` fixes nothing.** Probed
+2026-09-14: the fixture still came back without `is-not-stacked-on-mobile`.
+The reason is that Quill's hand-written container nodes ignore Tiptap's
+generated attributes outright —
+
+```js
+renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] }
+```
+
+— with no `mergeAttributes(HTMLAttributes)`, so an attribute contributed by a
+Tiptap `addAttributes` entry never reaches the output. The carrier therefore has
+to **post-process the render output**, the way `withBlockAttrs` already does when
+it splices `data-quill-block-attrs` and the carried `className` into `out[1]`.
+Do not spend time on the `addAttributes` route; it has already been tried.
+
+### The design
+
+A third wrapper beside `withClassAttr` and `withBlockAttrs`, composed the same
+way the others are:
+
+- **Parse:** snapshot every attribute present on the matched element into one
+  JSON attribute, the way `blockAttrs` snapshots the comment.
+- **Render:** post-process the spec (and the element branch, for the nodes that
+  build a real element rather than a spec array). For each snapshotted
+  attribute, write it **only if the node did not write it itself** — the node's
+  own value is authoritative, so an attribute the user edited through Quill wins.
+  `class` is the exception: union the two through `mergeClassNames`, or the
+  node's own `wp-block-*` class and the carried extras knock each other out.
+
+It subsumes `withClassAttr` once it works; fold that in rather than running both.
+
+### What it still will not cover
+
+An attribute that draws a **child element** rather than an attribute. The
+accordion icon is a `<span>` inside the heading, so regenerating it needs the
+node to model it — `accordionBlock.showIcon`/`iconPosition` stay tier 2. That set
+is far smaller than "every attribute", but it is not empty: tier 2 shrinks, it
+does not disappear, and the three-tier table above stays accurate.
+
+### The two risks, both real
+
+- **Stale values.** If a control ever edits something that *also* draws an
+  unmodeled attribute, the snapshot re-emits the old one. No control does today,
+  which is why this is safe to build now — but every new control has to be
+  checked against it, and the "node's own value wins" rule is what keeps the
+  common case correct.
+- **Tiptap-owned structural attributes.** `colspan`/`rowspan` on table cells
+  change as the user edits rows and columns; a snapshot taken at parse time goes
+  stale the moment they do. Scope the carrier away from the table cell nodes, or
+  exclude those attribute names explicitly. Decide it with a test that adds and
+  deletes a column on a colspanned table.
+
+### Steps
+
+- [ ] **Step 1: Write the failing tests** — the three fixtures above round-trip
+      byte-identically, driven by deleting their `KNOWN_DIFFERENCES` entries so
+      the corpus test itself is the failing test. Add one guard per risk above:
+      an attribute the node models is not resurrected from the snapshot after an
+      edit, and a colspanned table survives a column add and a column delete.
+- [ ] **Step 2: Confirm they fail**
+- [ ] **Step 3: Implement the carrier**, post-processing the render output.
+- [ ] **Step 4: Fold `withClassAttr` into it** and remove the now-duplicate
+      wrapper from every call site.
+- [ ] **Step 5: `./test.sh`** — the whole suite, not just the settings ones. The
+      carrier touches the render path of every block.
+- [ ] **Step 6: Build and check a new local draft**, reading `drafts.db`.
+      Re-check the accordion, tabs and table fixtures in the app: those are the
+      nodes whose `renderHTML` the carrier now post-processes.
+- [ ] **Step 7: Update `CLAUDE.md` and `docs/wordpress-release-audit.md`** — the
+      audit's Block settings section should say that an unmodeled attribute is
+      now carried automatically, so a release only needs checking for attributes
+      that draw child elements.
+
+**Stage H is done when the only reason a block needs a registry entry is that it
+draws a child element, or that it wants a toolbar control.**
+
+### Left alone deliberately
+
+Two differences in the corpus are cosmetic and out of scope even for this stage,
+because WordPress parses both forms identically:
+
+- `settings-embed.html`, `settings-image.html` — comment attributes come back in
+  a different key order, and `&` is not re-escaped as `\u0026`.
+- `settings-separator.html` — Quill writes `<hr>` where core writes `<hr/>`.
 
 ---
 

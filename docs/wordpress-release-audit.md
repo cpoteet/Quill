@@ -93,6 +93,38 @@ Always include these standing items, whatever the release notes say:
 
 ---
 
+## Block settings
+
+Every setting Quill redraws or offers a control for is one entry in
+`Sources/QuillKit/Resources/block-settings.js`. Re-verify this table against the
+site's own `block-library.js` each major release: a changed class name or
+default here is silent data loss, not a crash. This is the drift the ordered-list
+numbering error was a worked example of.
+
+| Block | Setting | What core draws | Where Quill puts it |
+|---|---|---|---|
+| `core/accordion` | `showIcon`, `iconPosition` | nothing — its `save()` ignores both | carried in the comment; the control propagates to every heading |
+| `core/accordion-heading` | `showIcon`, `iconPosition` | `has-icon`, `has-icon-left`/`has-icon-right`, and the `__toggle-icon` span before or after the title | redrawn by `accordionHeading.renderHTML` |
+| `core/accordion-item` | `openByDefault` | `is-open` on the item div | `flagClass` |
+| `core/tabs` | `activeTabIndex` | nothing | carried; the control sits on the panel |
+| `core/button` | `className` | the style class on the button div | carried |
+| `core/button` | `linkTarget`, `rel` | `target`/`rel` on the `<a>` — `source: "attribute"`, so never in the comment | markup only; `rel` is `noopener` alone |
+| `core/quote`, `core/separator`, `core/image`, `core/table` | `className` | the style class on the block's root element | carried |
+| `core/table` | `caption` | a `figcaption.wp-element-caption` in the figure — `source: "rich-text"`, so never in the comment | markup only |
+
+Two things the registry deliberately cannot express, because they are document
+structure rather than a setting on an element: a table's `<thead>`/`<tfoot>`
+sections (`tableRow.rowType`, regrouped in the save transform) and the table
+caption's attachment to its figure.
+
+Verify the style slugs in one command:
+
+```bash
+grep -o 'is-style-[a-z-]*' /tmp/block-library.js | sort -u
+```
+
+---
+
 ## Record: WordPress 7.1, audited 2026-08-19
 
 Ran a day early, on release day. Studio site was on 7.1, so this was full ground-truth mode. Commits `f552d07`, `c182896`, `a4342d2`.

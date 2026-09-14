@@ -195,7 +195,7 @@ The formatting toolbar runs across the top of the editor.
 
 | Button | Function |
 |---|---|
-| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. See [Tables](#tables) for more details. |
+| Table | Opens a size grid — drag or arrow across it to choose how many columns and rows you want, then click or press Enter. When the cursor is inside a table, additional buttons appear to add or remove rows and columns, turn the header and footer sections on and off, or delete the table. See [Tables](#tables) for more details. |
 | Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. To open a link in your default browser, hold ⌘ and click it. Links show a pointer cursor and underline while ⌘ is held. |
 | * (Footnote) | Inserts a footnote marker at the cursor position. See [Footnotes](#footnotes) for more details. |
 | Embed | Inserts an embed (video, social post, etc.) by URL. See [Embeds](#embeds) for more details. |
@@ -203,10 +203,26 @@ The formatting toolbar runs across the top of the editor.
 | </> (Code view) | Toggles between the rich text editor and a raw HTML view. See [Code View](#code-view) for more details. |
 | Image | Opens the media library picker to insert an image. See [Images](#images) for more details. |
 | Gallery | Opens the gallery picker to insert a multi-image gallery. See [Gallery](#gallery) for more details. |
+| + (More blocks) | Dropdown for the blocks with no button of their own: Columns, Accordion, Tabs, Details, Buttons, Pullquote, Preformatted and Separator. |
 | Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
 | Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
 
 The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. See [Images](#images) for more details on resizing, captions, and alt text.
+
+#### Block settings
+
+A second toolbar row appears whenever the cursor is inside a block that has settings of its own. The controls there match the ones WordPress shows in its own sidebar, and what you choose is saved back to WordPress as a real block setting rather than as hand-written markup.
+
+| Block | Control | What it does |
+|---|---|---|
+| Button, Quote, Separator, Image, Table | Style | Picks the block style WordPress registers for that block — Outline for a button, Plain for a quote, Wide Line or Dots for a separator, Rounded for an image, Stripes for a table |
+| Button | New tab | Opens that button's link in a new tab |
+| Accordion | Icon / Icon side | Shows or hides the toggle icon, and puts it on the left or the right. The change applies to every section in the accordion at once, and a single undo reverses the lot |
+| Accordion section | Open | Opens that section by default when the page loads |
+| Tab | Default | Makes that tab the one shown first |
+| Table | Header / Footer | Adds or removes the table's header and footer rows |
+
+A link in ordinary prose gets its own **New tab** toggle beside the link button.
 
 ### Markdown Shortcuts
 
@@ -445,9 +461,9 @@ When you insert a footnote, two things happen automatically:
 
 ### Tables
 
-Click the **Table** button in the toolbar to insert a table at the cursor position. A new table is created with a default set of rows and columns.
+Click the **Table** button in the toolbar to open a size grid. Move across it and the label above reads back the size you are on — "4×3 Table" is four columns by three rows — then click to insert. The arrow keys work too, with Enter to insert and Escape to close.
 
-When the cursor is inside a table, four additional buttons appear in the toolbar:
+When the cursor is inside a table, these buttons appear in the toolbar:
 
 | Button | Function |
 |---|---|
@@ -455,11 +471,15 @@ When the cursor is inside a table, four additional buttons appear in the toolbar
 | +Col | Inserts a column to the right of the current column |
 | −Row | Deletes the current row |
 | −Col | Deletes the current column |
+| Header | Adds or removes the table's header row |
+| Footer | Adds or removes the table's footer row |
 | ✕ | Deletes the entire table |
 
 Press **Tab** to move forward through cells, or **⇧Tab** to move backward. Pressing Tab from the last cell in a row moves to the first cell of the next row.
 
-**Headers:** The first row of the table is treated as a header row. Quill saves it as a proper `<thead>` element in the published HTML, consistent with how WordPress formats table blocks.
+**Headers and footers:** A new table gets a header row, saved as a proper `<thead>` in the published HTML. Use the **Header** and **Footer** buttons to add or remove either section; a table opened from WordPress keeps whichever sections it arrived with.
+
+**Captions:** A caption written in the WordPress editor is kept exactly as it was. Quill does not create or edit table captions — add one in WordPress if you need it.
 
 ### Embeds
 
