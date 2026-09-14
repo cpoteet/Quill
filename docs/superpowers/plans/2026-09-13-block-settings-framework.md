@@ -27,8 +27,24 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `4f0f9b7` | **Task A1 done** — the registry, with one entry and two guards |
 | `669eeff` | **Task A2 done** — `withBlockSettings`, the generated Tiptap attributes |
 | `c5130b5` | **Tasks A3 and A4 done** — the delimiter half and the generated controls |
+| `43047b2` | **Task B1 done** — the style picker, on four blocks of five |
 
-**Stage A is complete. Next: task B1.**
+**Stages A and B are complete. Next: task C1.**
+
+**Table's Stripes style is deferred to after F1.** Its `className` lives on the
+`<figure class="wp-block-table">`, which nothing in Quill sees, so the style is
+*lost on any edit today* — a data-loss bug, not just a missing control. Probed
+on 2026-09-13: buttons, quotes, separators and images all keep their style
+through a load → edit → save; table comes back with none. Add the fifth
+registry entry as part of F1, not before.
+
+Two slugs in the scope table above were wrong, corrected against installed
+core: the table's default style is `regular`, and the separator's wide style is
+labelled **Wide Line**.
+
+Noted for G1: `settings-separator.html` does not round-trip byte-identically —
+Quill emits `<hr ...>` where the fixture has `<hr .../>`. Confirmed pre-existing
+against `HEAD`, unrelated to the settings work.
 
 The registry still ships with exactly one entry — `accordionItem.openByDefault`
 — which was the machinery's subject through A2–A4.
