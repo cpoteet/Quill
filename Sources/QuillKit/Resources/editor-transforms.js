@@ -794,7 +794,13 @@ function toWordPressHTML(html, doc) {
     unsupported.push(el.getAttribute('data-quill-unsupported-source'))
     el.replaceWith(doc.createTextNode(token))
   })
-  let out = div.innerHTML
+  // ProseMirror serializes a style attribute through element.style, which
+  // respaces it; core writes the compact form, so put it back.
+  div.querySelectorAll('[style]').forEach(el => {
+    el.setAttribute('style', el.getAttribute('style').replace(/;\s*$/, '').replace(/:\s+/g, ':').replace(/;\s+/g, ';'))
+  })
+  // A boolean attribute set through the DOM serializes as name="", never bare.
+  let out = div.innerHTML.replace(/<[a-z][^>]*>/gi, tag => tag.replace(/ (open|reversed)=""/g, ' $1'))
   unsupported.forEach((source, i) => {
     out = out.replace(`QUILLUNSUPPORTED${i}QUILLEND`, () => source)
   })

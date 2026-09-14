@@ -29,22 +29,17 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `c5130b5` | **Tasks A3 and A4 done** — the delimiter half and the generated controls |
 | `43047b2` | **Task B1 done** — the style picker, on four blocks of five |
 | `923405a` | **Task C1 and C2 done** — tabs default tab, open-in-new-tab |
-| *uncommitted* | **Task D1 done** — accordion icons, propagating to every heading |
-| *uncommitted* | **Tasks E1 and E2 done** — separator menu entry, table size picker |
-| *uncommitted* | **Tasks F1 and F2 done** — the table figure, caption, row sections, section toggles, table style |
-| *uncommitted* | **Task G1 done** — corpus test, drift guard, docs, cleanup |
+| `3e9c6e2` | **Tasks D1, E1, E2, F1, F2 and G1 done** — accordion icons, separator menu entry, table size picker, the table figure, caption, row sections, section toggles, table style, corpus test, drift guard |
+| `3a366d3` | Stage H planned |
+| *uncommitted* | **Stage H done** — the generic attribute carrier |
 
-**Stages A-G are complete**, except the WordPress draft deletion in G1, which
+**Stages A-H are complete**, except the WordPress draft deletion in G1, which
 needs the user.
 
-**Next: stage H**, the generic attribute carrier — added 2026-09-14 and not
-started. It is the answer to "does every Gutenberg attribute survive, even the
-ones Quill cannot edit?", which today is only half true: the block comment is
-carried automatically, the markup is not. Build it before adding any further
-tier-2 registry entries.
-
-Nothing since `923405a` is committed — the plan's Global Constraints say not to
-commit unless asked, so stages D through G sit in the working tree.
+An attribute no registry entry names now survives an edit on its own. Tier 2 is
+down to settings that draw a **child element**: the accordion icon span is the
+only one Quill models. Nothing in stage H is committed — the plan's Global
+Constraints say not to commit unless asked.
 
 ### What the registry holds now
 
@@ -96,9 +91,10 @@ agreement — which is the whole point, since core stores these settings twice.
   byte-identity against the fixture. Out of this plan's scope: changing the
   separator risks the orphaned-whitespace-node bug `CLAUDE.md` records.
 - **Still open, needs the user:** delete WordPress draft **18195**.
-- **Three attributes are still lost on save** — columns' `is-not-stacked-on-mobile`,
-  details' `name`, and an ordered list's `reversed`/`list-style-type`. Recorded as
-  `KNOWN_DIFFERENCES` in the corpus test, and fixed as a class by stage H.
+- ~~**Three attributes are still lost on save**~~ — columns'
+  `is-not-stacked-on-mobile`, details' `name`, and an ordered list's
+  `reversed`/`list-style-type`. Fixed as a class by stage H; all three now
+  round-trip, verified in the app as well as in jsdom.
 
 ### Deviations from the tasks as written, all deliberate
 
@@ -156,11 +152,11 @@ Quill rebuilds the visible HTML on save: a setting that draws something would
 otherwise come back as a comment that disagrees with its own markup, which is
 what makes Gutenberg report a block as invalid.
 
-**Tier 1 covers the comment, not the markup.** An attribute WordPress reads back
-out of the HTML (`source: "attribute"`) never appears in the comment at all, so
-tier 1 cannot reach it, and an attribute that draws a class loses the class even
-when the comment survives. Stage H closes that gap generically; until it lands,
-every such attribute needs its own tier-2 entry.
+**Tier 1 now covers the markup too.** Stage H's carrier snapshots every
+attribute on the parsed element and replays it on save, so an attribute
+WordPress reads back out of the HTML (`source: "attribute"`), and a class no
+node draws, survive without any entry. What is left for tier 2 is a setting that
+draws a **child element**, or one that wants a toolbar control.
 
 ### What the registry cannot express
 
@@ -596,7 +592,7 @@ a lurking surprise — if it is ever fixed, that test fails and points here.
 
 ---
 
-## Stage H — the generic attribute carrier (NOT STARTED)
+## Stage H — the generic attribute carrier (DONE)
 
 **Raised 2026-09-14, by the question this framework should have answered from
 the start:** does every Gutenberg attribute survive automatically, including the
@@ -682,35 +678,92 @@ does not disappear, and the three-tier table above stays accurate.
   exclude those attribute names explicitly. Decide it with a test that adds and
   deletes a column on a colspanned table.
 
+### What was built
+
+`withRawAttrs` in `editor.html`, composed inside `withBlockAttrs` so every block
+node gets it. On parse it snapshots the matched element's attributes as
+`{tag, attrs:[[name, value], …]}`; on render it rebuilds the spec's attribute
+object **in the snapshot's order**, which is what makes byte-identity possible at
+all — appending the carried attributes after the node's own would have reordered
+every block WordPress wrote. The snapshot is skipped entirely unless the rendered
+tag matches the parsed one, which keeps it away from the figure-to-inner-element
+rewrites.
+
+Two bounded lists sit beside it:
+
+- `RAW_ATTRS_MODELED` — attributes the node draws for itself. The plan's rule
+  ("write it only if the node did not write it itself") is not enough on its own:
+  a node that models `open` and has it *off* writes nothing, and the snapshot
+  would put it straight back. A modeled name keeps its **position** from the
+  snapshot but takes its value from the render, or disappears with it. `class`
+  is listed for the two nodes that compute their class from an attribute
+  (`accordionHeading`, `accordionItem`); the others get it from the `class`
+  attribute `withClassAttr` already models.
+- `RAW_ATTRS_EXEMPT` — `image`, `galleryBlock`, `embedBlock`, `table`, the four
+  figure blocks that rebuild their figure from modeled attributes and are
+  rewritten again in `toWordPressHTML`.
+
+`ButtonBlock` gained `withClassAttr` and its registry entry gained
+`classAttr: 'class'`, so the style picker and the carrier agree on one class
+list. Without it, switching an Outline button back to Fill brought
+`is-style-outline` back from the snapshot — caught by the existing style test.
+
+Two normalisations in `toWordPressHTML` came with it, both about how the DOM
+serialises rather than about any block: an inline style is compacted back to
+core's `a:b;c:d` form (ProseMirror sets it through `element.style`, which
+respaces it), and `open`/`reversed` are written bare rather than `=""`.
+
 ### Steps
 
-- [ ] **Step 1: Write the failing tests** — the three fixtures above round-trip
-      byte-identically, driven by deleting their `KNOWN_DIFFERENCES` entries so
-      the corpus test itself is the failing test. Add one guard per risk above:
-      an attribute the node models is not resurrected from the snapshot after an
-      edit, and a colspanned table survives a column add and a column delete.
-- [ ] **Step 2: Confirm they fail**
-- [ ] **Step 3: Implement the carrier**, post-processing the render output.
-- [ ] **Step 4: Fold `withClassAttr` into it** and remove the now-duplicate
-      wrapper from every call site.
-- [ ] **Step 5: `./test.sh`** — the whole suite, not just the settings ones. The
-      carrier touches the render path of every block.
-- [ ] **Step 6: Build and check a new local draft**, reading `drafts.db`.
-      Re-check the accordion, tabs and table fixtures in the app: those are the
-      nodes whose `renderHTML` the carrier now post-processes.
-- [ ] **Step 7: Update `CLAUDE.md` and `docs/wordpress-release-audit.md`** — the
-      audit's Block settings section should say that an unmodeled attribute is
-      now carried automatically, so a release only needs checking for attributes
-      that draw child elements.
+- [x] **Step 1: Write the failing tests** — three `KNOWN_DIFFERENCES` deleted,
+      plus a guard per risk.
+- [x] **Step 2: Confirm they fail** — 9 failures, including both guards.
+- [x] **Step 3: Implement the carrier**
+- [x] ~~**Step 4: Fold `withClassAttr` into it**~~ — **not done, deliberately.**
+      See below.
+- [x] **Step 5: `./test.sh`** — 12/12 suites, 388 Swift + 939 JS.
+- [x] **Step 6: Build and check a new local draft** — the six container fixtures
+      loaded through code view, edited, saved, and read back from `drafts.db`.
+      Everything survived. One difference from jsdom found and recorded below.
+- [x] **Step 7: Update `CLAUDE.md` and `docs/wordpress-release-audit.md`**
 
-**Stage H is done when the only reason a block needs a registry entry is that it
-draws a child element, or that it wants a toolbar control.**
+### Why `withClassAttr` was not folded in
+
+The plan expected the carrier to subsume it. It cannot, for two reasons that
+only showed up once the carrier existed:
+
+- **Three registry entries point a control at the node's own `class`
+  attribute** (`classAttr: 'class'` on quote, separator and table). That
+  attribute is where a style picker splices its token, and it is the one thing
+  that must *not* come from the snapshot — the snapshot still holds the class
+  the user just changed away from.
+- **The exempt blocks still need it.** `table`'s style control reads
+  `node.attrs.class`, and `table` is exempt from the carrier. Folding would have
+  left the four figure blocks needing the old wrapper and everything else the
+  new one, which is harder to read than what is there now.
+
+So the two now divide cleanly: `withClassAttr` **models** class and id, the
+carrier **delivers** them — including for the hand-written container nodes,
+whose `renderHTML` ignores Tiptap's generated attributes and never delivered
+them before.
+
+### What it still does not cover
+
+An attribute that draws a **child element**. The accordion icon is a `<span>`
+inside the heading, so `accordionBlock.showIcon`/`iconPosition` stay tier 2.
+That is the whole of tier 2 now.
 
 ### Left alone deliberately
 
-Two differences in the corpus are cosmetic and out of scope even for this stage,
-because WordPress parses both forms identically:
-
+- **WebKit puts an inline style last.** Measured in the app on 2026-09-14:
+  `settings-list.html` saves as `<ol reversed start="5" class="wp-block-list"
+  style="list-style-type:upper-roman">` where the source had `style` before
+  `class`. ProseMirror writes a style through `element.style`, and WebKit
+  re-serialises the attribute at the end of the list; jsdom does not, so the
+  jsdom byte-identity test passed while the app differed. The fixture is back in
+  `KNOWN_DIFFERENCES` with that reason and the carrier test asserts the four
+  values rather than one string — a green test that disagrees with the app is
+  worse than a recorded difference. WordPress parses both orders identically.
 - `settings-embed.html`, `settings-image.html` — comment attributes come back in
   a different key order, and `&` is not re-escaped as `\u0026`.
 - `settings-separator.html` — Quill writes `<hr>` where core writes `<hr/>`.
@@ -719,11 +772,14 @@ because WordPress parses both forms identically:
 
 ## Verification checklist
 
-- [ ] `./test.sh` passes
-- [ ] Adding a setting is one registry line, demonstrated
-- [ ] All twelve `settings-*.html` fixtures round-trip byte-identically with no edit, and idempotently after one
-- [ ] The pre-existing fixtures still round-trip — they protect already-published posts
-- [ ] Every agreed control appears only inside its own block, reflects the current value, and survives a save
-- [ ] A table keeps its header and footer rows, and a Gutenberg-authored caption, through an edit in the running app
-- [ ] The table picker inserts the size the label reported, by mouse and by keyboard, in both themes
-- [ ] `drafts.db` bytes checked directly, not through code view
+All checked 2026-09-14, at the end of stage H.
+
+- [x] `./test.sh` passes — 12/12 suites, 388 Swift + 939 JS
+- [x] Adding a setting is one registry line, demonstrated
+- [x] All twelve `settings-*.html` fixtures round-trip byte-identically with no edit, and idempotently after one
+- [x] The pre-existing fixtures still round-trip — they protect already-published posts
+- [x] Every agreed control appears only inside its own block, reflects the current value, and survives a save
+- [x] A table keeps its header and footer rows, and a Gutenberg-authored caption, through an edit in the running app
+- [x] The table picker inserts the size the label reported, by mouse and by keyboard — hover read "4×3 Table" and inserted 4×3 with a header row; arrows then Enter inserted the 2×2 the label reported. **Dark mode checked by reading the CSS, not by eye**: `body.dark #table-size-menu` matches `#insert-menu`'s rule exactly, and `.table-size-cell` has its own dark border. Quill follows the system appearance and has no setting of its own, so seeing it would have meant switching the whole machine to dark.
+- [x] `drafts.db` bytes checked directly, not through code view
+- **Not done, by the user's call:** deleting WordPress draft 18195.

@@ -2569,10 +2569,97 @@
       }
     }
 
+    // ── The generic attribute carrier ────────────────
+    // A node's renderHTML writes a fixed list of attributes, so everything else
+    // the original element carried was dropped the first time the user typed.
+    // The snapshot replays the rest, in the source's own attribute order, with
+    // no registry entry and no node modelling involved.
+
+    // Attributes the node draws for itself. Replaying one would resurrect a
+    // value the user has just turned off, so the node's own render is the only
+    // writer; a node that computes any part of its class lists `class` here.
+    const RAW_ATTRS_MODELED = {
+      accordionHeading: ['class'],
+      accordionItem: ['class'],
+      detailsBlock: ['open'],
+      orderedList: ['start', 'type'],
+      tableCell: ['colspan', 'rowspan', 'colwidth'],
+      tableHeader: ['colspan', 'rowspan', 'colwidth'],
+    }
+
+    // The four figure blocks rebuild their figure from modelled attributes and
+    // toWordPressHTML rewrites it again; a replay would fight both.
+    const RAW_ATTRS_EXEMPT = new Set(['image', 'galleryBlock', 'embedBlock', 'table'])
+
+    function rawAttrsSnapshot(element) {
+      const attrs = []
+      for (const attr of Array.from(element.attributes)) {
+        if (attr.name.startsWith('data-quill-')) continue
+        attrs.push([attr.name, attr.value])
+      }
+      return attrs.length ? JSON.stringify({ tag: element.tagName.toLowerCase(), attrs }) : null
+    }
+
+    function snapshotClass(snap) {
+      const hit = snap.attrs.find(([name]) => name === 'class')
+      return hit ? hit[1] : ''
+    }
+
+    // The node's own values win, and an attribute it models but did not write
+    // this time is gone rather than stale. Order comes from the snapshot, so a
+    // block WordPress wrote comes back with its attributes where it left them.
+    function replayRawAttrs(rendered, snap, modeled, klass) {
+      const out = {}
+      for (const [name, value] of snap.attrs) {
+        if (name === 'class') { if (klass) out.class = klass; continue }
+        if (name in rendered) out[name] = rendered[name]
+        else if (!modeled.includes(name)) out[name] = value
+      }
+      for (const name of Object.keys(rendered)) {
+        if (name in out) continue
+        out[name] = name === 'class' ? klass : rendered[name]
+      }
+      if (klass && !('class' in out)) out.class = klass
+      return out
+    }
+
+    function withRawAttrs(extension) {
+      return extension.extend({
+        addAttributes() {
+          const parent = this.parent?.() || {}
+          if (RAW_ATTRS_EXEMPT.has(this.name)) return parent
+          return {
+            ...parent,
+            rawAttrs: {
+              default: null,
+              keepOnSplit: false,
+              parseHTML: element => rawAttrsSnapshot(element),
+              renderHTML: () => ({}),
+            },
+          }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const raw = props.node.attrs.rawAttrs
+          if (!raw || !Array.isArray(out) || typeof out[0] !== 'string') return out
+          let snap = null
+          try { snap = JSON.parse(raw) } catch (e) { return out }
+          if (!snap || snap.tag !== out[0] || !Array.isArray(snap.attrs)) return out
+          const rendered = specAttrs(out)
+          const spec = props.node.type.spec.attrs || {}
+          const modeled = RAW_ATTRS_MODELED[props.node.type.name] || []
+          const ownsClass = 'class' in spec || modeled.includes('class')
+          const klass = mergeClassNames(rendered.class, ownsClass ? props.node.attrs.class : snapshotClass(snap))
+          out[1] = replayRawAttrs(rendered, snap, modeled, klass)
+          return out
+        },
+      })
+    }
+
     // Composes withBlockSettings so a node cannot be added without its registry
     // settings, which is what keeps adding a setting to one line.
     function withBlockAttrs(extension) {
-      return withBlockSettings(extension).extend({
+      return withRawAttrs(withBlockSettings(extension)).extend({
         addAttributes() {
           return {
             ...this.parent?.(),
@@ -3393,7 +3480,7 @@
         withBlockAttrs(DetailsBlock),
         DetailsSummary,
         withBlockAttrs(ButtonsBlock),
-        withBlockAttrs(ButtonBlock),
+        withBlockAttrs(withClassAttr(ButtonBlock)),
         withBlockAttrs(AccordionBlock),
         withBlockAttrs(AccordionItem),
         withBlockAttrs(AccordionHeading),

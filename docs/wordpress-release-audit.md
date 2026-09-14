@@ -112,6 +112,16 @@ numbering error was a worked example of.
 | `core/quote`, `core/separator`, `core/image`, `core/table` | `className` | the style class on the block's root element | carried |
 | `core/table` | `caption` | a `figcaption.wp-element-caption` in the figure — `source: "rich-text"`, so never in the comment | markup only |
 
+**An attribute no entry names is carried automatically.** Every block node
+snapshots its element's attributes on load and replays them on save, in the
+source's own order, so a release only needs auditing for settings that draw a
+**child element** (the accordion's icon span is the one Quill models today) or
+that change a class the node itself computes. A new attribute on an existing
+block — core's next `is-something-on-mobile`, a new `name`-style sourced
+attribute — needs no work at all. The exceptions are listed in
+`RAW_ATTRS_MODELED` and `RAW_ATTRS_EXEMPT` in `editor.html`; a setting that
+draws a class on a node has to appear in the first.
+
 Two things the registry deliberately cannot express, because they are document
 structure rather than a setting on an element: a table's `<thead>`/`<tfoot>`
 sections (`tableRow.rowType`, regrouped in the save transform) and the table

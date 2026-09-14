@@ -69,7 +69,7 @@ const BLOCK_SETTINGS = {
   // fixed class and needs no such edit. Slugs verified against the site's own
   // block-library.js on 2026-09-13.
   buttonBlock: {
-    className: blockStyle('Fill', [['is-style-outline', 'Outline']]).className,
+    className: blockStyle('Fill', [['is-style-outline', 'Outline']], 'class').className,
     // source: "attribute" on core/button, so both live in the markup and
     // neither may reach the delimiter. NEW_TAB_REL is "noopener" alone --
     // core appends it to whatever rel already says and trims.

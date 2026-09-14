@@ -938,16 +938,121 @@ describe('accordion icons propagate to every heading', () => {
   })
 })
 
+// Quill rebuilds the visible HTML on every save, so anything the node's own
+// renderHTML does not write was dropped. The carrier snapshots the parsed
+// element's attributes and replays them, which is what lets a block Quill has
+// no registry entry for keep its markup.
+describe('the generic attribute carrier', () => {
+  function caretIn(text) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || !node.isTextblock || !node.textContent.includes(text)) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, `no textblock containing "${text}"`)
+    editor.commands.setTextSelection(found)
+  }
+
+  test('an unmodeled attribute on a container survives an edit', () => {
+    assert.match(save(fixture('settings-details.html')), /<details class="wp-block-details" name="faq">/)
+  })
+
+  test('an unmodeled class on a container survives an edit', () => {
+    const out = save(fixture('settings-columns.html'))
+    assert.match(out, /class="wp-block-columns is-not-stacked-on-mobile"/)
+    assert.match(out, /class="wp-block-column is-vertically-aligned-center" style="flex-basis:66\.66%"/)
+  })
+
+  // Not asserted as one string: WebKit moves an inline style to the end of the
+  // attribute list and jsdom does not, so only the values are the same in both.
+  test('a sourced attribute no registry entry declares survives', () => {
+    const ol = /<ol ([^>]*)>/.exec(save(fixture('settings-list.html')))[1]
+    assert.match(ol, /(^| )reversed( |$)/)
+    assert.match(ol, /start="5"/)
+    assert.match(ol, /style="list-style-type:upper-roman"/)
+    assert.match(ol, /class="wp-block-list"/)
+  })
+
+  test('the attribute order of the original markup is kept', () => {
+    const src = '<!-- wp:details -->\n<details class="wp-block-details" name="faq" open><summary>S</summary><!-- wp:paragraph -->\n<p>B</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->'
+    assert.match(save(src), /<details class="wp-block-details" name="faq" open>/)
+  })
+
+  // The snapshot is taken at parse time, so an attribute the node itself draws
+  // would come back from the dead the moment the user turns it off.
+  test('an attribute the node models is not resurrected once turned off', () => {
+    win.setContent('<!-- wp:details -->\n<details class="wp-block-details" name="faq" open><summary>S</summary><!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->')
+    caretIn('Body')
+    editor.commands.toggleDetailsOpen()
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /open/)
+    assert.match(out, /name="faq"/)
+  })
+
+  // A setting that draws a class puts that class into the snapshot as well, so
+  // a node whose class any setting writes has to own its class list outright.
+  test('a class a registry setting drew is not resurrected once turned off', () => {
+    win.setContent(`<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item {"openByDefault":true} -->
+<div class="wp-block-accordion-item is-open"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">T</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->`)
+    caretIn('Body')
+    const toggle = win.document.querySelector('#settings-accordionItem-controls [data-setting="openByDefault"]')
+    toggle.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /is-open/)
+  })
+
+  // colspan changes as the user edits columns, so a snapshot of it goes stale
+  // the moment they do.
+  describe('a colspanned table', () => {
+    const src = '<!-- wp:table -->\n<figure class="wp-block-table"><table class="wp-block-table"><tbody><tr><td colspan="2">A</td></tr><tr><td>B</td><td>C</td></tr></tbody></table></figure>\n<!-- /wp:table -->'
+
+    const liveColspan = () => {
+      let span = null
+      editor.state.doc.descendants(node => {
+        if (span === null && node.type.name === 'tableCell' && node.textContent === 'A') span = node.attrs.colspan
+      })
+      return span
+    }
+
+    const savedColspan = () => {
+      const m = /<td( colspan="(\d+)")?>A<\/td>/.exec(win.toWordPressHTML(editor.getHTML()))
+      return m ? Number(m[2] || 1) : null
+    }
+
+    test('survives a column being added', () => {
+      win.setContent(src)
+      caretIn('B')
+      editor.commands.addColumnAfter()
+      assert.equal(savedColspan(), liveColspan())
+    })
+
+    test('survives a column being deleted', () => {
+      win.setContent(src)
+      caretIn('B')
+      editor.commands.deleteColumn()
+      assert.equal(savedColspan(), liveColspan())
+    })
+  })
+})
+
 // The corpus, all at once. Each settings-*.html is real post_content from the
 // site, so a match here is the closest thing to opening the post in Gutenberg
 // and finding nothing changed.
 describe('the whole settings fixture corpus', () => {
   const KNOWN_DIFFERENCES = {
-    'settings-columns.html': 'is-not-stacked-on-mobile is dropped from the columns div',
-    'settings-details.html': 'the details name attribute is dropped',
+    'settings-list.html': 'WebKit moves an inline style to the end of the attribute list; jsdom leaves it where it was',
     'settings-embed.html': 'comment attrs come back in a different order, and & is not re-escaped as \\u0026',
     'settings-image.html': 'comment attrs come back in a different order',
-    'settings-list.html': 'ordered-list reversed and list-style-type are dropped',
     'settings-separator.html': 'Quill writes <hr> where core writes <hr/>',
   }
 
