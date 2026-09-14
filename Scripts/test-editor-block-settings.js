@@ -472,3 +472,300 @@ describe('block styles', () => {
     assert.match(out, /"className":"is-style-plain"/)
   })
 })
+
+describe('the tabs default tab', () => {
+  const tabs = `<!-- wp:tabs -->
+<div class="wp-block-tabs"><!-- wp:tab-list -->
+<div role="tablist" class="wp-block-tab-list"><button type="button" role="tab">One</button><button type="button" role="tab">Two</button></div>
+<!-- /wp:tab-list -->
+
+<!-- wp:tab-panels -->
+<div class="wp-block-tab-panels"><!-- wp:tab-panel {"label":"One"} -->
+<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><!-- wp:paragraph -->
+<p>First body</p>
+<!-- /wp:paragraph --></section>
+<!-- /wp:tab-panel -->
+
+<!-- wp:tab-panel {"label":"Two"} -->
+<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><!-- wp:paragraph -->
+<p>Second body</p>
+<!-- /wp:paragraph --></section>
+<!-- /wp:tab-panel --></div>
+<!-- /wp:tab-panels --></div>
+<!-- /wp:tabs -->`
+
+  const toggle = () => win.document.querySelector('#settings-tabPanel-controls [data-setting="isDefaultTab"]')
+
+  function caretIn(text) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || !node.isTextblock || node.textContent !== text) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, `no textblock reading "${text}"`)
+    editor.commands.setTextSelection(found)
+  }
+
+  const press = el => el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('a loaded activeTabIndex survives an edit', () => {
+    const out = save(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+    assert.match(out, /wp:tabs \{"activeTabIndex":1\}/)
+  })
+
+  // Core checks the box on tab 0 as well -- its checkbox is `checked:
+  // isDefaultTab`, and with no attribute written the default index is 0.
+  test('the control appears in a panel and is on for the first tab by default', () => {
+    win.setContent(tabs)
+    caretIn('First body')
+    assert.equal(win.document.getElementById('settings-tabPanel-controls').style.display, 'inline-flex')
+    assert.equal(toggle().classList.contains('active'), true)
+  })
+
+  test('it is on for whichever panel the index names', () => {
+    win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+    caretIn('Second body')
+    assert.equal(toggle().classList.contains('active'), true)
+    caretIn('First body')
+    assert.equal(toggle().classList.contains('active'), false)
+  })
+
+  test('pressing it on the second panel writes that index to the tabs block', () => {
+    win.setContent(tabs)
+    caretIn('Second body')
+    press(toggle())
+    assert.match(win.toWordPressHTML(editor.getHTML()), /wp:tabs \{"activeTabIndex":1\}/)
+  })
+
+  test('pressing it again falls back to the first tab and writes no attribute', () => {
+    win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+    caretIn('Second body')
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /activeTabIndex/)
+    assert.match(out, /<!-- wp:tabs -->/)
+  })
+
+  test('an unmodeled attribute on the tabs block is not lost when the index changes', () => {
+    win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"metadata":{"name":"T"}} -->'))
+    caretIn('Second body')
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /"metadata":\{"name":"T"\}/)
+    assert.match(out, /"activeTabIndex":1/)
+  })
+
+  test('the control is absent outside a tab panel', () => {
+    win.setContent('<p>plain</p>')
+    editor.commands.setTextSelection(2)
+    assert.equal(win.document.getElementById('settings-tabPanel-controls').style.display, 'none')
+  })
+})
+
+// core gives core/accordion-heading its own openByDefault, but its save() never
+// reads it, so it draws nothing and Gutenberg does not write it. The carrier
+// preserves whatever a post already had; nothing propagates.
+describe('the accordion heading keeps its own openByDefault out of the way', () => {
+  const withHeadingFlag = `<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item {"openByDefault":true} -->
+<div class="wp-block-accordion-item is-open"><!-- wp:accordion-heading {"openByDefault":true} -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">T</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->`
+
+  test('a heading that carries the flag keeps it verbatim', () => {
+    assert.match(save(withHeadingFlag), /wp:accordion-heading \{"openByDefault":true\}/)
+  })
+
+  test('it draws nothing on the heading either way', () => {
+    const out = save(withHeadingFlag)
+    const heading = out.match(/<h3 class="([^"]*)"/)[1]
+    assert.equal(heading, 'wp-block-accordion-heading has-icon has-icon-right')
+  })
+
+  test('turning the item off leaves the heading alone', () => {
+    win.setContent(withHeadingFlag)
+    assert.ok(setNodeAttr('accordionItem', 'openByDefault', false))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /wp:accordion-item \{/)
+    assert.match(out, /wp:accordion-heading \{"openByDefault":true\}/)
+  })
+})
+
+// linkTarget and rel are source: "attribute" on core/button, so they live in
+// the markup and never in the delimiter. Core's own algorithm, from
+// button/constants.mjs and get-updated-link-attributes.mjs: NEW_TAB_REL is
+// "noopener" alone, appended to whatever rel already says and then trimmed.
+describe('a button opening in a new tab', () => {
+  const plain = `<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->`
+
+  const newTab = plain.replace('href="https://x.test"', 'href="https://x.test" target="_blank" rel="noopener"')
+
+  const toggle = () => win.document.querySelector('#settings-buttonBlock-controls [data-setting="linkTarget"]')
+
+  function caretInButton() {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || node.type.name !== 'buttonBlock') return
+      found = pos + 1
+    })
+    assert.ok(found !== null, 'no buttonBlock')
+    editor.commands.setTextSelection(found)
+  }
+
+  const press = el => el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  test('a loaded target and rel survive an edit', () => {
+    const out = save(newTab)
+    assert.match(out, /target="_blank"/)
+    assert.match(out, /rel="noopener"/)
+  })
+
+  test('neither reaches the delimiter, because core reads them from the markup', () => {
+    const out = save(newTab)
+    assert.doesNotMatch(out, /wp:button \{/)
+  })
+
+  test('a button without them gains neither', () => {
+    const out = save(plain)
+    assert.doesNotMatch(out, /target=/)
+    assert.doesNotMatch(out, /rel=/)
+  })
+
+  test('the toggle reflects whether the link opens in a new tab', () => {
+    win.setContent(plain)
+    caretInButton()
+    assert.equal(toggle().classList.contains('active'), false)
+    win.setContent(newTab)
+    caretInButton()
+    assert.equal(toggle().classList.contains('active'), true)
+  })
+
+  test('pressing it writes core\'s exact target and rel', () => {
+    win.setContent(plain)
+    caretInButton()
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /target="_blank"/)
+    assert.match(out, /rel="noopener"/)
+    assert.doesNotMatch(out, /rel=" noopener"/)
+  })
+
+  test('pressing it again removes both', () => {
+    win.setContent(newTab)
+    caretInButton()
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /target=/)
+    assert.doesNotMatch(out, /rel=/)
+  })
+
+  test('an existing rel token is kept on both sides of the toggle', () => {
+    win.setContent(plain.replace('href="https://x.test"', 'href="https://x.test" rel="nofollow"'))
+    caretInButton()
+    press(toggle())
+    assert.match(win.toWordPressHTML(editor.getHTML()), /rel="nofollow noopener"/)
+    press(toggle())
+    const off = win.toWordPressHTML(editor.getHTML())
+    assert.match(off, /rel="nofollow"/)
+    assert.doesNotMatch(off, /noopener/)
+  })
+
+  test('turning it on twice does not double the rel token', () => {
+    win.setContent(newTab)
+    caretInButton()
+    const before = win.toWordPressHTML(editor.getHTML())
+    assert.equal((before.match(/noopener/g) || []).length, 1)
+  })
+})
+
+// A prose link is the Tiptap Link mark, not a block, so this control is
+// hand-written rather than a registry entry. The site's own format-library.js
+// composes the same single "noopener" token core/button does.
+describe('a prose link opening in a new tab', () => {
+  const plain = '<!-- wp:paragraph -->\n<p>See <a href="https://x.test">this</a>.</p>\n<!-- /wp:paragraph -->'
+  const newTab = '<!-- wp:paragraph -->\n<p>See <a href="https://x.test" target="_blank" rel="noopener">this</a>.</p>\n<!-- /wp:paragraph -->'
+
+  const controls = () => win.document.getElementById('link-controls')
+  const toggle = () => win.document.getElementById('btn-link-new-tab')
+  const press = el => el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  // extendMarkRange over an existing mark poisons exactly the next setContent
+  // (see the CLAUDE.md gotcha), so every test absorbs it before loading.
+  function load(src) {
+    editor.commands.setContent('<p></p>', false)
+    win.setContent(src)
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || !node.isText || !node.marks.some(m => m.type.name === 'link')) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, 'no linked text')
+    editor.commands.setTextSelection(found)
+  }
+
+  test('the control appears only inside a link', () => {
+    load(plain)
+    assert.equal(controls().style.display, 'inline-flex')
+    editor.commands.setContent('<p>bare</p>', false)
+    editor.commands.setTextSelection(2)
+    assert.equal(controls().style.display, 'none')
+  })
+
+  test('it reflects the current target', () => {
+    load(plain)
+    assert.equal(toggle().classList.contains('active'), false)
+    load(newTab)
+    assert.equal(toggle().classList.contains('active'), true)
+  })
+
+  // Tiptap emits target and rel ahead of href, because Link.configure seeds
+  // them into HTMLAttributes first. Gutenberg's validator is order-insensitive
+  // and only a link the user actually toggled is rewritten, so this is left as
+  // it is rather than fought.
+  test('pressing it writes target and rel', () => {
+    load(plain)
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    const anchor = out.match(/<a [^>]*>/)[0]
+    assert.match(anchor, /href="https:\/\/x\.test"/)
+    assert.match(anchor, /target="_blank"/)
+    assert.match(anchor, /rel="noopener"/)
+  })
+
+  test('pressing it again removes both', () => {
+    load(newTab)
+    press(toggle())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<a href="https:\/\/x\.test">/)
+    assert.doesNotMatch(out, /target=/)
+    assert.doesNotMatch(out, /noopener/)
+  })
+
+  test('an existing rel token survives both directions', () => {
+    load('<!-- wp:paragraph -->\n<p>See <a href="https://x.test" rel="nofollow">this</a>.</p>\n<!-- /wp:paragraph -->')
+    press(toggle())
+    assert.match(win.toWordPressHTML(editor.getHTML()), /rel="nofollow noopener"/)
+    press(toggle())
+    const off = win.toWordPressHTML(editor.getHTML())
+    assert.match(off, /rel="nofollow"/)
+    assert.doesNotMatch(off, /noopener/)
+  })
+
+  test('the link text is untouched', () => {
+    load(plain)
+    press(toggle())
+    assert.match(win.toWordPressHTML(editor.getHTML()), />this<\/a>/)
+  })
+})

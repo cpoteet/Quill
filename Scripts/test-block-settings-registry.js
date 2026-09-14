@@ -97,6 +97,26 @@ describe('registry agrees with the block descriptors', () => {
   })
 })
 
+// A repeated key in an object literal is not an error in JS -- the last one
+// silently wins and every setting under the earlier one disappears. That is
+// invisible at runtime, so it has to be caught in the source.
+describe('the registry source has no repeated block', () => {
+  const source = require('fs').readFileSync(
+    path.resolve(__dirname, '../Sources/QuillKit/Resources/block-settings.js'), 'utf8')
+  const body = source.slice(source.indexOf('const BLOCK_SETTINGS = {'))
+
+  test('each block is named once', () => {
+    const seen = new Set()
+    for (const line of body.split('\n')) {
+      const m = /^  ([A-Za-z][A-Za-z0-9]*):/.exec(line)
+      if (!m) continue
+      assert.ok(!seen.has(m[1]), `${m[1]} is declared twice; the second one silently wins`)
+      seen.add(m[1])
+    }
+    assert.deepEqual([...seen].sort(), Object.keys(BLOCK_SETTINGS).sort())
+  })
+})
+
 describe('lookup', () => {
   test('settingsFor returns an entry map for a known node', () => {
     const [node] = Object.keys(BLOCK_SETTINGS)

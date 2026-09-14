@@ -31,23 +31,46 @@ const BLOCK_SETTINGS = {
     },
   },
 
+  // isDefaultTab is core's own name for a derived value: the checkbox sits on
+  // the panel while activeTabIndex lives on the tabs block, which carries it
+  // already and whose save() draws nothing from it.
+  tabPanel: {
+    isDefaultTab: {
+      kind: 'carried',
+      default: false,
+      control: { type: 'ancestorIndex', label: 'Default', ancestor: 'tabsBlock',
+                 attr: 'activeTabIndex', title: 'Show this tab first' },
+    },
+  },
+
   // Block styles. className is already carried and spliced into the rendered
   // class list, so these draw nothing and exist only to hang a picker on.
   // classAttr names the node's own class attribute, which has to be edited
   // alongside the carrier or the two disagree; a node without one renders a
   // fixed class and needs no such edit. Slugs verified against the site's own
   // block-library.js on 2026-09-13.
-  buttonBlock:    { className: blockStyle('Fill',    [['is-style-outline', 'Outline']]) },
-  blockquote:     { className: blockStyle('Default', [['is-style-plain',   'Plain']], 'class') },
-  horizontalRule: { className: blockStyle('Default', [['is-style-wide',    'Wide Line'],
-                                                      ['is-style-dots',    'Dots']], 'class') },
-  image:          { className: blockStyle('Default', [['is-style-rounded', 'Rounded']], 'figureClass') },
+  buttonBlock: {
+    className: blockStyle('Fill', [['is-style-outline', 'Outline']]).className,
+    // source: "attribute" on core/button, so both live in the markup and
+    // neither may reach the delimiter. NEW_TAB_REL is "noopener" alone --
+    // core appends it to whatever rel already says and trims.
+    linkTarget: {
+      kind: 'attr', attr: 'target', on: 'a', sourced: true, default: null,
+      control: { type: 'newTab', label: 'New tab', rel: 'noopener', relSetting: 'rel',
+                 title: 'Open this link in a new tab' },
+    },
+    rel: { kind: 'attr', attr: 'rel', on: 'a', sourced: true, default: null },
+  },
+  blockquote:     blockStyle('Default', [['is-style-plain',   'Plain']], 'class'),
+  horizontalRule: blockStyle('Default', [['is-style-wide',    'Wide Line'],
+                                         ['is-style-dots',    'Dots']], 'class'),
+  image:          blockStyle('Default', [['is-style-rounded', 'Rounded']], 'figureClass'),
 }
 
 // The default style writes no class at all, which is why its value is empty.
 function blockStyle(defaultLabel, rest, classAttr) {
   const options = [{ value: '', label: defaultLabel }].concat(rest.map(([value, label]) => ({ value, label })))
-  return { kind: 'carried', default: '', control: { type: 'blockStyle', label: 'Style', classAttr, options } }
+  return { className: { kind: 'carried', default: '', control: { type: 'blockStyle', label: 'Style', classAttr, options } } }
 }
 
 const SETTING_KINDS = ['carried', 'flagClass', 'valueClass', 'style', 'attr']

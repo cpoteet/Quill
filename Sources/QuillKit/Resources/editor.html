@@ -1300,6 +1300,9 @@
     <span id="details-controls" style="display:none">
         <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
       </span>
+    <span id="link-controls" style="display:none">
+        <button id="btn-link-new-tab" title="Open this link in a new tab">New tab</button>
+      </span>
     <span id="tabs-controls" style="display:none">
         <button data-cmd="addTab"    title="Add tab">+Tab</button>
         <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
@@ -3768,12 +3771,40 @@
         || _styleTokenIn(carriedClassName(node.attrs.blockAttrs))
     }
 
-    function _withCarriedClassName(raw, className) {
+    function _carriedAttr(raw, key) {
+      try {
+        const parsed = raw ? JSON.parse(raw) : null
+        return (parsed && typeof parsed === 'object') ? parsed[key] : undefined
+      } catch (e) {
+        return undefined
+      }
+    }
+
+    // A null value deletes the key, and an empty carrier becomes no carrier at
+    // all, so a setting back at its default writes no delimiter attribute.
+    function _withCarriedAttr(raw, key, value) {
       let carried = {}
       try { carried = raw ? JSON.parse(raw) : {} } catch (e) { carried = {} }
-      if (className) carried.className = className
-      else delete carried.className
+      if (value === null || value === undefined || value === '') delete carried[key]
+      else carried[key] = value
       return Object.keys(carried).length ? JSON.stringify(carried) : null
+    }
+
+    // A control on one node that writes an index onto an ancestor -- core's own
+    // shape for the tabs default tab, whose checkbox sits on the panel while
+    // activeTabIndex lives on the tabs block.
+    function _ancestorIndexTarget(state, typeName, control) {
+      const $from = state.selection.$from
+      for (let d = $from.depth; d >= 1; d--) {
+        if ($from.node(d).type.name !== typeName) continue
+        const index = $from.index(d - 1)
+        for (let a = d - 1; a >= 1; a--) {
+          if ($from.node(a).type.name !== control.ancestor) continue
+          return { index, node: $from.node(a), pos: $from.before(a) }
+        }
+        return null
+      }
+      return null
     }
 
     function _setBlockStyle(typeName, def, token) {
@@ -3781,7 +3812,7 @@
       if (!target) return
       const { classAttr } = def.control
       const attrs = {}
-      attrs.blockAttrs = _withCarriedClassName(target.node.attrs.blockAttrs,
+      attrs.blockAttrs = _withCarriedAttr(target.node.attrs.blockAttrs, 'className',
         _spliceStyleToken(carriedClassName(target.node.attrs.blockAttrs), token))
       if (classAttr) attrs[classAttr] = _spliceStyleToken(target.node.attrs[classAttr], token) || null
       _setSettingAttrs(typeName, attrs)
@@ -3816,9 +3847,68 @@
       return { name, def, el: select, reflect: node => { select.value = _blockStyleOf(node, def) } }
     }
 
+    function _buildSettingAncestorIndex(typeName, name, def) {
+      const { control } = def
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = control.label
+      if (control.title) btn.title = control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _ancestorIndexTarget(editor.state, typeName, control)
+        if (!target) return
+        const current = _carriedAttr(target.node.attrs.blockAttrs, control.attr) || 0
+        const next = current === target.index ? null : target.index || null
+        const { state, view } = editor
+        view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, {
+          ...target.node.attrs,
+          blockAttrs: _withCarriedAttr(target.node.attrs.blockAttrs, control.attr, next),
+        }))
+      })
+      return {
+        name,
+        def,
+        el: btn,
+        reflect: () => {
+          const target = _ancestorIndexTarget(editor.state, typeName, control)
+          const current = target ? (_carriedAttr(target.node.attrs.blockAttrs, control.attr) || 0) : -1
+          btn.classList.toggle('active', !!target && current === target.index)
+        },
+      }
+    }
+
+    // Core's algorithm, verbatim: appending the token when it is absent and
+    // trimming, then stripping it and trimming on the way back off.
+    function _withRelToken(rel, token, on) {
+      const current = String(rel || '')
+      if (on) return (current.includes(token) ? current : current + ' ' + token).trim()
+      return current.replace(new RegExp('\\b' + token + '\\s*', 'g'), '').trim()
+    }
+
+    function _buildSettingNewTab(typeName, name, def) {
+      const { control } = def
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = control.label
+      if (control.title) btn.title = control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (!target) return
+        const on = target.node.attrs[name] !== '_blank'
+        _setSettingAttrs(typeName, {
+          [name]: on ? '_blank' : null,
+          [control.relSetting]: _withRelToken(target.node.attrs[control.relSetting], control.rel, on) || null,
+        })
+      })
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', node.attrs[name] === '_blank') }
+    }
+
     function _buildSettingControl(typeName, name, def) {
+      if (def.control.type === 'newTab') return _buildSettingNewTab(typeName, name, def)
       if (def.control.type === 'toggle') return _buildSettingToggle(typeName, name, def)
       if (def.control.type === 'blockStyle') return _buildSettingStylePicker(typeName, name, def)
+      if (def.control.type === 'ancestorIndex') return _buildSettingAncestorIndex(typeName, name, def)
       return null
     }
 
@@ -4011,6 +4101,8 @@
     const _detailsControls = document.getElementById('details-controls')
     const _btnAccordionAutoclose = document.getElementById('btn-accordion-autoclose')
     const _btnDetailsOpen = document.getElementById('btn-details-open')
+    const _linkControls = document.getElementById('link-controls')
+    const _btnLinkNewTab = document.getElementById('btn-link-new-tab')
     const _tabsControls = document.getElementById('tabs-controls')
     const _blockControls = document.getElementById('block-controls')
     const _deleteBlockBtn = document.querySelector('[data-cmd="deleteBlock"]')
@@ -4021,6 +4113,20 @@
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
+
+    // The site's own format-library.js composes the same single "noopener"
+    // token core/button does, appended to whatever rel already says.
+    _btnLinkNewTab.addEventListener('mousedown', e => {
+      e.preventDefault()
+      const link = editor.getAttributes('link')
+      if (!link.href) return
+      const on = link.target !== '_blank'
+      editor.chain().focus().extendMarkRange('link').setLink({
+        href: link.href,
+        target: on ? '_blank' : null,
+        rel: _withRelToken(link.rel, 'noopener', on) || null,
+      }).run()
+    })
 
     function updateToolbar() {
       const inFootnote = _isInFootnote()
@@ -4071,6 +4177,13 @@
       _blockControls.style.display = deletable ? 'inline-flex' : 'none'
       if (deletable) {
         _deleteBlockBtn.title = `Delete ${DELETABLE_BLOCKS.get(deletable.node.type.name)}`
+      }
+      // Link new-tab control. A mark, not a block, so it is hand-written rather
+      // than generated from the block settings registry.
+      const inLink = editor.isActive('link')
+      _linkControls.style.display = inLink ? 'inline-flex' : 'none'
+      if (inLink) {
+        _btnLinkNewTab.classList.toggle('active', editor.getAttributes('link').target === '_blank')
       }
       // Citation control
       const inQuote = editor.isActive('blockquote') || editor.isActive('pullquote')
