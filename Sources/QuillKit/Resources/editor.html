@@ -1460,7 +1460,7 @@
   <script src="./block-settings.js"></script>
   <script>
     const {
-      Editor, Extension, TiptapNode,
+      Editor, Extension, TiptapNode, Mark,
       StarterKit, Underline,
       Table, TableRow, TableCell, TableHeader,
       TiptapImage, Blockquote, Link,
@@ -3439,6 +3439,43 @@
       },
     })))
 
+    // Phrasing wrappers nothing else claims; del is strike's, ruby is structural.
+    const PRESERVED_INLINE_TAGS = [
+      'abbr', 'bdi', 'bdo', 'big', 'data', 'dfn', 'ins', 'kbd',
+      'mark', 'q', 'samp', 'small', 'sub', 'sup', 'time', 'var',
+    ]
+
+    const _attrMap = el => Object.fromEntries(
+      Array.from(el.attributes, a => [a.name, a.value]))
+
+    const RawInline = Mark.create({
+      name: 'rawInline',
+      priority: 50,
+      excludes: '',
+      addAttributes() {
+        return {
+          tag:      { default: 'span', renderHTML: () => ({}) },
+          rawAttrs: { default: null,   renderHTML: () => ({}) },
+        }
+      },
+      parseHTML() {
+        return PRESERVED_INLINE_TAGS.map(tag => ({
+          tag,
+          getAttrs: el => el.matches('sup.fn[data-fn]')
+            ? false
+            : { tag, rawAttrs: _attrMap(el) },
+        })).concat([{
+          tag: 'span',
+          getAttrs: el => (!el.attributes.length || /underline|line-through/.test(el.style.textDecoration))
+            ? false
+            : { tag: 'span', rawAttrs: _attrMap(el) },
+        }])
+      },
+      renderHTML({ mark }) {
+        return [mark.attrs.tag || 'span', mark.attrs.rawAttrs || {}, 0]
+      },
+    })
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
@@ -3466,7 +3503,10 @@
         ListItemWithClass,
         CustomBlockquote,
         Cite,
-        Underline,
+        Underline.extend({
+          renderHTML: () => ['span', { style: 'text-decoration: underline;' }, 0],
+        }),
+        RawInline,
         withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
         withBlockAttrs(withClassAttr(TableRowWithSection)),
         withBlockAttrs(withClassAttr(TableHeader)),
