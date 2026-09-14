@@ -36,6 +36,14 @@ before(async () => {
   if (!win.matchMedia) win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
   if (!win.requestAnimationFrame) win.requestAnimationFrame = cb => setTimeout(cb, 0)
   if (!win.ResizeObserver) win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  // undo dispatches a scrollIntoView, which measures the selection; jsdom gives
+  // a Text node no geometry at all.
+  const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+  for (const proto of [win.Text.prototype, win.Range.prototype]) {
+    if (proto.getClientRects) continue
+    proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+    proto.getBoundingClientRect = () => rect
+  }
 
   editor = await new Promise((resolve, reject) => {
     let tries = 0
@@ -768,4 +776,266 @@ describe('a prose link opening in a new tab', () => {
     press(toggle())
     assert.match(win.toWordPressHTML(editor.getHTML()), />this<\/a>/)
   })
+})
+
+// core/accordion stores showIcon and iconPosition, and core/accordion-heading
+// stores them again -- it is the heading's copy that draws has-icon and the
+// icon span. A control that wrote only the parent would leave the two
+// disagreeing, which is what makes Gutenberg call a block invalid.
+describe('accordion icons propagate to every heading', () => {
+  const two = `<!-- wp:accordion -->
+<div role="group" class="wp-block-accordion"><!-- wp:accordion-item -->
+<div class="wp-block-accordion-item"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">One</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>First body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item -->
+
+<!-- wp:accordion-item -->
+<div class="wp-block-accordion-item"><!-- wp:accordion-heading -->
+<h3 class="wp-block-accordion-heading has-icon has-icon-right"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Two</span><span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span></button></h3>
+<!-- /wp:accordion-heading -->
+
+<!-- wp:accordion-panel -->
+<div role="region" class="wp-block-accordion-panel"><!-- wp:paragraph -->
+<p>Second body</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:accordion-panel --></div>
+<!-- /wp:accordion-item --></div>
+<!-- /wp:accordion -->
+
+<p>Outside</p>`
+
+  const group = () => win.document.getElementById('settings-accordionBlock-controls')
+  const showIcon = () => group().querySelector('[data-setting="showIcon"]')
+  const position = () => group().querySelector('[data-setting="iconPosition"]')
+
+  function caretIn(text) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || !node.isTextblock || node.textContent !== text) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, `no textblock reading "${text}"`)
+    editor.commands.setTextSelection(found)
+  }
+
+  const press = el => el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+  function choose(el, value) {
+    el.value = value
+    el.dispatchEvent(new win.Event('change', { bubbles: true }))
+  }
+
+  const headingClasses = out => (out.match(/<h3 class="([^"]*)"/g) || []).map(m => m.match(/"([^"]*)"/)[1])
+
+  test('both controls are generated for the accordion block', () => {
+    assert.ok(group(), 'no generated group for accordionBlock')
+    assert.ok(showIcon(), 'no showIcon control')
+    assert.equal(position().tagName, 'SELECT')
+  })
+
+  test('they appear inside an accordion and nowhere else', () => {
+    win.setContent(two)
+    caretIn('First body')
+    assert.equal(group().style.display, 'inline-flex')
+    caretIn('Outside')
+    assert.equal(group().style.display, 'none')
+  })
+
+  test('they reflect the loaded values', () => {
+    win.setContent(two)
+    caretIn('First body')
+    assert.equal(showIcon().classList.contains('active'), true)
+    assert.equal(position().value, 'right')
+    win.setContent(two.replace('<!-- wp:accordion -->', '<!-- wp:accordion {"iconPosition":"left"} -->'))
+    caretIn('First body')
+    assert.equal(position().value, 'left')
+  })
+
+  test('turning the icon off writes the parent, both headings and their markup', () => {
+    win.setContent(two)
+    caretIn('First body')
+    press(showIcon())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /wp:accordion \{"showIcon":false\}/)
+    assert.equal((out.match(/wp:accordion-heading \{"showIcon":false\}/g) || []).length, 2)
+    assert.deepEqual(headingClasses(out), ['wp-block-accordion-heading', 'wp-block-accordion-heading'])
+    assert.doesNotMatch(out, /toggle-icon/)
+  })
+
+  // The pause is load-bearing: prosemirror-history groups steps within 500ms,
+  // so without it the load and the click undo as one event.
+  test('one undo restores the parent and both headings together', async () => {
+    win.setContent(two)
+    caretIn('First body')
+    await new Promise(r => setTimeout(r, 600))
+    press(showIcon())
+    editor.commands.undo()
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /showIcon/)
+    assert.equal((out.match(/has-icon has-icon-right/g) || []).length, 2)
+  })
+
+  test('moving the icon left rewrites both headings and their icon spans', () => {
+    win.setContent(two)
+    caretIn('First body')
+    choose(position(), 'left')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /wp:accordion \{"iconPosition":"left"\}/)
+    assert.equal((out.match(/wp:accordion-heading \{"iconPosition":"left"\}/g) || []).length, 2)
+    assert.deepEqual(headingClasses(out),
+      ['wp-block-accordion-heading has-icon has-icon-left', 'wp-block-accordion-heading has-icon has-icon-left'])
+    assert.match(out, /toggle"><span class="wp-block-accordion-heading__toggle-icon"/)
+  })
+
+  test('returning to the default writes no key on the parent or the headings', () => {
+    win.setContent(two.replace('<!-- wp:accordion -->', '<!-- wp:accordion {"iconPosition":"left"} -->')
+      .replace(/<!-- wp:accordion-heading -->/g, '<!-- wp:accordion-heading {"iconPosition":"left"} -->')
+      .replace(/has-icon has-icon-right/g, 'has-icon has-icon-left'))
+    caretIn('First body')
+    choose(position(), 'right')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /iconPosition/)
+    assert.match(out, /<!-- wp:accordion -->/)
+    assert.equal((out.match(/<!-- wp:accordion-heading -->/g) || []).length, 2)
+  })
+
+  test('an unmodeled attribute on the accordion survives the change', () => {
+    win.setContent(two.replace('<!-- wp:accordion -->', '<!-- wp:accordion {"metadata":{"name":"A"}} -->'))
+    caretIn('First body')
+    press(showIcon())
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /"metadata":\{"name":"A"\}/)
+    assert.match(out, /"showIcon":false/)
+  })
+
+  // Core hands the heading its icon settings through block context, so an item
+  // added to a left-icon accordion is left-icon too. Quill has no context, so
+  // the command copies them.
+  test('an item added afterwards inherits the icon settings', () => {
+    win.setContent(two)
+    caretIn('First body')
+    choose(position(), 'left')
+    win.document.querySelector('[data-cmd="addAccordionItem"]')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.equal((out.match(/wp:accordion-heading \{"iconPosition":"left"\}/g) || []).length, 3)
+    assert.equal((out.match(/has-icon has-icon-left/g) || []).length, 3)
+  })
+
+  test('a heading keeps its own level while the icon changes around it', () => {
+    win.setContent(two.replace('<!-- wp:accordion-heading -->', '<!-- wp:accordion-heading {"level":3} -->'))
+    caretIn('First body')
+    choose(position(), 'left')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /wp:accordion-heading \{"level":3,"iconPosition":"left"\}/)
+  })
+})
+
+// The corpus, all at once. Each settings-*.html is real post_content from the
+// site, so a match here is the closest thing to opening the post in Gutenberg
+// and finding nothing changed.
+describe('the whole settings fixture corpus', () => {
+  const KNOWN_DIFFERENCES = {
+    'settings-columns.html': 'is-not-stacked-on-mobile is dropped from the columns div',
+    'settings-details.html': 'the details name attribute is dropped',
+    'settings-embed.html': 'comment attrs come back in a different order, and & is not re-escaped as \\u0026',
+    'settings-image.html': 'comment attrs come back in a different order',
+    'settings-list.html': 'ordered-list reversed and list-style-type are dropped',
+    'settings-separator.html': 'Quill writes <hr> where core writes <hr/>',
+  }
+
+  const dir = path.resolve(__dirname, 'fixtures')
+  const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
+
+  test('the corpus is the twelve fixtures the scan produced', () => {
+    assert.equal(names.length, 12)
+  })
+
+  for (const name of names) {
+    test(`${name} comes back untouched when nothing is edited`, () => {
+      win.setContent(fixture(name))
+      assert.equal(win.getContent(), fixture(name))
+    })
+
+    test(`${name} is idempotent once edited`, () => {
+      const once = save(fixture(name))
+      assert.equal(save(once), once)
+    })
+
+    // Byte-identity against the fixture is the real bar. Each fixture that
+    // cannot meet it yet names why, so the difference is recorded rather than
+    // invisible -- remove an entry from KNOWN_DIFFERENCES when it is fixed.
+    test(`${name} saves byte-identically once edited`, { skip: KNOWN_DIFFERENCES[name] }, () => {
+      assert.equal(save(fixture(name)), fixture(name))
+    })
+  }
+})
+
+// Gutenberg's serializer joins sibling blocks with a blank line, at every
+// level. Quill wrote them adjacent, so every post with more than one block came
+// back with its whitespace rewritten.
+describe('sibling blocks are separated by a blank line', () => {
+  const two = '<!-- wp:paragraph -->\n<p>One</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Two</p>\n<!-- /wp:paragraph -->'
+
+  test('two top-level blocks keep the blank line between them', () => {
+    assert.equal(save(two), two)
+  })
+
+  test('nothing is added before the first block or after the last', () => {
+    const out = save(two)
+    assert.ok(!/^\s/.test(out), 'leading whitespace')
+    assert.ok(!/\s$/.test(out), 'trailing whitespace')
+  })
+
+  test('a second save does not stack another blank line', () => {
+    assert.equal(save(save(two)), two)
+  })
+
+  test('inner blocks of a container get it too', () => {
+    assert.equal(save(fixture('settings-buttons.html')), fixture('settings-buttons.html'))
+  })
+
+  test('so do nested containers', () => {
+    assert.equal(save(fixture('settings-accordion.html')), fixture('settings-accordion.html'))
+    assert.equal(save(fixture('settings-tabs.html')), fixture('settings-tabs.html'))
+  })
+
+  test('list items get it', () => {
+    const list = '<!-- wp:list -->\n<ul class="wp-block-list"><!-- wp:list-item -->\n<li>A</li>\n<!-- /wp:list-item -->\n\n<!-- wp:list-item -->\n<li>B</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->'
+    assert.equal(save(list), list)
+  })
+
+  test('quote paragraphs get it', () => {
+    const quote = '<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>B</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->'
+    assert.equal(save(quote), quote)
+  })
+
+  test('a block that already carries its own delimiters is left alone', () => {
+    const out = save(fixture('unsupported-blocks.html'))
+    assert.doesNotMatch(out, /-->\n\n\n/)
+  })
+})
+
+// Adding a registry entry with no coverage is how the corpus silently falls
+// behind the registry. Read from Node rather than the page: a describe body
+// runs before the editor exists.
+describe('every registry entry is covered', () => {
+  const registry = require('../Sources/QuillKit/Resources/block-settings.js')
+  const suiteSource = fs.readFileSync(__filename, 'utf8') +
+    fs.readFileSync(path.resolve(__dirname, 'test-editor-containers.js'), 'utf8')
+
+  for (const node of registry.settingsNodeNames()) {
+    for (const name of Object.keys(registry.settingsFor(node))) {
+      test(`${node}.${name} is named by a test`, () => {
+        assert.ok(suiteSource.includes(name), `no test mentions ${name}`)
+      })
+    }
+  }
 })

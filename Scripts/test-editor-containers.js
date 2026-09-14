@@ -592,7 +592,7 @@ describe('insert menu', () => {
 
   test('every menu item uses the heading menu label typography', () => {
     const items = Array.from(win.document.querySelectorAll('#insert-menu [data-insert]'))
-    assert.equal(items.length, 7)
+    assert.equal(items.length, 8)
     for (const el of items) {
       assert.ok(el.querySelector('.heading-menu-label'), `${el.dataset.insert} has no label span`)
     }
@@ -604,12 +604,166 @@ describe('insert menu', () => {
     assert.equal(btn.querySelectorAll('svg').length, 1, 'one chevron, no icon glyph')
   })
 
+  // StarterKit's own horizontalRule is disabled, so the menu is the only way
+  // to reach a separator.
+  test('the menu offers a separator, which saves as core/separator', () => {
+    editor.commands.setContent('<p></p>', false)
+    openMenu()
+    win.document.querySelector('#insert-menu [data-insert="separator"]').click()
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<!-- wp:separator -->/)
+    assert.match(out, /<hr class="wp-block-separator/)
+  })
+
+  test('a separator is refused inside a footnote', () => {
+    const id = 'fn-11111111-2222-4333-8444-555555555555'
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found === null && node.isTextblock && node.textContent === 'A note.') found = pos + 1
+    })
+    assert.ok(found !== null, 'no footnote body')
+    editor.commands.setTextSelection(found)
+    assert.equal(win.insertSeparator(), false)
+  })
+
   test('the menu closes after an insertion', () => {
     editor.commands.setContent('<p></p>', false)
     openMenu()
     assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), true)
     win.document.querySelector('#insert-menu [data-insert="buttons"]').click()
     assert.equal(win.document.getElementById('insert-menu').classList.contains('visible'), false)
+  })
+})
+
+// The table button opens a Word-style size grid rather than dropping a fixed
+// 3x3. Header row on by default, matching both the old behaviour and Gutenberg.
+describe('table size picker', () => {
+  const menu = () => win.document.getElementById('table-size-menu')
+  const grid = () => win.document.getElementById('table-size-grid')
+  const label = () => win.document.getElementById('table-size-label')
+  const cell = (rows, cols) => grid().querySelector(`[data-rows="${rows}"][data-cols="${cols}"]`)
+  const openPicker = () => win.document.querySelector('[data-cmd="insertTable"]')
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  const hover = el => el.dispatchEvent(new win.MouseEvent('mouseover', { bubbles: true }))
+  const click = el => el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+  const key = k => win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }))
+
+  const tableAt = () => {
+    let found = null
+    editor.state.doc.descendants(node => { if (!found && node.type.name === 'table') found = node })
+    return found
+  }
+
+  test('the grid is ten columns by eight rows', () => {
+    assert.equal(grid().children.length, 80)
+    assert.ok(cell(8, 10), 'no bottom-right cell')
+    assert.equal(cell(9, 1), null)
+    assert.equal(cell(1, 11), null)
+  })
+
+  test('the table button opens it instead of inserting', () => {
+    editor.commands.setContent('<p></p>', false)
+    openPicker()
+    assert.equal(menu().classList.contains('visible'), true)
+    assert.equal(tableAt(), null, 'nothing inserted yet')
+  })
+
+  test('hovering reports the size it would insert', () => {
+    openPicker()
+    assert.equal(label().textContent, 'Table')
+    hover(cell(3, 4))
+    assert.equal(label().textContent, '4×3 Table')
+    assert.equal(cell(3, 4).classList.contains('in-range'), true)
+    assert.equal(cell(1, 1).classList.contains('in-range'), true)
+    assert.equal(cell(4, 4).classList.contains('in-range'), false)
+    assert.equal(cell(3, 5).classList.contains('in-range'), false)
+  })
+
+  test('clicking inserts exactly that size, with a header row', () => {
+    editor.commands.setContent('<p></p>', false)
+    openPicker()
+    hover(cell(3, 4))
+    click(cell(3, 4))
+    const table = tableAt()
+    assert.ok(table, 'no table inserted')
+    assert.equal(table.childCount, 3)
+    assert.equal(table.child(0).childCount, 4)
+    assert.equal(table.child(0).child(0).type.name, 'tableHeader')
+    assert.equal(table.child(1).child(0).type.name, 'tableCell')
+  })
+
+  test('it closes after inserting', () => {
+    assert.equal(menu().classList.contains('visible'), false)
+  })
+
+  test('arrows resize and Enter inserts', () => {
+    editor.commands.setContent('<p></p>', false)
+    openPicker()
+    key('ArrowRight')
+    assert.equal(label().textContent, '1×1 Table')
+    key('ArrowRight')
+    key('ArrowDown')
+    assert.equal(label().textContent, '2×2 Table')
+    key('Enter')
+    const table = tableAt()
+    assert.ok(table, 'no table inserted')
+    assert.equal(table.childCount, 2)
+    assert.equal(table.child(0).childCount, 2)
+    assert.equal(menu().classList.contains('visible'), false)
+  })
+
+  test('arrows never run past the edges of the grid', () => {
+    openPicker()
+    for (let i = 0; i < 15; i++) key('ArrowRight')
+    for (let i = 0; i < 15; i++) key('ArrowDown')
+    assert.equal(label().textContent, '10×8 Table')
+    for (let i = 0; i < 20; i++) { key('ArrowLeft'); key('ArrowUp') }
+    assert.equal(label().textContent, '1×1 Table')
+    key('Escape')
+  })
+
+  test('Escape closes it and inserts nothing', () => {
+    editor.commands.setContent('<p></p>', false)
+    openPicker()
+    hover(cell(2, 2))
+    key('Escape')
+    assert.equal(menu().classList.contains('visible'), false)
+    assert.equal(tableAt(), null)
+  })
+
+  test('pressing the button again closes it', () => {
+    openPicker()
+    assert.equal(menu().classList.contains('visible'), true)
+    openPicker()
+    assert.equal(menu().classList.contains('visible'), false)
+  })
+
+  test('Escape belongs to the picker before it belongs to the editor', () => {
+    openPicker()
+    assert.equal(win._overlayOpen(), true)
+    key('Escape')
+    assert.equal(win._overlayOpen(), false)
+  })
+
+  test('it refuses inside a footnote', () => {
+    const id = 'fn-11111111-2222-4333-8444-555555555555'
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found === null && node.isTextblock && node.textContent === 'A note.') found = pos + 1
+    })
+    editor.commands.setTextSelection(found)
+    openPicker()
+    assert.equal(menu().classList.contains('visible'), false, 'the picker should not even open')
+    assert.equal(win.insertTable(2, 2), false)
+  })
+
+  test('the panel is themed for dark mode', () => {
+    const css = win.document.querySelector('style').textContent
+    assert.match(css, /body\.dark #table-size-menu/)
   })
 })
 
@@ -640,7 +794,7 @@ describe('contextual toolbar row', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertAccordion()
     assert.equal(rowVisible(), true)
-    assert.deepEqual(shown(), ['accordion-controls', 'block-controls', 'settings-accordionItem-controls'])
+    assert.deepEqual(shown(), ['accordion-controls', 'block-controls', 'settings-accordionBlock-controls', 'settings-accordionItem-controls'])
   })
 
   test('the row disappears again when the cursor leaves', () => {
@@ -2009,5 +2163,291 @@ describe('citation control', () => {
     editor.commands.setContent('<p>plain</p>', false)
     editor.commands.setTextSelection(3)
     assert.equal(group().style.display, 'none')
+  })
+})
+
+// Nothing in Quill saw <figure class="wp-block-table"> before this: the parser
+// walked past it to the inner <table>, so the figure's classes were invisible,
+// the block comment came back bare, and the <figcaption> was orphaned into a
+// loose paragraph after the table.
+describe('the table figure, its classes and its caption', () => {
+  const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8')
+  const save = html => { win.setContent(html); return win.toWordPressHTML(editor.getHTML()) }
+
+  test('the caption stays inside the figure rather than becoming a paragraph', () => {
+    const out = save(src)
+    assert.match(out, /<figcaption class="wp-element-caption">here's my table caption<\/figcaption><\/figure>/)
+    assert.doesNotMatch(out, /<p>here's my table caption<\/p>/)
+  })
+
+  test('the figure keeps the style class core put on it', () => {
+    assert.match(save(src), /<figure class="wp-block-table is-style-stripes">/)
+  })
+
+  test('the class never lands on the inner table', () => {
+    assert.match(save(src), /<figure class="wp-block-table is-style-stripes"><table>/)
+  })
+
+  test('the block comment keeps both of its attributes', () => {
+    const out = save(src)
+    assert.match(out, /"className":"is-style-stripes"/)
+    assert.match(out, /"hasFixedLayout":false/)
+  })
+
+  // caption is source: "rich-text" on core/table, so core reads it back out of
+  // the markup and never writes it to the comment.
+  test('the caption never reaches the delimiter', () => {
+    assert.doesNotMatch(save(src), /"caption"/)
+  })
+
+  test('a table with no caption gains no empty figcaption', () => {
+    const out = save('<!-- wp:table -->\n<figure class="wp-block-table"><table><tbody><tr><td>a</td></tr></tbody></table></figure>\n<!-- /wp:table -->')
+    assert.doesNotMatch(out, /figcaption/)
+  })
+
+  test('a classic bare table still saves as a core/table figure', () => {
+    const out = save('<table><tbody><tr><td>a</td></tr></tbody></table>')
+    assert.match(out, /<!-- wp:table -->/)
+    assert.match(out, /<figure class="wp-block-table"><table>/)
+  })
+})
+
+// Tiptap's schema has no concept of table sections, so a <tfoot> row parsed as
+// an ordinary body row and came back inside <tbody>.
+describe('table row sections', () => {
+  const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8')
+  const save = html => { win.setContent(html); return win.toWordPressHTML(editor.getHTML()) }
+
+  test('a loaded footer row comes back in a tfoot', () => {
+    const out = save(src)
+    assert.match(out, /<tfoot><tr><td>footer 1<\/td><td>footer 2<\/td><\/tr><\/tfoot>/)
+  })
+
+  test('head, body and foot come back in core\'s order', () => {
+    const out = save(src)
+    const table = out.match(/<table>([\s\S]*?)<\/table>/)[1]
+    assert.match(table, /^<thead>[\s\S]*<\/thead><tbody>[\s\S]*<\/tbody><tfoot>[\s\S]*<\/tfoot>$/)
+  })
+
+  test('the body keeps only its own rows', () => {
+    const body = save(src).match(/<tbody>([\s\S]*?)<\/tbody>/)[1]
+    assert.equal((body.match(/<tr>/g) || []).length, 2)
+  })
+
+  test('the whole fixture round-trips byte-identically through an edit', () => {
+    assert.equal(save(src), src)
+  })
+
+  test('it is idempotent across a second cycle', () => {
+    assert.equal(save(save(src)), src)
+  })
+
+  // The all-<th>-first-row promotion still runs for classic tables and for
+  // tables Quill created itself, which declare no section at all.
+  test('a classic all-th first row is still promoted to a thead', () => {
+    const out = save('<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>c</td><td>d</td></tr></tbody></table>')
+    assert.match(out, /<thead><tr><th>A<\/th><th>B<\/th><\/tr><\/thead><tbody>/)
+    assert.doesNotMatch(out, /tfoot/)
+  })
+
+  test('a picker-inserted table saves a thead and a tbody', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(3, 2)
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<thead><tr><th><\/th><th><\/th><\/tr><\/thead>/)
+    assert.equal((out.match(/<tbody>/g) || []).length, 1)
+  })
+
+  // ProseMirror pads every row to a uniform cell count at parse time, so a
+  // colspanned body cell gives the header and footer a phantom empty cell.
+  // This is upstream of anything the save transform can reach: asserted so it
+  // is recorded behaviour, and so a future fix fails here and points back.
+  test('RECORDED LIMIT: sections plus a colspan gain a phantom cell', () => {
+    const out = save('<figure class="wp-block-table"><table><thead><tr><th>H</th></tr></thead><tbody><tr><td colspan="2">wide</td></tr></tbody><tfoot><tr><td>F</td></tr></tfoot></table></figure>')
+    assert.match(out, /<thead><tr><th>H<\/th><th><\/th><\/tr><\/thead>/)
+    assert.match(out, /<tfoot><tr><td>F<\/td><td><\/td><\/tr><\/tfoot>/)
+  })
+})
+
+describe('header and footer section toggles', () => {
+  const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8')
+  const controls = () => win.document.getElementById('table-controls')
+  const header = () => controls().querySelector('[data-cmd="toggleTableHeader"]')
+  const footer = () => controls().querySelector('[data-cmd="toggleTableFooter"]')
+  const press = el => el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  const out = () => win.toWordPressHTML(editor.getHTML())
+
+  function caretInTable() {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found === null && (node.type.name === 'tableCell' || node.type.name === 'tableHeader')) found = pos + 2
+    })
+    assert.ok(found !== null, 'no table cell')
+    editor.commands.setTextSelection(found)
+  }
+
+  test('both toggles live in the table controls', () => {
+    assert.ok(header(), 'no header toggle')
+    assert.ok(footer(), 'no footer toggle')
+  })
+
+  test('they are hidden outside a table', () => {
+    editor.commands.setContent('<p>plain</p>', false)
+    editor.commands.setTextSelection(2)
+    assert.equal(controls().style.display, 'none')
+  })
+
+  test('they reflect the sections a loaded table has', () => {
+    win.setContent(src)
+    caretInTable()
+    assert.equal(header().classList.contains('active'), true)
+    assert.equal(footer().classList.contains('active'), true)
+  })
+
+  test('a table Quill inserted reads as header-on, footer-off', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(3, 2)
+    caretInTable()
+    assert.equal(header().classList.contains('active'), true)
+    assert.equal(footer().classList.contains('active'), false)
+  })
+
+  test('turning the footer on adds a tfoot row of the right width', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(3, 2)
+    caretInTable()
+    press(footer())
+    assert.match(out(), /<tfoot><tr><td><\/td><td><\/td><\/tr><\/tfoot>/)
+  })
+
+  test('turning it off again removes the row', () => {
+    caretInTable()
+    press(footer())
+    assert.doesNotMatch(out(), /tfoot/)
+  })
+
+  test('turning the header off drops the thead', () => {
+    win.setContent(src)
+    caretInTable()
+    press(header())
+    const saved = out()
+    assert.doesNotMatch(saved, /thead/)
+    assert.match(saved, /<tfoot>/)
+  })
+
+  test('turning it back on adds a header row of th cells', () => {
+    caretInTable()
+    press(header())
+    assert.match(out(), /<thead><tr><th><\/th><th><\/th><\/tr><\/thead>/)
+  })
+
+  // Caught in the app: the footer's declared type made the whole table "typed",
+  // so the implicit all-<th> header stopped being promoted and its cells saved
+  // inside <tbody>. Head and foot are decided per row, not per table.
+  test('adding a footer does not demote an implicit header row', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(3, 2)
+    caretInTable()
+    press(footer())
+    const saved = out()
+    assert.match(saved, /<thead><tr><th><\/th><th><\/th><\/tr><\/thead>/)
+    assert.match(saved, /<tfoot><tr><td><\/td><td><\/td><\/tr><\/tfoot>/)
+    assert.doesNotMatch(saved, /<tbody>[\s\S]*<th>/)
+  })
+
+  test('the header toggle still reads as on once a footer exists', () => {
+    caretInTable()
+    assert.equal(header().classList.contains('active'), true)
+  })
+
+  // The user-visible half of the same bug: with the toggle reading off, a press
+  // added a SECOND header row instead of removing the one already there.
+  test('pressing Header with a footer present never makes a second header row', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(3, 2)
+    caretInTable()
+    press(footer())
+    press(header())
+    const saved = out()
+    assert.doesNotMatch(saved, /<thead>/)
+    assert.equal((saved.match(/<th>/g) || []).length, 0)
+    caretInTable()
+    press(header())
+    assert.equal((out().match(/<thead>/g) || []).length, 1)
+  })
+
+  test('the last remaining row is never removed', () => {
+    win.setContent('<figure class="wp-block-table"><table><thead><tr><th>only</th></tr></thead></table></figure>')
+    caretInTable()
+    press(header())
+    assert.match(out(), /only/)
+  })
+})
+
+describe('the table style picker', () => {
+  const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8')
+  const picker = () => win.document.querySelector('#settings-table-controls select[data-setting="className"]')
+
+  function caretInTable() {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found === null && node.type.name === 'tableCell') found = pos + 2
+    })
+    editor.commands.setTextSelection(found)
+  }
+
+  const choose = value => {
+    picker().value = value
+    picker().dispatchEvent(new win.Event('change', { bubbles: true }))
+  }
+
+  test('it reflects a loaded style', () => {
+    win.setContent(src)
+    caretInTable()
+    assert.equal(picker().value, 'is-style-stripes')
+  })
+
+  test('clearing it strips the class and the comment attribute', () => {
+    choose('')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /is-style-stripes/)
+    assert.match(out, /<figure class="wp-block-table">/)
+  })
+
+  test('choosing stripes writes both halves back', () => {
+    choose('is-style-stripes')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /<figure class="wp-block-table is-style-stripes">/)
+    assert.match(out, /"className":"is-style-stripes"/)
+  })
+
+  test('the block class is never mistaken for a style', () => {
+    choose('')
+    assert.match(win.toWordPressHTML(editor.getHTML()), /<figure class="wp-block-table">/)
+  })
+})
+
+// A footer row is <td> cells, so nothing distinguished it from a body row on
+// screen the way <th> distinguishes the header.
+describe('the footer row reads as a footer', () => {
+  const css = () => win.document.querySelector('style').textContent
+
+  test('a foot row carries a marker the CSS can reach', () => {
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8'))
+    assert.match(editor.getHTML(), /<tr data-quill-row="foot">/)
+  })
+
+  test('it is tinted like the header row, in both themes', () => {
+    assert.match(css(), /\.ProseMirror tr\[data-quill-row="foot"\] td \{[^}]*background/)
+    assert.match(css(), /body\.dark \.ProseMirror tr\[data-quill-row="foot"\] td/)
+  })
+
+  test('a heavier top border separates it from the body', () => {
+    assert.match(css(), /\.ProseMirror tr\[data-quill-row="foot"\] td \{[^}]*border-top/)
+  })
+
+  test('the marker never reaches saved markup', () => {
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /data-quill-row/)
   })
 })

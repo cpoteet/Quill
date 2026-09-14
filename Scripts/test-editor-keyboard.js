@@ -684,7 +684,7 @@ describe('window.insertImage cursor placement', () => {
     assert.doesNotMatch(figure, /<p>/)
     assert.match(figure, /<img src="http:\/\/x\/r\.jpg"/)
     // The new paragraph is a sibling after the block, not part of it.
-    assert.match(out, /<!-- \/wp:image --><!-- wp:paragraph -->\n<p><\/p>\n<!-- \/wp:paragraph -->$/)
+    assert.match(out, /<!-- \/wp:image -->\n\n<!-- wp:paragraph -->\n<p><\/p>\n<!-- \/wp:paragraph -->$/)
   })
 
   test('the paragraph below the image accepts typing', () => {

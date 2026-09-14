@@ -21,6 +21,25 @@
 // truth: isStackedOnMobile defaults to true and renders its class when false.
 
 const BLOCK_SETTINGS = {
+  // core/accordion's save() draws nothing from either, so both are carried --
+  // but core/accordion-heading stores its own copy and that copy draws the
+  // classes and the icon span, so the control propagates to every heading.
+  accordionBlock: {
+    showIcon: {
+      kind: 'carried',
+      default: true,
+      control: { type: 'toggle', label: 'Icon', title: 'Show the toggle icon',
+                 propagate: 'accordionHeading' },
+    },
+    iconPosition: {
+      kind: 'carried',
+      default: 'right',
+      control: { type: 'choice', label: 'Icon side', title: 'Which side the toggle icon sits on',
+                 propagate: 'accordionHeading',
+                 options: [{ value: 'right', label: 'Icon right' }, { value: 'left', label: 'Icon left' }] },
+    },
+  },
+
   accordionItem: {
     openByDefault: {
       kind: 'flagClass',
@@ -65,6 +84,9 @@ const BLOCK_SETTINGS = {
   horizontalRule: blockStyle('Default', [['is-style-wide',    'Wide Line'],
                                          ['is-style-dots',    'Dots']], 'class'),
   image:          blockStyle('Default', [['is-style-rounded', 'Rounded']], 'figureClass'),
+  // The table's class lives on its <figure>, which nothing in Quill saw until
+  // the figure parse rule landed -- until then this style was lost on any edit.
+  table:          blockStyle('Default', [['is-style-stripes', 'Stripes']], 'class'),
 }
 
 // The default style writes no class at all, which is why its value is empty.

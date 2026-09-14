@@ -291,6 +291,47 @@
       color: #e8e8ea;
       box-shadow: 0 18px 45px rgba(0,0,0,0.36);
     }
+    #table-size-menu {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 950;
+      padding: 10px;
+      border: 1px solid rgba(0,0,0,0.04);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.98);
+      color: #555965;
+      box-shadow: 0 18px 45px rgba(28,28,35,0.16);
+    }
+    #table-size-menu.visible { display: block; }
+    #table-size-label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+    #table-size-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 16px);
+      gap: 3px;
+    }
+    .table-size-cell {
+      height: 16px;
+      border: 1px solid rgba(0,0,0,0.16);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .table-size-cell.in-range {
+      border-color: #b45309;
+      background: rgba(180,83,9,0.3);
+    }
+    body.dark #table-size-menu {
+      background: rgba(42,42,45,0.98);
+      border-color: rgba(255,255,255,0.08);
+      color: #e8e8ea;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.36);
+    }
+    body.dark .table-size-cell { border-color: rgba(255,255,255,0.2); }
     .heading-menu-item {
       display: flex;
       align-items: center;
@@ -713,6 +754,14 @@
     body.dark .ProseMirror td { border-color: #555; }
     .ProseMirror th { background: #f5f5f5; font-weight: 600; }
     body.dark .ProseMirror th { background: #2a2a2a; }
+    .ProseMirror tr[data-quill-row="foot"] td {
+      background: #f5f5f5;
+      border-top: 2px solid #999;
+    }
+    body.dark .ProseMirror tr[data-quill-row="foot"] td {
+      background: #2a2a2a;
+      border-top-color: #777;
+    }
     .ProseMirror .selectedCell { background: rgba(0,122,255,0.08); }
 
     /* Placeholder */
@@ -1282,6 +1331,8 @@
         <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
         <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
         <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
+        <button data-cmd="toggleTableHeader" title="Header section">Header</button>
+        <button data-cmd="toggleTableFooter" title="Footer section">Footer</button>
       </span>
     <span id="columns-controls" style="display:none">
         <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
@@ -1353,6 +1404,11 @@
     <button class="heading-menu-item" data-insert="buttons" role="menuitem"><span class="heading-menu-label">Buttons</span></button>
     <button class="heading-menu-item" data-insert="pullquote" role="menuitem"><span class="heading-menu-label">Pullquote</span></button>
     <button class="heading-menu-item" data-insert="preformatted" role="menuitem"><span class="heading-menu-label">Preformatted</span></button>
+    <button class="heading-menu-item" data-insert="separator" role="menuitem"><span class="heading-menu-label">Separator</span></button>
+  </div>
+  <div id="table-size-menu" role="dialog" aria-label="Table size">
+    <div id="table-size-label">Table</div>
+    <div id="table-size-grid"></div>
   </div>
   <div id="embed-menu">
     <input id="embed-url-input" type="text" placeholder="Insert media link" spellcheck="false">
@@ -1445,6 +1501,52 @@
         },
       })
     }
+
+    // core/table's markup is a <figure> wrapping the <table>, with the block's
+    // classes and its <figcaption> on the figure. Without this rule the parser
+    // walked straight past the figure to the inner table: the classes were
+    // invisible and the caption was orphaned into a loose paragraph. caption is
+    // source: "rich-text", so it rides the markup and never the delimiter.
+    const TableWithFigure = Table.extend({
+      parseHTML() {
+        return [{ tag: 'figure.wp-block-table', contentElement: 'table' }, ...(this.parent?.() || [])]
+      },
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          caption: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: el => {
+              const cap = el.tagName === 'FIGURE' ? el.querySelector(':scope > figcaption') : null
+              return cap ? cap.innerHTML : null
+            },
+            renderHTML: attrs => attrs.caption ? { 'data-quill-caption': attrs.caption } : {},
+          },
+        }
+      },
+    })
+
+    // Tiptap's schema has no sections, so a row remembers which one it came
+    // from and the save transform regroups them in core's fixed order.
+    const TableRowWithSection = TableRow.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          rowType: {
+            default: 'body',
+            keepOnSplit: false,
+            parseHTML: el => {
+              const section = el.parentElement && el.parentElement.tagName
+              if (section === 'THEAD') return 'head'
+              if (section === 'TFOOT') return 'foot'
+              return 'body'
+            },
+            renderHTML: attrs => attrs.rowType && attrs.rowType !== 'body' ? { 'data-quill-row': attrs.rowType } : {},
+          },
+        }
+      },
+    })
 
     const ParagraphWithClass  = withBlockAttrs(withClassAttr(Paragraph))
     const HeadingWithClass    = withBlockAttrs(withClassAttr(Heading))
@@ -2932,7 +3034,7 @@
 
     // Esc belongs to whatever overlay is open before it belongs to the editor.
     function _overlayOpen() {
-      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible')
+      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible, #table-size-menu.visible')
     }
 
     // Land the caret in typable space just past the container, making that
@@ -3278,8 +3380,8 @@
         CustomBlockquote,
         Cite,
         Underline,
-        withBlockAttrs(withClassAttr(Table)).configure({ resizable: false }),
-        withBlockAttrs(withClassAttr(TableRow)),
+        withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
+        withBlockAttrs(withClassAttr(TableRowWithSection)),
         withBlockAttrs(withClassAttr(TableHeader)),
         withBlockAttrs(withClassAttr(TableCell)),
         withBlockAttrs(withClassAttr(HorizontalRule)),
@@ -3489,7 +3591,9 @@
       codeBlock:     () => { if (!_isInFootnote()) editor.chain().focus().toggleCodeBlock().run() },
       bulletList:    () => { if (!_isInFootnote()) editor.chain().focus().toggleBulletList().run() },
       orderedList:   () => { if (!_isInFootnote()) editor.chain().focus().toggleOrderedList().run() },
-      insertTable:   () => { if (!_isInFootnote()) editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      insertTable:   () => { if (!_isInFootnote()) _toggleTableMenu() },
+      toggleTableHeader: () => _toggleTableSection('head'),
+      toggleTableFooter: () => _toggleTableSection('foot'),
       addRowAfter:   () => editor.chain().focus().addRowAfter().run(),
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
@@ -3534,7 +3638,7 @@
       addAccordionItem: () => {
         const info = _ancestorOfType('accordionBlock')
         if (!info) return
-        const item = editor.schema.nodes.accordionItem.createAndFill()
+        const item = editor.schema.nodes.accordionItem.createAndFill(null, _inheritedAccordionHeading(info.node))
         editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, item))
         editor.commands.focus()
       },
@@ -3818,7 +3922,92 @@
       _setSettingAttrs(typeName, attrs)
     }
 
+    // A carried setting has no attribute of its own -- its value lives in the
+    // delimiter JSON the carrier holds.
+    function _settingValue(node, name, def) {
+      if (def.kind !== 'carried') return node.attrs[name]
+      const carried = _carriedAttr(node.attrs.blockAttrs, name)
+      return carried === undefined ? def.default : carried
+    }
+
+    // Core's serializer omits an attribute that equals its default, so writing
+    // the default deletes the key rather than spelling it out.
+    function _attrsWithSetting(attrs, name, def, value) {
+      if (def.kind !== 'carried') return { ...attrs, [name]: value }
+      return { ...attrs, blockAttrs: _withCarriedAttr(attrs.blockAttrs, name, value === def.default ? null : value) }
+    }
+
+    // A propagated setting is stored twice by core -- on the block and on each
+    // descendant that draws it -- so both halves move in one transaction, and
+    // one undo reverses the lot. The descendant both draws and carries it.
+    function _setSettingValue(typeName, name, def, value) {
+      const target = _settingBlockAt(editor.state, typeName)
+      if (!target) return
+      const { state, view } = editor
+      const tr = state.tr
+      tr.setNodeMarkup(target.pos, undefined, _attrsWithSetting(target.node.attrs, name, def, value))
+      const propagate = def.control && def.control.propagate
+      if (propagate) {
+        target.node.descendants((child, offset) => {
+          if (child.type.name !== propagate) return
+          const carried = _attrsWithSetting(child.attrs, name, { kind: 'carried', default: def.default }, value)
+          tr.setNodeMarkup(target.pos + 1 + offset, undefined, { ...carried, [name]: value })
+        })
+      }
+      view.dispatch(tr)
+    }
+
+    // A toggle's on value is the flagClass `when` where there is one and true
+    // otherwise; its off value is the default, unless the default is already
+    // the on value.
+    function _toggleValues(def) {
+      const on = 'when' in def ? def.when : true
+      return [on, def.default === on ? !on : def.default]
+    }
+
+    // Mirrors the save transform: a declared section wins, and an all-<th>
+    // first row is the fallback for classic tables and for the ones Quill
+    // inserts, which declare nothing.
+    function _tableSections(node) {
+      const rows = []
+      node.forEach((row, offset) => rows.push({ row, offset, type: row.attrs.rowType || 'body' }))
+      if (!rows.length || rows[0].type !== 'body' || rows.some(r => r.type === 'head')) return rows
+      const first = rows[0].row
+      const headed = first.childCount > 0 &&
+        Array.from({ length: first.childCount }, (_, i) => first.child(i))
+          .every(cell => cell.type.name === 'tableHeader')
+      if (headed) rows[0].type = 'head'
+      return rows
+    }
+
+    function _tableSectionRow(node, type) {
+      return _tableSections(node).find(r => r.type === type) || null
+    }
+
+    // core's header section is <th> cells, its footer <td>.
+    function _toggleTableSection(type) {
+      const target = _settingBlockAt(editor.state, 'table')
+      if (!target) return
+      const { node, pos } = target
+      const existing = _tableSectionRow(node, type)
+      const tr = editor.state.tr
+      if (existing) {
+        if (node.childCount <= 1) return
+        const at = pos + 1 + existing.offset
+        tr.delete(at, at + existing.row.nodeSize)
+      } else {
+        const cellType = type === 'head' ? editor.schema.nodes.tableHeader : editor.schema.nodes.tableCell
+        const width = node.firstChild ? node.firstChild.childCount : 1
+        const cells = Array.from({ length: width }, () => cellType.createAndFill())
+        const row = editor.schema.nodes.tableRow.create({ rowType: type }, cells)
+        tr.insert(type === 'head' ? pos + 1 : pos + node.nodeSize - 1, row)
+      }
+      editor.view.dispatch(tr)
+      editor.commands.focus()
+    }
+
     function _buildSettingToggle(typeName, name, def) {
+      const [on, off] = _toggleValues(def)
       const btn = document.createElement('button')
       btn.dataset.setting = name
       btn.textContent = def.control.label
@@ -3826,9 +4015,41 @@
       btn.addEventListener('mousedown', e => {
         e.preventDefault()
         const target = _settingBlockAt(editor.state, typeName)
-        if (target) _setSettingAttrs(typeName, { [name]: target.node.attrs[name] === def.when ? def.default : def.when })
+        if (target) _setSettingValue(typeName, name, def, _settingValue(target.node, name, def) === on ? off : on)
       })
-      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', node.attrs[name] === def.when) }
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', _settingValue(node, name, def) === on) }
+    }
+
+    // Core hands the heading its icon settings through block context; Quill has
+    // none, so a new item copies them off the accordion, drawing and carrying
+    // them the way core's own save() would.
+    function _inheritedAccordionHeading(accordion) {
+      const attrs = {}
+      let carried = null
+      for (const [name, def] of Object.entries(settingsFor('accordionBlock'))) {
+        if (!def.control || def.control.propagate !== 'accordionHeading') continue
+        const value = _carriedAttr(accordion.attrs.blockAttrs, name)
+        if (value === undefined) continue
+        attrs[name] = value
+        carried = _withCarriedAttr(carried, name, value)
+      }
+      return editor.schema.nodes.accordionHeading.create({ ...attrs, blockAttrs: carried })
+    }
+
+    function _buildSettingChoice(typeName, name, def) {
+      const select = document.createElement('select')
+      select.className = 'setting-select'
+      select.dataset.setting = name
+      select.title = def.control.title || def.control.label
+      for (const option of def.control.options) {
+        const el = document.createElement('option')
+        el.value = option.value
+        el.textContent = option.label
+        select.appendChild(el)
+      }
+      select.addEventListener('mousedown', e => e.stopPropagation())
+      select.addEventListener('change', () => _setSettingValue(typeName, name, def, select.value))
+      return { name, def, el: select, reflect: node => { select.value = _settingValue(node, name, def) } }
     }
 
     function _buildSettingStylePicker(typeName, name, def) {
@@ -3907,6 +4128,7 @@
     function _buildSettingControl(typeName, name, def) {
       if (def.control.type === 'newTab') return _buildSettingNewTab(typeName, name, def)
       if (def.control.type === 'toggle') return _buildSettingToggle(typeName, name, def)
+      if (def.control.type === 'choice') return _buildSettingChoice(typeName, name, def)
       if (def.control.type === 'blockStyle') return _buildSettingStylePicker(typeName, name, def)
       if (def.control.type === 'ancestorIndex') return _buildSettingAncestorIndex(typeName, name, def)
       return null
@@ -4001,6 +4223,7 @@
       buttons:      () => window.insertButtons(),
       pullquote:    () => editor.chain().focus().setPullquote().run(),
       preformatted: () => editor.chain().focus().setPreformatted().run(),
+      separator:    () => window.insertSeparator(),
     }
 
     function _closeInsertMenu() {
@@ -4038,6 +4261,94 @@
     })
     window.addEventListener('resize', _closeInsertMenu)
     document.getElementById('editor-wrap').addEventListener('scroll', _closeInsertMenu)
+
+    // ── Table size picker ─────────────────────────────
+    // Word's grid: hover or arrow to a size, click or Enter to insert. Header
+    // row on by default, which is both what the old fixed 3x3 did and what
+    // Gutenberg's own table starts with.
+    const TABLE_PICKER_ROWS = 8
+    const TABLE_PICKER_COLS = 10
+    const tableButton = document.querySelector('[data-cmd="insertTable"]')
+    const tableMenu = document.getElementById('table-size-menu')
+    const tableGrid = document.getElementById('table-size-grid')
+    const tableLabel = document.getElementById('table-size-label')
+    let _tableSize = { rows: 0, cols: 0 }
+
+    for (let r = 1; r <= TABLE_PICKER_ROWS; r++) {
+      for (let c = 1; c <= TABLE_PICKER_COLS; c++) {
+        const cell = document.createElement('div')
+        cell.className = 'table-size-cell'
+        cell.dataset.rows = r
+        cell.dataset.cols = c
+        tableGrid.appendChild(cell)
+      }
+    }
+
+    function _paintTableSize(rows, cols) {
+      _tableSize = { rows, cols }
+      for (const cell of tableGrid.children) {
+        cell.classList.toggle('in-range', +cell.dataset.rows <= rows && +cell.dataset.cols <= cols)
+      }
+      tableLabel.textContent = (rows && cols) ? `${cols}×${rows} Table` : 'Table'
+    }
+
+    function _closeTableMenu() {
+      tableMenu.classList.remove('visible')
+      tableButton.setAttribute('aria-expanded', 'false')
+    }
+
+    function _toggleTableMenu() {
+      if (tableMenu.classList.contains('visible')) { _closeTableMenu(); return }
+      const rect = tableButton.getBoundingClientRect()
+      tableMenu.style.left = `${Math.max(rect.left, 8)}px`
+      tableMenu.style.top = `${rect.bottom + 8}px`
+      _paintTableSize(0, 0)
+      tableMenu.classList.add('visible')
+      tableButton.setAttribute('aria-expanded', 'true')
+    }
+
+    window.insertTable = (rows, cols) => {
+      _closeTableMenu()
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
+      return true
+    }
+
+    tableMenu.addEventListener('mousedown', e => e.preventDefault())
+    tableGrid.addEventListener('mouseover', e => {
+      const cell = e.target.closest('.table-size-cell')
+      if (cell) _paintTableSize(+cell.dataset.rows, +cell.dataset.cols)
+    })
+    tableGrid.addEventListener('click', e => {
+      const cell = e.target.closest('.table-size-cell')
+      if (cell) window.insertTable(+cell.dataset.rows, +cell.dataset.cols)
+    })
+
+    // Capture, so the arrows resize the grid instead of moving the caret the
+    // picker deliberately left in place.
+    const TABLE_PICKER_STEPS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }
+    document.addEventListener('keydown', e => {
+      if (!tableMenu.classList.contains('visible')) return
+      const { rows, cols } = _tableSize
+      if (e.key === 'Escape') { e.preventDefault(); _closeTableMenu(); return }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (rows && cols) window.insertTable(rows, cols)
+        return
+      }
+      const step = TABLE_PICKER_STEPS[e.key]
+      if (!step) return
+      e.preventDefault()
+      e.stopPropagation()
+      _paintTableSize(Math.min(TABLE_PICKER_ROWS, Math.max(1, rows + step[0])),
+                      Math.min(TABLE_PICKER_COLS, Math.max(1, cols + step[1])))
+    }, true)
+
+    document.addEventListener('mousedown', e => {
+      if (!tableMenu.contains(e.target) && !tableButton.contains(e.target)) _closeTableMenu()
+    })
+    window.addEventListener('resize', _closeTableMenu)
+    document.getElementById('editor-wrap').addEventListener('scroll', _closeTableMenu)
 
     // ── Embed insert popover ──────────────────────────
     const embedButton = document.getElementById('embed-button')
@@ -4094,6 +4405,8 @@
     const _undoBtn = document.querySelector('[data-cmd="undo"]')
     const _redoBtn = document.querySelector('[data-cmd="redo"]')
     const _tableControls = document.getElementById('table-controls')
+    const _btnTableHeader = document.querySelector('[data-cmd="toggleTableHeader"]')
+    const _btnTableFooter = document.querySelector('[data-cmd="toggleTableFooter"]')
     const _bqControls = document.getElementById('blockquote-controls')
     const _columnsControls = document.getElementById('columns-controls')
     const _buttonsControls = document.getElementById('buttons-controls')
@@ -4154,6 +4467,12 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
+      if (inTable) {
+        const table = _settingBlockAt(editor.state, 'table')
+        for (const [type, btn] of [['head', _btnTableHeader], ['foot', _btnTableFooter]]) {
+          btn.classList.toggle('active', !!table && !!_tableSectionRow(table.node, type))
+        }
+      }
       // Tabs controls
       _tabsControls.style.display = editor.isActive('tabsBlock') ? 'inline-flex' : 'none'
       // Accordion controls
@@ -4812,6 +5131,12 @@
         type: 'detailsBlock',
         content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
       }).run()
+      return true
+    }
+
+    window.insertSeparator = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().setHorizontalRule().run()
       return true
     }
 

@@ -335,6 +335,30 @@ function parsePassthroughBlock(el) {
 // than string replace — so repeated saves and duplicate content don't
 // double-wrap. Shared by the embed/gallery/passthrough wp:name comment
 // wrapping below.
+// Gutenberg's serializer joins sibling blocks with a blank line, at every level.
+// One pass over the finished tree rather than a step inside each wrap, because
+// the wrapping passes do not run in document order — an image figure is wrapped
+// before the separator above it is, so a backwards-looking check there sees a
+// bare <hr> on the first save and a close comment on the second. The whitespace
+// between the two comments is replaced, not added to, so repeated saves cannot
+// stack a second blank line on the first.
+function separateSiblingBlocks(root, doc) {
+  for (const parent of [root, ...root.querySelectorAll('*')]) {
+    for (const node of Array.from(parent.childNodes)) {
+      if (node.nodeType !== 8 || !node.textContent.trim().startsWith('wp:')) continue
+      const prev = precedingSignificantNode(node)
+      if (!prev || prev.nodeType !== 8 || !prev.textContent.trim().startsWith('/wp:')) continue
+      let cursor = node.previousSibling
+      while (cursor && cursor !== prev) {
+        const before = cursor.previousSibling
+        cursor.remove()
+        cursor = before
+      }
+      parent.insertBefore(doc.createTextNode('\n\n'), node)
+    }
+  }
+}
+
 function wrapElementWithComments(doc, el, openText, closeText) {
   const open = doc.createComment(openText)
   const close = doc.createComment(closeText)
@@ -570,28 +594,58 @@ function toWordPressHTML(html, doc) {
     })
   })
 
-  // Tables: move first all-<th> row from <tbody> into a proper <thead>
+  // Tables: regroup rows into core's fixed head-body-foot order. A row that
+  // declares a section is authoritative; an all-<th> first row that declares
+  // nothing is the header, which is what a classic table and a table Quill
+  // created itself both look like.
   div.querySelectorAll('table').forEach(table => {
-    if (table.querySelector('thead')) return
-    const tbody = table.querySelector('tbody')
-    if (!tbody) return
-    const firstRow = tbody.querySelector('tr:first-child')
-    if (!firstRow) return
-    const cells = Array.from(firstRow.children)
-    if (cells.length > 0 && cells.every(c => c.tagName === 'TH')) {
-      const thead = doc.createElement('thead')
-      table.insertBefore(thead, tbody)
-      thead.appendChild(firstRow)
+    const rows = Array.from(table.querySelectorAll('tr'))
+    if (!rows.length) return
+    const types = rows.map(tr => {
+      const type = tr.getAttribute('data-quill-row') || 'body'
+      tr.removeAttribute('data-quill-row')
+      return type
+    })
+    // Decided per row, not per table: a Quill-inserted table's header is an
+    // all-<th> first row that declares nothing, and it stays a header even once
+    // a footer beneath it declares one.
+    if (types[0] === 'body' && !types.includes('head')) {
+      const cells = Array.from(rows[0].children)
+      if (cells.length > 0 && cells.every(c => c.tagName === 'TH')) types[0] = 'head'
+    }
+    const grouped = { head: [], body: [], foot: [] }
+    rows.forEach((tr, i) => grouped[types[i]].push(tr))
+
+    Array.from(table.children).forEach(child => child.remove())
+    for (const [section, tag] of [['head', 'thead'], ['body', 'tbody'], ['foot', 'tfoot']]) {
+      if (!grouped[section].length) continue
+      const el = doc.createElement(tag)
+      grouped[section].forEach(tr => el.appendChild(tr))
+      table.appendChild(el)
     }
   })
 
-  // Tables → Gutenberg figure wrapper
+  // Tables → Gutenberg figure wrapper. The block's classes, its carried
+  // delimiter attributes and its caption all belong on the figure, but reach
+  // here on the <table> because that is the element Tiptap renders.
   div.querySelectorAll('table').forEach(table => {
     if (table.parentElement?.classList.contains('wp-block-table')) return
     const figure = doc.createElement('figure')
-    figure.className = 'wp-block-table'
+    figure.className = mergeClassNames('wp-block-table', table.getAttribute('class'))
+    const carried = table.getAttribute('data-quill-block-attrs')
+    if (carried) figure.setAttribute('data-quill-block-attrs', carried)
+    const caption = table.getAttribute('data-quill-caption')
+    table.removeAttribute('class')
+    table.removeAttribute('data-quill-block-attrs')
+    table.removeAttribute('data-quill-caption')
     table.parentNode.insertBefore(figure, table)
     figure.appendChild(table)
+    if (caption) {
+      const el = doc.createElement('figcaption')
+      el.className = 'wp-element-caption'
+      el.innerHTML = caption
+      figure.appendChild(el)
+    }
   })
 
   // Footnote markers: write 1-based numbers into anchors in document order.
@@ -719,6 +773,8 @@ function toWordPressHTML(html, doc) {
     el.removeAttribute('data-quill-passthrough-attrs')
     wrapElementWithComments(doc, el, attrsJSON ? ` wp:${name} ${attrsJSON} ` : ` wp:${name} `, ` /wp:${name} `)
   })
+
+  separateSiblingBlocks(div, doc)
 
   // Strip the generic passthrough marker (set unconditionally in renderHTML,
   // independent of blockName) so it never appears in saved HTML.
