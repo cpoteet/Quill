@@ -28,41 +28,78 @@ Committed on `gutenberg-block-model`, 12 test suites green:
 | `669eeff` | **Task A2 done** — `withBlockSettings`, the generated Tiptap attributes |
 | `c5130b5` | **Tasks A3 and A4 done** — the delimiter half and the generated controls |
 | `43047b2` | **Task B1 done** — the style picker, on four blocks of five |
+| `923405a` | **Task C1 and C2 done** — tabs default tab, open-in-new-tab |
 
-**Stages A and B are complete. Next: task C1.**
+**Stages A, B and C are complete. Next: stage D, task D1.**
 
-**Table's Stripes style is deferred to after F1.** Its `className` lives on the
-`<figure class="wp-block-table">`, which nothing in Quill sees, so the style is
-*lost on any edit today* — a data-loss bug, not just a missing control. Probed
-on 2026-09-13: buttons, quotes, separators and images all keep their style
-through a load → edit → save; table comes back with none. Add the fifth
-registry entry as part of F1, not before.
+### What the registry holds now
 
-Two slugs in the scope table above were wrong, corrected against installed
-core: the table's default style is `regular`, and the separator's wide style is
-labelled **Wide Line**.
+| Node | Setting | Kind | Control |
+|---|---|---|---|
+| `accordionItem` | `openByDefault` | flagClass | toggle |
+| `tabPanel` | `isDefaultTab` | carried | ancestorIndex → `tabsBlock.activeTabIndex` |
+| `buttonBlock` | `className` | carried | blockStyle (Fill / Outline) |
+| `buttonBlock` | `linkTarget`, `rel` | attr, sourced | newTab on `linkTarget` |
+| `blockquote` | `className` | carried | blockStyle (Default / Plain) |
+| `horizontalRule` | `className` | carried | blockStyle (Default / Wide Line / Dots) |
+| `image` | `className` | carried | blockStyle (Default / Rounded) |
 
-Noted for G1: `settings-separator.html` does not round-trip byte-identically —
-Quill emits `<hr ...>` where the fixture has `<hr .../>`. Confirmed pre-existing
-against `HEAD`, unrelated to the settings work.
+Control types built: `toggle`, `blockStyle`, `ancestorIndex`, `newTab`. A
+`choice` type does not exist yet — stage D is the first to need one. The prose
+link's new-tab toggle is hand-written (`#link-controls` in `editor.html`),
+because a link is a mark and not a block.
 
-The registry still ships with exactly one entry — `accordionItem.openByDefault`
-— which was the machinery's subject through A2–A4.
+### Corrections to this plan, made from installed core
 
-Two deviations from the tasks as written, both deliberate:
+- The new-tab `rel` is **`noopener` alone**, in both paths — `button/constants.mjs`
+  sets `NEW_TAB_REL = "noopener"`, and the site's own `format-library.js`
+  composes the same single token. "noreferrer noopener" appears only in
+  `core/file`. Task C2's text below is wrong on this point.
+- `core/accordion-heading` **does** carry its own `openByDefault`, but its
+  `save()` never reads it, so it draws nothing and needs no propagation.
+- Core checks the default-tab box on tab 0 as well.
+- The table's default style slug is `regular`; the separator's wide style is
+  labelled **Wide Line**.
+
+### Deferred, with reasons
+
+- **Table's Stripes style waits for F1.** Its `className` lives on the
+  `<figure class="wp-block-table">`, which nothing in Quill sees, so the style
+  is *lost on any edit today* — data loss, not a missing control. Probed
+  2026-09-13: buttons, quotes, separators and images all keep their style
+  through load → edit → save; table comes back with none. Add the fifth
+  registry entry as part of F1.
+- **G1:** `settings-separator.html` does not round-trip byte-identically —
+  Quill emits `<hr ...>` where the fixture has `<hr .../>`. Confirmed
+  pre-existing against `HEAD`, unrelated to this work.
+- **G1:** `Scripts/probe-attrs.js` is still untracked and still wants deleting.
+
+### Deviations from the tasks as written, all deliberate
 
 - **`withBlockAttrs` composes `withBlockSettings`** rather than being a third
-  wrapper applied at each node's call site. The stage-A completion test caught
-  the reason: added per node, a second registry entry produced its toolbar
+  wrapper applied at each node's call site. Stage A's own completion test caught
+  the reason: applied per node, a second registry entry produced its toolbar
   control but neither its class nor its comment attribute — two edits, not one.
   The nesting order the plan specifies is unchanged.
-- **Only the `toggle` control type is built.** `_buildSettingControl` is a
-  switch with one case; `blockStyle` belongs with B1's five entries and
-  `choice` with C/D, where each has a subject and a test. Building them now
-  would have meant untested code.
+- **Control types are built when they get a subject**, not up front, so each
+  arrives with a test. `_buildSettingControl` is a switch; stage D adds `choice`.
+- **Tiptap emits `target`/`rel` ahead of `href`** on a prose link it rewrites,
+  because `Link.configure` seeds them into `HTMLAttributes` first. Seeding
+  `href` first does not help — `mergeAttributes` drops nulls before merging.
+  Gutenberg's validator is order-insensitive and only a toggled link is
+  rewritten, so this is left alone.
 
-Proven, then reverted: adding `columnsBlock.isStackedOnMobile` as one registry
-line produced the class, the comment key and the control with no other edit.
+### Two traps this work hit, worth not repeating
+
+- **A repeated key in `BLOCK_SETTINGS` silently discards the earlier one.** A
+  second `buttonBlock:` literal won and the first vanished with no runtime
+  error. `test-block-settings-registry.js` now reads its own source and fails
+  on a repeat. Verified by injecting one.
+- **A CSS anchor can split a grouped selector.** Inserting a rule before
+  `#toolbar-row2 svg {` landed it between `#toolbar svg,` and its body, so every
+  main-toolbar icon lost `stroke: currentColor` and rendered as a chevron. All
+  12 suites stayed green; only opening the app caught it. Check the app after
+  any CSS insertion.
 
 Two things not repeated below that are worth knowing:
 
