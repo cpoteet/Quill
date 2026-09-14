@@ -660,7 +660,7 @@ describe('contextual toolbar row', () => {
       '</div></div>', false)
     editor.commands.setTextSelection(4)
     assert.equal(rowVisible(), true)
-    assert.deepEqual(shown().sort(), ['block-controls', 'buttons-controls', 'columns-controls'])
+    assert.deepEqual(shown().sort(), ['block-controls', 'buttons-controls', 'columns-controls', 'settings-buttonBlock-controls'])
   })
 
   test('the main toolbar keeps the groups that are not cursor-contextual', () => {

@@ -74,9 +74,25 @@ describe('registry shape', () => {
 })
 
 describe('registry agrees with the block descriptors', () => {
-  test('every node named here is a node Quill models', () => {
-    for (const node of Object.keys(BLOCK_SETTINGS)) {
-      assert.ok(descriptors.descriptorFor(node), `${node} has settings but no block descriptor`)
+  // Only a setting that writes a delimiter key needs one: the block descriptor
+  // is what emits that key. A carried setting rides on the carrier, which every
+  // node has, so image -- delimited by toWordPressHTML's own image pass rather
+  // than by a descriptor -- may still declare one.
+  test('every node that writes a delimiter key has a block descriptor', () => {
+    for (const [node, settings] of Object.entries(BLOCK_SETTINGS)) {
+      const writes = Object.values(settings).some(registry.settingWritesDelimiter)
+      if (!writes) continue
+      assert.ok(descriptors.descriptorFor(node), `${node} writes a delimiter key but has no block descriptor`)
+    }
+  })
+
+  test('ownedAttrsFor never claims a carried setting', () => {
+    for (const [node, settings] of Object.entries(BLOCK_SETTINGS)) {
+      const owned = descriptors.ownedAttrsFor(node)
+      for (const [name, def] of Object.entries(settings)) {
+        if (def.kind !== 'carried') continue
+        assert.ok(!owned.includes(name), `${node}.${name} is carried, so owning it would delete it`)
+      }
     }
   })
 })

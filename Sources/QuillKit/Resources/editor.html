@@ -149,6 +149,26 @@
       stroke-linejoin: round;
       fill: none;
     }
+    #toolbar-row2 .setting-select {
+      appearance: none;
+      font: inherit;
+      font-size: 12px;
+      color: inherit;
+      background: transparent;
+      border: none;
+      border-radius: 5px;
+      padding: 3px 16px 3px 7px;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2380808a' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 5px center;
+      background-size: 8px 5px;
+    }
+    #toolbar-row2 .setting-select:hover { background-color: rgba(0,0,0,0.055); }
+    body.dark #toolbar-row2 .setting-select:hover { background-color: rgba(255,255,255,0.085); }
+    #toolbar-row2 .setting-select:focus-visible { outline: 2px solid #d08c3a; outline-offset: 1px; }
+    #toolbar-row2 .setting-select option { color: initial; background: initial; }
+
     #toolbar .tb-text-icon {
       color: inherit;
       display: inline-flex;
@@ -2555,6 +2575,7 @@
         addAttributes() {
           const generated = {}
           for (const [name, def] of Object.entries(settingsFor(this.name))) {
+            if (def.kind === 'carried') continue
             generated[name] = {
               default: 'default' in def ? def.default : null,
               keepOnSplit: false,
@@ -3709,33 +3730,96 @@
     // One span per node that declares a control, generated into row 2 beside
     // the hand-written groups. The hand-written ones keep their own wiring.
 
-    function _settingBlockAt($from, typeName) {
+    // An atom block -- a separator, an image -- is reached as a NodeSelection
+    // rather than as an ancestor of the caret.
+    function _settingBlockAt(state, typeName) {
+      const selected = state.selection.node
+      if (selected && selected.type.name === typeName) return { node: selected, pos: state.selection.from }
+      const $from = state.selection.$from
       for (let d = $from.depth; d >= 1; d--) {
         if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
       }
       return null
     }
 
-    function _setSettingValue(typeName, name, value) {
-      const target = _settingBlockAt(editor.state.selection.$from, typeName)
+    function _setSettingAttrs(typeName, attrs) {
+      const target = _settingBlockAt(editor.state, typeName)
       if (!target) return
       const { state, view } = editor
-      view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, [name]: value }))
-      editor.commands.focus()
+      view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, ...attrs }))
     }
 
-    function _buildSettingControl(typeName, name, def) {
-      if (def.control.type !== 'toggle') return null
+    // A block carries exactly one style, so choosing one clears every other
+    // is-style-* token while leaving the user's own classes in place.
+    function _spliceStyleToken(classes, token) {
+      const kept = String(classes || '').split(/\s+/).filter(c => c && !/^is-style-/.test(c))
+      if (token) kept.push(token)
+      return kept.join(' ')
+    }
+
+    function _styleTokenIn(classes) {
+      const m = String(classes || '').match(/(?:^|\s)(is-style-[^\s]+)/)
+      return m ? m[1] : ''
+    }
+
+    function _blockStyleOf(node, def) {
+      const { classAttr } = def.control
+      return (classAttr ? _styleTokenIn(node.attrs[classAttr]) : '')
+        || _styleTokenIn(carriedClassName(node.attrs.blockAttrs))
+    }
+
+    function _withCarriedClassName(raw, className) {
+      let carried = {}
+      try { carried = raw ? JSON.parse(raw) : {} } catch (e) { carried = {} }
+      if (className) carried.className = className
+      else delete carried.className
+      return Object.keys(carried).length ? JSON.stringify(carried) : null
+    }
+
+    function _setBlockStyle(typeName, def, token) {
+      const target = _settingBlockAt(editor.state, typeName)
+      if (!target) return
+      const { classAttr } = def.control
+      const attrs = {}
+      attrs.blockAttrs = _withCarriedClassName(target.node.attrs.blockAttrs,
+        _spliceStyleToken(carriedClassName(target.node.attrs.blockAttrs), token))
+      if (classAttr) attrs[classAttr] = _spliceStyleToken(target.node.attrs[classAttr], token) || null
+      _setSettingAttrs(typeName, attrs)
+    }
+
+    function _buildSettingToggle(typeName, name, def) {
       const btn = document.createElement('button')
       btn.dataset.setting = name
       btn.textContent = def.control.label
       if (def.control.title) btn.title = def.control.title
       btn.addEventListener('mousedown', e => {
         e.preventDefault()
-        const target = _settingBlockAt(editor.state.selection.$from, typeName)
-        if (target) _setSettingValue(typeName, name, target.node.attrs[name] === def.when ? def.default : def.when)
+        const target = _settingBlockAt(editor.state, typeName)
+        if (target) _setSettingAttrs(typeName, { [name]: target.node.attrs[name] === def.when ? def.default : def.when })
       })
-      return { name, def, btn }
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', node.attrs[name] === def.when) }
+    }
+
+    function _buildSettingStylePicker(typeName, name, def) {
+      const select = document.createElement('select')
+      select.className = 'setting-select'
+      select.dataset.setting = name
+      select.title = def.control.label
+      for (const option of def.control.options) {
+        const el = document.createElement('option')
+        el.value = option.value
+        el.textContent = option.label
+        select.appendChild(el)
+      }
+      select.addEventListener('mousedown', e => e.stopPropagation())
+      select.addEventListener('change', () => _setBlockStyle(typeName, def, select.value))
+      return { name, def, el: select, reflect: node => { select.value = _blockStyleOf(node, def) } }
+    }
+
+    function _buildSettingControl(typeName, name, def) {
+      if (def.control.type === 'toggle') return _buildSettingToggle(typeName, name, def)
+      if (def.control.type === 'blockStyle') return _buildSettingStylePicker(typeName, name, def)
+      return null
     }
 
     function _buildSettingGroups() {
@@ -3749,7 +3833,7 @@
         const span = document.createElement('span')
         span.id = `settings-${typeName}-controls`
         span.style.display = 'none'
-        controls.forEach(c => span.appendChild(c.btn))
+        controls.forEach(c => span.appendChild(c.el))
         document.getElementById('toolbar-row2').appendChild(span)
         groups.push({ typeName, span, controls })
       }
@@ -3759,14 +3843,11 @@
     const _settingGroups = _buildSettingGroups()
 
     function _updateSettingControls() {
-      const $from = editor.state.selection.$from
       for (const group of _settingGroups) {
-        const target = _settingBlockAt($from, group.typeName)
+        const target = _settingBlockAt(editor.state, group.typeName)
         group.span.style.display = target ? 'inline-flex' : 'none'
         if (!target) continue
-        for (const c of group.controls) {
-          c.btn.classList.toggle('active', target.node.attrs[c.name] === c.def.when)
-        }
+        for (const c of group.controls) c.reflect(target.node)
       }
     }
 

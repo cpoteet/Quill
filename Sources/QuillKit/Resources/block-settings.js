@@ -30,6 +30,24 @@ const BLOCK_SETTINGS = {
       control: { type: 'toggle', label: 'Open', title: 'Open this section by default' },
     },
   },
+
+  // Block styles. className is already carried and spliced into the rendered
+  // class list, so these draw nothing and exist only to hang a picker on.
+  // classAttr names the node's own class attribute, which has to be edited
+  // alongside the carrier or the two disagree; a node without one renders a
+  // fixed class and needs no such edit. Slugs verified against the site's own
+  // block-library.js on 2026-09-13.
+  buttonBlock:    { className: blockStyle('Fill',    [['is-style-outline', 'Outline']]) },
+  blockquote:     { className: blockStyle('Default', [['is-style-plain',   'Plain']], 'class') },
+  horizontalRule: { className: blockStyle('Default', [['is-style-wide',    'Wide Line'],
+                                                      ['is-style-dots',    'Dots']], 'class') },
+  image:          { className: blockStyle('Default', [['is-style-rounded', 'Rounded']], 'figureClass') },
+}
+
+// The default style writes no class at all, which is why its value is empty.
+function blockStyle(defaultLabel, rest, classAttr) {
+  const options = [{ value: '', label: defaultLabel }].concat(rest.map(([value, label]) => ({ value, label })))
+  return { kind: 'carried', default: '', control: { type: 'blockStyle', label: 'Style', classAttr, options } }
 }
 
 const SETTING_KINDS = ['carried', 'flagClass', 'valueClass', 'style', 'attr']

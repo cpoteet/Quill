@@ -344,3 +344,131 @@ describe('the toolbar control comes from the registry', () => {
     assert.doesNotMatch(back, /is-open/)
   })
 })
+
+describe('block styles', () => {
+  function caretIn(text) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || !node.isTextblock || !node.textContent.includes(text)) return
+      found = pos + 1
+    })
+    assert.ok(found !== null, `no textblock containing "${text}"`)
+    editor.commands.setTextSelection(found)
+  }
+
+  function selectNode(typeName) {
+    let found = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found !== null || node.type.name !== typeName) return
+      found = pos
+    })
+    assert.ok(found !== null, `no ${typeName} in the document`)
+    editor.commands.setNodeSelection(found)
+  }
+
+  const picker = node => win.document.querySelector(`#settings-${node}-controls select[data-setting="className"]`)
+
+  function choose(node, value) {
+    const el = picker(node)
+    assert.ok(el, `no style picker for ${node}`)
+    el.value = value
+    el.dispatchEvent(new win.Event('change', { bubbles: true }))
+  }
+
+  const cases = [
+    {
+      name: 'button', node: 'buttonBlock', place: () => caretIn('Go'), from: 'is-style-outline', to: '',
+      src: `<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button {"className":"mine is-style-outline"} -->
+<div class="wp-block-button mine is-style-outline"><a class="wp-block-button__link wp-element-button" href="https://x.test">Go</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->`,
+    },
+    {
+      name: 'quote', node: 'blockquote', place: () => caretIn('Quoted'), from: 'is-style-plain', to: '',
+      src: `<!-- wp:quote {"className":"mine is-style-plain"} -->
+<blockquote class="wp-block-quote mine is-style-plain"><!-- wp:paragraph -->
+<p>Quoted</p>
+<!-- /wp:paragraph --></blockquote>
+<!-- /wp:quote -->`,
+    },
+    {
+      name: 'separator', node: 'horizontalRule', place: () => selectNode('horizontalRule'), from: 'is-style-dots', to: 'is-style-wide',
+      src: `<!-- wp:separator {"className":"mine is-style-dots"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity mine is-style-dots"/>
+<!-- /wp:separator -->`,
+    },
+    {
+      name: 'image', node: 'image', place: () => selectNode('image'), from: 'is-style-rounded', to: '',
+      src: `<!-- wp:image {"id":9,"sizeSlug":"large","className":"mine is-style-rounded"} -->
+<figure class="wp-block-image size-large mine is-style-rounded"><img src="https://x.test/a.jpg" alt="" class="wp-image-9"/></figure>
+<!-- /wp:image -->`,
+    },
+  ]
+
+  for (const c of cases) {
+    describe(c.name, () => {
+      test('the loaded style survives a save in both the class and the comment', () => {
+        const out = save(c.src)
+        assert.match(out, new RegExp(`class="[^"]*${c.from}`))
+        assert.match(out, new RegExp(`"className":"[^"]*${c.from}`))
+      })
+
+      test('the picker appears in the block and reports the current style', () => {
+        win.setContent(c.src)
+        c.place()
+        assert.equal(win.document.getElementById(`settings-${c.node}-controls`).style.display, 'inline-flex')
+        assert.equal(picker(c.node).value, c.from)
+      })
+
+      test('switching replaces the old token rather than stacking it', () => {
+        win.setContent(c.src)
+        c.place()
+        choose(c.node, c.to)
+        const out = win.toWordPressHTML(editor.getHTML())
+        assert.doesNotMatch(out, new RegExp(c.from))
+        if (c.to) assert.match(out, new RegExp(`class="[^"]*${c.to}`))
+        assert.equal((out.match(/is-style-/g) || []).length, c.to ? 2 : 0)
+      })
+
+      test("the user's own unrelated class is left alone", () => {
+        win.setContent(c.src)
+        c.place()
+        choose(c.node, c.to)
+        const out = win.toWordPressHTML(editor.getHTML())
+        assert.match(out, /class="[^"]*\bmine\b/)
+        assert.match(out, /"className":"[^"]*\bmine\b/)
+      })
+    })
+  }
+
+  test('the image keeps its size class through a style change', () => {
+    win.setContent(cases[3].src)
+    selectNode('image')
+    choose('image', '')
+    assert.match(win.toWordPressHTML(editor.getHTML()), /class="[^"]*size-large/)
+  })
+
+  test('a block with no style at all starts on Default', () => {
+    win.setContent(`<!-- wp:quote -->
+<blockquote class="wp-block-quote"><!-- wp:paragraph -->
+<p>Plainest</p>
+<!-- /wp:paragraph --></blockquote>
+<!-- /wp:quote -->`)
+    caretIn('Plainest')
+    assert.equal(picker('blockquote').value, '')
+  })
+
+  test('choosing a style on a block that had none writes both halves', () => {
+    win.setContent(`<!-- wp:quote -->
+<blockquote class="wp-block-quote"><!-- wp:paragraph -->
+<p>Plainest</p>
+<!-- /wp:paragraph --></blockquote>
+<!-- /wp:quote -->`)
+    caretIn('Plainest')
+    choose('blockquote', 'is-style-plain')
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /class="wp-block-quote is-style-plain"/)
+    assert.match(out, /"className":"is-style-plain"/)
+  })
+})
