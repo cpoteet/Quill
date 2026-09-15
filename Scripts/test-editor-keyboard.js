@@ -683,8 +683,9 @@ describe('window.insertImage cursor placement', () => {
     assert.doesNotMatch(figure, /<figcaption/)
     assert.doesNotMatch(figure, /<p>/)
     assert.match(figure, /<img src="http:\/\/x\/r\.jpg"/)
-    // The new paragraph is a sibling after the block, not part of it.
-    assert.match(out, /<!-- \/wp:image -->\n\n<!-- wp:paragraph -->\n<p><\/p>\n<!-- \/wp:paragraph -->$/)
+    // The new paragraph is a sibling after the block, and empty it never saves.
+    assert.equal(doc(), 'paragraph("before") | image[] | paragraph()')
+    assert.match(out, /<!-- \/wp:image -->$/)
   })
 
   test('the paragraph below the image accepts typing', () => {
@@ -734,9 +735,10 @@ describe('window.insertImage cursor placement', () => {
 
   test('inside a table cell the image and its paragraph stay in that cell', () => {
     editor.commands.setContent('<table><tbody><tr><td><p>cell</p></td><td><p>b</p></td></tr></tbody></table>', false)
-    editor.commands.focus('end')
+    // Not focus('end') — a trailing table now carries a paragraph after it.
+    editor.commands.setTextSelection(paragraphStarts()[1] + 1)
     win.insertImage('http://x/t.jpg')
-    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("cell")),tableCell(paragraph("b"),image[],paragraph())))')
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("cell")),tableCell(paragraph("b"),image[],paragraph()))) | paragraph()')
     assert.equal(selParent(), 'paragraph')
   })
 
@@ -761,5 +763,43 @@ describe('window.insertImage cursor placement', () => {
     let hasImage = false
     editor.state.doc.descendants(n => { if (n.type.name === 'image') hasImage = true })
     assert.equal(hasImage, false)
+  })
+})
+
+describe('trailing paragraph after a block that holds no text', () => {
+  test('a document ending in a table gains one', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph()')
+  })
+
+  test('typing in it reaches the document, not the table', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.focus('end')
+    editor.commands.insertContent('after')
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph("after")')
+  })
+
+  test('an image figure gains none — its caption is a text position already', () => {
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/a.jpg"></figure>', false)
+    assert.equal(doc(), 'image[]')
+  })
+
+  test('a document already ending in a paragraph gains nothing', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p>tail</p>', false)
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph("tail")')
+  })
+
+  test('the added paragraph is stripped again on save', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.ok(!out.includes('<p></p>'), out)
+    assert.ok(!out.includes('wp:paragraph'), out)
+  })
+
+  test('a footnotes list stays last', () => {
+    editor.commands.setContent('<p>body</p>', false)
+    editor.commands.focus('end')
+    win.insertFootnote()
+    assert.equal(editor.state.doc.lastChild.type.name, 'footnotesList')
   })
 })

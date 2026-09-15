@@ -150,7 +150,7 @@ describe('the wrap applies at post_content entry points only', () => {
     win.setContent(SHORTCODE)
     const internal = editor.getHTML()
     editor.commands.setContent(internal, false)
-    assert.equal(editor.state.doc.childCount, 1)
+    assert.equal(editor.state.doc.child(0).type.name, 'gutenbergPassthrough')
     assert.equal((editor.getHTML().match(/wp-block-quill-unsupported/g) || []).length, 1)
   })
 })

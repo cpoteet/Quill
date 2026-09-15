@@ -312,7 +312,8 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
     assert.equal(nodesOfType('bulletList').length, 0)
     assert.equal(nodesOfType('orderedList').length, 0)
-    assert.equal(nodesOfType('paragraph').length, 0)
+    // Only the empty paragraph the editor keeps after a trailing atom.
+    assert.ok(nodesOfType('paragraph').every(n => n.content.size === 0))
   })
 
   test('a wp:playlist figure survives a save byte-for-byte, comments and all', () => {

@@ -1558,6 +1558,33 @@ describe('standalone image block comments', () => {
   })
 })
 
+describe('trailing paragraph', () => {
+  test('drops the empty paragraph the editor keeps after a table', () => {
+    const out = wp('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p></p>')
+    assert.ok(!out.includes('<p></p>'))
+    assert.ok(out.includes('</table>'))
+  })
+
+  test('drops it after an image figure too', () => {
+    const out = wp('<figure class="wp-block-image"><img src="https://e.com/a.jpg"></figure><p></p>')
+    assert.ok(!out.includes('<p></p>'))
+  })
+
+  test('keeps an empty paragraph that is not last', () => {
+    const out = wp('<p></p><p>tail</p>')
+    assert.ok(out.includes('<p></p>'))
+  })
+
+  test('keeps a trailing paragraph that has text', () => {
+    const out = wp('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p>after</p>')
+    assert.ok(out.includes('<p>after</p>'))
+  })
+
+  test('never empties a document that is only an empty paragraph', () => {
+    assert.ok(wp('<p></p>').includes('<p></p>'))
+  })
+})
+
 describe('block delimiters', () => {
   test('wraps a paragraph in wp:paragraph', () => {
     const out = toWordPressHTML('<p>Hello</p>', document)

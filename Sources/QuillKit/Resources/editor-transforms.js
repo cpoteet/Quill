@@ -445,6 +445,12 @@ function toWordPressHTML(html, doc) {
   // attrs before its own `-->`.
   div.innerHTML = html
 
+  // The editor keeps an empty paragraph after a trailing table/figure so the
+  // caret has somewhere to land; it is chrome, not content.
+  const tail = div.lastElementChild
+  if (tail && tail.tagName === 'P' && div.children.length > 1 &&
+      !tail.children.length && !tail.textContent.trim()) tail.remove()
+
   // Passthrough (gutenbergPassthrough) elements must survive this entire
   // function byte-for-byte — not just the comment-strip regex below, but
   // every other unconditional div.querySelectorAll(...) pass further down

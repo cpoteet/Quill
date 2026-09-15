@@ -494,10 +494,12 @@
        so its specificity reliably beats the default rule Tiptap injects into
        <head> at runtime, regardless of injection order. */
     .ProseMirror .ProseMirror-gapcursor:after {
-      top: 0;
-      bottom: -2px;
+      /* The widget div is 0x0, so the bar needs its own height or it draws as a dot. */
+      top: -0.6em;
+      bottom: auto;
       left: 0;
       width: 0;
+      height: 1.2em;
       border-top: none;
       border-left: 1.5px solid #007aff;
     }
@@ -3375,6 +3377,30 @@
       }
     })
 
+    // Blocks that end a document with nowhere to click after them: a table
+    // seats the caret back in its last cell, and the rest hold no text at all.
+    // Lists, quotes and the containers are left out — Enter already walks out of
+    // those. The save transform drops the paragraph again while it is empty.
+    const TRAILING_PARAGRAPH_AFTER = new Set([
+      'table', 'galleryBlock', 'embedBlock', 'gutenbergPassthrough', 'horizontalRule',
+    ])
+
+    const TrailingParagraph = Extension.create({
+      name: 'trailingParagraph',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: new PluginKey('trailingParagraph'),
+            appendTransaction(_trs, _oldState, state) {
+              const last = state.doc.lastChild
+              if (!last || !TRAILING_PARAGRAPH_AFTER.has(last.type.name)) return null
+              return state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph.create())
+            },
+          }),
+        ]
+      },
+    })
+
     // Extended blockquote: allows an optional cite as its last child.
     const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
@@ -3508,6 +3534,7 @@
         FootnotesList,
         FootnoteItem,
         FootnoteSync,
+        TrailingParagraph,
         withClassAttr(Link).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),

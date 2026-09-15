@@ -323,11 +323,11 @@ describe('window.insertGallery bridge function', () => {
     assert.equal(found, null)
   })
 
-  test('inserting at the end of the doc does not synthesize a trailing paragraph', () => {
-    // The caret-after-an-atom problem is handled by restyling Tiptap's
-    // built-in gap-cursor widget (CSS in editor.html), not by editing the
-    // document model. Confirms the doc model is untouched: the gallery
-    // stays the last node, and no phantom <p></p> can leak into saved HTML.
+  test('inserting at the end of the doc leaves a paragraph to type in', () => {
+    // A gallery last in the document used to leave only a gap cursor to click,
+    // which is a 0x0 widget and reads as a dot. The trailing paragraph is a real
+    // caret position; the save transform drops it while it is still empty, so
+    // no phantom <p></p> reaches saved HTML either way.
     editor.commands.setContent('<p>Hello world</p>')
     win.insertGallery(JSON.stringify({
       images: [{ id: 1, url: 'http://x.test/a.png', alt: '' }],
@@ -336,7 +336,8 @@ describe('window.insertGallery bridge function', () => {
       linkTo: 'none',
     }))
     const doc = editor.state.doc
-    assert.equal(doc.lastChild.type.name, 'galleryBlock')
+    assert.equal(doc.lastChild.type.name, 'paragraph')
+    assert.equal(doc.child(doc.childCount - 2).type.name, 'galleryBlock')
     const saved = win.toWordPressHTML(editor.getHTML())
     assert.ok(!saved.includes('<p></p>'))
   })
