@@ -761,9 +761,13 @@ Quill stores credentials for a single WordPress site. To switch sites, update yo
 
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, separators, images, galleries, tables, embeds, footnotes, links, and the container blocks Columns, Details, Buttons, Accordion and Tabs. Posts you write in Quill round-trip correctly through the Gutenberg editor.
 
-Blocks Quill doesn't support natively (Audio, Video, Pullquote, Playlist, Accordion, Columns, Cover, Group, and third-party plugin blocks) are preserved rather than edited. Each appears in the visual editor as a labeled card marked "Not editable in the visual editor; use Code View." You can move or delete the card, and you can keep editing the rest of the post freely: the block's original markup is saved back to WordPress exactly as it arrived. To change what's inside one of these blocks, use **Code View** (`</>`) to edit the raw HTML, or make that edit in the WordPress editor.
+**Settings you apply in WordPress are kept.** A colour, a font size, a border radius, a block style, a link that opens in a new tab, a table's fixed layout — Quill carries these through an edit even where it offers no control for them, and writes them back the way WordPress wrote them. Editing a post in Quill should leave everything you set in Gutenberg exactly as you left it.
+
+Blocks Quill doesn't support natively (Audio, Video, Playlist, Cover, Group, Media & Text, Spacer, Custom HTML, shortcodes, and third-party plugin blocks) are preserved rather than edited. Each appears in the visual editor as a labeled card marked "Not editable in the visual editor; use Code View," showing a short preview of its source. You can move or delete the card, and you can keep editing the rest of the post freely: the block's original markup is saved back to WordPress exactly as it arrived, byte for byte. To change what's inside one of these blocks, use **Code View** (`</>`) to edit the raw HTML, or make that edit in the WordPress editor.
+
+**Classic posts are converted when you edit them.** A post written before the block editor has no block structure. Opening it and saving without changes leaves it untouched, but making any edit converts it to blocks — the same conversion WordPress's own "Convert to blocks" performs. Paragraphs, headings and lists come through fine; a plain wrapper `<div>` with a custom class does not survive the conversion. If a classic post depends on custom wrapper markup, edit it in the WordPress editor instead.
 
 Galleries load as a read-only thumbnail-grid card: Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
 

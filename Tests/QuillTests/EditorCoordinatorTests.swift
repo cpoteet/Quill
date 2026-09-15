@@ -94,3 +94,35 @@ import Testing
         #expect(EditorCoordinator.mediaSizesDict(for: media) == nil)
     }
 }
+
+@Suite("setContent push decision")
+struct EditorPushDecisionTests {
+    @Test("identical content and footnotes is skipped")
+    func skipsIdentical() {
+        var state = EditorPushState()
+        #expect(state.shouldPush(html: "<p>A</p>", footnotes: "[]"))
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(!state.shouldPush(html: "<p>A</p>", footnotes: "[]"))
+    }
+
+    @Test("a footnote-only difference still pushes")
+    func pushesOnFootnoteChange() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "<p>A</p>", footnotes: #"[{"content":"note"}]"#))
+    }
+
+    @Test("nil and empty footnotes are the same absence")
+    func nilMatchesEmpty() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: nil)
+        #expect(!state.shouldPush(html: "<p>A</p>", footnotes: ""))
+    }
+
+    @Test("a content difference pushes whatever the footnotes say")
+    func pushesOnContentChange() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "<p>B</p>", footnotes: "[]"))
+    }
+}

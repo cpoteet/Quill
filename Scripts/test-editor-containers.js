@@ -2273,9 +2273,11 @@ describe('the table figure, its classes and its caption', () => {
     assert.doesNotMatch(out, /figcaption/)
   })
 
-  test('a classic bare table still saves as a core/table figure', () => {
+  // A classic table renders auto-layout, so converting it records that rather
+  // than adopting core's fixed-layout default and changing how it looks.
+  test('a classic bare table saves as a core/table figure with fixed layout off', () => {
     const out = save('<table><tbody><tr><td>a</td></tr></tbody></table>')
-    assert.match(out, /<!-- wp:table -->/)
+    assert.match(out, /<!-- wp:table \{"hasFixedLayout":false\} -->/)
     assert.match(out, /<figure class="wp-block-table"><table>/)
   })
 })

@@ -12,6 +12,10 @@ const blockDescriptorRegistry = (typeof module !== 'undefined' && module.exports
   ? require('./block-descriptors.js')
   : globalThis
 
+const blockSerializer = (typeof module !== 'undefined' && module.exports)
+  ? require('./block-serializer.js')
+  : globalThis
+
 const NODE_FOR_TAG = {
   P: 'paragraph', H1: 'heading', H2: 'heading', H3: 'heading',
   H4: 'heading', H5: 'heading', H6: 'heading',
@@ -82,9 +86,24 @@ function carriedBlockAttrs(el) {
 // The image, gallery and embed passes rebuild their attrs from the rendered
 // figure instead of going through wrapBlock, so the carrier is merged in here.
 function mergeCarried(el, attrs, ownedKeys) {
-  const carried = { ...(carriedBlockAttrs(el) || {}) }
-  for (const key of ownedKeys || []) delete carried[key]
-  return { ...carried, ...attrs }
+  return overlayCarried(carriedBlockAttrs(el), attrs, ownedKeys)
+}
+
+// A carried key keeps the position WordPress gave it; see Resources/CLAUDE.md.
+function overlayCarried(carried, attrs, ownedKeys) {
+  const owned = new Set(ownedKeys || [])
+  const next = attrs || {}
+  const out = {}
+  for (const key of Object.keys(carried || {})) {
+    if (key in next) out[key] = next[key]
+    else if (!owned.has(key)) out[key] = carried[key]
+  }
+  for (const key of Object.keys(next)) if (!(key in out)) out[key] = next[key]
+  return out
+}
+
+function delimiterAttrs(attrs) {
+  return Object.keys(attrs).length ? ' ' + blockSerializer.serializeAttributes(attrs) : ''
 }
 
 function mergeClassNames(existing, extra) {
@@ -95,11 +114,8 @@ function mergeClassNames(existing, extra) {
 
 function wrapBlock(doc, el, name, attrs, ownedAttrs) {
   if (alreadyDelimited(el, name)) return
-  const carried = { ...(carriedBlockAttrs(el) || {}) }
-  for (const key of ownedAttrs || []) delete carried[key]
-  const merged = { ...carried, ...(attrs || {}) }
-  const attrsStr = Object.keys(merged).length ? ' ' + JSON.stringify(merged) : ''
-  wrapElementWithComments(doc, el, ` wp:${name}${attrsStr} `, ` /wp:${name} `)
+  const merged = overlayCarried(carriedBlockAttrs(el), attrs, ownedAttrs)
+  wrapElementWithComments(doc, el, ` wp:${name}${delimiterAttrs(merged)} `, ` /wp:${name} `)
 }
 
 function wrapListItems(doc, listEl) {
@@ -117,15 +133,6 @@ function wrapListItems(doc, listEl) {
   })
 }
 
-// core/quote holds inner paragraph blocks, not bare markup, so its prose is
-// delimited too — an undelimited <p> inside makes Gutenberg flag the quote.
-function wrapQuoteParagraphs(doc, quoteEl) {
-  Array.from(quoteEl.children).forEach(child => {
-    if (child.tagName !== 'P') return
-    wrapBlock(doc, child, 'paragraph', {})
-  })
-}
-
 function descriptorAttrs(nodeName, descriptor, el) {
   return { ...descriptor.attrsFrom(el), ...blockDescriptorRegistry.attrsFromSettings(nodeName, el) }
 }
@@ -140,7 +147,6 @@ function wrapInDelimiters(root, doc) {
     if (!descriptor) return
 
     if (descriptor.childBlockName === 'core/list-item') wrapListItems(doc, el)
-    if (nodeName === 'blockquote') wrapQuoteParagraphs(doc, el)
     if (descriptor.shape === 'container' && descriptor.blockName !== 'core/list') wrapInDelimiters(el, doc)
 
     wrapBlock(doc, el, shortBlockName(descriptor.blockName), descriptorAttrs(nodeName, descriptor, el),
@@ -228,49 +234,121 @@ function isModeledFigure(el) {
 // original continues with exactly the serialised bytes, otherwise with the
 // serialisation itself. The parser exposes no byte offsets, so the cursor
 // walk is what turns a reconstruction into a byte-for-byte copy.
+// WordPress's own delimiter pattern, rescanned here because parse() has no offsets.
+const BLOCK_DELIMITER = /<!--\s+(\/)?wp:([a-z][a-z0-9_-]*\/)?([a-z][a-z0-9_-]*)\s+({(?:(?!}\s+\/?-->).)*}\s+)?(\/)?-->/g
+
+// Byte ranges of the top-level blocks, or null when the delimiters do not nest.
+function topLevelBlockRanges(html) {
+  const ranges = []
+  let depth = 0
+  let start = -1
+  let name = null
+  BLOCK_DELIMITER.lastIndex = 0
+  let match
+  while ((match = BLOCK_DELIMITER.exec(html)) !== null) {
+    const blockName = (match[2] || 'core/') + match[3]
+    if (match[5]) {
+      if (depth === 0) ranges.push({ blockName, start: match.index, end: match.index + match[0].length })
+      continue
+    }
+    if (match[1]) {
+      if (depth === 0) return null
+      depth -= 1
+      if (depth === 0) {
+        ranges.push({ blockName: name, start, end: match.index + match[0].length })
+        start = -1
+        name = null
+      }
+      continue
+    }
+    if (depth === 0) {
+      start = match.index
+      name = blockName
+    }
+    depth += 1
+  }
+  return depth === 0 && start === -1 ? ranges : null
+}
+
 function blockSourceSlices(html, parse, serializeBlock) {
+  const blocks = parse(html)
+  const attrsOf = block => block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null
+  const ranges = topLevelBlockRanges(html)
+  const named = blocks.filter(b => b.blockName)
+  const agrees = ranges && ranges.length === named.length &&
+    ranges.every((r, i) => r.blockName === named[i].blockName)
+
+  if (agrees) {
+    const out = []
+    let cursor = 0
+    let next = 0
+    for (const block of blocks) {
+      if (!block.blockName) {
+        const end = next < ranges.length ? ranges[next].start : html.length
+        out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor, end), exact: true })
+        cursor = end
+        continue
+      }
+      const range = ranges[next++]
+      if (range.start > cursor) {
+        out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor, range.start), exact: true })
+      }
+      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: html.slice(range.start, range.end), exact: true })
+      cursor = range.end
+    }
+    if (cursor < html.length) {
+      out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor), exact: true })
+    }
+    return out
+  }
+
   const out = []
   let cursor = 0
-  for (const block of parse(html)) {
+  for (const block of blocks) {
     const text = serializeBlock(block)
     const exact = html.startsWith(text, cursor)
-    const attrs = block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null
     if (exact) {
-      out.push({ blockName: block.blockName, attrsJSON: attrs, source: html.slice(cursor, cursor + text.length), exact: true })
+      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: html.slice(cursor, cursor + text.length), exact: true })
       cursor += text.length
     } else {
       // Advance past the block's real bytes, not the reconstruction's, or every later block misaligns.
       const found = html.indexOf('<!-- /wp:', cursor)
-      out.push({ blockName: block.blockName, attrsJSON: attrs, source: text, exact: false })
+      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: text, exact: false })
       cursor = found === -1 ? cursor + text.length : html.indexOf('-->', found) + 3
     }
   }
   return out
 }
 
-// A block is at risk when nothing in the editor can hold it: Quill models no
-// node for it, and its markup carries no wp-block-* class for the
-// gutenbergPassthrough catch-all to match. Freeform content is ordinary prose.
+// One preservation path per CLAUDE.md: freeform is prose, everything unmodeled wraps.
 function blockNeedsWrapping(slice, doc) {
   if (!slice.blockName) return false
+  if (!blockDescriptorRegistry.modelsBlockName(slice.blockName)) return true
+  // A modeled name that saved no markup has nothing for its node to parse.
   const probe = doc.createElement('div')
   probe.innerHTML = slice.source.replace(/<!--[\s\S]*?-->/g, '')
-  // A block that saves no markup has nothing for any node to parse, so the
-  // modeled exemption below must not reach it.
-  if (probe.children.length === 0) return true
-  if (blockDescriptorRegistry.modelsBlockName(slice.blockName)) return false
-  return !Array.from(probe.children).some(el =>
-    Array.from(el.classList).some(c => c.startsWith('wp-block-')))
+  return probe.children.length === 0
+}
+
+// Every block at every depth: a heading lost from inside a quote is still lost.
+function countBlockNames(blocks, into) {
+  const counts = into || new Map()
+  for (const block of blocks || []) {
+    if (block.blockName) {
+      const short = shortBlockName(block.blockName)
+      counts.set(short, (counts.get(short) || 0) + 1)
+    }
+    countBlockNames(block.innerBlocks, counts)
+  }
+  return counts
 }
 
 // Verifies the outcome rather than the wrap, so a bug in the wrap surfaces as
-// a warning instead of silent loss.
-function unrepresentedBlockNames(slices, accountedNames) {
+// a warning instead of silent loss. Counts, so one copy cannot cover for another.
+function unrepresentedBlockNames(expectedCounts, accountedCounts) {
   const missing = []
-  for (const slice of slices) {
-    if (!slice.blockName) continue
-    const short = shortBlockName(slice.blockName)
-    if (!accountedNames.has(short) && !missing.includes(short)) missing.push(short)
+  for (const [name, expected] of expectedCounts) {
+    if ((accountedCounts.get(name) || 0) < expected) missing.push(name)
   }
   return missing
 }
@@ -342,12 +420,27 @@ function parsePassthroughBlock(el) {
 // bare <hr> on the first save and a close comment on the second. The whitespace
 // between the two comments is replaced, not added to, so repeated saves cannot
 // stack a second blank line on the first.
+// A wrapper is a whole block in one element, so it both ends and begins one.
+function isUnsupportedWrapper(node) {
+  return node.nodeType === 1 && node.hasAttribute('data-quill-unsupported-source')
+}
+
+function opensBlock(node) {
+  return isUnsupportedWrapper(node) ||
+    (node.nodeType === 8 && node.textContent.trim().startsWith('wp:'))
+}
+
+function closesBlock(node) {
+  return isUnsupportedWrapper(node) ||
+    (node.nodeType === 8 && node.textContent.trim().startsWith('/wp:'))
+}
+
 function separateSiblingBlocks(root, doc) {
   for (const parent of [root, ...root.querySelectorAll('*')]) {
     for (const node of Array.from(parent.childNodes)) {
-      if (node.nodeType !== 8 || !node.textContent.trim().startsWith('wp:')) continue
+      if (!opensBlock(node)) continue
       const prev = precedingSignificantNode(node)
-      if (!prev || prev.nodeType !== 8 || !prev.textContent.trim().startsWith('/wp:')) continue
+      if (!prev || !closesBlock(prev)) continue
       let cursor = node.previousSibling
       while (cursor && cursor !== prev) {
         const before = cursor.previousSibling
@@ -400,15 +493,15 @@ function applyImageDimensions(figure, img) {
   img.removeAttribute('width')
   img.removeAttribute('height')
   figure.classList.remove('is-resized')
-  if (width == null && height == null) {
-    img.removeAttribute('style')
-    return
-  }
-  const parts = []
+  // Only the dimensions are Quill's; the carried style is spliced back around them.
+  const parts = (img.getAttribute('data-quill-style') || '')
+    .split(';').map(d => d.trim()).filter(d => d && !/^(width|height)\s*:/.test(d))
+  img.removeAttribute('data-quill-style')
+  img.removeAttribute('style')
   if (width != null) parts.push(`width:${width}px`)
-  parts.push(height != null ? `height:${height}px` : 'height:auto')
-  img.setAttribute('style', parts.join(';'))
-  figure.classList.add('is-resized')
+  if (width != null || height != null) parts.push(height != null ? `height:${height}px` : 'height:auto')
+  if (parts.length) img.setAttribute('style', parts.join(';'))
+  if (width != null || height != null) figure.classList.add('is-resized')
 }
 
 function imageBlockAttrs(figure, img) {
@@ -424,7 +517,11 @@ function imageBlockAttrs(figure, img) {
   if (size) attrs.sizeSlug = size[1]
   const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
   if (align) attrs.align = align
-  if (img.parentNode && img.parentNode.tagName === 'A') attrs.linkDestination = 'media'
+  if (img.parentNode && img.parentNode.tagName === 'A') {
+    // A destination core set wins; inferring turns a custom URL into a media link.
+    const carried = (carriedBlockAttrs(figure) || {}).linkDestination
+    attrs.linkDestination = (carried && carried !== 'none') ? carried : 'media'
+  }
   const role = img.getAttribute('role')
   if (role === 'none' || role === 'presentation') attrs.isDecorative = true
   return attrs
@@ -502,11 +599,13 @@ function toWordPressHTML(html, doc) {
     if (!img) return
     const align = ['alignleft', 'alignright', 'aligncenter']
       .find(c => img.classList.contains(c))
+    // Core writes wp-block-image first; classList.add would append it instead.
+    if (!figure.classList.contains('wp-block-image')) {
+      figure.setAttribute('class', ['wp-block-image', figure.getAttribute('class') || ''].filter(Boolean).join(' '))
+    }
     if (align) {
-      figure.classList.add('wp-block-image', align)
+      figure.classList.add(align)
       img.classList.remove(align)
-    } else {
-      figure.classList.add('wp-block-image')
     }
     const caption = figure.querySelector('figcaption')
     if (caption) {
@@ -529,9 +628,7 @@ function toWordPressHTML(html, doc) {
     if (!img) return
     const attrs = mergeCarried(figure, imageBlockAttrs(figure, img),
       ['id', 'sizeSlug', 'width', 'height', 'align', 'linkDestination', 'isDecorative'])
-    const open = Object.keys(attrs).length
-      ? ` wp:image ${JSON.stringify(attrs)} `
-      : ' wp:image '
+    const open = ` wp:image${delimiterAttrs(attrs)} `
     wrapElementWithComments(doc, figure, open, ' /wp:image ')
   })
 
@@ -638,6 +735,8 @@ function toWordPressHTML(html, doc) {
     if (table.parentElement?.classList.contains('wp-block-table')) return
     const figure = doc.createElement('figure')
     figure.className = mergeClassNames('wp-block-table', table.getAttribute('class'))
+    const fixedLayout = table.getAttribute('data-quill-fixed-layout') !== 'false'
+    table.removeAttribute('data-quill-fixed-layout')
     const carried = table.getAttribute('data-quill-block-attrs')
     if (carried) figure.setAttribute('data-quill-block-attrs', carried)
     const caption = table.getAttribute('data-quill-caption')
@@ -646,6 +745,7 @@ function toWordPressHTML(html, doc) {
     table.removeAttribute('data-quill-caption')
     table.parentNode.insertBefore(figure, table)
     figure.appendChild(table)
+    if (fixedLayout) table.setAttribute('class', 'has-fixed-layout')
     if (caption) {
       const el = doc.createElement('figcaption')
       el.className = 'wp-element-caption'
@@ -685,7 +785,7 @@ function toWordPressHTML(html, doc) {
     attrs.responsive = true
     if (p && p.aspect) attrs.className = 'wp-embed-aspect-16-9 wp-has-aspect-ratio'
     const merged = mergeCarried(figure, attrs, ['url', 'type', 'providerNameSlug'])
-    wrapElementWithComments(doc, figure, ` wp:embed ${JSON.stringify(merged)} `, ' /wp:embed ')
+    wrapElementWithComments(doc, figure, ` wp:embed${delimiterAttrs(merged)} `, ' /wp:embed ')
   })
 
   // Wrap gallery figures with Gutenberg block comments: one wp:gallery pair
@@ -733,13 +833,13 @@ function toWordPressHTML(html, doc) {
       imageAttrs.sizeSlug = sizeSlug
       imageAttrs.linkDestination = linkedToMedia ? 'media' : 'none'
       if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
-      wrapElementWithComments(doc, imgFigure, ` wp:image ${JSON.stringify(imageAttrs)} `, ' /wp:image ')
+      wrapElementWithComments(doc, imgFigure, ` wp:image${delimiterAttrs(imageAttrs)} `, ' /wp:image ')
     })
     const galleryAttrs = { ids, columns, linkTo }
     if (!cropped) galleryAttrs.imageCrop = false
     const mergedGallery = mergeCarried(figure, galleryAttrs,
       ['columns', 'imageCrop', 'linkTo', 'sizeSlug', 'ids'])
-    wrapElementWithComments(doc, figure, ` wp:gallery ${JSON.stringify(mergedGallery)} `, ' /wp:gallery ')
+    wrapElementWithComments(doc, figure, ` wp:gallery${delimiterAttrs(mergedGallery)} `, ' /wp:gallery ')
   })
 
   wrapInDelimiters(div, doc)
@@ -805,8 +905,17 @@ function toWordPressHTML(html, doc) {
   div.querySelectorAll('[style]').forEach(el => {
     el.setAttribute('style', el.getAttribute('style').replace(/;\s*$/, '').replace(/:\s+/g, ':').replace(/;\s+/g, ';'))
   })
+  // Rename the carried style back in place, keeping its position; see Resources/CLAUDE.md.
+  div.querySelectorAll('[data-quill-style]').forEach(el => {
+    const attrs = Array.from(el.attributes).map(a => [a.name, a.value])
+    attrs.forEach(([name]) => el.removeAttribute(name))
+    attrs.forEach(([name, value]) => el.setAttribute(name === 'data-quill-style' ? 'style' : name, value))
+  })
   // A boolean attribute set through the DOM serializes as name="", never bare.
-  let out = div.innerHTML.replace(/<[a-z][^>]*>/gi, tag => tag.replace(/ (open|reversed)=""/g, ' $1'))
+  // Core self-closes img and hr but not br; runs before the source substitution.
+  let out = div.innerHTML
+    .replace(/<[a-z][^>]*>/gi, tag => tag.replace(/ (open|reversed)=""/g, ' $1'))
+    .replace(/<(img|hr)((?:"[^"]*"|'[^']*'|[^>"'])*)>/gi, (m, tag, attrs) => `<${tag}${attrs.replace(/\/\s*$/, '')}/>`)
   unsupported.forEach((source, i) => {
     out = out.replace(`QUILLUNSUPPORTED${i}QUILLEND`, () => source)
   })
@@ -1023,5 +1132,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
+  module.exports = { extractAlignment, toWordPressHTML, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
 }

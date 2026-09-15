@@ -1290,7 +1290,7 @@ describe('toWordPressHTML — passthrough blocks', () => {
     const out = wp(html)
     assert.match(out, /<!-- wp:image \{"id":42\} -->/)
     assert.match(out, /<!-- \/wp:image -->/)
-    assert.ok(out.includes('<img src="x.jpg">'), 'inner image markup should survive too')
+    assert.ok(out.includes('<img src="x.jpg"/>'), 'inner image markup should survive too')
     assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes should not leak into saved HTML')
   })
 
@@ -1591,9 +1591,14 @@ describe('block delimiters', () => {
     assert.match(out, /<!-- wp:paragraph -->[\s\S]*<p>Hello<\/p>[\s\S]*<!-- \/wp:paragraph -->/)
   })
 
-  test('wraps a heading with its level attribute', () => {
+  test('wraps an h2 with no level, which is core default', () => {
     const out = toWordPressHTML('<h2>Title</h2>', document)
-    assert.match(out, /<!-- wp:heading \{"level":2\} -->/)
+    assert.match(out, /<!-- wp:heading -->/)
+  })
+
+  test('wraps an h3 with its level attribute', () => {
+    const out = toWordPressHTML('<h3>Title</h3>', document)
+    assert.match(out, /<!-- wp:heading \{"level":3\} -->/)
   })
 
   test('wraps a list and each of its items', () => {
@@ -1651,7 +1656,7 @@ describe('unsupported block unwrapping', () => {
     const a = '<!-- wp:calendar /-->'
     const b = '<!-- wp:shortcode -->[y]<!-- /wp:shortcode -->'
     const out = toWordPressHTML(wrapper(a, 'Calendar') + wrapper(b, 'Shortcode'), document)
-    assert.equal(out, a + b)
+    assert.equal(out, a + '\n\n' + b, 'core separates top-level blocks with a blank line')
   })
 
   test('restores a source containing a dollar sequence', () => {

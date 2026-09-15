@@ -173,3 +173,36 @@ describe('the inline-formats fixture', () => {
     assert.doesNotMatch(out, /<u>/)
   })
 })
+
+// The Link mark models href, target and rel; everything else core wrote on the
+// anchor used to be dropped on the first edit.
+describe('a link keeps the attributes the mark does not model', () => {
+  const LINK = '<!-- wp:paragraph -->\n<p>See <a href="https://example.com" title="T" data-type="URL" data-id="9">this</a>.</p>\n<!-- /wp:paragraph -->'
+
+  test('title and data attributes survive an edit', () => {
+    const out = editAndSave(LINK)
+    assert.match(out, /title="T"/)
+    assert.match(out, /data-type="URL"/)
+    assert.match(out, /data-id="9"/)
+  })
+
+  test('the anchor round-trips byte-identically with no edit', () => {
+    win.setContent(LINK)
+    assert.equal(win.getContent(), LINK)
+  })
+
+  test('the modelled attributes still win over the snapshot', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p><a href="https://old.test" title="T">x</a></p>\n<!-- /wp:paragraph -->')
+    editor.commands.selectAll()
+    editor.chain().extendMarkRange('link').setLink({ href: 'https://new.test' }).run()
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.match(out, /href="https:\/\/new\.test"/)
+    assert.doesNotMatch(out, /old\.test/)
+    assert.match(out, /title="T"/)
+  })
+
+  test('a plain link gains nothing', () => {
+    const src = '<!-- wp:paragraph -->\n<p>See <a href="https://example.com">x</a></p>\n<!-- /wp:paragraph -->'
+    assert.match(editAndSave(src), /<a href="https:\/\/example\.com">x<\/a>/)
+  })
+})

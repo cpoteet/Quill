@@ -30,6 +30,25 @@ This document is the authoritative reference for Quill's automated test suite an
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
+### The fixture corpus in real WebKit
+
+```bash
+./build.sh
+./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
+```
+
+Loads the real `editor.html` in an offscreen WKWebView and runs every
+`Scripts/fixtures/settings-*.html` through load → save-untouched → save-after-edit →
+save-again, printing a per-fixture report and the first byte of any difference. It
+exits non-zero on a mismatch.
+
+**This is the only test that runs in WebKit, and it must be green before a release.**
+Every jsdom suite can pass while WebKit does something else: the inline-style
+re-serialization bug (hex colours becoming `rgb()`, invalidating every coloured block
+in Gutenberg) was green in jsdom the whole time it was shipping, and the attribute
+ordering that hid it is WebKit-only. Two earlier WebKit-only failures — the
+widget-decoration keystroke drop and the empty-caret `<br>` — have the same shape.
+
 ### Run Swift tests only
 
 ```bash
@@ -54,7 +73,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (376 tests, 24 suites)
+## Swift test suite (392 tests, 27 suites)
 
 `swift test` reports 26 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
 
@@ -800,7 +819,7 @@ Tests `ImageConversion.prepareForUpload(_:)` and `Prepared.cleanup()`. WordPress
 
 ---
 
-## JS block serializer tests (52 tests)
+## JS block serializer tests (110 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser-bundle.js`, `block-serializer.js`, `block-descriptors.js`
@@ -900,7 +919,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS preservation tests (29 tests)
+## JS preservation tests (36 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -977,7 +996,7 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 
 ---
 
-## JS editor tests (183 tests)
+## JS editor tests (217 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1347,7 +1366,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS keyboard tests (59 tests)
+## JS keyboard tests (76 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1574,7 +1593,7 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
-## JS container tests (254 tests)
+## JS container tests (269 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1835,7 +1854,7 @@ The toggle used to be a narrow hit zone — the right 32px of an accordion heade
 
 ---
 
-## JS passthrough tests (35 tests)
+## JS passthrough tests (36 tests)
 
 File: `Scripts/test-editor-passthrough.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1975,6 +1994,23 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 
 ---
 
+## JS inline format tests (20 tests)
+
+`Scripts/test-editor-inline-formats.js` — the real `editor.html` in jsdom. Covers the
+inline marks Quill has no toolbar control for, and the Link mark's attribute carrier.
+
+| Test | Checks |
+|---|---|
+| `<sub>`, `<sup>`, `<kbd>`, `<mark>`, `<abbr>` survive a load → edit → save | the `rawInline` mark preserves a tag and its attributes |
+| a blockquote cite still parses as a cite node | the mark does not steal `<cite>` |
+| bold, italic, strike, code and links are untouched | the mark does not shadow the core marks |
+| the `inline-formats.html` fixture round-trips byte-identically | whole-fixture guard, no edit |
+| the fixture keeps every format after an edit | whole-fixture guard, edited |
+| title and data attributes survive an edit | the Link mark's `rawAttrs` carrier (F12) |
+| the anchor round-trips byte-identically with no edit | carried attributes land in source order |
+| the modelled attributes still win over the snapshot | a re-linked anchor takes the new `href`, keeps its `title` |
+| a plain link gains nothing | no empty attributes added |
+
 ## JS block settings registry tests (13 tests)
 
 File: `Scripts/test-block-settings-registry.js`
@@ -1984,7 +2020,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (119 tests)
+## JS block settings tests (217 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2050,6 +2086,9 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Save a post containing all formatting types → fetch the raw content via the WordPress REST API (`?context=edit`). Verify: headings have `wp-block-heading` class, lists have `wp-block-list`, tables are wrapped in `figure.wp-block-table`, images are wrapped in `figure.wp-block-image`, and the first all-header row in a table is promoted to `<thead>`.
 - [ ] Open a post, save it without making any changes, then fetch the raw content → it should be identical to before (no drift).
 - [ ] Multi-paragraph list items survive a save without being collapsed into a single paragraph.
+- [ ] **Block fidelity round trip.** In Gutenberg, make a post with: a paragraph given a text colour and a font size, a button given background and text colours and a border radius, an accordion whose heading has a text colour, a quote containing a heading and a list, a default table, an image linked to a custom URL with "open in new tab", a Group, and a Media & Text. Save. Open it in Quill, type one character in an unrelated paragraph, save. Reopen in Gutenberg → **no block shows "Block contains unexpected or invalid content"**, and every colour, radius, link target and table layout is as it was. This is the one check `--check-fixtures` cannot make, because only Gutenberg runs Gutenberg's validator.
+- [ ] Open a **classic** (pre-Gutenberg) post, type one character, save → the post is converted to blocks. Expected, not a bug; confirm no prose is lost, and note that a wrapper `<div>` with a custom class does not survive.
+- [ ] A post containing a Group or Media & Text shows a "Not editable in the visual editor" card with a peek of its source, and saving without touching it leaves the post byte-identical.
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
   - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.
@@ -2531,6 +2570,19 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 115 | A Finder drop shows an `UploadStatusPill` before HEIC conversion even starts, and a multi-file drop ends in **one** summary toast rather than one toast per file — per-file toasts overwrote each other so a 3-image drop effectively reported nothing. The message builders are pure statics so the wording (singular vs plural, the "Converted to JPEG" note, partial-failure counts) is pinned by tests even though the pill itself is untestable SwiftUI state | ✅ `PostEditorHelpersTests` "Dropped-image upload feedback" (10 tests) + 👁 §7.4 |
 | 116 | `UploadStatusPill` and the toast share one bottom slot, so overlapping Finder drops raced on `uploadStatus`: a second batch dropped mid-upload cleared the pill early and let a toast and the pill render on top of each other. `PostEditorView` holds a `@State private var dropTask: Task<Void, Never>?` and the `onImageFilesDropped` callback chains each batch onto the previous one (`await previous?.value`), so drop batches never interleave. Any future code that writes `uploadStatus` must go through the same queue. Pure SwiftUI view plumbing with no extractable helper — manual only | 👁 §7.4 (drop a batch, drop a second batch while the pill is still counting, confirm pill and toast never overlap) |
 | 113 | Standalone (non-gallery) images saved without `<!-- wp:image -->` comments, so WordPress parsed them as classic HTML rather than core/image blocks and offered no image controls; `data-media-id`, an editor-internal attribute, also shipped in post content. `toWordPressHTML` now wraps every standalone `figure.wp-block-image` in a `wp:image` pair with the attributes it can derive, skips gallery-nested figures so the gallery pass keeps owning those, and removes `data-media-id` once the `wp-image-{id}` class is emitted | ✅ `test-editor.js` `'standalone image block comments'` (9 tests) |
+| 117 | ProseMirror renders a `style` attribute by assigning `element.style.cssText`, which parses the declaration into the CSSOM and writes it back normalized — `color:#cf2e2e` became `color:rgb(207, 46, 46)` in both engines, and WebKit also moved the attribute to the end of the tag. Gutenberg compares the stored `style` against what `save()` regenerates from the comment attributes, so every coloured paragraph, heading, list and button was invalidated on the first edit. A style WordPress wrote now rides as `data-quill-style` and `toWordPressHTML` rebuilds the element's attribute list to rename it back, keeping both the value and its position verbatim | ✅ `test-editor-block-settings.js` `'inline styles and delimiter attributes are written the way core writes them'` + `settings-paragraph-color.html`, `settings-list.html` + 👁 `--check-fixtures` |
+| 118 | Delimiter attributes went out through `JSON.stringify` at five save sites instead of core's `serializeAttributes`, so `--` (invalid inside an HTML comment), `<`, `>`, `&` and `\` were left unescaped. Carried keys were also spread rather than overlaid, which moved every key the node recomputes to the end of the comment and diffed every post | ✅ same describe block + `settings-embed.html` |
+| 119 | A node that renders a child element from a fixed template discarded everything core wrote on that child: a button's `<a>` lost its colour classes and border radius, an image's `<a>` lost `target`/`rel`/`class` and had its `linkDestination` rewritten from `custom` to `media`, and an accordion heading lost its colour classes. `RAW_CHILD_ATTRS` snapshots those children by tag and `replayClassList` replays every class the node cannot write itself, in the source's own order | ✅ `test-editor-block-settings.js` `"attributes on a node's child elements survive"` + `settings-button-color.html`, `settings-accordion-color.html`, `settings-image.html`, `settings-image-custom-link.html` |
+| 120 | A quote's non-paragraph inner blocks lost their delimiters — a heading or list inside a `core/quote` came back as bare markup, which fails core's validation. `blockquote`'s descriptor is now `shape: 'container'` and recurses like any other, skipping `<cite>` | ✅ `test-editor-block-settings.js` `'a quote holds inner blocks, not bare markup'` + `settings-quote-inner.html` |
+| 121 | A table's `has-fixed-layout` class was dropped, because the parse rule matches the `<figure>` and never saw the `<table>`'s own class. Gutenberg then accepted the block through a *deprecation* whose default is `false` and silently migrated the setting off, so every WordPress-made table lost fixed layout after any Quill edit with no error anywhere. The `hasFixedLayout` attribute now reads the class first and the comment second, and a Quill-inserted table gets the class so it matches the current `save()` | ✅ `test-editor-block-settings.js` `'a table carries its own fixed-layout setting'` + `settings-table-fixed.html` |
+| 122 | `<img>` and `<hr>` were written bare where core self-closes them, so every edited post diffed on every image and separator in WordPress revision history. The void-element pass steps over quoted attribute values (`(?:"[^"]*"|'[^']*'|[^>"'])*`) — a naive `<img[^>]*>` ends the match at the `>` inside an `alt="a <b> tag"`, because HTML escapes `&` and `"` in an attribute value but not `<` or `>` | ✅ `test-editor-block-settings.js` `'void elements are written the way core writes them'` + the gallery suite's hostile alt strings |
+| 123 | `blockSourceSlices` had no byte offsets, so it walked a cursor and resynced on `'<!-- /wp:'` — which for a self-closing block is the *next* block's close comment. One non-canonical block cost byte-exactness for every block after it. `topLevelBlockRanges` now scans WordPress's own delimiter pattern with a nesting depth counter and returns real offsets, falling back to the reconstruction walk only when the delimiters do not nest | ✅ `test-block-serializer.js` `'blockSourceSlices'` (incl. the non-canonical, nested and unclosed cases) |
+| 124 | Two preservation mechanisms with different fidelity: top-level unmodeled blocks were routed to the class-based `gutenbergPassthrough` card whenever their markup carried a `wp-block-*` class, and that card is not byte-exact — Tiptap's `elementFromString` strips inter-element whitespace before any parse rule runs, so Group, Cover and Media & Text lost the newlines between their inner blocks on every edit. A `wp:html` block holding one `wp-block-*` classed element also lost its identity entirely. `blockNeedsWrapping` is now `!!blockName && !modelsBlockName(blockName)` (plus the no-markup guard), so every unmodeled top-level block takes the exact-slice path and the class rule is left to hold nested blocks only | ✅ `test-block-serializer.js` `'blockNeedsWrapping'` + `'wrapUnsupportedBlocks'` + `settings-group.html`, `settings-media-text.html`, `settings-spacer.html` + 👁 `--check-fixtures` |
+| 125 | The data-loss tripwire compared *sets of names* over top-level blocks only, so a post with two `wp:html` blocks stayed silent when one went missing (the survivor accounted for the name) and never looked inside a modeled container at all. It now counts every block name at every depth on both sides and reports any name the document holds fewer of, and it runs after a code-view edit as well as a load | ✅ `test-editor-preservation.js` `'the alarm reports only genuine loss'` + `test-block-serializer.js` `'countBlockNames and unrepresentedBlockNames'` |
+| 126 | `EditorCoordinator.setContent` deduped on the HTML alone, so a footnote-only difference — an autosave restore, or two drafts sharing a body — never reached JS. `EditorPushState` holds both halves and each message handler records its own | ✅ `EditorPushDecisionTests` (4 tests) |
+| 127 | The Link mark modelled only `href`/`target`/`rel`, so core's `title` and its own `data-*` on an anchor were dropped on the first edit | ✅ `test-editor-inline-formats.js` `'a link keeps the attributes the mark does not model'` |
+| 128 | Every heading emitted `{"level":2}`, which core omits because 2 is the default — harmless to Gutenberg, noise in every post's diff. An h2 Quill authored now writes no level, while an h2 whose comment explicitly carried one keeps it | ✅ `test-block-serializer.js` `'block descriptors'` + `test-editor-block-settings.js` `'a heading omits the level core treats as the default'` |
+| 129 | A classic (undelimited) post is **converted** to blocks on the first edit, and a wrapper element the conversion has no block for — a bare `<div class="custom-box">` — is dropped with its class. The tripwire is silent because freeform content is not a block. This is the same flattening Gutenberg's own "Convert to blocks" performs and is almost certainly wanted, but it is a conversion, not preservation | 👁 §7.3 (open a classic post, type one character, save, compare the raw content) — recorded in the block-model design spec under "Existing posts are out of scope" |
 
 ---
 

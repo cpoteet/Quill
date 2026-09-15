@@ -28,6 +28,7 @@ run "JS container tests"  node --test Scripts/test-editor-containers.js
 run "JS passthrough tests"  node --test Scripts/test-editor-passthrough.js
 run "JS footnote tests"     node --test Scripts/test-editor-footnotes.js
 run "JS paste tests"  node --test Scripts/test-editor-paste.js
+run "JS inline format tests"  node --test Scripts/test-editor-inline-formats.js
 run "JS settings registry tests"  node --test Scripts/test-block-settings-registry.js
 run "JS block settings tests"  node --test Scripts/test-editor-block-settings.js
 

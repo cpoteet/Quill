@@ -1141,22 +1141,216 @@ describe('the generic attribute carrier', () => {
   })
 })
 
+describe('inline styles and delimiter attributes are written the way core writes them', () => {
+  test('a hex text colour is not re-serialized as rgb()', () => {
+    const out = save(fixture('settings-paragraph-color.html'))
+    assert.match(out, /style="color:#cf2e2e"/)
+  })
+
+  test('a style value core wrote with a space keeps it', () => {
+    const out = save('<!-- wp:columns -->\n<div class="wp-block-columns" style="margin: 0 auto"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:paragraph -->\n<p>C</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->')
+    assert.match(out, /style="margin: 0 auto"/)
+  })
+
+  test('a style Quill itself authored is still compacted', () => {
+    const out = save('<!-- wp:image {"id":1,"width":"300px"} -->\n<figure class="wp-block-image is-resized"><img src="https://x.test/a.jpg" alt="" class="wp-image-1" style="width:300px;height:auto"/></figure>\n<!-- /wp:image -->')
+    assert.match(out, /style="width:300px;height:auto"/)
+  })
+
+  test('a delimiter attribute escapes -- the way core does', () => {
+    const out = save(fixture('settings-tabs.html').replace(/tab 1/g, 'Pros -- Cons'))
+    assert.match(out, /\\u002d\\u002d/)
+    assert.doesNotMatch(out, /"label":"Pros -- Cons"/)
+  })
+
+  test('a delimiter attribute escapes & the way core does', () => {
+    const out = save(fixture('settings-embed.html'))
+    assert.match(out, /\\u0026t=10s/)
+  })
+
+  test('carried comment attributes keep the order WordPress wrote them', () => {
+    const out = save(fixture('settings-embed.html'))
+    const attrs = out.slice(out.indexOf('{'), out.indexOf('} -->') + 1)
+    assert.deepEqual(Object.keys(JSON.parse(attrs.replaceAll('\\u0026', '&'))),
+      ['url', 'type', 'providerNameSlug', 'responsive', 'className'])
+  })
+
+  test('an owned key that is no longer present is dropped, not moved', () => {
+    const out = save('<!-- wp:heading {"level":3,"className":"x"} -->\n<h3 class="wp-block-heading x">H</h3>\n<!-- /wp:heading -->')
+    const attrs = JSON.parse(out.slice(out.indexOf('{'), out.indexOf('} -->') + 1))
+    assert.deepEqual(Object.keys(attrs), ['level', 'className'])
+  })
+})
+
+describe('a quote holds inner blocks, not bare markup', () => {
+  test('a heading inside a quote keeps its delimiters', () => {
+    const out = save(fixture('settings-quote-inner.html'))
+    assert.match(out, /<!-- wp:heading \{"level":4\} -->\n<h4 class="wp-block-heading">A heading inside a quote<\/h4>\n<!-- \/wp:heading -->/)
+  })
+
+  test('a list inside a quote is delimited down to its items', () => {
+    const out = save(fixture('settings-quote-inner.html'))
+    assert.match(out, /<!-- wp:list -->/)
+    assert.equal((out.match(/<!-- wp:list-item -->/g) || []).length, 2)
+  })
+
+  test('the cite is left undelimited', () => {
+    const out = save(fixture('settings-quote-inner.html'))
+    assert.match(out, /<cite>Someone<\/cite>/)
+    assert.doesNotMatch(out, /wp:cite/)
+  })
+
+  test('a Quill-made quote holding a list emits list delimiters', () => {
+    const out = win.toWordPressHTML('<blockquote class="wp-block-quote"><ul><li>a</li></ul></blockquote>')
+    assert.match(out, /<!-- wp:list -->/)
+    assert.match(out, /<!-- wp:list-item -->/)
+  })
+})
+
+describe('a table carries its own fixed-layout setting', () => {
+  test('the has-fixed-layout class survives an edit', () => {
+    const out = save(fixture('settings-table-fixed.html'))
+    assert.match(out, /<table class="has-fixed-layout">/)
+  })
+
+  test('a default table writes no hasFixedLayout key', () => {
+    const out = save(fixture('settings-table-fixed.html'))
+    assert.doesNotMatch(out, /hasFixedLayout/)
+  })
+
+  test('a table core turned fixed layout off for keeps the key and no class', () => {
+    const out = save(fixture('settings-table.html'))
+    assert.match(out, /"hasFixedLayout":false/)
+    assert.doesNotMatch(out, /has-fixed-layout/)
+  })
+
+  test('the class is not moved onto the figure', () => {
+    const out = save(fixture('settings-table-fixed.html'))
+    assert.match(out, /<figure class="wp-block-table">/)
+  })
+
+  test('a table Quill inserts is fixed layout, the way core creates one', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: true })
+    assert.match(win.toWordPressHTML(editor.getHTML()), /<table class="has-fixed-layout">/)
+  })
+})
+
+describe('void elements are written the way core writes them', () => {
+  test('a separator self-closes', () => {
+    assert.match(save(fixture('settings-separator.html')), /<hr class="[^"]*"\/>/)
+  })
+
+  test('an image self-closes', () => {
+    assert.match(save(fixture('settings-image.html')), /<img [^>]*\/>/)
+  })
+
+  test('a break is left bare, the way core writes it inside rich text', () => {
+    const out = save('<!-- wp:paragraph -->\n<p>one<br>two</p>\n<!-- /wp:paragraph -->')
+    assert.match(out, /one<br>two/)
+  })
+
+  test('a slash is not doubled on a second save', () => {
+    const once = save(fixture('settings-separator.html'))
+    assert.equal(save(once), once)
+  })
+
+  test('a preserved unsupported block keeps its own void syntax', () => {
+    const src = '<!-- wp:html -->\n<div><img src="https://x.test/a.jpg" alt=""></div>\n<!-- /wp:html -->'
+    assert.equal(save(src), src)
+  })
+
+  test('a < inside an attribute value does not end the tag early', () => {
+    const out = save('<!-- wp:image {"id":1} -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt="a <b> tag" class="wp-image-1"/></figure>\n<!-- /wp:image -->')
+    assert.match(out, /alt="a <b> tag"/)
+    assert.doesNotMatch(out, /<b\/>/)
+  })
+})
+
+describe('attributes on a node\'s child elements survive', () => {
+  test('a button anchor keeps its colour classes', () => {
+    const out = save(fixture('settings-button-color.html'))
+    assert.match(out, /has-white-color has-vivid-red-background-color has-text-color has-background/)
+  })
+
+  test('a button anchor keeps its inline style verbatim', () => {
+    assert.match(save(fixture('settings-button-color.html')), /style="border-radius:8px"/)
+  })
+
+  test('a button anchor keeps the classes the node itself writes', () => {
+    const out = save(fixture('settings-button-color.html'))
+    assert.match(out, /wp-block-button__link/)
+    assert.match(out, /wp-element-button/)
+  })
+
+  test('an image link keeps target and rel', () => {
+    const out = save(fixture('settings-image.html'))
+    assert.match(out, /target="_blank"/)
+    assert.match(out, /rel=" noopener"/)
+  })
+
+  test('an image link keeps its own class', () => {
+    assert.match(save(fixture('settings-image-custom-link.html')), /class="my-link"/)
+  })
+
+  test('a custom image link keeps its destination instead of becoming media', () => {
+    const out = save(fixture('settings-image-custom-link.html'))
+    assert.match(out, /"linkDestination":"custom"/)
+    assert.doesNotMatch(out, /"linkDestination":"media"/)
+  })
+
+  test('an unlinked image writes no linkDestination', () => {
+    const out = save('<!-- wp:image {"id":1,"linkDestination":"custom"} -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt="" class="wp-image-1"/></figure>\n<!-- /wp:image -->')
+    assert.doesNotMatch(out, /linkDestination/)
+  })
+
+  test('a non-dimension style on the img survives', () => {
+    assert.match(save(fixture('settings-image-custom-link.html')), /style="border-radius:12px"/)
+  })
+
+  test('an accordion heading keeps colour classes the node does not write', () => {
+    assert.match(save(fixture('settings-accordion-color.html')), /has-vivid-red-color has-text-color/)
+  })
+
+  test('turning the accordion icon off does not resurrect its classes', () => {
+    win.setContent(fixture('settings-accordion-color.html'))
+    assert.ok(setNodeAttr('accordionHeading', 'showIcon', false))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /has-icon/)
+    assert.match(out, /has-vivid-red-color has-text-color/)
+  })
+})
+
+describe('a heading omits the level core treats as the default', () => {
+  test('an h2 writes no level', () => {
+    const out = save('<!-- wp:heading -->\n<h2 class="wp-block-heading">H</h2>\n<!-- /wp:heading -->')
+    assert.equal(out, '<!-- wp:heading -->\n<h2 class="wp-block-heading">H</h2>\n<!-- /wp:heading -->')
+  })
+
+  test('an h3 still writes its level', () => {
+    assert.match(save('<!-- wp:heading {"level":3} -->\n<h3 class="wp-block-heading">H</h3>\n<!-- /wp:heading -->'), /"level":3/)
+  })
+
+  test('an h2 core wrote the level on explicitly keeps it', () => {
+    const src = '<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading">H</h2>\n<!-- /wp:heading -->'
+    assert.equal(save(src), src)
+  })
+})
+
 // The corpus, all at once. Each settings-*.html is real post_content from the
 // site, so a match here is the closest thing to opening the post in Gutenberg
 // and finding nothing changed.
 describe('the whole settings fixture corpus', () => {
   const KNOWN_DIFFERENCES = {
-    'settings-list.html': 'WebKit moves an inline style to the end of the attribute list; jsdom leaves it where it was',
-    'settings-embed.html': 'comment attrs come back in a different order, and & is not re-escaped as \\u0026',
-    'settings-image.html': 'comment attrs come back in a different order',
     'settings-separator.html': 'Quill writes <hr> where core writes <hr/>',
   }
 
   const dir = path.resolve(__dirname, 'fixtures')
   const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
 
-  test('the corpus is the twelve fixtures the scan produced', () => {
-    assert.equal(names.length, 12)
+  test('the corpus is the twenty-one fixtures the scan produced', () => {
+    assert.equal(names.length, 21)
   })
 
   for (const name of names) {

@@ -1,7 +1,34 @@
 # Gutenberg Block Model — Design Spec
 
 **Date:** 2026-09-11
-**Status:** Draft, pending review
+**Status:** Superseded in part — see "As built" below. The goals held; the architecture did not.
+
+## As built (2026-09-15)
+
+The inversion described under "Architecture" **was not implemented**, and a session
+reading this spec as a description of the running code will look for the block tree
+in the wrong place. What shipped instead:
+
+- **The Tiptap document is still the source of truth.** `toWordPressHTML` is still a
+  sequence of DOM passes over `editor.getHTML()`.
+- **Delimiters come from a DOM pass, `wrapInDelimiters`, driven by
+  `block-descriptors.js`.** This is the "bolt delimiter emission onto
+  `toWordPressHTML`" option listed under Rejected alternatives. It was taken anyway,
+  because it is DOM insertion rather than regex and so does not inherit the
+  comment-stripping bug class, and because the projection/reconcile step carried the
+  regression risk the plan itself flagged.
+- **Attributes ride through Tiptap on the element**, not in a tree: comment-only
+  attributes on `data-quill-block-attrs` (`withBlockAttrs`), every other root
+  attribute in a `rawAttrs` snapshot replayed on save (`withRawAttrs`), and the
+  attributes of the child elements a node renders from a template in a per-tag
+  snapshot (`RAW_CHILD_ATTRS`).
+- **The bundled WordPress parser is used for two things only:** wrapping every
+  top-level block Quill has no node for (`wrapUnsupportedBlocks`), and the data-loss
+  tripwire (`_reportBlocksAtRisk`). Modeled blocks never go through it.
+
+The precedence rules that hold this together are in
+`Sources/QuillKit/Resources/CLAUDE.md`, which is the file to read before changing any
+of it.
 
 ## Problem
 
@@ -158,6 +185,17 @@ Image, Gallery, Table and Embed keep their dedicated one-click buttons; they are
 The menu is a **dispatcher**, not a subsystem: some entries open an existing sheet (`GallerySheet`, media picker), others insert a block skeleton. Slash commands and a menu-bar `Insert` menu were both considered and rejected by the user in favour of this.
 
 ## Existing posts are out of scope
+
+> **Correction (2026-09-15).** This holds for a *save with no edit*: the original bytes
+> go back unchanged. It does not hold once the post is edited. A classic (undelimited)
+> post is converted to blocks on the first edit — each paragraph becomes a
+> `core/paragraph`, and a wrapper element the conversion has no block for, such as a
+> bare `<div class="custom-box">`, is dropped along with its class. The data-loss
+> tripwire is deliberately silent here, because freeform content is not a block and
+> the parser reports none to compare against. This is the same flattening Gutenberg's
+> own "Convert to blocks" performs and is almost always what the user wants, but it is
+> a conversion, not preservation, and it is recorded here rather than left implicit.
+
 
 Every post published through older Quill is classic content: paragraphs, headings, lists, standalone images and footnotes carry `wp-block-*` classes but no delimiters, so WordPress parses each post as one `core/freeform` block. Verified against a real published post — ["Learning to Build with Codex"](https://www.siolon.com/blog/learning-to-build-with-codex/) (post 17780).
 

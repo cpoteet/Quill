@@ -101,11 +101,24 @@ describe('unsupported blocks become passthrough cards', () => {
     assert.equal(hint, 'Not editable in the visual editor; use Code View (</>)')
   })
 
-  test('an ordinary passthrough block still renders a card with no peek', () => {
-    win.setContent('<!-- wp:spacer --><div class="wp-block-spacer" style="height:8px"></div><!-- /wp:spacer -->')
+  // Every top-level block Quill does not model now goes through the same
+  // wrapper, so every card is labelled and shows a peek of its own source.
+  test('an ordinary unmodeled block renders a labelled card with a peek', () => {
+    const src = '<!-- wp:spacer --><div class="wp-block-spacer" style="height:8px"></div><!-- /wp:spacer -->'
+    win.setContent(src)
     const card = win.document.querySelector('#editor .passthrough-card')
     assert.equal(card.querySelector('.passthrough-card-label').textContent, 'Spacer')
-    assert.equal(card.querySelector('.passthrough-card-peek'), null)
+    assert.match(card.querySelector('.passthrough-card-peek').textContent, /wp-block-spacer/)
+    assert.equal(win.getContent(), src)
+  })
+
+  // The class rule is what is left of the old path: a block nested inside a
+  // modeled container has no top-level slice to wrap.
+  test('an unmodeled block nested in a modeled container still matches by class', () => {
+    const src = '<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:spacer -->\n<div class="wp-block-spacer" style="height:8px"></div>\n<!-- /wp:spacer --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->'
+    win.setContent(src)
+    assert.equal(win.document.querySelectorAll('#editor .passthrough-card').length, 1)
+    assert.equal(win.getContent(), src)
   })
 })
 
@@ -261,6 +274,50 @@ describe('the alarm reports only genuine loss', () => {
     }
     assert.equal(posted.length, 1)
     assert.deepEqual(Array.from(posted[0].names).sort(), ['acme/widget', 'block', 'calendar', 'html', 'more', 'navigation', 'nextpage', 'shortcode'])
+  })
+
+  // Counting names rather than instances let a second copy of a block go
+  // missing silently, because the surviving one accounted for the name.
+  test('one of two blocks with the same name going missing is reported', () => {
+    const two = '<!-- wp:html -->\n<div class="a">one</div>\n<!-- /wp:html -->\n\n<!-- wp:html -->\n<div class="b">two</div>\n<!-- /wp:html -->'
+    const real = win.wrapUnsupportedBlocks
+    win.wrapUnsupportedBlocks = (html, ...rest) => real(html.slice(html.indexOf('\n\n') + 2), ...rest)
+    try {
+      posted.length = 0
+      win.setContent(two)
+    } finally {
+      win.wrapUnsupportedBlocks = real
+    }
+    assert.equal(posted.length, 1)
+    assert.deepEqual(Array.from(posted[0].names), ['html'])
+  })
+
+  test('a block nested inside a modeled container is counted too', () => {
+    const real = win.wrapUnsupportedBlocks
+    const src = '<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:heading -->\n<h4 class="wp-block-heading">H</h4>\n<!-- /wp:heading --></blockquote>\n<!-- /wp:quote -->'
+    posted.length = 0
+    win.setContent(src)
+    assert.deepEqual(posted, [], 'a nested block that survives is not reported')
+    win.wrapUnsupportedBlocks = real
+  })
+
+  test('a code-view edit that loses a block is reported', () => {
+    const toggle = () => win.document.getElementById('btn-code-view')
+      .dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    win.setContent('<!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->')
+    toggle()
+    win.document.getElementById('code-editor').value =
+      '<!-- wp:html -->\n<div class="x">y</div>\n<!-- /wp:html -->'
+    const real = win.wrapUnsupportedBlocks
+    win.wrapUnsupportedBlocks = html => html
+    try {
+      posted.length = 0
+      toggle()
+    } finally {
+      win.wrapUnsupportedBlocks = real
+    }
+    assert.equal(posted.length, 1)
+    assert.deepEqual(Array.from(posted[0].names), ['html'])
   })
 
   test('the tripwire goes quiet again once the wrap is restored', () => {

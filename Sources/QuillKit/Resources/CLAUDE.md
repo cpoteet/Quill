@@ -20,12 +20,58 @@ Implementation gotchas specific to this directory, split out from the project ro
 | Footnote marker `<sup data-fn class="fn">` | anchor text renumbered 1..n in document order by `toWordPressHTML` |
 | `<ol class="wp-block-footnotes">` | excluded from `wp-block-list`; passes through unchanged |
 | `<figure class="wp-block-gallery">` (galleryBlock node, atomic) | wrapped with `<!-- wp:gallery {ids,columns,linkTo[,imageCrop]} -->`/`<!-- wp:image {[id,]sizeSlug,linkDestination} -->` comments; existing galleries round-trip via a verbatim `sourceHTML` attr (captures anything the structured attrs don't model), not reconstructed — same pattern as `EmbedBlock`. Per-image `caption` **is** modeled: emitted on the reconstruction path as `figcaption.wp-element-caption` via `textContent` (never `innerHTML` — the text comes straight from a `TextField`), omitted when empty, and read back on parse — unlike `sizeSlug`, see its known-edge-case bullet below |
-| Any other `wp-block-*` classed element with no dedicated parse rule — including `<figure>`s outside `QUILL_MODELED_FIGURE_CLASSES` (audio, video, pullquote, WP 7.1's playlist) (gutenbergPassthrough node, atomic) | passes through byte-for-byte via a verbatim `sourceHTML` attr — never reconstructed, never descended into. If adjacent `<!-- wp:name -->`/`<!-- /wp:name -->` comments were present on load, fresh ones are regenerated around it on save; class-only markup (no original comments) gets none added |
+| Any top-level block Quill has no node for (`blockNeedsWrapping`) | wrapped on load into `div.wp-block-quill-unsupported` holding its exact source slice, and swapped back for those bytes verbatim on save. This is the byte-exact path and the one to reason about first |
+| Any other `wp-block-*` classed element with no dedicated parse rule, **nested inside a modeled container** — including `<figure>`s outside `QUILL_MODELED_FIGURE_CLASSES` (audio, video, pullquote, WP 7.1's playlist) (gutenbergPassthrough node, atomic) | preserved via a verbatim `sourceHTML` attr — never reconstructed, never descended into. Not byte-exact: Tiptap's `elementFromString` strips inter-element whitespace before any parse rule sees it, so newlines between nested blocks are lost. If adjacent `<!-- wp:name -->`/`<!-- /wp:name -->` comments were present on load, fresh ones are regenerated around it on save; class-only markup (no original comments) gets none added |
 | Bold, italic, strike, inline code, links, paragraphs | unchanged — already match Gutenberg |
 
 
 
+## Attribute precedence
+
+Six things can put an attribute on a saved element. When two disagree, this is the
+order. Every function below has a one-line comment pointing here rather than
+restating it.
+
+**On parse** (most authoritative first):
+
+1. The block comment — `blockCommentAttr(el, key)`. Gutenberg's own source of truth.
+   A `sourced: true` registry setting skips this step: WordPress reads those back out
+   of the markup, so the comment never holds them.
+2. The markup — `readSettingFromElement`, a node's own `parseHTML`, the `rawAttrs`
+   snapshot.
+3. The attribute's declared `default`.
+
+**On render** (first writer wins; later ones only fill gaps):
+
+1. The node's own `renderHTML` — modelled attributes, and the classes it computes.
+2. `withBlockSettings` — the registry's generated attributes and classes.
+3. `withRawAttrs` — the snapshot, replayed in the source's own attribute order,
+   skipping any name in `RAW_ATTRS_MODELED` (the node draws it) and any class in
+   `RAW_CLASS_OWNED` or matching a registry class pattern. A snapshot `style`
+   becomes `data-quill-style` so ProseMirror never re-serializes it.
+4. `replayChildAttrs` — the same rule again for each child element named in
+   `RAW_CHILD_ATTRS`, whose modelled names are that entry's list plus the registry's
+   `attr` settings targeting that tag.
+5. `withBlockAttrs` — the carried comment JSON, with its `className` merged into the
+   rendered class list.
+6. `toWordPressHTML` — the last word on figure blocks, which it rebuilds outright.
+
+**On the way out to the delimiter:** `overlayCarried` walks the carried keys in the
+order WordPress wrote them, replacing an owned key that the node still computes,
+dropping an owned key it no longer does, then appending genuinely new keys.
+`descriptor.ownedAttrs` is what makes absence meaningful — without it, a setting the
+user switched off is indistinguishable from a block that never had it.
+
+`RAW_ATTRS_EXEMPT` means "this node rebuilds its own root element, so replay nothing
+onto it" — its children are still replayed.
+
 ## Known gotchas
+
+- **A `<li>` holding two or more paragraphs is left alone on purpose, even though core's rich-text `<li>` will flag it** — `toWordPressHTML` unwraps a single-child `<p>` inside an `<li>` (and a leading one before a nested list), but a genuinely multi-paragraph item keeps its `<p>` tags, because unwrapping would run the two paragraphs together and lose the break. Normal editing cannot produce the shape — Enter inside a list item makes a new list item, not a second paragraph — so it only arrives from a paste or from classic content that already had it, and a core-authored `<li>one<br>two</li>` round-trips byte-identically. Do not "fix" this by unwrapping; the test pinning it is `test-editor.js` `'multi-child <li> is left untouched'`.
+
+- **ProseMirror re-serializes any `style` it renders, so a style Quill did not author must never reach it** — `renderSpec` does `a.style.cssText = value`, which parses the declaration into the CSSOM and writes it back normalized: `color:#cf2e2e` became `color:rgb(207, 46, 46)` in both WebKit and jsdom, and WebKit additionally moved the attribute to the end of the tag. Gutenberg compares the stored `style` against what `save()` regenerates from the comment attributes, so every coloured paragraph, heading, list and button was invalidated on the first edit. `replayRawAttrs` now emits a snapshot's `style` as `data-quill-style`; `toWordPressHTML` rebuilds the element's attribute list to rename it back, which keeps both the value and its position verbatim. A style the node itself renders still goes through the CSSOM and is still normalized by the compaction pass — that is correct, since Quill authored it. Anything else carrying a verbatim attribute value needs the same treatment.
+- **Delimiter attributes must go through `serializeAttributes`, never `JSON.stringify`** — core escapes `--`, `<`, `>`, `&` and `\` so the JSON cannot terminate or corrupt the HTML comment that holds it. `delimiterAttrs` in `editor-transforms.js` is the single wrapper; all five save sites use it. Carried keys also keep the order WordPress gave them (`overlayCarried`), because spreading moved every key the node also computes to the end of the comment and diffed every post.
+- **A regex over the final HTML string must treat `<` and `>` inside attribute values as data** — HTML serializers escape `&` and `"` in an attribute value but not `<` or `>`, so an `alt="a <b> tag"` is literal in the output. A naive `<img[^>]*>` ends the match inside the alt text and corrupts it (caught by the gallery suite's deliberately hostile alt strings). The void-element pass uses `(?:"[^"]*"|'[^']*'|[^>"'])*` to step over quoted values.
 
 - **A node with its own node view never sees `renderHTML`, so a block setting can save correctly and still draw nothing** — `renderHTML` is only used for serialization once a node view exists; the canvas shows whatever the view builds. `ResizableImage` builds a `div.image-wrapper` from scratch, so `is-style-rounded` was in the saved markup, in the delimiter, and in the toolbar's active state while being absent from the editor DOM entirely — a block style that looked broken but tested green everywhere. `_applyAttrs` now copies the `is-style-*` token onto the wrapper. Any new setting on a node-view-backed node (image is the only one today) needs the same explicit copy.
 - **A decoration that follows the caret cannot double as the display of a stored setting** — `_tabDecorations` marks the visibly active tab from `state.selection.head`, so `tabPanel.isDefaultTab` (stored as `activeTabIndex`) had nothing of its own on screen. It needs a second decoration keyed off the stored value — `is-default-tab` is the pattern, as is the accordion's `is-open` label. Same shape whenever an editor-only affordance and a publishing choice want the same visual slot: give the publishing choice a label, never the affordance.

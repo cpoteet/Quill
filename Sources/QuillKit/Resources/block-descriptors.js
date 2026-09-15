@@ -21,16 +21,22 @@ const blockSettingsRegistry = (typeof module !== 'undefined' && module.exports)
 
 const BLOCK_DESCRIPTORS = {
   paragraph:   { blockName: 'core/paragraph',    shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
-  heading:     { blockName: 'core/heading',      shape: 'text',      childBlockName: null,             attrsFrom: el => ({ level: parseInt(el.tagName.slice(1), 10) }) },
+  heading:     { blockName: 'core/heading',      shape: 'text',      childBlockName: null,             attrsFrom: el => {
+    const level = parseInt(el.tagName.slice(1), 10)
+    return level === 2 ? {} : { level }
+  } },
   bulletList:  { blockName: 'core/list',         shape: 'container', childBlockName: 'core/list-item', attrsFrom: () => ({}) },
   orderedList: { blockName: 'core/list',         shape: 'container', childBlockName: 'core/list-item', attrsFrom: () => ({ ordered: true }) },
   listItem:    { blockName: 'core/list-item',    shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
   pullquote:    { blockName: 'core/pullquote',    shape: 'text', childBlockName: null, attrsFrom: () => ({}) },
   preformatted: { blockName: 'core/preformatted', shape: 'text', childBlockName: null, attrsFrom: () => ({}) },
-  blockquote:  { blockName: 'core/quote',        shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
+  blockquote:  { blockName: 'core/quote',        shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
   codeBlock:   { blockName: 'core/code',         shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
   horizontalRule: { blockName: 'core/separator', shape: 'leaf',      childBlockName: null,             attrsFrom: () => ({}) },
-  table:       { blockName: 'core/table',        shape: 'media',     childBlockName: null,             attrsFrom: () => ({}) },
+  table:       { blockName: 'core/table',        shape: 'media',     childBlockName: null,             ownedAttrs: ['hasFixedLayout'], attrsFrom: el => {
+    const inner = el.querySelector(':scope > table')
+    return inner && inner.classList.contains('has-fixed-layout') ? {} : { hasFixedLayout: false }
+  } },
   footnotesList: { blockName: 'core/footnotes',  shape: 'media',     childBlockName: null,             attrsFrom: () => ({}) },
   columnsBlock: { blockName: 'core/columns', shape: 'container', childBlockName: 'core/column', attrsFrom: () => ({}) },
   columnBlock:  { blockName: 'core/column',  shape: 'container', childBlockName: null,          attrsFrom: () => ({}) },
@@ -82,7 +88,13 @@ function ownedAttrsFor(nodeName) {
   return Array.from(new Set([...declared, ...delimiterSettingsFor(nodeName).map(([name]) => name)]))
 }
 
-const MODELED_BLOCK_NAMES = new Set(Object.values(BLOCK_DESCRIPTORS).map(d => d.blockName))
+// Modeled through a bespoke toWordPressHTML pass, so they have no entry above.
+const MODELED_WITHOUT_DESCRIPTOR = ['core/image', 'core/gallery', 'core/embed']
+
+const MODELED_BLOCK_NAMES = new Set([
+  ...Object.values(BLOCK_DESCRIPTORS).map(d => d.blockName),
+  ...MODELED_WITHOUT_DESCRIPTOR,
+])
 
 // A function, not the set itself: only function declarations reach globalThis
 // from a classic script, which is how editor.html resolves this registry.

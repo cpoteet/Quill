@@ -132,9 +132,18 @@ describe('block descriptors', () => {
     assert.equal(descriptorFor('nonesuch'), null)
   })
 
-  test('level 2 headings emit level 2, not a default', () => {
+  // core/heading's level defaults to 2 and core omits a default, so emitting it
+  // put a key in every h2's comment that WordPress itself never writes.
+  test('level 2 headings emit no level, the way core writes them', () => {
     const el = { tagName: 'H2', className: '', getAttribute: () => null }
-    assert.deepEqual(descriptorFor('heading').attrsFrom(el), { level: 2 })
+    assert.deepEqual(descriptorFor('heading').attrsFrom(el), {})
+  })
+
+  test('every other level is emitted', () => {
+    for (const tag of ['H1', 'H3', 'H4', 'H5', 'H6']) {
+      const el = { tagName: tag, className: '', getAttribute: () => null }
+      assert.deepEqual(descriptorFor('heading').attrsFrom(el), { level: parseInt(tag.slice(1), 10) })
+    }
   })
 })
 
@@ -170,6 +179,35 @@ describe('blockSourceSlices', () => {
     assert.ok(out.some(s => s.blockName === null && s.source === '\n\n'))
   })
 
+  // The cursor walk used to resync on the next '<!-- /wp:', which for a
+  // self-closing block is the *following* block's close comment, so one odd
+  // block cost byte-exactness for every block after it.
+  test('a non-canonical self-closing block does not derail the blocks after it', () => {
+    const src = '<!-- wp:calendar  /-->\n\n<!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>B</p>\n<!-- /wp:paragraph -->'
+    const out = slices(src)
+    assert.equal(out.map(s => s.source).join(''), src)
+    const named = out.filter(s => s.blockName)
+    assert.deepEqual(named.map(s => s.blockName), ['core/calendar', 'core/paragraph', 'core/paragraph'])
+    assert.ok(named.every(s => s.exact), 'every block exact')
+    assert.equal(named[0].source, '<!-- wp:calendar  /-->')
+  })
+
+  test('a non-canonical opening comment keeps its own bytes', () => {
+    const src = '<!-- wp:paragraph  {"dropCap":true} -->\n<p>A</p>\n<!-- /wp:paragraph -->'
+    const out = slices(src)
+    assert.equal(out.length, 1)
+    assert.equal(out[0].source, src)
+    assert.equal(out[0].exact, true)
+  })
+
+  test('a nested block does not end its parent early', () => {
+    const src = '<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->\n\n<!-- wp:paragraph -->\n<p>B</p>\n<!-- /wp:paragraph -->'
+    const out = slices(src).filter(s => s.blockName)
+    assert.deepEqual(out.map(s => s.blockName), ['core/group', 'core/paragraph'])
+    assert.ok(out.every(s => s.exact))
+    assert.equal(out[0].source, '<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->')
+  })
+
   test('a self-closing block yields an exact slice', () => {
     const src = '<!-- wp:calendar /-->'
     const out = slices(src)
@@ -184,11 +222,11 @@ describe('blockSourceSlices', () => {
     assert.equal(out[0].exact, true)
   })
 
-  test('non-canonical attribute formatting falls back, marked inexact', () => {
+  test('non-canonical attribute formatting keeps its own bytes', () => {
     const src = '<!-- wp:column {"width":33.0} --><div class="wp-block-column"></div><!-- /wp:column -->'
     const out = slices(src)
-    assert.equal(out[0].exact, false)
-    assert.equal(out[0].source, '<!-- wp:column {"width":33} --><div class="wp-block-column"></div><!-- /wp:column -->')
+    assert.equal(out[0].exact, true)
+    assert.equal(out[0].source, src)
   })
 
   test('an inexact block does not desynchronise the blocks after it', () => {
@@ -200,23 +238,43 @@ describe('blockSourceSlices', () => {
     assert.equal(out[1].source, '<!-- wp:heading {"level":3} --><h3>After</h3><!-- /wp:heading -->')
   })
 
-  // An inexact block's own source is always a faithful serialisation, so the
-  // worst a mis-landed cursor can do is mark later blocks inexact too.
-  test('an inexact nested block still yields faithful sources for what follows', () => {
+  test('a nested block with non-canonical attrs keeps its own bytes', () => {
     const src = '<!-- wp:query {"x":1.0} --><div class="wp-block-query"><!-- wp:post-title --><h2>T</h2><!-- /wp:post-title --></div><!-- /wp:query -->' +
                 '<!-- wp:heading {"level":3} --><h3>After</h3><!-- /wp:heading -->'
     const out = slices(src)
     assert.equal(out.length, 2)
-    assert.equal(out[0].source, '<!-- wp:query {"x":1} --><div class="wp-block-query"><!-- wp:post-title --><h2>T</h2><!-- /wp:post-title --></div><!-- /wp:query -->')
+    assert.ok(out.every(s => s.exact))
+    assert.equal(out[0].source, '<!-- wp:query {"x":1.0} --><div class="wp-block-query"><!-- wp:post-title --><h2>T</h2><!-- /wp:post-title --></div><!-- /wp:query -->')
     assert.equal(out[1].source, '<!-- wp:heading {"level":3} --><h3>After</h3><!-- /wp:heading -->')
   })
 
-  test('an inexact self-closing block still yields a faithful source for what follows', () => {
+  test('a self-closing block with non-canonical attrs keeps its own bytes', () => {
     const src = '<!-- wp:calendar {"x":1e3} /--><!-- wp:heading {"level":3} --><h3>After</h3><!-- /wp:heading -->'
     const out = slices(src)
     assert.equal(out.length, 2)
-    assert.equal(out[0].source, '<!-- wp:calendar {"x":1000} /-->')
+    assert.ok(out.every(s => s.exact))
+    assert.equal(out[0].source, '<!-- wp:calendar {"x":1e3} /-->')
     assert.equal(out[1].source, '<!-- wp:heading {"level":3} --><h3>After</h3><!-- /wp:heading -->')
+  })
+
+  // The offset scan refuses to guess when the delimiters do not nest, so the
+  // reconstruction walk is still the floor rather than a source of silent loss.
+  // Malformed input is the one case byte-identity cannot survive: the parser
+  // closes the block itself, so the floor is that nothing is lost.
+  test('an unclosed block falls back to the reconstruction walk, marked inexact', () => {
+    const src = '<!-- wp:group -->\n<div class="wp-block-group">unclosed'
+    const out = slices(src)
+    assert.equal(out.length, 1)
+    assert.equal(out[0].exact, false)
+    assert.ok(out[0].source.startsWith(src), 'the original bytes survive')
+    assert.equal(out[0].source, src + '<!-- /wp:group -->')
+  })
+
+  test('a stray close comment is left as freeform, the way the parser reads it', () => {
+    const src = '<!-- /wp:paragraph --><p>After</p>'
+    const out = slices(src)
+    assert.equal(out.map(s => s.source).join(''), src)
+    assert.deepEqual(out.map(s => s.blockName), [null])
   })
 })
 
@@ -244,8 +302,14 @@ describe('blockNeedsWrapping', () => {
   const doc = new JSDOM('<body></body>').window.document
   const decide = src => blockSourceSlices(src, parse, serializeBlock).map(s => blockNeedsWrapping(s, doc))
 
-  test('a block with a wp-block class root is left alone', () => {
-    assert.deepEqual(decide('<!-- wp:spacer --><div class="wp-block-spacer"></div><!-- /wp:spacer -->'), [false])
+  // Every unmodeled block goes through the exact-slice wrapper, whatever its
+  // markup looks like: one preservation path, and the only byte-exact one.
+  test('a block with a wp-block class root is still wrapped, because Quill does not model it', () => {
+    assert.deepEqual(decide('<!-- wp:spacer --><div class="wp-block-spacer"></div><!-- /wp:spacer -->'), [true])
+  })
+
+  test('a wp:html holding a wp-block classed element is wrapped, not dismantled', () => {
+    assert.deepEqual(decide('<!-- wp:html --><div class="wp-block-foo">x</div><p>y</p><!-- /wp:html -->'), [true])
   })
 
   test('a paragraph is left alone even though its markup carries no class', () => {
@@ -294,9 +358,9 @@ describe('blockNeedsWrapping', () => {
     assert.deepEqual(decide('<p>Classic</p>'), [false])
   })
 
-  test('a nested block inside a claimed block does not make the parent wrap', () => {
+  test('a container Quill does not model is wrapped whole, nested blocks and all', () => {
     const src = '<!-- wp:query --><div class="wp-block-query"><!-- wp:post-title /--></div><!-- /wp:query -->'
-    assert.deepEqual(decide(src), [false])
+    assert.deepEqual(decide(src), [true])
   })
 })
 
@@ -313,14 +377,29 @@ describe('wrapUnsupportedBlocks', () => {
     assert.equal(wrap(src), src)
   })
 
-  // unsupported-blocks.html is the deliberate counter-example, asserted below.
-  test('leaves every real-site fixture untouched', () => {
+  // The fixtures that deliberately hold blocks Quill does not model; every
+  // other one is supported end to end and must come through the wrap untouched.
+  const HOLDS_UNMODELED = new Set([
+    'unsupported-blocks.html', 'settings-group.html', 'settings-media-text.html', 'settings-spacer.html',
+  ])
+
+  test('leaves every fully supported fixture untouched', () => {
     const dir = path.resolve(__dirname, 'fixtures')
-    const capture = f => f.endsWith('.html') && f !== 'unsupported-blocks.html'
+    const capture = f => f.endsWith('.html') && !HOLDS_UNMODELED.has(f)
     for (const name of fs.readdirSync(dir).filter(capture)) {
       const src = fs.readFileSync(path.join(dir, name), 'utf8')
       assert.equal(wrap(src), src, name)
     }
+  })
+
+  test('each unmodeled block in a mixed fixture is wrapped exactly once', () => {
+    const dir = path.resolve(__dirname, 'fixtures')
+    for (const name of ['settings-group.html', 'settings-media-text.html']) {
+      const out = wrap(fs.readFileSync(path.join(dir, name), 'utf8'))
+      assert.equal((out.match(/wp-block-quill-unsupported/g) || []).length, 1, name)
+    }
+    const spacer = wrap(fs.readFileSync(path.join(dir, 'settings-spacer.html'), 'utf8'))
+    assert.equal((spacer.match(/wp-block-quill-unsupported/g) || []).length, 2, 'spacer and calendar')
   })
 
   test('wraps exactly the eight unsupported blocks in the corpus fixture', () => {
@@ -357,30 +436,47 @@ describe('wrapUnsupportedBlocks', () => {
   })
 })
 
-describe('unrepresentedBlockNames', () => {
-  const { unrepresentedBlockNames } = loadTransforms()
-  const slice = (blockName) => ({ blockName, attrsJSON: null, source: '', exact: true })
+describe('countBlockNames and unrepresentedBlockNames', () => {
+  const { unrepresentedBlockNames, countBlockNames } = loadTransforms()
+  const parse = loadParser().parse
+  const counts = src => countBlockNames(parse(src))
+
+  test('counts every block in the tree, not just the top level', () => {
+    const src = '<!-- wp:quote --><blockquote><!-- wp:heading --><h4>H</h4><!-- /wp:heading -->' +
+                '<!-- wp:paragraph --><p>P</p><!-- /wp:paragraph --></blockquote><!-- /wp:quote -->'
+    assert.deepEqual([...counts(src).entries()].sort(), [['heading', 1], ['paragraph', 1], ['quote', 1]])
+  })
+
+  test('counts two blocks with the same name separately', () => {
+    const src = '<!-- wp:html --><p>a</p><!-- /wp:html --><!-- wp:html --><p>b</p><!-- /wp:html -->'
+    assert.equal(counts(src).get('html'), 2)
+  })
+
+  test('freeform content is not a block', () => {
+    assert.equal(counts('<p>Classic</p>').size, 0)
+  })
+
+  test('the core prefix is stripped and a third-party namespace is kept', () => {
+    const src = '<!-- wp:calendar /--><!-- wp:acme/widget /-->'
+    assert.deepEqual([...counts(src).keys()].sort(), ['acme/widget', 'calendar'])
+  })
 
   test('reports nothing when every block is accounted for', () => {
-    const out = unrepresentedBlockNames([slice('core/heading'), slice('core/calendar')], new Set(['heading', 'calendar']))
-    assert.deepEqual(out, [])
+    const expected = new Map([['heading', 1], ['calendar', 1]])
+    assert.deepEqual(unrepresentedBlockNames(expected, new Map([['heading', 1], ['calendar', 1]])), [])
   })
 
   test('reports a block the document does not hold', () => {
-    const out = unrepresentedBlockNames([slice('core/heading'), slice('core/calendar')], new Set(['heading']))
-    assert.deepEqual(out, ['calendar'])
+    const expected = new Map([['heading', 1], ['calendar', 1]])
+    assert.deepEqual(unrepresentedBlockNames(expected, new Map([['heading', 1]])), ['calendar'])
   })
 
-  test('ignores freeform blocks, which are prose not blocks', () => {
-    assert.deepEqual(unrepresentedBlockNames([slice(null)], new Set()), [])
+  // The whole point of counting: one surviving copy used to cover for the other.
+  test('reports a name the document holds fewer of than the source', () => {
+    assert.deepEqual(unrepresentedBlockNames(new Map([['html', 2]]), new Map([['html', 1]])), ['html'])
   })
 
-  test('strips the core prefix and de-duplicates', () => {
-    const out = unrepresentedBlockNames([slice('core/calendar'), slice('core/calendar')], new Set())
-    assert.deepEqual(out, ['calendar'])
-  })
-
-  test('keeps a third-party namespace intact', () => {
-    assert.deepEqual(unrepresentedBlockNames([slice('acme/widget')], new Set()), ['acme/widget'])
+  test('a document holding more than the source is not a loss', () => {
+    assert.deepEqual(unrepresentedBlockNames(new Map([['html', 1]]), new Map([['html', 2]])), [])
   })
 })

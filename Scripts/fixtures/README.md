@@ -67,3 +67,11 @@ test covering posts written by older WordPress versions.
 
 For the same reason, **do not add comments or a header to a fixture file.** The
 bytes are the test.
+
+## The WebKit runner
+
+`./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"` runs
+every `settings-*.html` here through the real WKWebView — load, save untouched,
+save after an edit, and save again for idempotency. The jsdom suites cannot see
+a WebKit/jsdom divergence, and the inline-style bug that motivated this runner
+was green in jsdom while invalidating every coloured block in WordPress.

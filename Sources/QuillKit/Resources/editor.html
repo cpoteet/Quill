@@ -1620,6 +1620,18 @@
             },
             renderHTML: attrs => attrs.caption ? { 'data-quill-caption': attrs.caption } : {},
           },
+          // Core omits the key when true and writes the class, so markup wins.
+          hasFixedLayout: {
+            default: true,
+            keepOnSplit: false,
+            parseHTML: el => {
+              const inner = el.tagName === 'FIGURE' ? el.querySelector(':scope > table') : el
+              if (inner && inner.classList.contains('has-fixed-layout')) return true
+              const key = blockCommentAttr(el, 'hasFixedLayout')
+              return key === undefined ? false : !!key
+            },
+            renderHTML: attrs => ({ 'data-quill-fixed-layout': attrs.hasFixedLayout ? 'true' : 'false' }),
+          },
         }
       },
     })
@@ -2695,13 +2707,71 @@
     // toWordPressHTML rewrites it again; a replay would fight both.
     const RAW_ATTRS_EXEMPT = new Set(['image', 'galleryBlock', 'embedBlock', 'table'])
 
-    function rawAttrsSnapshot(element) {
+    // Children a node renders from a template, and the attributes it owns on each.
+    const RAW_CHILD_ATTRS = {
+      buttonBlock: { a: ['href'] },
+      image: { a: ['href'], img: ['src', 'alt', 'title', 'width', 'height', 'class', 'role', 'data-media-id'] },
+    }
+
+    // Only the classes renderHTML hardcodes; rendered and registry ones are derived.
+    const RAW_CLASS_OWNED = {
+      accordionHeading: ['has-icon', 'has-icon-left', 'has-icon-right', 'wp-block-heading'],
+      accordionItem: ['is-open'],
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+
+    function settingClassPatterns(nodeName, on) {
+      const out = []
+      for (const def of Object.values(settingsFor(nodeName))) {
+        if ((def.on || null) !== (on || null)) continue
+        if (def.kind === 'flagClass') out.push(new RegExp('^' + escapeRegExp(def.class) + '$'))
+        else if (def.kind === 'valueClass') out.push(new RegExp('^' + def.pattern.split('{}').map(escapeRegExp).join('.+') + '$'))
+      }
+      return out
+    }
+
+    function settingAttrNames(nodeName, on) {
+      return Object.values(settingsFor(nodeName))
+        .filter(def => def.kind === 'attr' && (def.on || null) === (on || null))
+        .map(def => def.attr)
+    }
+
+    // Source order first, then the node's own additions; see Resources/CLAUDE.md.
+    function replayClassList(snapshotClassList, nodeName, renderedClass, on) {
+      const ownedByNode = new Set(on ? [] : RAW_CLASS_OWNED[nodeName] || [])
+      const patterns = settingClassPatterns(nodeName, on)
+      const rendered = String(renderedClass || '').split(/\s+/).filter(Boolean)
+      const isRendered = new Set(rendered)
+      const out = String(snapshotClassList || '').split(/\s+/).filter(token =>
+        token && (isRendered.has(token) || (!ownedByNode.has(token) && !patterns.some(re => re.test(token)))))
+      const seen = new Set(out)
+      for (const token of rendered) if (!seen.has(token)) { out.push(token); seen.add(token) }
+      return out.join(' ')
+    }
+
+    function elementAttrPairs(element) {
       const attrs = []
       for (const attr of Array.from(element.attributes)) {
+        if (attr.name === 'data-quill-style') { attrs.push(['style', attr.value]); continue }
         if (attr.name.startsWith('data-quill-')) continue
         attrs.push([attr.name, attr.value])
       }
-      return attrs.length ? JSON.stringify({ tag: element.tagName.toLowerCase(), attrs }) : null
+      return attrs
+    }
+
+    function rawAttrsSnapshot(element, childTags) {
+      const attrs = elementAttrPairs(element)
+      const children = {}
+      for (const tag of Object.keys(childTags || {})) {
+        const child = element.querySelector(tag)
+        if (child) children[tag] = elementAttrPairs(child)
+      }
+      const hasChildren = Object.keys(children).length > 0
+      if (!attrs.length && !hasChildren) return null
+      return JSON.stringify({ tag: element.tagName.toLowerCase(), attrs, children })
     }
 
     function snapshotClass(snap) {
@@ -2717,6 +2787,8 @@
       for (const [name, value] of snap.attrs) {
         if (name === 'class') { if (klass) out.class = klass; continue }
         if (name in rendered) out[name] = rendered[name]
+        // ProseMirror re-serializes a rendered style; see Resources/CLAUDE.md.
+        else if (name === 'style') out['data-quill-style'] = value
         else if (!modeled.includes(name)) out[name] = value
       }
       for (const name of Object.keys(rendered)) {
@@ -2727,17 +2799,31 @@
       return out
     }
 
+    // The root rule again, per child; precedence is in Resources/CLAUDE.md.
+    function replayChildAttrs(out, snap, nodeName) {
+      for (const [tag, attrs] of Object.entries(snap.children || {})) {
+        const target = settingTargetSpec(out, tag)
+        if (!target) continue
+        const rendered = specAttrs(target)
+        const childSnap = { tag, attrs }
+        const modeled = [...(RAW_CHILD_ATTRS[nodeName]?.[tag] || []), ...settingAttrNames(nodeName, tag)]
+        target[1] = replayRawAttrs(rendered, childSnap, modeled,
+          replayClassList(snapshotClass(childSnap), nodeName, rendered.class, tag))
+      }
+    }
+
     function withRawAttrs(extension) {
       return extension.extend({
         addAttributes() {
           const parent = this.parent?.() || {}
-          if (RAW_ATTRS_EXEMPT.has(this.name)) return parent
+          const childTags = RAW_CHILD_ATTRS[this.name] || {}
+          if (RAW_ATTRS_EXEMPT.has(this.name) && !Object.keys(childTags).length) return parent
           return {
             ...parent,
             rawAttrs: {
               default: null,
               keepOnSplit: false,
-              parseHTML: element => rawAttrsSnapshot(element),
+              parseHTML: element => rawAttrsSnapshot(element, childTags),
               renderHTML: () => ({}),
             },
           }
@@ -2748,13 +2834,23 @@
           if (!raw || !Array.isArray(out) || typeof out[0] !== 'string') return out
           let snap = null
           try { snap = JSON.parse(raw) } catch (e) { return out }
-          if (!snap || snap.tag !== out[0] || !Array.isArray(snap.attrs)) return out
+          if (!snap || !Array.isArray(snap.attrs)) return out
+          // An exempt node rebuilds its own root, so only its children carry.
+          if (RAW_ATTRS_EXEMPT.has(this.name)) {
+            replayChildAttrs(out, snap, this.name)
+            return out
+          }
+          if (snap.tag !== out[0]) return out
           const rendered = specAttrs(out)
           const spec = props.node.type.spec.attrs || {}
           const modeled = RAW_ATTRS_MODELED[props.node.type.name] || []
           const ownsClass = 'class' in spec || modeled.includes('class')
-          const klass = mergeClassNames(rendered.class, ownsClass ? props.node.attrs.class : snapshotClass(snap))
+          const name = props.node.type.name
+          const klass = modeled.includes('class')
+            ? replayClassList(snapshotClass(snap), name, rendered.class)
+            : mergeClassNames(rendered.class, ownsClass ? props.node.attrs.class : snapshotClass(snap))
           out[1] = replayRawAttrs(rendered, snap, modeled, klass)
+          replayChildAttrs(out, snap, name)
           return out
         },
       })
@@ -3631,6 +3727,30 @@
       },
     })
 
+    // Everything else core wrote on the anchor -- title, its own data-* -- is carried.
+    const LINK_MODELED_ATTRS = new Set(['href', 'target', 'rel', 'class'])
+
+    const LinkWithRawAttrs = Link.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          rawAttrs: {
+            default: null,
+            parseHTML: el => {
+              const extra = Array.from(el.attributes)
+                .filter(a => !LINK_MODELED_ATTRS.has(a.name))
+                .map(a => [a.name, a.value])
+              return extra.length ? JSON.stringify(extra) : null
+            },
+            renderHTML: attrs => {
+              if (!attrs.rawAttrs) return {}
+              try { return Object.fromEntries(JSON.parse(attrs.rawAttrs)) } catch (e) { return {} }
+            },
+          },
+        }
+      },
+    })
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
@@ -3693,7 +3813,7 @@
         FootnoteItem,
         FootnoteSync,
         TrailingParagraph,
-        withClassAttr(Link).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
+        withClassAttr(LinkWithRawAttrs).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
         ContainerChrome,
@@ -5266,6 +5386,7 @@
         try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
         editor.commands.setTextSelection(0)
         editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
+        _reportBlocksAtRisk(html)
       }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -5342,30 +5463,35 @@
     // toWordPressHTML rather than a descriptor entry, so they need naming here.
     const BLOCK_NAME_FOR_NODE = { image: 'image', galleryBlock: 'gallery', embedBlock: 'embed' }
 
-    function _accountedBlockNames() {
-      const names = new Set()
+    function _accountedBlockCounts() {
+      const counts = new Map()
+      const add = name => counts.set(name, (counts.get(name) || 0) + 1)
       editor.state.doc.descendants(node => {
-        if (node.type.name === 'gutenbergPassthrough') {
-          if (node.attrs.blockName) names.add(node.attrs.blockName)
-          if (node.attrs.unsupportedSource) {
-            const m = node.attrs.unsupportedSource.match(/^<!--\s*wp:([^\s/]+(?:\/[^\s/]+)?)/)
-            if (m) names.add(shortBlockName(m[1]))
+        // A node holding verbatim source holds its inner blocks in that string.
+        const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
+        if (source) {
+          countBlockNames(BlockParser.parse(source), counts)
+          if (BLOCK_NAME_FOR_NODE[node.type.name] && !counts.has(BLOCK_NAME_FOR_NODE[node.type.name])) {
+            add(BLOCK_NAME_FOR_NODE[node.type.name])
           }
-          // Its nested blocks ride along in its verbatim source, so stop here.
+          return false
+        }
+        if (node.type.name === 'gutenbergPassthrough') {
+          if (node.attrs.blockName) add(node.attrs.blockName)
           return false
         }
         const descriptor = blockDescriptorRegistry.descriptorFor(node.type.name)
-        if (descriptor) names.add(shortBlockName(descriptor.blockName))
-        if (BLOCK_NAME_FOR_NODE[node.type.name]) names.add(BLOCK_NAME_FOR_NODE[node.type.name])
+        if (descriptor) add(shortBlockName(descriptor.blockName))
+        if (BLOCK_NAME_FOR_NODE[node.type.name]) add(BLOCK_NAME_FOR_NODE[node.type.name])
         return true
       })
-      return names
+      return counts
     }
 
     function _reportBlocksAtRisk(originalHTML) {
       if (!originalHTML) return
-      const slices = blockSourceSlices(originalHTML, BlockParser.parse, serializeBlock)
-      const names = unrepresentedBlockNames(slices, _accountedBlockNames())
+      const expected = countBlockNames(BlockParser.parse(originalHTML))
+      const names = unrepresentedBlockNames(expected, _accountedBlockCounts())
       if (names.length && window.webkit?.messageHandlers?.blocksAtRisk) {
         window.webkit.messageHandlers.blocksAtRisk.postMessage({ names })
       }
@@ -5402,6 +5528,16 @@
       ? document.getElementById('code-editor').value
       : (_rawHTML !== null ? _rawHTML : extractFootnotes(toWordPressHTML(editor.getHTML())).content)
     window.getFootnotes = () => _footnotes
+
+    // Debug entry point for --check-fixtures: the jsdom corpus, run in WebKit.
+    window.__runFixtureCorpus = json => JSON.parse(json).map(({ name, source }) => {
+      window.setContent(source)
+      const untouched = window.getContent()
+      const edited = extractFootnotes(toWordPressHTML(editor.getHTML())).content
+      window.setContent(edited)
+      const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
+      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, saved: edited }
+    })
     window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {
       _rawHTML = null

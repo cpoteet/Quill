@@ -106,13 +106,19 @@ describe('gutenbergPassthrough — comment-wrapped markup', () => {
     MEDIA_TEXT_CLASS_ONLY +
     '\n<!-- /wp:media-text -->'
 
-  test('recovers blockName and attrsJSON from adjacent comments', () => {
+  // A delimited top-level block now goes through the exact-slice wrapper, which
+  // keeps the source verbatim rather than recovering a name from the comments.
+  test('is held as one exact source slice, labelled from its block name', () => {
     win.setContent(MEDIA_TEXT_WITH_COMMENTS)
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
-    assert.equal(nodes[0].attrs.blockName, 'media-text')
-    assert.equal(nodes[0].attrs.attrsJSON, '{"align":"right"}')
     assert.equal(nodes[0].attrs.blockLabel, 'Media Text')
+    assert.equal(nodes[0].attrs.unsupportedSource, MEDIA_TEXT_WITH_COMMENTS)
+  })
+
+  test('comes back byte-for-byte, newlines and all', () => {
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
+    assert.equal(win.getContent(), MEDIA_TEXT_WITH_COMMENTS)
   })
 
   test('regenerates matching wp:media-text comments on save', () => {
@@ -170,7 +176,7 @@ describe('gutenbergPassthrough — unmodeled blocks on tags core nodes also matc
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
     assert.equal(nodes[0].attrs.blockLabel, 'Social Links')
-    assert.equal(nodes[0].attrs.blockName, 'social-links')
+    assert.equal(nodes[0].attrs.unsupportedSource, SOCIAL_LINKS)
     assert.equal(nodesOfType('bulletList').length, 0)
   })
 
