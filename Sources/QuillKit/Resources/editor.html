@@ -1064,8 +1064,8 @@
     .ProseMirror .wp-block-column { flex: 1 1 0; min-width: 0; padding: 0 18px; }
     .ProseMirror .wp-block-column:first-child { padding-left: 4px; }
     .ProseMirror .wp-block-column:last-child  { padding-right: 4px; }
-    .ProseMirror .wp-block-column + .wp-block-column { border-left: 1px dashed rgba(0,0,0,0.16); }
-    body.dark .ProseMirror .wp-block-column + .wp-block-column { border-left-color: rgba(255,255,255,0.18); }
+    .ProseMirror .wp-block-column + .wp-block-column { border-left: 1px dashed rgba(0,0,0,0.32); }
+    body.dark .ProseMirror .wp-block-column + .wp-block-column { border-left-color: rgba(255,255,255,0.32); }
 
     /* Accordion */
     .ProseMirror .wp-block-accordion-item + .wp-block-accordion-item { border-top: 1px solid rgba(0,0,0,0.08); }
@@ -1245,9 +1245,10 @@
     .ProseMirror .wp-block-button { display: inline-flex; }
     .ProseMirror .wp-block-button__link {
       display: inline-block;
-      background: #32323a;
-      color: #ffffff;
-      padding: 7px 17px;
+      background: rgba(0,0,0,0.012);
+      color: inherit;
+      border: 1px solid rgba(0,0,0,0.085);
+      padding: 6px 16px;
       border-radius: 6px;
       font-size: 14.5px;
       font-weight: 500;
@@ -1255,12 +1256,9 @@
       text-decoration: none;
       cursor: text;
     }
-    body.dark .ProseMirror .wp-block-button__link { background: #e7e7ea; color: #1c1c1e; }
+    body.dark .ProseMirror .wp-block-button__link { background: rgba(255,255,255,0.022); border-color: rgba(255,255,255,0.11); }
     .ProseMirror .wp-block-button.is-style-outline .wp-block-button__link {
       background: transparent;
-      color: inherit;
-      border: 2px solid currentColor;
-      padding: 5px 15px;
     }
 
     /* Pullquote */
@@ -1302,7 +1300,7 @@
       border-radius: 0 4px 4px 0;
       padding: 11px 15px;
       margin: 1em 0;
-      font-family: inherit;
+      font-family: "SF Mono", Menlo, monospace;
       font-size: 0.95em;
       line-height: 1.6;
       white-space: pre-wrap;
@@ -3440,12 +3438,22 @@
                   const title = isSummary
                     ? el : el.querySelector('.wp-block-accordion-heading__toggle-title')
                   if (!title) return false
-                  const onArrow = isSummary && event.clientX - el.getBoundingClientRect().left <= 22
+                  const rect = el.getBoundingClientRect()
+                  const onArrow = isSummary && event.clientX - rect.left <= 22
+                  // An untitled accordion title has no arrow, so the icon is its
+                  // only toggle zone -- without this, an untitled item with an
+                  // empty title could never be collapsed by click. rect.width is
+                  // 0 in jsdom (no layout), which would make the right-edge test
+                  // spuriously true for every click -- gate on real layout.
+                  const onIcon = !isSummary && rect.width > 0 && el.classList.contains('has-icon') &&
+                    (el.classList.contains('has-icon-left')
+                      ? event.clientX - rect.left <= 34
+                      : rect.right - event.clientX <= 34)
                   // An untitled row is zero-width, so the browser seats the
                   // caret in the panel below instead. Deferred past WebKit's own
                   // click handling, and without preventDefault, which would
                   // leave nothing focused and drop every keystroke.
-                  if (!onArrow && el.classList.contains('is-untitled')) {
+                  if (!onArrow && !onIcon && el.classList.contains('is-untitled')) {
                     const at = view.posAtDOM(title, 0)
                     if (at >= 0) {
                       setTimeout(() => editor.chain().focus().setTextSelection(at).run(), 60)
@@ -3454,7 +3462,7 @@
                   }
                   if (isSummary) {
                     if (!onArrow) return false
-                  } else {
+                  } else if (!onIcon) {
                     if (!title.textContent.trim()) return false
                     if (_onOwnText(title, event.clientX, event.clientY)) return false
                   }
@@ -4514,7 +4522,9 @@
           const gate = c.def.control.showWhen
           if (!gate) continue
           const gateDef = settingsFor(group.typeName)[gate]
-          const on = !!_settingValue(target.node, gate, gateDef)
+          // showWhen usually names a sibling setting; linkTarget's names the raw
+          // `href` attribute instead, since whether a link exists isn't a setting.
+          const on = gateDef ? !!_settingValue(target.node, gate, gateDef) : !!target.node.attrs[gate]
           c.el.style.display = on ? '' : 'none'
           if (c.pair) c.pair.classList.toggle('is-solo', !on)
         }

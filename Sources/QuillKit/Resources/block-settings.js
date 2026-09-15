@@ -78,7 +78,7 @@ const BLOCK_SETTINGS = {
     linkTarget: {
       kind: 'attr', attr: 'target', on: 'a', sourced: true, default: null,
       control: { type: 'newTab', label: 'New tab', rel: 'noopener', relSetting: 'rel',
-                 title: 'Open this link in a new tab' },
+                 title: 'Open this link in a new tab', showWhen: 'href' },
     },
     rel: { kind: 'attr', attr: 'rel', on: 'a', sourced: true, default: null },
   },
