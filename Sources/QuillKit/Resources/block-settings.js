@@ -21,6 +21,18 @@
 // truth: isStackedOnMobile defaults to true and renders its class when false.
 
 const BLOCK_SETTINGS = {
+  // Ordered ahead of accordionBlock so Open lands beside the accordion's own
+  // Auto-close: the toolbar builds one group per entry, in this order.
+  accordionItem: {
+    openByDefault: {
+      kind: 'flagClass',
+      class: 'is-open',
+      when: true,
+      default: false,
+      control: { type: 'toggle', label: 'Open', title: 'Open this section by default' },
+    },
+  },
+
   // core/accordion's save() draws nothing from either, so both are carried --
   // but core/accordion-heading stores its own copy and that copy draws the
   // classes and the icon span, so the control propagates to every heading.
@@ -34,19 +46,9 @@ const BLOCK_SETTINGS = {
     iconPosition: {
       kind: 'carried',
       default: 'right',
-      control: { type: 'choice', label: 'Icon side', title: 'Which side the toggle icon sits on',
-                 propagate: 'accordionHeading',
+      control: { type: 'choice', label: 'Icon side', title: 'Put the toggle icon on the left',
+                 propagate: 'accordionHeading', showWhen: 'showIcon',
                  options: [{ value: 'right', label: 'Icon right' }, { value: 'left', label: 'Icon left' }] },
-    },
-  },
-
-  accordionItem: {
-    openByDefault: {
-      kind: 'flagClass',
-      class: 'is-open',
-      when: true,
-      default: false,
-      control: { type: 'toggle', label: 'Open', title: 'Open this section by default' },
     },
   },
 

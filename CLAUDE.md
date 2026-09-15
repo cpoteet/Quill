@@ -38,7 +38,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 
 Requirements: Swift 6.3.1 (already installed), macOS 13+. JS tests require `node` (already installed) and `jsdom` — installed in **`Scripts/`** (`Scripts/package.json` + `Scripts/node_modules/`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`; one written to the scratchpad or the repo root dies with `Cannot find module 'jsdom'`.
 
-## Test suite status (2026-09-14 — 388 Swift + 939 JS tests, all passing)
+## Test suite status (2026-09-14 — 388 Swift + 957 JS tests, all passing)
 
 Counts verified by running each suite on 2026-09-14. If you touch a suite, re-run it and correct the number rather than trusting the prose below.
 

@@ -149,6 +149,22 @@
       stroke-linejoin: round;
       fill: none;
     }
+    /* A setting and the one it gates share a track, so the pair reads as one
+       control rather than two unrelated pills. */
+    /* The track recesses; the selected segment keeps the toolbar's own active
+       fill, so the pair introduces no colour the rest of the toolbar lacks. */
+    #toolbar-row2 .setting-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      padding: 1px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.10);
+    }
+    body.dark #toolbar-row2 .setting-pair { background: rgba(0,0,0,0.22); }
+    /* Alone it is just a setting again, so the track would only mislead. */
+    #toolbar-row2 .setting-pair.is-solo { background: none; padding: 0; }
+
     #toolbar-row2 .setting-select {
       appearance: none;
       font: inherit;
@@ -383,18 +399,22 @@
     body.dark #toolbar-row2 button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #details-controls, #tabs-controls {
+    /* The generated groups match by prefix: naming each one would mean every
+       new block setting silently falling back to the icon-button metrics. */
+    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #details-controls, #tabs-controls,
+    #toolbar-row2 [id^="settings-"] {
       align-items: center;
-      gap: 5px;
+      gap: 8px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #details-controls button, #tabs-controls button {
+    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #details-controls button, #tabs-controls button,
+    #toolbar-row2 [id^="settings-"] button {
       min-width: auto;
       padding: 0 9px;
     }
     #toolbar-row2 {
       display: none;
       align-items: center;
-      gap: 14px;
+      gap: 8px;
       min-height: 34px;
       padding: 4px 16px;
       background: rgba(247, 247, 248, 0.96);
@@ -405,7 +425,7 @@
     }
     #toolbar-row2.visible { display: flex; }
     /* Generated setting groups append after this span, so pin it last visually. */
-    #block-controls { order: 1; }
+    #block-controls { order: 1; margin-left: 8px; }
     body.dark #toolbar-row2 {
       background: rgba(36, 36, 38, 0.96);
       border-top-color: rgba(255,255,255,0.09);
@@ -1021,7 +1041,7 @@
       border-radius: 4px;
     }
     /* Plus rotating into a cross, matching core's toggle icon. */
-    .ProseMirror .wp-block-accordion-heading::after {
+    .ProseMirror .wp-block-accordion-heading.has-icon::after {
       content: '+';
       position: absolute;
       right: 8px;
@@ -1034,14 +1054,32 @@
       transition: transform 0.18s ease, opacity 0.13s ease;
       pointer-events: none;
     }
-    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-heading::after {
+    .ProseMirror .wp-block-accordion-heading.has-icon-left::after { right: auto; left: 8px; }
+    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-heading.has-icon::after {
       transform: translateY(-50%) rotate(0deg);
     }
-    .ProseMirror .wp-block-accordion-heading:hover::after { opacity: 0.9; }
+    .ProseMirror .wp-block-accordion-heading.has-icon:hover::after { opacity: 0.9; }
     .ProseMirror .wp-block-accordion-heading__toggle-icon { display: none; }
-    .ProseMirror .wp-block-accordion-heading__toggle-title { cursor: text; }
+    .ProseMirror .wp-block-accordion-heading__toggle-title { cursor: text; display: inline-block; min-width: 1px; vertical-align: top; }
+    .ProseMirror .wp-block-accordion-heading.has-icon-left .wp-block-accordion-heading__toggle { padding: 11px 4px 11px 34px; }
+    .ProseMirror .wp-block-accordion-heading:not(.has-icon) .wp-block-accordion-heading__toggle { padding-right: 4px; }
     .ProseMirror .wp-block-accordion-panel { padding: 0 34px 12px 4px; }
     .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-panel { display: none; }
+    /* openByDefault is a publishing choice, so it is a label here and never an expanded body. */
+    .ProseMirror .wp-block-accordion-item.is-open > .wp-block-accordion-heading::before {
+      content: 'open on the site';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+      pointer-events: none;
+    }
+    .ProseMirror .wp-block-accordion-item.is-open > .wp-block-accordion-heading.has-icon-right::before { right: 34px; }
 
     /* Tabs */
     .ProseMirror .wp-block-tab-list {
@@ -1133,6 +1171,7 @@
       left: 4px;
       top: 11px;
     }
+    .ProseMirror .wp-block-accordion-heading.has-icon-left.is-untitled .wp-block-accordion-heading__toggle-title::before { left: 34px; }
     .ProseMirror .wp-block-details > summary.is-untitled::after {
       content: 'Details title';
       left: 20px;
@@ -1338,7 +1377,7 @@
     <span id="accordion-controls" style="display:none">
         <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
         <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
-        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Autoclose</button>
+        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Auto-close</button>
       </span>
     <span id="details-controls" style="display:none">
         <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
@@ -4179,7 +4218,34 @@
       return editor.schema.nodes.accordionHeading.create({ ...attrs, blockAttrs: carried })
     }
 
+    // Two options is a switch, not a list -- the rule the block styles follow.
+    // It shows the option it is on rather than a checked state: joined to the
+    // toggle that gates it, a second raised segment would read as a second
+    // on/off, and a side is always one value or the other.
+    function _buildSettingChoiceToggle(typeName, name, def) {
+      const [first, second] = def.control.options
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.title = def.control.title || def.control.label
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (!target) return
+        const on = _settingValue(target.node, name, def) === second.value
+        _setSettingValue(typeName, name, def, on ? first.value : second.value)
+      })
+      return {
+        name,
+        def,
+        el: btn,
+        reflect: node => {
+          btn.textContent = (_settingValue(node, name, def) === second.value ? second : first).label
+        },
+      }
+    }
+
     function _buildSettingChoice(typeName, name, def) {
+      if (def.control.options.length === 2) return _buildSettingChoiceToggle(typeName, name, def)
       const select = document.createElement('select')
       select.className = 'setting-select'
       select.dataset.setting = name
@@ -4191,7 +4257,12 @@
         select.appendChild(el)
       }
       select.addEventListener('mousedown', e => e.stopPropagation())
-      select.addEventListener('change', () => _setSettingValue(typeName, name, def, select.value))
+      // A select has to take focus to open, so unlike the buttons it cannot
+      // preventDefault; without this the caret is stranded and keystrokes drop.
+      select.addEventListener('change', () => {
+        _setSettingValue(typeName, name, def, select.value)
+        editor.commands.focus()
+      })
       return { name, def, el: select, reflect: node => { select.value = _settingValue(node, name, def) } }
     }
 
@@ -4225,7 +4296,10 @@
         select.appendChild(el)
       }
       select.addEventListener('mousedown', e => e.stopPropagation())
-      select.addEventListener('change', () => _setBlockStyle(typeName, def, select.value))
+      select.addEventListener('change', () => {
+        _setBlockStyle(typeName, def, select.value)
+        editor.commands.focus()
+      })
       return { name, def, el: select, reflect: node => { select.value = _blockStyleOf(node, def) } }
     }
 
@@ -4295,6 +4369,28 @@
       return null
     }
 
+    // A control that gates another is rendered joined to it, so the dependency
+    // is visible rather than implied by adjacency.
+    function _appendSettingControls(span, controls) {
+      const dependents = new Map()
+      for (const c of controls) {
+        if (c.def.control.showWhen) dependents.set(c.def.control.showWhen, c)
+      }
+      const placed = new Set()
+      for (const c of controls) {
+        if (placed.has(c)) continue
+        const dependent = dependents.get(c.name)
+        if (!dependent) { span.appendChild(c.el); continue }
+        const pair = document.createElement('span')
+        pair.className = 'setting-pair'
+        pair.appendChild(c.el)
+        pair.appendChild(dependent.el)
+        span.appendChild(pair)
+        placed.add(dependent)
+        dependent.pair = pair
+      }
+    }
+
     function _buildSettingGroups() {
       const groups = []
       for (const typeName of settingsNodeNames()) {
@@ -4306,7 +4402,7 @@
         const span = document.createElement('span')
         span.id = `settings-${typeName}-controls`
         span.style.display = 'none'
-        controls.forEach(c => span.appendChild(c.el))
+        _appendSettingControls(span, controls)
         document.getElementById('toolbar-row2').appendChild(span)
         groups.push({ typeName, span, controls })
       }
@@ -4320,7 +4416,15 @@
         const target = _settingBlockAt(editor.state, group.typeName)
         group.span.style.display = target ? 'inline-flex' : 'none'
         if (!target) continue
-        for (const c of group.controls) c.reflect(target.node)
+        for (const c of group.controls) {
+          c.reflect(target.node)
+          const gate = c.def.control.showWhen
+          if (!gate) continue
+          const gateDef = settingsFor(group.typeName)[gate]
+          const on = !!_settingValue(target.node, gate, gateDef)
+          c.el.style.display = on ? '' : 'none'
+          if (c.pair) c.pair.classList.toggle('is-solo', !on)
+        }
       }
     }
 

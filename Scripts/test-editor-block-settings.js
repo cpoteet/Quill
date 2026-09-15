@@ -845,12 +845,19 @@ describe('accordion icons propagate to every heading', () => {
     el.dispatchEvent(new win.Event('change', { bubbles: true }))
   }
 
+  const positionValue = () => (position().textContent === 'Icon left' ? 'left' : 'right')
+
+  function setPosition(value) {
+    if (positionValue() !== value) press(position())
+  }
+
   const headingClasses = out => (out.match(/<h3 class="([^"]*)"/g) || []).map(m => m.match(/"([^"]*)"/)[1])
 
   test('both controls are generated for the accordion block', () => {
     assert.ok(group(), 'no generated group for accordionBlock')
     assert.ok(showIcon(), 'no showIcon control')
-    assert.equal(position().tagName, 'SELECT')
+    assert.equal(position().tagName, 'BUTTON', 'two options is a switch, not a list')
+    assert.equal(position().classList.contains('active'), false, 'the side shows its value, never a checked state')
   })
 
   test('they appear inside an accordion and nowhere else', () => {
@@ -865,10 +872,32 @@ describe('accordion icons propagate to every heading', () => {
     win.setContent(two)
     caretIn('First body')
     assert.equal(showIcon().classList.contains('active'), true)
-    assert.equal(position().value, 'right')
+    assert.equal(positionValue(), 'right')
     win.setContent(two.replace('<!-- wp:accordion -->', '<!-- wp:accordion {"iconPosition":"left"} -->'))
     caretIn('First body')
-    assert.equal(position().value, 'left')
+    assert.equal(positionValue(), 'left')
+  })
+
+  test('the side control is joined to the toggle that gates it', () => {
+    const pair = position().parentElement
+    assert.equal(pair.className, 'setting-pair')
+    assert.equal(pair.firstElementChild, showIcon())
+    assert.equal(pair.lastElementChild, position())
+  })
+
+  test('the side control is hidden while the icon is off', () => {
+    win.setContent(two)
+    caretIn('First body')
+    assert.equal(position().style.display, '')
+    assert.equal(position().parentElement.classList.contains('is-solo'), false)
+    press(showIcon())
+    caretIn('First body')
+    assert.equal(position().style.display, 'none')
+    assert.equal(position().parentElement.classList.contains('is-solo'), true)
+    press(showIcon())
+    caretIn('First body')
+    assert.equal(position().style.display, '')
+    assert.equal(position().parentElement.classList.contains('is-solo'), false)
   })
 
   test('turning the icon off writes the parent, both headings and their markup', () => {
@@ -898,7 +927,7 @@ describe('accordion icons propagate to every heading', () => {
   test('moving the icon left rewrites both headings and their icon spans', () => {
     win.setContent(two)
     caretIn('First body')
-    choose(position(), 'left')
+    setPosition('left')
     const out = win.toWordPressHTML(editor.getHTML())
     assert.match(out, /wp:accordion \{"iconPosition":"left"\}/)
     assert.equal((out.match(/wp:accordion-heading \{"iconPosition":"left"\}/g) || []).length, 2)
@@ -912,7 +941,7 @@ describe('accordion icons propagate to every heading', () => {
       .replace(/<!-- wp:accordion-heading -->/g, '<!-- wp:accordion-heading {"iconPosition":"left"} -->')
       .replace(/has-icon has-icon-right/g, 'has-icon has-icon-left'))
     caretIn('First body')
-    choose(position(), 'right')
+    setPosition('right')
     const out = win.toWordPressHTML(editor.getHTML())
     assert.doesNotMatch(out, /iconPosition/)
     assert.match(out, /<!-- wp:accordion -->/)
@@ -934,7 +963,7 @@ describe('accordion icons propagate to every heading', () => {
   test('an item added afterwards inherits the icon settings', () => {
     win.setContent(two)
     caretIn('First body')
-    choose(position(), 'left')
+    setPosition('left')
     win.document.querySelector('[data-cmd="addAccordionItem"]')
       .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
     const out = win.toWordPressHTML(editor.getHTML())
@@ -945,7 +974,7 @@ describe('accordion icons propagate to every heading', () => {
   test('a heading keeps its own level while the icon changes around it', () => {
     win.setContent(two.replace('<!-- wp:accordion-heading -->', '<!-- wp:accordion-heading {"level":3} -->'))
     caretIn('First body')
-    choose(position(), 'left')
+    setPosition('left')
     const out = win.toWordPressHTML(editor.getHTML())
     assert.match(out, /wp:accordion-heading \{"level":3,"iconPosition":"left"\}/)
   })
