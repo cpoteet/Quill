@@ -822,6 +822,22 @@ describe('contextual toolbar row', () => {
     assert.ok(main.querySelector('#ai-toolbar-group'), 'AI group stays in row 1')
     assert.ok(main.querySelector('#insert-button'), 'insert menu stays in row 1')
   })
+
+  test('row 1 runs in the configured order', () => {
+    const main = win.document.getElementById('toolbar')
+    const ids = Array.from(main.querySelectorAll('button')).map(b => b.id || b.dataset.cmd)
+    assert.deepEqual(ids, [
+      'undo', 'redo', 'heading-button',
+      'bold', 'italic', 'underline', 'strike', 'code', 'link',
+      'bulletList', 'orderedList', 'blockquote', 'codeBlock',
+      'image', 'gallery', 'insertTable', 'btn-footnote', 'embed-button', 'insert-button',
+      'btn-spell', 'btn-code-view', 'btn-evaluate', 'btn-generate',
+    ])
+  })
+
+  test('row 1 draws no divider rules', () => {
+    assert.equal(win.document.getElementById('toolbar').querySelector('.tb-sep'), null)
+  })
 })
 
 describe('pullquote and preformatted', () => {
