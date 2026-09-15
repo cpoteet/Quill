@@ -374,13 +374,26 @@ describe('block styles', () => {
     editor.commands.setNodeSelection(found)
   }
 
-  const picker = node => win.document.querySelector(`#settings-${node}-controls select[data-setting="className"]`)
+  const picker = node => win.document.querySelector(`#settings-${node}-controls [data-setting="className"]`)
+
+  // A block with two styles draws a toggle button, one with more draws a select.
+  const styleOf = node => {
+    const el = picker(node)
+    assert.ok(el, `no style control for ${node}`)
+    if (el.tagName === 'SELECT') return el.value
+    return el.classList.contains('active') ? el.dataset.style : ''
+  }
 
   function choose(node, value) {
     const el = picker(node)
-    assert.ok(el, `no style picker for ${node}`)
-    el.value = value
-    el.dispatchEvent(new win.Event('change', { bubbles: true }))
+    assert.ok(el, `no style control for ${node}`)
+    if (el.tagName === 'SELECT') {
+      el.value = value
+      el.dispatchEvent(new win.Event('change', { bubbles: true }))
+      return
+    }
+    assert.ok(value === '' || value === el.dataset.style, `${node} has no ${value} toggle`)
+    if (styleOf(node) !== value) el.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
   }
 
   const cases = [
@@ -426,7 +439,7 @@ describe('block styles', () => {
         win.setContent(c.src)
         c.place()
         assert.equal(win.document.getElementById(`settings-${c.node}-controls`).style.display, 'inline-flex')
-        assert.equal(picker(c.node).value, c.from)
+        assert.equal(styleOf(c.node), c.from)
       })
 
       test('switching replaces the old token rather than stacking it', () => {
@@ -464,7 +477,7 @@ describe('block styles', () => {
 <!-- /wp:paragraph --></blockquote>
 <!-- /wp:quote -->`)
     caretIn('Plainest')
-    assert.equal(picker('blockquote').value, '')
+    assert.equal(styleOf('blockquote'), '')
   })
 
   test('choosing a style on a block that had none writes both halves', () => {

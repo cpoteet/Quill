@@ -2400,9 +2400,10 @@ describe('header and footer section toggles', () => {
   })
 })
 
-describe('the table style picker', () => {
+describe('the table style toggle', () => {
   const src = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'settings-table.html'), 'utf8')
-  const picker = () => win.document.querySelector('#settings-table-controls select[data-setting="className"]')
+  const toggle = () => win.document.querySelector('#settings-table-controls button[data-setting="className"]')
+  const styleOn = () => toggle().classList.contains('active')
 
   function caretInTable() {
     let found = null
@@ -2412,33 +2413,36 @@ describe('the table style picker', () => {
     editor.commands.setTextSelection(found)
   }
 
-  const choose = value => {
-    picker().value = value
-    picker().dispatchEvent(new win.Event('change', { bubbles: true }))
+  const choose = on => {
+    if (styleOn() !== on) toggle().dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
   }
+
+  test('it is labelled with the style it turns on', () => {
+    assert.equal(toggle().textContent, 'Stripes')
+  })
 
   test('it reflects a loaded style', () => {
     win.setContent(src)
     caretInTable()
-    assert.equal(picker().value, 'is-style-stripes')
+    assert.equal(styleOn(), true)
   })
 
-  test('clearing it strips the class and the comment attribute', () => {
-    choose('')
+  test('turning it off strips the class and the comment attribute', () => {
+    choose(false)
     const out = win.toWordPressHTML(editor.getHTML())
     assert.doesNotMatch(out, /is-style-stripes/)
     assert.match(out, /<figure class="wp-block-table">/)
   })
 
-  test('choosing stripes writes both halves back', () => {
-    choose('is-style-stripes')
+  test('turning it on writes both halves back', () => {
+    choose(true)
     const out = win.toWordPressHTML(editor.getHTML())
     assert.match(out, /<figure class="wp-block-table is-style-stripes">/)
     assert.match(out, /"className":"is-style-stripes"/)
   })
 
   test('the block class is never mistaken for a style', () => {
-    choose('')
+    choose(false)
     assert.match(win.toWordPressHTML(editor.getHTML()), /<figure class="wp-block-table">/)
   })
 })

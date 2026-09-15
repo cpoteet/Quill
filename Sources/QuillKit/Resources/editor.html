@@ -751,6 +751,25 @@
       background: #2a2a2a;
       border-top-color: #777;
     }
+
+    /* Core's stripes tint alternate body rows and drop the cell borders; the
+       editor keeps its borders, which are the only cue where the columns are.
+       Head and foot rows share the one tbody here, so they shift the count. */
+    .ProseMirror table.is-style-stripes tr:nth-child(odd):not([data-quill-row]) td,
+    .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(even):not([data-quill-row]) td {
+      background: #f0f0f0;
+    }
+    .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(odd):not([data-quill-row]) td {
+      background: transparent;
+    }
+    body.dark .ProseMirror table.is-style-stripes tr:nth-child(odd):not([data-quill-row]) td,
+    body.dark .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(even):not([data-quill-row]) td {
+      background: #303030;
+    }
+    body.dark .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(odd):not([data-quill-row]) td {
+      background: transparent;
+    }
+
     .ProseMirror .selectedCell { background: rgba(0,122,255,0.08); }
 
     /* Placeholder */
@@ -4176,7 +4195,25 @@
       return { name, def, el: select, reflect: node => { select.value = _settingValue(node, name, def) } }
     }
 
+    // Two styles is a switch, not a list: the control is a button labelled with
+    // the non-default style. Only the separator has more than two.
+    function _buildSettingStyleToggle(typeName, name, def) {
+      const { value: token, label } = def.control.options[1]
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.dataset.style = token
+      btn.textContent = label
+      btn.title = label
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (target) _setBlockStyle(typeName, def, _blockStyleOf(target.node, def) === token ? '' : token)
+      })
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', _blockStyleOf(node, def) === token) }
+    }
+
     function _buildSettingStylePicker(typeName, name, def) {
+      if (def.control.options.length === 2) return _buildSettingStyleToggle(typeName, name, def)
       const select = document.createElement('select')
       select.className = 'setting-select'
       select.dataset.setting = name
