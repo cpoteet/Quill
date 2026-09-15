@@ -404,6 +404,8 @@
       overflow-y: hidden;
     }
     #toolbar-row2.visible { display: flex; }
+    /* Generated setting groups append after this span, so pin it last visually. */
+    #block-controls { order: 1; }
     body.dark #toolbar-row2 {
       background: rgba(36, 36, 38, 0.96);
       border-top-color: rgba(255,255,255,0.09);
