@@ -1699,6 +1699,58 @@ describe('delete block control', () => {
     assert.equal(win.document.getElementById('block-controls').style.display, 'none')
   })
 
+  // A leaf, so it is reachable only by node selection -- the depth walk every
+  // container uses never sees it.
+  describe('a selected separator', () => {
+    const selectRule = () => {
+      let at = null
+      editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === 'horizontalRule') at = pos })
+      assert.ok(at !== null, 'no separator in the document')
+      editor.commands.setNodeSelection(at)
+    }
+
+    test('offers the ✕, named as a separator', () => {
+      editor.commands.setContent('<p>x</p><hr><p>y</p>', false)
+      selectRule()
+      assert.notEqual(win.document.getElementById('block-controls').style.display, 'none')
+      assert.match(deleteKey().title, /separator/i)
+    })
+
+    test('is removed by the ✕', () => {
+      editor.commands.setContent('<p>x</p><hr><p>y</p>', false)
+      selectRule()
+      press('deleteBlock')
+      let still = false
+      editor.state.doc.descendants(n => { if (n.type.name === 'horizontalRule') still = true })
+      assert.equal(still, false)
+    })
+
+    test('is removed by ⌘⇧⌫ too', () => {
+      editor.commands.setContent('<p>x</p><hr><p>y</p>', false)
+      selectRule()
+      editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: 'Backspace', code: 'Backspace', keyCode: 8, which: 8,
+        bubbles: true, cancelable: true, metaKey: true, shiftKey: true,
+      }))
+      let still = false
+      editor.state.doc.descendants(n => { if (n.type.name === 'horizontalRule') still = true })
+      assert.equal(still, false)
+    })
+
+    test('leaves the surrounding paragraphs alone', () => {
+      editor.commands.setContent('<p>x</p><hr><p>y</p>', false)
+      selectRule()
+      press('deleteBlock')
+      assert.equal(editor.state.doc.textContent, 'xy')
+    })
+
+    test('the ✕ stays hidden with the caret merely next to one', () => {
+      editor.commands.setContent('<p>x</p><hr><p>y</p>', false)
+      editor.commands.setTextSelection(2)
+      assert.equal(win.document.getElementById('block-controls').style.display, 'none')
+    })
+  })
+
   test('the table group no longer carries its own delete button', () => {
     assert.equal(win.document.querySelector('#table-controls [data-cmd="deleteTable"]'), null)
   })

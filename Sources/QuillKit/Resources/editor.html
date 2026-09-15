@@ -559,28 +559,43 @@
     }
 
     /* Core draws the default rule short and centred, so Wide has something to
-       differ from; a browser-default hr would look identical to it. */
+       differ from; a browser-default hr would look identical to it. The rule is
+       a pseudo-element so the hr itself stays a full-width, clickable box --
+       a 2px line is close to unhittable. */
     .ProseMirror hr {
-      height: 0;
+      height: 26px;
       border: none;
-      border-top: 2px solid rgba(0,0,0,0.18);
+      margin: 0.8em 0;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .ProseMirror hr::before {
+      content: '';
       width: 100px;
-      margin: 1.5em auto;
+      border-top: 2px solid rgba(0,0,0,0.18);
     }
-    body.dark .ProseMirror hr { border-top-color: rgba(255,255,255,0.22); }
-    .ProseMirror hr.is-style-wide { width: 100%; }
-    .ProseMirror hr.is-style-dots {
-      height: auto;
-      width: auto;
-      border: none;
-      text-align: center;
-      line-height: 1;
+    body.dark .ProseMirror hr::before { border-top-color: rgba(255,255,255,0.22); }
+    .ProseMirror hr:hover { background: rgba(0,0,0,0.035); }
+    body.dark .ProseMirror hr:hover { background: rgba(255,255,255,0.05); }
+    /* Nothing styles ProseMirror-selectednode here, so without this a selected
+       separator looks exactly like an unselected one. */
+    .ProseMirror hr.ProseMirror-selectednode {
+      background: rgba(0,122,255,0.11);
+      outline: none;
     }
+    body.dark .ProseMirror hr.ProseMirror-selectednode { background: rgba(10,132,255,0.24); }
+    .ProseMirror hr.is-style-wide::before { width: 100%; }
     .ProseMirror hr.is-style-dots::before {
       content: '\00b7\00b7\00b7';
+      width: auto;
+      border: none;
       color: currentColor;
       font-family: serif;
       font-size: 1.5em;
+      line-height: 1;
       letter-spacing: 2em;
       padding-left: 2em;
     }
@@ -3176,6 +3191,7 @@
       ['preformatted', 'preformatted'],
       ['blockquote', 'quote'],
       ['codeBlock', 'code block'],
+      ['horizontalRule', 'separator'],
     ])
 
     function _deletableBlockAt($pos) {
@@ -3184,6 +3200,14 @@
         if (DELETABLE_BLOCKS.has(node.type.name)) return { node, pos: $pos.before(d) }
       }
       return null
+    }
+
+    // A leaf block is never an ancestor of the caret, so a selected separator
+    // is reachable only through the node selection.
+    function _deletableTarget(state) {
+      const node = state.selection.node
+      if (node && DELETABLE_BLOCKS.has(node.type.name)) return { node, pos: state.selection.from }
+      return _deletableBlockAt(state.selection.$from)
     }
 
     function _caretAfterDeleting(doc, pos) {
@@ -3198,7 +3222,7 @@
     }
 
     function _deleteContainerBlock() {
-      const target = _deletableBlockAt(editor.state.selection.$from)
+      const target = _deletableTarget(editor.state)
       if (!target) return false
       const tr = editor.state.tr.delete(target.pos, target.pos + target.node.nodeSize)
       const $at = tr.doc.resolve(Math.min(target.pos, tr.doc.content.size))
@@ -4826,7 +4850,7 @@
       // Columns controls
       _columnsControls.style.display = editor.isActive('columnsBlock') ? 'inline-flex' : 'none'
       // Delete-block control
-      const deletable = _deletableBlockAt(editor.state.selection.$from)
+      const deletable = _deletableTarget(editor.state)
       _blockControls.style.display = deletable ? 'inline-flex' : 'none'
       if (deletable) {
         _deleteBlockBtn.title = `Delete ${DELETABLE_BLOCKS.get(deletable.node.type.name)}`
