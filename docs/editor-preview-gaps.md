@@ -7,7 +7,7 @@ come first; row-2 button metrics are the last section.
 ## Block settings with no editor preview
 
 Every block setting in `block-settings.js` writes its delimiter attribute and its
-markup correctly — the 147-test block-settings suite proves that end of it. The
+markup correctly — the block-settings suite proves that end of it. The
 gap is one-sided: the editor canvas draws its own fixed chrome and ignores most
 of what the settings say, so a control can be correct and still look dead.
 
@@ -30,44 +30,24 @@ done
 | Placeholder overlapped the left icon | The "Accordion title" hint is absolutely positioned at a hard-coded `left: 4px`, measured against the heading rather than the toggle's padding box. With the icon on the right that happened to line up; with it on the left the icon was drawn on top of the hint. | `.has-icon-left` moves the hint to `left: 34px`. |
 | `accordionItem.openByDefault` | Wrote `is-open`, which had no CSS at all. The editor's expand/collapse runs off a separate editor-only `is-collapsed` decoration. | An `is-open` item's heading carries an "open on the site" label, matching how `detailsBlock.showContent` already draws "closed on the site". Content is never hidden. |
 
+### Fixed on 2026-09-15
+
+| Setting | Was | Now |
+| --- | --- | --- |
+| Button `is-style-outline` | Class on the editor DOM, no rule to match it. | Transparent fill, `currentColor` border, padding trimmed by the border width so the box does not grow. |
+| Quote `is-style-plain` | Same. | Drops the left rule and the italics. |
+| Separator `is-style-wide` / `is-style-dots` | Same, and the editor drew the browser-default `hr`, which is already full width — so Wide would have looked identical to Default. | The base rule is now core's short centred line; Wide goes to 100% and Dots draws core's three serif middle dots. |
+| Image `is-style-rounded` | The class was absent from the editor DOM: `ResizableImage`'s node view builds its own `div.image-wrapper` and replaces `renderHTML`. | `_applyAttrs` copies the `is-style-*` token from `figureClass` (falling back to the carried `className`) onto the wrapper, and the wrapper rounds the image. |
+| `tabPanel.isDefaultTab` | `_tabDecorations` picks the visibly active tab from the caret, so the setting showed nowhere. | A second `is-default-tab` decoration on the tab `activeTabIndex` names, drawn as a small "default" label. Suppressed when there is only one tab, which is trivially the default. |
+
+Three of these are DOM, not CSS, so they carry regression tests in
+`Scripts/test-editor-block-settings.js`: the image wrapper's token and the tab
+mark, including that neither reaches the saved markup. The four CSS-only rules
+cannot be tested in jsdom and were verified in Quill itself.
+
 ### Not fixed
 
-Ordered by how visible the gap is.
-
-#### 1. Block styles draw nothing — five of six
-
-`is-style-stripes` on tables is the only block style the editor renders. The
-other five write the class correctly and land it on the editor DOM, but no CSS
-rule matches:
-
-| Block | Style | Editor DOM carries the class? |
-| --- | --- | --- |
-| Button | `is-style-outline` | yes |
-| Quote | `is-style-plain` | yes |
-| Separator | `is-style-wide` | yes |
-| Separator | `is-style-dots` | yes |
-| Image | `is-style-rounded` | **no** |
-
-For the first four this is CSS only — add a rule per token in `editor.html` and
-the toolbar button starts meaning something. Rough shapes: outline is a
-transparent fill with a `currentColor` border; plain drops the quote's left rule
-and italics; wide is a full-width `hr`; dots replaces the rule with three
-centred dots.
-
-Image is the one that needs more than CSS. `ResizableImage`'s node view builds
-its own `div.image-wrapper` and never puts `figureClass` on it, so
-`is-style-rounded` is absent from the editor DOM entirely. The node view has to
-carry the class onto the wrapper before any rule can match it.
-
-#### 2. Tabs: the default tab is invisible
-
-`tabPanel.isDefaultTab` writes `activeTabIndex` onto the tabs block correctly,
-but `_tabDecorations` picks the visibly active tab from wherever the caret is,
-so the setting never shows. Same class of problem as the accordion's "Open", and
-the same fix applies: a label on the tab that `activeTabIndex` points at. The
-toolbar button does light up, so there is some feedback today.
-
-#### 3. Autoclose behaves as designed
+#### 1. Autoclose behaves as designed
 
 `accordionBlock.autoclose` is front-end-only — it means "close the other
 sections when one opens" on the live site, and the editor expands every panel
@@ -77,7 +57,7 @@ active state is the correct and complete feedback. No change needed.
 The attribute name `autoclose` is core's and is fixed. The toolbar label is ours
 and now reads "Auto-close", matching Gutenberg's inspector.
 
-#### 4. New tab
+#### 2. New tab
 
 `buttonBlock.linkTarget` has no editor-visible effect by nature. The toolbar
 active state is the feedback. Working as intended.
@@ -87,26 +67,11 @@ active state is the feedback. Working as intended.
 Audited 2026-09-14, after the accordion work.
 
 Row 2's text buttons get `min-width: auto; padding: 0 9px` and their group gets
-`gap: 5px`. Both rules name their groups by **id**, so a group added later does
-not join them — it silently falls back to the icon-button metrics
-(`min-width: 26px; padding: 0 4px`) and reads visibly tighter than the text
+`gap: 5px`. Both rules used to name their groups by **id**, so a group added
+later did not join them — it silently fell back to the icon-button metrics
+(`min-width: 26px; padding: 0 4px`) and read visibly tighter than the text
 buttons beside it. That is how Open and the two Icon controls ended up narrower
 than Auto-close in the same row.
-
-Re-run the check any time a row-2 group is added:
-
-```bash
-python3 - <<'PY'
-import io, re
-s = io.open('Sources/QuillKit/Resources/editor.html', encoding='utf-8').read()
-i = s.index('#table-controls, #image-align-controls'); gap = s[i:s.index('{', i)]
-j = s.index('#table-controls button,');             pad = s[j:s.index('{', j)]
-row2 = s[s.index('<div id="toolbar-row2"'):]
-row2 = row2[:row2.index('\n    </div>')]
-for sid in re.findall(r'<span id="([a-z0-9-]+)"', row2):
-    print(f'{sid:24}{"gap" if sid in gap else "NO ":5}{"pad" if sid in pad else "NO"}')
-PY
-```
 
 ### Fixed — spacing rhythm
 
@@ -123,21 +88,38 @@ settings next to it.
 
 ### Fixed — button metrics
 
-The generated block-settings groups now match by prefix
-(`#toolbar-row2 [id^="settings-"]`) rather than by name, so every future block
-setting inherits the text-button metrics instead of needing a CSS edit.
+A first pass matched the generated block-settings groups by prefix
+(`#toolbar-row2 [id^="settings-"]`) rather than by name. The durable fix below
+replaced it.
 
-### Not fixed
+### Fixed — the durable fix
 
-Every row-2 group was checked against the kind of button it actually holds
-(2026-09-14). Only one group is wrong:
+Both rules now key off `tb-group`, a class every row-2 group carries, with
+`tb-group-icons` opting the two icon groups (`image-align-controls` and the
+`block-controls` ✕) back to the 26px square. `_buildSettingGroups` sets
+`tb-group` on each generated group, so no group can be added without picking up
+the metrics one way or the other — the id list and the `[id^="settings-"]`
+prefix match are both gone.
 
-| Group | Buttons | Missing | Verdict |
-| --- | --- | --- | --- |
-| `link-controls` — "New tab" | 1 text | gap **and** padding | **The one real bug.** A text button rendering at icon metrics (`min-width: 26px; padding: 0 4px`), so it is visibly tighter than every other text button in the row. Add it to both selector lists. |
-| `block-controls` — the ✕ | 1 glyph | gap and padding | **Judgement call, not a bug.** Correcting an earlier claim in this doc that it is an icon button: its content is the text glyph `&#10005;`, not an SVG. The 26px square still suits a delete affordance, so leave it — but leave it deliberately. |
-| `image-align-controls` | 3 SVG | padding only | Correct as-is. SVG icons want the 26px square; the gap rule it does have is the right half. |
-| table (6), blockquote, columns (2), buttons (3), accordion (3), details, tabs (2) | all text | nothing | Clean. All carry both rules. |
+That also closed the one real bug the audit found: `link-controls` — "New tab",
+a text button rendering at icon metrics because it was in neither selector list.
+
+The ✕ keeps its 26px square deliberately: its content is the text glyph
+`&#10005;` rather than an SVG, but the square suits a delete affordance.
+
+Re-run the check any time a row-2 group is added:
+
+```bash
+python3 - <<'PY'
+import io, re
+s = io.open('Sources/QuillKit/Resources/editor.html', encoding='utf-8').read()
+row2 = s[s.index('<div id="toolbar-row2"'):]
+row2 = row2[:row2.index('\n    </div>')]
+for m in re.finditer(r'<span id="([a-z0-9-]+)"([^>]*)>', row2):
+    cls = re.search(r'class="([^"]*)"', m.group(2))
+    print(f'{m.group(1):24}{cls.group(1) if cls else "NO CLASS"}')
+PY
+```
 
 ### Not fixed — cross-surface drift
 
@@ -148,12 +130,3 @@ consistent and it is a different surface, so nothing reads as broken — but the
 two will drift further apart every time one is touched alone. Worth unifying to
 one set of tokens if the toolbars are ever reworked; not worth a standalone
 change.
-
-### The durable fix
-
-Both rules should key off a class every row-2 group carries (say `tb-group`,
-with `tb-group-icons` opting the two icon groups back to square metrics) instead
-of an id list plus a prefix match. That is a small refactor — a class on eight
-static spans, one line in `_buildSettingGroups`, and two rewritten selectors —
-and it removes the whole category: no group can be added without picking up the
-metrics one way or the other.

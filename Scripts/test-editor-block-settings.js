@@ -463,6 +463,29 @@ describe('block styles', () => {
     })
   }
 
+  // The image node view replaces renderHTML, so its style token reaches the
+  // canvas only if the view copies it onto the wrapper.
+  describe('the image node view carries the style token onto the canvas', () => {
+    const wrapper = () => win.document.querySelector('.ProseMirror .image-wrapper')
+
+    test('a loaded rounded image renders the class on the wrapper', () => {
+      win.setContent(cases[3].src)
+      assert.equal(wrapper().classList.contains('is-style-rounded'), true)
+    })
+
+    test('choosing Default takes it off again', () => {
+      win.setContent(cases[3].src)
+      selectNode('image')
+      choose('image', '')
+      assert.equal(wrapper().classList.contains('is-style-rounded'), false)
+    })
+
+    test('an image with no style carries no token', () => {
+      win.setContent('<!-- wp:image -->\n<figure class="wp-block-image"><img src="https://x.test/b.jpg" alt=""/></figure>\n<!-- /wp:image -->')
+      assert.equal([...wrapper().classList].some(c => c.startsWith('is-style-')), false)
+    })
+  })
+
   test('the image keeps its size class through a style change', () => {
     win.setContent(cases[3].src)
     selectNode('image')
@@ -580,6 +603,37 @@ describe('the tabs default tab', () => {
     win.setContent('<p>plain</p>')
     editor.commands.setTextSelection(2)
     assert.equal(win.document.getElementById('settings-tabPanel-controls').style.display, 'none')
+  })
+
+  // The visibly active tab follows the caret, so the default needs its own mark.
+  describe('the default tab is marked on the canvas', () => {
+    const tabButtons = () => [...win.document.querySelectorAll('.ProseMirror .wp-block-tab-list button[role="tab"]')]
+    const marked = () => tabButtons().map(b => b.classList.contains('is-default-tab'))
+
+    test('with no attribute written the first tab is marked', () => {
+      win.setContent(tabs)
+      caretIn('Second body')
+      assert.deepEqual(marked(), [true, false])
+    })
+
+    test('the index moves the mark, and the caret does not', () => {
+      win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+      caretIn('First body')
+      assert.deepEqual(marked(), [false, true])
+    })
+
+    test('pressing the control moves the mark', () => {
+      win.setContent(tabs)
+      caretIn('Second body')
+      press(toggle())
+      assert.deepEqual(marked(), [false, true])
+    })
+
+    test('the mark never reaches the saved markup', () => {
+      win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+      caretIn('First body')
+      assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /is-default-tab/)
+    })
   })
 })
 

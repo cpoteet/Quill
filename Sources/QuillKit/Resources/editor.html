@@ -399,17 +399,18 @@
     body.dark #toolbar-row2 button {
       color: #b9bbc2;
     }
-    /* The generated groups match by prefix: naming each one would mean every
-       new block setting silently falling back to the icon-button metrics. */
-    #table-controls, #image-align-controls, #blockquote-controls, #columns-controls, #buttons-controls, #accordion-controls, #details-controls, #tabs-controls,
-    #toolbar-row2 [id^="settings-"] {
+    /* Metrics key off the group class, so a group cannot be added without them. */
+    #toolbar-row2 .tb-group {
       align-items: center;
       gap: 8px;
     }
-    #table-controls button, #blockquote-controls button, #columns-controls button, #buttons-controls button, #accordion-controls button, #details-controls button, #tabs-controls button,
-    #toolbar-row2 [id^="settings-"] button {
+    #toolbar-row2 .tb-group button {
       min-width: auto;
       padding: 0 9px;
+    }
+    #toolbar-row2 .tb-group-icons button {
+      min-width: 26px;
+      padding: 0 4px;
     }
     #toolbar-row2 {
       display: none;
@@ -551,6 +552,38 @@
       margin-top: 0.5em;
     }
     body.dark .ProseMirror blockquote cite { color: #666; }
+    .ProseMirror blockquote.is-style-plain {
+      border-left: none;
+      padding-left: 0;
+      font-style: normal;
+    }
+
+    /* Core draws the default rule short and centred, so Wide has something to
+       differ from; a browser-default hr would look identical to it. */
+    .ProseMirror hr {
+      height: 0;
+      border: none;
+      border-top: 2px solid rgba(0,0,0,0.18);
+      width: 100px;
+      margin: 1.5em auto;
+    }
+    body.dark .ProseMirror hr { border-top-color: rgba(255,255,255,0.22); }
+    .ProseMirror hr.is-style-wide { width: 100%; }
+    .ProseMirror hr.is-style-dots {
+      height: auto;
+      width: auto;
+      border: none;
+      text-align: center;
+      line-height: 1;
+    }
+    .ProseMirror hr.is-style-dots::before {
+      content: '\00b7\00b7\00b7';
+      color: currentColor;
+      font-family: serif;
+      font-size: 1.5em;
+      letter-spacing: 2em;
+      padding-left: 2em;
+    }
     .ProseMirror code {
       background: rgba(0,0,0,0.07);
       border-radius: 3px;
@@ -591,6 +624,7 @@
       line-height: 0;
     }
     .image-wrapper img { display: block; max-width: 100%; border-radius: 4px; pointer-events: none; -webkit-user-select: none; user-select: none; }
+    .image-wrapper.is-style-rounded img { border-radius: 9999px; }
     .image-wrapper.ProseMirror-selectednode { outline: none; }
     .image-wrapper.selected img {
       outline: 2px solid #007aff;
@@ -1106,6 +1140,19 @@
     }
     .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #1a1a1a; border-bottom-color: #32323a; }
     body.dark .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #f4f4f5; border-bottom-color: #e7e7ea; }
+    /* isDefaultTab is a publishing choice, so it is a label here and never the
+       tab the editor shows. */
+    .ProseMirror .wp-block-tab-list button[role="tab"].is-default-tab::after {
+      content: 'default';
+      margin-left: 7px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+      vertical-align: 1px;
+      pointer-events: none;
+    }
     .ProseMirror .wp-block-tab-panel { display: none; padding: 14px 2px 2px; }
     .ProseMirror .wp-block-tab-panel.is-active-tab { display: block; }
 
@@ -1194,6 +1241,12 @@
       cursor: text;
     }
     body.dark .ProseMirror .wp-block-button__link { background: #e7e7ea; color: #1c1c1e; }
+    .ProseMirror .wp-block-button.is-style-outline .wp-block-button__link {
+      background: transparent;
+      color: inherit;
+      border: 2px solid currentColor;
+      padding: 5px 15px;
+    }
 
     /* Pullquote */
     .ProseMirror figure.wp-block-pullquote {
@@ -1354,10 +1407,10 @@
     </span>
   </div>
   <div id="toolbar-row2">
-    <span id="blockquote-controls" style="display:none">
+    <span id="blockquote-controls" class="tb-group" style="display:none">
         <button id="btn-toggle-cite" title="Toggle citation">Cite</button>
       </span>
-    <span id="table-controls" style="display:none">
+    <span id="table-controls" class="tb-group" style="display:none">
         <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
         <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
         <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
@@ -1365,31 +1418,31 @@
         <button data-cmd="toggleTableHeader" title="Header section">Header</button>
         <button data-cmd="toggleTableFooter" title="Footer section">Footer</button>
       </span>
-    <span id="columns-controls" style="display:none">
+    <span id="columns-controls" class="tb-group" style="display:none">
         <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
         <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
       </span>
-    <span id="buttons-controls" style="display:none">
+    <span id="buttons-controls" class="tb-group" style="display:none">
         <button data-cmd="addButton"    title="Add button">+Button</button>
         <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
         <button data-cmd="buttonLink"   title="Link this button">Link</button>
       </span>
-    <span id="accordion-controls" style="display:none">
+    <span id="accordion-controls" class="tb-group" style="display:none">
         <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
         <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
         <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Auto-close</button>
       </span>
-    <span id="details-controls" style="display:none">
+    <span id="details-controls" class="tb-group" style="display:none">
         <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
       </span>
-    <span id="link-controls" style="display:none">
+    <span id="link-controls" class="tb-group" style="display:none">
         <button id="btn-link-new-tab" title="Open this link in a new tab">New tab</button>
       </span>
-    <span id="tabs-controls" style="display:none">
+    <span id="tabs-controls" class="tb-group" style="display:none">
         <button data-cmd="addTab"    title="Add tab">+Tab</button>
         <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
       </span>
-    <span id="image-align-controls" style="display:none">
+    <span id="image-align-controls" class="tb-group tb-group-icons" style="display:none">
         <button data-cmd="alignLeft"   title="Float image left (text wraps right)">
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
@@ -1400,7 +1453,7 @@
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
       </span>
-    <span id="block-controls" style="display:none">
+    <span id="block-controls" class="tb-group tb-group-icons" style="display:none">
         <button data-cmd="deleteBlock" title="Delete block">&#10005;</button>
       </span>
   </div>
@@ -1656,6 +1709,13 @@
         // Alignment
         this.wrapper.classList.remove('align-left', 'align-right', 'align-center')
         if (attrs.alignment) this.wrapper.classList.add(`align-${attrs.alignment}`)
+        // The node view replaces renderHTML, so the figure's style token only
+        // reaches the canvas if it is copied onto the wrapper here.
+        const styleToken = _styleTokenIn(attrs.figureClass) || _styleTokenIn(carriedClassName(attrs.blockAttrs))
+        for (const c of Array.from(this.wrapper.classList)) {
+          if (c.startsWith('is-style-')) this.wrapper.classList.remove(c)
+        }
+        if (styleToken) this.wrapper.classList.add(styleToken)
       }
 
       update(node) {
@@ -3253,6 +3313,14 @@
       for (const [from, size, i] of spans) {
         if (i === active) decos.push(Decoration.node(from, from + size, { class: 'is-active-tab' }))
       }
+      // The visibly active tab follows the caret, so isDefaultTab needs a mark
+      // of its own or the setting shows nowhere. One tab is trivially default.
+      if (list.childCount < 2) return
+      const defaultIndex = _carriedAttr(node.attrs.blockAttrs, 'activeTabIndex') || 0
+      list.forEach((child, offset, i) => {
+        if (i !== defaultIndex) return
+        decos.push(Decoration.node(listContent + offset, listContent + offset + child.nodeSize, { class: 'is-default-tab' }))
+      })
     }
 
     function _chromeDecorations(state) {
@@ -4401,6 +4469,7 @@
         if (!controls.length) continue
         const span = document.createElement('span')
         span.id = `settings-${typeName}-controls`
+        span.className = 'tb-group'
         span.style.display = 'none'
         _appendSettingControls(span, controls)
         document.getElementById('toolbar-row2').appendChild(span)
