@@ -1247,7 +1247,6 @@
       </button>
       <button data-cmd="bold"      title="Bold"><span class="tb-text-icon">B</span></button>
       <button data-cmd="italic"    title="Italic"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
-      <button data-cmd="underline" title="Underline"><span class="tb-text-icon" style="text-decoration:underline;text-underline-offset:2px;font-weight:500;">U</span></button>
       <button data-cmd="strike"    title="Strikethrough"><span class="tb-text-icon" style="text-decoration:line-through;font-weight:500;">S</span></button>
       <button data-cmd="code"      title="Inline code"><span class="tb-inline-code">A</span></button>
       <button data-cmd="link"  title="Link">
@@ -3655,7 +3654,6 @@
     const COMMANDS = {
       bold:          () => editor.chain().focus().toggleBold().run(),
       italic:        () => editor.chain().focus().toggleItalic().run(),
-      underline:     () => editor.chain().focus().toggleUnderline().run(),
       strike:        () => editor.chain().focus().toggleStrike().run(),
       code:          () => editor.chain().focus().toggleCode().run(),
       blockquote: () => {
@@ -4495,7 +4493,7 @@
     })
 
     // ── Active-state updates ───────────────────────────
-    const TOGGLE_CMDS = ['bold','italic','underline','strike','code',
+    const TOGGLE_CMDS = ['bold','italic','strike','code',
                          'blockquote','codeBlock','bulletList','orderedList','link']
     const _toggleBtns = TOGGLE_CMDS.map(cmd => [cmd, document.querySelector(`[data-cmd="${cmd}"]`)])
     const _blockBtns = BLOCK_CMDS.map(cmd => document.querySelector(`[data-cmd="${cmd}"]`)).filter(Boolean)

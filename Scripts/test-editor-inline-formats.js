@@ -123,10 +123,14 @@ describe('underline saves the markup Gutenberg wrote', () => {
     assert.match(out, /<span style="text-decoration: ?underline;?">underlined<\/span>/)
   })
 
-  test('the underline button still produces core markup', () => {
+  test('the Mod-U shortcut still underlines with no toolbar button for it', () => {
     win.setContent('<!-- wp:paragraph -->\n<p>Plain words here.</p>\n<!-- /wp:paragraph -->')
+    assert.equal(win.document.querySelector('[data-cmd="underline"]'), null)
     editor.commands.setTextSelection({ from: 1, to: 6 })
-    editor.commands.toggleUnderline()
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+      // jsdom reports a non-Mac platform, so prosemirror-keymap binds Mod to Ctrl
+      key: 'u', code: 'KeyU', bubbles: true, cancelable: true, ctrlKey: true,
+    }))
     assert.match(win.getContent(), /<span style="text-decoration: ?underline;?">Plain<\/span>/)
   })
 })

@@ -828,7 +828,7 @@ describe('contextual toolbar row', () => {
     const ids = Array.from(main.querySelectorAll('button')).map(b => b.id || b.dataset.cmd)
     assert.deepEqual(ids, [
       'undo', 'redo', 'heading-button',
-      'bold', 'italic', 'underline', 'strike', 'code', 'link',
+      'bold', 'italic', 'strike', 'code', 'link',
       'bulletList', 'orderedList', 'blockquote', 'codeBlock',
       'image', 'gallery', 'insertTable', 'btn-footnote', 'embed-button', 'insert-button',
       'btn-spell', 'btn-code-view', 'btn-evaluate', 'btn-generate',
