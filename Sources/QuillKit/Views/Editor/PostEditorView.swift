@@ -1241,17 +1241,11 @@ public struct PostEditorView: View {
         let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: promptText, operation: operation, context: opInfo.context)
 
         do {
-            var resultHTML = try await client.complete(
+            let resultHTML = AIPromptBuilder.cleanOperationResult(try await client.complete(
                 userMessage: userMsg,
                 systemPrompt: system,
                 useWebSearch: false
-            ).text
-            // Strip markdown code fences Claude sometimes adds despite instructions
-            if let fenceRange = resultHTML.range(of: "```html", options: .caseInsensitive) {
-                resultHTML.removeSubrange(fenceRange)
-            }
-            resultHTML = resultHTML.replacingOccurrences(of: "```", with: "")
-            resultHTML = resultHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+            ).text)
             // 4. Show result in editor — JS replaces loading placeholder with result,
             //    selects it, and returns a bounding rect for panel positioning.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),

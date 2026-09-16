@@ -1606,7 +1606,8 @@
     // source: "rich-text", so it rides the markup and never the delimiter.
     const TableWithFigure = Table.extend({
       parseHTML() {
-        return [{ tag: 'figure.wp-block-table', contentElement: 'table' }, ...(this.parent?.() || [])]
+        // A classic <caption> is read by the caption attribute below, never as a row.
+        return [{ tag: 'figure.wp-block-table', contentElement: 'table' }, ...(this.parent?.() || []), { tag: 'caption', ignore: true }]
       },
       addAttributes() {
         return {
@@ -1615,7 +1616,7 @@
             default: null,
             keepOnSplit: false,
             parseHTML: el => {
-              const cap = el.tagName === 'FIGURE' ? el.querySelector(':scope > figcaption') : null
+              const cap = el.querySelector(el.tagName === 'FIGURE' ? ':scope > figcaption' : ':scope > caption')
               return cap ? cap.innerHTML : null
             },
             renderHTML: attrs => attrs.caption ? { 'data-quill-caption': attrs.caption } : {},
@@ -2050,41 +2051,45 @@
       },
 
       parseHTML() {
+        const figureAttrs = el => {
+          const img = el.querySelector('img')
+          if (!img) return false
+          const dataId = img.getAttribute('data-media-id')
+          const imgCls = img.getAttribute('class') || ''
+          const clsMatch = imgCls.match(/wp-image-(\d+)/)
+          const _knownImgCls = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
+          const customImgCls = imgCls.split(/\s+/).filter(c => c && !_knownImgCls.test(c)).join(' ')
+          const figCls = el.getAttribute('class') || ''
+          // is-resized is rebuilt from the dimensions on save, so carrying
+          // it here would leave it on an image the user later un-resized.
+          const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter|is-resized)$/
+          const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
+          const linkEl = img.parentElement
+          const linkedToMedia = linkEl && linkEl.tagName === 'A' && !!linkEl.getAttribute('href')
+          return {
+            src:       img.getAttribute('src'),
+            alt:       img.getAttribute('alt') ?? null,
+            title:     img.getAttribute('title') ?? null,
+            width:     imgPixelDimension(img, 'width'),
+            height:    imgPixelDimension(img, 'height'),
+            mediaId:   dataId ? parseInt(dataId, 10)
+                              : (clsMatch ? parseInt(clsMatch[1], 10) : null),
+            alignment: extractAlignment(figCls),
+            imgClass:    customImgCls || null,
+            figureClass: customFigCls || null,
+            figureId:  el.getAttribute('id') || null,
+            linkTo:    linkedToMedia ? 'media' : 'none',
+            linkHref:  linkedToMedia ? linkEl.getAttribute('href') : null,
+          }
+        }
+        const captionElement = el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption'))
         return [
+          { tag: 'figure.wp-block-image', getAttrs: figureAttrs, contentElement: captionElement },
+          // A classic figure holding just an image, as HTML from outside Gutenberg writes it.
           {
-            tag: 'figure.wp-block-image',
-            getAttrs: el => {
-              const img = el.querySelector('img')
-              if (!img) return false
-              const dataId = img.getAttribute('data-media-id')
-              const imgCls = img.getAttribute('class') || ''
-              const clsMatch = imgCls.match(/wp-image-(\d+)/)
-              const _knownImgCls = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
-              const customImgCls = imgCls.split(/\s+/).filter(c => c && !_knownImgCls.test(c)).join(' ')
-              const figCls = el.getAttribute('class') || ''
-              // is-resized is rebuilt from the dimensions on save, so carrying
-              // it here would leave it on an image the user later un-resized.
-              const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter|is-resized)$/
-              const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
-              const linkEl = img.parentElement
-              const linkedToMedia = linkEl && linkEl.tagName === 'A' && !!linkEl.getAttribute('href')
-              return {
-                src:       img.getAttribute('src'),
-                alt:       img.getAttribute('alt') ?? null,
-                title:     img.getAttribute('title') ?? null,
-                width:     imgPixelDimension(img, 'width'),
-                height:    imgPixelDimension(img, 'height'),
-                mediaId:   dataId ? parseInt(dataId, 10)
-                                  : (clsMatch ? parseInt(clsMatch[1], 10) : null),
-                alignment: extractAlignment(figCls),
-                imgClass:    customImgCls || null,
-                figureClass: customFigCls || null,
-                figureId:  el.getAttribute('id') || null,
-                linkTo:    linkedToMedia ? 'media' : 'none',
-                linkHref:  linkedToMedia ? linkEl.getAttribute('href') : null,
-              }
-            },
-            contentElement: el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption')),
+            tag: 'figure',
+            getAttrs: el => (/\bwp-block-/.test(el.className) || !el.querySelector(':scope > img, :scope > a > img')) ? false : figureAttrs(el),
+            contentElement: captionElement,
           },
           { tag: 'img[src]' },
         ]

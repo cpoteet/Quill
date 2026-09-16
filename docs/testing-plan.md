@@ -69,6 +69,8 @@ swift test --filter AIPromptBuilderTests
 node --test Scripts/test-editor.js
 ```
 
+`Scripts/test-ai-output-validity.js` additionally needs the pinned `@wordpress/*` dev dependencies (`npm install` in `Scripts/`).
+
 Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/package.json` + `Scripts/node_modules/`), not the repo root — the root has no `package.json` at all.
 
 ---
@@ -916,6 +918,29 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 | `ignores freeform blocks, which are prose not blocks` | |
 | `strips the core prefix and de-duplicates` | |
 | `keeps a third-party namespace intact` | `acme/widget` is reported whole, not truncated to `acme` |
+
+---
+
+## JS AI output validity tests (23 tests)
+
+`Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`.
+
+| Test | What it checks |
+|------|----------------|
+| `the validator itself` (4 tests) | Accepts core-authored markup; flags a heading/comment level mismatch, a styled table cell, and HTML outside any block — proof the checker is live, not vacuous |
+| `a generated post saves as valid blocks` (5 tests) | No invalid, classic or unregistered block, and `serialize(parse(saved))` is byte-identical; heading levels 2–4 survive; no `style=` reaches the save; the table saves like a toolbar table; a second save is a no-op |
+| `markup Claude sometimes writes saves as valid blocks` (8 tests) | Validity for the six shapes that used to fail, then one test each that the heading `id` becomes `anchor`, a custom class becomes `className`, `start` reaches the delimiter, a code language class moves to the `<pre>`, a table `<caption>` and a figure caption land in `<figcaption>`, plus idempotency |
+| `everything else Claude might write saves as valid blocks` (3 tests) | Validity for h1–h6, legacy inline tags, entities, divs, bare text, mixed lists, three quote shapes, header-less / merged-cell / foot-section tables, `<pre>`, images, `<dl>`, `<details>`, sectioning tags; no listed phrase is lost; idempotency |
+| `a right-click AI result saves as valid blocks` (3 tests) | The same validity check for a rewritten table, list, and pair of paragraphs |
+
+## JS fixture validity sweep (30 tests)
+
+`Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture.
+
+| Test | What it checks |
+|------|----------------|
+| one test per fixture (27 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
+| `the sweep can fail` (3 tests) | A heading level mismatch and invented classic HTML are reported as new; classic prose Quill converts to blocks is not |
 
 ---
 

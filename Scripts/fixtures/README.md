@@ -5,7 +5,17 @@ serialize and `setContent` → `getContent` are lossless.
 
 `test-block-serializer.js` globs every `*.html` here, so dropping a new capture
 in adds it to the corpus. Anything that is not a fixture must not end in
-`.html`.
+`.html`. The `ai/` subdirectory is a separate corpus (see its README) and is not
+globbed.
+
+`test-fixture-validity.js` loads, edits and saves every fixture here and fails
+if WordPress's validator finds anything wrong with Quill's save that it did not
+already find in the fixture. Three fixtures fail that validator on their own and
+are covered only by that "nothing new" rule: `accordion-block.html` and
+`post-17780.html` hold the older accordion-heading shape (see below), and
+`settings-image-custom-link.html` has an `<img>` border style its block comment
+does not declare, which no WordPress version tested accepts. It is probably not
+an unedited capture.
 
 | File | What it is |
 |---|---|

@@ -75,6 +75,33 @@ import Testing
         #expect(result?.html.contains("<p>body</p>") == true)
     }
 
+    @Test func tableInlineStylesStripped() {
+        let input = """
+        TITLE: T
+
+        CONTENT:
+        <table style="border-collapse:collapse; width:100%;"><thead><tr style="background-color:#f2f2f2;"><th style="padding:10px; text-align:left;">Year</th></tr></thead><tbody><tr style='border:1px solid #ddd;'><td style="padding:10px;" class="num">2030</td></tr></tbody></table>
+        """
+        let html = AIPromptBuilder.parseGenerateResponse(input)?.html
+        #expect(html == #"<table class="has-fixed-layout"><thead><tr><th>Year</th></tr></thead><tbody><tr><td class="num">2030</td></tr></tbody></table>"#)
+    }
+
+    @Test func nonTableInlineStylesLeftAlone() {
+        let input = #"<p style="color:red">x</p><span style="font-weight:bold">y</span>"#
+        #expect(AIPromptBuilder.normalizeAITables(input) == input)
+    }
+
+    @Test func tableWithOwnClassKeepsIt() {
+        let input = #"<table class="custom"><tr><td>x</td></tr></table>"#
+        #expect(AIPromptBuilder.normalizeAITables(input) == input)
+    }
+
+    @Test func generatePromptForbidsInlineStyles() {
+        let prompt = AIPromptBuilder.generatePostPrompt(userPrompt: "x")
+        #expect(prompt.contains("<table>"))
+        #expect(prompt.contains("style attributes"))
+    }
+
     @Test func citeTagWrapperStrippedButTextKept() {
         // Web search citations wrap sentences in <cite index="..."> — the wrapper must be
         // removed but the sentence itself must survive in the generated post.

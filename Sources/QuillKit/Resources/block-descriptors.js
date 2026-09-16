@@ -10,6 +10,8 @@
 // owned set is this list plus every non-sourced, non-carried setting the
 // block-settings registry declares for the node.
 //
+// noAnchor marks the blocks whose block.json lacks the anchor support.
+//
 // A hand-written attrsFrom entry stays only for what the registry cannot
 // express. Anything the registry covers is derived by attrsFromSettings.
 
@@ -26,7 +28,13 @@ const BLOCK_DESCRIPTORS = {
     return level === 2 ? {} : { level }
   } },
   bulletList:  { blockName: 'core/list',         shape: 'container', childBlockName: 'core/list-item', attrsFrom: () => ({}) },
-  orderedList: { blockName: 'core/list',         shape: 'container', childBlockName: 'core/list-item', attrsFrom: () => ({ ordered: true }) },
+  orderedList: { blockName: 'core/list',         shape: 'container', childBlockName: 'core/list-item', attrsFrom: el => {
+    const attrs = { ordered: true }
+    const start = parseInt(el.getAttribute('start'), 10)
+    if (Number.isFinite(start) && start !== 1) attrs.start = start
+    if (el.hasAttribute('reversed')) attrs.reversed = true
+    return attrs
+  } },
   listItem:    { blockName: 'core/list-item',    shape: 'text',      childBlockName: null,             attrsFrom: () => ({}) },
   pullquote:    { blockName: 'core/pullquote',    shape: 'text', childBlockName: null, attrsFrom: () => ({}) },
   preformatted: { blockName: 'core/preformatted', shape: 'text', childBlockName: null, attrsFrom: () => ({}) },
@@ -44,12 +52,12 @@ const BLOCK_DESCRIPTORS = {
   buttonsBlock: { blockName: 'core/buttons', shape: 'container', childBlockName: 'core/button', attrsFrom: () => ({}) },
   buttonBlock:  { blockName: 'core/button',  shape: 'text',      childBlockName: null,          attrsFrom: () => ({}) },
   accordionBlock:   { blockName: 'core/accordion',         shape: 'container', childBlockName: 'core/accordion-item', ownedAttrs: ['autoclose'], attrsFrom: el => (el.hasAttribute('data-autoclose') ? { autoclose: true } : {}) },
-  accordionItem:    { blockName: 'core/accordion-item',    shape: 'container', childBlockName: null,                  attrsFrom: () => ({}) },
+  accordionItem:    { blockName: 'core/accordion-item',    shape: 'container', childBlockName: null,                  noAnchor: true, attrsFrom: () => ({}) },
   accordionHeading: { blockName: 'core/accordion-heading', shape: 'text',      childBlockName: null,                  attrsFrom: () => ({}) },
-  accordionPanel:   { blockName: 'core/accordion-panel',   shape: 'container', childBlockName: null,                  attrsFrom: () => ({}) },
+  accordionPanel:   { blockName: 'core/accordion-panel',   shape: 'container', childBlockName: null,                  noAnchor: true, attrsFrom: () => ({}) },
   tabsBlock: { blockName: 'core/tabs',       shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
-  tabList:   { blockName: 'core/tab-list',   shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
-  tabPanels: { blockName: 'core/tab-panels', shape: 'container', childBlockName: 'core/tab-panel', attrsFrom: () => ({}) },
+  tabList:   { blockName: 'core/tab-list',   shape: 'container', childBlockName: null,             noAnchor: true, attrsFrom: () => ({}) },
+  tabPanels: { blockName: 'core/tab-panels', shape: 'container', childBlockName: 'core/tab-panel', noAnchor: true, attrsFrom: () => ({}) },
   // A tab's label is stored twice by WordPress: as the tab-list button's text
   // and as this attribute. It is read back off the button so the two stay in sync.
   tabPanel:  { blockName: 'core/tab-panel',  shape: 'container', childBlockName: null, ownedAttrs: ['label'], attrsFrom: el => {

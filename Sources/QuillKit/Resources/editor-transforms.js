@@ -134,7 +134,25 @@ function wrapListItems(doc, listEl) {
 }
 
 function descriptorAttrs(nodeName, descriptor, el) {
-  return { ...descriptor.attrsFrom(el), ...blockDescriptorRegistry.attrsFromSettings(nodeName, el) }
+  return {
+    ...descriptor.attrsFrom(el),
+    ...blockDescriptorRegistry.attrsFromSettings(nodeName, el),
+    ...supportAttrs(descriptor, el),
+  }
+}
+
+// Classes a block's own save() or its style supports draw; anything else on the root is a custom class.
+const GENERATED_CLASS = /^(wp-block-|has-|is-(?!style-)|are-|items-justified-|wp-elements-|wp-container-|align(left|right|center|wide|full|none)$)/
+
+// core's anchor and customClassName supports, which a block from outside Gutenberg carries only in its markup.
+function supportAttrs(descriptor, el) {
+  const carried = carriedBlockAttrs(el) || {}
+  const attrs = {}
+  const id = el.getAttribute('id')
+  if (id && !descriptor.noAnchor && !('anchor' in carried)) attrs.anchor = id
+  const custom = (el.getAttribute('class') || '').split(/\s+/).filter(c => c && !GENERATED_CLASS.test(c))
+  if (custom.length && !('className' in carried)) attrs.className = custom.join(' ')
+  return attrs
 }
 
 function wrapInDelimiters(root, doc) {
@@ -672,10 +690,21 @@ function toWordPressHTML(html, doc) {
     if (!el.textContent.trim()) el.remove()
   })
 
-  // Code blocks → wp-block-code class on the <pre> wrapper
+  // Code blocks → wp-block-code class on the <pre> wrapper. core/code's save()
+  // draws no class on <code>, so a language class moves up to the block.
   div.querySelectorAll('pre').forEach(el => {
     if (el.classList.contains('wp-block-preformatted')) return
     el.classList.add('wp-block-code')
+    const code = el.querySelector(':scope > code[class]')
+    if (!code) return
+    el.className = mergeClassNames(el.className, code.className)
+    code.removeAttribute('class')
+  })
+
+  // Top-level bare text parses with its leading newline as a space, which a reload then drops.
+  div.querySelectorAll(':scope > p').forEach(p => {
+    const first = p.firstChild
+    if (first && first.nodeType === 3) first.textContent = first.textContent.replace(/^\s+/, '')
   })
 
   // Horizontal rules → wp-block-separator
@@ -734,7 +763,8 @@ function toWordPressHTML(html, doc) {
   div.querySelectorAll('table').forEach(table => {
     if (table.parentElement?.classList.contains('wp-block-table')) return
     const figure = doc.createElement('figure')
-    figure.className = mergeClassNames('wp-block-table', table.getAttribute('class'))
+    const blockClasses = String(table.getAttribute('class') || '').replace(/(^|\s)has-fixed-layout(?=\s|$)/g, ' ')
+    figure.className = mergeClassNames('wp-block-table', blockClasses)
     const fixedLayout = table.getAttribute('data-quill-fixed-layout') !== 'false'
     table.removeAttribute('data-quill-fixed-layout')
     const carried = table.getAttribute('data-quill-block-attrs')

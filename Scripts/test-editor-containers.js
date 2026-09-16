@@ -2280,6 +2280,13 @@ describe('the table figure, its classes and its caption', () => {
     assert.match(out, /<!-- wp:table \{"hasFixedLayout":false\} -->/)
     assert.match(out, /<figure class="wp-block-table"><table>/)
   })
+
+  // AI-generated tables arrive bare but tagged fixed-layout, and must save as the toolbar's do.
+  test('a bare fixed-layout table keeps the class on the table, not the figure', () => {
+    const out = save('<table class="has-fixed-layout"><tbody><tr><td>a</td></tr></tbody></table>')
+    assert.match(out, /<!-- wp:table -->/)
+    assert.match(out, /<figure class="wp-block-table"><table class="has-fixed-layout">/)
+  })
 })
 
 // Tiptap's schema has no concept of table sections, so a <tfoot> row parsed as

@@ -62,7 +62,7 @@ public struct AIPromptBuilder {
         TITLE: <the post title, plain text, no HTML>
 
         CONTENT:
-        <well-structured HTML using <h2> for major sections, <h3> for sub-sections, <p> for paragraphs, and <ul>/<li> for lists where appropriate. No markdown, no code fences, just clean HTML.>
+        <well-structured HTML using <h2> for major sections, <h3> for sub-sections, <p> for paragraphs, and <ul>/<li> for lists where appropriate, and <table>/<thead>/<tbody>/<tr>/<th>/<td> for tabular data. No style attributes, no markdown, no code fences, just clean HTML.>
         """
     }
 
@@ -106,8 +106,33 @@ public struct AIPromptBuilder {
             options: .regularExpression
         )
 
+        html = normalizeAITables(html)
+
         guard !title.isEmpty, !html.isEmpty else { return nil }
         return (title, html)
+    }
+
+    /// Cleans a selection operation's reply before it reaches the editor.
+    public static func cleanOperationResult(_ text: String) -> String {
+        var html = text
+        if let fenceRange = html.range(of: "```html", options: .caseInsensitive) {
+            html.removeSubrange(fenceRange)
+        }
+        html = html.replacingOccurrences(of: "```", with: "")
+        return normalizeAITables(html).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Strips Claude's inline table styles and gives new tables core's default fixed layout, as the toolbar does.
+    public static func normalizeAITables(_ html: String) -> String {
+        html.replacingOccurrences(
+            of: #"(<(?:table|thead|tbody|tfoot|tr|th|td|caption)\b[^>]*?)\s+style\s*=\s*(?:"[^"]*"|'[^']*')"#,
+            with: "$1",
+            options: [.regularExpression, .caseInsensitive]
+        ).replacingOccurrences(
+            of: #"<table\b(?![^>]*\bclass\s*=)"#,
+            with: #"<table class="has-fixed-layout""#,
+            options: [.regularExpression, .caseInsensitive]
+        )
     }
 
     /// User-turn prompt for a selection operation.
