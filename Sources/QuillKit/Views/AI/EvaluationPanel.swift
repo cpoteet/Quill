@@ -40,12 +40,7 @@ public struct EvaluationPanel: View {
                 .font(.system(size: 12, weight: .semibold))
             Spacer()
             Button("Close") { onClose() }
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                .controlSize(.small)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -121,12 +116,7 @@ public struct EvaluationPanel: View {
 
                 Divider()
                 Button("↺  Re-evaluate") { onReEvaluate() }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                    .controlSize(.small)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
@@ -142,12 +132,7 @@ public struct EvaluationPanel: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Retry") { onReEvaluate() }
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.wpAmber, in: RoundedRectangle(cornerRadius: 5))
-                .buttonStyle(.plain)
+                .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
@@ -179,11 +164,7 @@ private struct EvaluationFindingCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
-            .background(Color.wpAmber.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color.wpAmber.opacity(0.25), lineWidth: 1)
-            )
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
     }

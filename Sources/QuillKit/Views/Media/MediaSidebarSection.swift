@@ -32,14 +32,11 @@ struct MediaSidebarSection: View {
                     Button("Open Blog Settings") {
                         appState.isShowingPreferences = true
                     }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.orange)
-                    .buttonStyle(.plain)
+                    .font(.caption)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.08))
             }
 
             if !appState.mediaItems.isEmpty {
@@ -65,13 +62,7 @@ struct MediaSidebarSection: View {
                         Button("Load more") {
                             Task { await loadMoreMedia() }
                         }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.primary.opacity(0.05),
-                                    in: RoundedRectangle(cornerRadius: 7))
-                        .buttonStyle(.plain)
+                        .controlSize(.small)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                     }
@@ -194,13 +185,7 @@ struct MediaSidebarSection: View {
                 Task { await loadMedia() }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-                    .background(Color.primary.opacity(0.05),
-                                in: RoundedRectangle(cornerRadius: 6))
             }
-            .buttonStyle(.plain)
             .keyboardShortcut("r", modifiers: .command)
             .help("Refresh (⌘R)")
             .padding(.leading, 10)
@@ -216,14 +201,9 @@ struct MediaSidebarSection: View {
                 uploadFromDisk()
             } label: {
                 Label("New Media", systemImage: "plus")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.wpAmber)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.wpAmber.opacity(0.10),
-                                in: RoundedRectangle(cornerRadius: 7))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
             .disabled(isUploading)
             .keyboardShortcut("n", modifiers: .command)
             .help("Upload Media (⌘N)")

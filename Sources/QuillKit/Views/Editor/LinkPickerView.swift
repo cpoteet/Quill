@@ -90,12 +90,8 @@ struct LinkPickerView: View {
                 )
 
                 Button("Apply") { model.onApply(model.fieldText) }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Self.amber.opacity(model.fieldText.isEmpty ? 0.45 : 1))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                     .disabled(model.fieldText.isEmpty)
             }
             .padding(8)
@@ -121,9 +117,7 @@ struct LinkPickerView: View {
                 Divider()
                 HStack {
                     Button("Remove link") { model.onRemove() }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .controlSize(.small)
                     Spacer()
                 }
                 .padding(.horizontal, 10)

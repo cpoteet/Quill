@@ -15,7 +15,6 @@ struct SamplePostPickerSheet: View {
                 Spacer()
                 Button("Done") { onDone() }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.wpAmber)
             }
             .padding()
 

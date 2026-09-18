@@ -12,7 +12,7 @@ struct AboutView: View {
                     .padding(.bottom, 4)
 
                 Text("Quill")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(.title2.weight(.semibold))
 
                 Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")")
                     .font(.system(size: 12))

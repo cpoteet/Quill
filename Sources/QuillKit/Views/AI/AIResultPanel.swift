@@ -146,37 +146,17 @@ private struct AIResultBarView: View {
         HStack(spacing: 8) {
             Button(action: onAccept) {
                 Label("Accept", systemImage: "checkmark")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white)
-                    .fixedSize()
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.wpAmber, in: RoundedRectangle(cornerRadius: 5))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderedProminent)
 
             Button(action: onDiscard) {
                 Label("Discard", systemImage: "xmark")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color(NSColor.labelColor))
-                    .fixedSize()
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color(NSColor.controlColor), in: RoundedRectangle(cornerRadius: 5))
             }
-            .buttonStyle(.plain)
         }
+        .controlSize(.small)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5)
-                )
-        )
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
         .padding(6)
     }
 }

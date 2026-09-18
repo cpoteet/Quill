@@ -135,10 +135,8 @@ struct MediaDetailView: View {
                     NSPasteboard.general.setString(media.sourceURL, forType: .string)
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .help("Copy URL")
             }
         }
@@ -155,10 +153,7 @@ struct MediaDetailView: View {
                 .lineLimit(2...4)
                 .textFieldStyle(.plain)
                 .padding(4)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(Color.secondary.opacity(0.3))
-                )
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
                 .onSubmit { commitAltText() }
                 .focused($altFieldFocused)
                 .onChange(of: altFieldFocused) { focused in

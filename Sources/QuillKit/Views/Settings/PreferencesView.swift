@@ -1,17 +1,5 @@
 import SwiftUI
 
-private extension View {
-    func inputFieldStyle() -> some View {
-        self
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
-            )
-    }
-}
-
 public struct PreferencesView: View {
 
     // WordPress credentials
@@ -46,54 +34,22 @@ public struct PreferencesView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
+        Form {
+            Section {
+                TextField("Site URL", text: $siteURL)
+                TextField("Username", text: $username)
+                SecureField("Application Password", text: $appPassword)
+            } header: {
                 Text("WordPress Credentials")
-                    .font(.headline)
-                VStack(spacing: 0) {
-                    formRow(label: "Site URL") {
-                        TextField("", text: $siteURL)
-                            .textFieldStyle(.plain)
-                            .inputFieldStyle()
-                    }
-                    Divider().padding(.leading, 12)
-                    formRow(label: "Username") {
-                        TextField("", text: $username)
-                            .textFieldStyle(.plain)
-                            .inputFieldStyle()
-                    }
-                    Divider().padding(.leading, 12)
-                    formRow(label: "Application Password") {
-                        SecureField("", text: $appPassword)
-                            .textFieldStyle(.plain)
-                            .inputFieldStyle()
-                    }
-                }
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-                )
-
-                Text("Generate an application password in WordPress Admin → Users → Profile.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
+            } footer: {
+                Text("Generate an application password in WordPress Admin \u{2192} Users \u{2192} Profile.")
             }
 
-            settingSection(title: "AI Writing") {
-                formRow(label: "Anthropic API Key") {
-                    SecureField("", text: $aiAPIKey)
-                        .textFieldStyle(.plain)
-                        .inputFieldStyle()
-                }
-                Divider().padding(.leading, 12)
-                formRow(label: "Writing Style") {
+            Section("AI Writing") {
+                SecureField("Anthropic API Key", text: $aiAPIKey)
+                LabeledContent("Writing Style") {
                     HStack(spacing: 8) {
                         Button("Choose Posts") { isSamplePickerOpen = true }
-                            .buttonStyle(.bordered)
-                            .tint(Color.wpAmber)
                             .disabled(posts.isEmpty)
                         Text(aiSamplePostIDs.isEmpty
                              ? "No samples selected"
@@ -102,77 +58,46 @@ public struct PreferencesView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Divider().padding(.leading, 12)
-                formRow(label: "Web Search") {
-                    Toggle("", isOn: $aiWebSearchEnabled)
-                        .toggleStyle(.switch)
-                        .tint(Color.wpAmber)
-                }
-            }
-            .sheet(isPresented: $isSamplePickerOpen) {
-                SamplePostPickerSheet(
-                    posts: posts,
-                    selectedIDs: $aiSamplePostIDs,
-                    onDone: { isSamplePickerOpen = false }
-                )
+                Toggle("Web Search", isOn: $aiWebSearchEnabled)
             }
 
             if let error = saveError {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                    .fixedSize(horizontal: false, vertical: true)
+                Section {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-
+        }
+        .formStyle(.grouped)
+        .safeAreaInset(edge: .bottom) {
             HStack {
                 if isAnalyzing {
-                    Text("Analyzing writing style…").foregroundStyle(.secondary).font(.caption)
+                    Text("Analyzing writing style\u{2026}").foregroundStyle(.secondary).font(.caption)
                 } else if saveSuccess {
-                    Text("Saved.").foregroundStyle(Color.wpAmber).font(.caption)
+                    Text("Saved.").foregroundStyle(.secondary).font(.caption)
                 }
                 Spacer()
                 Button("Save") { Task { await saveAll() } }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color.wpAmber)
                     .disabled(isSaving || isAnalyzing)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .padding(20)
-        .frame(width: 440)
+        .frame(width: 480, height: 520)
+        .sheet(isPresented: $isSamplePickerOpen) {
+            SamplePostPickerSheet(
+                posts: posts,
+                selectedIDs: $aiSamplePostIDs,
+                onDone: { isSamplePickerOpen = false }
+            )
+        }
         .onAppear {
             loadExisting()
             loadExistingAI()
         }
-    }
-
-    @ViewBuilder
-    private func settingSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.headline)
-            VStack(spacing: 0) {
-                content()
-            }
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func formRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .frame(minWidth: 140, alignment: .leading)
-                .foregroundStyle(.primary)
-            content()
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 36)
     }
 
     private func loadExistingAI() {
