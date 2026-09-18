@@ -72,193 +72,156 @@ public struct PostEditorView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                editorHeader
-                // The alarm sits above the save error, which refers to it as
-                // "the warning above".
-                if let alarm = blockRiskAlarm { blockRiskBanner(alarm) }
-                if saveError != nil { errorBanner }
-                ZStack {
-                    EditorView(
-                        html: $htmlContent,
-                        footnotes: footnotesMeta,
-                        contentSyncPending: $contentSyncPending,
-                        onContentChange: { newHTML in
-                            htmlContent = newHTML
-                            scheduleAutosave()
-                        },
-                        onEditorReady: {
-                            withAnimation(.easeOut(duration: 0.15)) { editorReady = true }
-                        },
-                        onInsertImage: {
-                            showImagePicker = true
-                        },
-                        onInsertGallery: {
-                            showGallerySheet = true
-                        },
-                        onImageFilesDropped: { urls in
-                            // Serialized: overlapping drops share `uploadStatus`, so a second
-                            // batch must not clear the pill while the first is still uploading.
-                            let previous = dropTask
-                            dropTask = Task {
-                                await previous?.value
-                                await handleDroppedImages(urls)
-                            }
-                        },
-                        onDropRejected: { message in
-                            presentToast(message, isError: true)
-                        },
-                        onSearchLinks: { query in
-                            guard let creds = appState.credentials else { return [] }
-                            return try await WordPressClient(credentials: creds).searchLinks(query: query)
-                        },
-                        onRequestMediaSizes: { mediaId in
-                            if let cached = appState.mediaItems.first(where: { $0.id == mediaId }) {
-                                return cached
-                            }
-                            guard let creds = appState.credentials else { return nil }
-                            let fetched = try? await WordPressClient(credentials: creds).fetchMediaItem(id: mediaId)
-                            if let fetched {
-                                await MainActor.run { appState.mediaItems.append(fetched) }
-                            }
-                            return fetched
-                        },
-                        onSelectionChanged: { rect in
-                            currentSelectionRect = rect
-                            handleSelectionChange(rect: rect)
-                        },
-                        onStatsChanged: { words, characters in
-                            stats = PostStats(words: words, characters: characters)
-                        },
-                        onBlocksAtRisk: { names in
-                            blockRiskAlarm = Self.nextAlarm(from: blockRiskAlarm, names: names)
-                        },
-                        onFootnotesChange: { footnotesMeta = $0 },
-                        onWebViewCreated: { webView in
-                            editorWebView = webView
-                        },
-                        onAIOperation: { operation in
-                            Task { await executeAIOperation(operation) }
-                        },
-                        onTriggerGenerate: {
-                            let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                            let titleIsEmpty = title.isEmpty || title == "Untitled"
-                            let contentIsEmpty = titleIsEmpty && (trimmed.isEmpty || trimmed == "<p></p>")
-                            if contentIsEmpty {
-                                isAISheetOpen = true
-                            } else {
-                                showAIReplaceAlert = true
-                            }
-                        },
-                        onTriggerEvaluate: {
-                            if !isEvaluating {
-                                isSettingsOpen = false
-                                showEvaluationPanel = true
-                                if evaluationResult == nil && evaluationError == nil {
-                                    evaluationTask = Task { await executeEvaluation() }
-                                }
-                            }
-                        },
-                        aiEnabled: appState.aiEnabled,
-                        hasTextSelection: hasTextSelection
-                    )
-                    if !editorReady || !contentLoaded {
-                        VStack(spacing: 10) {
-                            ProgressView()
-                            Text("Loading editor…")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.tertiary)
+        VStack(spacing: 0) {
+            editorHeader
+            // The alarm sits above the save error, which refers to it as
+            // "the warning above".
+            if let alarm = blockRiskAlarm { blockRiskBanner(alarm) }
+            if saveError != nil { errorBanner }
+            ZStack {
+                EditorView(
+                    html: $htmlContent,
+                    footnotes: footnotesMeta,
+                    contentSyncPending: $contentSyncPending,
+                    onContentChange: { newHTML in
+                        htmlContent = newHTML
+                        scheduleAutosave()
+                    },
+                    onEditorReady: {
+                        withAnimation(.easeOut(duration: 0.15)) { editorReady = true }
+                    },
+                    onInsertImage: {
+                        showImagePicker = true
+                    },
+                    onInsertGallery: {
+                        showGallerySheet = true
+                    },
+                    onImageFilesDropped: { urls in
+                        // Serialized: overlapping drops share `uploadStatus`, so a second
+                        // batch must not clear the pill while the first is still uploading.
+                        let previous = dropTask
+                        dropTask = Task {
+                            await previous?.value
+                            await handleDroppedImages(urls)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.wpPanelBg)
-                        .transition(.opacity)
+                    },
+                    onDropRejected: { message in
+                        presentToast(message, isError: true)
+                    },
+                    onSearchLinks: { query in
+                        guard let creds = appState.credentials else { return [] }
+                        return try await WordPressClient(credentials: creds).searchLinks(query: query)
+                    },
+                    onRequestMediaSizes: { mediaId in
+                        if let cached = appState.mediaItems.first(where: { $0.id == mediaId }) {
+                            return cached
+                        }
+                        guard let creds = appState.credentials else { return nil }
+                        let fetched = try? await WordPressClient(credentials: creds).fetchMediaItem(id: mediaId)
+                        if let fetched {
+                            await MainActor.run { appState.mediaItems.append(fetched) }
+                        }
+                        return fetched
+                    },
+                    onSelectionChanged: { rect in
+                        currentSelectionRect = rect
+                        handleSelectionChange(rect: rect)
+                    },
+                    onStatsChanged: { words, characters in
+                        stats = PostStats(words: words, characters: characters)
+                    },
+                    onBlocksAtRisk: { names in
+                        blockRiskAlarm = Self.nextAlarm(from: blockRiskAlarm, names: names)
+                    },
+                    onFootnotesChange: { footnotesMeta = $0 },
+                    onWebViewCreated: { webView in
+                        editorWebView = webView
+                    },
+                    onAIOperation: { operation in
+                        Task { await executeAIOperation(operation) }
+                    },
+                    onTriggerGenerate: {
+                        let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let titleIsEmpty = title.isEmpty || title == "Untitled"
+                        let contentIsEmpty = titleIsEmpty && (trimmed.isEmpty || trimmed == "<p></p>")
+                        if contentIsEmpty {
+                            isAISheetOpen = true
+                        } else {
+                            showAIReplaceAlert = true
+                        }
+                    },
+                    onTriggerEvaluate: {
+                        if !isEvaluating {
+                            isSettingsOpen = false
+                            showEvaluationPanel = true
+                            if evaluationResult == nil && evaluationError == nil {
+                                evaluationTask = Task { await executeEvaluation() }
+                            }
+                        }
+                    },
+                    aiEnabled: appState.aiEnabled,
+                    hasTextSelection: hasTextSelection
+                )
+                if !editorReady || !contentLoaded {
+                    VStack(spacing: 10) {
+                        ProgressView()
+                        Text("Loading editor…")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
                     }
-                }
-                .sheet(isPresented: $showImagePicker) {
-                    MediaPickerView(onSelect: { selected in
-                        // Ensure item is in appState so requestMediaSizes can find it
-                        if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
-                            appState.mediaItems.append(selected)
-                        }
-                        var info: [String: Any] = [
-                            "url":     selected.sourceURL,
-                            "mediaId": selected.id,
-                        ]
-                        if let w = selected.mediaDetails?.width  { info["width"]  = w }
-                        if let h = selected.mediaDetails?.height { info["height"] = h }
-                        if !selected.altText.isEmpty { info["alt"] = selected.altText }
-                        NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
-                        showImagePicker = false
-                    }, onCancel: {
-                        showImagePicker = false
-                    })
-                    .environmentObject(appState)
-                    .frame(minWidth: 600, minHeight: 400)
-                }
-                .sheet(isPresented: $showGallerySheet) {
-                    GallerySheet(onInsert: { selections, columns, cropped, linkTo, sizeSlug in
-                        let imagePayload: [[String: Any]] = selections.map { sel in
-                            [
-                                "id": sel.media.id,
-                                "url": sel.media.sizedURL(for: sizeSlug),
-                                "fullUrl": sel.media.sourceURL,
-                                "alt": sel.alt,
-                                "caption": sel.caption,
-                            ]
-                        }
-                        let info: [String: Any] = [
-                            "images": imagePayload,
-                            "columns": columns,
-                            "cropped": cropped,
-                            "linkTo": linkTo,
-                            "sizeSlug": sizeSlug,
-                        ]
-                        NotificationCenter.default.post(name: .insertGalleryData, object: nil, userInfo: info)
-                        showGallerySheet = false
-                    }, onCancel: {
-                        showGallerySheet = false
-                    })
-                    .environmentObject(appState)
-                    .frame(minWidth: 720, minHeight: 480)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.wpPanelBg)
+                    .transition(.opacity)
                 }
             }
-
-            if showEvaluationPanel {
-                SoftPanelBoundary()
-                    .transition(.move(edge: .trailing))
-                EvaluationPanel(
-                    state: evaluationPanelState,
-                    onClose: {
-                        showEvaluationPanel = false
-                    },
-                    onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
-                    onFindingSelected: { quote in
-                        guard let data = try? JSONEncoder().encode(quote),
-                              let json = String(data: data, encoding: .utf8) else { return }
-                        if let wv = editorWebView { wv.window?.makeFirstResponder(wv) }
-                        editorWebView?.evaluateJavaScript(
-                            "window.findAndSelectText(\(json))", completionHandler: nil)
+            .sheet(isPresented: $showImagePicker) {
+                MediaPickerView(onSelect: { selected in
+                    // Ensure item is in appState so requestMediaSizes can find it
+                    if !appState.mediaItems.contains(where: { $0.id == selected.id }) {
+                        appState.mediaItems.append(selected)
                     }
-                )
-                .transition(.move(edge: .trailing))
-            } else if isSettingsOpen {
-                SoftPanelBoundary()
-                    .transition(.move(edge: .trailing))
-                PostSettingsPanel(
-                    settings: $settings,
-                    postType: postType,
-                    isLocalDraft: !isRemote,
-                    categories: appState.categories,
-                    tags: appState.tags,
-                    pages: availableParentPages,
-                    stats: stats
-                )
-                .transition(.move(edge: .trailing))
+                    var info: [String: Any] = [
+                        "url":     selected.sourceURL,
+                        "mediaId": selected.id,
+                    ]
+                    if let w = selected.mediaDetails?.width  { info["width"]  = w }
+                    if let h = selected.mediaDetails?.height { info["height"] = h }
+                    if !selected.altText.isEmpty { info["alt"] = selected.altText }
+                    NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+                    showImagePicker = false
+                }, onCancel: {
+                    showImagePicker = false
+                })
+                .environmentObject(appState)
+                .frame(minWidth: 600, minHeight: 400)
+            }
+            .sheet(isPresented: $showGallerySheet) {
+                GallerySheet(onInsert: { selections, columns, cropped, linkTo, sizeSlug in
+                    let imagePayload: [[String: Any]] = selections.map { sel in
+                        [
+                            "id": sel.media.id,
+                            "url": sel.media.sizedURL(for: sizeSlug),
+                            "fullUrl": sel.media.sourceURL,
+                            "alt": sel.alt,
+                            "caption": sel.caption,
+                        ]
+                    }
+                    let info: [String: Any] = [
+                        "images": imagePayload,
+                        "columns": columns,
+                        "cropped": cropped,
+                        "linkTo": linkTo,
+                        "sizeSlug": sizeSlug,
+                    ]
+                    NotificationCenter.default.post(name: .insertGalleryData, object: nil, userInfo: info)
+                    showGallerySheet = false
+                }, onCancel: {
+                    showGallerySheet = false
+                })
+                .environmentObject(appState)
+                .frame(minWidth: 720, minHeight: 480)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isSettingsOpen)
-        .animation(.easeInOut(duration: 0.2), value: showEvaluationPanel)
         .uploadStatus($uploadStatus)
         .toast(message: $toastMessage, isError: $toastIsError, token: toastToken)
         .sheet(isPresented: $showDiscardAlert) {
@@ -374,6 +337,18 @@ public struct PostEditorView: View {
         .onChange(of: showEvaluationPanel) { open in
             editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
         }
+        .inspector(isPresented: Binding(
+            get: { isSettingsOpen || showEvaluationPanel },
+            set: { newValue in
+                if !newValue {
+                    isSettingsOpen = false
+                    showEvaluationPanel = false
+                }
+            }
+        )) {
+            inspectorContent
+                .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+        }
         .toolbar {
             ToolbarItem {
                 Circle()
@@ -440,6 +415,34 @@ public struct PostEditorView: View {
             guard newValue else { return }
             appState.triggerPasteMarkdown = false
             pasteAsMarkdown()
+        }
+    }
+
+    @ViewBuilder
+    private var inspectorContent: some View {
+        if showEvaluationPanel {
+            EvaluationPanel(
+                state: evaluationPanelState,
+                onClose: { showEvaluationPanel = false },
+                onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
+                onFindingSelected: { quote in
+                    guard let data = try? JSONEncoder().encode(quote),
+                          let json = String(data: data, encoding: .utf8) else { return }
+                    if let wv = editorWebView { wv.window?.makeFirstResponder(wv) }
+                    editorWebView?.evaluateJavaScript(
+                        "window.findAndSelectText(\(json))", completionHandler: nil)
+                }
+            )
+        } else {
+            PostSettingsPanel(
+                settings: $settings,
+                postType: postType,
+                isLocalDraft: !isRemote,
+                categories: appState.categories,
+                tags: appState.tags,
+                pages: availableParentPages,
+                stats: stats
+            )
         }
     }
 
