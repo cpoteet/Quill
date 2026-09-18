@@ -170,7 +170,6 @@ public struct PostEditorView: View {
                             .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.wpPanelBg)
                     .transition(.opacity)
                 }
             }
@@ -517,7 +516,7 @@ public struct PostEditorView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background((danger ? Color.red : Color.secondary).opacity(0.08))
-        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     private func boldingNames(in text: String, names: [String]) -> AttributedString {
@@ -555,7 +554,7 @@ public struct PostEditorView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(Color.wpAmber.opacity(0.08))
-        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     private var titleField: some View {

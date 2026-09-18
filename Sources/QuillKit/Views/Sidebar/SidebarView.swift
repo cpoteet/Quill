@@ -92,7 +92,7 @@ public struct SidebarView: View {
                 listErrorRow(error)
             }
             ForEach(appState.filteredItems) { item in
-                PostListRow(item: item, isSelected: appState.selectedItem == item)
+                PostListRow(item: item)
                     .tag(item)
                     .contextMenu {
                         Button(role: .destructive) {

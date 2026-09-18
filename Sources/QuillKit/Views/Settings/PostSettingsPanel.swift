@@ -113,8 +113,6 @@ public struct PostSettingsPanel: View {
             .padding(16)
         }
         .frame(width: 260)
-        .background(WarmSidebarBackground())
-        .overlay(alignment: .leading) { PanelInteriorFade(from: .leading) }
     }
 
     // MARK: - Local draft note

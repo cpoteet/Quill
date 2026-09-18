@@ -28,7 +28,6 @@ struct MediaDetailView: View {
             metadataPanel
                 .frame(width: 260)
         }
-        .background(Color.wpPanelBg)
     }
 
     // MARK: - Image preview
@@ -54,7 +53,6 @@ struct MediaDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.wpPanelBg)
     }
 
     private var previewUnavailable: some View {
@@ -103,7 +101,6 @@ struct MediaDetailView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.wpPanelBg)
     }
 
     @ViewBuilder

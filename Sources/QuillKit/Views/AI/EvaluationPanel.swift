@@ -28,12 +28,10 @@ public struct EvaluationPanel: View {
     public var body: some View {
         VStack(spacing: 0) {
             header
-            SoftHorizontalDivider()
+            Divider()
             content
         }
         .frame(width: 260)
-        .background(WarmSidebarBackground())
-        .overlay(alignment: .leading) { PanelInteriorFade(from: .leading) }
     }
 
     private var header: some View {
@@ -51,7 +49,6 @@ public struct EvaluationPanel: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(WarmPanelHeaderBackground())
     }
 
     @ViewBuilder
@@ -94,7 +91,7 @@ public struct EvaluationPanel: View {
                     .lineSpacing(2)
                     .padding(16)
 
-                SoftHorizontalDivider()
+                Divider()
 
                 let countLabel = result.findings.isEmpty
                     ? "No specific issues found"
@@ -122,7 +119,7 @@ public struct EvaluationPanel: View {
                     .padding(.bottom, 12)
                 }
 
-                SoftHorizontalDivider()
+                Divider()
                 Button("↺  Re-evaluate") { onReEvaluate() }
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)

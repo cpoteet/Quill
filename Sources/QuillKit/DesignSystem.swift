@@ -1,32 +1,7 @@
 import SwiftUI
 
-extension NSColor {
-    static let wpSidebarBg = NSColor(name: nil) { appearance in
-        switch appearance.bestMatch(from: [.aqua, .darkAqua]) {
-        case .darkAqua: return .underPageBackgroundColor
-        default: return NSColor(red: 242 / 255, green: 241 / 255, blue: 239 / 255, alpha: 1)
-        }
-    }
-
-    /// Window background, which is what the transparent title bar renders.
-    ///
-    /// The panels below paint `wpSidebarBg` *plus* the `WarmPanelBackground` shimmer
-    /// — a diagonal gradient, white at 10–14% from the top-left, fading to amber and
-    /// then clear toward the bottom-right. So the panel edge meeting the title bar is
-    /// not one color: it runs lightest at the left and settles toward the raw token
-    /// across the width. A flat bar can only match the average, which lands on the
-    /// token itself. (Tuned against the live window, 2026-07-24.)
-    static let wpTitleBarBg = wpSidebarBg
-}
-
 extension Color {
     static let wpAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
-
-    /// Warm off-white sidebar background (#F2F1EF in light, system in dark)
-    static let wpSidebarBg = Color(NSColor.wpSidebarBg)
-
-    /// Same as wpSidebarBg — kept as a separate token so call sites don't need updating
-    static let wpPanelBg = wpSidebarBg
 
     /// Maps a PostItem.statusBadge string to a display color.
     static func statusColor(_ badge: String) -> Color {
@@ -40,110 +15,6 @@ extension Color {
         case "local-page": return Color(nsColor: .systemIndigo)
         default:           return Color(.tertiaryLabelColor)
         }
-    }
-}
-
-// MARK: - Surfaces
-
-private struct WarmPanelBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    var color: Color
-    var shimmerOpacity: Double
-    var accentOpacity: Double
-
-    var body: some View {
-        ZStack {
-            color
-            LinearGradient(
-                colors: [
-                    // The white stop is light-mode only. Over the near-black dark
-                    // background it reads as haze rather than shimmer, and it lifts the
-                    // panels away from the flat title bar (which paints wpTitleBarBg with
-                    // no gradient), opening a visible seam under the window chrome.
-                    colorScheme == .dark ? .clear : Color.white.opacity(shimmerOpacity),
-                    Color.wpAmber.opacity(accentOpacity),
-                    Color.clear,
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-}
-
-struct WarmSidebarBackground: View {
-    var body: some View {
-        WarmPanelBackground(color: .wpSidebarBg, shimmerOpacity: 0.14, accentOpacity: 0.018)
-    }
-}
-
-struct WarmPanelHeaderBackground: View {
-    var body: some View {
-        WarmPanelBackground(color: .wpPanelBg, shimmerOpacity: 0.10, accentOpacity: 0.014)
-    }
-}
-
-struct SoftPanelBoundary: View {
-    var body: some View {
-        Color.clear
-            .frame(width: 1)
-            .overlay(alignment: .leading) {
-                ZStack(alignment: .leading) {
-                    LinearGradient(
-                        colors: [
-                            Color.primary.opacity(0.035),
-                            Color.primary.opacity(0.012),
-                            Color.clear,
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.055))
-                        .frame(width: 0.5)
-                }
-                .frame(width: 8)
-            }
-            .allowsHitTesting(false)
-        }
-}
-
-struct SoftHorizontalDivider: View {
-    var body: some View {
-        Rectangle()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.primary.opacity(0.04),
-                        Color.primary.opacity(0.095),
-                        Color.primary.opacity(0.04),
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(height: 0.5)
-            .allowsHitTesting(false)
-    }
-}
-
-struct PanelInteriorFade: View {
-    var from: UnitPoint
-    private var to: UnitPoint { from == .leading ? .trailing : .leading }
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color.primary.opacity(0.028),
-                Color.primary.opacity(0.010),
-                Color.clear,
-            ],
-            startPoint: from,
-            endPoint: to
-        )
-        .frame(width: 18)
-        .allowsHitTesting(false)
     }
 }
 

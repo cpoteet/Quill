@@ -95,7 +95,7 @@ struct MediaSidebarSection: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
 
-            SoftHorizontalDivider()
+            Divider()
             bottomToolbar
         }
         .task {

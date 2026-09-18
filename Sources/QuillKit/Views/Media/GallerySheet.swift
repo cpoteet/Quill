@@ -44,10 +44,9 @@ public struct GallerySheet: View {
     public var body: some View {
         VStack(spacing: 0) {
             toolbar
-            SoftHorizontalDivider()
+            Divider()
             HStack(spacing: 0) {
                 mediaPane
-                SoftPanelBoundary()
                 selectionPane
             }
         }
@@ -262,7 +261,7 @@ public struct GallerySheet: View {
             }
             .frame(maxHeight: .infinity, alignment: .top)
 
-            SoftHorizontalDivider()
+            Divider()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
 
