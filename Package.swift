@@ -1,9 +1,9 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.4
 import PackageDescription
 
 let package = Package(
     name: "Quill",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v27)],
     products: [
         .executable(name: "Quill", targets: ["Quill"]),
     ],
@@ -15,7 +15,8 @@ let package = Package(
         .executableTarget(
             name: "Quill",
             dependencies: ["QuillKit"],
-            path: "Sources/Quill"
+            path: "Sources/Quill",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .target(
             name: "QuillKit",
@@ -23,7 +24,8 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/QuillKit",
-            resources: [.copy("Resources")]
+            resources: [.copy("Resources")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
             name: "QuillTests",
@@ -31,7 +33,8 @@ let package = Package(
                 "QuillKit",
                 .product(name: "Testing", package: "swift-testing"),
             ],
-            path: "Tests/QuillTests"
+            path: "Tests/QuillTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
 )

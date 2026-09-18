@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_NAME="Quill"
 BUNDLE_ID="com.quill.app"
-MIN_MACOS="13.0"
+MIN_MACOS="27.0"
 
 echo "▶ Closing $APP_NAME..."
 pkill -x "$APP_NAME" 2>/dev/null && sleep 0.5 || true
