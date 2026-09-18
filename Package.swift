@@ -15,8 +15,7 @@ let package = Package(
         .executableTarget(
             name: "Quill",
             dependencies: ["QuillKit"],
-            path: "Sources/Quill",
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            path: "Sources/Quill"
         ),
         .target(
             name: "QuillKit",
@@ -24,8 +23,7 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/QuillKit",
-            resources: [.copy("Resources")],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            resources: [.copy("Resources")]
         ),
         .testTarget(
             name: "QuillTests",
@@ -33,8 +31,7 @@ let package = Package(
                 "QuillKit",
                 .product(name: "Testing", package: "swift-testing"),
             ],
-            path: "Tests/QuillTests",
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            path: "Tests/QuillTests"
         ),
     ]
 )

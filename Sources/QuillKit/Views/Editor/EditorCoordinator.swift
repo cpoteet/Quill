@@ -238,7 +238,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     /// URL lives at the top-level `source_url` instead) — mirrors the fallback
     /// `WPMedia.sizedURL(for:)` already applies for the same quirk. Returns nil when there is no
     /// usable source URL at all.
-    static func mediaSizesDict(for media: WPMedia) -> [String: [String: Any]]? {
+    nonisolated static func mediaSizesDict(for media: WPMedia) -> [String: [String: Any]]? {
         guard !media.sourceURL.isEmpty else { return nil }
         var dict: [String: [String: Any]] = [:]
         for (name, size) in media.mediaDetails?.sizes ?? [:] {
@@ -339,7 +339,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
     /// Returns true for URL schemes that are safe to open in the system browser.
     /// Restricts to http, https, and mailto — blocks file://, javascript:, ftp:, etc.
-    static func isAllowedExternalURL(_ url: URL) -> Bool {
+    nonisolated static func isAllowedExternalURL(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased() else { return false }
         return scheme == "http" || scheme == "https" || scheme == "mailto"
     }

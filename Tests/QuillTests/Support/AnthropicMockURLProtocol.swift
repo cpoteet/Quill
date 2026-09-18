@@ -4,7 +4,7 @@ import Foundation
 /// doesn't conflict with MockURLProtocol used by WordPressClientTests — the two @Suite(.serialized)
 /// suites run concurrently with each other even though each is internally serialized.
 final class AnthropicMockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

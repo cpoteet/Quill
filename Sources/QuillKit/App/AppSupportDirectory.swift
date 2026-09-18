@@ -11,7 +11,7 @@ import Foundation
 enum AppSupportDirectory {
     /// When non-nil, all stores use this directory instead of the real Application Support
     /// path. Set by tests to isolate from (and avoid destroying) real user credentials.
-    static var override: URL?
+    nonisolated(unsafe) static var override: URL?
 
     /// True when the process was launched by `swift test` or Xcode's test runner.
     /// Used by the safety guard in `directory()` to catch missing test isolation early.

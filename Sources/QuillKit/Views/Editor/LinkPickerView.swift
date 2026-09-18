@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 final class LinkPickerModel: ObservableObject {
     @Published var fieldText: String
     @Published var results: [LinkSearchResult] = []
@@ -40,13 +41,11 @@ final class LinkPickerModel: ObservableObject {
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            await MainActor.run { self.isSearching = true }
+            isSearching = true
             let found = (try? await onSearch(text)) ?? []
             guard !Task.isCancelled else { return }
-            await MainActor.run {
-                self.results = found
-                self.isSearching = false
-            }
+            results = found
+            isSearching = false
         }
     }
 }

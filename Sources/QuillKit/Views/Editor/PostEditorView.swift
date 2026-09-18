@@ -627,7 +627,7 @@ public struct PostEditorView: View {
 
     // The editor reports its at-risk list on every load and code-view edit,
     // empty included, so a post the user repaired can clear its own banner.
-    static func nextAlarm(from current: BlockRiskAlarm?, names: [String]) -> BlockRiskAlarm? {
+    nonisolated static func nextAlarm(from current: BlockRiskAlarm?, names: [String]) -> BlockRiskAlarm? {
         guard !names.isEmpty else { return nil }
         if let current, current.names == names, current.stage != .unacknowledged { return current }
         return BlockRiskAlarm(names: names, stage: .unacknowledged)
@@ -1089,20 +1089,20 @@ public struct PostEditorView: View {
         }
     }
 
-    static func uploadStatusText(index: Int, total: Int) -> String {
+    nonisolated static func uploadStatusText(index: Int, total: Int) -> String {
         total == 1 ? "Uploading image…" : "Uploading image \(index) of \(total)…"
     }
 
-    static func uploadSuccessMessage(inserted: Int, didConvert: Bool) -> String {
+    nonisolated static func uploadSuccessMessage(inserted: Int, didConvert: Bool) -> String {
         guard inserted == 1 else { return "\(inserted) images inserted" }
         return didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
     }
 
-    static func uploadFailureMessage(failed: Int, total: Int, firstError: String) -> String {
+    nonisolated static func uploadFailureMessage(failed: Int, total: Int, firstError: String) -> String {
         total == 1 ? "Upload failed: \(firstError)" : "\(failed) of \(total) images failed to upload"
     }
 
-    static func previewURL(from link: String) -> URL? {
+    nonisolated static func previewURL(from link: String) -> URL? {
         guard var components = URLComponents(string: link) else { return nil }
         var items = components.queryItems ?? []
         items.removeAll { $0.name == "preview" }
@@ -1111,7 +1111,7 @@ public struct PostEditorView: View {
         return components.url
     }
 
-    static func publishButtonTitle(status: PostStatus, isPublishedRemote: Bool) -> String {
+    nonisolated static func publishButtonTitle(status: PostStatus, isPublishedRemote: Bool) -> String {
         switch status {
         case .draft: return "Publish Draft"
         case .future: return "Schedule"
@@ -1121,7 +1121,7 @@ public struct PostEditorView: View {
         }
     }
 
-    static func toastMessage(forStatus status: PostStatus) -> String {
+    nonisolated static func toastMessage(forStatus status: PostStatus) -> String {
         switch status {
         case .publish: return "Published"
         case .future: return "Scheduled"

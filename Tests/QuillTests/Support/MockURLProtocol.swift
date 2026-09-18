@@ -6,7 +6,7 @@ import Foundation
 /// Each test suite that uses this must be marked `@Suite(.serialized)` because
 /// `requestHandler` is a global mutable property.
 final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
