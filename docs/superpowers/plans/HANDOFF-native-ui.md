@@ -16,28 +16,37 @@ Read all three documents before you touch anything:
   - the spec:  docs/superpowers/specs/2026-09-18-native-ui-design.md
   - this file: docs/superpowers/plans/HANDOFF-native-ui.md
 
-The plan argues from the spec, so you need both. The spec's "Findings from the
-native spike" section records decisions that were already tested and settled —
-treat them as closed, not as open questions to re-explore. The plan has been
-kept up to date as tasks completed: finished steps are checked off, each
-finished task ends with a "**Done.** Committed as ..." line, and several steps
-were corrected in place. Trust the plan over the spec where they differ.
+The plan argues from the spec, so you need both. Trust the plan over the spec
+where they differ. The plan is kept current: finished steps are checked off,
+each finished task ends with a "**Done.** Committed as ..." line, and several
+steps were corrected in place after they turned out to be wrong.
+
+The spec's "Findings from the native spike" section is NOT fully reliable. Two
+of its claims were tested during execution and proved false. See "Where the
+spec is wrong" below.
 
 ## What is already done
 
-Tasks 1, 2 and 2.5 are complete and committed on `native-ui`:
+Tasks 1 through 7 are complete and committed on `native-ui`:
 
-  e12df04  refactor: adopt the Swift 6 language mode
-  9d6076d  refactor: let macOS draw the title bar
   7d3eff4  build: target macOS 27 only
+  9d6076d  refactor: let macOS draw the title bar
+  e12df04  refactor: adopt the Swift 6 language mode
+  5f2424c  refactor: rebuild the window on NavigationSplitView
+  e4f3373  refactor: move every action into the window toolbar
+  1384bc0  refactor: put the settings and evaluation panels in a real inspector
+  a55d6a1  refactor: drop the warm surfaces for system materials
+  c981e91  refactor: native styling for preferences, about and the sheets
+  0839aab  docs: add Task 7.5 for the washed-out buttons and the last amber washes
+  753b11f  docs: cross-reference Task 7.5 from Tasks 6 and 7
 
-Start at **Task 3: Convert the layout to NavigationSplitView**.
+Start at **Task 7.5: Darken the accent and clear the last amber washes**.
 
-Task 2.5 was not in the original plan. It was inserted because Task 1 had to
-bump swift-tools-version to 6.4 to reach .macOS(.v27), which flips the default
-language mode to Swift 6. Task 1 pinned the mode back to v5; Task 2.5 removed
-the pins and fixed the 20 lines of strict-concurrency fallout. The project now
-compiles in Swift 6 language mode, so write all new code under Swift 6 rules.
+Task 7.5 was added after Task 7, in response to a bug report with screenshots.
+It is fully written up with measurements and exact values. Do not re-derive it.
+
+Remaining after that: Task 8 (webview colours), Task 9 (the Picker workaround),
+and a final docs pass.
 
 ## Hard constraints
 
@@ -52,49 +61,67 @@ compiles in Swift 6 language mode, so write all new code under Swift 6 rules.
     shows you the old app and no visible change.
   - Do all manual testing on a NEW local draft ("+ New Post"), never on a
     published post or page, and discard it when done.
-  - One commit per task, using the commit message given in the plan.
+  - One commit per task, using the commit message given in the plan. If the
+    plan's message asserts something you found to be false, rewrite it and say
+    so — this has already happened twice.
   - Comments: default to none. When you delete code that a comment explains,
     delete the comment. Don't add narration comments about the refactor.
   - You may toggle the system appearance with osascript to run the light/dark
     checks. I have already authorised this. Always toggle back to light when
     the check is done.
 
-## Resolve this before starting Task 3
+## Where the spec is wrong
 
-`Sources/QuillKit/Views/CLAUDE.md` contains a gotcha that flatly forbids Task 3:
+The spec's spike section records four findings about `.tint(.wpAmber)`. Two are
+false, and Task 6 proved it in the running app:
 
-  "Layout uses HStack + SoftPanelBoundary, not NavigationSplitView or
-   HSplitView — NavigationSplitView reinstates macOS Tahoe sidebar chrome
-   (drop shadows, raised layer) ... Do NOT switch to either."
+  - **"`.tint` reaches the OS-drawn sidebar selection."** It does not. The
+    capsule stayed system blue both with the tint at the app root and with it
+    applied directly to the `List`. macOS draws the focused sidebar selection
+    from the *system accent*. The fix was an `AccentColor` asset compiled by
+    `actool`, plus `NSAccentColorName` in the Info.plist. Both now live in
+    `build.sh`, and `Assets.xcassets/` is a new top-level directory.
+  - **"`.tint` drives the selected picker segment."** It does not, even with the
+    accent asset. The segmented picker draws a neutral grey pill on macOS 27.
+    That is the system design. Accept it.
 
-The spec's design spike tested NavigationSplitView on macOS 27 and chose it, so
-the spec supersedes this note. But confirm the drop-shadow and raised-layer
-symptoms do not reappear on macOS 27 before you delete the gotcha. If they do
-reappear, stop and tell me — that is a real conflict between the spike and this
-file, not a stale note.
+The other two hold: `.glassProminent` adopts the accent, and warm surfaces were
+correctly rejected.
 
-That same file also holds six title-bar gotchas that Task 2 made obsolete. They
-get deleted in the final docs pass, not now.
+Consequence for new code: **every explicit `.tint(Color.wpAmber)` is now a
+no-op**, because the app accent is already amber. Task 7 removed the ones it
+found. Don't add more.
 
-## Three things in the plan that are easy to lose
+`NSAccentColorName` wins only while the user's System Settings accent is
+"Multicolour". Chris's is. If a user picks a specific accent, macOS applies
+their choice to every app. That is correct behaviour, not a bug.
 
-  1. Task 3: .searchable must be applied BEFORE
-     .navigationSplitViewColumnWidth. Reversed, the width silently never
-     reaches the column and the sidebar collapses to ~144pt.
-  2. Task 4: the deleted toolbar row held TWO separate ⌘S bindings — a visible
-     "Save Draft" for local drafts and an invisible button routing ⌘S to
-     publish() for remote posts. Both must survive.
-  3. Task 9 may correctly end in "no change." That's a success, not a failure.
+## What computer-use cannot reach, and what that means
+
+Background computer-use clicks do not reach the WKWebView's DOM handlers (see
+`docs/gotchas.md`). Everything opened from the editor's HTML toolbar is
+therefore unreachable from an agent session:
+
+  - the gallery sheet and the image picker
+  - the link picker (⌘K)
+  - the AI generate sheet and the AI result panel
+  - the evaluation panel
+
+Background synthetic drags are also not honoured by native split dividers, so
+the inspector's resize cannot be verified from a session either.
+
+Do not claim these are verified. Write the user a short numbered test list
+instead and wait. That worked well for Task 5 — Chris ran it and reported back.
+The three buttons reported in Task 7.5 were found exactly this way.
 
 ## Things found the hard way, so you don't repeat them
 
   - `swift build` does NOT compile the test target. Use
     `swift build --build-tests` when you need to know whether Tests/ compiles.
-    Sizing the Swift 6 migration without this understated it by more than half.
   - A debug build stops at the first failing file and hides the rest. Build with
-    `-c release` to type-check the whole module in one pass and see every error
-    at once. Do not mix release and debug in the same .build tree — it produces
-    a bogus "unable to resolve Swift module dependency" error.
+    `-c release` to type-check the whole module in one pass. Do not mix release
+    and debug in the same .build tree — it produces a bogus "unable to resolve
+    Swift module dependency" error.
   - Under Swift 6, SwiftUI's View and WebKit's WKNavigationDelegate are
     @MainActor, so static members of conforming types inherit that isolation.
     Because both protocols are @preconcurrency, nonisolated callers still
@@ -103,28 +130,42 @@ get deleted in the final docs pass, not now.
     process, not a failed test. Re-run with `swift test --no-parallel` and the
     last test to print "started" is the culprit.
   - Test counts are 428 Swift and 1,202 JS. CLAUDE.md and the original plan both
-    said 1,201. The figure had drifted; correct it in the final docs pass.
+    said 1,201. Correct it in the final docs pass.
+  - `Section(_ titleKey:content:)` has no `footer:` overload. Use the explicit
+    `Section { } header: { } footer: { }` form.
+  - A prominent button renders grey when its window is not key. That is standard
+    AppKit, not a defect. Front the app with `open -a Quill` before judging any
+    accent colour from a screenshot.
   - Background computer-use right-click is refused, so the sidebar's "Delete
     Draft" context menu is not reachable that way. To discard a test draft,
     quit Quill and delete the row from
     ~/Library/Application Support/Quill/drafts.db, table `local_drafts`.
     The `autosaves` table is keyed by remote post_id and is unrelated.
-  - `QuillApp.swift` already declares BOTH a Settings scene (line ~97) and the
-    preferences .sheet (line ~44). The spec argues for keeping the sheet as
-    though it were an open choice; it is already the status quo. Task 7 only
-    restyles PreferencesView's interior, which serves both. No action needed.
+  - There is one empty untitled draft (id 168) left in `local_drafts` from
+    testing. I did not create it, so I did not delete it. Ask before removing.
+  - `QuillApp.swift` declares BOTH a Settings scene and the preferences .sheet.
+    The spec argues for keeping the sheet as though it were an open choice; it is
+    already the status quo. ⌘, opens the Settings scene and works. No action.
 
 ## Settled decisions carried forward
 
-  - Task 4's status dot uses the key expression lifted from the deleted
-    `statusBadge` property, not the plan's original two-way ternary. The plan
-    has been corrected in place and explains why. The ternary collapsed four of
-    the six status colours into amber.
-  - Task 4 must also fix `SidebarEmptyState.hint`, which tells the user to
-    "Create one with the + button below" for Posts, Pages and Media. Task 4
-    moves that button into the toolbar, so "below" becomes wrong.
+  - Section switching clears the selection through the `Picker`'s own binding,
+    NOT an `.onChange(of: appState.selectedSection)`. The observer also fires
+    when `AppState.createNewDraft` switches the section itself, which wiped the
+    draft it had just selected and left ⌘N producing a draft the editor would
+    not open. The plan's Task 4 Step 2 is corrected in place.
+  - The status dot uses the key expression lifted from the deleted `statusBadge`
+    property, not a two-way ternary. The ternary collapsed four of the six
+    status colours into amber.
+  - `PostListRow` no longer paints its selected title. The `List` inverts the
+    label itself. Its `isSelected` property is deleted.
+  - The `Views/CLAUDE.md` gotcha forbidding `NavigationSplitView` is deleted. The
+    drop-shadow and raised-layer symptoms do not reproduce on macOS 27; the
+    sidebar boundary is a flat edge. Verified before deleting.
+  - `Views/CLAUDE.md` still holds six title-bar gotchas that Task 2 made
+    obsolete. They come out in the final docs pass, not before.
 
 ## If the plan is wrong about the codebase
 
-Stop and tell me rather than improvising around it. Four such errors have been
-caught so far — two during planning, two during execution.
+Stop and tell me rather than improvising around it. Six such errors have been
+caught so far — two during planning, four during execution.
