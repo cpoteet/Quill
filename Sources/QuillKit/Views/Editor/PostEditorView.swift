@@ -374,6 +374,55 @@ public struct PostEditorView: View {
         .onChange(of: showEvaluationPanel) { open in
             editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
         }
+        .toolbar {
+            ToolbarItem {
+                Circle()
+                    .fill(Color.statusColor(statusKey))
+                    .frame(width: 7, height: 7)
+                    .help(statusBadgeLabel)
+            }
+            ToolbarItemGroup {
+                if !isRemote {
+                    Button("Save Draft") { Task { await saveDraft() } }
+                        .disabled(isSaving)
+                }
+                if isRemote && isDirty {
+                    Button("Revert") { showDiscardAlert = true }
+                }
+                if isRemote {
+                    Button("Preview") { Task { await openPreview() } }
+                        .disabled(isSaving)
+                }
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
+                Button(publishButtonTitle) { Task { await publish() } }
+                    .buttonStyle(.glassProminent)
+                    .keyboardShortcut("p", modifiers: [.command, .shift])
+                    .disabled(isSaving)
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
+                Button {
+                    withAnimation {
+                        if showEvaluationPanel {
+                            showEvaluationPanel = false
+                        } else {
+                            isSettingsOpen.toggle()
+                        }
+                    }
+                } label: {
+                    Image(systemName: "sidebar.right")
+                }
+                .help("Post Settings")
+            }
+        }
+        .background {
+            Button("") { Task { isRemote ? await publish() : await saveDraft() } }
+                .keyboardShortcut("s", modifiers: .command)
+                .hidden()
+                .disabled(isSaving)
+        }
         .task(id: item.id) { await loadItem() }
         .onDisappear {
             autosaveTask?.cancel()
@@ -395,65 +444,7 @@ public struct PostEditorView: View {
     }
 
     private var editorHeader: some View {
-        VStack(spacing: 0) {
-            toolbar
-            titleField
-        }
-        .background(WarmPanelHeaderBackground())
-        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
-    }
-
-    private var toolbar: some View {
-        HStack(spacing: 8) {
-            statusBadge
-            Spacer()
-            if isDirty && !isRemote {
-                Circle()
-                    .fill(Color.wpAmber)
-                    .frame(width: 6, height: 6)
-            }
-            if !isRemote {
-                Button("Save Draft") { Task { await saveDraft() } }
-                    .keyboardShortcut("s", modifiers: .command)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .disabled(isSaving)
-            } else {
-                // ⌘S updates WordPress when editing a remote post/page
-                Button("") { Task { await publish() } }
-                    .keyboardShortcut("s", modifiers: .command)
-                    .hidden()
-            }
-            if isRemote {
-                if isDirty {
-                    Button("Revert") { showDiscardAlert = true }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                }
-                Button("Preview") { Task { await openPreview() } }
-                    .buttonStyle(.bordered)
-                    .disabled(isSaving)
-            }
-            Button(publishButtonTitle) { Task { await publish() } }
-                .keyboardShortcut("p", modifiers: [.command, .shift])
-                .buttonStyle(.borderedProminent)
-                .disabled(isSaving)
-            Divider().frame(height: 20)
-            Button {
-                withAnimation {
-                    if showEvaluationPanel {
-                        showEvaluationPanel = false
-                    } else {
-                        isSettingsOpen.toggle()
-                    }
-                }
-            } label: {
-                Image(systemName: "sidebar.right")
-            }
-            .help("Post Settings")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        titleField
     }
 
     private var statusBadgeLabel: String {
@@ -467,18 +458,9 @@ public struct PostEditorView: View {
         }
     }
 
-    private var statusBadge: some View {
-        let key: String = {
-            if case .local(let d) = item { return "local-\(d.type)" }
-            return settings.status.rawValue
-        }()
-        let color = Color.statusColor(key)
-        return Text(statusBadgeLabel)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(color)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.12), in: Capsule())
+    private var statusKey: String {
+        if case .local(let d) = item { return "local-\(d.type)" }
+        return settings.status.rawValue
     }
 
     // Distinct danger styling, not the amber of a recoverable save error:

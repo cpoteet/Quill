@@ -14,6 +14,31 @@ public struct ContentView: View {
         }
         .navigationTitle("")
         .frame(minWidth: 900, minHeight: 600)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Picker("Section", selection: sectionSelection) {
+                    ForEach(SidebarSection.allCases, id: \.self) { section in
+                        Text(section.shortTitle).tag(section)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 280)
+                .rebuildsOnAppearanceChange()
+            }
+        }
+    }
+
+    private var sectionSelection: Binding<SidebarSection> {
+        Binding(
+            get: { appState.selectedSection },
+            set: { section in
+                guard section != appState.selectedSection else { return }
+                appState.selectedItem = nil
+                appState.selectedMedia = nil
+                appState.searchText = ""
+                appState.selectedSection = section
+            }
+        )
     }
 
     @ViewBuilder

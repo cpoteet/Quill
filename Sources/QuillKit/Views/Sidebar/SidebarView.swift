@@ -17,6 +17,27 @@ public struct SidebarView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 270, ideal: 310, max: 400)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    Task { await loadCurrentSection() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                .help("Refresh (\u{2318}R)")
+
+                if appState.selectedSection != .localDrafts {
+                    Button {
+                        createNewDraft()
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .keyboardShortcut("n", modifiers: .command)
+                    .help("\(newButtonTitle) (\u{2318}N)")
+                }
+            }
+        }
         .alert(
             "Confirm Delete",
             isPresented: Binding(
@@ -302,10 +323,10 @@ struct SidebarEmptyState: View {
     private var hint: String? {
         if isSearching { return nil }
         switch section {
-        case .posts: return "Create one with the + button below"
-        case .pages: return "Create one with the + button below"
+        case .posts: return "Create one with the new-post button in the toolbar"
+        case .pages: return "Create one with the new-page button in the toolbar"
         case .localDrafts: return "Use File \u{2192} New Post/Page to start writing"
-        case .media: return "Create one with the + button below"
+        case .media: return "Create one with the new-media button in the toolbar"
         }
     }
 
