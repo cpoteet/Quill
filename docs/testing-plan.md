@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-12 — 376 Swift tests + 544 JS tests, all passing._
+_Last updated: 2026-09-18 — 428 Swift tests + 1,201 JS tests, all passing._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,17 +16,23 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (all 376 tests)
-2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (52 tests — pure Node, no DOM)
-3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (29 tests — live Tiptap editor in jsdom)
-4. **JS editor tests** — `node --test Scripts/test-editor.js` (183 tests via Node's built-in runner + jsdom)
-5. **JS keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (59 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (428 tests)
+2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
+3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
+4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
+5. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
 6. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
-7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (131 tests — live Tiptap editor in jsdom)
-8. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (35 tests — live Tiptap editor in jsdom)
-9. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
+7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (270 tests — live Tiptap editor in jsdom)
+8. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (36 tests — live Tiptap editor in jsdom)
+9. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (36 tests — live Tiptap editor in jsdom)
+10. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
+11. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
+12. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+13. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
+14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (23 tests — checked by WordPress's own block validator)
+15. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nine passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the fifteen passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -75,9 +81,9 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (392 tests, 27 suites)
+## Swift test suite (428 tests, 28 suites)
 
-`swift test` reports 26 suites — `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row.
+Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -85,18 +91,18 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 34 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
-| 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 11 | `PostPayload` encoding, scheduling key names, nil omission |
+| 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
 | 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
-| 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 13 | Local draft CRUD, ordering, unicode, non-existent ID safety |
-| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 8 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering |
+| 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
+| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 13 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
-| 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 2 | Migration idempotency, old-schema `type` column backfill |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 66 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression |
+| 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 5 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, drafts and autosaves independent |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 79 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -108,11 +114,13 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
-| 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 11 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, and that only the unacknowledged stage blocks saving |
+| 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
+| 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 8 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact |
+| 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt` — the Swift half of the AI output validity suite |
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (34 tests)
+### 1. Model decoding — `WPPostDecodingTests` (41 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -143,7 +151,6 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `classicContentListNotCorrupted` | `<ul>/<li>` not wrapped in `<p>` or injected with `<br>` |
 | `classicContentListWithAttributes` | `<ol start="3">` attributes preserved through wpautop |
 | `classicExcerptGetsWpautop` | Classic excerpt (no `<p>`, no block comments) gets wpautop |
-| `classicContentTableNotCorrupted` | `<table>` elements not wrapped in `<p>` |
 | `decodesNumericEntities` | `&#8217;` → `'` (right single quotation mark) |
 | `decodesHexEntities` | `&#x26;` → `&` |
 | `decodesNamedEntities` | `&ldquo;`, `&rdquo;`, `&amp;`, `&lt;`, `&gt;` decode correctly |
@@ -155,6 +162,13 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `excerptTextDecodesEntities` | `excerptText` decodes HTML entities (e.g. `&#8217;` → `'`) |
 | `missingContentAndExcerptDefaultToEmpty` | No `content`/`excerpt` keys (list fetch with `_fields`) → both default to empty `RenderedString` without throwing |
 | `blockGalleryContentSurvivesEditorHTML` | `raw` content containing real `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments survives `editorHTML` unchanged (regression guard — `wpautop`'s classic-content detection must never touch content that already has `<!-- wp:` comments) |
+| `footnotesMetaDecodes` | `meta.footnotes` (the JSON string WordPress stores footnote bodies in) decodes onto `WPPost.footnotes` |
+| `absentMetaLeavesFootnotesEmpty` | No `meta` key at all → `footnotes` is `""`, not a decode failure |
+| `metaWithoutFootnotesKeyLeavesFootnotesEmpty` | A `meta` object with other keys but no `footnotes` → `""` |
+| `metaAsAnEmptyArrayStillDecodesTheWholePost` | WordPress sends `meta: []` (an empty PHP array serializes as a JSON array, not an object) → the rest of the post still decodes |
+| `nullFootnotesMetaDecodesAsEmpty` | `meta.footnotes: null` → `""` |
+| `nonStringFootnotesMetaDoesNotFailTheDecode` | `meta.footnotes` of the wrong type → `""`, and the post still decodes |
+| `footnotesJSONSurvivesDecodingByteForByte` | The footnotes JSON string is not re-encoded or re-escaped on the way through |
 
 ---
 
@@ -188,7 +202,7 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 
 ---
 
-### 3. Model encoding — `PostPayloadTests` (11 tests)
+### 3. Model encoding — `PostPayloadTests` (15 tests)
 
 File: `Tests/QuillTests/PostPayloadTests.swift`
 
@@ -207,6 +221,10 @@ Guards `PostPayload` encoding — encoding bugs corrupt published content silent
 | `emptyCategoriesAndTagsEncodeAsEmptyArrays` | `[]` → still encodes as `[]`, not omitted |
 | `categoriesAndTagsPopulated` | Non-empty arrays encode correctly |
 | `codingKeyNamesAreCorrect` | `featured_media`, `comment_status`, `date_gmt` exact key names asserted |
+| `footnotesAreSentUnderMeta` | Footnotes go out as `meta.footnotes`, where `core/footnotes` reads them |
+| `nilFootnotesOmitsMetaEntirely` | `footnotes: nil` → no `meta` key at all, so a post with no notes does not touch the field |
+| `emptyFootnotesStillSendsMetaSoDeletingTheLastOneClearsIt` | `[]` is sent rather than omitted — omitting it would leave the last deleted note on the server |
+| `everyOtherFieldStillEncodesAlongsideMeta` | Adding `meta` does not displace any existing key |
 
 ---
 
@@ -365,7 +383,7 @@ File: `Tests/QuillTests/CredentialsStoreTests.swift`
 
 ---
 
-### 8. Storage — `DraftStoreTests` (13 tests)
+### 8. Storage — `DraftStoreTests` (19 tests)
 
 File: `Tests/QuillTests/DraftStoreTests.swift`
 
@@ -386,10 +404,16 @@ Uses `AppDatabase.inMemory()` — each test gets an isolated DB.
 | `deleteNonExistentIdDoesNotThrow` | Delete on missing id → no-op |
 | `fetchAllOrderedByUpdatedAtDesc` | Most recently updated sorts first |
 | `unicodeAndEmojiRoundTrip` | Non-ASCII text, emoji, curly quotes preserved byte-exact |
+| `footnotesSurviveCreateAndLoad` | The `footnotes` column round-trips on create → load |
+| `updateReplacesFootnotes` | An update writes the new footnotes, not a merge of old and new |
+| `draftCreatedWithoutFootnotesReadsBackEmpty` | A draft saved with no notes reads back `""`, never `nil`-shaped garbage |
+| `fetchAllCarriesFootnotes` | The list fetch carries footnotes too, so switching posts does not drop them |
+| `updateWithoutFootnotesErasesThem` | Saving a draft whose notes were all deleted clears the column |
+| `footnotesSurviveAnEditThatOnlyChangesTheContent` | Editing only the body leaves the stored notes intact |
 
 ---
 
-### 9. Storage — `AutosaveStoreTests` (8 tests)
+### 9. Storage — `AutosaveStoreTests` (13 tests)
 
 File: `Tests/QuillTests/AutosaveStoreTests.swift`
 
@@ -405,6 +429,11 @@ Uses `AppDatabase.inMemory()`.
 | `oneSavePerPostID` | Save twice for same id → exactly one row |
 | `serverModifiedPreservedExactly` | `serverModified` timestamp stored and returned intact |
 | `laterSaveHasNewerSavedAt` | `savedAt` on second save is ≥ first |
+| `footnotesSurviveTheStash` | Footnotes round-trip through an autosave |
+| `omittedFootnotesDefaultToEmpty` | An autosave written with no notes reads back `""` |
+| `resavingWithoutFootnotesErasesThem` | A later autosave with no notes clears the stored ones |
+| `replacingAnAutosaveKeepsTitleContentAndFootnotesInStep` | The three fields are replaced together, so a restore can never mix an old body with new notes |
+| `deletingTheLastFootnoteStoresAnEmptyArrayNotAnEmptyString` | Deleting the last note stores `[]`, which is what clears the post meta on the next save |
 
 ---
 
@@ -431,7 +460,7 @@ Uses `AppDatabase.inMemory()`.
 
 ---
 
-### 11. Storage — `AppDatabaseTests` (2 tests)
+### 11. Storage — `AppDatabaseTests` (5 tests)
 
 File: `Tests/QuillTests/AppDatabaseTests.swift`
 
@@ -439,10 +468,13 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 |---|---|
 | `migrationIsIdempotent` | Running `migrate()` twice on same schema doesn't throw |
 | `typeColumnMigratedFromOldSchema` | Old DB (without `type` column) → migrate adds it; existing rows default to `"post"` |
+| `footnotesColumnMigratedOntoAnExistingDraftsTable` | A drafts table created before footnotes existed gains the column on migrate, with existing rows readable |
+| `footnotesColumnMigratedOntoAnExistingAutosavesTable` | Same for the autosaves table |
+| `draftAndAutosaveFootnotesAreIndependent` | The two tables' footnotes do not bleed into each other |
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (65 tests)
+### 12. AI — `AIPromptBuilderTests` (79 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -543,6 +575,28 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `promptExcludesFootnoteMarkersAndBackrefs` | Footnote markers and backref links excluded from content sent to Claude |
 | `promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags` | Inline tags (`<a>`) followed by commas don't leave phantom spaces in stripped text |
 | `promptStripsSpaceBeforeClosingPunctuation` | Phantom spaces before `;`, `)`, `!`, etc. from inline tag stripping are removed |
+
+#### `cleanOperationResult` & `normalizeAITables` (13 tests)
+
+Claude writes tables with inline styles and no class; Gutenberg's `core/table` draws neither, so the block fails validation the moment it is saved. These pin the cleanup that runs on every AI result before it reaches the editor.
+
+| Test | What it checks |
+|---|---|
+| `cleanOperationResultStripsFencesAndTrims` | ` ```html … ``` ` fences removed and the result trimmed |
+| `cleanOperationResultStripsABareFence` | An unlabelled ` ``` ` fence removed too |
+| `cleanOperationResultLeavesUnfencedHTMLAlone` | HTML with no fence passes through unchanged |
+| `cleanOperationResultNormalizesTables` | A right-click rewrite goes through the same table cleanup a generated post does |
+| `tableInlineStylesStripped` | `style` removed from `<table>` |
+| `styleIsStrippedFromEveryTableTagIncludingCaptionAndFoot` | …and from `<thead>`, `<tbody>`, `<tfoot>`, `<tr>`, `<th>`, `<td>`, `<caption>` |
+| `singleQuotedStylesAreStrippedToo` | `style='…'` stripped as well as `style="…"` |
+| `strippingStyleLeavesTheOtherAttributesAndText` | Only the `style` attribute goes; everything else on the tag survives |
+| `nonTableInlineStylesLeftAlone` | A `style` outside a table is untouched — this pass is not a general style stripper |
+| `tableWithOwnClassKeepsIt` | A `<table>` that already has a class keeps it rather than being overwritten |
+| `tableWithBothStyleAndClassKeepsOnlyTheClass` | Style stripped, existing class kept, no second class added |
+| `multipleTablesEachGetTheDefaultLayoutClass` | Every classless table in the result gets `has-fixed-layout`, not just the first |
+| `generatePromptForbidsInlineStyles` | The prompt itself tells Claude not to write inline styles, so the cleanup is a backstop rather than the only defence |
+
+The tag match ends at a word boundary that excludes `-` and word characters (`(?![-\w])`). Without it, `table\b` matched the `table` in `<table-of-contents style="…">` and rewrote it into `<table class="has-fixed-layout"-of-contents>` — a custom element mangled into invalid markup.
 
 ---
 
@@ -821,6 +875,59 @@ Tests `ImageConversion.prepareForUpload(_:)` and `Prepared.cleanup()`. WordPress
 
 ---
 
+### 24. Editor — `BlockRiskAlarmTests` (15 tests)
+
+File: `Tests/QuillTests/BlockRiskAlarmTests.swift`
+
+Covers the banner Quill shows when its tripwire finds that content went missing between the post it loaded and the document it holds, plus the rule that decides whether the banner should still be on screen at all.
+
+| Test | What it checks |
+|---|---|
+| `singleBlockUsesSingularWording` | One missing block → singular copy |
+| `multipleBlocksUsePluralWording` | Two or more → plural copy |
+| `bodyNamesEveryAffectedBlock` | Every affected block is named in the body, not just the first |
+| `bodyExplainsItIsNotTheAuthorsFault` | The copy says this is Quill's limitation, not something the user did |
+| `acknowledgedStageUnblocksSavingAndChangesCopy` | Acknowledging changes the wording and lets the save through |
+| `savedStageIsPastTenseAndPointsAtRevisions` | After saving, the banner is past tense and points at WordPress revisions as the way back |
+| `savedStagePluralisesCorrectly` | Plural wording holds in the saved stage too |
+| `noStringContainsAnEmDash` | House-style guard across every string in every stage |
+| `displayNamesAreHumanReadable` | Block names are shown as a person would say them (Synced Pattern, Page Break, Read More, Custom HTML), and a namespaced third-party block degrades sensibly |
+| `onlyTheUnacknowledgedStageBlocksSaving` | Only the first stage blocks saving |
+| `acknowledgingKeepsTheBlockNames` | Acknowledging does not lose the list |
+| `anEmptyReportClearsTheAlarm` | An empty at-risk list clears the banner — this is how a post repaired in code view stops blocking saves without reopening it |
+| `repeatingTheSameReportKeepsAnAcknowledgedStage` | The same list reported again keeps an `.acknowledged` or `.saved` stage rather than re-raising the banner the user already dismissed |
+| `aDifferentReportRaisesTheAlarmAgain` | A different list raises the banner afresh, unacknowledged |
+| `aFirstReportRaisesTheAlarm` | The first report on a clean state raises it |
+
+---
+
+### 25. Editor — `EditorPushDecisionTests` (8 tests)
+
+File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
+
+`EditorPushState` decides whether a `setContent` into the web view is worth making. Pushing needlessly resets the caret; not pushing when the content genuinely differs loads the wrong post. The dedupe key is the HTML **and** the footnotes together, because footnote bodies live in post meta rather than in the content.
+
+| Test | What it checks |
+|---|---|
+| `identical content and footnotes is skipped` | Same pair → no push |
+| `a footnote-only difference still pushes` | Same body, different notes → push |
+| `nil and empty footnotes are the same absence` | `nil` and `""` are not treated as a change |
+| `a content difference pushes whatever the footnotes say` | Body differs → push regardless of notes |
+| `recording the HTML alone leaves the recorded footnotes intact` | `contentChanged` only knows the HTML; if it reset the notes half, the next update would re-push identical content and wipe the caret |
+| `recording the footnotes alone leaves the recorded HTML intact` | The mirror image, for `footnotesChanged` |
+| `switching between two posts with the same body still pushes each time` | A → B → A, where the two posts differ only in their notes, pushes all three times |
+| `an empty post is skipped on a fresh state and pushed after any load` | A fresh state matches an editor that has loaded nothing, so an empty post is legitimately skipped once — but only the first time |
+
+---
+
+### 26. AI — `AIOutputFixtureTests` (2 tests)
+
+File: `Tests/QuillTests/AIOutputFixtureTests.swift`
+
+The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/` sample's `.html` equal to what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt`, so the JS suite is checking what the app would really hand the editor rather than a hand-written approximation.
+
+---
+
 ## JS block serializer tests (110 tests)
 
 File: `Scripts/test-block-serializer.js`
@@ -944,7 +1051,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS preservation tests (36 tests)
+## JS preservation tests (46 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -958,7 +1065,7 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `window.BlockParser.parse is callable` | The re-hooked `<script>` tag is present and the bundle exposes its global |
 | `window.serializeBlock is callable` | Same for the serializer, round-tripping a paragraph |
 
-### `unsupported blocks become passthrough cards` (6 tests)
+### `unsupported blocks become passthrough cards` (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -968,6 +1075,8 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `the peek renders markup as text, never as live DOM` | `textContent`, not `innerHTML` — a Custom HTML block must not execute in the editor |
 | `the card keeps the existing hint line` | The Code View hint is unchanged |
 | `an ordinary passthrough block still renders a card with no peek` | A classed block like `wp:spacer` takes the old path, no peek added |
+| `an ordinary unmodeled block renders a labelled card with a peek` | The common case: a block Quill has no node for is shown as a named, non-editable card |
+| `an unmodeled block nested in a modeled container still matches by class` | The class-based card is what is left of the old path, and it is the only thing covering a block nested inside a container Quill does model |
 
 ### `the wrap applies at post_content entry points only` (5 tests)
 
@@ -981,7 +1090,7 @@ Four call sites set editor content; two receive `post_content` and must wrap, tw
 | `a block hand-edited in code view is re-wrapped on exit` | Missing this would mean a hand-edited Custom HTML block is shredded by the next visual edit |
 | `the AI reject path does not double-wrap` | Restoring already-wrapped internal HTML adds no second wrapper |
 
-### `the unsupported-block corpus survives an edit` (6 tests)
+### `the unsupported-block corpus survives an edit` (8 tests)
 
 Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used to be destroyed — through load, edit elsewhere, save.
 
@@ -990,11 +1099,13 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 | `round-trips byte-identically with no edit` | |
 | `every unsupported block survives an edit elsewhere` | All eight delimiters and all three inner-markup shapes intact |
 | `the edit itself lands in the prose` | The test is actually editing the document, not silently no-opping |
+| `every block comes back byte-for-byte, in order, but for the edit` | The markers above are substrings, so a delimiter that came back respaced, reordered or in the wrong place would still pass them. This compares the whole output. **The fixture is written with single newlines between blocks and Quill writes core's blank line, so that one gap difference is normalised away** — the save is not byte-identical to the fixture, and everything except the gaps has to match exactly |
+| `and the blocks are separated the way core separates them` | Exactly one blank line per gap, never two |
 | `saving twice is idempotent` | No growth or drift across repeated saves |
 | `no wrapper markup reaches the saved output` | No `quill-unsupported` string in what goes to WordPress |
 | `each unsupported block renders its own card` | Eight cards, so paragraphs are not being swallowed |
 
-### `the alarm reports only genuine loss` (6 tests)
+### `the alarm reports only genuine loss` (9 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1004,6 +1115,11 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 | `every real fixture posts nothing` | No false alarm on any live-site capture |
 | `a post whose block the wrap missed is reported` | Stubs `wrapUnsupportedBlocks` to a no-op and asserts the exact eight names are posted — the only way to prove the tripwire does not share the wrap's assumptions |
 | `the tripwire goes quiet again once the wrap is restored` | The stub did not leave state behind |
+| `one of two blocks with the same name going missing is reported` | The count is per instance, not per name, so losing one of a pair is still a loss |
+| `a block nested inside a modeled container is counted too` | The count walks every depth, not just the top level |
+| `a code-view edit that loses a block is reported` | Hand-editing the source is the other way content goes missing, and it raises the banner the same way |
+
+The editor posts its at-risk list on **every** load and code-view edit, an empty list included — that is how a post the user repaired clears its own banner. These tests therefore compare the reported *names*, not the number of messages.
 
 ### `reopening a post that already lost a block is quiet` (1 test)
 
@@ -1019,9 +1135,37 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 | `it survives an edit elsewhere` | `<!-- wp:separator /-->` comes back intact, with no wrapper markup in the output |
 | `a separator WordPress actually wrote stays an editable rule` | The fix does not freeze ordinary separators into cards |
 
+### `loading an image post after an atom-only post` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `an image loads after a gallery-only post` | A post whose whole document is one atom node leaves ProseMirror in a state where the next `setContent` silently no-ops; this pins that it does not |
+| `an image loads after an embed-only post` | Same, for the other atom node |
+| `the gallery-only post itself still loads` | The guard did not break the first load |
+
+### `an attribute that could run script is not carried` (7 tests)
+
+The raw-attribute carrier snapshots a loaded element's attributes and replays them onto the live contenteditable inside the privileged web view. An `on*` handler from post content would execute there. `isCarryableAttr` filters at snapshot time, and it has to be applied at all three snapshot points, so each one gets a test.
+
+| Test | What it checks |
+|---|---|
+| `a block-level event handler is dropped` | `onmouseover` on a paragraph never reaches the live DOM, while an ordinary `data-` attribute still does |
+| `an inline mark event handler is dropped` | Same through the `rawInline` mark, with `title` still carried |
+| `a link event handler is dropped but its other attributes are kept` | Same through the link mark's own carrier |
+| `a javascript: URL is dropped from a carried attribute` | A `javascript:` value in a URL-bearing attribute (here a quote's `cite`) is dropped |
+| `whitespace inside a scheme does not get it past the filter` | Padding the scheme with whitespace or control characters does not evade the check |
+| `an ordinary cite URL is still carried` | The filter is not a blanket ban — real URLs survive |
+| `a handler never survives an edit back into post_content` | End to end: load, edit, save, and the handler is gone from what goes to WordPress |
+
+### `preserved block bytes cannot be relocated by post text` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `text that looks like the old sentinel is left alone` | The placeholder `toWordPressHTML` leaves where a preserved block sat is a per-save random nonce. With the old fixed token, an author who typed it into a post had the preserved block's bytes moved to that spot — silently, because the block count never changed |
+
 ---
 
-## JS editor tests (217 tests)
+## JS editor tests (259 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1106,7 +1250,35 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `whitespace-only figcaption is removed` | `<figcaption>   </figcaption>` treated as empty |
 | `table figure is not treated as image figure` | `<figure class="wp-block-table">` → image transforms not applied |
 
-### `toWordPressHTML` — tables (8 tests)
+### `toWordPressHTML` — image dimensions (12 tests)
+
+Core stores a resized image as an inline `style` on the `<img>` plus an `is-resized` class on the figure, and repeats the numbers in the block comment. Quill models `width`/`height` as attributes, so the save has to translate.
+
+| Test | What it checks |
+|---|---|
+| `width and height attributes become an inline style on the img` | Translated to core's `style`, which is what `save()` regenerates |
+| `width and height attributes are removed from the img` | The attribute form does not survive alongside the style |
+| `width alone forces height:auto, matching core save()` | |
+| `height alone emits height only` | |
+| `dimensions add is-resized to the figure` | |
+| `no dimensions means no is-resized and no style` | |
+| `stale is-resized is stripped when the image has no dimensions` | Resizing back to the original must not leave the class behind |
+| `dimensions are carried into the wp:image comment attributes as px strings` | Core stores them as `"320px"`, not numbers |
+| `width alone carries only width into the comment attributes` | |
+| `an unresized image carries no width or height comment attribute` | |
+| `an existing width style on the img survives without duplicating` | |
+| `dimension handling is idempotent across a second save` | |
+
+### `toWordPressHTML` — decorative images (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `role="none" on the img sets isDecorative in the comment attributes` | WP 7.1's "mark as decorative" toggle; `save()` regenerates the role from this attribute |
+| `role="presentation" also sets isDecorative` | Both spellings accepted |
+| `an image with no role carries no isDecorative attribute` | |
+| `the role attribute stays on the img` | It rides the markup as well as the comment |
+
+### `toWordPressHTML` — tables (10 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1114,6 +1286,8 @@ Tests run under Node's built-in test runner with jsdom for DOM support. They tes
 | `all-th first row is promoted from tbody to thead` | All-`<th>` row moves to `<thead>` |
 | `mixed th/td first row is NOT promoted to thead` | Mixed `<th>`/`<td>` → no promotion |
 | `table already having thead is not modified` | Pre-existing `<thead>` → untouched |
+| `table figure is wrapped in wp:table block comments` | The figure gets its own `wp:table` delimiter pair |
+| `re-saving a delimited table does not stack wp:table comments` | Idempotency guard against the comment-stacking regression class |
 | `table already inside wp-block-table is not double-wrapped` | Idempotency: one `wp-block-table` after two passes |
 | `Tiptap table style and colgroup are stripped` | `style` attribute and `<colgroup>` removed from tables |
 | `default colspan=1 and rowspan=1 are stripped from cells` | `colspan="1"` and `rowspan="1"` removed; non-default values preserved |
@@ -1259,20 +1433,46 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 
 | Test | What it checks |
 |---|---|
-| `footnote markers numbered in document order` | First `<sup data-fn>` gets `[1]`, second gets `[2]`, etc. |
-| `footnote renumbering is idempotent` | Running `toWordPressHTML` twice does not change numbers |
-| `sup without data-fn is not renumbered` | Plain `<sup>` not treated as footnote marker |
-| `footnotes list does not get wp-block-list` | `<ol class="wp-block-footnotes">` → no `wp-block-list` added |
-| `ordinary ol still gets wp-block-list` | Regular `<ol>` without `wp-block-footnotes` still receives `wp-block-list` |
+| `marker anchors are numbered in document order` | First `<sup data-fn>` gets `[1]`, second gets `[2]`, etc. |
+| `renumbering is idempotent and corrects stale numbers` | Running `toWordPressHTML` twice does not change numbers, and a wrong number is fixed |
+| `sup without data-fn is left alone` | Plain `<sup>` not treated as a footnote marker |
+| `footnotes list does not gain wp-block-list` | `<ol class="wp-block-footnotes">` → no `wp-block-list` added |
+| `ordinary ol still gains wp-block-list` | Regular `<ol>` without `wp-block-footnotes` still receives `wp-block-list` |
 
-### `toWordPressHTML` — footnote backrefs (4 tests)
+### `toWordPressHTML` — footnote marker anchors (3 tests)
+
+Footnote bodies now live in post meta rather than in `post_content` (`docs/footnotes-meta.md`), so Quill writes core's marker anchor and no backref at all — WordPress renders the backref itself.
 
 | Test | What it checks |
 |---|---|
-| `marker sup gains id="ref-fn-UUID"` | Each `<sup data-fn="UUID">` gets `id="ref-fn-UUID"` added so backref anchors can target it |
-| `footnote list item gains backref link` | Each `<li>` in `<ol class="wp-block-footnotes">` gets `<a href="#ref-fn-…" class="footnote-backref">↩</a>` appended |
-| `backref arrow uses text-presentation variation selector, not emoji-presentation` | The ↩ renders as a glyph, not a color emoji |
-| `backref is idempotent — not added twice on double transform` | Running `toWordPressHTML` twice does not add a second backref link |
+| `marker sup gains core's id="<fnId>-link"` | The anchor core's own renderer targets |
+| `no backref is written into the list — WordPress renders it from meta` | Writing one would show two arrows on the published page |
+| `marker id is idempotent across repeated transforms` | |
+
+### `extractFootnotes` (6 tests)
+
+The split that moves footnote bodies out of the content and into meta on save.
+
+| Test | What it checks |
+|---|---|
+| `replaces the list with core's self-closing delimiter` | The content keeps `<!-- wp:footnotes /-->` and nothing else |
+| `returns each footnote body keyed by its id, in document order` | |
+| `keeps inline markup inside a footnote body` | Bold, links and the rest survive the move |
+| `strips a legacy backref anchor from the stored body` | Posts written before the move carry an inline backref that must not end up in meta |
+| `content with no footnotes is returned untouched` | |
+| `leaves the rest of the block comments intact` | |
+
+### `inlineFootnotes` (5 tests)
+
+The inverse, run on load so the notes are editable in the editor.
+
+| Test | What it checks |
+|---|---|
+| `materialises the list from meta at the delimiter` | |
+| `restores footnotes in meta order` | |
+| `round-trips with extractFootnotes` | |
+| `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta behind it is shown as a non-editable card rather than an empty list |
+| `meta without a delimiter in the content changes nothing` | |
 
 ### `toWordPressHTML` — gallery (16 tests)
 
@@ -1365,17 +1565,94 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | data-media-id never reaches the saved output | The attribute is gone and `wp-image-201` is present |
 
 
-### `block delimiters` (5 tests)
+### `block delimiters` (6 tests)
 
 The descriptor-driven delimiter pass added in the Gutenberg block-model work. `toWordPressHTML` used to emit `<!-- wp: -->` comments for only `wp:image`, `wp:gallery` and `wp:embed`; every other block got a `wp-block-*` class and nothing else, which is what Gutenberg reads as classic content.
 
 | Test | What it checks |
 |---|---|
 | `wraps a paragraph in wp:paragraph` | A bare `<p>` comes out inside a `wp:paragraph` delimiter pair |
-| `wraps a heading with its level attribute` | An `<h2>` emits `<!-- wp:heading {"level":2} -->`, with the level read off the tag |
+| `wraps an h2 with no level, which is core default` | Core omits `level` for `<h2>`, so Quill must too, or every heading diffs |
+| `wraps an h3 with its level attribute` | An `<h3>` emits `<!-- wp:heading {"level":3} -->`, with the level read off the tag |
 | `wraps a list and each of its items` | Both `wp:list` and the per-item `wp:list-item` delimiters are emitted |
 | `does not double-wrap already-delimited content` | Saving already-delimited content twice is byte-identical — the guard against the comment-stacking regression class |
 | `leaves gallery delimiters exactly as they are` | The gallery fixture still ends up with exactly one `wp:gallery` opener, so the new pass does not collide with the three blocks that already had delimiters |
+
+### `delimiter attributes are escaped the way core escapes them` (4 tests)
+
+Every delimiter goes through core's own `serializeAttributes`. A plain `JSON.stringify` passes every string test while writing a comment WordPress would re-escape — or one that terminates early.
+
+| Test | What it checks |
+|---|---|
+| `an embed URL's query ampersand is escaped` | `&` in a URL comes out as `\u0026`, as core writes it |
+| `a double hyphen in a carried class cannot close its own comment` | `--` escaped, so the value cannot end the HTML comment it sits in |
+| `angle brackets in a carried value are escaped` | |
+| `a block with no attributes still gets no trailing space` | `<!-- wp:paragraph -->`, not `<!-- wp:paragraph  -->` |
+
+### `img and hr self-close, br does not` (5 tests)
+
+Core self-closes the void tags in the two blocks whose markup it owns. Without this, an edited post diffs on every image and separator in its history.
+
+| Test | What it checks |
+|---|---|
+| `a separator closes itself` | `<hr … />` |
+| `an image closes itself` | `<img … />` |
+| `a line break is left alone` | `<br>` stays as core writes it |
+| `an angle bracket inside an attribute does not truncate the tag` | The pass is a regex over the serialized string, so `>` inside an attribute value has to be treated as data |
+| `an already self-closed tag does not gain a second slash` | |
+
+### `anchor and className supports` (23 tests)
+
+Core's `anchor` and `customClassName` supports. A block that came from outside Gutenberg carries both only in its markup, so the delimiter has to be derived from the root element — and the derivation has to tell a class core's own `save()` generated from one the author wrote.
+
+| Test | What it checks |
+|---|---|
+| `an id on a modeled block's root becomes the anchor` | |
+| `a class the author wrote becomes className` | |
+| `both together are emitted, anchor first` | Core's own key order |
+| `a block with neither gets neither key` | |
+| 14 generated-class cases | `wp-block-heading`, `has-text-color`, `has-large-font-size`, `is-resized`, `are-vertically-aligned-top`, `items-justified-left`, `wp-elements-*`, `wp-container-*` and the six alignment classes are each checked not to leak into `className`, which would put them in the delimiter twice |
+| `is-style- is kept, because that is where a block style lives` | The one `is-` token that is not generated — it is what the style picker reads and writes |
+| `only the custom tokens survive a mixed class list` | |
+| `a block marked noAnchor keeps its id out of the delimiter` | Four blocks have no anchor support in their `block.json`; writing one makes Gutenberg reject the block. The `id` still rides the markup |
+| `what WordPress carried wins over what the markup implies` | |
+| `a carried key keeps its place ahead of a derived one` | WordPress's own key order is preserved, so a post does not come back with its delimiter attributes reshuffled on every save |
+
+### `ordered list start and reversed` (5 tests)
+
+`core/list` stores both on the block as well as on the markup.
+
+| Test | What it checks |
+|---|---|
+| `a start other than 1 reaches the delimiter` | |
+| `a start of 1 does not` | Core omits the default |
+| `reversed reaches it as a boolean` | |
+| `both together, in core's order` | |
+| `an unordered list gets neither` | |
+
+### `a code block language class moves to the pre` (5 tests)
+
+`core/code`'s `save()` draws no class on the inner `<code>`, so a language class Claude wrote there has to move up or the block fails validation.
+
+| Test | What it checks |
+|---|---|
+| `the class lands on the pre and leaves the code bare` | |
+| `and is reported as the block's className` | |
+| `a code block with no language is untouched` | |
+| `the move is idempotent` | |
+| `a preformatted block is left out of it` | `core/preformatted` is a different block and keeps its own markup |
+
+### `trailing paragraph` (5 tests)
+
+The editor keeps an empty paragraph after a block the caret cannot get past, and the save removes it again. The condition is scoped to exactly the shapes that paragraph follows — "drop the last child if it is an empty paragraph" also deletes an empty `core/paragraph` an author wrote at the end of a post, and the block tripwire cannot see the difference.
+
+| Test | What it checks |
+|---|---|
+| `drops the empty paragraph the editor keeps after a table` | |
+| `drops it after an image figure too` | |
+| `keeps an empty paragraph that is not last` | |
+| `keeps a trailing paragraph that has text` | |
+| `never empties a document that is only an empty paragraph` | |
 
 ### `unsupported block unwrapping` (7 tests)
 
@@ -1618,7 +1895,7 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
-## JS container tests (269 tests)
+## JS container tests (270 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1701,7 +1978,7 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Item adds a section and -Item never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `tabs block` (6 tests)
+### `tabs block` (7 tests)
 
 Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > tab-panel`. The label is stored twice — as the button's text and as each panel's `label` attribute — so the save transform reads it back off the button to keep the two in sync.
 
@@ -1721,7 +1998,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `+Tab adds a button and a panel together` | Both the tab list and the panel list grow to three — they can never drift out of step |
 | `-Tab removes the pair and never the last tab` | Both drop to one, then a further press is refused |
 
-### `insert menu` (7 tests)
+### `insert menu` (9 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1733,7 +2010,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `the insert button is a labelled pill like the heading dropdown` | A text label plus exactly one chevron SVG — no icon glyph |
 | `the menu closes after an insertion` | The `visible` class is dropped once a block is inserted |
 
-### `contextual toolbar row` (6 tests)
+### `contextual toolbar row` (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1877,6 +2154,142 @@ The toggle used to be a narrow hit zone — the right 32px of an accordion heade
 | `pressing a header row with an empty title places the caret instead of collapsing` | An empty title has no text to aim at, so the row must yield the click or a new accordion could never be named |
 | `collapse state still never reaches saved markup` | A press-driven collapse leaves no `is-collapsed` in the save |
 
+### `empty titles show a hint` (15 tests)
+
+An accordion heading or details summary with no text is zero-width, so there is nothing to click and nothing to see. The hint is a node decoration plus CSS, never text in the document.
+
+| Test | What it checks |
+|---|---|
+| `a freshly inserted accordion marks its own title as untitled` | The `is-untitled` decoration |
+| `a freshly inserted details marks its own title as untitled` | |
+| `a loaded title with text is not marked` | |
+| `typing a title clears the mark and an empty one brings it back` | |
+| `every empty title in a multi-item accordion is marked, not just the focused one` | |
+| `the mark is decoration only and never reaches saved markup` | |
+| `the hint is drawn in CSS, never inserted into the document` | A widget decoration next to the caret makes WebKit drop every keystroke, so the hint has to be CSS |
+| `the hint names each block` | |
+| `the hint cannot swallow the click that would place the caret in it` | |
+| `the hint is out of flow, so an untitled row is no taller` | |
+| `the hint is legible in dark mode too` | |
+| `the details status badge is drawn on the box, not the summary` | |
+| `pressing an untitled accordion row seats the caret in the title, not the panel` | The deferred caret placement an untitled row needs |
+| `pressing an untitled details summary seats the caret in the summary` | |
+| `the details arrow still collapses an untitled details` | |
+
+### `delete block control` (3 tests) and `a selected separator` (14 tests)
+
+The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, `DELETABLE_BLOCKS`, so teaching Quill a new container gives it all three gestures at once. The separator is the awkward case: it is a leaf, so it is reachable only through the node selection, not the ancestor walk every other container uses.
+
+| Test | What it checks |
+|---|---|
+| `the ✕ deletes a ${label} block` / `the ✕ is offered inside a ${label} block` | Generated per deletable type |
+| `the ✕ is hidden in ordinary body text` | |
+| `offers the ✕, named as a separator` / `is removed by the ✕` / `is removed by ⌘⇧⌫ too` | The separator through both gestures |
+| `leaves the surrounding paragraphs alone` | |
+| `the ✕ stays hidden with the caret merely next to one` | |
+| `the table group no longer carries its own delete button` | One control, not one per block type |
+| `a nested block is removed before the one holding it` | Innermost first |
+| `the cursor lands in the block after the deleted one` / `…falls back to the block before when nothing follows` | |
+| `deleting the only block leaves an empty paragraph to type in` | |
+| `⌘⇧⌫ removes the block the cursor is in` / `…leaves ordinary body text alone` | |
+| `the minus buttons still refuse to remove the last part` | A columns block cannot be emptied of columns |
+
+### `leaving a container block` (26 tests)
+
+Esc and double-Enter are the two ways out of a container. Both resolve through the same list as the delete gesture, so every container behaves the same way — and the behaviours deliberately left alone (table Enter, mid-panel splits, preformatted line breaks) are pinned so a future change has to be deliberate.
+
+| Test | What it checks |
+|---|---|
+| `Esc leaves a tab panel / a column / a table / a preformatted block / a details body / a blockquote / a code block` | One test per container |
+| `Esc leaves the first tab panel, not just the last` | |
+| `Esc leaves a column without breaking the columns block apart` | |
+| `Esc makes the paragraph to land in when the block is last` / `…reuses the paragraph already below instead of stacking a blank one` | |
+| `Esc steps out one container at a time when nested` | |
+| `Esc does nothing in ordinary body text` | |
+| `Esc closes an open menu rather than leaving the block` | The editor keymap runs before the document-level listeners that close menus, so the menu case has to be handled explicitly |
+| `Enter twice leaves the first tab panel / a column / a details body / an accordion panel / a pullquote` | |
+| `Enter twice still lifts out of a blockquote` / `three Enters still leave a code block` | Pre-existing behaviour, unchanged |
+| `Enter on a panel's only empty paragraph leaves without emptying it` | |
+| `Enter in a table cell still just adds a paragraph` / `Enter mid-panel still splits the paragraph normally` | Deliberately left alone |
+| `Enter in a preformatted block adds a line, not a paragraph` / `three Enters leave a preformatted block, trailing blank lines trimmed` | |
+| `Enter in a pullquote makes a paragraph, never a citation` | |
+
+### `citation control` (9 tests)
+
+| Test | What it checks |
+|---|---|
+| `the control reads Cite rather than showing an icon` | |
+| `the control is offered inside a pullquote` / `it still adds and removes a blockquote citation` | One control, both quote blocks |
+| `it adds a citation to a pullquote` / `it removes a pullquote citation again` | |
+| `the caret lands in the pullquote citation ready to type` | |
+| `a pullquote citation saves inside the blockquote` | Where core puts it |
+| `Enter in a pullquote citation leaves the pullquote` | |
+| `the control stays hidden in ordinary body text` | |
+
+### `the table figure, its classes and its caption` (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `the caption stays inside the figure rather than becoming a paragraph` | |
+| `the figure keeps the style class core put on it` / `the class never lands on the inner table` | |
+| `the block comment keeps both of its attributes` / `the caption never reaches the delimiter` | The caption is markup, not a block attribute |
+| `a table with no caption gains no empty figcaption` | |
+| `a classic bare table saves as a core/table figure with fixed layout off` | |
+| `a bare fixed-layout table keeps the class on the table, not the figure` | |
+
+### `table row sections` (8 tests)
+
+A table's `<thead>`/`<tfoot>` are document structure, not a setting, so they are hand-written rather than derived from the settings registry.
+
+| Test | What it checks |
+|---|---|
+| `a loaded footer row comes back in a tfoot` | |
+| `head, body and foot come back in core's own order` | |
+| `the body keeps only its own rows` | |
+| `the whole fixture round-trips byte-identically through an edit` / `it is idempotent across a second cycle` | |
+| `a classic all-th first row is still promoted to a thead` | |
+| `a picker-inserted table saves a thead and a tbody` | |
+| `RECORDED LIMIT: sections plus a colspan gain a phantom cell` | Asserts the known upstream limit, so a future fix fails this test and points at the note below |
+
+### `header and footer section toggles` (12 tests)
+
+| Test | What it checks |
+|---|---|
+| `both toggles live in the table controls` / `they are hidden outside a table` | |
+| `they reflect the sections a loaded table has` / `a table Quill inserted reads as header-on, footer-off` | |
+| `turning the footer on adds a tfoot row of the right width` / `turning it off again removes the row` | |
+| `turning the header off drops the thead` / `turning it back on adds a header row of th cells` | |
+| `adding a footer does not demote an implicit header row` | |
+| `the header toggle still reads as on once a footer exists` | |
+| `pressing Header with a footer present never makes a second header row` | |
+| `the last remaining row is never removed` | |
+
+### `the table style toggle` (5 tests) and `the footer row reads as a footer` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `it is labelled with the style it turns on` / `it reflects a loaded style` | The stripes style |
+| `turning it off strips the class and the comment attribute` / `turning it on writes both halves back` | Both halves, or Gutenberg invalidates the block |
+| `the block class is never mistaken for a style` | |
+| `a foot row carries a marker the CSS can reach` / `the marker never reaches saved markup` | |
+| `it is tinted like the header row, in both themes` / `a heavier top border separates it from the body` | Editor preview only |
+
+### `table size picker` (12 tests)
+
+The Word-style grid the table button opens instead of inserting a fixed 3×3.
+
+| Test | What it checks |
+|---|---|
+| `the grid is ten columns by eight rows` | |
+| `the table button opens it instead of inserting` | |
+| `hovering reports the size it would insert` | |
+| `clicking inserts exactly that size, with a header row` | |
+| `it closes after inserting` / `pressing the button again closes it` | |
+| `arrows resize and Enter inserts` / `arrows never run past the edges of the grid` | Keyboard parity |
+| `Escape closes it and inserts nothing` / `Escape belongs to the picker before it belongs to the editor` | |
+| `it refuses inside a footnote` | |
+| `the panel is themed for dark mode` | |
+
 ---
 
 ## JS passthrough tests (36 tests)
@@ -2019,6 +2432,27 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 
 ---
 
+## JS footnotes tests (36 tests)
+
+File: `Scripts/test-editor-footnotes.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with no `save()`, so the bodies live in post meta rather than in `post_content`: Quill sends `<!-- wp:footnotes /-->` plus a `meta.footnotes` JSON array. The full contract is in `docs/footnotes-meta.md`. The split crosses `setContent`, `getContent`, `getFootnotes()` and code view, so none of it is reachable from the pure helpers.
+
+| Group | Tests | What it checks |
+|---|---|---|
+| `the transform helpers reach the editor as globals` | 1 | `extractFootnotes`/`inlineFootnotes` are callable in the page — the classic-script global-exposure boundary |
+| `loading a post with native footnotes` | 3 | A delimiter plus meta becomes an editable list; the block is not frozen into an unsupported card; a delimiter with **no** meta behind it falls through to a passthrough card instead |
+| `saving` | 8 | `post_content` carries the delimiter and never the list; `getFootnotes()` matches what core stores; an edited body reaches the meta; the marker keeps core's `<fnId>-link` anchor; no backref is written into `post_content`, because WordPress renders it; an unedited post saves back byte-identically; a second load/save cycle is idempotent; deleting the last marker clears the meta rather than stranding it |
+| `migrating a legacy inline list` | 3 | A post written before the move is left exactly as it was until it is edited; the first edit moves the bodies into meta and the list out of the content; the legacy backref anchor does not survive into the meta |
+| `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
+| `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |
+| `code view shows what will actually be saved` | 4 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards |
+| `backref chrome in the editor` | 8 | The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
+| `link colour is defined once per theme` | 3 | Both themes declared as variables on `:root` and `body.dark`; prose links, footnote markers and backrefs all read the variable; nothing carries a hard-coded colour |
+
+---
+
 ## JS inline format tests (20 tests)
 
 `Scripts/test-editor-inline-formats.js` — the real `editor.html` in jsdom. Covers the
@@ -2045,7 +2479,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (217 tests)
+## JS block settings tests (227 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2059,15 +2493,18 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `the delimiter half comes from the registry` | `attrsFromSettings`/`ownedAttrsFor` replace a hand-written `attrsFrom` |
 | `the toolbar control comes from the registry` | A generated control appears only inside its block, reflects the value, and flips it |
 | `block styles` | Button, quote, separator, image and table each keep a style through a save, replace rather than stack, and leave the user's own classes alone |
-| `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block |
+| `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block, with the mark suppressed on a lone tab (where it would be noise) and back the moment a second tab exists |
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
+| `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
 | `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
 | `the whole settings fixture corpus` | All twelve `settings-*.html` come back untouched with no edit, and save idempotently once edited |
+| `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |
+| `every class-writing setting claims its class` | A drift guard with no runtime symptom: a setting that writes a class on its node's own root needs that node to claim `class` in `RAW_ATTRS_MODELED`, or the raw-attribute replay puts the source's class list back and resurrects the token the user just turned off |
 | `every registry entry is covered` | Fails if a registry entry's name appears in no test — the drift guard |
 
 **Recorded limit — sections plus colspan.** When a table has explicit `<thead>`/`<tfoot>` *and* a colspanned body cell, ProseMirror pads every row to a uniform cell count at parse time, so the header and footer each gain a phantom empty cell. This is upstream of anything the save transform can reach; in isolation colspan round-trips correctly and sections round-trip correctly, and only the combination fails. `test-editor-containers.js`'s `RECORDED LIMIT: sections plus a colspan gain a phantom cell` **asserts the phantom cell**, so if it is ever fixed upstream that test fails and points here.
 
-**Known whitespace difference, pre-existing.** Gutenberg separates sibling blocks inside a container with a blank line; Quill writes them adjacent. It affects every container block, predates this work, and is why the corpus test asserts idempotency after an edit rather than byte-identity against the fixture.
+**Blank lines between sibling blocks.** Gutenberg separates sibling blocks with a blank line and Quill now does the same (`sibling blocks are separated by a blank line`). The fixture corpus test still asserts idempotency after an edit rather than byte-identity against the fixture, because several fixtures were captured with single newlines in the gaps.
 
 ---
 
@@ -2130,6 +2567,11 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] **Unmodeled Gutenberg block passthrough:** open code view (`</>`), paste an unsupported block's markup (e.g. a Core Accordion block's rendered HTML — `div.wp-block-accordion` with nested items/panels), exit code view → an "Accordion" card appears instead of flattened/merged text. Make an unrelated edit elsewhere in the post, save, re-enter code view → the accordion's original markup (including any nested `data-wp-*` attributes) is still present, byte-for-byte.
 - [ ] **Figure-rooted blocks (Audio / Video / Pullquote / Playlist):** in WordPress, add an Audio block, a Video block, a Pullquote block, and (on WP 7.1+) a Playlist block to a test post. Open that post in Quill → each appears as a non-editable card, not as flattened text, an empty paragraph, or a plain quote. Make an unrelated edit elsewhere in the post, save, re-fetch the raw content via the REST API (`?context=edit`) → each block's original markup, `<!-- wp:… -->` comments and `<figcaption>` are unchanged. Confirm the blocks are still in their original positions relative to the surrounding paragraphs and images.
 - [ ] Save that same post a second and third time without touching the passthrough cards → the raw content does not grow and no block comments are duplicated.
+- [ ] **Block delimiters.** Save a post containing a paragraph, headings, lists, a quote, a code block and a separator → fetch the raw content. Every block is wrapped in its own `<!-- wp:name -->` pair, blocks are separated by one blank line, and an `<h2>` writes no `level` attribute (core's default) while an `<h3>` writes `{"level":3}`.
+- [ ] Open the same post in Gutenberg → no block shows "This block contains unexpected or invalid content".
+- [ ] **Inline formats Quill has no button for.** In Gutenberg, write a paragraph using subscript, superscript, keyboard input, highlight and an abbreviation. Open it in Quill, type one character elsewhere, save → all five survive.
+- [ ] **Deliberate `&nbsp;` indentation** at the start of a paragraph survives an edit and a save.
+- [ ] **An empty paragraph the author wrote at the end of a post** is still there after an edit and a save. (Quill keeps its own empty paragraph after a table or image so the caret has somewhere to land; that one is chrome and should not be saved.)
 - [ ] Confirm the four blocks Quill *does* model still behave normally in the same post: an image is still selectable/resizable, a gallery still shows its thumbnail grid, an embed still renders, and a table is still editable.
 
 ### 7.4 Editor — images
@@ -2434,10 +2876,13 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Type text in a footnote list entry → the text is preserved on save.
 - [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text.
 - [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
-- [ ] Save the post → fetch the raw HTML. Footnote markers should be `<sup>` elements with `id` and `data-fn` attributes; each footnote list item should end with a `↩` back-link.
-- [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry.
-- [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list; back-links jump back to the inline markers.
-- [ ] The footnotes `<ol>` does not receive a `wp-block-list` class (it should keep only its `wp-block-footnotes` class).
+- [ ] Save the post → fetch the raw HTML (`?context=edit`). The content ends with `<!-- wp:footnotes /-->` and **no** list; the bodies are in `meta.footnotes`. Markers are `<sup>` elements carrying core's `<fnId>-link` id, and there is no `↩` back-link anywhere in the content — WordPress renders that itself.
+- [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry in the editor.
+- [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
+- [ ] **Edit only a footnote body** — change nothing else in the post. The unsaved dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
+- [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone.
+- [ ] **Legacy migration:** open a post whose footnotes were written as an inline list by an older build. Save it without editing → unchanged. Now type one character and save → the bodies move into `meta.footnotes`, the list leaves the content, and no stray backref is stored.
+- [ ] Open a post with footnotes in code view → the source shows the delimiter, not the list. Leave code view without editing → the notes are still there.
 - [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
 - [ ] With the cursor inside a footnote, pressing keyboard shortcuts for block operations (e.g. ⌘⇧7 for ordered list, ⌘⇧8 for bullet list) does nothing.
 - [ ] With the cursor inside a footnote entry, Backspace and Delete keys work normally (can delete characters and merge text).
@@ -2451,6 +2896,62 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Click the dismiss (×) button → the banner disappears and does not reappear for the same version on subsequent launches.
 - [ ] If the remote version equals or is older than the current version, no banner appears.
 - [ ] With no internet connection at launch, toggle the sidebar hidden and visible again (or otherwise trigger a remount) once connectivity returns → the update check runs again and a banner appears if applicable (a failed first check should not permanently skip checking for the rest of the session).
+
+### 7.22 Block-risk banner
+
+Run this on a **new local draft**, never a published post.
+
+- [ ] Open a post containing a block Quill cannot model and does not preserve → no banner. Preservation is the normal case; the banner means content actually went missing.
+- [ ] Force the failure case: in code view, paste a block, leave code view, and delete the card it became. A banner appears naming the block, in the singular if it is one block and the plural if it is more, and it says this is Quill's limitation rather than something you did.
+- [ ] **While the banner is unacknowledged, saving is refused** — ⌘S, Publish/Update, and Save Draft all show the "Can't save yet" message.
+- [ ] Switching to another post while the banner is up does **not** write the squashed content (check the draft in SQLite, not through the UI — see the root `CLAUDE.md`).
+- [ ] Closing the editor while the banner is up does not write it either.
+- [ ] Autosave is suspended while the banner is up — no new row appears in the `autosaves` table.
+- [ ] Acknowledge the banner → the wording changes, saving is allowed, and the banner stays on screen.
+- [ ] Save → the banner moves to its past-tense stage and points at WordPress revisions as the way back.
+- [ ] **Repair the post in code view** (paste the missing block back) and leave code view → the banner clears itself and saving works again, without reopening the post.
+- [ ] Reopen a post that was already saved with a block missing → **no** banner. The loss is already in the saved content, so there is nothing left to warn about.
+- [ ] **A post you have not edited never raises a blocking banner.** Open a post, do not type, press ⌘S → it saves. An untouched post writes its original bytes back, so there is nothing to lose.
+- [ ] Switch to another post and back → the banner state belongs to the post, not the window.
+
+### 7.23 Container blocks & the insert menu
+
+- [ ] The toolbar has a labelled insert button; opening it lists every container block Quill can insert.
+- [ ] Insert each of Columns, Details, Buttons, Accordion, Tabs, Pullquote, Preformatted and Separator → each appears, the caret lands somewhere sensible inside it (the first tab panel, the first column, the accordion title), and the menu closes.
+- [ ] Type into each one, save, reopen → the text is there and the block still renders as a block.
+- [ ] Open each in Gutenberg → no validation warning.
+- [ ] **Delete gesture:** with the caret inside a container, the ✕ appears at the far right of the contextual toolbar row and names the block it would remove. Press it → the block goes, the caret lands in the block after it (or the one before, if nothing follows), and deleting the only block in the post leaves an empty paragraph to type in.
+- [ ] ⌘⇧⌫ does the same thing. Neither offers itself in ordinary body text.
+- [ ] Inside nested containers, the gesture removes the innermost block first.
+- [ ] **Exit gesture:** Esc leaves a tab panel, a column, a table, a details body, a blockquote, a code block and a preformatted block, landing in the paragraph below — creating one if the block is last, reusing the one already there if not. Nested containers step out one level at a time.
+- [ ] Esc with a menu open closes the menu instead of leaving the block.
+- [ ] Enter twice does the same as Esc in a tab panel, a column, a details body, an accordion panel and a pullquote. Enter in a table cell still just adds a paragraph, and Enter mid-paragraph still splits it.
+- [ ] **Empty titles:** a freshly inserted accordion or details shows a greyed hint in place of its title. Clicking the row places the caret in the title rather than collapsing the block; typing clears the hint, emptying it brings it back. The hint never appears in the saved content, and the row is no taller for having one.
+- [ ] Clicking anywhere on an accordion header row or the details arrow collapses the block; clicking the title text places the caret.
+- [ ] **Cite:** inside a pullquote or a blockquote, the toolbar offers a "Cite" control. Adding one puts the caret in it ready to type; Enter leaves the quote; removing it takes the citation away cleanly. It saves inside the blockquote, where core puts it.
+- [ ] Collapse state, hints and selection chrome never reach the saved markup — check the raw content after collapsing things and saving.
+
+### 7.24 Block settings & style controls
+
+- [ ] With the caret inside a block that has settings, a second toolbar row appears naming only that block's group; it disappears when the caret leaves, and nested containers show both groups at once.
+- [ ] Toggle each style control (button, quote, separator, image, table) → the style applies in the editor, survives a save and a reopen, replaces the previous style rather than stacking, and leaves classes you wrote yourself alone.
+- [ ] Open each in Gutenberg → the style shows there too, and the block is valid.
+- [ ] **Accordion icons:** change the icon and its position → every heading in the accordion changes with the block, one undo reverses the lot, and an item added afterwards inherits the setting.
+- [ ] **Open in new tab:** on a button with a link, the control appears and writes `target`/`rel`; on a button with no link it is hidden, and it appears the moment a link is set. The same control exists for a prose link.
+- [ ] **Default tab:** with two or more tabs, one is marked as the default and the mark follows the control, not the caret. With a single tab there is no mark. The mark never reaches the saved markup.
+- [ ] **Settings a block has that Quill has no control for** — a column's width, a details `name`, `is-not-stacked-on-mobile` — survive an edit untouched.
+- [ ] Turning a setting **off** actually removes it; it must not come back on the next load.
+
+### 7.25 Tables
+
+- [ ] The table toolbar button opens a size grid rather than inserting a fixed table. Hovering reports the size; clicking inserts exactly that, with a header row. Arrow keys resize and Enter inserts; Escape closes it without inserting; pressing the button again closes it. It refuses inside a footnote, and it is legible in dark mode.
+- [ ] Header and footer toggles reflect the sections a loaded table has, add and remove `<thead>`/`<tfoot>` rows of the right width, never create a second header row, and never remove the last remaining row.
+- [ ] The footer row is tinted and separated from the body in both light and dark mode, and that styling never reaches the saved markup.
+- [ ] The stripes style toggle reflects a loaded style and writes both halves — the class and the comment attribute — when turned on, removing both when turned off.
+- [ ] A table caption written in Gutenberg stays a caption in Quill rather than becoming a paragraph, and comes back inside the figure on save.
+- [ ] A classic bare `<table>` saves as a `core/table` figure and opens cleanly in Gutenberg.
+- [ ] **Known limit:** a table with explicit head/foot sections *and* a colspanned body cell gains a phantom empty cell in the header and footer. This is upstream of Quill's save; it is recorded, not fixed.
+
 
 ---
 
@@ -2608,6 +3109,17 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 127 | The Link mark modelled only `href`/`target`/`rel`, so core's `title` and its own `data-*` on an anchor were dropped on the first edit | ✅ `test-editor-inline-formats.js` `'a link keeps the attributes the mark does not model'` |
 | 128 | Every heading emitted `{"level":2}`, which core omits because 2 is the default — harmless to Gutenberg, noise in every post's diff. An h2 Quill authored now writes no level, while an h2 whose comment explicitly carried one keeps it | ✅ `test-block-serializer.js` `'block descriptors'` + `test-editor-block-settings.js` `'a heading omits the level core treats as the default'` |
 | 129 | A classic (undelimited) post is **converted** to blocks on the first edit, and a wrapper element the conversion has no block for — a bare `<div class="custom-box">` — is dropped with its class. The tripwire is silent because freeform content is not a block. This is the same flattening Gutenberg's own "Convert to blocks" performs and is almost certainly wanted, but it is a conversion, not preservation | 👁 §7.3 (open a classic post, type one character, save, compare the raw content) — recorded in the block-model design spec under "Existing posts are out of scope" |
+| 130 | The raw-attribute carrier replayed **every** attribute of a loaded element onto the live contenteditable, `on*` handlers from post content included, which then ran inside the privileged web view. `isCarryableAttr` now filters at all three snapshot points | ✅ `test-editor-preservation.js` `'an attribute that could run script is not carried'` (7 tests) |
+| 131 | The placeholder left where a preserved block sat was the fixed string `QUILLUNSUPPORTED<n>QUILLEND`; an author could type it into a post and the first-occurrence replace then moved the preserved bytes to that text — silently, because the block count never changed. It is a per-save random nonce now, substituted with one global pass | ✅ `test-editor-preservation.js` `'preserved block bytes cannot be relocated by post text'` |
+| 132 | The trailing-paragraph strip removed the last child whenever it was an empty `<p>`, which also deleted an empty `core/paragraph` an author wrote at the end of a post. Scoped to the shapes `TRAILING_PARAGRAPH_AFTER` actually follows | ✅ `test-editor.js` `'trailing paragraph'` (5 tests) |
+| 133 | The leading-whitespace strip on top-level paragraphs used `/^\s+/`, which in JavaScript also matches U+00A0, so deliberate `&nbsp;` indentation was deleted. Now `/^[\n\r\t ]+/` | 👁 §7.3 — **no automated guard**; an `&nbsp;` test would be worth adding |
+| 134 | A passthrough card's markup was shielded from the comment-strip regex but not from the style-compaction and void-element passes, so `style="color: red"` became `style="color:red"` and `<img src="x">` became `<img src="x"/>`. Its content is stashed behind the nonce now, like an unsupported wrapper | ✅ `test-editor.js` `'inner image markup survives exactly as authored'` |
+| 135 | `normalizeAITables`'s `table\b` matched the `table` in `<table-of-contents style="…">` and rewrote it into `<table class="has-fixed-layout"-of-contents>`. The match now ends at `(?![-\w])` | ✅ `AIPromptBuilderTests` `cleanOperationResult` & `normalizeAITables` (13 tests) |
+| 136 | The block-risk guard was on `save(status:)` and `performAutosave` only, so switching posts, closing the editor, or ⌘S on a local draft still wrote the squashed content. `flushToDB` and `saveLocalOnly` check `alarmBlocksSaving` too | 👁 §7.22 — `alarmBlocksSaving` is view state with no test harness; the banner stages it reads *are* unit-tested |
+| 137 | Editing only a footnote *body* changes no content HTML, so the post never read dirty: no dot, no autosave, and the post-switch flush was skipped, losing the edit. `isDirty` compares the footnotes as well | ✅ `DraftStoreTests.footnotesSurviveAnEditThatOnlyChangesTheContent`, `AutosaveStoreTests.replacingAnAutosaveKeepsTitleContentAndFootnotesInStep` + 👁 §7.20 |
+| 138 | The banner blocked saving even on an untouched post, which saves `_rawHTML` back byte-for-byte and cannot lose anything — the user had to click through a content-deletion warning for a lossless save. `alarmBlocksSaving` adds `htmlContent != cleanContent` | 👁 §7.22 — same view-state limit |
+| 139 | Repairing a post in code view left saving blocked until it was reopened, because the editor only reported a non-empty at-risk list. It reports on every load and code-view edit now, empty included, and `nextAlarm` clears or preserves the stage | ✅ `BlockRiskAlarmTests.anEmptyReportClearsTheAlarm` + 3 more, `test-editor-preservation.js` `'a code-view edit that loses a block is reported'` + 👁 §7.22 |
+| 140 | `--check-fixtures` with no path silently launched the GUI instead of running the fixture check | ✅ manual: `./Quill.app/Contents/MacOS/Quill --check-fixtures` prints a usage line and exits 2 |
 
 ---
 
@@ -2621,4 +3133,5 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **`GallerySheet`'s expandable alt/caption rows (§7.4):** the chevron expand/collapse, `moveDisabled` while expanded, the grip-hover collapse, and expanded state clearing on deselect are all SwiftUI `List` row behavior with no test harness. The values those fields produce *are* covered end-to-end on the JS side; only the interaction is manual.
 - **Dropped-image progress pill and drop-batch serialization (§7.4):** `UploadStatusPill`, the shared bottom slot it occupies with the toast, and the `dropTask` chaining that keeps overlapping Finder drops from interleaving are all SwiftUI view state with no test harness. The *messages* the pill and toast display are unit-tested; only the timing and layering are manual.
 - **Container row hit geometry (JS container tests):** jsdom reports a zeroed `getBoundingClientRect` for every element and gives Ranges no client rects, so how big a toggle's hit box renders and which character a pointer lands on can only be checked in a real browser. The CSS rules and the `mousedown` behavior behind those affordances *are* asserted.
+- **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.

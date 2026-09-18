@@ -74,4 +74,35 @@ import Testing
         try store.save(postID: 43, title: "P", content: "<p>Hi</p>", serverModified: "m")
         #expect(try store.load(postID: 43)?.footnotes == "")
     }
+
+    // save() is insert-or-replace and `footnotes` defaults to "", so a re-save
+    // that omits the argument replaces the whole row and drops the bodies.
+    @Test func resavingWithoutFootnotesErasesThem() throws {
+        try store.save(postID: 44, title: "P", content: "c",
+                       footnotes: #"[{"id":"fn-a","content":"Note"}]"#, serverModified: "m")
+        try store.save(postID: 44, title: "P", content: "c2", serverModified: "m")
+        #expect(try store.load(postID: 44)?.footnotes == "")
+    }
+
+    // The restore path: an autosave stashed on post switch must come back with
+    // the same three halves the editor needs to rebuild the post.
+    @Test func replacingAnAutosaveKeepsTitleContentAndFootnotesInStep() throws {
+        try store.save(postID: 45, title: "V1", content: "<p>one</p>",
+                       footnotes: #"[{"id":"fn-a","content":"One"}]"#, serverModified: "m1")
+        try store.save(postID: 45, title: "V2", content: "<p>two</p>",
+                       footnotes: #"[{"id":"fn-a","content":"One"},{"id":"fn-b","content":"Two"}]"#,
+                       serverModified: "m2")
+        let snap = try #require(try store.load(postID: 45))
+        #expect(snap.title == "V2")
+        #expect(snap.content == "<p>two</p>")
+        #expect(snap.footnotes == #"[{"id":"fn-a","content":"One"},{"id":"fn-b","content":"Two"}]"#)
+        #expect(snap.serverModified == "m2")
+    }
+
+    @Test func deletingTheLastFootnoteStoresAnEmptyArrayNotAnEmptyString() throws {
+        try store.save(postID: 46, title: "P", content: "c",
+                       footnotes: #"[{"id":"fn-a","content":"Note"}]"#, serverModified: "m")
+        try store.save(postID: 46, title: "P", content: "c", footnotes: "[]", serverModified: "m")
+        #expect(try store.load(postID: 46)?.footnotes == "[]")
+    }
 }

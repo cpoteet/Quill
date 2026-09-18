@@ -73,4 +73,30 @@ import Testing
         let next = BlockRiskAlarm(names: first.names, stage: .acknowledged)
         #expect(next.names == ["calendar", "block"])
     }
+
+    @Test func anEmptyReportClearsTheAlarm() {
+        let current = BlockRiskAlarm(names: ["calendar"], stage: .unacknowledged)
+        #expect(PostEditorView.nextAlarm(from: current, names: []) == nil)
+        #expect(PostEditorView.nextAlarm(from: nil, names: []) == nil)
+    }
+
+    @Test func repeatingTheSameReportKeepsAnAcknowledgedStage() {
+        let current = BlockRiskAlarm(names: ["calendar"], stage: .acknowledged)
+        #expect(PostEditorView.nextAlarm(from: current, names: ["calendar"])?.stage == .acknowledged)
+        let saved = BlockRiskAlarm(names: ["calendar"], stage: .saved)
+        #expect(PostEditorView.nextAlarm(from: saved, names: ["calendar"])?.stage == .saved)
+    }
+
+    @Test func aDifferentReportRaisesTheAlarmAgain() {
+        let current = BlockRiskAlarm(names: ["calendar"], stage: .acknowledged)
+        let next = PostEditorView.nextAlarm(from: current, names: ["calendar", "verse"])
+        #expect(next?.stage == .unacknowledged)
+        #expect(next?.names == ["calendar", "verse"])
+    }
+
+    @Test func aFirstReportRaisesTheAlarm() {
+        let next = PostEditorView.nextAlarm(from: nil, names: ["verse"])
+        #expect(next?.stage == .unacknowledged)
+        #expect(next?.names == ["verse"])
+    }
 }

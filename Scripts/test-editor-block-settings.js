@@ -538,6 +538,20 @@ describe('the tabs default tab', () => {
 <!-- /wp:tab-panels --></div>
 <!-- /wp:tabs -->`
 
+  const lone = `<!-- wp:tabs -->
+<div class="wp-block-tabs"><!-- wp:tab-list -->
+<div role="tablist" class="wp-block-tab-list"><button type="button" role="tab">Only</button></div>
+<!-- /wp:tab-list -->
+
+<!-- wp:tab-panels -->
+<div class="wp-block-tab-panels"><!-- wp:tab-panel {"label":"Only"} -->
+<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><!-- wp:paragraph -->
+<p>Only body</p>
+<!-- /wp:paragraph --></section>
+<!-- /wp:tab-panel --></div>
+<!-- /wp:tab-panels --></div>
+<!-- /wp:tabs -->`
+
   const toggle = () => win.document.querySelector('#settings-tabPanel-controls [data-setting="isDefaultTab"]')
 
   function caretIn(text) {
@@ -633,6 +647,23 @@ describe('the tabs default tab', () => {
       win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
       caretIn('First body')
       assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /is-default-tab/)
+    })
+
+    // The decoration is suppressed below two tabs: a lone tab is trivially the
+    // default, so the label would be noise rather than information.
+    test('a lone tab carries no mark', () => {
+      win.setContent(lone)
+      caretIn('Only body')
+      assert.deepEqual(marked(), [false])
+    })
+
+    test('a second tab brings the mark back', () => {
+      win.setContent(lone)
+      caretIn('Only body')
+      win.document.querySelector('[data-cmd="addTab"]')
+        .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+      assert.equal(tabButtons().length, 2)
+      assert.deepEqual(marked(), [true, false])
     })
   })
 })
@@ -762,6 +793,57 @@ describe('a button opening in a new tab', () => {
     caretInButton()
     const before = win.toWordPressHTML(editor.getHTML())
     assert.equal((before.match(/noopener/g) || []).length, 1)
+  })
+
+  // showWhen usually names a sibling setting; this one names the node's own
+  // href, because whether a link exists is not a setting. The fallback branch
+  // is what keeps the control from being permanently hidden.
+  describe('the New tab control is gated on the link existing', () => {
+    const unlinked = `<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button">Go</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->`
+
+    test('it is hidden on a button with no link', () => {
+      win.setContent(unlinked)
+      caretInButton()
+      assert.equal(toggle().style.display, 'none')
+    })
+
+    test('the rest of the group stays visible around it', () => {
+      win.setContent(unlinked)
+      caretInButton()
+      assert.equal(win.document.getElementById('settings-buttonBlock-controls').style.display, 'inline-flex')
+      assert.notEqual(win.document.querySelector('#settings-buttonBlock-controls [data-setting="className"]').style.display, 'none')
+    })
+
+    test('it is shown on a button that has one', () => {
+      win.setContent(plain)
+      caretInButton()
+      assert.equal(toggle().style.display, '')
+    })
+
+    test('setting a link reveals it without a reload', () => {
+      win.setContent(unlinked)
+      caretInButton()
+      editor.commands.updateAttributes('buttonBlock', { href: 'https://y.test' })
+      assert.equal(toggle().style.display, '')
+    })
+
+    test('clearing the link hides it again', () => {
+      win.setContent(plain)
+      caretInButton()
+      editor.commands.updateAttributes('buttonBlock', { href: null })
+      assert.equal(toggle().style.display, 'none')
+    })
+
+    // Nothing gates on a setting called href, so the pairing pass must leave
+    // this control standalone rather than joining it to the style toggle.
+    test('it is not drawn joined to another control', () => {
+      assert.equal(toggle().parentElement.id, 'settings-buttonBlock-controls')
+      assert.equal(win.document.querySelector('#settings-buttonBlock-controls .setting-pair'), null)
+    })
   })
 })
 
@@ -1416,6 +1498,28 @@ describe('sibling blocks are separated by a blank line', () => {
     const out = save(fixture('unsupported-blocks.html'))
     assert.doesNotMatch(out, /-->\n\n\n/)
   })
+})
+
+// A setting whose kind writes a class on the node's own root needs that node
+// to claim `class` in RAW_ATTRS_MODELED, or the raw-attribute replay puts the
+// source's class list back verbatim and resurrects the token the user just
+// turned off. Nothing fails at runtime, so only a guard catches the omission.
+describe('every class-writing setting claims its class', () => {
+  const registry = require('../Sources/QuillKit/Resources/block-settings.js')
+
+  test('RAW_ATTRS_MODELED is reachable, so this guard is live', () => {
+    assert.equal(win.eval('typeof RAW_ATTRS_MODELED'), 'object')
+  })
+
+  for (const node of registry.settingsNodeNames()) {
+    const writesRootClass = Object.values(registry.settingsFor(node))
+      .some(def => !def.on && (def.kind === 'flagClass' || def.kind === 'valueClass'))
+    if (!writesRootClass) continue
+    test(`${node} lists class among the attributes it draws itself`, () => {
+      const modeled = win.eval(`RAW_ATTRS_MODELED[${JSON.stringify(node)}] || []`)
+      assert.ok(Array.from(modeled).includes('class'), `${node} is missing class`)
+    })
+  }
 })
 
 // Adding a registry entry with no coverage is how the corpus silently falls

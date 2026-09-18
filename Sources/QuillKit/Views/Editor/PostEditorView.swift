@@ -32,6 +32,7 @@ public struct PostEditorView: View {
     @State private var dropTask: Task<Void, Never>? = nil
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
+    @State private var cleanFootnotes: String = ""
     @State private var loadedItem: PostItem? = nil
     @State private var editorReady = false
     @State private var contentLoaded = false
@@ -131,7 +132,7 @@ public struct PostEditorView: View {
                             stats = PostStats(words: words, characters: characters)
                         },
                         onBlocksAtRisk: { names in
-                            blockRiskAlarm = BlockRiskAlarm(names: names, stage: .unacknowledged)
+                            blockRiskAlarm = Self.nextAlarm(from: blockRiskAlarm, names: names)
                         },
                         onFootnotesChange: { footnotesMeta = $0 },
                         onWebViewCreated: { webView in
@@ -614,8 +615,22 @@ public struct PostEditorView: View {
         return appState.pages.filter { $0.id != post.id }
     }
 
+    // An untouched body saves the original bytes back verbatim, so the alarm
+    // only has to block once an edit could squash something.
+    private var alarmBlocksSaving: Bool {
+        blockRiskAlarm?.blocksSaving == true && htmlContent != cleanContent
+    }
+
     private var isDirty: Bool {
-        title != cleanTitle || htmlContent != cleanContent
+        title != cleanTitle || htmlContent != cleanContent || footnotesMeta != cleanFootnotes
+    }
+
+    // The editor reports its at-risk list on every load and code-view edit,
+    // empty included, so a post the user repaired can clear its own banner.
+    static func nextAlarm(from current: BlockRiskAlarm?, names: [String]) -> BlockRiskAlarm? {
+        guard !names.isEmpty else { return nil }
+        if let current, current.names == names, current.stage != .unacknowledged { return current }
+        return BlockRiskAlarm(names: names, stage: .unacknowledged)
     }
 
     private func presentToast(_ text: String, isError: Bool = false) {
@@ -759,6 +774,7 @@ public struct PostEditorView: View {
             }
             cleanTitle = title
             cleanContent = htmlContent
+            cleanFootnotes = footnotesMeta
             contentLoaded = true
         }
     }
@@ -783,6 +799,7 @@ public struct PostEditorView: View {
             : nil
         cleanTitle = wpTitle
         cleanContent = wpContent
+        cleanFootnotes = post.footnotes
     }
 
     private func shouldRestoreAutosave(_ snap: AutosaveSnapshot, over post: WPPost) -> Bool {
@@ -799,6 +816,8 @@ public struct PostEditorView: View {
     // MARK: - Autosave
 
     private func flushToDB(for oldItem: PostItem) async {
+        // Same reason as performAutosave: the squashed content must not reach the store.
+        if alarmBlocksSaving { return }
         switch oldItem {
         case .remote(let post):
             try? services.autosaveStore.save(
@@ -824,7 +843,7 @@ public struct PostEditorView: View {
 
     private func performAutosave() async {
         // Or the squashed content silently becomes the local draft.
-        if blockRiskAlarm?.blocksSaving == true { return }
+        if alarmBlocksSaving { return }
         switch item {
         case .remote(let post):
             try? services.autosaveStore.save(
@@ -846,6 +865,10 @@ public struct PostEditorView: View {
 
     private func saveLocalOnly() async {
         guard case .local(let draft) = item else { return }
+        guard !alarmBlocksSaving else {
+            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
+            return
+        }
         isSaving = true
         defer { isSaving = false }
         do {
@@ -856,6 +879,7 @@ public struct PostEditorView: View {
             }
             cleanTitle = title
             cleanContent = htmlContent
+            cleanFootnotes = footnotesMeta
             presentToast("Saved locally")
         } catch {
             presentToast("Save failed: \(error.localizedDescription)", isError: true)
@@ -872,7 +896,7 @@ public struct PostEditorView: View {
             saveError = "Can't save — this post never finished loading. Reopen it before making changes."
             return
         }
-        guard blockRiskAlarm?.blocksSaving != true else {
+        guard !alarmBlocksSaving else {
             saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
             return
         }
@@ -943,6 +967,7 @@ public struct PostEditorView: View {
                 lastSavedServerModified = updated.modified
                 cleanTitle = title
                 cleanContent = htmlContent
+                cleanFootnotes = footnotesMeta
                 try? services.autosaveStore.delete(postID: post.id)
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
@@ -1008,6 +1033,7 @@ public struct PostEditorView: View {
                 lastSavedServerModified = post.modified
                 cleanTitle = title
                 cleanContent = htmlContent
+                cleanFootnotes = footnotesMeta
             }
         }
     }

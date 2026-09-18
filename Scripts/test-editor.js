@@ -1290,7 +1290,7 @@ describe('toWordPressHTML — passthrough blocks', () => {
     const out = wp(html)
     assert.match(out, /<!-- wp:image \{"id":42\} -->/)
     assert.match(out, /<!-- \/wp:image -->/)
-    assert.ok(out.includes('<img src="x.jpg"/>'), 'inner image markup should survive too')
+    assert.ok(out.includes('<img src="x.jpg">'), 'inner image markup survives exactly as authored')
     assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes should not leak into saved HTML')
   })
 
@@ -1618,6 +1618,192 @@ describe('block delimiters', () => {
       path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8')
     const out = toWordPressHTML(src, document)
     assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
+  })
+
+  // Every delimiter goes through core's serializeAttributes. The serializer's
+  // own suite feeds it attribute objects directly; these check that the
+  // transform actually routes through it, which a plain JSON.stringify would
+  // pass every string test while writing a delimiter core would re-escape.
+  describe('delimiter attributes are escaped the way core escapes them', () => {
+    test("an embed URL's query ampersand is escaped", () => {
+      const out = wp('<figure class="wp-block-embed is-provider-youtube">' +
+        '<div class="wp-block-embed__wrapper">https://www.youtube.com/watch?v=abc&amp;t=10</div></figure>')
+      assert.match(out, /"url":"https:\/\/www\.youtube\.com\/watch\?v=abc\\u0026t=10"/)
+      assert.doesNotMatch(out.slice(0, out.indexOf('-->')), /&amp;|&(?!amp;)/)
+    })
+
+    test('a double hyphen in a carried class cannot close its own comment', () => {
+      const out = wp('<p data-quill-block-attrs=\'{"className":"a--b"}\'>x</p>')
+      assert.match(out, /<!-- wp:paragraph \{"className":"a\\u002d\\u002db"\} -->/)
+      assert.equal((out.match(/-->/g) || []).length, 2)
+    })
+
+    test('angle brackets in a carried value are escaped', () => {
+      const out = wp('<p data-quill-block-attrs=\'{"metadata":{"name":"<b>"}}\'>x</p>')
+      assert.match(out, /"name":"\\u003cb\\u003e"/)
+      assert.doesNotMatch(out.slice(0, out.indexOf('-->')), /<b>/)
+    })
+
+    test('a block with no attributes still gets no trailing space', () => {
+      assert.match(wp('<p>x</p>'), /<!-- wp:paragraph -->/)
+    })
+  })
+
+  // Core self-closes void tags in the two blocks whose markup it owns; an
+  // edited post otherwise diffs on every image and separator in the history.
+  describe('img and hr self-close, br does not', () => {
+    test('a separator closes itself', () => {
+      assert.match(wp('<p>a</p><hr><p>b</p>'), /<hr class="wp-block-separator has-alpha-channel-opacity"\/>/)
+    })
+
+    test('an image closes itself', () => {
+      assert.match(wp('<figure class="wp-block-image"><img src="a.jpg"></figure>'), /<img src="a\.jpg"\/>/)
+    })
+
+    test('a line break is left alone', () => {
+      const out = wp('<p>a<br>b</p>')
+      assert.match(out, /<p>a<br>b<\/p>/)
+      assert.doesNotMatch(out, /<br\/>/)
+    })
+
+    test('an angle bracket inside an attribute does not truncate the tag', () => {
+      const out = wp('<figure class="wp-block-image"><img src="a.jpg" alt="a > b"></figure>')
+      assert.match(out, /<img src="a\.jpg" alt="a > b"\/>/)
+    })
+
+    test('an already self-closed tag does not gain a second slash', () => {
+      const out = wp('<figure class="wp-block-image"><img src="a.jpg"/></figure>')
+      assert.doesNotMatch(out, /\/\/>/)
+      assert.equal((out.match(/<img /g) || []).length, 1)
+    })
+  })
+})
+
+// core's anchor and customClassName supports. A block that came from outside
+// Gutenberg carries both only in its markup, so the delimiter has to be derived
+// from the root element -- and the derivation has to tell a class core's own
+// save() generated from one the author wrote.
+describe('anchor and className supports', () => {
+  const opener = html => wp(html).split('\n')[0]
+
+  test("an id on a modeled block's root becomes the anchor", () => {
+    assert.equal(opener('<h3 id="intro">T</h3>'), '<!-- wp:heading {"level":3,"anchor":"intro"} -->')
+  })
+
+  test('a class the author wrote becomes className', () => {
+    assert.equal(opener('<p class="lead">T</p>'), '<!-- wp:paragraph {"className":"lead"} -->')
+  })
+
+  test('both together are emitted, anchor first', () => {
+    assert.equal(opener('<h3 id="a" class="lead">T</h3>'),
+      '<!-- wp:heading {"level":3,"anchor":"a","className":"lead"} -->')
+  })
+
+  test('a block with neither gets neither key', () => {
+    assert.equal(opener('<p>T</p>'), '<!-- wp:paragraph -->')
+  })
+
+  // Each of these is a class core's own save() or a style support draws. One
+  // of them leaking into className puts it in the delimiter twice.
+  for (const generated of [
+    'wp-block-heading', 'has-text-color', 'has-large-font-size', 'is-resized',
+    'are-vertically-aligned-top', 'items-justified-left', 'wp-elements-abc123',
+    'wp-container-core-group-is-layout-1', 'alignwide', 'alignfull', 'alignleft',
+    'alignright', 'aligncenter', 'alignnone',
+  ]) {
+    test(`${generated} is not treated as the author's class`, () => {
+      assert.equal(opener(`<p class="${generated}">T</p>`), '<!-- wp:paragraph -->')
+    })
+  }
+
+  // The one is- token that is not generated: a block style IS stored in
+  // className, which is what the style picker reads and writes.
+  test('is-style- is kept, because that is where a block style lives', () => {
+    assert.equal(opener('<p class="is-style-x">T</p>'), '<!-- wp:paragraph {"className":"is-style-x"} -->')
+  })
+
+  test('only the custom tokens survive a mixed class list', () => {
+    assert.equal(opener('<p class="wp-block-heading lead has-text-color mine">T</p>'),
+      '<!-- wp:paragraph {"className":"lead mine"} -->')
+  })
+
+  // Four blocks have no anchor support in their block.json; writing one makes
+  // Gutenberg reject the block.
+  test('a block marked noAnchor keeps its id out of the delimiter', () => {
+    const out = wp('<div class="wp-block-tabs"><div role="tablist" class="wp-block-tab-list" id="tl">' +
+      '<button role="tab">a</button></div></div>')
+    assert.match(out, /<!-- wp:tab-list -->/)
+    assert.doesNotMatch(out, /anchor/)
+    assert.match(out, /id="tl"/, 'the id itself still rides the markup')
+  })
+
+  test('what WordPress carried wins over what the markup implies', () => {
+    assert.equal(opener('<p data-quill-block-attrs=\'{"className":"kept"}\' class="lead">T</p>'),
+      '<!-- wp:paragraph {"className":"kept"} -->')
+    assert.equal(opener('<h3 data-quill-block-attrs=\'{"anchor":"kept"}\' id="other">T</h3>'),
+      '<!-- wp:heading {"anchor":"kept","level":3} -->')
+  })
+
+  // The carried key keeps the position WordPress gave it, so a post does not
+  // come back with its delimiter attributes reshuffled on every save.
+  test('a carried key keeps its place ahead of a derived one', () => {
+    const out = opener('<h3 data-quill-block-attrs=\'{"metadata":{"name":"N"}}\' id="a">T</h3>')
+    assert.ok(out.indexOf('"metadata"') < out.indexOf('"level"'), out)
+  })
+})
+
+// core/list stores both on the block as well as on the markup.
+describe('ordered list start and reversed', () => {
+  test('a start other than 1 reaches the delimiter', () => {
+    assert.match(wp('<ol start="3"><li>a</li></ol>'), /<!-- wp:list \{"ordered":true,"start":3\} -->/)
+  })
+
+  test('a start of 1 does not', () => {
+    assert.match(wp('<ol start="1"><li>a</li></ol>'), /<!-- wp:list \{"ordered":true\} -->/)
+  })
+
+  test('reversed reaches it as a boolean', () => {
+    assert.match(wp('<ol reversed><li>a</li></ol>'), /<!-- wp:list \{"ordered":true,"reversed":true\} -->/)
+  })
+
+  test('both together, in core\'s order', () => {
+    assert.match(wp('<ol start="3" reversed><li>a</li></ol>'),
+      /<!-- wp:list \{"ordered":true,"start":3,"reversed":true\} -->/)
+  })
+
+  test('an unordered list gets neither', () => {
+    assert.match(wp('<ul start="3"><li>a</li></ul>'), /<!-- wp:list -->/)
+  })
+})
+
+// core/code's save() draws no class on the inner <code>, so a language class
+// Claude wrote there has to move up or the block fails validation.
+describe('a code block language class moves to the pre', () => {
+  test('the class lands on the pre and leaves the code bare', () => {
+    const out = wp('<pre><code class="language-python">x</code></pre>')
+    assert.match(out, /<pre class="wp-block-code language-python"><code>x<\/code><\/pre>/)
+  })
+
+  test('and is reported as the block\'s className', () => {
+    assert.match(wp('<pre><code class="language-python">x</code></pre>'),
+      /<!-- wp:code \{"className":"language-python"\} -->/)
+  })
+
+  test('a code block with no language is untouched', () => {
+    const out = wp('<pre><code>x</code></pre>')
+    assert.match(out, /<pre class="wp-block-code"><code>x<\/code><\/pre>/)
+    assert.match(out, /<!-- wp:code -->/)
+  })
+
+  test('the move is idempotent', () => {
+    const once = wp('<pre><code class="language-python">x</code></pre>')
+    assert.equal(wp(once), once)
+  })
+
+  test('a preformatted block is left out of it', () => {
+    const out = wp('<pre class="wp-block-preformatted"><code class="language-python">x</code></pre>')
+    assert.match(out, /<code class="language-python">/)
+    assert.doesNotMatch(out, /wp-block-code/)
   })
 })
 

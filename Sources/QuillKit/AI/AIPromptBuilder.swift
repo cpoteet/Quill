@@ -125,11 +125,11 @@ public struct AIPromptBuilder {
     /// Strips Claude's inline table styles and gives new tables core's default fixed layout, as the toolbar does.
     public static func normalizeAITables(_ html: String) -> String {
         html.replacingOccurrences(
-            of: #"(<(?:table|thead|tbody|tfoot|tr|th|td|caption)\b[^>]*?)\s+style\s*=\s*(?:"[^"]*"|'[^']*')"#,
+            of: #"(<(?:table|thead|tbody|tfoot|tr|th|td|caption)(?![-\w])[^>]*?)\s+style\s*=\s*(?:"[^"]*"|'[^']*')"#,
             with: "$1",
             options: [.regularExpression, .caseInsensitive]
         ).replacingOccurrences(
-            of: #"<table\b(?![^>]*\bclass\s*=)"#,
+            of: #"<table(?![-\w])(?![^>]*\bclass\s*=)"#,
             with: #"<table class="has-fixed-layout""#,
             options: [.regularExpression, .caseInsensitive]
         )

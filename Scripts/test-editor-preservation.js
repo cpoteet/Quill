@@ -14,6 +14,10 @@ const nodeCrypto = require('crypto')
 
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
 
+// An empty report is how the editor says a post is clean, so the banner can
+// clear itself; the quiet case is no names, not no message.
+const reportedNames = posted => posted.flatMap(m => m.names)
+
 let editor
 let win
 
@@ -201,6 +205,27 @@ describe('the unsupported-block corpus survives an edit', () => {
     assert.match(win.getContent(), /<p>OXpening prose\.<\/p>/)
   })
 
+  // The markers above are substrings, so a delimiter that came back respaced,
+  // with its attributes reordered, or in the wrong place still passes them.
+  // The fixture is written with single newlines between blocks and Quill now
+  // writes core's blank line, so that one difference is normalised away and
+  // every other byte has to match.
+  test('every block comes back byte-for-byte, in order, but for the edit', () => {
+    const collapse = html => html.replace(/\n{2,}/g, '\n').replace(/\n$/, '')
+    win.setContent(src)
+    editSomewhereElse()
+    assert.equal(collapse(win.getContent()),
+      collapse(src).replace('<p>Opening prose.</p>', '<p>OXpening prose.</p>'))
+  })
+
+  test('and the blocks are separated the way core separates them', () => {
+    win.setContent(src)
+    editSomewhereElse()
+    const out = win.getContent()
+    assert.equal((out.match(/-->\n\n<!-- wp:/g) || []).length, 9, 'one blank line per gap')
+    assert.doesNotMatch(out, /\n\n\n/)
+  })
+
   test('saving twice is idempotent', () => {
     win.setContent(src)
     editSomewhereElse()
@@ -243,13 +268,13 @@ describe('the alarm reports only genuine loss', () => {
   test('a fully preserved post posts nothing', () => {
     posted.length = 0
     win.setContent(corpus())
-    assert.deepEqual(posted, [])
+    assert.deepEqual(reportedNames(posted), [])
   })
 
   test('an ordinary post posts nothing', () => {
     posted.length = 0
     win.setContent('<!-- wp:paragraph --><p>A</p><!-- /wp:paragraph -->')
-    assert.deepEqual(posted, [])
+    assert.deepEqual(reportedNames(posted), [])
   })
 
   test('every real fixture posts nothing', () => {
@@ -257,7 +282,7 @@ describe('the alarm reports only genuine loss', () => {
     for (const name of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
       posted.length = 0
       win.setContent(fs.readFileSync(path.join(dir, name), 'utf8'))
-      assert.deepEqual(posted, [], name)
+      assert.deepEqual(reportedNames(posted), [], name)
     }
   })
 
@@ -297,7 +322,7 @@ describe('the alarm reports only genuine loss', () => {
     const src = '<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:heading -->\n<h4 class="wp-block-heading">H</h4>\n<!-- /wp:heading --></blockquote>\n<!-- /wp:quote -->'
     posted.length = 0
     win.setContent(src)
-    assert.deepEqual(posted, [], 'a nested block that survives is not reported')
+    assert.deepEqual(reportedNames(posted), [], 'a nested block that survives is not reported')
     win.wrapUnsupportedBlocks = real
   })
 
@@ -323,7 +348,7 @@ describe('the alarm reports only genuine loss', () => {
   test('the tripwire goes quiet again once the wrap is restored', () => {
     posted.length = 0
     win.setContent(corpus())
-    assert.deepEqual(posted, [])
+    assert.deepEqual(reportedNames(posted), [])
   })
 })
 
@@ -354,7 +379,7 @@ describe('reopening a post that already lost a block is quiet', () => {
     assert.doesNotMatch(squashed, /wp:calendar/)
     posted.length = 0
     win.setContent(squashed)
-    assert.deepEqual(posted, [])
+    assert.deepEqual(reportedNames(posted), [])
   })
 })
 
@@ -375,7 +400,7 @@ describe('a modeled block that saves no markup is preserved, not reported', () =
   test('it raises no alarm on load', () => {
     posted.length = 0
     win.setContent(SRC)
-    assert.deepEqual(posted, [])
+    assert.deepEqual(reportedNames(posted), [])
   })
 
   test('it survives an edit elsewhere', () => {
@@ -416,5 +441,71 @@ describe('loading an image post after an atom-only post', () => {
     win.setContent(IMG)
     win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8'))
     assert.equal(firstType(), 'galleryBlock')
+  })
+})
+
+// The carried-attribute mechanism replays a loaded element's attributes onto
+// the live contenteditable, so post content must not be able to smuggle script
+// into the WKWebView. Only the real editor can show this — the pure helpers
+// never build a DOM.
+describe('an attribute that could run script is not carried', () => {
+  const liveHTML = () => win.document.querySelector('.ProseMirror').innerHTML
+
+  test('a block-level event handler is dropped', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p onmouseover="window.__x=1" data-keep="y">hi</p>\n<!-- /wp:paragraph -->')
+    assert.ok(!liveHTML().includes('onmouseover'))
+    assert.ok(liveHTML().includes('data-keep="y"'), 'an ordinary attribute is still carried')
+  })
+
+  test('an inline mark event handler is dropped', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>a <mark onmouseover="window.__x=1" title="t">b</mark></p>\n<!-- /wp:paragraph -->')
+    assert.ok(!liveHTML().includes('onmouseover'))
+    assert.ok(liveHTML().includes('title="t"'))
+  })
+
+  test('a link event handler is dropped but its other attributes are kept', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p><a href="http://x/" onclick="window.__x=1" title="t">c</a></p>\n<!-- /wp:paragraph -->')
+    assert.ok(!liveHTML().includes('onclick'))
+    assert.ok(liveHTML().includes('title="t"'))
+  })
+
+  test('a javascript: URL is dropped from a carried attribute', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote" cite="javascript:alert(1)"><!-- wp:paragraph -->\n<p>q</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->')
+    assert.ok(!liveHTML().includes('javascript:'))
+  })
+
+  test('whitespace inside a scheme does not get it past the filter', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote" cite="java\tscript:alert(1)"><!-- wp:paragraph -->\n<p>q</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->')
+    assert.ok(!liveHTML().includes('script:'))
+  })
+
+  test('an ordinary cite URL is still carried', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote" cite="http://x/"><!-- wp:paragraph -->\n<p>q</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->')
+    assert.ok(liveHTML().includes('cite="http://x/"'))
+  })
+
+  test('a handler never survives an edit back into post_content', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p onmouseover="window.__x=1">hi</p>\n<!-- /wp:paragraph -->')
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, '!')
+    assert.ok(!win.getContent().includes('onmouseover'))
+  })
+})
+
+// A fixed sentinel could be typed into a post, and the first-occurrence replace
+// then moved the preserved bytes to wherever that text sat.
+describe('preserved block bytes cannot be relocated by post text', () => {
+  test('text that looks like the old sentinel is left alone', () => {
+    const source = '<!-- wp:paragraph -->\n<p>QUILLUNSUPPORTED0QUILLEND</p>\n<!-- /wp:paragraph -->\n\n' +
+      '<!-- wp:spacer {"height":"50px"} -->\n' +
+      '<div style="height:50px" aria-hidden="true" class="wp-block-spacer"></div>\n' +
+      '<!-- /wp:spacer -->\n\n' +
+      '<!-- wp:paragraph -->\n<p>tail</p>\n<!-- /wp:paragraph -->'
+    win.setContent(source)
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, '!')
+    const out = win.getContent()
+    assert.ok(out.includes('<p>QUILLUNSUPPORTED0QUILLEND</p>'), 'the literal text stays put')
+    assert.ok(out.includes('<!-- wp:spacer {"height":"50px"} -->\n<div style="height:50px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->'),
+      'the spacer keeps its own bytes in its own slot')
+    assert.ok(out.indexOf('wp:spacer') > out.indexOf('QUILLUNSUPPORTED0QUILLEND'), 'and its original position')
   })
 })

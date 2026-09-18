@@ -560,11 +560,17 @@ function toWordPressHTML(html, doc) {
   // attrs before its own `-->`.
   div.innerHTML = html
 
-  // The editor keeps an empty paragraph after a trailing table/figure so the
-  // caret has somewhere to land; it is chrome, not content.
+  // The editor keeps an empty paragraph after a block with nowhere to click
+  // past it so the caret has somewhere to land; it is chrome, not content.
+  // Scoped to exactly TRAILING_PARAGRAPH_AFTER's shapes (editor.html), or an
+  // empty paragraph the author wrote at the end of a post is deleted too.
   const tail = div.lastElementChild
-  if (tail && tail.tagName === 'P' && div.children.length > 1 &&
-      !tail.children.length && !tail.textContent.trim()) tail.remove()
+  const beforeTail = tail && tail.previousElementSibling
+  if (tail && tail.tagName === 'P' && beforeTail &&
+      !tail.children.length && !tail.textContent.trim() &&
+      beforeTail.matches('table, figure, hr, [data-quill-unsupported-source], [data-quill-passthrough]')) {
+    tail.remove()
+  }
 
   // Passthrough (gutenbergPassthrough) elements must survive this entire
   // function byte-for-byte — not just the comment-strip regex below, but
@@ -704,7 +710,7 @@ function toWordPressHTML(html, doc) {
   // Top-level bare text parses with its leading newline as a space, which a reload then drops.
   div.querySelectorAll(':scope > p').forEach(p => {
     const first = p.firstChild
-    if (first && first.nodeType === 3) first.textContent = first.textContent.replace(/^\s+/, '')
+    if (first && first.nodeType === 3) first.textContent = first.textContent.replace(/^[\n\r\t ]+/, '')
   })
 
   // Horizontal rules → wp-block-separator
@@ -912,23 +918,30 @@ function toWordPressHTML(html, doc) {
 
   separateSiblingBlocks(div, doc)
 
-  // Strip the generic passthrough marker (set unconditionally in renderHTML,
-  // independent of blockName) so it never appears in saved HTML.
-  div.querySelectorAll('[data-quill-passthrough]').forEach(el => {
-    el.removeAttribute('data-quill-passthrough')
-  })
-
   div.querySelectorAll('[data-quill-block-attrs]').forEach(el => {
     el.removeAttribute('data-quill-block-attrs')
   })
 
   // A text node would escape the stored markup, so each wrapper leaves an
   // alphanumeric sentinel innerHTML won't touch, substituted back afterwards.
+  // The nonce is per-save: a fixed token can be typed into a post, and the
+  // first-occurrence replace then moved the preserved bytes to that text.
+  const nonce = 'QUILL' + Math.random().toString(36).slice(2).toUpperCase() +
+    Date.now().toString(36).toUpperCase() + 'END'
   const unsupported = []
+  const stash = (el, source) => {
+    unsupported.push(source)
+    el.replaceWith(doc.createTextNode(`${nonce}${unsupported.length - 1}${nonce}`))
+  }
   div.querySelectorAll('[data-quill-unsupported-source]').forEach(el => {
-    const token = `QUILLUNSUPPORTED${unsupported.length}QUILLEND`
-    unsupported.push(el.getAttribute('data-quill-unsupported-source'))
-    el.replaceWith(doc.createTextNode(token))
+    stash(el, el.getAttribute('data-quill-unsupported-source'))
+  })
+  // Same stash for the passthrough card, whose markup is preserved verbatim:
+  // the style and void-element passes below would otherwise rewrite it. The
+  // generic marker renderHTML sets goes here rather than in its own pass.
+  div.querySelectorAll('[data-quill-passthrough]').forEach(el => {
+    el.removeAttribute('data-quill-passthrough')
+    stash(el, el.outerHTML)
   })
   // ProseMirror serializes a style attribute through element.style, which
   // respaces it; core writes the compact form, so put it back.
@@ -946,9 +959,9 @@ function toWordPressHTML(html, doc) {
   let out = div.innerHTML
     .replace(/<[a-z][^>]*>/gi, tag => tag.replace(/ (open|reversed)=""/g, ' $1'))
     .replace(/<(img|hr)((?:"[^"]*"|'[^']*'|[^>"'])*)>/gi, (m, tag, attrs) => `<${tag}${attrs.replace(/\/\s*$/, '')}/>`)
-  unsupported.forEach((source, i) => {
-    out = out.replace(`QUILLUNSUPPORTED${i}QUILLEND`, () => source)
-  })
+  if (unsupported.length) {
+    out = out.replace(new RegExp(nonce + '(\\d+)' + nonce, 'g'), (m, i) => unsupported[Number(i)])
+  }
   return out
 }
 

@@ -2757,11 +2757,26 @@
       return out.join(' ')
     }
 
+    // A carried attribute is replayed onto the live contenteditable and back
+    // into post_content, so post content must not be able to smuggle script in.
+    const CARRY_URL_ATTRS = new Set(['href', 'src', 'srcset', 'xlink:href', 'formaction', 'action', 'poster', 'background', 'cite', 'longdesc'])
+    const CARRY_SCRIPT_URL = /^(?:javascript|vbscript):|^data:(?:text\/html|image\/svg)/
+
+    function isCarryableAttr(name, value) {
+      const lower = String(name).toLowerCase()
+      if (lower.startsWith('on')) return false
+      if (!CARRY_URL_ATTRS.has(lower)) return true
+      // Whitespace and control characters are stripped first: a browser ignores
+      // them inside a scheme, so "java\tscript:" would otherwise pass.
+      return !CARRY_SCRIPT_URL.test(String(value).replace(/[\s\u0000-\u001f]/g, '').toLowerCase())
+    }
+
     function elementAttrPairs(element) {
       const attrs = []
       for (const attr of Array.from(element.attributes)) {
         if (attr.name === 'data-quill-style') { attrs.push(['style', attr.value]); continue }
         if (attr.name.startsWith('data-quill-')) continue
+        if (!isCarryableAttr(attr.name, attr.value)) continue
         attrs.push([attr.name, attr.value])
       }
       return attrs
@@ -3702,7 +3717,9 @@
     ]
 
     const _attrMap = el => Object.fromEntries(
-      Array.from(el.attributes, a => [a.name, a.value]))
+      Array.from(el.attributes)
+        .filter(a => isCarryableAttr(a.name, a.value))
+        .map(a => [a.name, a.value]))
 
     const RawInline = Mark.create({
       name: 'rawInline',
@@ -3743,7 +3760,7 @@
             default: null,
             parseHTML: el => {
               const extra = Array.from(el.attributes)
-                .filter(a => !LINK_MODELED_ATTRS.has(a.name))
+                .filter(a => !LINK_MODELED_ATTRS.has(a.name) && isCarryableAttr(a.name, a.value))
                 .map(a => [a.name, a.value])
               return extra.length ? JSON.stringify(extra) : null
             },
@@ -5496,10 +5513,9 @@
     function _reportBlocksAtRisk(originalHTML) {
       if (!originalHTML) return
       const expected = countBlockNames(BlockParser.parse(originalHTML))
+      // Reported even when empty, or a post the user repaired keeps its banner.
       const names = unrepresentedBlockNames(expected, _accountedBlockCounts())
-      if (names.length && window.webkit?.messageHandlers?.blocksAtRisk) {
-        window.webkit.messageHandlers.blocksAtRisk.postMessage({ names })
-      }
+      window.webkit?.messageHandlers?.blocksAtRisk?.postMessage({ names })
     }
 
     window.setContent = (html, footnotesJSON) => {

@@ -102,6 +102,63 @@ import Testing
         #expect(prompt.contains("style attributes"))
     }
 
+    // cleanOperationResult is the right-click rewrite path. It used to be inline in
+    // PostEditorView with no test; the fixtures exercise it as a whole, these pin
+    // each step.
+    @Test func cleanOperationResultStripsFencesAndTrims() {
+        let raw = "```html\n<p>Rewritten.</p>\n```\n"
+        #expect(AIPromptBuilder.cleanOperationResult(raw) == "<p>Rewritten.</p>")
+    }
+
+    @Test func cleanOperationResultStripsABareFence() {
+        #expect(AIPromptBuilder.cleanOperationResult("```\n<p>x</p>\n```") == "<p>x</p>")
+    }
+
+    @Test func cleanOperationResultLeavesUnfencedHTMLAlone() {
+        #expect(AIPromptBuilder.cleanOperationResult("<p>x</p>") == "<p>x</p>")
+    }
+
+    // The rewrite path must normalize tables too, or "To Table" produces exactly
+    // the inline-styled markup the generate path was fixed to stop producing.
+    @Test func cleanOperationResultNormalizesTables() {
+        let raw = "```html\n" + #"<table style="width:100%"><tr style="x"><td style="y">1</td></tr></table>"# + "\n```"
+        #expect(AIPromptBuilder.cleanOperationResult(raw)
+                == #"<table class="has-fixed-layout"><tr><td>1</td></tr></table>"#)
+    }
+
+    // Strip runs before the class check, so a table carrying both keeps its own
+    // class and must not also collect has-fixed-layout.
+    @Test func tableWithBothStyleAndClassKeepsOnlyTheClass() {
+        #expect(AIPromptBuilder.normalizeAITables(#"<table class="custom" style="width:100%"><td>x</td></table>"#)
+                == #"<table class="custom"><td>x</td></table>"#)
+        #expect(AIPromptBuilder.normalizeAITables(#"<table style="width:100%" class="custom"><td>x</td></table>"#)
+                == #"<table class="custom"><td>x</td></table>"#)
+    }
+
+    @Test func styleIsStrippedFromEveryTableTagIncludingCaptionAndFoot() {
+        let input = #"<table style="a"><caption style="b">C</caption><tfoot style="c"><tr style="d"><td style="e">1</td></tr></tfoot></table>"#
+        let out = AIPromptBuilder.normalizeAITables(input)
+        #expect(!out.contains("style="))
+        #expect(out == #"<table class="has-fixed-layout"><caption>C</caption><tfoot><tr><td>1</td></tr></tfoot></table>"#)
+    }
+
+    // Stripping must take the whole attribute and nothing else: the tag's other
+    // attributes, and the cell text, stay put.
+    @Test func strippingStyleLeavesTheOtherAttributesAndText() {
+        #expect(AIPromptBuilder.normalizeAITables(#"<td colspan="2" style="p:1" scope="row">Cell &amp; more</td>"#)
+                == #"<td colspan="2" scope="row">Cell &amp; more</td>"#)
+    }
+
+    @Test func singleQuotedStylesAreStrippedToo() {
+        #expect(AIPromptBuilder.normalizeAITables("<tr style='border:1px'><td>x</td></tr>")
+                == "<tr><td>x</td></tr>")
+    }
+
+    @Test func multipleTablesEachGetTheDefaultLayoutClass() {
+        let out = AIPromptBuilder.normalizeAITables("<table><td>a</td></table><p>between</p><table><td>b</td></table>")
+        #expect(out == #"<table class="has-fixed-layout"><td>a</td></table><p>between</p><table class="has-fixed-layout"><td>b</td></table>"#)
+    }
+
     @Test func citeTagWrapperStrippedButTextKept() {
         // Web search citations wrap sentences in <cite index="..."> — the wrapper must be
         // removed but the sentence itself must survive in the generated post.
