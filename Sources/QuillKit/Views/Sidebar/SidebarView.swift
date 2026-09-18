@@ -9,173 +9,14 @@ public struct SidebarView: View {
     public init() {}
 
     public var body: some View {
-        VStack(spacing: 0) {
-            sectionTabs
-            SoftHorizontalDivider()
-
+        Group {
             if appState.selectedSection != .media {
-                SearchField(text: $appState.searchText)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-
-                if let error = appState.listError {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                                .padding(.top, 1)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(3)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        Button("Open Blog Settings") {
-                            appState.isShowingPreferences = true
-                        }
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.orange)
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.08))
-                }
-
-                if !appState.filteredItems.isEmpty {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(appState.filteredItems) { item in
-                                let rowSelected = appState.selectedItem == item
-                                Button {
-                                    appState.selectedItem = item
-                                } label: {
-                                    HStack(spacing: 0) {
-                                        Rectangle()
-                                            .fill(rowSelected ? Color.wpAmber : Color.clear)
-                                            .frame(width: 2.5)
-                                        PostListRow(item: item, isSelected: rowSelected)
-                                            .padding(.leading, 9.5)
-                                            .padding(.trailing, 12)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                    }
-                                    .background(rowSelected ? Color.wpAmber.opacity(0.12) : Color.clear)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        itemPendingDelete = item
-                                    } label: {
-                                        switch item {
-                                        case .remote: Label("Move to Trash", systemImage: "trash")
-                                        case .local: Label("Delete Draft", systemImage: "trash")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .overlay(alignment: .trailing) { PanelInteriorFade(from: .trailing) }
-                } else if appState.hasLoadedList && !appState.isLoadingList {
-                    SidebarEmptyState(section: appState.selectedSection,
-                                     isSearching: !appState.searchText.isEmpty)
-                } else {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                }
-
-                SoftHorizontalDivider()
-
-                if let update = appState.updateAvailable {
-                    HStack(spacing: 0) {
-                        Button {
-                            NSWorkspace.shared.open(update.url)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(Color.wpAmber)
-                                Text("Quill \(update.version) available")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            UpdateChecker.dismiss(update.version)
-                            appState.updateAvailable = nil
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.tertiary)
-                                .frame(width: 24, height: 24)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Dismiss")
-                    }
-                    .padding(.leading, 10)
-                    .padding(.trailing, 4)
-                    .padding(.vertical, 3)
-                    .background(Color.wpAmber.opacity(0.08))
-                    SoftHorizontalDivider()
-                }
-
-                HStack {
-                    Button {
-                        Task { await loadCurrentSection() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .padding(6)
-                            .background(Color.primary.opacity(0.05),
-                                        in: RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut("r", modifiers: .command)
-                    .help("Refresh (⌘R)")
-                    .padding(.leading, 10)
-                    .padding(.vertical, 8)
-
-                    Spacer()
-
-                    if appState.selectedSection != .localDrafts {
-                        Button {
-                            createNewDraft()
-                        } label: {
-                            Label(newButtonTitle, systemImage: "plus")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.wpAmber)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.wpAmber.opacity(0.10),
-                                            in: RoundedRectangle(cornerRadius: 7))
-                        }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut("n", modifiers: .command)
-                        .help("\(newButtonTitle) (⌘N)")
-                        .padding(.trailing, 10)
-                        .padding(.vertical, 8)
-                    }
-                }
+                postList
             } else {
                 MediaSidebarSection()
             }
         }
-        .frame(minWidth: 220)
-        .background(WarmSidebarBackground().ignoresSafeArea())
+        .navigationSplitViewColumnWidth(min: 270, ideal: 310, max: 400)
         .alert(
             "Confirm Delete",
             isPresented: Binding(
@@ -224,45 +65,74 @@ public struct SidebarView: View {
         }
     }
 
-    private var sectionTabs: some View {
-        HStack(spacing: 4) {
-            ForEach(SidebarSection.allCases, id: \.self) { section in
-                let selected = appState.selectedSection == section
-                Button {
-                    if appState.selectedSection != section {
-                        appState.selectedItem = nil
-                        appState.selectedMedia = nil
-                        appState.searchText = ""
-                    }
-                    appState.selectedSection = section
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: section.icon)
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(height: 18)
-                        Text(section.shortTitle)
-                            .font(.system(size: 9.5, weight: .medium))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-                    .background {
-                        if selected {
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(Color.wpAmber.opacity(0.12))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .strokeBorder(Color.wpAmber.opacity(0.30), lineWidth: 0.5)
-                                )
+    private var postList: some View {
+        List(selection: $appState.selectedItem) {
+            if let error = appState.listError {
+                listErrorRow(error)
+            }
+            ForEach(appState.filteredItems) { item in
+                PostListRow(item: item, isSelected: appState.selectedItem == item)
+                    .tag(item)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            itemPendingDelete = item
+                        } label: {
+                            switch item {
+                            case .remote: Label("Move to Trash", systemImage: "trash")
+                            case .local: Label("Delete Draft", systemImage: "trash")
+                            }
                         }
                     }
-                    .foregroundStyle(selected ? Color.wpAmber : Color.secondary)
-                }
-                .buttonStyle(.plain)
+            }
+            if let update = appState.updateAvailable {
+                updateRow(update)
             }
         }
-        .padding(.horizontal, 6)
+        .listStyle(.sidebar)
+        .overlay {
+            if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList {
+                SidebarEmptyState(section: appState.selectedSection,
+                                  isSearching: !appState.searchText.isEmpty)
+            } else if !appState.hasLoadedList || appState.isLoadingList {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .searchable(text: $appState.searchText, placement: .sidebar, prompt: "Search")
+    }
+
+    private func listErrorRow(_ error: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Blog Settings") { appState.isShowingPreferences = true }
+                .font(.caption)
+        }
         .padding(.vertical, 4)
+    }
+
+    private func updateRow(_ update: UpdateInfo) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "arrow.up.circle.fill")
+                .foregroundStyle(Color.wpAmber)
+            Button("Quill \(update.version) available") {
+                NSWorkspace.shared.open(update.url)
+            }
+            .buttonStyle(.link)
+            Spacer()
+            Button {
+                UpdateChecker.dismiss(update.version)
+                appState.updateAvailable = nil
+            } label: {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.borderless)
+            .help("Dismiss")
+        }
+        .font(.system(size: 11))
+        .padding(.vertical, 2)
     }
 
     private var newButtonTitle: String {
@@ -274,7 +144,7 @@ public struct SidebarView: View {
         }
     }
 
-    private func createNewDraft() {
+    func createNewDraft() {
         let type = appState.selectedSection == .pages ? "page" : "post"
         appState.createNewDraft(type: type, draftStore: services.draftStore)
     }
@@ -318,7 +188,7 @@ public struct SidebarView: View {
         }
     }
 
-    private func loadCurrentSection() async {
+    func loadCurrentSection() async {
         guard let creds = appState.credentials else { return }
         appState.isLoadingList = true
         appState.listError = nil
@@ -454,34 +324,5 @@ struct SidebarEmptyState: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-struct SearchField: View {
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-            TextField("Search", text: $text)
-                .font(.system(size: 13))
-                .textFieldStyle(.plain)
-            if !text.isEmpty {
-                Button {
-                    text = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(.quaternary.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 }

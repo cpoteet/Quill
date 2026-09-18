@@ -405,13 +405,6 @@ public struct PostEditorView: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            Button {
-                withAnimation { appState.isSidebarVisible.toggle() }
-            } label: {
-                Image(systemName: "sidebar.left")
-            }
-            .help("Toggle Sidebar")
-            Divider().frame(height: 20)
             statusBadge
             Spacer()
             if isDirty && !isRemote {

@@ -56,7 +56,6 @@ public final class AppState: ObservableObject {
     @Published public var selectedSection: SidebarSection = .posts
     @Published public var selectedItem: PostItem?
     @Published public var searchText: String = ""
-    @Published public var isSidebarVisible: Bool = true
     @Published public var credentials: Credentials?
     @Published public var isShowingPreferences: Bool = false
 

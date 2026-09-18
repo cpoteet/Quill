@@ -6,61 +6,48 @@ public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        HStack(spacing: 0) {
-            if appState.isSidebarVisible {
-                SidebarView()
-                    .frame(width: 240)
-                    .transition(.move(edge: .leading))
-                SoftPanelBoundary()
-                    .transition(.move(edge: .leading))
-            }
-            Group {
-                if appState.selectedSection == .media {
-                    if let media = appState.selectedMedia {
-                        MediaDetailView(media: media) { [media] altText in
-                            guard let creds = appState.credentials else { return }
-                            guard let idx = appState.mediaItems.firstIndex(where: { $0.id == media.id }) else { return }
-                            do {
-                                let updated = try await WordPressClient(credentials: creds)
-                                    .updateMediaAltText(id: media.id, altText: altText)
-                                appState.mediaItems[idx] = updated
-                                if appState.selectedMedia?.id == updated.id {
-                                    appState.selectedMedia = updated
-                                }
-                            } catch {
-                                // Save failed silently — field retains the edited value
-                            }
-                        }
-                        .id(media.id)
-                    } else {
-                        VStack(spacing: 10) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 38, weight: .light))
-                                .foregroundStyle(Color.wpAmber.opacity(0.5))
-                            Text("Select an image to preview")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.wpPanelBg)
-                    }
-                } else if let item = appState.selectedItem {
-                    PostEditorView(item: item)
-                } else if !appState.hasLoadedList || appState.isLoadingList {
-                    ProgressView()
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.wpPanelBg)
-                } else {
-                    EmptyEditorPlaceholder(section: appState.selectedSection,
-                                          sectionIsEmpty: appState.sectionIsEmpty)
-                }
-            }
-            .frame(minWidth: 500, maxWidth: .infinity)
+        NavigationSplitView {
+            SidebarView()
+        } detail: {
+            detailContent
+                .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .animation(.easeInOut(duration: 0.2), value: appState.isSidebarVisible)
+        .navigationTitle("")
         .frame(minWidth: 900, minHeight: 600)
-        .background(Color.wpPanelBg)
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        if appState.selectedSection == .media {
+            if let media = appState.selectedMedia {
+                MediaDetailView(media: media) { [media] altText in
+                    guard let creds = appState.credentials else { return }
+                    guard let idx = appState.mediaItems.firstIndex(where: { $0.id == media.id }) else { return }
+                    do {
+                        let updated = try await WordPressClient(credentials: creds)
+                            .updateMediaAltText(id: media.id, altText: altText)
+                        appState.mediaItems[idx] = updated
+                        if appState.selectedMedia?.id == updated.id {
+                            appState.selectedMedia = updated
+                        }
+                    } catch {
+                        // Save failed silently — field retains the edited value
+                    }
+                }
+                .id(media.id)
+            } else {
+                EmptyEditorPlaceholder(section: .media, sectionIsEmpty: false)
+            }
+        } else if let item = appState.selectedItem {
+            PostEditorView(item: item)
+        } else if !appState.hasLoadedList || appState.isLoadingList {
+            ProgressView()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            EmptyEditorPlaceholder(section: appState.selectedSection,
+                                   sectionIsEmpty: appState.sectionIsEmpty)
+        }
     }
 }
 
@@ -73,7 +60,7 @@ struct EmptyEditorPlaceholder: View {
         case .posts: return "post"
         case .pages: return "page"
         case .localDrafts: return "draft"
-        default: return "post"
+        case .media: return "image"
         }
     }
 
