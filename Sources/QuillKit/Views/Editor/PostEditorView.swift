@@ -8,6 +8,7 @@ public struct PostEditorView: View {
 
     @State private var title: String = ""
     @State private var htmlContent: String = ""
+    @State private var footnotesMeta: String = ""
     @State private var settings = PostSettings()
     @State private var stats = PostStats()
     @State private var isSettingsOpen: Bool = false
@@ -31,12 +32,14 @@ public struct PostEditorView: View {
     @State private var dropTask: Task<Void, Never>? = nil
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
+    @State private var cleanFootnotes: String = ""
     @State private var loadedItem: PostItem? = nil
     @State private var editorReady = false
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
     @State private var contentSyncPending: Bool = false
     @State private var contentLoadFailed: Bool = false
+    @State private var blockRiskAlarm: BlockRiskAlarm? = nil
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
 
@@ -72,10 +75,14 @@ public struct PostEditorView: View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 editorHeader
+                // The alarm sits above the save error, which refers to it as
+                // "the warning above".
+                if let alarm = blockRiskAlarm { blockRiskBanner(alarm) }
                 if saveError != nil { errorBanner }
                 ZStack {
                     EditorView(
                         html: $htmlContent,
+                        footnotes: footnotesMeta,
                         contentSyncPending: $contentSyncPending,
                         onContentChange: { newHTML in
                             htmlContent = newHTML
@@ -124,6 +131,10 @@ public struct PostEditorView: View {
                         onStatsChanged: { words, characters in
                             stats = PostStats(words: words, characters: characters)
                         },
+                        onBlocksAtRisk: { names in
+                            blockRiskAlarm = Self.nextAlarm(from: blockRiskAlarm, names: names)
+                        },
+                        onFootnotesChange: { footnotesMeta = $0 },
                         onWebViewCreated: { webView in
                             editorWebView = webView
                         },
@@ -477,6 +488,72 @@ public struct PostEditorView: View {
             .background(color.opacity(0.12), in: Capsule())
     }
 
+    // Distinct danger styling, not the amber of a recoverable save error:
+    // this is content about to be deleted.
+    private func blockRiskBanner(_ alarm: BlockRiskAlarm) -> some View {
+        let danger = alarm.stage != .saved
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: danger ? "exclamationmark.triangle.fill" : "clock.arrow.circlepath")
+                .foregroundStyle(danger ? Color.red : Color.secondary)
+                .font(.system(size: 13))
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                if !alarm.title.isEmpty {
+                    Text(alarm.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(boldingNames(in: alarm.body, names: alarm.names))
+                    .font(.system(size: 12))
+                    .lineSpacing(1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+                if alarm.blocksSaving {
+                    // The app's amber accent makes .bordered nearly invisible
+                    // on this background, so the button is drawn explicitly.
+                    Button {
+                        blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .acknowledged)
+                    } label: {
+                        Text("Save anyway, I understand")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(NSColor.controlBackgroundColor),
+                                        in: RoundedRectangle(cornerRadius: 5))
+                            .overlay(RoundedRectangle(cornerRadius: 5)
+                                .stroke(.separator, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 9)
+                }
+            }
+            Spacer(minLength: 8)
+            if alarm.stage == .saved {
+                Button { blockRiskAlarm = nil } label: {
+                    Image(systemName: "xmark").font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background((danger ? Color.red : Color.secondary).opacity(0.08))
+        .overlay(alignment: .bottom) { SoftHorizontalDivider() }
+    }
+
+    private func boldingNames(in text: String, names: [String]) -> AttributedString {
+        var attributed = AttributedString(text)
+        for display in names.map(BlockRiskAlarm.displayName(for:)) {
+            var search = attributed.startIndex..<attributed.endIndex
+            while let found = attributed[search].range(of: display) {
+                attributed[found].inlinePresentationIntent = .stronglyEmphasized
+                search = found.upperBound..<attributed.endIndex
+            }
+        }
+        return attributed
+    }
+
     // #1 Dismissible amber error banner
     private var errorBanner: some View {
         HStack(spacing: 8) {
@@ -538,8 +615,22 @@ public struct PostEditorView: View {
         return appState.pages.filter { $0.id != post.id }
     }
 
+    // An untouched body saves the original bytes back verbatim, so the alarm
+    // only has to block once an edit could squash something.
+    private var alarmBlocksSaving: Bool {
+        blockRiskAlarm?.blocksSaving == true && htmlContent != cleanContent
+    }
+
     private var isDirty: Bool {
-        title != cleanTitle || htmlContent != cleanContent
+        title != cleanTitle || htmlContent != cleanContent || footnotesMeta != cleanFootnotes
+    }
+
+    // The editor reports its at-risk list on every load and code-view edit,
+    // empty included, so a post the user repaired can clear its own banner.
+    static func nextAlarm(from current: BlockRiskAlarm?, names: [String]) -> BlockRiskAlarm? {
+        guard !names.isEmpty else { return nil }
+        if let current, current.names == names, current.stage != .unacknowledged { return current }
+        return BlockRiskAlarm(names: names, stage: .unacknowledged)
     }
 
     private func presentToast(_ text: String, isError: Bool = false) {
@@ -588,12 +679,17 @@ public struct PostEditorView: View {
             await flushToDB(for: prev)
         }
         loadedItem = item
+        // Every per-post banner and save guard resets here, for both branches.
+        // A local draft opened after a remote post failed to load must not
+        // inherit its blocked state. The editor re-posts blocksAtRisk after the
+        // content below lands, so a real alarm for this post still arrives.
         saveError = nil
+        blockRiskAlarm = nil
+        contentLoadFailed = false
 
         switch requestedItem {
         case .remote(let post):
             applyRemotePost(post)
-            contentLoadFailed = false
 
             let loadedPost: WPPost
             if let creds = appState.credentials {
@@ -647,6 +743,7 @@ public struct PostEditorView: View {
                 if shouldRestoreAutosave(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
+                    footnotesMeta = snap.footnotes
                     presentToast("Unsaved changes restored")
                 } else {
                     try? services.autosaveStore.delete(postID: post.id)
@@ -660,6 +757,7 @@ public struct PostEditorView: View {
                 let showToast = fresh.title != draft.title || fresh.content != draft.content
                 title = fresh.title
                 htmlContent = fresh.content
+                footnotesMeta = fresh.footnotes
                 settings = PostSettings()
                 settings.excerpt = fresh.excerpt
                     .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -668,6 +766,7 @@ public struct PostEditorView: View {
             } else {
                 title = draft.title
                 htmlContent = draft.content
+                footnotesMeta = draft.footnotes
                 settings = PostSettings()
                 settings.excerpt = draft.excerpt
                     .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -675,6 +774,7 @@ public struct PostEditorView: View {
             }
             cleanTitle = title
             cleanContent = htmlContent
+            cleanFootnotes = footnotesMeta
             contentLoaded = true
         }
     }
@@ -684,6 +784,7 @@ public struct PostEditorView: View {
         let wpContent = post.content.editorHTML
         title = wpTitle
         htmlContent = wpContent
+        footnotesMeta = post.footnotes
         lastSavedServerModified = post.modified
         settings.status = PostStatus(rawValue: post.status) ?? .draft
         settings.categoryIDs = Set(post.categories)
@@ -698,6 +799,7 @@ public struct PostEditorView: View {
             : nil
         cleanTitle = wpTitle
         cleanContent = wpContent
+        cleanFootnotes = post.footnotes
     }
 
     private func shouldRestoreAutosave(_ snap: AutosaveSnapshot, over post: WPPost) -> Bool {
@@ -714,13 +816,15 @@ public struct PostEditorView: View {
     // MARK: - Autosave
 
     private func flushToDB(for oldItem: PostItem) async {
+        // Same reason as performAutosave: the squashed content must not reach the store.
+        if alarmBlocksSaving { return }
         switch oldItem {
         case .remote(let post):
             try? services.autosaveStore.save(
                 postID: post.id, title: title, content: htmlContent,
-                serverModified: lastSavedServerModified)
+                footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
             if let updated = try? services.draftStore.load(id: draft.id),
                let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
                 appState.localDrafts[idx] = updated
@@ -738,12 +842,15 @@ public struct PostEditorView: View {
     }
 
     private func performAutosave() async {
+        // Or the squashed content silently becomes the local draft.
+        if alarmBlocksSaving { return }
         switch item {
         case .remote(let post):
             try? services.autosaveStore.save(
-                postID: post.id, title: title, content: htmlContent, serverModified: lastSavedServerModified)
+                postID: post.id, title: title, content: htmlContent,
+                footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
         }
     }
 
@@ -758,16 +865,21 @@ public struct PostEditorView: View {
 
     private func saveLocalOnly() async {
         guard case .local(let draft) = item else { return }
+        guard !alarmBlocksSaving else {
+            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
+            return
+        }
         isSaving = true
         defer { isSaving = false }
         do {
-            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt)
+            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
             if let updated = try? services.draftStore.load(id: draft.id),
                let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
                 appState.localDrafts[idx] = updated
             }
             cleanTitle = title
             cleanContent = htmlContent
+            cleanFootnotes = footnotesMeta
             presentToast("Saved locally")
         } catch {
             presentToast("Save failed: \(error.localizedDescription)", isError: true)
@@ -782,6 +894,10 @@ public struct PostEditorView: View {
         guard let creds = appState.credentials else { return }
         guard !contentLoadFailed else {
             saveError = "Can't save — this post never finished loading. Reopen it before making changes."
+            return
+        }
+        guard !alarmBlocksSaving else {
+            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
             return
         }
         isSaving = true
@@ -827,7 +943,8 @@ public struct PostEditorView: View {
             tags: Array(settings.tagIDs),
             slug: settings.slug.isEmpty ? nil : settings.slug,
             commentStatus: settings.commentStatus,
-            parent: postType == "page" ? settings.parentID : nil
+            parent: postType == "page" ? settings.parentID : nil,
+            footnotes: footnotesMeta
         )
 
         do {
@@ -850,6 +967,7 @@ public struct PostEditorView: View {
                 lastSavedServerModified = updated.modified
                 cleanTitle = title
                 cleanContent = htmlContent
+                cleanFootnotes = footnotesMeta
                 try? services.autosaveStore.delete(postID: post.id)
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
@@ -880,6 +998,9 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != .future { settings.publishDate = nil }
+            if let alarm = blockRiskAlarm {
+                blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
+            }
             presentToast(Self.toastMessage(forStatus: status))
         } catch {
             saveError = error.localizedDescription
@@ -912,6 +1033,7 @@ public struct PostEditorView: View {
                 lastSavedServerModified = post.modified
                 cleanTitle = title
                 cleanContent = htmlContent
+                cleanFootnotes = footnotesMeta
             }
         }
     }
@@ -1145,17 +1267,11 @@ public struct PostEditorView: View {
         let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: promptText, operation: operation, context: opInfo.context)
 
         do {
-            var resultHTML = try await client.complete(
+            let resultHTML = AIPromptBuilder.cleanOperationResult(try await client.complete(
                 userMessage: userMsg,
                 systemPrompt: system,
                 useWebSearch: false
-            ).text
-            // Strip markdown code fences Claude sometimes adds despite instructions
-            if let fenceRange = resultHTML.range(of: "```html", options: .caseInsensitive) {
-                resultHTML.removeSubrange(fenceRange)
-            }
-            resultHTML = resultHTML.replacingOccurrences(of: "```", with: "")
-            resultHTML = resultHTML.trimmingCharacters(in: .whitespacesAndNewlines)
+            ).text)
             // 4. Show result in editor — JS replaces loading placeholder with result,
             //    selects it, and returns a bounding rect for panel positioning.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),
@@ -1191,10 +1307,7 @@ public struct PostEditorView: View {
                 onAccept: {
                     webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)
                     // Trigger contentChanged so Swift gets the accepted HTML
-                    webView.evaluateJavaScript(
-                        "window.webkit?.messageHandlers?.contentChanged?.postMessage(window.getContent())",
-                        completionHandler: nil
-                    )
+                    webView.evaluateJavaScript("window.pushContentToSwift?.()", completionHandler: nil)
                 },
                 onDiscard: {
                     webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)

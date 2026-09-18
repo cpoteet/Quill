@@ -410,4 +410,65 @@ import Testing
         #expect(post.content.editorHTML == "")
         #expect(post.excerpt.rendered == "")
     }
+
+    @Test func footnotesMetaDecodes() throws {
+        let post = try decode(#"""
+        {"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"footnotes":"[{\"id\":\"fn-a\",\"content\":\"Note\"}]"}}
+        """#)
+        #expect(post.footnotes == #"[{"id":"fn-a","content":"Note"}]"#)
+    }
+
+    @Test func absentMetaLeavesFootnotesEmpty() throws {
+        #expect(try decode(fullJSON).footnotes == "")
+    }
+
+    @Test func metaWithoutFootnotesKeyLeavesFootnotesEmpty() throws {
+        let post = try decode(#"""
+        {"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"jetpack_publicize_message":""}}
+        """#)
+        #expect(post.footnotes == "")
+    }
+
+    // WordPress sends `"meta": []` (an array, not an object) for a post type with
+    // no registered meta. Without the side door's `try?` that throws and no post
+    // decodes at all, so this guards the whole list view, not just footnotes.
+    @Test func metaAsAnEmptyArrayStillDecodesTheWholePost() throws {
+        let post = try decode(#"""
+        {"id":7,"type":"post","title":{"rendered":"T","raw":"T"},
+         "content":{"rendered":"<p>B</p>","raw":"<p>B</p>"},
+         "status":"draft","date":"d","modified":"m","slug":"s","link":"l","meta":[]}
+        """#)
+        #expect(post.id == 7)
+        #expect(post.content.raw == "<p>B</p>")
+        #expect(post.footnotes == "")
+    }
+
+    @Test func nullFootnotesMetaDecodesAsEmpty() throws {
+        let post = try decode(#"""
+        {"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"footnotes":null}}
+        """#)
+        #expect(post.footnotes == "")
+    }
+
+    @Test func nonStringFootnotesMetaDoesNotFailTheDecode() throws {
+        let post = try decode(#"""
+        {"id":3,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m",
+         "slug":"s","link":"l","meta":{"footnotes":[{"id":"fn-a"}]}}
+        """#)
+        #expect(post.id == 3)
+        #expect(post.footnotes == "")
+    }
+
+    @Test func footnotesJSONSurvivesDecodingByteForByte() throws {
+        // The meta value is itself a JSON string; the inner quotes must reach
+        // PostPayload unaltered or the bodies are lost on the next save.
+        let stored = #"[{"id":"fn-a","content":"A <em>note</em> with \"quotes\""}]"#
+        let encoded = String(data: try JSONEncoder().encode(stored), encoding: .utf8)!
+        let head = #"{"id":1,"title":{"rendered":"T","raw":"T"},"status":"draft","date":"d","modified":"m","slug":"s","link":"l","meta":{"footnotes":"#
+        let post = try decode(head + encoded + "}}")
+        #expect(post.footnotes == stored)
+    }
 }

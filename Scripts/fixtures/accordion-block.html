@@ -1,0 +1,48 @@
+<!-- wp:accordion {"autoclose":true} -->
+
+<div role="group" class="wp-block-accordion">
+<!-- wp:accordion-item -->
+  <div class="wp-block-accordion-item">
+<!-- wp:accordion-heading -->
+    <h3 class="wp-block-accordion-heading wp-block-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Features</span></button></h3>
+<!-- /wp:accordion-heading -->
+<!-- wp:accordion-panel -->
+    <div role="region" class="wp-block-accordion-panel">
+<!-- wp:paragraph -->
+      <ul class="wp-block-list">
+        <li>Private cigar review log with create, edit, delete, and detail views.</li>
+        <li>Rich review entries with the ability to capture lots of important details around each cigar for reference (wrapper, binder, filler) and a nuanced review of my impressions including an overall score.</li>
+        <li>Dashboard with recent reviews, highest-rated entries, and a wrapper breakdown that links into filtered search.</li>
+        <li>Full review search with free text cigar attribute selection.</li>
+        <li>Wishlist for cigars to try, with progressive-disclosure capture, inline editing, notes, status, and source links.</li>
+        <li>Small but thoughtful quality-of-life touches: automatic links in notes, responsive layouts, two-step inline deletion, compact status toasts, reduced-motion support, and iOS-friendly behavior.</li>
+      </ul>
+<!-- /wp:paragraph -->
+    </div>
+<!-- /wp:accordion-panel -->
+  </div>
+<!-- /wp:accordion-item -->
+<!-- wp:accordion-item -->
+  <div class="wp-block-accordion-item">
+<!-- wp:accordion-heading -->
+    <h3 class="wp-block-accordion-heading wp-block-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Architecture</span></button></h3>
+<!-- /wp:accordion-heading -->
+<!-- wp:accordion-panel -->
+    <div role="region" class="wp-block-accordion-panel">
+<!-- wp:paragraph -->
+      <ul class="wp-block-list">
+        <li>Humidor is a lightweight PHP and MySQL MVC web app with no additional frameworks.</li>
+        <li>The app is organized into clear layers: pages handle requests, services apply business rules, repositories manage database queries, and views render the interface.</li>
+        <li>The data model centers on cigar reviews, wishlist entries, and reusable tobacco details—such as wrapper, binder, and filler.</li>
+        <li>The frontend uses plain HTML, CSS, and JavaScript, keeping it fast, understandable, and easy to maintain.</li>
+        <li>Schema changes are tracked as SQL migrations, with a current schema snapshot retained for setup and testing.</li>
+        <li>The app is backed by a CI process through Github Actions which run automated tests for data and code.</li>
+      </ul>
+<!-- /wp:paragraph -->
+    </div>
+<!-- /wp:accordion-panel -->
+  </div>
+<!-- /wp:accordion-item -->
+</div>
+
+<!-- /wp:accordion -->

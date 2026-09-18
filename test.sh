@@ -19,11 +19,20 @@ run() {
 }
 
 run "Swift tests"  swift test
+run "JS block serializer tests"  node --test Scripts/test-block-serializer.js
+run "JS preservation tests"  node --test Scripts/test-editor-preservation.js
 run "JS editor tests"  node --test Scripts/test-editor.js
 run "JS editor keyboard tests"  node --test Scripts/test-editor-keyboard.js
 run "JS gallery tests"  node --test Scripts/test-editor-gallery.js
+run "JS container tests"  node --test Scripts/test-editor-containers.js
 run "JS passthrough tests"  node --test Scripts/test-editor-passthrough.js
+run "JS footnote tests"     node --test Scripts/test-editor-footnotes.js
 run "JS paste tests"  node --test Scripts/test-editor-paste.js
+run "JS inline format tests"  node --test Scripts/test-editor-inline-formats.js
+run "JS settings registry tests"  node --test Scripts/test-block-settings-registry.js
+run "JS block settings tests"  node --test Scripts/test-editor-block-settings.js
+run "JS AI output validity tests"  node --test Scripts/test-ai-output-validity.js
+run "JS fixture validity sweep"  node --test Scripts/test-fixture-validity.js
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

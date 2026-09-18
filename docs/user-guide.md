@@ -187,15 +187,18 @@ The formatting toolbar runs across the top of the editor.
 |---|---|---|
 | B | ⌘B | Bold |
 | I | ⌘I | Italic |
-| U | ⌘U | Underline |
 | S | ⌘⇧X | Strikethrough |
 | `A` | ⌘E | Inline code |
+
+Underline has no button — WordPress treats it as a rarely-wanted format and it reads as a link on the published page — but **⌘U** still applies it if you need it.
+
+Formatting Quill has no button for is still kept. Subscript, superscript, keyboard input, highlight, abbreviations and a dozen similar tags written in the WordPress editor survive an edit in Quill untouched, along with whatever the original markup put on them.
 
 #### Insert and utilities
 
 | Button | Function |
 |---|---|
-| Table | Inserts a table. When the cursor is inside a table, additional buttons appear to add/remove rows and columns or delete the table. See [Tables](#tables) for more details. |
+| Table | Opens a size grid — drag or arrow across it to choose how many columns and rows you want, then click or press Enter. When the cursor is inside a table, additional buttons appear to add or remove rows and columns, turn the header and footer sections on and off, or delete the table. See [Tables](#tables) for more details. |
 | Link | Inserts or removes a hyperlink on the selected text. Opens the link picker, where you can type to search your WordPress posts, pages, and media by title, or paste any URL directly. Selecting a search result or pressing Enter applies the link. When editing an existing link, a Remove option is also available. To open a link in your default browser, hold ⌘ and click it. Links show a pointer cursor and underline while ⌘ is held. |
 | * (Footnote) | Inserts a footnote marker at the cursor position. See [Footnotes](#footnotes) for more details. |
 | Embed | Inserts an embed (video, social post, etc.) by URL. See [Embeds](#embeds) for more details. |
@@ -203,10 +206,26 @@ The formatting toolbar runs across the top of the editor.
 | </> (Code view) | Toggles between the rich text editor and a raw HTML view. See [Code View](#code-view) for more details. |
 | Image | Opens the media library picker to insert an image. See [Images](#images) for more details. |
 | Gallery | Opens the gallery picker to insert a multi-image gallery. See [Gallery](#gallery) for more details. |
+| + (More blocks) | Dropdown for the blocks with no button of their own: Columns, Accordion, Tabs, Details, Buttons, Pullquote, Preformatted and Separator. |
 | Pencil (Generate) | Opens the AI content generator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
 | Checkmark-circle (Evaluate) | Opens the AI writing evaluator. Visible only when an Anthropic API key is configured. See [AI Writing Features](#ai-writing-features) for more details. |
 
 The image alignment buttons (left, center, right) appear in the toolbar only when an image is selected. See [Images](#images) for more details on resizing, captions, and alt text.
+
+#### Block settings
+
+A second toolbar row appears whenever the cursor is inside a block that has settings of its own. The controls there match the ones WordPress shows in its own sidebar, and what you choose is saved back to WordPress as a real block setting rather than as hand-written markup.
+
+| Block | Control | What it does |
+|---|---|---|
+| Button, Quote, Separator, Image, Table | Style | Picks the block style WordPress registers for that block — Outline for a button, Plain for a quote, Wide Line or Dots for a separator, Rounded for an image, Stripes for a table |
+| Button | New tab | Opens that button's link in a new tab |
+| Accordion | Icon / Icon side | Shows or hides the toggle icon, and puts it on the left or the right. The change applies to every section in the accordion at once, and a single undo reverses the lot |
+| Accordion section | Open | Opens that section by default when the page loads |
+| Tab | Default | Makes that tab the one shown first |
+| Table | Header / Footer | Adds or removes the table's header and footer rows |
+
+A link in ordinary prose gets its own **New tab** toggle beside the link button.
 
 ### Markdown Shortcuts
 
@@ -275,8 +294,9 @@ A few things are dropped silently, which is the part worth watching:
 | Pasted | Result |
 |---|---|
 | `<iframe>`, `<video>`, `<audio>` | Removed entirely; nothing is inserted |
-| Highlight, superscript, subscript, `<small>`, `<abbr>` | Text kept, formatting lost |
 | Definition lists | Flattened into ordinary paragraphs |
+
+Highlight, superscript, subscript, keyboard input and abbreviations are kept.
 
 The embed case is the likeliest to catch you out: copying a YouTube `<iframe>` from a page's source inserts nothing at all. Use the **Embed** toolbar button and paste the video's URL instead (see [Embeds](#embeds)). After any large paste, a quick look in [Code View](#code-view) confirms everything arrived.
 
@@ -427,6 +447,34 @@ Press **⌘⇧B** or click the **Blockquote** button in the toolbar to wrap the 
 
 **Removing a blockquote:** Press **⌘⇧B** again or click the Blockquote button to unwrap the blockquote, returning its contents to normal paragraphs.
 
+**Pullquote** is a separate block, for a quote meant to stand out from the text rather than sit in it. Insert it from the **+** menu. It takes a citation from the same **Cite** button.
+
+### Container Blocks
+
+Columns, Details, Buttons, Accordion, Tabs, Pullquote and Preformatted are blocks that hold other content. Insert any of them from the **+** button in the toolbar, then type into them the way you would type anywhere else.
+
+| Block | What it is |
+|---|---|
+| Columns | Side-by-side columns of content |
+| Details | A collapsible section with a summary line you click to open |
+| Buttons | One or more link buttons |
+| Accordion | A stack of collapsible sections, each with its own heading |
+| Tabs | Tabbed panels, one shown at a time |
+| Pullquote | A quote set apart from the body text |
+| Preformatted | Text kept exactly as typed, spacing and line breaks included |
+
+A fresh Accordion or Details starts without a title. Quill shows a greyed hint where the title goes so you can see it is there — clicking that row puts the cursor in the title rather than collapsing the section. The hint is only in the editor; it never appears on your site.
+
+**Getting out of a block.** Press **Esc** and the cursor moves to the paragraph below the block, making one if there isn't one already. Pressing **Enter** twice does the same thing. Inside nested blocks, each press steps out one level. This is how you keep writing after a block that has nothing below it.
+
+**Deleting a block.** With the cursor inside a block, a **✕** appears at the right-hand end of the second toolbar row, labelled with the block it will remove. Click it, or press **⌘⇧⌫**. The cursor lands in the block after the one you deleted — or the one before it, if nothing follows. Inside nested blocks, the innermost one goes first, so you can work outwards rather than losing the lot at once.
+
+Settings for these blocks — a button's style and whether its link opens in a new tab, an accordion's icon, which tab opens first — are in the second toolbar row. See [Block settings](#block-settings).
+
+### Separator
+
+A horizontal rule between sections. Insert it from the **+** menu, or type `---` on an empty line. Click it to select it, and the **✕** or **⌘⇧⌫** removes it. Its style — a wide line or a row of dots — is in the block settings row.
+
 ### Footnotes
 
 Quill has full support for WordPress-style footnotes. To insert a footnote, place the cursor where you want the marker to appear and click the **\*** button in the toolbar.
@@ -441,13 +489,14 @@ When you insert a footnote, two things happen automatically:
 - **Deleting footnotes:** Delete the inline marker in the body text and the corresponding footnote entry at the bottom of the document is removed automatically. You cannot delete entries from the list directly; they are always kept in sync with the markers.
 - **Line breaks:** Press **Enter** inside a footnote entry to insert a line break within the entry. Unlike the main editor, Enter does not create a new block; it creates a soft break so you can write multi-line footnotes.
 - **Content restrictions:** Footnotes support only inline content: bold, italic, strikethrough, inline code, and links. Block elements such as images, headings, lists, tables, and blockquotes cannot be inserted inside footnotes. The toolbar buttons for these elements are disabled when the cursor is inside a footnote entry. If you paste content containing block elements into a footnote, the block structure is stripped and only the text and inline formatting are kept.
-- **On publish:** Quill saves footnotes as standard WordPress block footnotes (`wp-block-footnotes`), fully compatible with the Gutenberg editor.
+- **On publish:** Quill saves footnotes the way current WordPress does — the post itself carries a footnotes marker, and the note text is stored in the post's own footnote field. The published page shows the notes and the back-arrows exactly as Gutenberg would; Quill does not write a second back-arrow of its own.
+- **Older posts:** footnotes written by an earlier version of Quill were stored differently. Such a post is left exactly as it is until you edit it; the first edit moves the notes into the current format. Nothing is lost either way.
 
 ### Tables
 
-Click the **Table** button in the toolbar to insert a table at the cursor position. A new table is created with a default set of rows and columns.
+Click the **Table** button in the toolbar to open a size grid. Move across it and the label above reads back the size you are on — "4×3 Table" is four columns by three rows — then click to insert. The arrow keys work too, with Enter to insert and Escape to close.
 
-When the cursor is inside a table, four additional buttons appear in the toolbar:
+When the cursor is inside a table, these buttons appear in the toolbar:
 
 | Button | Function |
 |---|---|
@@ -455,11 +504,16 @@ When the cursor is inside a table, four additional buttons appear in the toolbar
 | +Col | Inserts a column to the right of the current column |
 | −Row | Deletes the current row |
 | −Col | Deletes the current column |
-| ✕ | Deletes the entire table |
+| Header | Adds or removes the table's header row |
+| Footer | Adds or removes the table's footer row |
+
+To delete the whole table, use the ✕ at the right-hand end of the block toolbar row, or press **⌘⇧⌫**. That is the same control every block uses — see [Container Blocks](#container-blocks).
 
 Press **Tab** to move forward through cells, or **⇧Tab** to move backward. Pressing Tab from the last cell in a row moves to the first cell of the next row.
 
-**Headers:** The first row of the table is treated as a header row. Quill saves it as a proper `<thead>` element in the published HTML, consistent with how WordPress formats table blocks.
+**Headers and footers:** A new table gets a header row, saved as a proper `<thead>` in the published HTML. Use the **Header** and **Footer** buttons to add or remove either section; a table opened from WordPress keeps whichever sections it arrived with.
+
+**Captions:** A caption written in the WordPress editor is kept exactly as it was. Quill does not create or edit table captions — add one in WordPress if you need it.
 
 ### Embeds
 
@@ -697,7 +751,7 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 | ⌘⇧Z | Redo |
 | ⌘B | Bold |
 | ⌘I | Italic |
-| ⌘U | Underline |
+| ⌘U | Underline (no toolbar button) |
 | ⌘⇧X | Strikethrough |
 | ⌘E | Inline code |
 | ⌘⇧8 | Bullet list |
@@ -705,6 +759,8 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 | ⌘⇧B | Blockquote |
 | ⌘⌥C | Code block |
 | ⌘⇧V | Paste as Markdown |
+| Esc | Step out of the block the cursor is in |
+| ⌘⇧⌫ | Delete the block the cursor is in |
 
 ### Find & Replace
 
@@ -739,11 +795,33 @@ Quill connects only to self-hosted WordPress installations. WordPress.com sites 
 
 Quill stores credentials for a single WordPress site. To switch sites, update your credentials in Settings. There is no multi-site management.
 
+### When Quill can't preserve something
+
+Quill checks, every time it loads a post and every time you leave code view, that every block in the post it received is still accounted for in the document it is showing you. If something has gone missing, a banner appears at the top of the editor naming the blocks affected, and **saving is blocked until you acknowledge it**. This is deliberate: saving at that moment would write the shortened content back over the real post.
+
+What to do when you see it:
+
+1. **Read which blocks it names.** The banner lists them by name.
+2. **If you need them, don't save.** Close the post and open it in the WordPress editor instead. Nothing has been written yet.
+3. **If you want to fix it in Quill,** open **Code View** (`</>`) and paste the missing block's markup back in. When you leave code view the banner clears itself and saving works again.
+4. **If you're happy to lose them,** click to acknowledge the banner and save. After saving, the banner tells you the content is gone and points at WordPress's revision history, which still has the previous version.
+
+Two things worth knowing:
+
+- **A post you haven't edited always saves.** Quill writes the original content back unchanged in that case, so there is nothing to lose and nothing to warn about.
+- **Reopening a post you already saved this way is quiet.** The loss is in the saved post now, so there is nothing left to warn about.
+
+This banner should be rare. Blocks Quill has no editor for are normally preserved exactly — see below.
+
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, horizontal rules, images, galleries, tables, embeds, footnotes, and links. Posts you write in Quill round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, separators, images, galleries, tables, embeds, footnotes, links, and the container blocks Columns, Details, Buttons, Accordion and Tabs. Posts you write in Quill round-trip correctly through the Gutenberg editor.
 
-Blocks Quill doesn't support natively (Audio, Video, Pullquote, Playlist, Accordion, Columns, Cover, Group, and third-party plugin blocks) are preserved rather than edited. Each appears in the visual editor as a labeled card marked "Not editable in the visual editor; use Code View." You can move or delete the card, and you can keep editing the rest of the post freely: the block's original markup is saved back to WordPress exactly as it arrived. To change what's inside one of these blocks, use **Code View** (`</>`) to edit the raw HTML, or make that edit in the WordPress editor.
+**Settings you apply in WordPress are kept.** A colour, a font size, a border radius, a block style, a link that opens in a new tab, a table's fixed layout — Quill carries these through an edit even where it offers no control for them, and writes them back the way WordPress wrote them. Editing a post in Quill should leave everything you set in Gutenberg exactly as you left it.
+
+Blocks Quill doesn't support natively (Audio, Video, Playlist, Cover, Group, Media & Text, Spacer, Custom HTML, shortcodes, and third-party plugin blocks) are preserved rather than edited. Each appears in the visual editor as a labeled card marked "Not editable in the visual editor; use Code View," showing a short preview of its source. You can move or delete the card, and you can keep editing the rest of the post freely: the block's original markup is saved back to WordPress exactly as it arrived, byte for byte. To change what's inside one of these blocks, use **Code View** (`</>`) to edit the raw HTML, or make that edit in the WordPress editor.
+
+**Classic posts are converted when you edit them.** A post written before the block editor has no block structure. Opening it and saving without changes leaves it untouched, but making any edit converts it to blocks — the same conversion WordPress's own "Convert to blocks" performs. Paragraphs, headings and lists come through fine; a plain wrapper `<div>` with a custom class does not survive the conversion. If a classic post depends on custom wrapper markup, edit it in the WordPress editor instead.
 
 Galleries load as a read-only thumbnail-grid card: Quill cannot edit an existing gallery's images or settings, only insert new ones. To change an existing gallery, delete it and insert a replacement.
 

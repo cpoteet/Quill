@@ -17,6 +17,7 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public var tags: [Int]
     public var parent: Int          // page parent ID, 0 = top-level
     public var commentStatus: String  // "open" or "closed"
+    public var footnotes: String  // core/footnotes bodies as JSON; "" when the post has none
 
     enum CodingKeys: String, CodingKey {
         case id, type, title, content, excerpt, status, date, modified, slug, link, parent
@@ -25,6 +26,11 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         case categories, tags
         case commentStatus = "comment_status"
     }
+
+    // Read-only side door: `meta` is absent from CodingKeys so the synthesized
+    // Encodable stays valid, and WPPost is never encoded back to the API anyway.
+    private enum MetaContainerKeys: String, CodingKey { case meta }
+    private enum MetaKeys: String, CodingKey { case footnotes }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -44,6 +50,9 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         tags = try c.decodeIfPresent([Int].self, forKey: .tags) ?? []
         parent = try c.decodeIfPresent(Int.self, forKey: .parent) ?? 0
         commentStatus = try c.decodeIfPresent(String.self, forKey: .commentStatus) ?? "open"
+        let outer = try decoder.container(keyedBy: MetaContainerKeys.self)
+        let meta = try? outer.nestedContainer(keyedBy: MetaKeys.self, forKey: .meta)
+        footnotes = (try? meta?.decodeIfPresent(String.self, forKey: .footnotes)) as? String ?? ""
     }
 }
 
@@ -196,6 +205,9 @@ public struct PostPayload: Encodable, Sendable {
     public var slug: String?
     public var commentStatus: String?
     public var parent: Int?
+    // Sent as meta.footnotes. nil omits the key entirely, so a payload that never
+    // touched footnotes cannot blank out what the post already has.
+    public var footnotes: String?
 
     enum CodingKeys: String, CodingKey {
         case title, content, excerpt, status, slug, parent
@@ -203,6 +215,30 @@ public struct PostPayload: Encodable, Sendable {
         case featuredMedia = "featured_media"
         case categories, tags
         case commentStatus = "comment_status"
+        case meta
+    }
+
+    private enum MetaKeys: String, CodingKey {
+        case footnotes
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(title, forKey: .title)
+        try c.encode(content, forKey: .content)
+        try c.encode(excerpt, forKey: .excerpt)
+        try c.encode(status, forKey: .status)
+        try c.encodeIfPresent(dateGmt, forKey: .dateGmt)
+        try c.encodeIfPresent(featuredMedia, forKey: .featuredMedia)
+        try c.encode(categories, forKey: .categories)
+        try c.encode(tags, forKey: .tags)
+        try c.encodeIfPresent(slug, forKey: .slug)
+        try c.encodeIfPresent(commentStatus, forKey: .commentStatus)
+        try c.encodeIfPresent(parent, forKey: .parent)
+        if let footnotes {
+            var meta = c.nestedContainer(keyedBy: MetaKeys.self, forKey: .meta)
+            try meta.encode(footnotes, forKey: .footnotes)
+        }
     }
 
     public init(
@@ -216,7 +252,8 @@ public struct PostPayload: Encodable, Sendable {
         tags: [Int] = [],
         slug: String? = nil,
         commentStatus: String? = nil,
-        parent: Int? = nil
+        parent: Int? = nil,
+        footnotes: String? = nil
     ) {
         self.title = title
         self.content = content
@@ -229,5 +266,6 @@ public struct PostPayload: Encodable, Sendable {
         self.slug = slug
         self.commentStatus = commentStatus
         self.parent = parent
+        self.footnotes = footnotes
     }
 }

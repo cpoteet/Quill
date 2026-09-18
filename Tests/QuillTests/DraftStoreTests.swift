@@ -109,4 +109,54 @@ import Testing
         #expect(draft?.title == title)
         #expect(draft?.content == content)
     }
+
+    @Test func footnotesSurviveCreateAndLoad() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "",
+                                  footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        #expect(try store.load(id: id)?.footnotes == #"[{"id":"fn-a","content":"Note"}]"#)
+    }
+
+    @Test func updateReplacesFootnotes() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "",
+                                  footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        try store.update(id: id, title: "T", content: "<p>x</p>", excerpt: "", footnotes: "[]")
+        #expect(try store.load(id: id)?.footnotes == "[]")
+    }
+
+    @Test func draftCreatedWithoutFootnotesReadsBackEmpty() throws {
+        let id = try store.create(title: "T", content: "<p>x</p>", excerpt: "")
+        #expect(try store.load(id: id)?.footnotes == "")
+    }
+
+    // fetchAll builds LocalDraft separately from load(id:), so the column has to
+    // be read in both places — this is the one the sidebar and the editor use.
+    @Test func fetchAllCarriesFootnotes() throws {
+        _ = try store.create(title: "A", content: "", excerpt: "", footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        _ = try store.create(title: "B", content: "", excerpt: "")
+        let byTitle = Dictionary(uniqueKeysWithValues: try store.fetchAll().map { ($0.title, $0.footnotes) })
+        #expect(byTitle["A"] == #"[{"id":"fn-a","content":"Note"}]"#)
+        #expect(byTitle["B"] == "")
+    }
+
+    // `footnotes` defaults to "" on update, so a call site that forgets the
+    // argument erases the bodies instead of leaving them alone. Every PostEditorView
+    // save path passes it; this pins the cost of a new one that does not.
+    @Test func updateWithoutFootnotesErasesThem() throws {
+        let id = try store.create(title: "T", content: "", excerpt: "", footnotes: #"[{"id":"fn-a","content":"Note"}]"#)
+        try store.update(id: id, title: "T", content: "", excerpt: "")
+        #expect(try store.load(id: id)?.footnotes == "")
+    }
+
+    // The full local-draft round trip: written on save, read back on reopen,
+    // and unchanged by an edit that only touches the body.
+    @Test func footnotesSurviveAnEditThatOnlyChangesTheContent() throws {
+        let notes = #"[{"id":"fn-a","content":"The <em>note</em> body."}]"#
+        let id = try store.create(title: "T", content: "<p>one</p>", excerpt: "", footnotes: notes)
+        let reopened = try #require(try store.load(id: id))
+        try store.update(id: id, title: reopened.title, content: "<p>one two</p>",
+                         excerpt: reopened.excerpt, footnotes: reopened.footnotes)
+        let after = try #require(try store.load(id: id))
+        #expect(after.content == "<p>one two</p>")
+        #expect(after.footnotes == notes)
+    }
 }

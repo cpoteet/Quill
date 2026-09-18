@@ -3,7 +3,9 @@
 const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const fs = require('fs')
+const path = require('path')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -132,13 +134,13 @@ describe('isModeledFigure', () => {
     return host.firstElementChild
   }
 
-  test('the modeled-figure set is exactly image, gallery, embed and table', () => {
+  test('the modeled-figure set is exactly image, gallery, embed, table and pullquote', () => {
     // Drift guard: adding a class here without giving that figure its own
     // Tiptap parse rule silently hands the block to the generic parser, which
     // shreds it. Removing one freezes that block into a passthrough card.
     assert.deepEqual(
       Array.from(QUILL_MODELED_FIGURE_CLASSES).sort(),
-      ['wp-block-embed', 'wp-block-gallery', 'wp-block-image', 'wp-block-table']
+      ['wp-block-embed', 'wp-block-gallery', 'wp-block-image', 'wp-block-pullquote', 'wp-block-table']
     )
   })
 
@@ -150,7 +152,7 @@ describe('isModeledFigure', () => {
 
   test('figure blocks Quill does not model are not exempted', () => {
     const unmodeled = [
-      'wp-block-audio', 'wp-block-video', 'wp-block-pullquote',
+      'wp-block-audio', 'wp-block-video',
       'wp-block-playlist', 'wp-block-media-text',
     ]
     for (const cls of unmodeled) {
@@ -264,22 +266,22 @@ describe('toWordPressHTML — list item p unwrap', () => {
   test('leading <p> is unwrapped when the rest of the <li> is a nested list', () => {
     const out = wp('<ul><li><p>a</p><ul><li>b</li></ul></li></ul>')
     assert.doesNotMatch(out, /<p>a<\/p>/)
-    assert.match(out, /<li>a<ul/)
+    assert.match(out, /<li>a<!-- wp:list -->/)
     assert.match(out, /<li>b<\/li>/)
   })
 
   test('unwrapping works at every level of a deep nest', () => {
     const out = wp('<ul><li><p>a</p><ul><li><p>b</p><ul><li><p>c</p></li></ul></li></ul></li></ul>')
     assert.doesNotMatch(out, /<p>/)
-    assert.match(out, /<li>a<ul/)
-    assert.match(out, /<li>b<ul/)
+    assert.match(out, /<li>a<!-- wp:list -->/)
+    assert.match(out, /<li>b<!-- wp:list -->/)
     assert.match(out, /<li>c<\/li>/)
   })
 
   test('ordered nested lists unwrap the same way', () => {
     const out = wp('<ol><li><p>a</p><ol><li>b</li></ol></li></ol>')
     assert.doesNotMatch(out, /<p>a<\/p>/)
-    assert.match(out, /<li>a<ol/)
+    assert.match(out, /<li>a<!-- wp:list \{"ordered":true\} -->/)
   })
 
   test('a paragraph AFTER the nested list keeps the item untouched', () => {
@@ -290,7 +292,7 @@ describe('toWordPressHTML — list item p unwrap', () => {
 
   test('an <li> whose first child is a list is left untouched', () => {
     const out = wp('<ul><li><ul><li>b</li></ul></li></ul>')
-    assert.match(out, /<li><ul/)
+    assert.match(out, /<li><!-- wp:list -->/)
   })
 
   // Guards the transform against mangling markup that is already in Gutenberg's
@@ -298,7 +300,17 @@ describe('toWordPressHTML — list item p unwrap', () => {
   // what actually regressed here and can't be exercised from this pure-function
   // suite; it was verified against the live editor in jsdom when this was fixed.
   test('already-Gutenberg nested markup passes through unchanged', () => {
-    const src = '<ul class="wp-block-list"><li>a<ul class="wp-block-list"><li>b</li></ul></li></ul>'
+    const src = [
+      '<!-- wp:list -->',
+      '<ul class="wp-block-list"><!-- wp:list-item -->',
+      '<li>a<!-- wp:list -->',
+      '<ul class="wp-block-list"><!-- wp:list-item -->',
+      '<li>b</li>',
+      '<!-- /wp:list-item --></ul>',
+      '<!-- /wp:list --></li>',
+      '<!-- /wp:list-item --></ul>',
+      '<!-- /wp:list -->',
+    ].join('\n')
     assert.equal(wp(src), src)
   })
 
@@ -432,6 +444,112 @@ describe('toWordPressHTML — images', () => {
 })
 
 // ---------------------------------------------------------------------------
+// toWordPressHTML — image dimensions and decorative flag
+//
+// core/image's save() puts dimensions in an inline style plus an is-resized
+// class, never in HTML width/height attributes, and emits role only when the
+// isDecorative attribute is set. Markup that carries either without the
+// matching wp:image comment attribute fails Gutenberg's block validation with
+// "Block contains unexpected or invalid content."
+// ---------------------------------------------------------------------------
+
+describe('toWordPressHTML — image dimensions', () => {
+  const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
+  const figureOf = out => new JSDOM(out).window.document.querySelector('figure')
+  const imgOf = out => new JSDOM(out).window.document.querySelector('img')
+
+  test('width and height attributes become an inline style on the img', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:480px')
+  })
+
+  test('width and height attributes are removed from the img', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    const img = imgOf(out)
+    assert.ok(!img.hasAttribute('width'), 'img kept a width attribute')
+    assert.ok(!img.hasAttribute('height'), 'img kept a height attribute')
+  })
+
+  test('width alone forces height:auto, matching core save()', () => {
+    const out = wp('<figure><img src="a.jpg" width="640"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:auto')
+  })
+
+  test('height alone emits height only', () => {
+    const out = wp('<figure><img src="a.jpg" height="480"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'height:480px')
+  })
+
+  test('dimensions add is-resized to the figure', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.ok(figureOf(out).classList.contains('is-resized'))
+  })
+
+  test('no dimensions means no is-resized and no style', () => {
+    const out = wp('<figure><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.ok(!figureOf(out).classList.contains('is-resized'))
+    assert.ok(!imgOf(out).hasAttribute('style'))
+  })
+
+  test('stale is-resized is stripped when the image has no dimensions', () => {
+    const out = wp('<figure class="is-resized"><img src="a.jpg"><figcaption></figcaption></figure>')
+    assert.ok(!figureOf(out).classList.contains('is-resized'))
+  })
+
+  test('dimensions are carried into the wp:image comment attributes as px strings', () => {
+    const out = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { width: '640px', height: '480px' })
+  })
+
+  // core leaves height undefined when only a width is set; save() then forces
+  // height:auto in the style, so the attribute stays absent on both sides.
+  test('width alone carries only width into the comment attributes', () => {
+    const out = wp('<figure><img src="a.jpg" width="640"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { width: '640px' })
+  })
+
+  test('an unresized image carries no width or height comment attribute', () => {
+    const out = wp('<figure><img src="a.jpg" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { id: 42 })
+  })
+
+  test('an existing width style on the img survives without duplicating', () => {
+    const out = wp('<figure><img src="a.jpg" style="width:640px;height:auto"><figcaption></figcaption></figure>')
+    assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:auto')
+    assert.deepEqual(attrsOf(out), { width: '640px' })
+  })
+
+  test('dimension handling is idempotent across a second save', () => {
+    const once = wp('<figure><img src="a.jpg" width="640" height="480"><figcaption></figcaption></figure>')
+    assert.equal(wp(once), once)
+  })
+})
+
+describe('toWordPressHTML — decorative images', () => {
+  const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
+
+  test('role="none" on the img sets isDecorative in the comment attributes', () => {
+    const out = wp('<figure><img src="a.jpg" role="none" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.deepEqual(attrsOf(out), { id: 42, isDecorative: true })
+  })
+
+  test('role="presentation" also sets isDecorative', () => {
+    const out = wp('<figure><img src="a.jpg" role="presentation"><figcaption></figcaption></figure>')
+    assert.equal(attrsOf(out).isDecorative, true)
+  })
+
+  test('an image with no role carries no isDecorative attribute', () => {
+    const out = wp('<figure><img src="a.jpg" data-media-id="42"><figcaption></figcaption></figure>')
+    assert.ok(!('isDecorative' in attrsOf(out)))
+  })
+
+  test('the role attribute stays on the img', () => {
+    const out = wp('<figure><img src="a.jpg" role="none"><figcaption></figcaption></figure>')
+    assert.match(out, /role="none"/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // toWordPressHTML — tables
 // ---------------------------------------------------------------------------
 
@@ -462,6 +580,17 @@ describe('toWordPressHTML — tables', () => {
     const dom = new JSDOM(out).window.document
     // Should still have exactly one thead
     assert.equal(dom.querySelectorAll('thead').length, 1)
+  })
+
+  test('table figure is wrapped in wp:table block comments', () => {
+    const out = wp('<table><tbody><tr><td>cell</td></tr></tbody></table>')
+    assert.match(out, /<!-- wp:table -->/)
+    assert.match(out, /<!-- \/wp:table -->/)
+  })
+
+  test('re-saving a delimited table does not stack wp:table comments', () => {
+    const twice = wp(wp('<table><tbody><tr><td>cell</td></tr></tbody></table>'))
+    assert.equal((twice.match(/<!-- wp:table/g) || []).length, 1)
   })
 
   test('table already inside wp-block-table is not double-wrapped', () => {
@@ -521,7 +650,8 @@ describe('toWordPressHTML — idempotency and edge cases', () => {
 
   test('empty paragraph is stable', () => {
     const out = wp('<p></p>')
-    assert.equal(out, '<p></p>')
+    assert.equal(out, '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    assert.equal(wp(out), out)
   })
 
   test('unicode and emoji in text are preserved', () => {
@@ -1136,7 +1266,7 @@ describe('toWordPressHTML — passthrough blocks', () => {
   })
 
   test('an element with no data-quill-passthrough-name attribute is left alone', () => {
-    const html = '<div class="wp-block-accordion"><p>x</p></div>'
+    const html = '<div class="wp-block-media-text"><p>x</p></div>'
     const out = wp(html)
     assert.ok(!out.includes('<!--'))
   })
@@ -1160,7 +1290,7 @@ describe('toWordPressHTML — passthrough blocks', () => {
     const out = wp(html)
     assert.match(out, /<!-- wp:image \{"id":42\} -->/)
     assert.match(out, /<!-- \/wp:image -->/)
-    assert.ok(out.includes('<img src="x.jpg">'), 'inner image markup should survive too')
+    assert.ok(out.includes('<img src="x.jpg">'), 'inner image markup survives exactly as authored')
     assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes should not leak into saved HTML')
   })
 
@@ -1241,34 +1371,103 @@ describe('toWordPressHTML — footnotes', () => {
 
 
 // ---------------------------------------------------------------------------
-// toWordPressHTML — footnote backrefs
+// toWordPressHTML — footnote marker anchors
 // ---------------------------------------------------------------------------
 
-describe('toWordPressHTML — footnote backrefs', () => {
-  test('marker sup gains id="ref-fn-UUID"', () => {
+describe('toWordPressHTML — footnote marker anchors', () => {
+  test('marker sup gains core\'s id="<fnId>-link"', () => {
     const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>'
-    assert.match(wp(html), /id="ref-fn-a"/)
+    assert.match(wp(html), /id="fn-a-link"/)
   })
 
-  test('footnote list item gains backref link', () => {
+  test('no backref is written into the list — WordPress renders it from meta', () => {
     const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
     const out = wp(html)
-    assert.match(out, /href="#ref-fn-a"/)
-    assert.match(out, /class="footnote-backref"/)
-    assert.match(out, /↩/)
+    assert.doesNotMatch(out, /footnote-backref/)
+    assert.doesNotMatch(out, /↩/)
   })
 
-  test('backref arrow uses text-presentation variation selector, not emoji-presentation', () => {
-    const html = '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
-    const out = wp(html)
-    assert.match(out, /class="footnote-backref"[^>]*>↩︎<\/a>/)
-  })
-
-  test('backref is idempotent — not added twice on double transform', () => {
-    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>' +
-      '<ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>'
+  test('marker id is idempotent across repeated transforms', () => {
+    const html = '<p><sup data-fn="fn-a" class="fn"><a href="#fn-a"></a></sup></p>'
     const twice = wp(wp(html))
-    assert.equal((twice.match(/footnote-backref/g) || []).length, 1)
+    assert.equal((twice.match(/fn-a-link/g) || []).length, 1)
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// extractFootnotes / inlineFootnotes
+// ---------------------------------------------------------------------------
+
+describe('extractFootnotes', () => {
+  const split = h => extractFootnotes(h, new JSDOM('<!doctype html><body>').window.document)
+
+  test('replaces the list with core\'s self-closing delimiter', () => {
+    const r = split('<p>x</p><ol class="wp-block-footnotes"><li id="fn-a">Note</li></ol>')
+    assert.match(r.content, /<!-- wp:footnotes \/-->/)
+    assert.doesNotMatch(r.content, /wp-block-footnotes/)
+  })
+
+  test('returns each footnote body keyed by its id, in document order', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">First</li><li id="fn-b">Second</li></ol>')
+    assert.deepEqual(r.footnotes, [
+      { id: 'fn-a', content: 'First' },
+      { id: 'fn-b', content: 'Second' },
+    ])
+  })
+
+  test('keeps inline markup inside a footnote body', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">See <a href="https://e.com"><em>this</em></a>.</li></ol>')
+    assert.equal(r.footnotes[0].content, 'See <a href="https://e.com"><em>this</em></a>.')
+  })
+
+  test('strips a legacy backref anchor from the stored body', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">Note<a href="#ref-fn-a" class="footnote-backref">↩︎</a></li></ol>')
+    assert.equal(r.footnotes[0].content, 'Note')
+  })
+
+  test('content with no footnotes is returned untouched', () => {
+    const html = '<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->'
+    const r = split(html)
+    assert.equal(r.content, html)
+    assert.deepEqual(r.footnotes, [])
+  })
+
+  test('leaves the rest of the block comments intact', () => {
+    const r = split('<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>')
+    assert.match(r.content, /<!-- wp:paragraph -->/)
+    assert.match(r.content, /<!-- \/wp:paragraph -->/)
+  })
+})
+
+describe('inlineFootnotes', () => {
+  const inline = (h, f) => inlineFootnotes(h, f, new JSDOM('<!doctype html><body>').window.document)
+
+  test('materialises the list from meta at the delimiter', () => {
+    const out = inline('<p>x</p><!-- wp:footnotes /-->', [{ id: 'fn-a', content: 'Note' }])
+    assert.match(out, /<ol class="wp-block-footnotes"><li id="fn-a">Note<\/li><\/ol>/)
+    assert.doesNotMatch(out, /wp:footnotes/)
+  })
+
+  test('restores footnotes in meta order', () => {
+    const out = inline('<!-- wp:footnotes /-->', [{ id: 'fn-a', content: 'A' }, { id: 'fn-b', content: 'B' }])
+    assert.ok(out.indexOf('fn-a') < out.indexOf('fn-b'))
+  })
+
+  test('round-trips with extractFootnotes', () => {
+    const original = '<p>x</p><ol class="wp-block-footnotes"><li id="fn-a">A <em>note</em></li></ol>'
+    const r = extractFootnotes(original, new JSDOM('<!doctype html><body>').window.document)
+    assert.equal(inline(r.content, r.footnotes), original)
+  })
+
+  test('empty meta leaves the delimiter alone for the passthrough card', () => {
+    const html = '<p>x</p><!-- wp:footnotes /-->'
+    assert.equal(inline(html, []), html)
+  })
+
+  test('meta without a delimiter in the content changes nothing', () => {
+    const html = '<p>x</p>'
+    assert.equal(inline(html, [{ id: 'fn-a', content: 'N' }]), html)
   })
 })
 
@@ -1356,5 +1555,303 @@ describe('standalone image block comments', () => {
     const out = wp(PLAIN)
     assert.ok(!out.includes('data-media-id'))
     assert.match(out, /class="[^"]*wp-image-201/)
+  })
+})
+
+describe('trailing paragraph', () => {
+  test('drops the empty paragraph the editor keeps after a table', () => {
+    const out = wp('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p></p>')
+    assert.ok(!out.includes('<p></p>'))
+    assert.ok(out.includes('</table>'))
+  })
+
+  test('drops it after an image figure too', () => {
+    const out = wp('<figure class="wp-block-image"><img src="https://e.com/a.jpg"></figure><p></p>')
+    assert.ok(!out.includes('<p></p>'))
+  })
+
+  test('keeps an empty paragraph that is not last', () => {
+    const out = wp('<p></p><p>tail</p>')
+    assert.ok(out.includes('<p></p>'))
+  })
+
+  test('keeps a trailing paragraph that has text', () => {
+    const out = wp('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p>after</p>')
+    assert.ok(out.includes('<p>after</p>'))
+  })
+
+  test('never empties a document that is only an empty paragraph', () => {
+    assert.ok(wp('<p></p>').includes('<p></p>'))
+  })
+})
+
+describe('block delimiters', () => {
+  test('wraps a paragraph in wp:paragraph', () => {
+    const out = toWordPressHTML('<p>Hello</p>', document)
+    assert.match(out, /<!-- wp:paragraph -->[\s\S]*<p>Hello<\/p>[\s\S]*<!-- \/wp:paragraph -->/)
+  })
+
+  test('wraps an h2 with no level, which is core default', () => {
+    const out = toWordPressHTML('<h2>Title</h2>', document)
+    assert.match(out, /<!-- wp:heading -->/)
+  })
+
+  test('wraps an h3 with its level attribute', () => {
+    const out = toWordPressHTML('<h3>Title</h3>', document)
+    assert.match(out, /<!-- wp:heading \{"level":3\} -->/)
+  })
+
+  test('wraps a list and each of its items', () => {
+    const out = toWordPressHTML('<ul><li>One</li></ul>', document)
+    assert.match(out, /<!-- wp:list -->/)
+    assert.match(out, /<!-- wp:list-item -->/)
+  })
+
+  test('does not double-wrap already-delimited content', () => {
+    const src = '<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->'
+    const once = toWordPressHTML(src, document)
+    assert.equal(toWordPressHTML(once, document), once)
+  })
+
+  test('leaves gallery delimiters exactly as they are', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8')
+    const out = toWordPressHTML(src, document)
+    assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
+  })
+
+  // Every delimiter goes through core's serializeAttributes. The serializer's
+  // own suite feeds it attribute objects directly; these check that the
+  // transform actually routes through it, which a plain JSON.stringify would
+  // pass every string test while writing a delimiter core would re-escape.
+  describe('delimiter attributes are escaped the way core escapes them', () => {
+    test("an embed URL's query ampersand is escaped", () => {
+      const out = wp('<figure class="wp-block-embed is-provider-youtube">' +
+        '<div class="wp-block-embed__wrapper">https://www.youtube.com/watch?v=abc&amp;t=10</div></figure>')
+      assert.match(out, /"url":"https:\/\/www\.youtube\.com\/watch\?v=abc\\u0026t=10"/)
+      assert.doesNotMatch(out.slice(0, out.indexOf('-->')), /&amp;|&(?!amp;)/)
+    })
+
+    test('a double hyphen in a carried class cannot close its own comment', () => {
+      const out = wp('<p data-quill-block-attrs=\'{"className":"a--b"}\'>x</p>')
+      assert.match(out, /<!-- wp:paragraph \{"className":"a\\u002d\\u002db"\} -->/)
+      assert.equal((out.match(/-->/g) || []).length, 2)
+    })
+
+    test('angle brackets in a carried value are escaped', () => {
+      const out = wp('<p data-quill-block-attrs=\'{"metadata":{"name":"<b>"}}\'>x</p>')
+      assert.match(out, /"name":"\\u003cb\\u003e"/)
+      assert.doesNotMatch(out.slice(0, out.indexOf('-->')), /<b>/)
+    })
+
+    test('a block with no attributes still gets no trailing space', () => {
+      assert.match(wp('<p>x</p>'), /<!-- wp:paragraph -->/)
+    })
+  })
+
+  // Core self-closes void tags in the two blocks whose markup it owns; an
+  // edited post otherwise diffs on every image and separator in the history.
+  describe('img and hr self-close, br does not', () => {
+    test('a separator closes itself', () => {
+      assert.match(wp('<p>a</p><hr><p>b</p>'), /<hr class="wp-block-separator has-alpha-channel-opacity"\/>/)
+    })
+
+    test('an image closes itself', () => {
+      assert.match(wp('<figure class="wp-block-image"><img src="a.jpg"></figure>'), /<img src="a\.jpg"\/>/)
+    })
+
+    test('a line break is left alone', () => {
+      const out = wp('<p>a<br>b</p>')
+      assert.match(out, /<p>a<br>b<\/p>/)
+      assert.doesNotMatch(out, /<br\/>/)
+    })
+
+    test('an angle bracket inside an attribute does not truncate the tag', () => {
+      const out = wp('<figure class="wp-block-image"><img src="a.jpg" alt="a > b"></figure>')
+      assert.match(out, /<img src="a\.jpg" alt="a > b"\/>/)
+    })
+
+    test('an already self-closed tag does not gain a second slash', () => {
+      const out = wp('<figure class="wp-block-image"><img src="a.jpg"/></figure>')
+      assert.doesNotMatch(out, /\/\/>/)
+      assert.equal((out.match(/<img /g) || []).length, 1)
+    })
+  })
+})
+
+// core's anchor and customClassName supports. A block that came from outside
+// Gutenberg carries both only in its markup, so the delimiter has to be derived
+// from the root element -- and the derivation has to tell a class core's own
+// save() generated from one the author wrote.
+describe('anchor and className supports', () => {
+  const opener = html => wp(html).split('\n')[0]
+
+  test("an id on a modeled block's root becomes the anchor", () => {
+    assert.equal(opener('<h3 id="intro">T</h3>'), '<!-- wp:heading {"level":3,"anchor":"intro"} -->')
+  })
+
+  test('a class the author wrote becomes className', () => {
+    assert.equal(opener('<p class="lead">T</p>'), '<!-- wp:paragraph {"className":"lead"} -->')
+  })
+
+  test('both together are emitted, anchor first', () => {
+    assert.equal(opener('<h3 id="a" class="lead">T</h3>'),
+      '<!-- wp:heading {"level":3,"anchor":"a","className":"lead"} -->')
+  })
+
+  test('a block with neither gets neither key', () => {
+    assert.equal(opener('<p>T</p>'), '<!-- wp:paragraph -->')
+  })
+
+  // Each of these is a class core's own save() or a style support draws. One
+  // of them leaking into className puts it in the delimiter twice.
+  for (const generated of [
+    'wp-block-heading', 'has-text-color', 'has-large-font-size', 'is-resized',
+    'are-vertically-aligned-top', 'items-justified-left', 'wp-elements-abc123',
+    'wp-container-core-group-is-layout-1', 'alignwide', 'alignfull', 'alignleft',
+    'alignright', 'aligncenter', 'alignnone',
+  ]) {
+    test(`${generated} is not treated as the author's class`, () => {
+      assert.equal(opener(`<p class="${generated}">T</p>`), '<!-- wp:paragraph -->')
+    })
+  }
+
+  // The one is- token that is not generated: a block style IS stored in
+  // className, which is what the style picker reads and writes.
+  test('is-style- is kept, because that is where a block style lives', () => {
+    assert.equal(opener('<p class="is-style-x">T</p>'), '<!-- wp:paragraph {"className":"is-style-x"} -->')
+  })
+
+  test('only the custom tokens survive a mixed class list', () => {
+    assert.equal(opener('<p class="wp-block-heading lead has-text-color mine">T</p>'),
+      '<!-- wp:paragraph {"className":"lead mine"} -->')
+  })
+
+  // Four blocks have no anchor support in their block.json; writing one makes
+  // Gutenberg reject the block.
+  test('a block marked noAnchor keeps its id out of the delimiter', () => {
+    const out = wp('<div class="wp-block-tabs"><div role="tablist" class="wp-block-tab-list" id="tl">' +
+      '<button role="tab">a</button></div></div>')
+    assert.match(out, /<!-- wp:tab-list -->/)
+    assert.doesNotMatch(out, /anchor/)
+    assert.match(out, /id="tl"/, 'the id itself still rides the markup')
+  })
+
+  test('what WordPress carried wins over what the markup implies', () => {
+    assert.equal(opener('<p data-quill-block-attrs=\'{"className":"kept"}\' class="lead">T</p>'),
+      '<!-- wp:paragraph {"className":"kept"} -->')
+    assert.equal(opener('<h3 data-quill-block-attrs=\'{"anchor":"kept"}\' id="other">T</h3>'),
+      '<!-- wp:heading {"anchor":"kept","level":3} -->')
+  })
+
+  // The carried key keeps the position WordPress gave it, so a post does not
+  // come back with its delimiter attributes reshuffled on every save.
+  test('a carried key keeps its place ahead of a derived one', () => {
+    const out = opener('<h3 data-quill-block-attrs=\'{"metadata":{"name":"N"}}\' id="a">T</h3>')
+    assert.ok(out.indexOf('"metadata"') < out.indexOf('"level"'), out)
+  })
+})
+
+// core/list stores both on the block as well as on the markup.
+describe('ordered list start and reversed', () => {
+  test('a start other than 1 reaches the delimiter', () => {
+    assert.match(wp('<ol start="3"><li>a</li></ol>'), /<!-- wp:list \{"ordered":true,"start":3\} -->/)
+  })
+
+  test('a start of 1 does not', () => {
+    assert.match(wp('<ol start="1"><li>a</li></ol>'), /<!-- wp:list \{"ordered":true\} -->/)
+  })
+
+  test('reversed reaches it as a boolean', () => {
+    assert.match(wp('<ol reversed><li>a</li></ol>'), /<!-- wp:list \{"ordered":true,"reversed":true\} -->/)
+  })
+
+  test('both together, in core\'s order', () => {
+    assert.match(wp('<ol start="3" reversed><li>a</li></ol>'),
+      /<!-- wp:list \{"ordered":true,"start":3,"reversed":true\} -->/)
+  })
+
+  test('an unordered list gets neither', () => {
+    assert.match(wp('<ul start="3"><li>a</li></ul>'), /<!-- wp:list -->/)
+  })
+})
+
+// core/code's save() draws no class on the inner <code>, so a language class
+// Claude wrote there has to move up or the block fails validation.
+describe('a code block language class moves to the pre', () => {
+  test('the class lands on the pre and leaves the code bare', () => {
+    const out = wp('<pre><code class="language-python">x</code></pre>')
+    assert.match(out, /<pre class="wp-block-code language-python"><code>x<\/code><\/pre>/)
+  })
+
+  test('and is reported as the block\'s className', () => {
+    assert.match(wp('<pre><code class="language-python">x</code></pre>'),
+      /<!-- wp:code \{"className":"language-python"\} -->/)
+  })
+
+  test('a code block with no language is untouched', () => {
+    const out = wp('<pre><code>x</code></pre>')
+    assert.match(out, /<pre class="wp-block-code"><code>x<\/code><\/pre>/)
+    assert.match(out, /<!-- wp:code -->/)
+  })
+
+  test('the move is idempotent', () => {
+    const once = wp('<pre><code class="language-python">x</code></pre>')
+    assert.equal(wp(once), once)
+  })
+
+  test('a preformatted block is left out of it', () => {
+    const out = wp('<pre class="wp-block-preformatted"><code class="language-python">x</code></pre>')
+    assert.match(out, /<code class="language-python">/)
+    assert.doesNotMatch(out, /wp-block-code/)
+  })
+})
+
+describe('unsupported block unwrapping', () => {
+  const wrapper = (source, label) => {
+    const el = document.createElement('div')
+    el.className = 'wp-block-quill-unsupported'
+    el.setAttribute('data-quill-passthrough', '')
+    el.setAttribute('data-quill-unsupported-source', source)
+    el.setAttribute('data-quill-unsupported-label', label)
+    return el.outerHTML
+  }
+
+  test('restores a shortcode block exactly', () => {
+    const src = '<!-- wp:shortcode -->[gallery ids="1,2"]<!-- /wp:shortcode -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Shortcode'), document), src)
+  })
+
+  test('restores markup with quotes and entities exactly', () => {
+    const src = '<!-- wp:html --><div data-x="a&amp;b">&lt;hi&gt;</div><!-- /wp:html -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Custom HTML'), document), src)
+  })
+
+  test('leaves no marker attributes behind', () => {
+    const out = toWordPressHTML(wrapper('<!-- wp:calendar /-->', 'Calendar'), document)
+    assert.doesNotMatch(out, /data-quill-unsupported|wp-block-quill-unsupported|data-quill-passthrough/)
+  })
+
+  test('is idempotent', () => {
+    const src = '<!-- wp:shortcode -->[x]<!-- /wp:shortcode -->'
+    const once = toWordPressHTML(wrapper(src, 'Shortcode'), document)
+    assert.equal(toWordPressHTML(once, document), once)
+  })
+
+  test('restores two wrappers in document order', () => {
+    const a = '<!-- wp:calendar /-->'
+    const b = '<!-- wp:shortcode -->[y]<!-- /wp:shortcode -->'
+    const out = toWordPressHTML(wrapper(a, 'Calendar') + wrapper(b, 'Shortcode'), document)
+    assert.equal(out, a + '\n\n' + b, 'core separates top-level blocks with a blank line')
+  })
+
+  test('restores a source containing a dollar sequence', () => {
+    const src = '<!-- wp:shortcode -->[price amount="$1.00" note="$&"]<!-- /wp:shortcode -->'
+    assert.equal(toWordPressHTML(wrapper(src, 'Shortcode'), document), src)
+  })
+
+  test('a post with no wrappers is unchanged by the pass', () => {
+    const out = toWordPressHTML('<p>Hi</p>', document)
+    assert.match(out, /<p>Hi<\/p>/)
   })
 })

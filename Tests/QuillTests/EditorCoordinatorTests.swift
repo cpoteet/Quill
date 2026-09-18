@@ -94,3 +94,79 @@ import Testing
         #expect(EditorCoordinator.mediaSizesDict(for: media) == nil)
     }
 }
+
+@Suite("setContent push decision")
+struct EditorPushDecisionTests {
+    @Test("identical content and footnotes is skipped")
+    func skipsIdentical() {
+        var state = EditorPushState()
+        #expect(state.shouldPush(html: "<p>A</p>", footnotes: "[]"))
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(!state.shouldPush(html: "<p>A</p>", footnotes: "[]"))
+    }
+
+    @Test("a footnote-only difference still pushes")
+    func pushesOnFootnoteChange() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "<p>A</p>", footnotes: #"[{"content":"note"}]"#))
+    }
+
+    @Test("nil and empty footnotes are the same absence")
+    func nilMatchesEmpty() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: nil)
+        #expect(!state.shouldPush(html: "<p>A</p>", footnotes: ""))
+    }
+
+    @Test("a content difference pushes whatever the footnotes say")
+    func pushesOnContentChange() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "<p>B</p>", footnotes: "[]"))
+    }
+
+    // contentChanged only knows the HTML. If it reset the footnotes half, the very
+    // next updateNSView would re-push identical content and wipe the user's caret.
+    @Test("recording the HTML alone leaves the recorded footnotes intact")
+    func recordHTMLKeepsFootnotes() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: #"[{"id":"fn-a"}]"#)
+        state.recordHTML("<p>A edited</p>")
+        #expect(!state.shouldPush(html: "<p>A edited</p>", footnotes: #"[{"id":"fn-a"}]"#))
+        #expect(state.shouldPush(html: "<p>A edited</p>", footnotes: "[]"))
+    }
+
+    // The mirror image: footnotesChanged only knows the notes.
+    @Test("recording the footnotes alone leaves the recorded HTML intact")
+    func recordFootnotesKeepsHTML() {
+        var state = EditorPushState()
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        state.recordFootnotes(#"[{"id":"fn-a"}]"#)
+        #expect(!state.shouldPush(html: "<p>A</p>", footnotes: #"[{"id":"fn-a"}]"#))
+        #expect(state.shouldPush(html: "<p>B</p>", footnotes: #"[{"id":"fn-a"}]"#))
+    }
+
+    // Two posts sharing a body and differing only in their notes: the whole reason
+    // the dedupe key is a pair. Switching A → B → A must push all three times.
+    @Test("switching between two posts with the same body still pushes each time")
+    func pushesForEachPostSharingABody() {
+        let body = "<p>Shared</p>"
+        var state = EditorPushState()
+        #expect(state.shouldPush(html: body, footnotes: #"[{"id":"a"}]"#))
+        state.record(html: body, footnotes: #"[{"id":"a"}]"#)
+        #expect(state.shouldPush(html: body, footnotes: #"[{"id":"b"}]"#))
+        state.record(html: body, footnotes: #"[{"id":"b"}]"#)
+        #expect(state.shouldPush(html: body, footnotes: #"[{"id":"a"}]"#))
+    }
+
+    // A fresh state matches an editor that has not loaded anything, so an empty
+    // post is legitimately skipped — but only the first time.
+    @Test("an empty post is skipped on a fresh state and pushed after any load")
+    func emptyPostAfterARealOne() {
+        var state = EditorPushState()
+        #expect(!state.shouldPush(html: "", footnotes: ""))
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "", footnotes: ""))
+    }
+}

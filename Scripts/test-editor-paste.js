@@ -166,7 +166,7 @@ describe('window.insertMarkdown', () => {
   test('converts blockquotes, fenced code and horizontal rules', () => {
     const status = md('> quoted\n\n```\ncode line\n```\n\n---')
     assert.equal(status, 'ok')
-    assert.equal(doc(), 'blockquote(paragraph("quoted")) | codeBlock("code line") | horizontalRule()')
+    assert.equal(doc(), 'blockquote(paragraph("quoted")) | codeBlock("code line") | horizontalRule() | paragraph()')
   })
 
   test('emits no blank paragraphs between blocks', () => {
@@ -177,7 +177,7 @@ describe('window.insertMarkdown', () => {
   test('converts tables', () => {
     md('| A | B |\n|---|---|\n| 1 | 2 |')
     assert.equal(doc(),
-      'table(tableRow(tableHeader(paragraph("A")),tableHeader(paragraph("B"))),tableRow(tableCell(paragraph("1")),tableCell(paragraph("2"))))')
+      'table(tableRow(tableHeader(paragraph("A")),tableHeader(paragraph("B"))),tableRow(tableCell(paragraph("1")),tableCell(paragraph("2")))) | paragraph()')
   })
 
   test('keeps images, matching what an HTML paste does', () => {

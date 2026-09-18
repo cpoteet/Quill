@@ -6,6 +6,11 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Every link in the editor -- prose, footnote markers, backrefs -- uses
+       these two and nothing else. */
+    :root { --link: #1380c3; }
+    body.dark { --link: #5ab4f5; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f4f3f1;
@@ -76,7 +81,8 @@
       border-color: rgba(255, 255, 255, 0.13);
     }
 
-    #toolbar button {
+    #toolbar button,
+    #toolbar-row2 button {
       font-family: inherit;
       font-size: 12px;
       font-weight: 500;
@@ -94,38 +100,46 @@
       line-height: 1;
       transition: background 0.12s ease, color 0.12s ease;
     }
-    #toolbar button:hover {
+    #toolbar button:hover,
+    #toolbar-row2 button:hover {
       background: rgba(0,0,0,0.045);
       color: #3f434d;
     }
-    body.dark #toolbar button:hover {
+    body.dark #toolbar button:hover,
+    body.dark #toolbar-row2 button:hover {
       background: rgba(255,255,255,0.08);
       color: #d3d4d8;
     }
-    #toolbar button.active {
+    #toolbar button.active,
+    #toolbar-row2 button.active {
       background: #ececef;
       color: #3f434d;
       border-color: transparent;
       box-shadow: none;
     }
-    body.dark #toolbar button.active {
+    body.dark #toolbar button.active,
+    body.dark #toolbar-row2 button.active {
       background: rgba(255,255,255,0.12);
       color: #f4f4f5;
     }
-    #toolbar button:disabled {
+    #toolbar button:disabled,
+    #toolbar-row2 button:disabled {
       opacity: 0.28;
       cursor: default;
       box-shadow: none;
     }
-    #toolbar button:disabled:hover {
+    #toolbar button:disabled:hover,
+    #toolbar-row2 button:disabled:hover {
       background: transparent;
       border-color: transparent;
     }
-    #toolbar button:focus-visible {
+    #toolbar button:focus-visible,
+    #toolbar-row2 button:focus-visible {
       outline: 2px solid rgba(123,92,255,0.35);
       outline-offset: 1px;
     }
-    #toolbar svg {
+    #toolbar svg,
+    #toolbar-row2 svg {
       width: 16px;
       height: 16px;
       display: block;
@@ -135,6 +149,42 @@
       stroke-linejoin: round;
       fill: none;
     }
+    /* A setting and the one it gates share a track, so the pair reads as one
+       control rather than two unrelated pills. */
+    /* The track recesses; the selected segment keeps the toolbar's own active
+       fill, so the pair introduces no colour the rest of the toolbar lacks. */
+    #toolbar-row2 .setting-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      padding: 1px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.10);
+    }
+    body.dark #toolbar-row2 .setting-pair { background: rgba(0,0,0,0.22); }
+    /* Alone it is just a setting again, so the track would only mislead. */
+    #toolbar-row2 .setting-pair.is-solo { background: none; padding: 0; }
+
+    #toolbar-row2 .setting-select {
+      appearance: none;
+      font: inherit;
+      font-size: 12px;
+      color: inherit;
+      background: transparent;
+      border: none;
+      border-radius: 5px;
+      padding: 3px 16px 3px 7px;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2380808a' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 5px center;
+      background-size: 8px 5px;
+    }
+    #toolbar-row2 .setting-select:hover { background-color: rgba(0,0,0,0.055); }
+    body.dark #toolbar-row2 .setting-select:hover { background-color: rgba(255,255,255,0.085); }
+    #toolbar-row2 .setting-select:focus-visible { outline: 2px solid #d08c3a; outline-offset: 1px; }
+    #toolbar-row2 .setting-select option { color: initial; background: initial; }
+
     #toolbar .tb-text-icon {
       color: inherit;
       display: inline-flex;
@@ -191,43 +241,42 @@
       letter-spacing: 0;
     }
 
-    #heading-button {
+    #heading-button,
+    #insert-button {
       min-width: 48px;
       padding: 0 8px 0 10px;
       border-radius: 14px;
       gap: 4px;
       color: #5f6470;
-      background: #eeeef1;
     }
     #heading-button.heading-active {
       color: #3f434d;
       background: #ececef;
     }
-    /* Two IDs so these beat `body.dark #toolbar button`, which would
-       otherwise recolor the label to a pale gray on the light pill. */
-    body.dark #toolbar #heading-button {
+    /* Two IDs so these beat `body.dark #toolbar button`'s pale-gray label colour. */
+    body.dark #toolbar #heading-button,
+    body.dark #toolbar #insert-button {
       color: #c6c8ce;
-      background: rgba(255,255,255,0.07);
-    }
-    body.dark #toolbar #heading-button:hover {
-      color: #e6e7ea;
-      background: rgba(255,255,255,0.12);
     }
     body.dark #toolbar #heading-button.heading-active {
       color: #f4f4f5;
       background: rgba(255,255,255,0.14);
     }
-    #heading-button svg {
+    #heading-button svg,
+    #insert-button svg {
       width: 11px;
       height: 11px;
       stroke-width: 2;
     }
-    .heading-current {
+    .heading-current,
+    .insert-current {
       font-size: 15px;
       font-weight: 600;
       line-height: 1;
     }
-    #heading-menu {
+    .insert-current { font-size: 17px; font-weight: 400; }
+    #heading-menu,
+    #insert-menu {
       display: none;
       position: fixed;
       left: 0;
@@ -241,13 +290,56 @@
       color: #555965;
       box-shadow: 0 18px 45px rgba(28,28,35,0.16);
     }
-    #heading-menu.visible { display: block; }
-    body.dark #heading-menu {
+    #heading-menu.visible,
+    #insert-menu.visible { display: block; }
+    body.dark #heading-menu,
+    body.dark #insert-menu {
       background: rgba(42,42,45,0.98);
       border-color: rgba(255,255,255,0.08);
       color: #e8e8ea;
       box-shadow: 0 18px 45px rgba(0,0,0,0.36);
     }
+    #table-size-menu {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 950;
+      padding: 10px;
+      border: 1px solid rgba(0,0,0,0.04);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.98);
+      color: #555965;
+      box-shadow: 0 18px 45px rgba(28,28,35,0.16);
+    }
+    #table-size-menu.visible { display: block; }
+    #table-size-label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+    #table-size-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 16px);
+      gap: 3px;
+    }
+    .table-size-cell {
+      height: 16px;
+      border: 1px solid rgba(0,0,0,0.16);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .table-size-cell.in-range {
+      border-color: #b45309;
+      background: rgba(180,83,9,0.3);
+    }
+    body.dark #table-size-menu {
+      background: rgba(42,42,45,0.98);
+      border-color: rgba(255,255,255,0.08);
+      color: #e8e8ea;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.36);
+    }
+    body.dark .table-size-cell { border-color: rgba(255,255,255,0.2); }
     .heading-menu-item {
       display: flex;
       align-items: center;
@@ -303,23 +395,41 @@
       background: transparent;
       border-color: transparent;
     }
-    .tb-sep {
-      width: 1px;
-      height: 26px;
-      background: #dedfe3;
-      flex-shrink: 0;
-    }
-    body.dark .tb-sep { background: #3a3a3d; }
-    body.dark #toolbar button {
+    body.dark #toolbar button,
+    body.dark #toolbar-row2 button {
       color: #b9bbc2;
     }
-    #table-controls, #image-align-controls, #blockquote-controls {
+    /* Metrics key off the group class, so a group cannot be added without them. */
+    #toolbar-row2 .tb-group {
       align-items: center;
-      gap: 5px;
+      gap: 8px;
     }
-    #table-controls button, #blockquote-controls button {
+    #toolbar-row2 .tb-group button {
       min-width: auto;
       padding: 0 9px;
+    }
+    #toolbar-row2 .tb-group-icons button {
+      min-width: 26px;
+      padding: 0 4px;
+    }
+    #toolbar-row2 {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 4px 16px;
+      background: rgba(247, 247, 248, 0.96);
+      border-top: 1px solid rgba(0,0,0,0.055);
+      flex-shrink: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    #toolbar-row2.visible { display: flex; }
+    /* Generated setting groups append after this span, so pin it last visually. */
+    #block-controls { order: 1; margin-left: 8px; }
+    body.dark #toolbar-row2 {
+      background: rgba(36, 36, 38, 0.96);
+      border-top-color: rgba(255,255,255,0.09);
     }
     #toolbar-tooltip {
       position: fixed;
@@ -405,10 +515,12 @@
        so its specificity reliably beats the default rule Tiptap injects into
        <head> at runtime, regardless of injection order. */
     .ProseMirror .ProseMirror-gapcursor:after {
-      top: 0;
-      bottom: -2px;
+      /* The widget div is 0x0, so the bar needs its own height or it draws as a dot. */
+      top: -0.6em;
+      bottom: auto;
       left: 0;
       width: 0;
+      height: 1.2em;
       border-top: none;
       border-left: 1.5px solid #007aff;
     }
@@ -440,6 +552,53 @@
       margin-top: 0.5em;
     }
     body.dark .ProseMirror blockquote cite { color: #666; }
+    .ProseMirror blockquote.is-style-plain {
+      border-left: none;
+      padding-left: 0;
+      font-style: normal;
+    }
+
+    /* Core draws the default rule short and centred, so Wide has something to
+       differ from; a browser-default hr would look identical to it. The rule is
+       a pseudo-element so the hr itself stays a full-width, clickable box --
+       a 2px line is close to unhittable. */
+    .ProseMirror hr {
+      height: 26px;
+      border: none;
+      margin: 0.8em 0;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .ProseMirror hr::before {
+      content: '';
+      width: 100px;
+      border-top: 2px solid rgba(0,0,0,0.18);
+    }
+    body.dark .ProseMirror hr::before { border-top-color: rgba(255,255,255,0.22); }
+    .ProseMirror hr:hover { background: rgba(0,0,0,0.035); }
+    body.dark .ProseMirror hr:hover { background: rgba(255,255,255,0.05); }
+    /* Nothing styles ProseMirror-selectednode here, so without this a selected
+       separator looks exactly like an unselected one. */
+    .ProseMirror hr.ProseMirror-selectednode {
+      background: rgba(0,122,255,0.11);
+      outline: none;
+    }
+    body.dark .ProseMirror hr.ProseMirror-selectednode { background: rgba(10,132,255,0.24); }
+    .ProseMirror hr.is-style-wide::before { width: 100%; }
+    .ProseMirror hr.is-style-dots::before {
+      content: '\00b7\00b7\00b7';
+      width: auto;
+      border: none;
+      color: currentColor;
+      font-family: serif;
+      font-size: 1.5em;
+      line-height: 1;
+      letter-spacing: 2em;
+      padding-left: 2em;
+    }
     .ProseMirror code {
       background: rgba(0,0,0,0.07);
       border-radius: 3px;
@@ -456,7 +615,7 @@
       margin: 0.8em 0;
     }
     body.dark .ProseMirror pre { background: #2a2a2a; }
-    body.dark .ProseMirror a { color: #5ab4f5; }
+    .ProseMirror a { color: var(--link); }
     body.cmd-held .ProseMirror a { cursor: pointer; text-decoration: underline; }
     .ProseMirror pre code { background: none; padding: 0; }
     .ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
@@ -480,6 +639,7 @@
       line-height: 0;
     }
     .image-wrapper img { display: block; max-width: 100%; border-radius: 4px; pointer-events: none; -webkit-user-select: none; user-select: none; }
+    .image-wrapper.is-style-rounded img { border-radius: 9999px; }
     .image-wrapper.ProseMirror-selectednode { outline: none; }
     .image-wrapper.selected img {
       outline: 2px solid #007aff;
@@ -652,6 +812,33 @@
     body.dark .ProseMirror td { border-color: #555; }
     .ProseMirror th { background: #f5f5f5; font-weight: 600; }
     body.dark .ProseMirror th { background: #2a2a2a; }
+    .ProseMirror tr[data-quill-row="foot"] td {
+      background: #f5f5f5;
+      border-top: 2px solid #999;
+    }
+    body.dark .ProseMirror tr[data-quill-row="foot"] td {
+      background: #2a2a2a;
+      border-top-color: #777;
+    }
+
+    /* Core's stripes tint alternate body rows and drop the cell borders; the
+       editor keeps its borders, which are the only cue where the columns are.
+       Head and foot rows share the one tbody here, so they shift the count. */
+    .ProseMirror table.is-style-stripes tr:nth-child(odd):not([data-quill-row]) td,
+    .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(even):not([data-quill-row]) td {
+      background: #f0f0f0;
+    }
+    .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(odd):not([data-quill-row]) td {
+      background: transparent;
+    }
+    body.dark .ProseMirror table.is-style-stripes tr:nth-child(odd):not([data-quill-row]) td,
+    body.dark .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(even):not([data-quill-row]) td {
+      background: #303030;
+    }
+    body.dark .ProseMirror table.is-style-stripes tr[data-quill-row="head"] ~ tr:nth-child(odd):not([data-quill-row]) td {
+      background: transparent;
+    }
+
     .ProseMirror .selectedCell { background: rgba(0,122,255,0.08); }
 
     /* Placeholder */
@@ -796,8 +983,19 @@
     }
     .passthrough-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
     .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .passthrough-card-peek {
+      font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #555;
+      background: rgba(0,0,0,0.04);
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-top: 7px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
     .passthrough-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
     body.dark .passthrough-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+    body.dark .passthrough-card-peek { color: #aaa; background: rgba(255,255,255,0.06); }
     body.dark .passthrough-card-hint { color: #777; }
     #embed-menu {
       display: none;
@@ -832,12 +1030,292 @@
     body.dark #embed-menu { background: #2e2e2e; border-color: rgba(255,255,255,0.15); }
     body.dark #embed-menu input { background: #3a3a3a; border-color: rgba(255,255,255,0.15); color: #eee; }
 
+    /* ── Container blocks ───────────────────────────── */
+    .ProseMirror .wp-block-columns,
+    .ProseMirror .wp-block-accordion,
+    .ProseMirror .wp-block-tabs,
+    .ProseMirror .wp-block-buttons,
+    .ProseMirror .wp-block-details {
+      position: relative;
+      margin: 1.35em 0;
+    }
+    .ProseMirror .wp-block-accordion,
+    .ProseMirror .wp-block-tabs,
+    .ProseMirror .wp-block-details {
+      padding: 12px 14px;
+      border: 1px solid rgba(0,0,0,0.085);
+      border-radius: 7px;
+      background: rgba(0,0,0,0.012);
+    }
+    body.dark .ProseMirror .wp-block-accordion,
+    body.dark .ProseMirror .wp-block-tabs,
+    body.dark .ProseMirror .wp-block-details {
+      border-color: rgba(255,255,255,0.11);
+      background: rgba(255,255,255,0.022);
+    }
+
+    .ProseMirror .wp-block-column > :last-child,
+    .ProseMirror .wp-block-accordion-panel > :last-child,
+    .ProseMirror .wp-block-tab-panel > :last-child,
+    .ProseMirror .wp-block-details > :last-child { margin-bottom: 0; }
+
+    /* Columns */
+    .ProseMirror .wp-block-columns { display: flex; gap: 0; align-items: flex-start; }
+    .ProseMirror .wp-block-column { flex: 1 1 0; min-width: 0; padding: 0 18px; }
+    .ProseMirror .wp-block-column:first-child { padding-left: 4px; }
+    .ProseMirror .wp-block-column:last-child  { padding-right: 4px; }
+    .ProseMirror .wp-block-column + .wp-block-column { border-left: 1px dashed rgba(0,0,0,0.32); }
+    body.dark .ProseMirror .wp-block-column + .wp-block-column { border-left-color: rgba(255,255,255,0.32); }
+
+    /* Accordion */
+    .ProseMirror .wp-block-accordion-item + .wp-block-accordion-item { border-top: 1px solid rgba(0,0,0,0.08); }
+    body.dark .ProseMirror .wp-block-accordion-item + .wp-block-accordion-item { border-top-color: rgba(255,255,255,0.1); }
+    .ProseMirror .wp-block-accordion-heading {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.5;
+      margin: 0;
+      position: relative;
+    }
+    .ProseMirror .wp-block-accordion-heading__toggle {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 11px 34px 11px 4px;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    /* Plus rotating into a cross, matching core's toggle icon. */
+    .ProseMirror .wp-block-accordion-heading.has-icon::after {
+      content: '+';
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 0;
+      opacity: 0.5;
+      transform: translateY(-50%) rotate(45deg);
+      transition: transform 0.18s ease, opacity 0.13s ease;
+      pointer-events: none;
+    }
+    .ProseMirror .wp-block-accordion-heading.has-icon-left::after { right: auto; left: 8px; }
+    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-heading.has-icon::after {
+      transform: translateY(-50%) rotate(0deg);
+    }
+    .ProseMirror .wp-block-accordion-heading.has-icon:hover::after { opacity: 0.9; }
+    .ProseMirror .wp-block-accordion-heading__toggle-icon { display: none; }
+    .ProseMirror .wp-block-accordion-heading__toggle-title { cursor: text; display: inline-block; min-width: 1px; vertical-align: top; }
+    .ProseMirror .wp-block-accordion-heading.has-icon-left .wp-block-accordion-heading__toggle { padding: 11px 4px 11px 34px; }
+    .ProseMirror .wp-block-accordion-heading:not(.has-icon) .wp-block-accordion-heading__toggle { padding-right: 4px; }
+    .ProseMirror .wp-block-accordion-panel { padding: 0 34px 12px 4px; }
+    .ProseMirror .wp-block-accordion-item.is-collapsed > .wp-block-accordion-panel { display: none; }
+    /* openByDefault is a publishing choice, so it is a label here and never an expanded body. */
+    .ProseMirror .wp-block-accordion-item.is-open > .wp-block-accordion-heading::before {
+      content: 'open on the site';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+      pointer-events: none;
+    }
+    .ProseMirror .wp-block-accordion-item.is-open > .wp-block-accordion-heading.has-icon-right::before { right: 34px; }
+
+    /* Tabs */
+    .ProseMirror .wp-block-tab-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      border-bottom: 1px solid rgba(0,0,0,0.11);
+      margin: 0 -6px;
+    }
+    body.dark .ProseMirror .wp-block-tab-list { border-bottom-color: rgba(255,255,255,0.13); }
+    .ProseMirror .wp-block-tab-list button[role="tab"] {
+      background: none;
+      border: none;
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      padding: 7px 13px;
+      margin-bottom: -1px;
+      color: #8a8a8f;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.13s ease, border-color 0.13s ease;
+    }
+    .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #1a1a1a; border-bottom-color: #32323a; }
+    body.dark .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #f4f4f5; border-bottom-color: #e7e7ea; }
+    /* isDefaultTab is a publishing choice, so it is a label here and never the
+       tab the editor shows. */
+    .ProseMirror .wp-block-tab-list button[role="tab"].is-default-tab::after {
+      content: 'default';
+      margin-left: 7px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+      vertical-align: 1px;
+      pointer-events: none;
+    }
+    .ProseMirror .wp-block-tab-panel { display: none; padding: 14px 2px 2px; }
+    .ProseMirror .wp-block-tab-panel.is-active-tab { display: block; }
+
+    /* Details */
+    .ProseMirror .wp-block-details > summary {
+      list-style: none;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.5;
+      padding: 2px 4px 2px 20px;
+      margin: 0 0 4px;
+      position: relative;
+      cursor: text;
+    }
+    .ProseMirror .wp-block-details > summary::-webkit-details-marker { display: none; }
+    .ProseMirror .wp-block-details > summary::before {
+      content: '';
+      position: absolute;
+      left: -4px;
+      top: 50%;
+      width: 24px;
+      height: 24px;
+      margin-top: -12px;
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 6L16.5 12L8 18Z'/%3E%3C/svg%3E") no-repeat center / 24px 24px;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 6L16.5 12L8 18Z'/%3E%3C/svg%3E") no-repeat center / 24px 24px;
+      opacity: 0.45;
+      cursor: pointer;
+      transform: rotate(90deg);
+      transition: transform 0.18s ease, opacity 0.13s ease;
+    }
+    .ProseMirror .wp-block-details.is-collapsed > summary::before { transform: rotate(0deg); }
+    .ProseMirror .wp-block-details > summary:hover::before { opacity: 0.85; }
+    .ProseMirror .wp-block-details.is-collapsed > :not(summary) { display: none; }
+    /* showContent is a publishing choice, so it is a label here and never a hidden body. */
+    /* On the box, not the summary: summary::after draws the untitled hint. */
+    .ProseMirror .wp-block-details:not(.shows-content)::after {
+      content: 'closed on the site';
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #a0a0a6;
+    }
+
+    /* An empty title is invisible chrome otherwise, so the hint is the only cue it can be typed into. */
+    .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
+    .ProseMirror .wp-block-details > summary.is-untitled::after {
+      position: absolute;
+      pointer-events: none;
+      user-select: none;
+      font-weight: 400;
+      color: #cbcbd1;
+      white-space: nowrap;
+    }
+    body.dark .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
+    body.dark .ProseMirror .wp-block-details > summary.is-untitled::after { color: #56565e; }
+    .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before {
+      content: 'Accordion title';
+      left: 4px;
+      top: 11px;
+    }
+    .ProseMirror .wp-block-accordion-heading.has-icon-left.is-untitled .wp-block-accordion-heading__toggle-title::before { left: 34px; }
+    .ProseMirror .wp-block-details > summary.is-untitled::after {
+      content: 'Details title';
+      left: 20px;
+      top: 2px;
+    }
+
+    /* Buttons */
+    .ProseMirror .wp-block-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+    .ProseMirror .wp-block-button { display: inline-flex; }
+    .ProseMirror .wp-block-button__link {
+      display: inline-block;
+      background: rgba(0,0,0,0.012);
+      color: inherit;
+      border: 1px solid rgba(0,0,0,0.085);
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 14.5px;
+      font-weight: 500;
+      line-height: 1.45;
+      text-decoration: none;
+      cursor: text;
+    }
+    body.dark .ProseMirror .wp-block-button__link { background: rgba(255,255,255,0.022); border-color: rgba(255,255,255,0.11); }
+    .ProseMirror .wp-block-button.is-style-outline .wp-block-button__link {
+      background: transparent;
+    }
+
+    /* Pullquote */
+    .ProseMirror figure.wp-block-pullquote {
+      margin: 1.9em 0;
+      padding: 1.15em 0;
+      border-top: 2px solid rgba(0,0,0,0.22);
+      border-bottom: 2px solid rgba(0,0,0,0.22);
+      text-align: center;
+    }
+    body.dark .ProseMirror figure.wp-block-pullquote { border-color: rgba(255,255,255,0.24); }
+    .ProseMirror figure.wp-block-pullquote > blockquote {
+      border-left: none;
+      padding-left: 0;
+      margin: 0;
+      color: inherit;
+      font-style: normal;
+    }
+    .ProseMirror figure.wp-block-pullquote > blockquote > p {
+      font-size: 1.3em;
+      font-weight: 500;
+      line-height: 1.4;
+      margin: 0 0 0.4em;
+    }
+    .ProseMirror figure.wp-block-pullquote > blockquote > p:last-child { margin-bottom: 0; }
+    .ProseMirror figure.wp-block-pullquote cite {
+      text-align: center;
+      font-size: 0.8em;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #999;
+    }
+
+    /* Preformatted */
+    .ProseMirror pre.wp-block-preformatted {
+      background: rgba(0,0,0,0.028);
+      border: none;
+      border-left: 3px solid rgba(0,0,0,0.17);
+      border-radius: 0 4px 4px 0;
+      padding: 11px 15px;
+      margin: 1em 0;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 0.95em;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    body.dark .ProseMirror pre.wp-block-preformatted {
+      background: rgba(255,255,255,0.035);
+      border-left-color: rgba(255,255,255,0.2);
+    }
+
     /* ── Footnotes ──────────────────────────────────── */
     #editor { counter-reset: quill-footnote; }
     sup.fn { counter-increment: quill-footnote; }
     sup.fn a::before { content: counter(quill-footnote); }
     sup.fn a {
-      color: #b45309;
+      color: var(--link);
       text-decoration: none;
       font-weight: 600;
       cursor: pointer;
@@ -852,9 +1330,17 @@
     body.dark ol.wp-block-footnotes { border-top-color: rgba(255,255,255,0.2); color: #aaa; }
     ol.wp-block-footnotes > li { position: relative; }
     .fn-item-content { display: inline; }
+    /* ProseMirror's trailing break is the only caret target an empty item has,
+       so it must stay in layout -- hiding it makes the item uneditable in
+       WebKit. It does push the backref, which sits at its static position, onto
+       a second line, so the backref is hidden until the item has content. The
+       empty state is a class the node view sets, not :has() on the break --
+       WebKit does not re-evaluate that :has() when the break is removed, so the
+       backref never came back. */
+    li.fn-item-empty > .fn-backref { display: none; }
     .fn-backref {
       display: inline-block;
-      color: #b45309;
+      color: var(--link);
       text-decoration: none;
       margin-left: 0;
       font-size: 1em;
@@ -868,7 +1354,10 @@
       -webkit-user-select: none;
     }
     .fn-backref:hover { opacity: 1; }
-    body.dark .fn-backref { color: #d97706; }
+    /* Neither the backref nor a footnote marker is a link you can ⌘-click to
+       open, so both opt out of the ⌘-held underline affordance above. */
+    body.cmd-held .ProseMirror .fn-backref,
+    body.cmd-held .ProseMirror sup.fn a { text-decoration: none; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -880,15 +1369,17 @@
       <button data-cmd="redo" title="Redo">
         <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"></path><path d="M20 9H10a7 7 0 1 0 5.3 11.6"></path></svg>
       </button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group">
       <button id="heading-button" title="Paragraph / heading" aria-haspopup="menu" aria-expanded="false">
         <span id="heading-current" class="heading-current">P</span>
         <svg viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"></path></svg>
       </button>
-    </span>
-    <span class="tb-group">
+      <button data-cmd="bold"      title="Bold"><span class="tb-text-icon">B</span></button>
+      <button data-cmd="italic"    title="Italic"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
+      <button data-cmd="strike"    title="Strikethrough"><span class="tb-text-icon" style="text-decoration:line-through;font-weight:500;">S</span></button>
+      <button data-cmd="code"      title="Inline code"><span class="tb-inline-code">A</span></button>
+      <button data-cmd="link"  title="Link">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
+      </button>
       <button data-cmd="bulletList"  title="Bullet list">
         <svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="1.2"></circle><circle cx="5" cy="12" r="1.2"></circle><circle cx="5" cy="17" r="1.2"></circle><path d="M10 7h9"></path><path d="M10 12h9"></path><path d="M10 17h9"></path></svg>
       </button>
@@ -898,50 +1389,73 @@
       <button data-cmd="blockquote" title="Blockquote">
         <svg viewBox="0 0 24 24"><path d="M8 6h7"></path><path d="M8 12h9"></path><path d="M8 18h7"></path><path d="M4 6v12"></path></svg>
       </button>
-      <span id="blockquote-controls" style="display:none">
-        <button id="btn-toggle-cite" title="Toggle citation">
-          <svg viewBox="0 0 24 24"><path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z"></path></svg>
-        </button>
-      </span>
-      <button data-cmd="codeBlock"  title="Code block"><span class="tb-code-text">{}</span></button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group">
-      <button data-cmd="bold"      title="Bold"><span class="tb-text-icon">B</span></button>
-      <button data-cmd="italic"    title="Italic"><span class="tb-text-icon" style="font-style:italic;font-weight:500;">I</span></button>
-      <button data-cmd="underline" title="Underline"><span class="tb-text-icon" style="text-decoration:underline;text-underline-offset:2px;font-weight:500;">U</span></button>
-      <button data-cmd="strike"    title="Strikethrough"><span class="tb-text-icon" style="text-decoration:line-through;font-weight:500;">S</span></button>
-      <button data-cmd="code"      title="Inline code"><span class="tb-inline-code">A</span></button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group">
-      <button data-cmd="image" title="Insert image from media library">
+      <button data-cmd="codeBlock"  title="Code"><span class="tb-code-text">{}</span></button>
+      <button data-cmd="image" title="Image">
         <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none"></circle><path d="m5 16.5 4.3-4.5 3 3 2.4-2.6 4.3 4.3"></path></svg>
       </button>
-      <button data-cmd="gallery" title="Insert gallery from media library">
+      <button data-cmd="gallery" title="Gallery">
         <svg viewBox="0 0 24 24"><path d="M7 1h11a2 2 0 0 1 2 2v10"></path><rect x="2.5" y="4.5" width="14.5" height="14.5" rx="1.5"></rect><path d="m3.5 17.5 3.8-4 2.6 2.6 2-2.2 3.8 3.8"></path></svg>
       </button>
-      <button data-cmd="insertTable" title="Insert table">
+      <button data-cmd="insertTable" title="Table">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"></path><path d="M5 9.67h14"></path><path d="M5 14.33h14"></path><path d="M9.67 5v14"></path><path d="M14.33 5v14"></path></svg>
       </button>
-      <span id="table-controls" style="display:none">
+      <button id="btn-footnote" title="Footnote"><span class="tb-text-icon">*</span></button>
+      <button id="embed-button" title="Embed">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m10 9 5 3-5 3z"></path></svg>
+      </button>
+      <button id="insert-button" title="Additional blocks" aria-haspopup="menu" aria-expanded="false">
+        <span class="insert-current">+</span>
+        <svg viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"></path></svg>
+      </button>
+      <button id="btn-spell" title="Check spelling"><span class="tb-spell-icon">ABC</span></button>
+      <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
+    </span>
+    <span class="tb-group" id="ai-toolbar-group" style="display:none">
+      <button id="btn-evaluate" title="Evaluate writing quality">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      </button>
+      <button id="btn-generate" title="Generate content">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      </button>
+    </span>
+  </div>
+  <div id="toolbar-row2">
+    <span id="blockquote-controls" class="tb-group" style="display:none">
+        <button id="btn-toggle-cite" title="Toggle citation">Cite</button>
+      </span>
+    <span id="table-controls" class="tb-group" style="display:none">
         <button data-cmd="addRowAfter"    title="Add row below">+Row</button>
         <button data-cmd="addColumnAfter" title="Add column right">+Col</button>
         <button data-cmd="deleteRow"      title="Delete row">&minus;Row</button>
         <button data-cmd="deleteColumn"   title="Delete column">&minus;Col</button>
-        <button data-cmd="deleteTable"    title="Delete table">&#10005;</button>
+        <button data-cmd="toggleTableHeader" title="Header section">Header</button>
+        <button data-cmd="toggleTableFooter" title="Footer section">Footer</button>
       </span>
-      <button data-cmd="link"  title="Insert / remove link">
-        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"></path></svg>
-      </button>
-      <button id="btn-footnote" title="Insert footnote"><span class="tb-text-icon">*</span></button>
-      <button id="embed-button" title="Insert embed">
-        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m10 9 5 3-5 3z"></path></svg>
-      </button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group">
-      <span id="image-align-controls" style="display:none">
+    <span id="columns-controls" class="tb-group" style="display:none">
+        <button data-cmd="addColumnBlock"    title="Add column">+Col</button>
+        <button data-cmd="deleteColumnBlock" title="Remove column">&minus;Col</button>
+      </span>
+    <span id="buttons-controls" class="tb-group" style="display:none">
+        <button data-cmd="addButton"    title="Add button">+Button</button>
+        <button data-cmd="deleteButton" title="Remove button">&minus;Button</button>
+        <button data-cmd="buttonLink"   title="Link this button">Link</button>
+      </span>
+    <span id="accordion-controls" class="tb-group" style="display:none">
+        <button data-cmd="addAccordionItem"    title="Add section">+Item</button>
+        <button data-cmd="deleteAccordionItem" title="Remove section">&minus;Item</button>
+        <button id="btn-accordion-autoclose" data-cmd="toggleAccordionAutoclose" title="Close other sections when one opens">Auto-close</button>
+      </span>
+    <span id="details-controls" class="tb-group" style="display:none">
+        <button id="btn-details-open" data-cmd="toggleDetailsOpen" title="Open by default">Open</button>
+      </span>
+    <span id="link-controls" class="tb-group" style="display:none">
+        <button id="btn-link-new-tab" title="Open this link in a new tab">New tab</button>
+      </span>
+    <span id="tabs-controls" class="tb-group" style="display:none">
+        <button data-cmd="addTab"    title="Add tab">+Tab</button>
+        <button data-cmd="deleteTab" title="Remove tab">&minus;Tab</button>
+      </span>
+    <span id="image-align-controls" class="tb-group tb-group-icons" style="display:none">
         <button data-cmd="alignLeft"   title="Float image left (text wraps right)">
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
@@ -952,18 +1466,9 @@
           <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M10 12h10"></path><path d="M4 18h16"></path></svg>
         </button>
       </span>
-      <button id="btn-spell" title="Check spelling"><span class="tb-spell-icon">ABC</span></button>
-      <button id="btn-code-view" title="Toggle code view"><span class="tb-code-text">&lt;/&gt;</span></button>
-    </span>
-    <span class="tb-sep"></span>
-    <span class="tb-group" id="ai-toolbar-group" style="display:none">
-      <button id="btn-generate" title="Generate content">
-        <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-      </button>
-      <button id="btn-evaluate" title="Evaluate writing quality">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-      </button>
-    </span>
+    <span id="block-controls" class="tb-group tb-group-icons" style="display:none">
+        <button data-cmd="deleteBlock" title="Delete block">&#10005;</button>
+      </span>
   </div>
   <div id="heading-menu" role="menu">
     <button class="heading-menu-item active" data-heading-level="0" role="menuitem">
@@ -987,6 +1492,20 @@
     <button class="heading-menu-item" data-heading-level="6" role="menuitem">
       <span class="heading-menu-key">H6</span><span class="heading-menu-label">Heading 6</span>
     </button>
+  </div>
+  <div id="insert-menu" role="menu">
+    <button class="heading-menu-item" data-insert="columns" role="menuitem"><span class="heading-menu-label">Columns</span></button>
+    <button class="heading-menu-item" data-insert="accordion" role="menuitem"><span class="heading-menu-label">Accordion</span></button>
+    <button class="heading-menu-item" data-insert="tabs" role="menuitem"><span class="heading-menu-label">Tabs</span></button>
+    <button class="heading-menu-item" data-insert="details" role="menuitem"><span class="heading-menu-label">Details</span></button>
+    <button class="heading-menu-item" data-insert="buttons" role="menuitem"><span class="heading-menu-label">Buttons</span></button>
+    <button class="heading-menu-item" data-insert="pullquote" role="menuitem"><span class="heading-menu-label">Pullquote</span></button>
+    <button class="heading-menu-item" data-insert="preformatted" role="menuitem"><span class="heading-menu-label">Preformatted</span></button>
+    <button class="heading-menu-item" data-insert="separator" role="menuitem"><span class="heading-menu-label">Separator</span></button>
+  </div>
+  <div id="table-size-menu" role="dialog" aria-label="Table size">
+    <div id="table-size-label">Table</div>
+    <div id="table-size-grid"></div>
   </div>
   <div id="embed-menu">
     <input id="embed-url-input" type="text" placeholder="Insert media link" spellcheck="false">
@@ -1032,9 +1551,13 @@
   <script src="./tiptap-bundle.js"></script>
   <script src="./marked-bundle.js"></script>
   <script src="./editor-transforms.js"></script>
+  <script src="./block-parser-bundle.js"></script>
+  <script src="./block-serializer.js"></script>
+  <script src="./block-descriptors.js"></script>
+  <script src="./block-settings.js"></script>
   <script>
     const {
-      Editor, Extension, TiptapNode,
+      Editor, Extension, TiptapNode, Mark,
       StarterKit, Underline,
       Table, TableRow, TableCell, TableHeader,
       TiptapImage, Blockquote, Link,
@@ -1076,24 +1599,83 @@
       })
     }
 
-    const ParagraphWithClass  = withClassAttr(Paragraph)
-    const HeadingWithClass    = withClassAttr(Heading)
+    // core/table's markup is a <figure> wrapping the <table>, with the block's
+    // classes and its <figcaption> on the figure. Without this rule the parser
+    // walked straight past the figure to the inner table: the classes were
+    // invisible and the caption was orphaned into a loose paragraph. caption is
+    // source: "rich-text", so it rides the markup and never the delimiter.
+    const TableWithFigure = Table.extend({
+      parseHTML() {
+        // A classic <caption> is read by the caption attribute below, never as a row.
+        return [{ tag: 'figure.wp-block-table', contentElement: 'table' }, ...(this.parent?.() || []), { tag: 'caption', ignore: true }]
+      },
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          caption: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: el => {
+              const cap = el.querySelector(el.tagName === 'FIGURE' ? ':scope > figcaption' : ':scope > caption')
+              return cap ? cap.innerHTML : null
+            },
+            renderHTML: attrs => attrs.caption ? { 'data-quill-caption': attrs.caption } : {},
+          },
+          // Core omits the key when true and writes the class, so markup wins.
+          hasFixedLayout: {
+            default: true,
+            keepOnSplit: false,
+            parseHTML: el => {
+              const inner = el.tagName === 'FIGURE' ? el.querySelector(':scope > table') : el
+              if (inner && inner.classList.contains('has-fixed-layout')) return true
+              const key = blockCommentAttr(el, 'hasFixedLayout')
+              return key === undefined ? false : !!key
+            },
+            renderHTML: attrs => ({ 'data-quill-fixed-layout': attrs.hasFixedLayout ? 'true' : 'false' }),
+          },
+        }
+      },
+    })
+
+    // Tiptap's schema has no sections, so a row remembers which one it came
+    // from and the save transform regroups them in core's fixed order.
+    const TableRowWithSection = TableRow.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          rowType: {
+            default: 'body',
+            keepOnSplit: false,
+            parseHTML: el => {
+              const section = el.parentElement && el.parentElement.tagName
+              if (section === 'THEAD') return 'head'
+              if (section === 'TFOOT') return 'foot'
+              return 'body'
+            },
+            renderHTML: attrs => attrs.rowType && attrs.rowType !== 'body' ? { 'data-quill-row': attrs.rowType } : {},
+          },
+        }
+      },
+    })
+
+    const ParagraphWithClass  = withBlockAttrs(withClassAttr(Paragraph))
+    const HeadingWithClass    = withBlockAttrs(withClassAttr(Heading))
     const _fnPassthrough = new Set(['Backspace', 'Delete'])
-    const BulletListWithClass = withClassAttr(BulletList.extend({
+    const BulletListWithClass = withBlockAttrs(withClassAttr(BulletList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
-    }))
-    const OrderedListWithClass = withClassAttr(OrderedList.extend({
+    })))
+    const OrderedListWithClass = withBlockAttrs(withClassAttr(OrderedList.extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
-    }))
-    const ListItemWithClass   = withClassAttr(ListItem)
+    })))
+    const ListItemWithClass   = withBlockAttrs(withClassAttr(ListItem))
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {
@@ -1153,6 +1735,13 @@
         // Alignment
         this.wrapper.classList.remove('align-left', 'align-right', 'align-center')
         if (attrs.alignment) this.wrapper.classList.add(`align-${attrs.alignment}`)
+        // The node view replaces renderHTML, so the figure's style token only
+        // reaches the canvas if it is copied onto the wrapper here.
+        const styleToken = _styleTokenIn(attrs.figureClass) || _styleTokenIn(carriedClassName(attrs.blockAttrs))
+        for (const c of Array.from(this.wrapper.classList)) {
+          if (c.startsWith('is-style-')) this.wrapper.classList.remove(c)
+        }
+        if (styleToken) this.wrapper.classList.add(styleToken)
       }
 
       update(node) {
@@ -1369,18 +1958,12 @@
           ...this.parent?.(),
           width: {
             default: null,
-            parseHTML: el => {
-              const v = el.getAttribute('width')
-              return v ? parseInt(v, 10) : null
-            },
+            parseHTML: el => imgPixelDimension(el, 'width'),
             renderHTML: attrs => attrs.width != null ? { width: attrs.width } : {},
           },
           height: {
             default: null,
-            parseHTML: el => {
-              const v = el.getAttribute('height')
-              return v ? parseInt(v, 10) : null
-            },
+            parseHTML: el => imgPixelDimension(el, 'height'),
             renderHTML: attrs => attrs.height != null ? { height: attrs.height } : {},
           },
           mediaId: {
@@ -1468,39 +2051,45 @@
       },
 
       parseHTML() {
+        const figureAttrs = el => {
+          const img = el.querySelector('img')
+          if (!img) return false
+          const dataId = img.getAttribute('data-media-id')
+          const imgCls = img.getAttribute('class') || ''
+          const clsMatch = imgCls.match(/wp-image-(\d+)/)
+          const _knownImgCls = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
+          const customImgCls = imgCls.split(/\s+/).filter(c => c && !_knownImgCls.test(c)).join(' ')
+          const figCls = el.getAttribute('class') || ''
+          // is-resized is rebuilt from the dimensions on save, so carrying
+          // it here would leave it on an image the user later un-resized.
+          const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter|is-resized)$/
+          const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
+          const linkEl = img.parentElement
+          const linkedToMedia = linkEl && linkEl.tagName === 'A' && !!linkEl.getAttribute('href')
+          return {
+            src:       img.getAttribute('src'),
+            alt:       img.getAttribute('alt') ?? null,
+            title:     img.getAttribute('title') ?? null,
+            width:     imgPixelDimension(img, 'width'),
+            height:    imgPixelDimension(img, 'height'),
+            mediaId:   dataId ? parseInt(dataId, 10)
+                              : (clsMatch ? parseInt(clsMatch[1], 10) : null),
+            alignment: extractAlignment(figCls),
+            imgClass:    customImgCls || null,
+            figureClass: customFigCls || null,
+            figureId:  el.getAttribute('id') || null,
+            linkTo:    linkedToMedia ? 'media' : 'none',
+            linkHref:  linkedToMedia ? linkEl.getAttribute('href') : null,
+          }
+        }
+        const captionElement = el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption'))
         return [
+          { tag: 'figure.wp-block-image', getAttrs: figureAttrs, contentElement: captionElement },
+          // A classic figure holding just an image, as HTML from outside Gutenberg writes it.
           {
-            tag: 'figure.wp-block-image',
-            getAttrs: el => {
-              const img = el.querySelector('img')
-              if (!img) return false
-              const dataId = img.getAttribute('data-media-id')
-              const imgCls = img.getAttribute('class') || ''
-              const clsMatch = imgCls.match(/wp-image-(\d+)/)
-              const _knownImgCls = /^(alignleft|alignright|aligncenter|wp-image-\d+)$/
-              const customImgCls = imgCls.split(/\s+/).filter(c => c && !_knownImgCls.test(c)).join(' ')
-              const figCls = el.getAttribute('class') || ''
-              const _knownFigCls = /^(wp-block-image|alignleft|alignright|aligncenter)$/
-              const customFigCls = figCls.split(/\s+/).filter(c => c && !_knownFigCls.test(c)).join(' ')
-              const linkEl = img.parentElement
-              const linkedToMedia = linkEl && linkEl.tagName === 'A' && !!linkEl.getAttribute('href')
-              return {
-                src:       img.getAttribute('src'),
-                alt:       img.getAttribute('alt') ?? null,
-                title:     img.getAttribute('title') ?? null,
-                width:     parseInt(img.getAttribute('width'), 10) || null,
-                height:    parseInt(img.getAttribute('height'), 10) || null,
-                mediaId:   dataId ? parseInt(dataId, 10)
-                                  : (clsMatch ? parseInt(clsMatch[1], 10) : null),
-                alignment: extractAlignment(figCls),
-                imgClass:    customImgCls || null,
-                figureClass: customFigCls || null,
-                figureId:  el.getAttribute('id') || null,
-                linkTo:    linkedToMedia ? 'media' : 'none',
-                linkHref:  linkedToMedia ? linkEl.getAttribute('href') : null,
-              }
-            },
-            contentElement: el => el.querySelector('figcaption') || el.appendChild(document.createElement('figcaption')),
+            tag: 'figure',
+            getAttrs: el => (/\bwp-block-/.test(el.className) || !el.querySelector(':scope > img, :scope > a > img')) ? false : figureAttrs(el),
+            contentElement: captionElement,
           },
           { tag: 'img[src]' },
         ]
@@ -1552,7 +2141,7 @@
             const { state } = this.editor
             const { $from } = state.selection
             if ($from.node($from.depth).type.name !== 'cite') return false
-            const bqDepth = _ancestorDepth($from, 'blockquote')
+            const bqDepth = _citeHostDepth($from)
             if (bqDepth === -1) return false
             // Insert a paragraph immediately after the blockquote
             const after = $from.after(bqDepth)
@@ -1778,6 +2367,12 @@
     // in the visual editor"; saves the original markup back byte-for-byte,
     // regenerating any original wp:name comments. See docs/superpowers/specs/
     // 2026-07-12-gutenberg-passthrough-block-design.md.
+    function _peekText(source) {
+      const inner = source.replace(/^<!--[\s\S]*?-->/, '').replace(/<!-- \/wp:[\s\S]*?-->$/, '').trim()
+      const text = inner || source.trim()
+      return text.length > 120 ? text.slice(0, 120) + '…' : text
+    }
+
     class PassthroughNodeView {
       constructor(node) {
         this.dom = document.createElement('div')
@@ -1785,13 +2380,635 @@
         const label = document.createElement('div')
         label.className = 'passthrough-card-label'
         label.textContent = node.attrs.blockLabel
+        this.dom.append(label)
+        if (node.attrs.unsupportedSource) {
+          const peek = document.createElement('div')
+          peek.className = 'passthrough-card-peek'
+          // textContent, never innerHTML: the peek shows markup, it must not become it.
+          peek.textContent = _peekText(node.attrs.unsupportedSource)
+          this.dom.append(peek)
+        }
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
         hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
-        this.dom.append(label, hint)
+        this.dom.append(hint)
       }
       selectNode()   { this.dom.classList.add('selected') }
       deselectNode() { this.dom.classList.remove('selected') }
+    }
+
+    // Priority 210 out-ranks gutenbergPassthrough (200) so the catch-all stops
+    // claiming these as frozen cards.
+    const ColumnBlock = TiptapNode.create({
+      name: 'columnBlock',
+      group: 'column',
+      content: 'block+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-column' }] },
+      renderHTML() { return ['div', { class: 'wp-block-column' }, 0] },
+    })
+
+    const ColumnsBlock = TiptapNode.create({
+      name: 'columnsBlock',
+      group: 'block',
+      content: 'column+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-columns' }] },
+      renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] },
+    })
+
+    const DetailsSummary = TiptapNode.create({
+      name: 'detailsSummary',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() { return [{ tag: 'summary' }] },
+      renderHTML() { return ['summary', 0] },
+    })
+
+    const DetailsBlock = TiptapNode.create({
+      name: 'detailsBlock',
+      group: 'block',
+      content: 'detailsSummary block+',
+      priority: 210,
+      addAttributes() {
+        return {
+          showContent: {
+            default: false,
+            parseHTML: el => el.hasAttribute('open') || blockCommentAttr(el, 'showContent') === true,
+          },
+        }
+      },
+      parseHTML() { return [{ tag: 'details.wp-block-details' }] },
+      renderHTML({ node }) {
+        const attrs = { class: 'wp-block-details' }
+        if (node.attrs.showContent) attrs.open = ''
+        return ['details', attrs, 0]
+      },
+      addCommands() {
+        return { toggleDetailsOpen: toggleBlockAttrCommand('detailsBlock', 'showContent') }
+      },
+    })
+
+    const ButtonBlock = TiptapNode.create({
+      name: 'buttonBlock',
+      group: 'button',
+      content: 'inline*',
+      priority: 210,
+      addAttributes() {
+        return { href: { default: null, parseHTML: el => el.querySelector('a')?.getAttribute('href') || null } }
+      },
+      // contentElement consumes the anchor so the Link mark never claims it and
+      // renderHTML stays the only thing that emits one.
+      parseHTML() { return [{ tag: 'div.wp-block-button', contentElement: 'a' }] },
+      renderHTML({ node }) {
+        const attrs = { class: 'wp-block-button__link wp-element-button' }
+        if (node.attrs.href) attrs.href = node.attrs.href
+        return ['div', { class: 'wp-block-button' }, ['a', attrs, 0]]
+      },
+    })
+
+    const ButtonsBlock = TiptapNode.create({
+      name: 'buttonsBlock',
+      group: 'block',
+      content: 'button+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-buttons' }] },
+      renderHTML() { return ['div', { class: 'wp-block-buttons' }, 0] },
+    })
+
+    const AccordionHeading = TiptapNode.create({
+      name: 'accordionHeading',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() {
+        return [{
+          tag: 'h1.wp-block-accordion-heading, h2.wp-block-accordion-heading, h3.wp-block-accordion-heading, h4.wp-block-accordion-heading, h5.wp-block-accordion-heading, h6.wp-block-accordion-heading',
+          getAttrs: el => ({ level: parseInt(el.tagName.slice(1), 10) }),
+          contentElement: el => el.querySelector('.wp-block-accordion-heading__toggle-title') || el,
+        }]
+      },
+      addAttributes() {
+        return {
+          level: { default: 3 },
+          showIcon: {
+            default: true,
+            parseHTML: el => {
+              const carried = blockCommentAttr(el, 'showIcon')
+              if (typeof carried === 'boolean') return carried
+              return hasBlockComment(el) ? true : el.classList.contains('has-icon')
+            },
+          },
+          iconPosition: {
+            default: 'right',
+            parseHTML: el => {
+              const carried = blockCommentAttr(el, 'iconPosition')
+              if (carried === 'left' || carried === 'right') return carried
+              return el.classList.contains('has-icon-left') ? 'left' : 'right'
+            },
+          },
+        }
+      },
+      renderHTML({ node }) {
+        const { level, showIcon, iconPosition } = node.attrs
+        const classes = ['wp-block-accordion-heading']
+        if (showIcon) classes.push('has-icon', iconPosition === 'left' ? 'has-icon-left' : 'has-icon-right')
+        const title = ['span', { class: 'wp-block-accordion-heading__toggle-title' }, 0]
+        const icon = ['span', { class: 'wp-block-accordion-heading__toggle-icon', 'aria-hidden': 'true' }, '+']
+        const children = !showIcon ? [title] : (iconPosition === 'left' ? [icon, title] : [title, icon])
+        return [`h${level}`, { class: classes.join(' ') },
+          ['button', { type: 'button', class: 'wp-block-accordion-heading__toggle' }, ...children]]
+      },
+    })
+
+    const AccordionPanel = TiptapNode.create({
+      name: 'accordionPanel',
+      content: 'block+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-accordion-panel' }] },
+      renderHTML() { return ['div', { role: 'region', class: 'wp-block-accordion-panel' }, 0] },
+    })
+
+    const AccordionItem = TiptapNode.create({
+      name: 'accordionItem',
+      group: 'accordionItemGroup',
+      content: 'accordionHeading accordionPanel',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-accordion-item' }] },
+      renderHTML() { return ['div', { class: 'wp-block-accordion-item' }, 0] },
+    })
+
+    const AccordionBlock = TiptapNode.create({
+      name: 'accordionBlock',
+      group: 'block',
+      content: 'accordionItemGroup+',
+      priority: 210,
+      addAttributes() {
+        return {
+          autoclose: {
+            default: false,
+            parseHTML: el => el.hasAttribute('data-autoclose') || blockCommentAttr(el, 'autoclose') === true,
+          },
+        }
+      },
+      parseHTML() { return [{ tag: 'div.wp-block-accordion' }] },
+      renderHTML({ node }) {
+        const attrs = { role: 'group', class: 'wp-block-accordion' }
+        if (node.attrs.autoclose) attrs['data-autoclose'] = ''
+        return ['div', attrs, 0]
+      },
+      addCommands() {
+        return { toggleAccordionAutoclose: toggleBlockAttrCommand('accordionBlock', 'autoclose') }
+      },
+    })
+
+    const TabButton = TiptapNode.create({
+      name: 'tabButton',
+      content: 'inline*',
+      priority: 210,
+      parseHTML() { return [{ tag: 'button[role="tab"]' }] },
+      renderHTML() { return ['button', { type: 'button', role: 'tab' }, 0] },
+    })
+
+    const TabList = TiptapNode.create({
+      name: 'tabList',
+      content: 'tabButton+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tab-list' }] },
+      renderHTML() { return ['div', { role: 'tablist', class: 'wp-block-tab-list' }, 0] },
+    })
+
+    const TabPanel = TiptapNode.create({
+      name: 'tabPanel',
+      content: 'block+',
+      priority: 210,
+      addAttributes() { return { label: { default: '' } } },
+      parseHTML() { return [{ tag: 'section.wp-block-tab-panel' }] },
+      renderHTML() { return ['section', { role: 'tabpanel', tabindex: '0', class: 'wp-block-tab-panel' }, 0] },
+    })
+
+    const TabPanels = TiptapNode.create({
+      name: 'tabPanels',
+      content: 'tabPanel+',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tab-panels' }] },
+      renderHTML() { return ['div', { class: 'wp-block-tab-panels' }, 0] },
+    })
+
+    const TabsBlock = TiptapNode.create({
+      name: 'tabsBlock',
+      group: 'block',
+      content: 'tabList tabPanels',
+      priority: 210,
+      parseHTML() { return [{ tag: 'div.wp-block-tabs' }] },
+      renderHTML() { return ['div', { class: 'wp-block-tabs' }, 0] },
+    })
+
+    const Pullquote = TiptapNode.create({
+      name: 'pullquote',
+      group: 'block',
+      content: 'block+ cite?',
+      priority: 210,
+      parseHTML() { return [{ tag: 'figure.wp-block-pullquote', contentElement: 'blockquote' }] },
+      renderHTML() { return ['figure', { class: 'wp-block-pullquote' }, ['blockquote', {}, 0]] },
+      addCommands() {
+        return { setPullquote: () => ({ commands }) => commands.wrapIn(this.name) }
+      },
+    })
+
+    const Preformatted = TiptapNode.create({
+      name: 'preformatted',
+      group: 'block',
+      content: 'text*',
+      marks: '',
+      code: true,
+      priority: 210,
+      parseHTML() { return [{ tag: 'pre.wp-block-preformatted', preserveWhitespace: 'full' }] },
+      renderHTML() { return ['pre', { class: 'wp-block-preformatted' }, 0] },
+      addCommands() {
+        return { setPreformatted: () => ({ commands }) => commands.setNode(this.name) }
+      },
+    })
+
+    // A block attribute that lives only in the <!-- wp:name {...} --> delimiter
+    // is invisible to ProseMirror's DOM parser, so editing the block used to
+    // drop it. The comment node is still reachable from the element being
+    // parsed, so the whole attribute object rides along on the node and
+    // toWordPressHTML re-emits it. Each container node renders a fixed
+    // attribute object and ignores HTMLAttributes, so the carrier is injected
+    // into the parent's own output rather than via addGlobalAttributes.
+    function toggleBlockAttrCommand(typeName, attr) {
+      return () => ({ state, tr, dispatch }) => {
+        const $from = state.selection.$from
+        for (let d = $from.depth; d >= 1; d--) {
+          const node = $from.node(d)
+          if (node.type.name !== typeName) continue
+          if (dispatch) {
+            dispatch(tr.setNodeMarkup($from.before(d), undefined,
+              { ...node.attrs, [attr]: !node.attrs[attr] }))
+          }
+          return true
+        }
+        return false
+      }
+    }
+
+    function blockCommentAttrsJSON(element) {
+      let n = element.previousSibling
+      while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
+      if (!n || n.nodeType !== 8) return null
+      const m = n.nodeValue.match(/^\s*wp:\S+\s+(\{[\s\S]*\})\s*$/)
+      return m ? m[1] : null
+    }
+
+    // Read one key from the delimiter comment only, never from the carrier
+    // attribute: an element Quill itself rendered has no preceding comment, so
+    // its own DOM attribute is the live value and a stale carrier cannot
+    // resurrect an attribute the user just turned off.
+    function hasBlockComment(element) {
+      let n = element.previousSibling
+      while (n && n.nodeType === 3 && n.textContent.trim() === '') n = n.previousSibling
+      return !!(n && n.nodeType === 8 && /^\s*wp:/.test(n.nodeValue))
+    }
+
+    function blockCommentAttr(element, key) {
+      const raw = blockCommentAttrsJSON(element)
+      if (!raw) return undefined
+      try {
+        const parsed = JSON.parse(raw)
+        return (parsed && typeof parsed === 'object') ? parsed[key] : undefined
+      } catch (e) {
+        return undefined
+      }
+    }
+
+    function carriedClassName(raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        return (parsed && typeof parsed.className === 'string') ? parsed.className : ''
+      } catch (e) {
+        return ''
+      }
+    }
+
+    // ── The generic attribute carrier ────────────────
+    // A node's renderHTML writes a fixed list of attributes, so everything else
+    // the original element carried was dropped the first time the user typed.
+    // The snapshot replays the rest, in the source's own attribute order, with
+    // no registry entry and no node modelling involved.
+
+    // Attributes the node draws for itself. Replaying one would resurrect a
+    // value the user has just turned off, so the node's own render is the only
+    // writer; a node that computes any part of its class lists `class` here.
+    const RAW_ATTRS_MODELED = {
+      accordionHeading: ['class'],
+      accordionItem: ['class'],
+      detailsBlock: ['open'],
+      orderedList: ['start', 'type'],
+      tableCell: ['colspan', 'rowspan', 'colwidth'],
+      tableHeader: ['colspan', 'rowspan', 'colwidth'],
+    }
+
+    // The four figure blocks rebuild their figure from modelled attributes and
+    // toWordPressHTML rewrites it again; a replay would fight both.
+    const RAW_ATTRS_EXEMPT = new Set(['image', 'galleryBlock', 'embedBlock', 'table'])
+
+    // Children a node renders from a template, and the attributes it owns on each.
+    const RAW_CHILD_ATTRS = {
+      buttonBlock: { a: ['href'] },
+      image: { a: ['href'], img: ['src', 'alt', 'title', 'width', 'height', 'class', 'role', 'data-media-id'] },
+    }
+
+    // Only the classes renderHTML hardcodes; rendered and registry ones are derived.
+    const RAW_CLASS_OWNED = {
+      accordionHeading: ['has-icon', 'has-icon-left', 'has-icon-right', 'wp-block-heading'],
+      accordionItem: ['is-open'],
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+
+    function settingClassPatterns(nodeName, on) {
+      const out = []
+      for (const def of Object.values(settingsFor(nodeName))) {
+        if ((def.on || null) !== (on || null)) continue
+        if (def.kind === 'flagClass') out.push(new RegExp('^' + escapeRegExp(def.class) + '$'))
+        else if (def.kind === 'valueClass') out.push(new RegExp('^' + def.pattern.split('{}').map(escapeRegExp).join('.+') + '$'))
+      }
+      return out
+    }
+
+    function settingAttrNames(nodeName, on) {
+      return Object.values(settingsFor(nodeName))
+        .filter(def => def.kind === 'attr' && (def.on || null) === (on || null))
+        .map(def => def.attr)
+    }
+
+    // Source order first, then the node's own additions; see Resources/CLAUDE.md.
+    function replayClassList(snapshotClassList, nodeName, renderedClass, on) {
+      const ownedByNode = new Set(on ? [] : RAW_CLASS_OWNED[nodeName] || [])
+      const patterns = settingClassPatterns(nodeName, on)
+      const rendered = String(renderedClass || '').split(/\s+/).filter(Boolean)
+      const isRendered = new Set(rendered)
+      const out = String(snapshotClassList || '').split(/\s+/).filter(token =>
+        token && (isRendered.has(token) || (!ownedByNode.has(token) && !patterns.some(re => re.test(token)))))
+      const seen = new Set(out)
+      for (const token of rendered) if (!seen.has(token)) { out.push(token); seen.add(token) }
+      return out.join(' ')
+    }
+
+    // A carried attribute is replayed onto the live contenteditable and back
+    // into post_content, so post content must not be able to smuggle script in.
+    const CARRY_URL_ATTRS = new Set(['href', 'src', 'srcset', 'xlink:href', 'formaction', 'action', 'poster', 'background', 'cite', 'longdesc'])
+    const CARRY_SCRIPT_URL = /^(?:javascript|vbscript):|^data:(?:text\/html|image\/svg)/
+
+    function isCarryableAttr(name, value) {
+      const lower = String(name).toLowerCase()
+      if (lower.startsWith('on')) return false
+      if (!CARRY_URL_ATTRS.has(lower)) return true
+      // Whitespace and control characters are stripped first: a browser ignores
+      // them inside a scheme, so "java\tscript:" would otherwise pass.
+      return !CARRY_SCRIPT_URL.test(String(value).replace(/[\s\u0000-\u001f]/g, '').toLowerCase())
+    }
+
+    function elementAttrPairs(element) {
+      const attrs = []
+      for (const attr of Array.from(element.attributes)) {
+        if (attr.name === 'data-quill-style') { attrs.push(['style', attr.value]); continue }
+        if (attr.name.startsWith('data-quill-')) continue
+        if (!isCarryableAttr(attr.name, attr.value)) continue
+        attrs.push([attr.name, attr.value])
+      }
+      return attrs
+    }
+
+    function rawAttrsSnapshot(element, childTags) {
+      const attrs = elementAttrPairs(element)
+      const children = {}
+      for (const tag of Object.keys(childTags || {})) {
+        const child = element.querySelector(tag)
+        if (child) children[tag] = elementAttrPairs(child)
+      }
+      const hasChildren = Object.keys(children).length > 0
+      if (!attrs.length && !hasChildren) return null
+      return JSON.stringify({ tag: element.tagName.toLowerCase(), attrs, children })
+    }
+
+    function snapshotClass(snap) {
+      const hit = snap.attrs.find(([name]) => name === 'class')
+      return hit ? hit[1] : ''
+    }
+
+    // The node's own values win, and an attribute it models but did not write
+    // this time is gone rather than stale. Order comes from the snapshot, so a
+    // block WordPress wrote comes back with its attributes where it left them.
+    function replayRawAttrs(rendered, snap, modeled, klass) {
+      const out = {}
+      for (const [name, value] of snap.attrs) {
+        if (name === 'class') { if (klass) out.class = klass; continue }
+        if (name in rendered) out[name] = rendered[name]
+        // ProseMirror re-serializes a rendered style; see Resources/CLAUDE.md.
+        else if (name === 'style') out['data-quill-style'] = value
+        else if (!modeled.includes(name)) out[name] = value
+      }
+      for (const name of Object.keys(rendered)) {
+        if (name in out) continue
+        out[name] = name === 'class' ? klass : rendered[name]
+      }
+      if (klass && !('class' in out)) out.class = klass
+      return out
+    }
+
+    // The root rule again, per child; precedence is in Resources/CLAUDE.md.
+    function replayChildAttrs(out, snap, nodeName) {
+      for (const [tag, attrs] of Object.entries(snap.children || {})) {
+        const target = settingTargetSpec(out, tag)
+        if (!target) continue
+        const rendered = specAttrs(target)
+        const childSnap = { tag, attrs }
+        const modeled = [...(RAW_CHILD_ATTRS[nodeName]?.[tag] || []), ...settingAttrNames(nodeName, tag)]
+        target[1] = replayRawAttrs(rendered, childSnap, modeled,
+          replayClassList(snapshotClass(childSnap), nodeName, rendered.class, tag))
+      }
+    }
+
+    function withRawAttrs(extension) {
+      return extension.extend({
+        addAttributes() {
+          const parent = this.parent?.() || {}
+          const childTags = RAW_CHILD_ATTRS[this.name] || {}
+          if (RAW_ATTRS_EXEMPT.has(this.name) && !Object.keys(childTags).length) return parent
+          return {
+            ...parent,
+            rawAttrs: {
+              default: null,
+              keepOnSplit: false,
+              parseHTML: element => rawAttrsSnapshot(element, childTags),
+              renderHTML: () => ({}),
+            },
+          }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const raw = props.node.attrs.rawAttrs
+          if (!raw || !Array.isArray(out) || typeof out[0] !== 'string') return out
+          let snap = null
+          try { snap = JSON.parse(raw) } catch (e) { return out }
+          if (!snap || !Array.isArray(snap.attrs)) return out
+          // An exempt node rebuilds its own root, so only its children carry.
+          if (RAW_ATTRS_EXEMPT.has(this.name)) {
+            replayChildAttrs(out, snap, this.name)
+            return out
+          }
+          if (snap.tag !== out[0]) return out
+          const rendered = specAttrs(out)
+          const spec = props.node.type.spec.attrs || {}
+          const modeled = RAW_ATTRS_MODELED[props.node.type.name] || []
+          const ownsClass = 'class' in spec || modeled.includes('class')
+          const name = props.node.type.name
+          const klass = modeled.includes('class')
+            ? replayClassList(snapshotClass(snap), name, rendered.class)
+            : mergeClassNames(rendered.class, ownsClass ? props.node.attrs.class : snapshotClass(snap))
+          out[1] = replayRawAttrs(rendered, snap, modeled, klass)
+          replayChildAttrs(out, snap, name)
+          return out
+        },
+      })
+    }
+
+    // Composes withBlockSettings so a node cannot be added without its registry
+    // settings, which is what keeps adding a setting to one line.
+    function withBlockAttrs(extension) {
+      return withRawAttrs(withBlockSettings(extension)).extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            blockAttrs: {
+              default: null,
+              keepOnSplit: false,
+              parseHTML: element => {
+                const existing = element.getAttribute('data-quill-block-attrs')
+                if (existing) return existing
+                return blockCommentAttrsJSON(element)
+              },
+              renderHTML: () => ({}),
+            },
+          }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const carried = props.node && props.node.attrs && props.node.attrs.blockAttrs
+          if (!carried) return out
+          // Gallery and embed build their own element rather than a spec array.
+          if (out && out.nodeType === 1) {
+            out.setAttribute('data-quill-block-attrs', carried)
+            const cls = mergeClassNames(out.getAttribute('class'), carriedClassName(carried))
+            if (cls) out.setAttribute('class', cls)
+            return out
+          }
+          if (!Array.isArray(out)) return out
+          const attrs = out[1]
+          if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) return out
+          const merged = mergeClassNames(attrs.class, carriedClassName(carried))
+          out[1] = { ...attrs, 'data-quill-block-attrs': carried }
+          if (merged) out[1].class = merged
+          return out
+        },
+      })
+    }
+
+    // ── Registry-driven block settings ────────────────
+    // block-settings.js says how each setting draws; these turn that into a
+    // Tiptap attribute, so a node's parse and render come from data. Wrap as
+    // withBlockAttrs(withBlockSettings(withClassAttr(X))): the class carrier
+    // innermost, the delimiter carrier outermost, so the carried className
+    // merges onto a class list the settings have already contributed to.
+
+    function settingIsSet(def, value) {
+      if (def.kind === 'flagClass') return value === def.when
+      return value !== undefined && value !== null && value !== '' && value !== def.default
+    }
+
+    function settingClass(def, value) {
+      if (def.kind === 'flagClass') return def.class
+      return def.pattern.replace('{}', value)
+    }
+
+    // `on` is a tag name, not a selector: a render spec is an array tree with
+    // no querySelector, and every setting Quill declares targets its element
+    // or one descendant tag.
+    function settingTargetSpec(spec, tag) {
+      if (!tag) return spec
+      if (!Array.isArray(spec)) return null
+      if (spec[0] === tag) return spec
+      for (const child of spec) {
+        if (!Array.isArray(child)) continue
+        const hit = settingTargetSpec(child, tag)
+        if (hit) return hit
+      }
+      return null
+    }
+
+    function specAttrs(spec) {
+      const second = spec[1]
+      if (!second || typeof second !== 'object' || Array.isArray(second)) spec.splice(1, 0, {})
+      return spec[1]
+    }
+
+    function applySettingToSpec(spec, def, value) {
+      const target = settingTargetSpec(spec, def.on)
+      if (!target) return
+      const attrs = specAttrs(target)
+      if (def.kind === 'attr') attrs[def.attr] = String(value)
+      else if (def.kind === 'style') attrs.style = [attrs.style, `${def.property}:${value}`].filter(Boolean).join(';')
+      else attrs.class = mergeClassNames(attrs.class, settingClass(def, value))
+    }
+
+    function applySettingToElement(el, def, value) {
+      const target = def.on ? el.querySelector(def.on) : el
+      if (!target) return
+      if (def.kind === 'attr') target.setAttribute(def.attr, String(value))
+      else if (def.kind === 'style') target.style.setProperty(def.property, value)
+      else target.setAttribute('class', mergeClassNames(target.getAttribute('class'), settingClass(def, value)))
+    }
+
+    // The delimiter is Gutenberg's own source of truth; the markup is only its
+    // output, so it is the fallback. A sourced setting has no comment to read.
+    function parseBlockSetting(el, name, def) {
+      if (!def.sourced) {
+        const carried = blockCommentAttr(el, name)
+        if (carried !== undefined) return carried
+      }
+      return readSettingFromElement(el, def)
+    }
+
+    function withBlockSettings(extension) {
+      return extension.extend({
+        addAttributes() {
+          const generated = {}
+          for (const [name, def] of Object.entries(settingsFor(this.name))) {
+            if (def.kind === 'carried') continue
+            generated[name] = {
+              default: 'default' in def ? def.default : null,
+              keepOnSplit: false,
+              parseHTML: el => parseBlockSetting(el, name, def),
+              renderHTML: () => ({}),
+            }
+          }
+          return { ...this.parent?.(), ...generated }
+        },
+        renderHTML(props) {
+          const out = this.parent?.(props)
+          const settings = settingsFor(props.node.type.name)
+          for (const [name, def] of Object.entries(settings)) {
+            const value = props.node.attrs[name]
+            if (def.kind === 'carried' || !settingIsSet(def, value)) continue
+            if (out && out.nodeType === 1) applySettingToElement(out, def, value)
+            else if (Array.isArray(out)) applySettingToSpec(out, def, value)
+          }
+          return out
+        },
+      })
     }
 
     const GutenbergPassthrough = TiptapNode.create({
@@ -1813,11 +3030,25 @@
           blockName:  { default: null },
           attrsJSON:  { default: null },
           sourceHTML: { default: '' },
+          unsupportedSource: { default: null },
         }
       },
 
       parseHTML() {
         return [
+          {
+            // First, so it out-ranks the class catch-all below. blockName stays
+            // null: this block's own comments are already inside its source, so
+            // regenerating them would double them.
+            tag: 'div.wp-block-quill-unsupported',
+            getAttrs: el => ({
+              blockLabel: el.getAttribute('data-quill-unsupported-label') || 'Block',
+              blockName: null,
+              attrsJSON: null,
+              sourceHTML: el.outerHTML,
+              unsupportedSource: el.getAttribute('data-quill-unsupported-source'),
+            }),
+          },
           {
             tag: '[class*="wp-block-"]:not(figure)',
             getAttrs: el => parsePassthroughBlock(el) || false,
@@ -1960,12 +3191,18 @@
 
         this.dom.appendChild(this.contentDOM)
         this.dom.appendChild(this.backArrow)
+        this._syncEmpty(node)
+      }
+
+      _syncEmpty(node) {
+        this.dom.classList.toggle('fn-item-empty', node.content.size === 0)
       }
 
       update(node) {
         if (node.type.name !== 'footnoteItem') return false
         this.node = node
         this.dom.id = node.attrs.fnId || ''
+        this._syncEmpty(node)
         return true
       }
 
@@ -2045,6 +3282,318 @@
     })
 
     // ── Spell check ───────────────────────────────────────
+    // ── Container chrome ─────────────────────────────
+    // Every visual affordance the container blocks need — a <details> forced
+    // open so its body stays editable, collapsed-for-preview, the active tab —
+    // is a decoration. Decorations are not part of the document, so none of it
+    // can reach getHTML() and therefore a save.
+    const containerChromeKey = new PluginKey('containerChrome')
+
+    const COLLAPSIBLE = new Set(['accordionItem', 'detailsBlock'])
+
+    // The minus buttons remove one part; this removes the whole block. A block
+    // type is deletable only by being named here, so the ✕ and ⌘⇧⌫ can never
+    // disagree about what they cover.
+    const DELETABLE_BLOCKS = new Map([
+      ['table', 'table'],
+      ['tabsBlock', 'tabs'],
+      ['accordionBlock', 'accordion'],
+      ['detailsBlock', 'details'],
+      ['columnsBlock', 'columns'],
+      ['buttonsBlock', 'buttons'],
+      ['pullquote', 'pullquote'],
+      ['preformatted', 'preformatted'],
+      ['blockquote', 'quote'],
+      ['codeBlock', 'code block'],
+      ['horizontalRule', 'separator'],
+    ])
+
+    function _deletableBlockAt($pos) {
+      for (let d = $pos.depth; d > 0; d--) {
+        const node = $pos.node(d)
+        if (DELETABLE_BLOCKS.has(node.type.name)) return { node, pos: $pos.before(d) }
+      }
+      return null
+    }
+
+    // A leaf block is never an ancestor of the caret, so a selected separator
+    // is reachable only through the node selection.
+    function _deletableTarget(state) {
+      const node = state.selection.node
+      if (node && DELETABLE_BLOCKS.has(node.type.name)) return { node, pos: state.selection.from }
+      return _deletableBlockAt(state.selection.$from)
+    }
+
+    function _caretAfterDeleting(doc, pos) {
+      let after = null, before = null
+      doc.descendants((node, at) => {
+        if (!node.isTextblock) return true
+        if (at >= pos) { if (after === null) after = at + 1 }
+        else before = at + 1 + node.content.size
+        return false
+      })
+      return after !== null ? after : before
+    }
+
+    function _deleteContainerBlock() {
+      const target = _deletableTarget(editor.state)
+      if (!target) return false
+      const tr = editor.state.tr.delete(target.pos, target.pos + target.node.nodeSize)
+      const $at = tr.doc.resolve(Math.min(target.pos, tr.doc.content.size))
+      if ($at.parent.content.size === 0) tr.insert($at.pos, editor.schema.nodes.paragraph.create())
+      editor.view.dispatch(tr)
+      const caret = _caretAfterDeleting(editor.state.doc, target.pos)
+      if (caret !== null) editor.commands.setTextSelection(caret)
+      editor.commands.focus()
+      return true
+    }
+
+    // Esc belongs to whatever overlay is open before it belongs to the editor.
+    function _overlayOpen() {
+      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible, #table-size-menu.visible')
+    }
+
+    // Land the caret in typable space just past the container, making that
+    // paragraph when the container is the last thing there is.
+    function _exitContainerBlock(tr, target) {
+      target = target || _deletableBlockAt(editor.state.selection.$from)
+      if (!target) return false
+      tr = tr || editor.state.tr
+      const after = tr.mapping.map(target.pos + target.node.nodeSize)
+      const next = tr.doc.nodeAt(after)
+      if (!next || !next.isTextblock) tr.insert(after, editor.schema.nodes.paragraph.create())
+      editor.view.dispatch(tr)
+      editor.commands.setTextSelection(after + 1)
+      editor.commands.focus()
+      return true
+    }
+
+    // Without this every container answers Enter differently: ProseMirror's
+    // lift escapes only where the schema lets it, so an earlier tab panel
+    // ignored it and a column split itself in half.
+    function _containerEnter() {
+      if (_isInFootnote()) return false
+      const { $from, empty } = editor.state.selection
+      if (!empty) return false
+
+      if ($from.parent.type.name === 'preformatted') {
+        if ($from.parentOffset !== $from.parent.content.size) return false
+        if (!$from.parent.textContent.endsWith('\n\n')) return false
+        return _exitContainerBlock(editor.state.tr.delete($from.pos - 2, $from.pos))
+      }
+
+      const target = _deletableBlockAt($from)
+      // A cell legitimately holds paragraphs, and escaping a whole table from
+      // the middle of one would surprise more than it helps.
+      if (!target || target.node.type.name === 'table') return false
+
+      if ($from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
+          && $from.after() === $from.end(-1)) {
+        const tr = editor.state.tr
+        if ($from.node(-1).childCount > 1) tr.delete($from.before(), $from.after())
+        return _exitContainerBlock(tr, target)
+      }
+
+      if (target.node.type.name === 'pullquote' && $from.parent.type.name === 'paragraph'
+          && $from.node(-1).type.name === 'pullquote') {
+        const tr = editor.state.tr
+        tr.split($from.pos, 1, [{ type: editor.schema.nodes.paragraph }])
+        editor.view.dispatch(tr)
+        return true
+      }
+      return false
+    }
+
+    const ContainerExit = Extension.create({
+      name: 'containerExit',
+      priority: 250,
+      addKeyboardShortcuts() {
+        return {
+          Escape: () => (_overlayOpen() ? false : _exitContainerBlock()),
+          Enter: () => _containerEnter(),
+        }
+      },
+    })
+
+    // A class, never a widget: a contenteditable=false node next to the caret
+    // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
+    const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary'])
+
+    // The whole accordion row toggles, so its title is the one place a press
+    // must fall through and land a caret instead.
+    function _onOwnText(el, x, y) {
+      const range = el.ownerDocument.createRange()
+      range.selectNodeContents(el)
+      // Absent wherever there is no layout engine, jsdom included.
+      if (!range.getClientRects) return false
+      const rects = range.getClientRects()
+      for (let i = 0; i < rects.length; i++) {
+        const r = rects[i]
+        if (!r.width || !r.height) continue
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true
+      }
+      return false
+    }
+
+    function _tabDecorations(node, pos, head, decos) {
+      if (node.childCount < 2) return
+      const list = node.child(0)
+      const panels = node.child(1)
+      const listContent = pos + 2
+      const panelsContent = pos + 1 + list.nodeSize + 1
+      const spans = []
+      list.forEach((child, offset, i) => spans.push([listContent + offset, child.nodeSize, i]))
+      panels.forEach((child, offset, i) => spans.push([panelsContent + offset, child.nodeSize, i]))
+      let active = 0
+      for (const [from, size, i] of spans) {
+        if (head > from && head < from + size) { active = i; break }
+      }
+      for (const [from, size, i] of spans) {
+        if (i === active) decos.push(Decoration.node(from, from + size, { class: 'is-active-tab' }))
+      }
+      // The visibly active tab follows the caret, so isDefaultTab needs a mark
+      // of its own or the setting shows nowhere. One tab is trivially default.
+      if (list.childCount < 2) return
+      const defaultIndex = _carriedAttr(node.attrs.blockAttrs, 'activeTabIndex') || 0
+      list.forEach((child, offset, i) => {
+        if (i !== defaultIndex) return
+        decos.push(Decoration.node(listContent + offset, listContent + offset + child.nodeSize, { class: 'is-default-tab' }))
+      })
+    }
+
+    function _chromeDecorations(state) {
+      const decos = []
+      const head = state.selection.head
+      state.doc.descendants((node, pos) => {
+        const name = node.type.name
+        if (name === 'detailsBlock') {
+          decos.push(Decoration.node(pos, pos + node.nodeSize, { open: '' }))
+          if (node.attrs.showContent) {
+            decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'shows-content' }))
+          }
+        }
+        if (name === 'tabsBlock') _tabDecorations(node, pos, head, decos)
+        if (HINTED_TITLES.has(name) && node.content.size === 0) {
+          decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'is-untitled' }))
+        }
+        return true
+      })
+      return decos
+    }
+
+    function _collapsibleAt($pos) {
+      for (let d = $pos.depth; d > 0; d--) {
+        if (COLLAPSIBLE.has($pos.node(d).type.name)) return { pos: $pos.before(d), node: $pos.node(d) }
+      }
+      return null
+    }
+
+    function _toggleCollapseAt(view, $pos) {
+      const target = _collapsibleAt($pos)
+      if (!target) return false
+      view.dispatch(view.state.tr.setMeta(containerChromeKey, {
+        pos: target.pos, nodeSize: target.node.nodeSize,
+      }))
+      return true
+    }
+
+    const ContainerChrome = Extension.create({
+      name: 'containerChrome',
+      addKeyboardShortcuts() {
+        return { 'Meta-Shift-Backspace': () => _deleteContainerBlock() }
+      },
+      addCommands() {
+        return {
+          toggleContainerCollapse: () => ({ state, dispatch }) => {
+            const target = _collapsibleAt(state.selection.$head)
+            if (!target) return false
+            if (dispatch) {
+              dispatch(state.tr.setMeta(containerChromeKey, {
+                pos: target.pos, nodeSize: target.node.nodeSize,
+              }))
+            }
+            return true
+          },
+        }
+      },
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: containerChromeKey,
+            state: {
+              init() { return DecorationSet.empty },
+              apply(tr, set) {
+                let next = set.map(tr.mapping, tr.doc)
+                const toggle = tr.getMeta(containerChromeKey)
+                if (toggle) {
+                  const at = next.find(toggle.pos, toggle.pos + toggle.nodeSize)
+                                 .filter(d => d.from === toggle.pos)
+                  next = at.length
+                    ? next.remove(at)
+                    : next.add(tr.doc, [Decoration.node(
+                        toggle.pos, toggle.pos + toggle.nodeSize, { class: 'is-collapsed' })])
+                }
+                return next
+              },
+            },
+            props: {
+              decorations(state) {
+                return containerChromeKey.getState(state).add(state.doc, _chromeDecorations(state))
+              },
+              handleDOMEvents: {
+                // <details> is forced open by decoration; let nothing flip it back.
+                click(view, event) {
+                  return !!(event.target.closest && event.target.closest('.wp-block-details > summary'))
+                    && (event.preventDefault(), true)
+                },
+                mousedown(view, event) {
+                  const el = event.target.closest && event.target.closest(
+                    '.wp-block-accordion-heading, .wp-block-details > summary')
+                  if (!el) return false
+                  const isSummary = el.tagName === 'SUMMARY'
+                  const title = isSummary
+                    ? el : el.querySelector('.wp-block-accordion-heading__toggle-title')
+                  if (!title) return false
+                  const rect = el.getBoundingClientRect()
+                  const onArrow = isSummary && event.clientX - rect.left <= 22
+                  // An untitled accordion title has no arrow, so the icon is its
+                  // only toggle zone -- without this, an untitled item with an
+                  // empty title could never be collapsed by click. rect.width is
+                  // 0 in jsdom (no layout), which would make the right-edge test
+                  // spuriously true for every click -- gate on real layout.
+                  const onIcon = !isSummary && rect.width > 0 && el.classList.contains('has-icon') &&
+                    (el.classList.contains('has-icon-left')
+                      ? event.clientX - rect.left <= 34
+                      : rect.right - event.clientX <= 34)
+                  // An untitled row is zero-width, so the browser seats the
+                  // caret in the panel below instead. Deferred past WebKit's own
+                  // click handling, and without preventDefault, which would
+                  // leave nothing focused and drop every keystroke.
+                  if (!onArrow && !onIcon && el.classList.contains('is-untitled')) {
+                    const at = view.posAtDOM(title, 0)
+                    if (at >= 0) {
+                      setTimeout(() => editor.chain().focus().setTextSelection(at).run(), 60)
+                    }
+                    return false
+                  }
+                  if (isSummary) {
+                    if (!onArrow) return false
+                  } else if (!onIcon) {
+                    if (!title.textContent.trim()) return false
+                    if (_onOwnText(title, event.clientX, event.clientY)) return false
+                  }
+                  const pos = view.posAtDOM(el, 0)
+                  if (pos < 0) return false
+                  event.preventDefault()
+                  return _toggleCollapseAt(view, view.state.doc.resolve(pos))
+                },
+              },
+            },
+          }),
+        ]
+      },
+    })
+
     const spellCheckKey = new PluginKey('spellCheck')
 
     const SpellCheck = Extension.create({
@@ -2102,8 +3651,32 @@
       }
     })
 
+    // Blocks that end a document with nowhere to click after them: a table
+    // seats the caret back in its last cell, and the rest hold no text at all.
+    // Lists, quotes and the containers are left out — Enter already walks out of
+    // those. The save transform drops the paragraph again while it is empty.
+    const TRAILING_PARAGRAPH_AFTER = new Set([
+      'table', 'galleryBlock', 'embedBlock', 'gutenbergPassthrough', 'horizontalRule',
+    ])
+
+    const TrailingParagraph = Extension.create({
+      name: 'trailingParagraph',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: new PluginKey('trailingParagraph'),
+            appendTransaction(_trs, _oldState, state) {
+              const last = state.doc.lastChild
+              if (!last || !TRAILING_PARAGRAPH_AFTER.has(last.type.name)) return null
+              return state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph.create())
+            },
+          }),
+        ]
+      },
+    })
+
     // Extended blockquote: allows an optional cite as its last child.
-    const CustomBlockquote = withClassAttr(Blockquote.extend({
+    const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
       addKeyboardShortcuts() {
         const orig = this.parent?.()
@@ -2135,7 +3708,70 @@
           },
         }
       },
-    }))
+    })))
+
+    // Phrasing wrappers nothing else claims; del is strike's, ruby is structural.
+    const PRESERVED_INLINE_TAGS = [
+      'abbr', 'bdi', 'bdo', 'big', 'data', 'dfn', 'ins', 'kbd',
+      'mark', 'q', 'samp', 'small', 'sub', 'sup', 'time', 'var',
+    ]
+
+    const _attrMap = el => Object.fromEntries(
+      Array.from(el.attributes)
+        .filter(a => isCarryableAttr(a.name, a.value))
+        .map(a => [a.name, a.value]))
+
+    const RawInline = Mark.create({
+      name: 'rawInline',
+      priority: 50,
+      excludes: '',
+      addAttributes() {
+        return {
+          tag:      { default: 'span', renderHTML: () => ({}) },
+          rawAttrs: { default: null,   renderHTML: () => ({}) },
+        }
+      },
+      parseHTML() {
+        return PRESERVED_INLINE_TAGS.map(tag => ({
+          tag,
+          getAttrs: el => el.matches('sup.fn[data-fn]')
+            ? false
+            : { tag, rawAttrs: _attrMap(el) },
+        })).concat([{
+          tag: 'span',
+          getAttrs: el => (!el.attributes.length || /underline|line-through/.test(el.style.textDecoration))
+            ? false
+            : { tag: 'span', rawAttrs: _attrMap(el) },
+        }])
+      },
+      renderHTML({ mark }) {
+        return [mark.attrs.tag || 'span', mark.attrs.rawAttrs || {}, 0]
+      },
+    })
+
+    // Everything else core wrote on the anchor -- title, its own data-* -- is carried.
+    const LINK_MODELED_ATTRS = new Set(['href', 'target', 'rel', 'class'])
+
+    const LinkWithRawAttrs = Link.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          rawAttrs: {
+            default: null,
+            parseHTML: el => {
+              const extra = Array.from(el.attributes)
+                .filter(a => !LINK_MODELED_ATTRS.has(a.name) && isCarryableAttr(a.name, a.value))
+                .map(a => [a.name, a.value])
+              return extra.length ? JSON.stringify(extra) : null
+            },
+            renderHTML: attrs => {
+              if (!attrs.rawAttrs) return {}
+              try { return Object.fromEntries(JSON.parse(attrs.rawAttrs)) } catch (e) { return {} }
+            },
+          },
+        }
+      },
+    })
 
     const editor = new Editor({
       element: document.getElementById('editor'),
@@ -2150,13 +3786,13 @@
           codeBlock: false,
           horizontalRule: false,
         }),
-        withClassAttr(CodeBlock.extend({
+        withBlockAttrs(withClassAttr(CodeBlock.extend({
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
               [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
           },
-        })),
+        }))),
         ParagraphWithClass,
         HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
         BulletListWithClass,
@@ -2164,23 +3800,46 @@
         ListItemWithClass,
         CustomBlockquote,
         Cite,
-        Underline,
-        withClassAttr(Table).configure({ resizable: false }),
-        withClassAttr(TableRow),
-        withClassAttr(TableHeader),
-        withClassAttr(TableCell),
-        withClassAttr(HorizontalRule),
-        ResizableImage.configure({ inline: false }),
-        EmbedBlock,
-        GalleryBlock,
+        Underline.extend({
+          renderHTML: () => ['span', { style: 'text-decoration: underline;' }, 0],
+        }),
+        RawInline,
+        withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
+        withBlockAttrs(withClassAttr(TableRowWithSection)),
+        withBlockAttrs(withClassAttr(TableHeader)),
+        withBlockAttrs(withClassAttr(TableCell)),
+        withBlockAttrs(withClassAttr(HorizontalRule)),
+        withBlockAttrs(ResizableImage).configure({ inline: false }),
+        withBlockAttrs(EmbedBlock),
+        withBlockAttrs(GalleryBlock),
+        withBlockAttrs(ColumnsBlock),
+        withBlockAttrs(ColumnBlock),
+        withBlockAttrs(DetailsBlock),
+        DetailsSummary,
+        withBlockAttrs(ButtonsBlock),
+        withBlockAttrs(withClassAttr(ButtonBlock)),
+        withBlockAttrs(AccordionBlock),
+        withBlockAttrs(AccordionItem),
+        withBlockAttrs(AccordionHeading),
+        withBlockAttrs(AccordionPanel),
+        withBlockAttrs(TabsBlock),
+        withBlockAttrs(TabList),
+        TabButton,
+        withBlockAttrs(TabPanels),
+        withBlockAttrs(TabPanel),
+        withBlockAttrs(Pullquote),
+        withBlockAttrs(Preformatted),
         GutenbergPassthrough,
         FootnoteMarker,
         FootnotesList,
         FootnoteItem,
         FootnoteSync,
-        withClassAttr(Link).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
+        TrailingParagraph,
+        withClassAttr(LinkWithRawAttrs).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
+        ContainerChrome,
+        ContainerExit,
         SpellCheck,
         FindHighlight,
       ],
@@ -2264,6 +3923,14 @@
     }
 
     // ── Footnote context detection ────────────────────
+    function _ancestorOfType(typeName) {
+      const { $from } = editor.state.selection
+      for (let d = $from.depth; d > 0; d--) {
+        if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
+      }
+      return null
+    }
+
     function _isInFootnote() {
       const $from = editor.state.selection.$from
       for (let d = $from.depth; d > 0; d--) {
@@ -2273,11 +3940,40 @@
       return false
     }
 
+    // Both quote blocks allow a trailing cite, so both get the control.
+    const CITE_HOSTS = new Set(['blockquote', 'pullquote'])
+
+    function _citeHostDepth($pos) {
+      for (let d = $pos.depth; d >= 0; d--) {
+        if (CITE_HOSTS.has($pos.node(d).type.name)) return d
+      }
+      return -1
+    }
+
     function _ancestorDepth($pos, typeName) {
       for (let d = $pos.depth; d >= 0; d--) {
         if ($pos.node(d).type.name === typeName) return d
       }
       return -1
+    }
+
+    function _buttonBlockTarget(state) {
+      const $head = state.selection.$head
+      for (let d = $head.depth; d > 0; d--) {
+        if ($head.node(d).type.name === 'buttonBlock') {
+          return { pos: $head.before(d), node: $head.node(d) }
+        }
+      }
+      return null
+    }
+
+    function _setButtonHref(url) {
+      const button = _buttonBlockTarget(editor.state)
+      if (!button) return false
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(
+        button.pos, null, { ...button.node.attrs, href: url || null }))
+      editor.commands.focus()
+      return true
     }
 
     const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
@@ -2287,7 +3983,6 @@
     const COMMANDS = {
       bold:          () => editor.chain().focus().toggleBold().run(),
       italic:        () => editor.chain().focus().toggleItalic().run(),
-      underline:     () => editor.chain().focus().toggleUnderline().run(),
       strike:        () => editor.chain().focus().toggleStrike().run(),
       code:          () => editor.chain().focus().toggleCode().run(),
       blockquote: () => {
@@ -2320,15 +4015,112 @@
       codeBlock:     () => { if (!_isInFootnote()) editor.chain().focus().toggleCodeBlock().run() },
       bulletList:    () => { if (!_isInFootnote()) editor.chain().focus().toggleBulletList().run() },
       orderedList:   () => { if (!_isInFootnote()) editor.chain().focus().toggleOrderedList().run() },
-      insertTable:   () => { if (!_isInFootnote()) editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      insertTable:   () => { if (!_isInFootnote()) _toggleTableMenu() },
+      toggleTableHeader: () => _toggleTableSection('head'),
+      toggleTableFooter: () => _toggleTableSection('foot'),
       addRowAfter:   () => editor.chain().focus().addRowAfter().run(),
       addColumnAfter:() => editor.chain().focus().addColumnAfter().run(),
       deleteRow:     () => editor.chain().focus().deleteRow().run(),
       deleteColumn:  () => editor.chain().focus().deleteColumn().run(),
-      deleteTable:   () => editor.chain().focus().deleteTable().run(),
+      addTab: () => {
+        const tabs = _ancestorOfType('tabsBlock')
+        if (!tabs) return
+        const list = tabs.pos + 1
+        const panels = list + tabs.node.child(0).nodeSize
+        const label = `Tab ${tabs.node.child(0).childCount + 1}`
+        const tr = editor.state.tr
+        tr.insert(panels + tabs.node.child(1).nodeSize - 1,
+          editor.schema.nodes.tabPanel.createAndFill({ label }))
+        tr.insert(list + tabs.node.child(0).nodeSize - 1,
+          editor.schema.nodes.tabButton.create(null, editor.schema.text(label)))
+        editor.view.dispatch(tr)
+        editor.commands.focus()
+      },
+      deleteTab: () => {
+        const tabs = _ancestorOfType('tabsBlock')
+        if (!tabs || tabs.node.child(0).childCount <= 1) return
+        const here = _ancestorOfType('tabPanel') || _ancestorOfType('tabButton')
+        if (!here) return
+        const parent = here.node.type.name === 'tabPanel' ? tabs.node.child(1) : tabs.node.child(0)
+        let index = -1
+        parent.forEach((child, _offset, i) => { if (child === here.node) index = i })
+        if (index < 0) return
+        const listStart = tabs.pos + 1
+        const panelsStart = listStart + tabs.node.child(0).nodeSize
+        let buttonPos = listStart + 1
+        tabs.node.child(0).forEach((child, offset, i) => { if (i < index) buttonPos += child.nodeSize })
+        let panelPos = panelsStart + 1
+        tabs.node.child(1).forEach((child, offset, i) => { if (i < index) panelPos += child.nodeSize })
+        const tr = editor.state.tr
+        tr.delete(panelPos, panelPos + tabs.node.child(1).child(index).nodeSize)
+        tr.delete(buttonPos, buttonPos + tabs.node.child(0).child(index).nodeSize)
+        editor.view.dispatch(tr)
+        editor.commands.focus()
+      },
+      toggleAccordionAutoclose: () => editor.chain().focus().toggleAccordionAutoclose().run(),
+      toggleDetailsOpen:        () => editor.chain().focus().toggleDetailsOpen().run(),
+      addAccordionItem: () => {
+        const info = _ancestorOfType('accordionBlock')
+        if (!info) return
+        const item = editor.schema.nodes.accordionItem.createAndFill(null, _inheritedAccordionHeading(info.node))
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, item))
+        editor.commands.focus()
+      },
+      deleteAccordionItem: () => {
+        const group = _ancestorOfType('accordionBlock')
+        const item = _ancestorOfType('accordionItem')
+        if (!group || !item || group.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(item.pos, item.pos + item.node.nodeSize))
+        editor.commands.focus()
+      },
+      addButton: () => {
+        const info = _ancestorOfType('buttonsBlock')
+        if (!info) return
+        const btn = editor.schema.nodes.buttonBlock.createAndFill()
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, btn))
+        editor.commands.focus()
+      },
+      deleteButton: () => {
+        const group = _ancestorOfType('buttonsBlock')
+        const btn = _ancestorOfType('buttonBlock')
+        if (!group || !btn || group.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(btn.pos, btn.pos + btn.node.nodeSize))
+        editor.commands.focus()
+      },
+      addColumnBlock: () => {
+        const info = _ancestorOfType('columnsBlock')
+        if (!info) return
+        const col = editor.schema.nodes.columnBlock.createAndFill()
+        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, col))
+        editor.commands.focus()
+      },
+      deleteColumnBlock: () => {
+        const cols = _ancestorOfType('columnsBlock')
+        const col = _ancestorOfType('columnBlock')
+        if (!cols || !col || cols.node.childCount <= 1) return
+        editor.view.dispatch(editor.state.tr.delete(col.pos, col.pos + col.node.nodeSize))
+        editor.commands.focus()
+      },
+      deleteBlock:   () => { _deleteContainerBlock() },
       undo:          () => editor.chain().focus().undo().run(),
       redo:          () => editor.chain().focus().redo().run(),
       link: () => {
+        // A button carries its link as a node attribute; the Link mark would
+        // emit a second anchor beside the button's own and leave it unlinked.
+        const button = _buttonBlockTarget(editor.state)
+        if (button) {
+          const dom = editor.view.nodeDOM(button.pos)
+          const r = (dom && dom.getBoundingClientRect)
+            ? dom.getBoundingClientRect()
+            : document.querySelector('[data-cmd="link"]').getBoundingClientRect()
+          if (window.webkit?.messageHandlers?.showLinkPicker) {
+            window.webkit.messageHandlers.showLinkPicker.postMessage({
+              href: button.node.attrs.href || '',
+              rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+            })
+          }
+          return
+        }
         const href = editor.getAttributes('link').href || ''
         const sel  = window.getSelection()
         let rect
@@ -2370,6 +4162,7 @@
           window.webkit.messageHandlers.showLinkPicker.postMessage({ href, rect })
         }
       },
+      buttonLink: () => COMMANDS.link(),
       image: () => {
         if (_isInFootnote()) return
         if (window.webkit?.messageHandlers?.insertImage) {
@@ -2450,7 +4243,7 @@
         tip.classList.remove('visible')
       }
 
-      document.querySelectorAll('#toolbar button[title]').forEach(el => {
+      document.querySelectorAll('#toolbar button[title], #toolbar-row2 button[title]').forEach(el => {
         el.dataset.tooltip = el.getAttribute('title')
         el.setAttribute('aria-label', el.dataset.tooltip)
         el.removeAttribute('title')
@@ -2462,6 +4255,422 @@
       })
       document.getElementById('editor-wrap').addEventListener('scroll', () => hide(activeEl))
       window.addEventListener('resize', () => hide(activeEl))
+    }
+
+    // ── Registry-driven toolbar controls ──────────────
+    // One span per node that declares a control, generated into row 2 beside
+    // the hand-written groups. The hand-written ones keep their own wiring.
+
+    // An atom block -- a separator, an image -- is reached as a NodeSelection
+    // rather than as an ancestor of the caret.
+    function _settingBlockAt(state, typeName) {
+      const selected = state.selection.node
+      if (selected && selected.type.name === typeName) return { node: selected, pos: state.selection.from }
+      const $from = state.selection.$from
+      for (let d = $from.depth; d >= 1; d--) {
+        if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
+      }
+      return null
+    }
+
+    function _setSettingAttrs(typeName, attrs) {
+      const target = _settingBlockAt(editor.state, typeName)
+      if (!target) return
+      const { state, view } = editor
+      view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, ...attrs }))
+    }
+
+    // A block carries exactly one style, so choosing one clears every other
+    // is-style-* token while leaving the user's own classes in place.
+    function _spliceStyleToken(classes, token) {
+      const kept = String(classes || '').split(/\s+/).filter(c => c && !/^is-style-/.test(c))
+      if (token) kept.push(token)
+      return kept.join(' ')
+    }
+
+    function _styleTokenIn(classes) {
+      const m = String(classes || '').match(/(?:^|\s)(is-style-[^\s]+)/)
+      return m ? m[1] : ''
+    }
+
+    function _blockStyleOf(node, def) {
+      const { classAttr } = def.control
+      return (classAttr ? _styleTokenIn(node.attrs[classAttr]) : '')
+        || _styleTokenIn(carriedClassName(node.attrs.blockAttrs))
+    }
+
+    function _carriedAttr(raw, key) {
+      try {
+        const parsed = raw ? JSON.parse(raw) : null
+        return (parsed && typeof parsed === 'object') ? parsed[key] : undefined
+      } catch (e) {
+        return undefined
+      }
+    }
+
+    // A null value deletes the key, and an empty carrier becomes no carrier at
+    // all, so a setting back at its default writes no delimiter attribute.
+    function _withCarriedAttr(raw, key, value) {
+      let carried = {}
+      try { carried = raw ? JSON.parse(raw) : {} } catch (e) { carried = {} }
+      if (value === null || value === undefined || value === '') delete carried[key]
+      else carried[key] = value
+      return Object.keys(carried).length ? JSON.stringify(carried) : null
+    }
+
+    // A control on one node that writes an index onto an ancestor -- core's own
+    // shape for the tabs default tab, whose checkbox sits on the panel while
+    // activeTabIndex lives on the tabs block.
+    function _ancestorIndexTarget(state, typeName, control) {
+      const $from = state.selection.$from
+      for (let d = $from.depth; d >= 1; d--) {
+        if ($from.node(d).type.name !== typeName) continue
+        const index = $from.index(d - 1)
+        for (let a = d - 1; a >= 1; a--) {
+          if ($from.node(a).type.name !== control.ancestor) continue
+          return { index, node: $from.node(a), pos: $from.before(a) }
+        }
+        return null
+      }
+      return null
+    }
+
+    function _setBlockStyle(typeName, def, token) {
+      const target = _settingBlockAt(editor.state, typeName)
+      if (!target) return
+      const { classAttr } = def.control
+      const attrs = {}
+      attrs.blockAttrs = _withCarriedAttr(target.node.attrs.blockAttrs, 'className',
+        _spliceStyleToken(carriedClassName(target.node.attrs.blockAttrs), token))
+      if (classAttr) attrs[classAttr] = _spliceStyleToken(target.node.attrs[classAttr], token) || null
+      _setSettingAttrs(typeName, attrs)
+    }
+
+    // A carried setting has no attribute of its own -- its value lives in the
+    // delimiter JSON the carrier holds.
+    function _settingValue(node, name, def) {
+      if (def.kind !== 'carried') return node.attrs[name]
+      const carried = _carriedAttr(node.attrs.blockAttrs, name)
+      return carried === undefined ? def.default : carried
+    }
+
+    // Core's serializer omits an attribute that equals its default, so writing
+    // the default deletes the key rather than spelling it out.
+    function _attrsWithSetting(attrs, name, def, value) {
+      if (def.kind !== 'carried') return { ...attrs, [name]: value }
+      return { ...attrs, blockAttrs: _withCarriedAttr(attrs.blockAttrs, name, value === def.default ? null : value) }
+    }
+
+    // A propagated setting is stored twice by core -- on the block and on each
+    // descendant that draws it -- so both halves move in one transaction, and
+    // one undo reverses the lot. The descendant both draws and carries it.
+    function _setSettingValue(typeName, name, def, value) {
+      const target = _settingBlockAt(editor.state, typeName)
+      if (!target) return
+      const { state, view } = editor
+      const tr = state.tr
+      tr.setNodeMarkup(target.pos, undefined, _attrsWithSetting(target.node.attrs, name, def, value))
+      const propagate = def.control && def.control.propagate
+      if (propagate) {
+        target.node.descendants((child, offset) => {
+          if (child.type.name !== propagate) return
+          const carried = _attrsWithSetting(child.attrs, name, { kind: 'carried', default: def.default }, value)
+          tr.setNodeMarkup(target.pos + 1 + offset, undefined, { ...carried, [name]: value })
+        })
+      }
+      view.dispatch(tr)
+    }
+
+    // A toggle's on value is the flagClass `when` where there is one and true
+    // otherwise; its off value is the default, unless the default is already
+    // the on value.
+    function _toggleValues(def) {
+      const on = 'when' in def ? def.when : true
+      return [on, def.default === on ? !on : def.default]
+    }
+
+    // Mirrors the save transform: a declared section wins, and an all-<th>
+    // first row is the fallback for classic tables and for the ones Quill
+    // inserts, which declare nothing.
+    function _tableSections(node) {
+      const rows = []
+      node.forEach((row, offset) => rows.push({ row, offset, type: row.attrs.rowType || 'body' }))
+      if (!rows.length || rows[0].type !== 'body' || rows.some(r => r.type === 'head')) return rows
+      const first = rows[0].row
+      const headed = first.childCount > 0 &&
+        Array.from({ length: first.childCount }, (_, i) => first.child(i))
+          .every(cell => cell.type.name === 'tableHeader')
+      if (headed) rows[0].type = 'head'
+      return rows
+    }
+
+    function _tableSectionRow(node, type) {
+      return _tableSections(node).find(r => r.type === type) || null
+    }
+
+    // core's header section is <th> cells, its footer <td>.
+    function _toggleTableSection(type) {
+      const target = _settingBlockAt(editor.state, 'table')
+      if (!target) return
+      const { node, pos } = target
+      const existing = _tableSectionRow(node, type)
+      const tr = editor.state.tr
+      if (existing) {
+        if (node.childCount <= 1) return
+        const at = pos + 1 + existing.offset
+        tr.delete(at, at + existing.row.nodeSize)
+      } else {
+        const cellType = type === 'head' ? editor.schema.nodes.tableHeader : editor.schema.nodes.tableCell
+        const width = node.firstChild ? node.firstChild.childCount : 1
+        const cells = Array.from({ length: width }, () => cellType.createAndFill())
+        const row = editor.schema.nodes.tableRow.create({ rowType: type }, cells)
+        tr.insert(type === 'head' ? pos + 1 : pos + node.nodeSize - 1, row)
+      }
+      editor.view.dispatch(tr)
+      editor.commands.focus()
+    }
+
+    function _buildSettingToggle(typeName, name, def) {
+      const [on, off] = _toggleValues(def)
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = def.control.label
+      if (def.control.title) btn.title = def.control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (target) _setSettingValue(typeName, name, def, _settingValue(target.node, name, def) === on ? off : on)
+      })
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', _settingValue(node, name, def) === on) }
+    }
+
+    // Core hands the heading its icon settings through block context; Quill has
+    // none, so a new item copies them off the accordion, drawing and carrying
+    // them the way core's own save() would.
+    function _inheritedAccordionHeading(accordion) {
+      const attrs = {}
+      let carried = null
+      for (const [name, def] of Object.entries(settingsFor('accordionBlock'))) {
+        if (!def.control || def.control.propagate !== 'accordionHeading') continue
+        const value = _carriedAttr(accordion.attrs.blockAttrs, name)
+        if (value === undefined) continue
+        attrs[name] = value
+        carried = _withCarriedAttr(carried, name, value)
+      }
+      return editor.schema.nodes.accordionHeading.create({ ...attrs, blockAttrs: carried })
+    }
+
+    // Two options is a switch, not a list -- the rule the block styles follow.
+    // It shows the option it is on rather than a checked state: joined to the
+    // toggle that gates it, a second raised segment would read as a second
+    // on/off, and a side is always one value or the other.
+    function _buildSettingChoiceToggle(typeName, name, def) {
+      const [first, second] = def.control.options
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.title = def.control.title || def.control.label
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (!target) return
+        const on = _settingValue(target.node, name, def) === second.value
+        _setSettingValue(typeName, name, def, on ? first.value : second.value)
+      })
+      return {
+        name,
+        def,
+        el: btn,
+        reflect: node => {
+          btn.textContent = (_settingValue(node, name, def) === second.value ? second : first).label
+        },
+      }
+    }
+
+    function _buildSettingChoice(typeName, name, def) {
+      if (def.control.options.length === 2) return _buildSettingChoiceToggle(typeName, name, def)
+      const select = document.createElement('select')
+      select.className = 'setting-select'
+      select.dataset.setting = name
+      select.title = def.control.title || def.control.label
+      for (const option of def.control.options) {
+        const el = document.createElement('option')
+        el.value = option.value
+        el.textContent = option.label
+        select.appendChild(el)
+      }
+      select.addEventListener('mousedown', e => e.stopPropagation())
+      // A select has to take focus to open, so unlike the buttons it cannot
+      // preventDefault; without this the caret is stranded and keystrokes drop.
+      select.addEventListener('change', () => {
+        _setSettingValue(typeName, name, def, select.value)
+        editor.commands.focus()
+      })
+      return { name, def, el: select, reflect: node => { select.value = _settingValue(node, name, def) } }
+    }
+
+    // Two styles is a switch, not a list: the control is a button labelled with
+    // the non-default style. Only the separator has more than two.
+    function _buildSettingStyleToggle(typeName, name, def) {
+      const { value: token, label } = def.control.options[1]
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.dataset.style = token
+      btn.textContent = label
+      btn.title = label
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (target) _setBlockStyle(typeName, def, _blockStyleOf(target.node, def) === token ? '' : token)
+      })
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', _blockStyleOf(node, def) === token) }
+    }
+
+    function _buildSettingStylePicker(typeName, name, def) {
+      if (def.control.options.length === 2) return _buildSettingStyleToggle(typeName, name, def)
+      const select = document.createElement('select')
+      select.className = 'setting-select'
+      select.dataset.setting = name
+      select.title = def.control.label
+      for (const option of def.control.options) {
+        const el = document.createElement('option')
+        el.value = option.value
+        el.textContent = option.label
+        select.appendChild(el)
+      }
+      select.addEventListener('mousedown', e => e.stopPropagation())
+      select.addEventListener('change', () => {
+        _setBlockStyle(typeName, def, select.value)
+        editor.commands.focus()
+      })
+      return { name, def, el: select, reflect: node => { select.value = _blockStyleOf(node, def) } }
+    }
+
+    function _buildSettingAncestorIndex(typeName, name, def) {
+      const { control } = def
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = control.label
+      if (control.title) btn.title = control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _ancestorIndexTarget(editor.state, typeName, control)
+        if (!target) return
+        const current = _carriedAttr(target.node.attrs.blockAttrs, control.attr) || 0
+        const next = current === target.index ? null : target.index || null
+        const { state, view } = editor
+        view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, {
+          ...target.node.attrs,
+          blockAttrs: _withCarriedAttr(target.node.attrs.blockAttrs, control.attr, next),
+        }))
+      })
+      return {
+        name,
+        def,
+        el: btn,
+        reflect: () => {
+          const target = _ancestorIndexTarget(editor.state, typeName, control)
+          const current = target ? (_carriedAttr(target.node.attrs.blockAttrs, control.attr) || 0) : -1
+          btn.classList.toggle('active', !!target && current === target.index)
+        },
+      }
+    }
+
+    // Core's algorithm, verbatim: appending the token when it is absent and
+    // trimming, then stripping it and trimming on the way back off.
+    function _withRelToken(rel, token, on) {
+      const current = String(rel || '')
+      if (on) return (current.includes(token) ? current : current + ' ' + token).trim()
+      return current.replace(new RegExp('\\b' + token + '\\s*', 'g'), '').trim()
+    }
+
+    function _buildSettingNewTab(typeName, name, def) {
+      const { control } = def
+      const btn = document.createElement('button')
+      btn.dataset.setting = name
+      btn.textContent = control.label
+      if (control.title) btn.title = control.title
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault()
+        const target = _settingBlockAt(editor.state, typeName)
+        if (!target) return
+        const on = target.node.attrs[name] !== '_blank'
+        _setSettingAttrs(typeName, {
+          [name]: on ? '_blank' : null,
+          [control.relSetting]: _withRelToken(target.node.attrs[control.relSetting], control.rel, on) || null,
+        })
+      })
+      return { name, def, el: btn, reflect: node => btn.classList.toggle('active', node.attrs[name] === '_blank') }
+    }
+
+    function _buildSettingControl(typeName, name, def) {
+      if (def.control.type === 'newTab') return _buildSettingNewTab(typeName, name, def)
+      if (def.control.type === 'toggle') return _buildSettingToggle(typeName, name, def)
+      if (def.control.type === 'choice') return _buildSettingChoice(typeName, name, def)
+      if (def.control.type === 'blockStyle') return _buildSettingStylePicker(typeName, name, def)
+      if (def.control.type === 'ancestorIndex') return _buildSettingAncestorIndex(typeName, name, def)
+      return null
+    }
+
+    // A control that gates another is rendered joined to it, so the dependency
+    // is visible rather than implied by adjacency.
+    function _appendSettingControls(span, controls) {
+      const dependents = new Map()
+      for (const c of controls) {
+        if (c.def.control.showWhen) dependents.set(c.def.control.showWhen, c)
+      }
+      const placed = new Set()
+      for (const c of controls) {
+        if (placed.has(c)) continue
+        const dependent = dependents.get(c.name)
+        if (!dependent) { span.appendChild(c.el); continue }
+        const pair = document.createElement('span')
+        pair.className = 'setting-pair'
+        pair.appendChild(c.el)
+        pair.appendChild(dependent.el)
+        span.appendChild(pair)
+        placed.add(dependent)
+        dependent.pair = pair
+      }
+    }
+
+    function _buildSettingGroups() {
+      const groups = []
+      for (const typeName of settingsNodeNames()) {
+        const controls = Object.entries(settingsFor(typeName))
+          .filter(([, def]) => def.control)
+          .map(([name, def]) => _buildSettingControl(typeName, name, def))
+          .filter(Boolean)
+        if (!controls.length) continue
+        const span = document.createElement('span')
+        span.id = `settings-${typeName}-controls`
+        span.className = 'tb-group'
+        span.style.display = 'none'
+        _appendSettingControls(span, controls)
+        document.getElementById('toolbar-row2').appendChild(span)
+        groups.push({ typeName, span, controls })
+      }
+      return groups
+    }
+
+    const _settingGroups = _buildSettingGroups()
+
+    function _updateSettingControls() {
+      for (const group of _settingGroups) {
+        const target = _settingBlockAt(editor.state, group.typeName)
+        group.span.style.display = target ? 'inline-flex' : 'none'
+        if (!target) continue
+        for (const c of group.controls) {
+          c.reflect(target.node)
+          const gate = c.def.control.showWhen
+          if (!gate) continue
+          const gateDef = settingsFor(group.typeName)[gate]
+          // showWhen usually names a sibling setting; linkTarget's names the raw
+          // `href` attribute instead, since whether a link exists isn't a setting.
+          const on = gateDef ? !!_settingValue(target.node, gate, gateDef) : !!target.node.attrs[gate]
+          c.el.style.display = on ? '' : 'none'
+          if (c.pair) c.pair.classList.toggle('is-solo', !on)
+        }
+      }
     }
 
     initToolbarTooltips()
@@ -2512,6 +4721,145 @@
     window.addEventListener('resize', closeHeadingMenu)
     document.getElementById('editor-wrap').addEventListener('scroll', closeHeadingMenu)
 
+    // ── Block insert menu ────────────────────
+    const insertButton = document.getElementById('insert-button')
+    const insertMenu = document.getElementById('insert-menu')
+
+    const INSERT_ACTIONS = {
+      columns:      () => window.insertColumns(2),
+      accordion:    () => window.insertAccordion(),
+      tabs:         () => window.insertTabs(2),
+      details:      () => window.insertDetails(),
+      buttons:      () => window.insertButtons(),
+      pullquote:    () => editor.chain().focus().setPullquote().run(),
+      preformatted: () => editor.chain().focus().setPreformatted().run(),
+      separator:    () => window.insertSeparator(),
+    }
+
+    function _closeInsertMenu() {
+      insertMenu.classList.remove('visible')
+      insertButton.setAttribute('aria-expanded', 'false')
+    }
+
+    function _openInsertMenu() {
+      const rect = insertButton.getBoundingClientRect()
+      insertMenu.style.left = `${Math.max(rect.left, 8)}px`
+      insertMenu.style.top = `${rect.bottom + 8}px`
+      insertMenu.classList.add('visible')
+      insertButton.setAttribute('aria-expanded', 'true')
+    }
+
+    insertButton.addEventListener('click', e => {
+      e.preventDefault()
+      if (insertMenu.classList.contains('visible')) _closeInsertMenu()
+      else _openInsertMenu()
+    })
+
+    insertMenu.addEventListener('mousedown', e => e.preventDefault())
+    insertMenu.addEventListener('click', e => {
+      const btn = e.target.closest('[data-insert]')
+      if (!btn) return
+      INSERT_ACTIONS[btn.dataset.insert]?.()
+      _closeInsertMenu()
+    })
+
+    document.addEventListener('mousedown', e => {
+      if (!insertMenu.contains(e.target) && !insertButton.contains(e.target)) _closeInsertMenu()
+    })
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && insertMenu.classList.contains('visible')) _closeInsertMenu()
+    })
+    window.addEventListener('resize', _closeInsertMenu)
+    document.getElementById('editor-wrap').addEventListener('scroll', _closeInsertMenu)
+
+    // ── Table size picker ─────────────────────────────
+    // Word's grid: hover or arrow to a size, click or Enter to insert. Header
+    // row on by default, which is both what the old fixed 3x3 did and what
+    // Gutenberg's own table starts with.
+    const TABLE_PICKER_ROWS = 8
+    const TABLE_PICKER_COLS = 10
+    const tableButton = document.querySelector('[data-cmd="insertTable"]')
+    const tableMenu = document.getElementById('table-size-menu')
+    const tableGrid = document.getElementById('table-size-grid')
+    const tableLabel = document.getElementById('table-size-label')
+    let _tableSize = { rows: 0, cols: 0 }
+
+    for (let r = 1; r <= TABLE_PICKER_ROWS; r++) {
+      for (let c = 1; c <= TABLE_PICKER_COLS; c++) {
+        const cell = document.createElement('div')
+        cell.className = 'table-size-cell'
+        cell.dataset.rows = r
+        cell.dataset.cols = c
+        tableGrid.appendChild(cell)
+      }
+    }
+
+    function _paintTableSize(rows, cols) {
+      _tableSize = { rows, cols }
+      for (const cell of tableGrid.children) {
+        cell.classList.toggle('in-range', +cell.dataset.rows <= rows && +cell.dataset.cols <= cols)
+      }
+      tableLabel.textContent = (rows && cols) ? `${cols}×${rows} Table` : 'Table'
+    }
+
+    function _closeTableMenu() {
+      tableMenu.classList.remove('visible')
+      tableButton.setAttribute('aria-expanded', 'false')
+    }
+
+    function _toggleTableMenu() {
+      if (tableMenu.classList.contains('visible')) { _closeTableMenu(); return }
+      const rect = tableButton.getBoundingClientRect()
+      tableMenu.style.left = `${Math.max(rect.left, 8)}px`
+      tableMenu.style.top = `${rect.bottom + 8}px`
+      _paintTableSize(0, 0)
+      tableMenu.classList.add('visible')
+      tableButton.setAttribute('aria-expanded', 'true')
+    }
+
+    window.insertTable = (rows, cols) => {
+      _closeTableMenu()
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
+      return true
+    }
+
+    tableMenu.addEventListener('mousedown', e => e.preventDefault())
+    tableGrid.addEventListener('mouseover', e => {
+      const cell = e.target.closest('.table-size-cell')
+      if (cell) _paintTableSize(+cell.dataset.rows, +cell.dataset.cols)
+    })
+    tableGrid.addEventListener('click', e => {
+      const cell = e.target.closest('.table-size-cell')
+      if (cell) window.insertTable(+cell.dataset.rows, +cell.dataset.cols)
+    })
+
+    // Capture, so the arrows resize the grid instead of moving the caret the
+    // picker deliberately left in place.
+    const TABLE_PICKER_STEPS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }
+    document.addEventListener('keydown', e => {
+      if (!tableMenu.classList.contains('visible')) return
+      const { rows, cols } = _tableSize
+      if (e.key === 'Escape') { e.preventDefault(); _closeTableMenu(); return }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (rows && cols) window.insertTable(rows, cols)
+        return
+      }
+      const step = TABLE_PICKER_STEPS[e.key]
+      if (!step) return
+      e.preventDefault()
+      e.stopPropagation()
+      _paintTableSize(Math.min(TABLE_PICKER_ROWS, Math.max(1, rows + step[0])),
+                      Math.min(TABLE_PICKER_COLS, Math.max(1, cols + step[1])))
+    }, true)
+
+    document.addEventListener('mousedown', e => {
+      if (!tableMenu.contains(e.target) && !tableButton.contains(e.target)) _closeTableMenu()
+    })
+    window.addEventListener('resize', _closeTableMenu)
+    document.getElementById('editor-wrap').addEventListener('scroll', _closeTableMenu)
+
     // ── Embed insert popover ──────────────────────────
     const embedButton = document.getElementById('embed-button')
     const embedMenu = document.getElementById('embed-menu')
@@ -2560,23 +4908,60 @@
     })
 
     // ── Active-state updates ───────────────────────────
-    const TOGGLE_CMDS = ['bold','italic','underline','strike','code',
+    const TOGGLE_CMDS = ['bold','italic','strike','code',
                          'blockquote','codeBlock','bulletList','orderedList','link']
     const _toggleBtns = TOGGLE_CMDS.map(cmd => [cmd, document.querySelector(`[data-cmd="${cmd}"]`)])
     const _blockBtns = BLOCK_CMDS.map(cmd => document.querySelector(`[data-cmd="${cmd}"]`)).filter(Boolean)
     const _undoBtn = document.querySelector('[data-cmd="undo"]')
     const _redoBtn = document.querySelector('[data-cmd="redo"]')
     const _tableControls = document.getElementById('table-controls')
+    const _btnTableHeader = document.querySelector('[data-cmd="toggleTableHeader"]')
+    const _btnTableFooter = document.querySelector('[data-cmd="toggleTableFooter"]')
     const _bqControls = document.getElementById('blockquote-controls')
+    const _columnsControls = document.getElementById('columns-controls')
+    const _buttonsControls = document.getElementById('buttons-controls')
+    const _accordionControls = document.getElementById('accordion-controls')
+    const _detailsControls = document.getElementById('details-controls')
+    const _btnAccordionAutoclose = document.getElementById('btn-accordion-autoclose')
+    const _btnDetailsOpen = document.getElementById('btn-details-open')
+    const _linkControls = document.getElementById('link-controls')
+    const _btnLinkNewTab = document.getElementById('btn-link-new-tab')
+    const _tabsControls = document.getElementById('tabs-controls')
+    const _blockControls = document.getElementById('block-controls')
+    const _deleteBlockBtn = document.querySelector('[data-cmd="deleteBlock"]')
+    const _row2 = document.getElementById('toolbar-row2')
+    const _row2Groups = Array.from(_row2.children)
+    const _linkBtn = document.querySelector('[data-cmd="link"]')
+    const _buttonLinkBtn = document.querySelector('[data-cmd="buttonLink"]')
     const _btnToggleCite = document.getElementById('btn-toggle-cite')
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
+
+    // The site's own format-library.js composes the same single "noopener"
+    // token core/button does, appended to whatever rel already says.
+    _btnLinkNewTab.addEventListener('mousedown', e => {
+      e.preventDefault()
+      const link = editor.getAttributes('link')
+      if (!link.href) return
+      const on = link.target !== '_blank'
+      editor.chain().focus().extendMarkRange('link').setLink({
+        href: link.href,
+        target: on ? '_blank' : null,
+        rel: _withRelToken(link.rel, 'noopener', on) || null,
+      }).run()
+    })
 
     function updateToolbar() {
       const inFootnote = _isInFootnote()
       _toggleBtns.forEach(([cmd, btn]) => {
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
       })
+      // A button keeps its link in a node attribute, so isActive('link') is
+      // always false there and the generic pass above leaves both controls dark.
+      const linkedButton = _buttonBlockTarget(editor.state)
+      const buttonIsLinked = !!(linkedButton && linkedButton.node.attrs.href)
+      if (linkedButton) _linkBtn.classList.toggle('active', buttonIsLinked)
+      _buttonLinkBtn.classList.toggle('active', buttonIsLinked)
       _blockBtns.forEach(btn => { btn.disabled = inFootnote })
       // Heading menu
       headingButton.disabled = inFootnote
@@ -2592,10 +4977,47 @@
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
-      // Blockquote controls
-      const inBlockquote = editor.isActive('blockquote')
-      _bqControls.style.display = inBlockquote ? 'inline-flex' : 'none'
-      if (inBlockquote) {
+      if (inTable) {
+        const table = _settingBlockAt(editor.state, 'table')
+        for (const [type, btn] of [['head', _btnTableHeader], ['foot', _btnTableFooter]]) {
+          btn.classList.toggle('active', !!table && !!_tableSectionRow(table.node, type))
+        }
+      }
+      // Tabs controls
+      _tabsControls.style.display = editor.isActive('tabsBlock') ? 'inline-flex' : 'none'
+      // Accordion controls
+      const inAccordion = editor.isActive('accordionBlock')
+      _accordionControls.style.display = inAccordion ? 'inline-flex' : 'none'
+      if (inAccordion) {
+        _btnAccordionAutoclose.classList.toggle('active', !!editor.getAttributes('accordionBlock').autoclose)
+      }
+      // Details controls
+      const inDetails = editor.isActive('detailsBlock')
+      _detailsControls.style.display = inDetails ? 'inline-flex' : 'none'
+      if (inDetails) {
+        _btnDetailsOpen.classList.toggle('active', !!editor.getAttributes('detailsBlock').showContent)
+      }
+      // Buttons controls
+      _buttonsControls.style.display = editor.isActive('buttonsBlock') ? 'inline-flex' : 'none'
+      // Columns controls
+      _columnsControls.style.display = editor.isActive('columnsBlock') ? 'inline-flex' : 'none'
+      // Delete-block control
+      const deletable = _deletableTarget(editor.state)
+      _blockControls.style.display = deletable ? 'inline-flex' : 'none'
+      if (deletable) {
+        _deleteBlockBtn.title = `Delete ${DELETABLE_BLOCKS.get(deletable.node.type.name)}`
+      }
+      // Link new-tab control. A mark, not a block, so it is hand-written rather
+      // than generated from the block settings registry.
+      const inLink = editor.isActive('link')
+      _linkControls.style.display = inLink ? 'inline-flex' : 'none'
+      if (inLink) {
+        _btnLinkNewTab.classList.toggle('active', editor.getAttributes('link').target === '_blank')
+      }
+      // Citation control
+      const inQuote = editor.isActive('blockquote') || editor.isActive('pullquote')
+      _bqControls.style.display = inQuote ? 'inline-flex' : 'none'
+      if (inQuote) {
         _btnToggleCite.classList.toggle('active', editor.isActive('cite'))
       }
       // Undo / Redo
@@ -2604,6 +5026,10 @@
       // Embed / footnote buttons
       _embedBtn.disabled = inFootnote
       _footnoteBtn.disabled = inFootnote
+      _updateSettingControls()
+      // Row 2 exists only while one of its groups does.
+      _row2.classList.toggle('visible',
+        _row2Groups.some(el => el && el.style.display !== 'none'))
       // Image alignment controls
       const selNode = editor.state.selection.node
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
@@ -2633,9 +5059,7 @@
       if (_findOpen) _refreshFind(false)
       clearTimeout(debounce)
       debounce = setTimeout(() => {
-        if (window.webkit?.messageHandlers?.contentChanged) {
-          window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
-        }
+        _postContent(toWordPressHTML(editor.getHTML()), true)
         _postStats()
       }, 500)
     })
@@ -2897,6 +5321,25 @@
       insertFootnote()
     })
 
+    // Footnote bodies as WordPress stores them: a JSON array in post meta, not
+    // in post_content. See docs/footnotes-meta.md.
+    let _footnotes = '[]'
+
+    // post_content and the footnote meta are produced together -- the delimiter
+    // left in the content stands in for the bodies sent alongside it. Only the
+    // visual document is authoritative for those bodies; code view shows the
+    // delimiter alone, so an edit there must not clear what it stands for.
+    function _postContent(html, footnotesAuthoritative) {
+      const split = extractFootnotes(html)
+      if (footnotesAuthoritative) _footnotes = JSON.stringify(split.footnotes)
+      if (window.webkit?.messageHandlers?.contentChanged) {
+        window.webkit.messageHandlers.contentChanged.postMessage(split.content)
+      }
+      if (window.webkit?.messageHandlers?.footnotesChanged) {
+        window.webkit.messageHandlers.footnotesChanged.postMessage(_footnotes)
+      }
+    }
+
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
     // Authoritative HTML that bypasses Tiptap's schema parser. Set when content
@@ -2916,10 +5359,7 @@
     function _codeViewChanged() {
       clearTimeout(debounce)
       debounce = setTimeout(() => {
-        const html = document.getElementById('code-editor').value
-        if (window.webkit?.messageHandlers?.contentChanged) {
-          window.webkit.messageHandlers.contentChanged.postMessage(html)
-        }
+        _postContent(document.getElementById('code-editor').value, false)
       }, 500)
     }
 
@@ -2937,7 +5377,7 @@
       const hasVisualEdits = _rawHTML === null
       const sourceHTML = (!hasVisualEdits && _rawHTMLOnLoad !== null)
         ? _rawHTMLOnLoad
-        : toWordPressHTML(editor.getHTML())
+        : extractFootnotes(toWordPressHTML(editor.getHTML())).content
       const codeViewHTML = formatHTML(sourceHTML)
       _codeViewOriginal = codeViewHTML
       document.getElementById('code-editor').value = codeViewHTML
@@ -2964,7 +5404,11 @@
         // User changed the HTML — parse it back into Tiptap and update raw stores.
         _rawHTML = html
         _rawHTMLOnLoad = html
-        editor.commands.setContent(html, false)
+        let stored = []
+        try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
+        editor.commands.setTextSelection(0)
+        editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
+        _reportBlocksAtRisk(html)
       }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -2973,11 +5417,7 @@
       editor.commands.focus()
       // Always fire contentChanged so Swift's htmlContent stays current.
       // If not edited, getContent() returns the pre-code-view value unchanged.
-      if (window.webkit?.messageHandlers?.contentChanged) {
-        window.webkit.messageHandlers.contentChanged.postMessage(
-          userEdited ? html : window.getContent()
-        )
-      }
+      _postContent(userEdited ? html : window.getContent(), false)
       _postStats()
     }
 
@@ -2988,7 +5428,7 @@
     _btnToggleCite.addEventListener('click', () => {
       const { state } = editor
       const { $head } = state.selection
-      const bqDepth = _ancestorDepth($head, 'blockquote')
+      const bqDepth = _citeHostDepth($head)
       if (bqDepth === -1) return
       const bqNode = $head.node(bqDepth)
       const lastChild = bqNode.lastChild
@@ -3036,7 +5476,49 @@
       window.webkit.messageHandlers.triggerEvaluate.postMessage({})
     })
 
-    window.setContent = html => {
+    // Only the entry points that receive post_content wrap; the AI reject
+    // paths restore editor.getHTML(), which is already wrapped.
+    const _wrapIncoming = html =>
+      html ? wrapUnsupportedBlocks(html, BlockParser.parse, serializeBlock, document) : html
+
+    // Image, gallery and embed model a block through bespoke passes in
+    // toWordPressHTML rather than a descriptor entry, so they need naming here.
+    const BLOCK_NAME_FOR_NODE = { image: 'image', galleryBlock: 'gallery', embedBlock: 'embed' }
+
+    function _accountedBlockCounts() {
+      const counts = new Map()
+      const add = name => counts.set(name, (counts.get(name) || 0) + 1)
+      editor.state.doc.descendants(node => {
+        // A node holding verbatim source holds its inner blocks in that string.
+        const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
+        if (source) {
+          countBlockNames(BlockParser.parse(source), counts)
+          if (BLOCK_NAME_FOR_NODE[node.type.name] && !counts.has(BLOCK_NAME_FOR_NODE[node.type.name])) {
+            add(BLOCK_NAME_FOR_NODE[node.type.name])
+          }
+          return false
+        }
+        if (node.type.name === 'gutenbergPassthrough') {
+          if (node.attrs.blockName) add(node.attrs.blockName)
+          return false
+        }
+        const descriptor = blockDescriptorRegistry.descriptorFor(node.type.name)
+        if (descriptor) add(shortBlockName(descriptor.blockName))
+        if (BLOCK_NAME_FOR_NODE[node.type.name]) add(BLOCK_NAME_FOR_NODE[node.type.name])
+        return true
+      })
+      return counts
+    }
+
+    function _reportBlocksAtRisk(originalHTML) {
+      if (!originalHTML) return
+      const expected = countBlockNames(BlockParser.parse(originalHTML))
+      // Reported even when empty, or a post the user repaired keeps its banner.
+      const names = unrepresentedBlockNames(expected, _accountedBlockCounts())
+      window.webkit?.messageHandlers?.blocksAtRisk?.postMessage({ names })
+    }
+
+    window.setContent = (html, footnotesJSON) => {
       if (codeViewActive) {
         codeViewActive = false
         document.getElementById('editor').style.display = ''
@@ -3045,9 +5527,19 @@
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
       _closeFindBar()
+      _footnotes = footnotesJSON || '[]'
+      let storedFootnotes = []
+      try { storedFootnotes = JSON.parse(_footnotes) } catch (e) { storedFootnotes = [] }
+      const wrapped = _wrapIncoming(inlineFootnotes(html, storedFootnotes, document))
+      // The raw stores keep the unwrapped original, so an unedited post saves
+      // back byte-identically and code view shows real post_content.
       _rawHTML = html || null
       _rawHTMLOnLoad = html || null
-      editor.commands.setContent(html || '', false)
+      // Clear any NodeSelection before replacing the whole document: under jsdom
+      // a stale one makes the replace drop incoming figure content.
+      editor.commands.setTextSelection(0)
+      editor.commands.setContent(wrapped || '', false)
+      _reportBlocksAtRisk(html)
       document.getElementById('editor-wrap').scrollTop = 0
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()
@@ -3055,14 +5547,24 @@
     window.openFindBar = _openFindBar
     window.getContent = () => codeViewActive
       ? document.getElementById('code-editor').value
-      : (_rawHTML !== null ? _rawHTML : toWordPressHTML(editor.getHTML()))
+      : (_rawHTML !== null ? _rawHTML : extractFootnotes(toWordPressHTML(editor.getHTML())).content)
+    window.getFootnotes = () => _footnotes
+
+    // Debug entry point for --check-fixtures: the jsdom corpus, run in WebKit.
+    window.__runFixtureCorpus = json => JSON.parse(json).map(({ name, source }) => {
+      window.setContent(source)
+      const untouched = window.getContent()
+      const edited = extractFootnotes(toWordPressHTML(editor.getHTML())).content
+      window.setContent(edited)
+      const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
+      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, saved: edited }
+    })
+    window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {
       _rawHTML = null
       _rawHTMLOnLoad = null
       clearTimeout(debounce)
-      if (window.webkit?.messageHandlers?.contentChanged) {
-        window.webkit.messageHandlers.contentChanged.postMessage(toWordPressHTML(editor.getHTML()))
-      }
+      _postContent(toWordPressHTML(editor.getHTML()), true)
     }
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)
 
@@ -3104,6 +5606,79 @@
           sizeSlug: payload.sizeSlug ?? 'large',
         },
       }).run()
+    }
+    window.insertTabs = (count) => {
+      if (_isInFootnote()) return false
+      const labels = Array.from({ length: count }, (_, i) => `Tab ${i + 1}`)
+      const at = editor.state.selection.from
+      editor.chain().focus().insertContent({
+        type: 'tabsBlock',
+        content: [
+          { type: 'tabList', content: labels.map(l => ({ type: 'tabButton', content: [{ type: 'text', text: l }] })) },
+          { type: 'tabPanels', content: labels.map(l => ({ type: 'tabPanel', attrs: { label: l }, content: [{ type: 'paragraph' }] })) },
+        ],
+      }).run()
+      let target = null
+      editor.state.doc.descendants((node, pos) => {
+        if (target === null && node.type.name === 'tabPanel' && pos >= at - 1) target = pos + 2
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
+      return true
+    }
+
+    window.insertAccordion = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'accordionBlock',
+        content: [{
+          type: 'accordionItem',
+          content: [
+            { type: 'accordionHeading' },
+            { type: 'accordionPanel', content: [{ type: 'paragraph' }] },
+          ],
+        }],
+      }).run()
+      return true
+    }
+
+    window.insertButtons = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'buttonsBlock',
+        content: [{ type: 'buttonBlock' }],
+      }).run()
+      return true
+    }
+
+    window.insertDetails = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().insertContent({
+        type: 'detailsBlock',
+        content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
+      }).run()
+      return true
+    }
+
+    window.insertSeparator = () => {
+      if (_isInFootnote()) return false
+      editor.chain().focus().setHorizontalRule().run()
+      return true
+    }
+
+    window.insertColumns = (count) => {
+      if (_isInFootnote()) return false
+      const columns = Array.from({ length: count }, () => ({
+        type: 'columnBlock',
+        content: [{ type: 'paragraph' }],
+      }))
+      const at = editor.state.selection.from
+      editor.chain().focus().insertContent({ type: 'columnsBlock', content: columns }).run()
+      let target = null
+      editor.state.doc.descendants((node, pos) => {
+        if (target === null && node.type.name === 'columnBlock' && pos >= at - 1) target = pos + 2
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
+      return true
     }
     // Convert a Markdown string to HTML and insert it at the cursor.
     //
@@ -3159,10 +5734,12 @@
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')
     window.hideDropOverlay = () => document.getElementById('drop-overlay').classList.remove('active')
     window.applyLink = url => {
+      if (_setButtonHref(url)) return
       const existing = editor.getAttributes('link')
       editor.chain().focus().extendMarkRange('link').setLink({ ...existing, href: url }).run()
     }
     window.removeLink = () => {
+      if (_setButtonHref(null)) return
       editor.chain().focus().unsetLink().run()
     }
     window.setMediaSizes = (mediaId, sizes) => {

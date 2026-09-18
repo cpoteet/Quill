@@ -5,6 +5,7 @@ public struct AutosaveSnapshot: Sendable {
     public let postID: Int
     public var title: String
     public var content: String
+    public var footnotes: String  // core/footnotes bodies as JSON
     public var savedAt: Date
     public var serverModified: String
 }
@@ -16,13 +17,14 @@ public final class AutosaveStore: @unchecked Sendable {
         self.db = db
     }
 
-    public func save(postID: Int, title: String, content: String, serverModified: String) throws {
+    public func save(postID: Int, title: String, content: String, footnotes: String = "", serverModified: String) throws {
         try db.db.run(
             db.autosaves.insert(
                 or: .replace,
                 db.autosavePostID <- postID,
                 db.autosaveTitle <- title,
                 db.autosaveContent <- content,
+                db.autosaveFootnotes <- footnotes,
                 db.autosaveSavedAt <- Date().timeIntervalSince1970,
                 db.autosaveServerModified <- serverModified
             ))
@@ -35,6 +37,7 @@ public final class AutosaveStore: @unchecked Sendable {
             postID: row[db.autosavePostID],
             title: row[db.autosaveTitle],
             content: row[db.autosaveContent],
+            footnotes: row[db.autosaveFootnotes],
             savedAt: Date(timeIntervalSince1970: row[db.autosaveSavedAt]),
             serverModified: row[db.autosaveServerModified]
         )

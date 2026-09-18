@@ -2,10 +2,34 @@ import AppKit
 import SwiftUI
 import WebKit
 
+// Footnote bodies live in post meta, so the HTML alone does not identify a post.
+struct EditorPushState {
+    private var html: String = ""
+    private var footnotes: String = ""
+
+    func shouldPush(html candidate: String, footnotes notes: String?) -> Bool {
+        candidate != html || (notes ?? "") != footnotes
+    }
+
+    mutating func record(html candidate: String, footnotes notes: String?) {
+        html = candidate
+        footnotes = notes ?? ""
+    }
+
+    mutating func recordHTML(_ candidate: String) {
+        html = candidate
+    }
+
+    mutating func recordFootnotes(_ notes: String) {
+        footnotes = notes
+    }
+}
+
 public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     var isReady: Bool = false
     var pendingHTML: String?
-    private var lastPushedHTML: String = ""
+    var pendingFootnotes: String?
+    private var pushState = EditorPushState()
     var onContentChange: (String) -> Void
     var onReady: () -> Void
     weak var webView: WKWebView?
@@ -15,6 +39,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
+    var onBlocksAtRisk: (([String]) -> Void)?
+    var onFootnotesChange: ((String) -> Void)?
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
     var aiEnabled: Bool = false
@@ -68,7 +94,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         case "contentChanged":
             if let html = message.body as? String {
                 DispatchQueue.main.async {
-                    self.lastPushedHTML = html
+                    self.pushState.recordHTML(html)
                     self.onContentChange(html)
                 }
             }
@@ -77,8 +103,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 self.cancelReadyWatchdog()
                 self.isReady = true
                 if let html = self.pendingHTML {
-                    self.setContent(html)
+                    self.setContent(html, footnotes: self.pendingFootnotes)
                     self.pendingHTML = nil
+                    self.pendingFootnotes = nil
                 }
                 self.onReady()
             }
@@ -121,6 +148,18 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                let words = body["words"] as? Int,
                let characters = body["characters"] as? Int {
                 DispatchQueue.main.async { self.onStatsChanged?(words, characters) }
+            }
+        case "footnotesChanged":
+            if let json = message.body as? String {
+                DispatchQueue.main.async {
+                    self.pushState.recordFootnotes(json)
+                    self.onFootnotesChange?(json)
+                }
+            }
+        case "blocksAtRisk":
+            if let body = message.body as? [String: Any],
+               let names = body["names"] as? [String] {
+                DispatchQueue.main.async { self.onBlocksAtRisk?(names) }
             }
         case "checkSpelling":
             guard let text = message.body as? String else { return }
@@ -329,11 +368,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         wv.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
     }
 
-    func setContent(_ html: String) {
+    func setContent(_ html: String, footnotes: String?) {
         guard let wv = webView else { return }
         if isReady {
             let needsSync = syncAfterNextSetContent
-            guard html != lastPushedHTML else {
+            guard pushState.shouldPush(html: html, footnotes: footnotes) else {
                 if needsSync {
                     syncAfterNextSetContent = false
                     wv.evaluateJavaScript("window.syncContentToSwift?.()", completionHandler: nil)
@@ -341,16 +380,19 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 return
             }
             syncAfterNextSetContent = false
-            lastPushedHTML = html
+            pushState.record(html: html, footnotes: footnotes)
             guard let jsonHTML = try? JSONEncoder().encode(html),
-                let htmlStr = String(data: jsonHTML, encoding: .utf8)
+                let htmlStr = String(data: jsonHTML, encoding: .utf8),
+                let jsonFN = try? JSONEncoder().encode(footnotes ?? ""),
+                let fnStr = String(data: jsonFN, encoding: .utf8)
             else { return }
-            wv.evaluateJavaScript("setContent(\(htmlStr))", completionHandler: nil)
+            wv.evaluateJavaScript("setContent(\(htmlStr), \(fnStr))", completionHandler: nil)
             if needsSync {
                 wv.evaluateJavaScript("window.syncContentToSwift?.()", completionHandler: nil)
             }
         } else {
             pendingHTML = html
+            pendingFootnotes = footnotes
         }
     }
 

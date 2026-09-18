@@ -88,8 +88,50 @@ For each release, list the changes the release notes claim, then verify each one
 Always include these standing items, whatever the release notes say:
 
 - **Every new block.** Confirm its `wp-block-*` class and its root element. A `div` root is caught by `gutenbergPassthrough` automatically. **A `<figure>` root needs checking against `QUILL_MODELED_FIGURE_CLASSES`** — this is where 7.1 broke.
-- **The blocks Quill models natively** — heading, list, quote, code, separator, image, gallery, table, embed, footnotes. Confirm their `save()` output is unchanged.
+- **The blocks Quill models natively** — heading, list, quote, code, separator, image, gallery, table, embed. Confirm their `save()` output is unchanged. `core/footnotes` has no `save()` at all: check instead that its meta key, marker anchor and server-rendered list still match `docs/footnotes-meta.md`.
 - **New attributes on existing blocks.** An attribute that lives only in the block-comment JSON is harmless. An attribute that reaches the HTML is not.
+
+---
+
+## Block settings
+
+Every setting Quill redraws or offers a control for is one entry in
+`Sources/QuillKit/Resources/block-settings.js`. Re-verify this table against the
+site's own `block-library.js` each major release: a changed class name or
+default here is silent data loss, not a crash. This is the drift the ordered-list
+numbering error was a worked example of.
+
+| Block | Setting | What core draws | Where Quill puts it |
+|---|---|---|---|
+| `core/accordion` | `showIcon`, `iconPosition` | nothing — its `save()` ignores both | carried in the comment; the control propagates to every heading |
+| `core/accordion-heading` | `showIcon`, `iconPosition` | `has-icon`, `has-icon-left`/`has-icon-right`, and the `__toggle-icon` span before or after the title | redrawn by `accordionHeading.renderHTML` |
+| `core/accordion-item` | `openByDefault` | `is-open` on the item div | `flagClass` |
+| `core/tabs` | `activeTabIndex` | nothing | carried; the control sits on the panel |
+| `core/button` | `className` | the style class on the button div | carried |
+| `core/button` | `linkTarget`, `rel` | `target`/`rel` on the `<a>` — `source: "attribute"`, so never in the comment | markup only; `rel` is `noopener` alone |
+| `core/quote`, `core/separator`, `core/image`, `core/table` | `className` | the style class on the block's root element | carried |
+| `core/table` | `caption` | a `figcaption.wp-element-caption` in the figure — `source: "rich-text"`, so never in the comment | markup only |
+
+**An attribute no entry names is carried automatically.** Every block node
+snapshots its element's attributes on load and replays them on save, in the
+source's own order, so a release only needs auditing for settings that draw a
+**child element** (the accordion's icon span is the one Quill models today) or
+that change a class the node itself computes. A new attribute on an existing
+block — core's next `is-something-on-mobile`, a new `name`-style sourced
+attribute — needs no work at all. The exceptions are listed in
+`RAW_ATTRS_MODELED` and `RAW_ATTRS_EXEMPT` in `editor.html`; a setting that
+draws a class on a node has to appear in the first.
+
+Two things the registry deliberately cannot express, because they are document
+structure rather than a setting on an element: a table's `<thead>`/`<tfoot>`
+sections (`tableRow.rowType`, regrouped in the save transform) and the table
+caption's attachment to its figure.
+
+Verify the style slugs in one command:
+
+```bash
+grep -o 'is-style-[a-z-]*' /tmp/block-library.js | sort -u
+```
 
 ---
 

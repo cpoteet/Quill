@@ -55,69 +55,77 @@ function nodesOfType(typeName) {
   return out
 }
 
-const ACCORDION_CLASS_ONLY =
-  '<div class="wp-block-accordion" data-wp-interactive="core/accordion">' +
-  '<div class="wp-block-accordion-item">' +
-  '<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle">Features</button></h3>' +
-  '<div class="wp-block-accordion-panel"><ul class="wp-block-list"><li>One</li></ul></div>' +
+// core/media-text stands in for any block Quill does not model. Accordion filled
+// this role until it gained real nodes.
+const MEDIA_TEXT_CLASS_ONLY =
+  '<div class="wp-block-media-text" data-wp-interactive="core/media-text">' +
+  '<div class="wp-block-media-text__content">' +
+  '<h3 class="wp-block-media-text__title"><button type="button" class="wp-block-media-text__toggle">Features</button></h3>' +
+  '<div class="wp-block-media-text__body"><ul class="wp-block-list"><li>One</li></ul></div>' +
   '</div></div>'
 
 describe('gutenbergPassthrough — class-only markup (no wp: comments)', () => {
   test('parses into a single gutenbergPassthrough node', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
-    assert.equal(nodes[0].attrs.blockLabel, 'Accordion')
+    assert.equal(nodes[0].attrs.blockLabel, 'Media Text')
     assert.equal(nodes[0].attrs.blockName, null)
   })
 
   test('round-trips the essential markup through getContent()', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const out = win.getContent()
-    assert.match(out, /data-wp-interactive="core\/accordion"/)
-    assert.match(out, /wp-block-accordion-heading__toggle/)
+    assert.match(out, /data-wp-interactive="core\/media-text"/)
+    assert.match(out, /wp-block-media-text__toggle/)
     assert.match(out, /<li>One<\/li>/)
     assert.ok(!out.includes('<!--'))
   })
 
   test('an unrelated edit elsewhere in the document does not disturb the passthrough node', () => {
-    win.setContent('<p>hello</p>' + ACCORDION_CLASS_ONLY)
+    win.setContent('<p>hello</p>' + MEDIA_TEXT_CLASS_ONLY)
     editor.commands.setTextSelection(1)
     editor.commands.insertContent('X')
     const out = win.getContent()
     assert.match(out, /Xhello|helloX/)
-    assert.match(out, /wp-block-accordion-heading__toggle/)
+    assert.match(out, /wp-block-media-text__toggle/)
   })
 
-  test('renders a static card, not the raw accordion markup, in the editor DOM', () => {
-    win.setContent(ACCORDION_CLASS_ONLY)
+  test('renders a static card, not the raw media-text markup, in the editor DOM', () => {
+    win.setContent(MEDIA_TEXT_CLASS_ONLY)
     const card = win.document.querySelector('.passthrough-card')
     assert.ok(card, 'expected a .passthrough-card element in the editor DOM')
-    assert.match(card.textContent, /Accordion/)
-    assert.equal(win.document.querySelector('#editor button.wp-block-accordion-heading__toggle'), null)
+    assert.match(card.textContent, /Media Text/)
+    assert.equal(win.document.querySelector('#editor button.wp-block-media-text__toggle'), null)
   })
 })
 
 describe('gutenbergPassthrough — comment-wrapped markup', () => {
-  const ACCORDION_WITH_COMMENTS =
-    '<!-- wp:accordion {"autoclose":false} -->\n' +
-    ACCORDION_CLASS_ONLY +
-    '\n<!-- /wp:accordion -->'
+  const MEDIA_TEXT_WITH_COMMENTS =
+    '<!-- wp:media-text {"align":"right"} -->\n' +
+    MEDIA_TEXT_CLASS_ONLY +
+    '\n<!-- /wp:media-text -->'
 
-  test('recovers blockName and attrsJSON from adjacent comments', () => {
-    win.setContent(ACCORDION_WITH_COMMENTS)
+  // A delimited top-level block now goes through the exact-slice wrapper, which
+  // keeps the source verbatim rather than recovering a name from the comments.
+  test('is held as one exact source slice, labelled from its block name', () => {
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
-    assert.equal(nodes[0].attrs.blockName, 'accordion')
-    assert.equal(nodes[0].attrs.attrsJSON, '{"autoclose":false}')
-    assert.equal(nodes[0].attrs.blockLabel, 'Accordion')
+    assert.equal(nodes[0].attrs.blockLabel, 'Media Text')
+    assert.equal(nodes[0].attrs.unsupportedSource, MEDIA_TEXT_WITH_COMMENTS)
   })
 
-  test('regenerates matching wp:accordion comments on save', () => {
-    win.setContent(ACCORDION_WITH_COMMENTS)
+  test('comes back byte-for-byte, newlines and all', () => {
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
+    assert.equal(win.getContent(), MEDIA_TEXT_WITH_COMMENTS)
+  })
+
+  test('regenerates matching wp:media-text comments on save', () => {
+    win.setContent(MEDIA_TEXT_WITH_COMMENTS)
     const out = win.getContent()
-    assert.match(out, /<!-- wp:accordion \{"autoclose":false\} -->/)
-    assert.match(out, /<!-- \/wp:accordion -->/)
+    assert.match(out, /<!-- wp:media-text \{"align":"right"\} -->/)
+    assert.match(out, /<!-- \/wp:media-text -->/)
   })
 })
 
@@ -168,7 +176,7 @@ describe('gutenbergPassthrough — unmodeled blocks on tags core nodes also matc
     const nodes = nodesOfType('gutenbergPassthrough')
     assert.equal(nodes.length, 1)
     assert.equal(nodes[0].attrs.blockLabel, 'Social Links')
-    assert.equal(nodes[0].attrs.blockName, 'social-links')
+    assert.equal(nodes[0].attrs.unsupportedSource, SOCIAL_LINKS)
     assert.equal(nodesOfType('bulletList').length, 0)
   })
 
@@ -310,7 +318,8 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
     assert.equal(nodesOfType('bulletList').length, 0)
     assert.equal(nodesOfType('orderedList').length, 0)
-    assert.equal(nodesOfType('paragraph').length, 0)
+    // Only the empty paragraph the editor keeps after a trailing atom.
+    assert.ok(nodesOfType('paragraph').every(n => n.content.size === 0))
   })
 
   test('a wp:playlist figure survives a save byte-for-byte, comments and all', () => {
@@ -355,24 +364,6 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     assert.ok(doc.querySelector('figure.wp-block-video > video[src="http://x/v.mp4"]'))
   })
 
-  test('a pullquote figure stays a pullquote instead of being rewritten as a quote', () => {
-    win.setContent(PULLQUOTE_FIGURE)
-    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
-    assert.equal(nodesOfType('blockquote').length, 0)
-    assert.equal(nodesOfType('cite').length, 0)
-    const out = win.toWordPressHTML(editor.getHTML())
-    const doc = new JSDOM('<body>' + out + '</body>').window.document
-    const fig = doc.querySelector('figure.wp-block-pullquote')
-    assert.ok(fig, 'the pullquote figure survived')
-    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
-    const bq = fig.querySelector(':scope > blockquote')
-    assert.ok(bq, 'the blockquote is still nested inside the figure')
-    assert.equal(bq.querySelector(':scope > p').textContent, 'Big idea')
-    assert.equal(bq.querySelector(':scope > cite').textContent, 'Someone')
-    // The blockquote pass would stamp wp-block-quote on a shredded pullquote,
-    // and the cite pass would delete an empty <cite>; the stash shields both.
-    assert.ok(!bq.classList.contains('wp-block-quote'))
-  })
 })
 
 describe('gutenbergPassthrough — modeled figures still go to their own nodes', () => {
@@ -408,6 +399,25 @@ describe('gutenbergPassthrough — modeled figures still go to their own nodes',
     win.setContent('<figure class="wp-block-table"><table><tbody><tr><td>x</td></tr></tbody></table></figure>')
     assert.equal(nodesOfType('table').length, 1)
     assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+  })
+
+  test('a pullquote figure parses as a pullquote, not shredded into a plain quote', () => {
+    win.setContent(PULLQUOTE_FIGURE)
+    assert.equal(nodesOfType('pullquote').length, 1)
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 0)
+    assert.equal(nodesOfType('blockquote').length, 0)
+    const out = win.toWordPressHTML(editor.getHTML())
+    const doc = new JSDOM('<body>' + out + '</body>').window.document
+    const fig = doc.querySelector('figure.wp-block-pullquote')
+    assert.ok(fig, 'the pullquote figure survived')
+    assert.equal(doc.body.children.length, 1, 'nothing was hoisted out of the figure')
+    const bq = fig.querySelector(':scope > blockquote')
+    assert.ok(bq, 'the blockquote is still nested inside the figure')
+    assert.equal(bq.querySelector(':scope > p').textContent, 'Big idea')
+    assert.equal(bq.querySelector(':scope > cite').textContent, 'Someone')
+    // A shredded pullquote would come back stamped wp-block-quote by the
+    // blockquote pass; core/pullquote owns this blockquote, so it must not be.
+    assert.ok(!bq.classList.contains('wp-block-quote'))
   })
 })
 

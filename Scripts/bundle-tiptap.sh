@@ -49,6 +49,7 @@ npm install --silent
 
 cat > entry.js <<'EOF'
 export { Editor, Extension }           from '@tiptap/core'
+export { Mark }                        from '@tiptap/core'
 export { Node as TiptapNode }          from '@tiptap/core'
 export { default as StarterKit }       from '@tiptap/starter-kit'
 export { default as Underline }        from '@tiptap/extension-underline'
