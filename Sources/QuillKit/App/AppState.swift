@@ -57,7 +57,6 @@ public final class AppState: ObservableObject {
     @Published public var selectedItem: PostItem?
     @Published public var searchText: String = ""
     @Published public var credentials: Credentials?
-    @Published public var isShowingPreferences: Bool = false
 
     @Published public var posts: [WPPost] = []
     @Published public var pages: [WPPost] = []

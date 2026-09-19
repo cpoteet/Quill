@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct ContentView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.openSettings) private var openSettings
 
     public init() {}
 
@@ -15,6 +16,7 @@ public struct ContentView: View {
         }
         .toolbar(removing: .title)
         .frame(minWidth: 900, minHeight: 600)
+        .onAppear(perform: loadCredentialsAtLaunch)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Picker("Section", selection: sectionSelection) {
@@ -26,6 +28,17 @@ public struct ContentView: View {
                 .fixedSize()
             }
         }
+    }
+
+    private func loadCredentialsAtLaunch() {
+        let creds = try? CredentialsStore.load()
+        appState.credentials = creds
+        guard creds == nil else { return }
+        appState.isLoadingList = false
+        appState.hasLoadedList = true
+        appState.isLoadingMedia = false
+        appState.hasLoadedMedia = true
+        openSettings()
     }
 
     private var sectionSelection: Binding<SidebarSection> {
@@ -129,15 +142,6 @@ struct EmptyEditorPlaceholder: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 38, weight: .light))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ContentUnavailableView(message, systemImage: icon)
     }
 }

@@ -52,7 +52,6 @@ final class LinkPickerModel: ObservableObject {
 
 struct LinkPickerView: View {
     @ObservedObject var model: LinkPickerModel
-    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,7 +60,6 @@ struct LinkPickerView: View {
                 HStack(spacing: 4) {
                     TextField("Search or paste URL", text: $model.fieldText)
                         .textFieldStyle(.plain)
-                        .focused($fieldFocused)
                         .onSubmit { if !model.fieldText.isEmpty { model.onApply(model.fieldText) } }
                     if model.isSearching {
                         ProgressView().controlSize(.mini)
@@ -80,13 +78,7 @@ struct LinkPickerView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(
-                            fieldFocused ? Color.accentColor : Color.primary.opacity(0.15),
-                            lineWidth: 1
-                        )
-                )
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
 
                 Button("Apply") { model.onApply(model.fieldText) }
                     .buttonStyle(.borderedProminent)

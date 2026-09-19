@@ -9,18 +9,15 @@ public enum EvaluationPanelState {
 
 public struct EvaluationPanel: View {
     let state: EvaluationPanelState
-    let onClose: () -> Void
     let onReEvaluate: () -> Void
     let onFindingSelected: (String) -> Void
 
     public init(
         state: EvaluationPanelState,
-        onClose: @escaping () -> Void,
         onReEvaluate: @escaping () -> Void,
         onFindingSelected: @escaping (String) -> Void
     ) {
         self.state = state
-        self.onClose = onClose
         self.onReEvaluate = onReEvaluate
         self.onFindingSelected = onFindingSelected
     }
@@ -31,19 +28,14 @@ public struct EvaluationPanel: View {
             Divider()
             content
         }
-        .frame(width: 260)
     }
 
     private var header: some View {
-        HStack {
-            Text("Content Evaluation")
-                .font(.callout.weight(.semibold))
-            Spacer()
-            Button("Close") { onClose() }
-                .controlSize(.small)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        Text("Content Evaluation")
+            .font(.callout.weight(.semibold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -92,11 +84,7 @@ public struct EvaluationPanel: View {
                     ? "No specific issues found"
                     : "\(result.findings.count) finding\(result.findings.count == 1 ? "" : "s") — click to jump"
 
-                Text(countLabel)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
+                SectionLabel(countLabel)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, result.findings.isEmpty ? 12 : 8)

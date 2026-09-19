@@ -43,12 +43,19 @@ public struct GallerySheet: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            toolbar
+            Text("Insert Gallery")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
             Divider()
             HStack(spacing: 0) {
                 mediaPane
                 selectionPane
             }
+            Divider()
+            actionBar
         }
         .task { await loadMedia() }
         .alert(
@@ -64,18 +71,16 @@ public struct GallerySheet: View {
         }
     }
 
-    private var toolbar: some View {
-        HStack {
+    private var actionBar: some View {
+        HStack(spacing: 12) {
+            Button("Upload…") { uploadFromDisk() }
+                .disabled(isUploading)
+            if isUploading {
+                ProgressView().controlSize(.small)
+            }
+            Spacer()
             Button("Cancel") { onCancel?() }
                 .keyboardShortcut(.cancelAction)
-            Spacer()
-            Text("Insert Gallery").font(.headline)
-            Spacer()
-            if isUploading {
-                ProgressView().scaleEffect(0.7)
-            }
-            Button("Upload") { uploadFromDisk() }
-                .disabled(isUploading)
             Button("Insert Gallery") {
                 onInsert(selected, columns, cropped, linkTo, sizeSlug)
             }
@@ -83,8 +88,8 @@ public struct GallerySheet: View {
             .disabled(selected.isEmpty)
             .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 
     private var mediaPane: some View {
@@ -101,26 +106,22 @@ public struct GallerySheet: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                        ForEach(mediaItems.filter { $0.mediaType == "image" }) { media in
+                        ForEach(imageItems) { media in
                             MediaThumbnail(media: media, isSelected: selected.contains(where: { $0.id == media.id }), size: 80)
                                 .contentShape(Rectangle())
                                 .onTapGesture { toggle(media) }
+                                .onAppear {
+                                    guard media.id == imageItems.last?.id else { return }
+                                    Task { await loadMoreMedia() }
+                                }
                         }
                     }
                     .padding(12)
-                    if hasMore {
-                        Button {
-                            Task { await loadMoreMedia() }
-                        } label: {
-                            if isLoadingMore {
-                                ProgressView().scaleEffect(0.7)
-                            } else {
-                                Text("Load More")
-                            }
-                        }
-                        .disabled(isLoadingMore)
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 12)
+                    if isLoadingMore {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity)
+                            .padding(.bottom, 12)
                     }
                 }
             }
@@ -131,10 +132,7 @@ public struct GallerySheet: View {
     private var selectionPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("SELECTED (\(selected.count))")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .tracking(1.0)
+                SectionLabel("Selected (\(selected.count))")
                     .padding(.top, 12)
                     .padding(.horizontal, 12)
 
@@ -231,13 +229,13 @@ public struct GallerySheet: View {
 
                                 if expandedIDs.contains(sel.id) {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        sectionLabel("Alt text")
+                                        SectionLabel("Alt text")
                                         TextField("", text: $sel.alt)
                                             .textFieldStyle(.plain)
                                             .font(.subheadline)
                                             .padding(5)
                                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
-                                        sectionLabel("Caption")
+                                        SectionLabel("Caption")
                                         TextField("", text: $sel.caption)
                                             .textFieldStyle(.plain)
                                             .font(.subheadline)
@@ -277,19 +275,19 @@ public struct GallerySheet: View {
     private var gallerySettings: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
-                sectionLabel("Columns")
+                SectionLabel("Columns")
                 Stepper("\(columns)", value: $columns, in: 1...8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                sectionLabel("Crop")
+                SectionLabel("Crop")
                 Toggle("Square", isOn: $cropped)
                     .toggleStyle(.switch)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                sectionLabel("Link To")
+                SectionLabel("Link To")
                 Picker("", selection: $linkTo) {
                     Text("None").tag("none")
                     Text("Full Image").tag("media")
@@ -299,7 +297,7 @@ public struct GallerySheet: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                sectionLabel("Size")
+                SectionLabel("Size")
                 Picker("", selection: $sizeSlug) {
                     Text("Thumbnail").tag("thumbnail")
                     Text("Medium").tag("medium")
@@ -310,14 +308,6 @@ public struct GallerySheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-    }
-
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-            .tracking(1.0)
     }
 
     private func toggle(_ media: WPMedia) {
@@ -372,18 +362,28 @@ public struct GallerySheet: View {
         }
     }
 
+    private var imageItems: [WPMedia] {
+        mediaItems.filter { $0.mediaType == "image" }
+    }
+
+    /// Keeps fetching until a page yields at least one image, so a run of PDFs or
+    /// audio can't strand the grid with an unchanged last cell and nothing to retrigger it.
     private func loadMoreMedia() async {
-        guard let creds = appState.credentials else { return }
+        guard hasMore, !isLoadingMore, let creds = appState.credentials else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        let nextPage = currentPage + 1
-        do {
-            let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
-            mediaItems.append(contentsOf: items)
-            currentPage = nextPage
-            hasMore = items.count == perPage
-        } catch {
-            loadError = error.localizedDescription
+        while hasMore {
+            let nextPage = currentPage + 1
+            do {
+                let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
+                mediaItems.append(contentsOf: items)
+                currentPage = nextPage
+                hasMore = items.count == perPage
+                if items.contains(where: { $0.mediaType == "image" }) { return }
+            } catch {
+                loadError = error.localizedDescription
+                return
+            }
         }
     }
 }

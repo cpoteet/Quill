@@ -34,6 +34,23 @@ func statusSymbol(_ badge: String) -> String {
     }
 }
 
+// MARK: - Section label
+
+/// The uppercase caption above an inspector or sheet section. One spelling for the whole app.
+struct SectionLabel: View {
+    private let title: String
+
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+            .tracking(1.0)
+    }
+}
+
 // MARK: - Toast
 
 struct ToastView: View {

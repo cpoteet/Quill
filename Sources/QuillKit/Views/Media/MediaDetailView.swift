@@ -61,9 +61,7 @@ struct MediaDetailView: View {
     @ViewBuilder
     private func metadataRow(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label.uppercased())
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
+            SectionLabel(label)
             Text(value)
                 .font(.body)
                 .foregroundStyle(.primary)
@@ -73,10 +71,7 @@ struct MediaDetailView: View {
 
     private var urlRow: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("URL")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+            SectionLabel("URL")
             HStack(alignment: .top, spacing: 8) {
                 Text(media.sourceURL)
                     .font(.callout)
@@ -101,9 +96,7 @@ struct MediaDetailView: View {
     @ViewBuilder
     private var altTextRow: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("ALT TEXT")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
+            SectionLabel("Alt text")
             TextField("", text: $altTextDraft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.body)

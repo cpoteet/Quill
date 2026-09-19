@@ -3,6 +3,7 @@ import SwiftUI
 public struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var services: AppServices
+    @Environment(\.openSettings) private var openSettings
     @State private var itemPendingDelete: PostItem? = nil
     @State private var deleteError: String? = nil
 
@@ -135,7 +136,7 @@ public struct SidebarView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Open Blog Settings") { appState.isShowingPreferences = true }
+            Button("Open Blog Settings") { openSettings() }
                 .font(.caption)
         }
         .padding(.vertical, 4)
@@ -320,7 +321,6 @@ struct SidebarEmptyState: View {
     }
 
     private var message: String {
-        if isSearching { return "No matches found" }
         switch section {
         case .posts: return "No posts yet"
         case .pages: return "No pages yet"
@@ -329,8 +329,7 @@ struct SidebarEmptyState: View {
         }
     }
 
-    private var hint: String? {
-        if isSearching { return nil }
+    private var hint: String {
         switch section {
         case .posts: return "Create one with the new-post button in the toolbar"
         case .pages: return "Create one with the new-page button in the toolbar"
@@ -340,20 +339,10 @@ struct SidebarEmptyState: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 24, weight: .light))
-                .foregroundStyle(.quaternary)
-                .accessibilityHidden(true)
-            Text(message)
-                .font(.callout.weight(.medium))
-                .foregroundStyle(.tertiary)
-            if let hint {
-                Text(hint)
-                    .font(.subheadline)
-                    .foregroundStyle(.quaternary)
-            }
+        if isSearching {
+            ContentUnavailableView.search
+        } else {
+            ContentUnavailableView(message, systemImage: icon, description: Text(hint))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -22,7 +22,12 @@ public struct MediaPickerView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            toolbar
+            Text("Media Library")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
             Divider()
             if isLoading {
                 ProgressView("Loading media…")
@@ -34,12 +39,13 @@ public struct MediaPickerView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if mediaItems.isEmpty {
-                Text("No media uploaded yet.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView("No Media", systemImage: "photo.on.rectangle",
+                                       description: Text("Upload an image to get started."))
             } else {
                 mediaGrid
             }
+            Divider()
+            actionBar
         }
         .task { await loadMedia() }
         .alert(
@@ -55,47 +61,40 @@ public struct MediaPickerView: View {
         }
     }
 
-    private var toolbar: some View {
-        HStack {
+    private var actionBar: some View {
+        HStack(spacing: 12) {
+            Button("Upload…") { uploadFromDisk() }
+                .disabled(isUploading)
+            if isUploading {
+                ProgressView().controlSize(.small)
+            }
+            Spacer()
             Button("Cancel") { onCancel?() }
                 .keyboardShortcut(.cancelAction)
-            Spacer()
-            Text("Media Library")
-                .font(.headline)
-            Spacer()
-            if isUploading {
-                ProgressView().scaleEffect(0.7)
-            }
-            Button("Upload") { uploadFromDisk() }
-                .disabled(isUploading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 
     private var mediaGrid: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                ForEach(mediaItems.filter { $0.mediaType == "image" }) { media in
+                ForEach(imageItems) { media in
                     MediaThumbnail(media: media)
                         .contentShape(Rectangle())
                         .onTapGesture { onSelect(media) }
+                        .onAppear {
+                            guard media.id == imageItems.last?.id else { return }
+                            Task { await loadMoreMedia() }
+                        }
                 }
             }
             .padding(12)
-            if hasMore {
-                Button {
-                    Task { await loadMoreMedia() }
-                } label: {
-                    if isLoadingMore {
-                        ProgressView().scaleEffect(0.7)
-                    } else {
-                        Text("Load More")
-                    }
-                }
-                .disabled(isLoadingMore)
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 12)
+            if isLoadingMore {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 12)
             }
         }
     }
@@ -117,18 +116,28 @@ public struct MediaPickerView: View {
         }
     }
 
+    private var imageItems: [WPMedia] {
+        mediaItems.filter { $0.mediaType == "image" }
+    }
+
+    /// Keeps fetching until a page yields at least one image, so a run of PDFs or
+    /// audio can't strand the grid with an unchanged last cell and nothing to retrigger it.
     private func loadMoreMedia() async {
-        guard let creds = appState.credentials else { return }
+        guard hasMore, !isLoadingMore, let creds = appState.credentials else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        let nextPage = currentPage + 1
-        do {
-            let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
-            mediaItems.append(contentsOf: items)
-            currentPage = nextPage
-            hasMore = items.count == perPage
-        } catch {
-            loadError = error.localizedDescription
+        while hasMore {
+            let nextPage = currentPage + 1
+            do {
+                let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
+                mediaItems.append(contentsOf: items)
+                currentPage = nextPage
+                hasMore = items.count == perPage
+                if items.contains(where: { $0.mediaType == "image" }) { return }
+            } catch {
+                loadError = error.localizedDescription
+                return
+            }
         }
     }
 

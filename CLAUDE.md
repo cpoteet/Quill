@@ -36,7 +36,7 @@ Requirements: Swift 6.3.1, macOS 27, and `node` + `jsdom` installed in **`Script
 
 ## Future architecture options
 
-See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), a Gutenberg fixture-diff harness for automated markup-change detection (H), and a gradient-matched title bar (I).
+See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), a Gutenberg fixture-diff harness for automated markup-change detection (H), a gradient-matched title bar (I), and Quick Look for media preview (J).
 
 ## Architecture
 
@@ -115,6 +115,9 @@ These two fail silently with the whole test suite green:
 - **Editor link colour is one CSS variable per theme**
 - **Color tokens & surface components**
 - **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**
+- **A view placed in an `.inspector` must not set its own width**
+- **`SectionLabel` is the one uppercase caption above an inspector or sheet section**
+- **Sheet actions go in a bottom bar, never in a top header row**
 - **`.textFieldStyle(.plain)` is the house style for every text field**
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**

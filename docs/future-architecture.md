@@ -161,3 +161,22 @@ A new WordPress release then collapses the whole audit to: bump the tag in the f
 - `wpSidebarBg` is a dynamic `NSColor` (light/dark providers). The generated image must be re-rendered on appearance changes too, not just resizes, or dark mode gets a light-mode gradient baked in. Deriving it inside an `NSImage(size:flipped:drawingHandler:)` block helps, since that block re-runs per draw with the current appearance.
 - Any change here must keep assigning a **resolved** color to `window.backgroundColor`. Handing it the dynamic `wpTitleBarBg` token leaves a behind-window `NSVisualEffectView` covering the title-bar strip, which hides the window background entirely (see `Sources/QuillKit/Views/CLAUDE.md`) — a pattern image would be swallowed the same way a flat color was.
 - With the dark-mode shimmer already limited to light mode and the backdrop issue fixed (2026-07-25), the flat bar now measures identical to the panel edge in both appearances, so the remaining gap this approach would close is only the gradient's horizontal travel across a wide window.
+
+---
+
+## Approach J: Quick Look for media preview
+
+**Context (as of 2026-09-19):** `MediaPreviewOverlay` is a hand-built lightbox — a `ZStack` with a `.regularMaterial` backdrop, tap-to-close, and an `AsyncImage` for `mediaType == "image"`. Everything else gets a "Preview unavailable" placeholder. It is opened three ways from `MediaLibraryView`: a double-click on a cell (`MediaCollectionView.mouseDown`, `clickCount == 2` → `onActivate`), the space bar (`MediaCollectionView.keyDown` → `onSpace` → `togglePreview()`), and it closes on Escape via `.onExitCommand` or a click on the backdrop. Reviewed during the native-UI sweep and kept.
+
+**What Approach J would be:** Replace the overlay with `QLPreviewPanel`, the same preview macOS gives you in Finder. `MediaCollectionView` would take over the responder-chain methods (`acceptsPreviewPanelControl`, `beginPreviewPanelControl`, `endPreviewPanelControl`) and act as the panel's data source and delegate. `MediaPreviewOverlay`, `previewedMedia`, `togglePreview()` and the `.onExitCommand` all go away.
+
+**Why it wasn't done:** The space bar already works and images already preview correctly, so this is not about the gesture — it is about file types. The whole gain is previewing the PDFs, video and audio the library holds (the grid already draws icons for them) plus multi-selection preview, which the current overlay cannot do at all. The cost is a temp-file lifecycle in an app that otherwise touches disk only through SQLite and the credentials file. Revisit when "Preview unavailable" on a PDF becomes annoying enough to be worth that.
+
+**What a future implementer would need to know:**
+- **`QLPreviewItem` needs a local file URL.** These are remote WordPress URLs, so each preview means downloading `media.sourceURL` to a temp directory, handing the panel the file URL, and cleaning up. That download-and-cleanup is the bulk of the work, not the panel wiring.
+- **Reuse the temp file across repeat previews**, but do not build a general editor image cache here — that is Approach F's territory and the two should not collide.
+- **The panel is responder-chain driven, not a view.** It belongs on `MediaCollectionView`, which is already first responder and already owns the space bar and the double-click. A SwiftUI view cannot host it cleanly, which is the same reason `AIResultPanel` is an `NSPanel`.
+- **The existing space-bar handler has to go, not just be bypassed.** `QLPreviewPanel` claims the space bar once it is up, so leaving `onSpace` wired means the two fight over open/close.
+- **Multi-select comes almost free** — the panel asks for `numberOfPreviewItems` and `previewItemAt:`, and `MediaGalleryView` already tracks a multi-selection. Wiring it to the full selection rather than one item is a few extra lines and is the part users notice.
+- **Downloads assume a public site.** These media URLs are public, so a plain `URLSession` fetch works. A private or password-protected site would need the credentialed session from `WordPressClient`, which is `.ephemeral` by deliberate decision (see the root `CLAUDE.md` keychain note) — do not swap in a default session to make a download easier.
+- **Verification is manual and needs full-screen control.** `NSCollectionView` selection does not respond to background computer-use clicks (see `Sources/QuillKit/Views/Media/CLAUDE.md`), so testing this means driving the app directly.

@@ -29,25 +29,6 @@ public struct QuillApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)
-                .onAppear {
-                    let creds = try? CredentialsStore.load()
-                    appState.credentials = creds
-                    if creds == nil {
-                        appState.isLoadingList = false
-                        appState.hasLoadedList = true
-                        appState.isLoadingMedia = false
-                        appState.hasLoadedMedia = true
-                        appState.isShowingPreferences = true
-                    }
-                }
-                .sheet(isPresented: $appState.isShowingPreferences) {
-                    PreferencesView(posts: appState.posts, credentials: appState.credentials, onSave: { creds in
-                        appState.credentials = creds
-                        appState.isShowingPreferences = false
-                    }, onSaveAISettings: { settings in
-                        appState.aiSettings = settings
-                    })
-                }
                 .alert("Local Storage Unavailable", isPresented: $appServices.storageUnavailable) {
                     Button("OK", role: .cancel) {}
                 } message: {

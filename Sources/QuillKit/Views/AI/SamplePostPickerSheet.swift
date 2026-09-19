@@ -8,72 +8,67 @@ struct SamplePostPickerSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Choose Style Samples")
                     .font(.headline)
-                Spacer()
-                Button("Done") { onDone() }
-                    .buttonStyle(.borderedProminent)
+                Text("Select up to 5 posts that represent your writing style. Claude will match your voice generating and evaluating content.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
 
             Divider()
 
-            Text("Select up to 5 posts that represent your writing style. Claude will match your voice generating and evaluating content.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-
             if posts.isEmpty {
-                Spacer()
-                Text("No posts available.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                Spacer()
+                ContentUnavailableView("No Posts", systemImage: "doc.text",
+                                       description: Text("Publish a post to use it as a writing sample."))
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(posts) { post in
-                            let isSelected = selectedIDs.contains(post.id)
-                            let atLimit = selectedIDs.count >= 5 && !isSelected
-                            Button {
-                                if isSelected {
-                                    selectedIDs.removeAll { $0 == post.id }
-                                } else if !atLimit {
-                                    selectedIDs.append(post.id)
-                                }
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                                    Text(post.title.rendered.isEmpty ? "Untitled" : post.title.decodedTitle)
-                                        .foregroundStyle(atLimit && !isSelected ? .secondary : .primary)
-                                        .lineLimit(1)
-                                    Spacer()
-                                }
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(atLimit)
-                            Divider().padding(.leading)
-                        }
-                    }
+                List(posts) { post in
+                    postToggle(post)
                 }
             }
 
-            if selectedIDs.count >= 5 {
-                Text("Maximum 5 samples selected.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
+            Divider()
+
+            HStack(spacing: 12) {
+                if selectedIDs.count >= 5 {
+                    Text("Maximum 5 samples selected.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Done") { onDone() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
         .frame(width: 440, height: 480)
+    }
+
+    private func postToggle(_ post: WPPost) -> some View {
+        let isSelected = selectedIDs.contains(post.id)
+        let atLimit = selectedIDs.count >= 5 && !isSelected
+        return Toggle(
+            post.title.rendered.isEmpty ? "Untitled" : post.title.decodedTitle,
+            isOn: Binding(
+                get: { isSelected },
+                set: { on in
+                    if on {
+                        guard !atLimit else { return }
+                        selectedIDs.append(post.id)
+                    } else {
+                        selectedIDs.removeAll { $0 == post.id }
+                    }
+                }
+            )
+        )
+        .toggleStyle(.checkbox)
+        .lineLimit(1)
+        .disabled(atLimit)
     }
 }

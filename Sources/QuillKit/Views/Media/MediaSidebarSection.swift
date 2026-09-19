@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MediaSidebarSection: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         List(selection: $appState.mediaFilter) {
@@ -24,7 +25,7 @@ struct MediaSidebarSection: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Open Blog Settings") { appState.isShowingPreferences = true }
+            Button("Open Blog Settings") { openSettings() }
                 .font(.caption)
         }
         .padding(.vertical, 4)

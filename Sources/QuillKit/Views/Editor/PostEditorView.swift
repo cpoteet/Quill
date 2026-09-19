@@ -373,7 +373,6 @@ public struct PostEditorView: View {
         if showEvaluationPanel {
             EvaluationPanel(
                 state: evaluationPanelState,
-                onClose: { showEvaluationPanel = false },
                 onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
                 onFindingSelected: { quote in
                     guard let data = try? JSONEncoder().encode(quote),
@@ -436,22 +435,10 @@ public struct PostEditorView: View {
                     .lineSpacing(1.5)
                     .fixedSize(horizontal: false, vertical: true)
                 if alarm.blocksSaving {
-                    // The app's amber accent makes .bordered nearly invisible
-                    // on this background, so the button is drawn explicitly.
-                    Button {
+                    Button("Save anyway, I understand") {
                         blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .acknowledged)
-                    } label: {
-                        Text("Save anyway, I understand")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color(NSColor.controlBackgroundColor),
-                                        in: RoundedRectangle(cornerRadius: 5))
-                            .overlay(RoundedRectangle(cornerRadius: 5)
-                                .stroke(.separator, lineWidth: 1))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
                     .padding(.top, 9)
                 }
             }

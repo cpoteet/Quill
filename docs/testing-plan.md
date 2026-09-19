@@ -2610,7 +2610,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
 - [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
 - [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
-- [ ] If the media library has more than 50 items, a "Load More" button appears at the bottom of the picker grid. Click it → more images load and append to the grid.
+- [ ] If the media library has more than 50 images, scroll the picker grid to the bottom → a spinner appears and the next page appends, with no button to click. Keep scrolling → it pages again. Confirm no image appears twice (a duplicated row means the `hasMore`/`isLoadingMore` guards inside `loadMoreMedia` were lost). Do the same in `GallerySheet`.
 - [ ] Click the Gallery toolbar button → the `GallerySheet` opens with a media grid; tapping images toggles a checkmark and adds them to the "Selected" list; "Insert Gallery" is disabled until at least one image is selected.
 - [ ] With 2+ images selected, set columns, toggle crop, set "Link to" (None / Full Image), set Size (Thumbnail / Medium / Large / Full Size), click Insert Gallery → a read-only thumbnail-grid card appears in the editor. Toggle code view (`</>`) and confirm `<!-- wp:gallery -->`/`<!-- wp:image -->` block comments with the chosen settings, including `"sizeSlug"` matching the selected size.
 - [ ] In `GallerySheet`, click Upload → pick a new image from disk → it uploads, appears in the media grid, and is automatically added to the Selected list.

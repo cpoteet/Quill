@@ -61,29 +61,16 @@ struct GeneratePostSheet: View {
         }
         .padding(20)
         .frame(width: 480)
-        .sheet(isPresented: $showTruncationAlert) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Post may be cut off")
-                    .font(.headline)
-                Text("The generated post hit the initial length limit and may be incomplete. Get the full version? (Uses more API budget)")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Spacer()
-                    Button("Use What I Have") {
-                        showTruncationAlert = false
-                        if let parsed = truncatedParsed { onResult(parsed.title, parsed.html) }
-                    }
-                    Button("Get Full Version") {
-                        showTruncationAlert = false
-                        Task { await generate(maxTokens: 16384) }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: .command)
-                }
+        .alert("Post may be cut off", isPresented: $showTruncationAlert) {
+            Button("Use What I Have") {
+                if let parsed = truncatedParsed { onResult(parsed.title, parsed.html) }
             }
-            .padding(20)
-            .frame(width: 420)
+            Button("Get Full Version") {
+                Task { await generate(maxTokens: 16384) }
+            }
+            .keyboardShortcut(.defaultAction)
+        } message: {
+            Text("The generated post hit the initial length limit and may be incomplete. Get the full version? (Uses more API budget)")
         }
     }
 

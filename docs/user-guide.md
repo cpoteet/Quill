@@ -615,7 +615,7 @@ The Media Library gives you access to all files uploaded to your WordPress site.
 
 Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to open its detail view in the main panel.
 
-If your library has more items than the current view, a **Load More** button appears at the bottom of the grid. Click it to fetch the next page of results.
+The grid loads more items as you scroll. There is no button to press — keep scrolling and the next page appends at the bottom.
 
 ### Detail View
 

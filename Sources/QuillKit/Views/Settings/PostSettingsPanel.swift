@@ -112,7 +112,6 @@ public struct PostSettingsPanel: View {
             }
             .padding(16)
         }
-        .frame(width: 260)
     }
 
     // MARK: - Local draft note
@@ -128,7 +127,7 @@ public struct PostSettingsPanel: View {
 
     private var statusSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Status")
+            SectionLabel("Status")
             Picker("Status", selection: $settings.status) {
                 Text("Draft").tag(PostStatus.draft)
                 Text("Pending Review").tag(PostStatus.pending)
@@ -146,7 +145,7 @@ public struct PostSettingsPanel: View {
 
     private var publishDateSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Publish Date")
+            SectionLabel("Publish Date")
             Toggle(
                 "Schedule",
                 isOn: Binding(
@@ -200,7 +199,7 @@ public struct PostSettingsPanel: View {
 
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Categories")
+            SectionLabel("Categories")
             VStack(spacing: 0) {
                 searchBar(
                     placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
@@ -300,7 +299,7 @@ public struct PostSettingsPanel: View {
 
     private var tagsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Tags")
+            SectionLabel("Tags")
             VStack(spacing: 0) {
                 if !selectedTagNames.isEmpty {
                     TagChipGrid(names: selectedTagNames, onRemove: removeTagName)
@@ -348,7 +347,7 @@ public struct PostSettingsPanel: View {
 
     private var parentSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Parent Page")
+            SectionLabel("Parent Page")
             Picker("Parent", selection: $settings.parentID) {
                 Text("None (top-level)").tag(0)
                 ForEach(pages) { page in
@@ -364,7 +363,7 @@ public struct PostSettingsPanel: View {
 
     private var slugSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Slug")
+            SectionLabel("Slug")
             TextField("", text: $settings.slug)
                 .textFieldStyle(.plain)
                 .font(.callout)
@@ -377,7 +376,7 @@ public struct PostSettingsPanel: View {
 
     private var excerptSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Excerpt")
+            SectionLabel("Excerpt")
             TextEditor(text: $settings.excerpt)
                 .scrollContentBackground(.hidden)
                 .font(.callout)
@@ -391,7 +390,7 @@ public struct PostSettingsPanel: View {
 
     private var discussionSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Discussion")
+            SectionLabel("Discussion")
             Toggle(
                 "Allow comments",
                 isOn: Binding(
@@ -407,7 +406,7 @@ public struct PostSettingsPanel: View {
 
     private var statsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Stats")
+            SectionLabel("Stats")
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(stats.words.formatted()) words · \(stats.characters.formatted()) characters")
                 if stats.readingMinutes > 0 {
@@ -420,14 +419,6 @@ public struct PostSettingsPanel: View {
     }
 
     // MARK: - Shared subviews
-
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-            .tracking(1.0)
-    }
 
     private func searchBar(placeholder: String, text: Binding<String>, onSubmit: @escaping () -> Void) -> some View {
         HStack(spacing: 5) {
