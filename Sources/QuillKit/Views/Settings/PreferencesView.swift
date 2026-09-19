@@ -71,6 +71,7 @@ public struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
+        .padding(.bottom, -20) // cancels the grouped Form's trailing margin above the Save bar
         .safeAreaInset(edge: .bottom) {
             HStack {
                 if isAnalyzing {
@@ -86,7 +87,8 @@ public struct PreferencesView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
         .sheet(isPresented: $isSamplePickerOpen) {
             SamplePostPickerSheet(
                 posts: posts,
