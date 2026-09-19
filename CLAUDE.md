@@ -14,7 +14,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 ./test.sh
 ```
 
-Runs everything — 428 Swift + 1,201 JS tests, all passing as of 2026-09-18. Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 428 Swift + 1,202 JS tests, all passing as of 2026-09-18 (1,201 JS pass and one is deliberately skipped; that skip is why this line used to read 1,201). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -22,13 +22,13 @@ Runs everything — 428 Swift + 1,201 JS tests, all passing as of 2026-09-18. In
 
 **The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. Needs a current `./build.sh`.
 
-Requirements: Swift 6.3.1, macOS 13+, and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
+Requirements: Swift 6.3.1, macOS 27, and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
 **Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
 
 ## Key decisions
 
-- **Stack:** Swift 6, SwiftUI (macOS 13+), WKWebView, URLSession async/await
+- **Stack:** Swift 6, SwiftUI (macOS 27 only — no availability gates), WKWebView, URLSession async/await
 - **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`). To update Tiptap at any time, just tell Claude "check for new versions of Tiptap" — Claude will check the latest release, update the version in the script if needed, regenerate the bundle, update `editor.html` and `CLAUDE.md`, and rebuild.
 - **API:** WordPress REST API with Application Passwords (no plugin required)
 - **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
@@ -112,6 +112,7 @@ These two fail silently with the whole test suite green:
 - **Ad-hoc signing**
 - **Editor link colour is one CSS variable per theme**
 - **Color tokens & surface components**
+- **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**
 - **`.textFieldStyle(.plain)` is the house style for every text field**
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**
