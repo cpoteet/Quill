@@ -295,6 +295,7 @@ public struct PostEditorView: View {
         )) {
             inspectorContent
                 .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                .background(InspectorTitlebarFix().frame(width: 0, height: 0))
         }
         .navigationTitle(title.isEmpty ? "Untitled" : title)
         .toolbar {
