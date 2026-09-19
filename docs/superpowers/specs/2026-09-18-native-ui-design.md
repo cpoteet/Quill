@@ -71,6 +71,8 @@ stale `NSAppearance` stamp on SwiftUI's `Picker`. Whether that still reproduces
 on macOS 27 is unknown and must be tested before removal — the new toolbar
 section picker is exactly the control it protects.
 
+**Outcome:** tested in Task 9 and deleted. macOS 27 fixes the bug.
+
 ### `Sources/QuillKit/Views/Sidebar/SidebarView.swift`
 `sectionTabs` (the hand-drawn amber pill row), the 2.5pt amber selection bar and
 tinted row background, and the custom `SearchField`.

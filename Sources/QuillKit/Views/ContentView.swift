@@ -25,7 +25,6 @@ public struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 280)
-                .rebuildsOnAppearanceChange()
             }
         }
     }

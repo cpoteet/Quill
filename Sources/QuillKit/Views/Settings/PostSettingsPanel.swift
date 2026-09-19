@@ -139,7 +139,6 @@ public struct PostSettingsPanel: View {
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
             .onChange(of: settings.status) { _ in settings.statusDidChange() }
-            .rebuildsOnAppearanceChange()
         }
     }
 
@@ -358,7 +357,6 @@ public struct PostSettingsPanel: View {
             }
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .rebuildsOnAppearanceChange()
         }
     }
 

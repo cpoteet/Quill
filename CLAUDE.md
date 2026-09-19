@@ -113,7 +113,6 @@ These two fail silently with the whole test suite green:
 - **Editor link colour is one CSS variable per theme**
 - **Color tokens & surface components**
 - **`.textFieldStyle(.plain)` is the house style for every text field**
-- **`Picker` needs `.rebuildsOnAppearanceChange()` or it keeps its old light/dark styling after a mode switch**
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**
 - **Background computer-use clicks do not reach the WKWebView's DOM handlers**
