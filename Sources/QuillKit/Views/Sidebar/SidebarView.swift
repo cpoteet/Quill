@@ -30,9 +30,14 @@ public struct SidebarView: View {
 
                 if appState.selectedSection != .localDrafts {
                     Button {
-                        createNewDraft()
+                        if appState.selectedSection == .media {
+                            appState.triggerMediaUpload = true
+                        } else {
+                            createNewDraft()
+                        }
                     } label: {
-                        Image(systemName: "square.and.pencil")
+                        Image(systemName: appState.selectedSection == .media
+                              ? "arrow.up.doc" : "square.and.pencil")
                     }
                     .keyboardShortcut("n", modifiers: .command)
                     .help("\(newButtonTitle) (\u{2318}N)")
@@ -228,7 +233,7 @@ public struct SidebarView: View {
             case .localDrafts:
                 appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
             case .media:
-                break
+                appState.mediaRefreshToken += 1
             }
             await loadTaxonomiesIfNeeded(client: client)
             appState.hasLoadedList = true

@@ -81,6 +81,11 @@ public final class AppState: ObservableObject {
 
     @Published public var aiSettings: AISettings?
     @Published public var triggerMediaUpload: Bool = false
+    @Published public var mediaFilter: MediaFilter = .all
+    @Published public var mediaSearchText: String = ""
+    @Published public var mediaRefreshToken: Int = 0
+    @Published public var isMediaInspectorOpen: Bool = false
+    @Published public var triggerShowMediaDetails: Bool = false
     @Published public var triggerFindBar: Bool = false
     @Published public var triggerPasteMarkdown: Bool = false
     @Published public var updateAvailable: UpdateInfo?

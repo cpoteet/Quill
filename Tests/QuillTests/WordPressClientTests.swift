@@ -846,4 +846,49 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         _ = try await client.fetchPost(id: 1)
         #expect(capturedQuery?.contains("_fields=") != true)
     }
+
+    // MARK: - Media filters
+
+    @Test func fetchMediaOmitsFilterParamsByDefault() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200,
+                                    httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchMedia()
+        let query = capturedRequest?.url?.query ?? ""
+        #expect(query.contains("context=edit"))
+        #expect(query.contains("media_type=") == false)
+        #expect(query.contains("search=") == false)
+    }
+
+    @Test func fetchMediaSendsMediaTypeAndSearch() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200,
+                                    httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchMedia(mediaType: "image", search: "sunset")
+        let query = capturedRequest?.url?.query ?? ""
+        #expect(query.contains("media_type=image"))
+        #expect(query.contains("search=sunset"))
+    }
+
+    @Test func fetchMediaTreatsEmptyFilterStringsAsAbsent() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200,
+                                    httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchMedia(mediaType: "", search: "")
+        let query = capturedRequest?.url?.query ?? ""
+        #expect(query.contains("media_type=") == false)
+        #expect(query.contains("search=") == false)
+    }
 }

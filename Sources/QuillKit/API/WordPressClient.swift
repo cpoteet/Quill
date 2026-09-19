@@ -110,11 +110,16 @@ public struct WordPressClient: Sendable {
 
     // MARK: - Media
 
-    public func fetchMedia(page: Int = 1, perPage: Int = 50) async throws -> [WPMedia] {
-        let url = try endpoint(
-            "media",
-            query: ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"]
-        )
+    public func fetchMedia(
+        page: Int = 1,
+        perPage: Int = 50,
+        mediaType: String? = nil,
+        search: String? = nil
+    ) async throws -> [WPMedia] {
+        var query = ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"]
+        if let mediaType, !mediaType.isEmpty { query["media_type"] = mediaType }
+        if let search, !search.isEmpty { query["search"] = search }
+        let url = try endpoint("media", query: query)
         return try await get(url)
     }
 

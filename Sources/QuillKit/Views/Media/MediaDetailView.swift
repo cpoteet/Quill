@@ -18,52 +18,7 @@ struct MediaDetailView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Left: large image preview fills remaining space
-            imagePreview
-
-            Divider()
-
-            // Right: fixed-width metadata panel
-            metadataPanel
-                .frame(width: 260)
-        }
-    }
-
-    // MARK: - Image preview
-
-    private var imagePreview: some View {
-        Group {
-            if media.mediaType == "image" {
-                AsyncImage(url: URL(string: media.sourceURL)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .padding(32)
-                    case .failure:
-                        previewUnavailable
-                    default:
-                        ProgressView()
-                    }
-                }
-            } else {
-                previewUnavailable
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var previewUnavailable: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "doc.fill")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text("Preview unavailable")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-        }
+        metadataPanel
     }
 
     // MARK: - Metadata panel
@@ -150,11 +105,11 @@ struct MediaDetailView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
             TextField("", text: $altTextDraft, axis: .vertical)
+                .textFieldStyle(.plain)
                 .font(.body)
                 .lineLimit(2...4)
-                .textFieldStyle(.plain)
-                .padding(4)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+                .padding(7)
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
                 .onSubmit { commitAltText() }
                 .focused($altFieldFocused)
                 .onChange(of: altFieldFocused) { focused in
