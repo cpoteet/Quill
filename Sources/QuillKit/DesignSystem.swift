@@ -3,6 +3,13 @@ import SwiftUI
 extension Color {
     private static let draftAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
 
+    /// The editor's document surface. `editor.html` mirrors these two values; they must move together.
+    static let wpContentSurface = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 36 / 255.0, green: 36 / 255.0, blue: 36 / 255.0, alpha: 1)
+            : .white
+    })
+
     /// Maps a PostItem.statusBadge string to a display color.
     static func statusColor(_ badge: String) -> Color {
         switch badge {

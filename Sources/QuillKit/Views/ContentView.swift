@@ -11,8 +11,10 @@ public struct ContentView: View {
         } detail: {
             detailContent
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.wpContentSurface.ignoresSafeArea())
         }
         .navigationTitle("")
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .frame(minWidth: 900, minHeight: 600)
         .toolbar {
             ToolbarItem(placement: .navigation) {
