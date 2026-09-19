@@ -2,6 +2,7 @@ import SwiftUI
 
 // Re-expanding the inspector leaves the content pane's titlebar background at full window
 // width, painting over the inspector's first 52pt — see docs/gotchas.md.
+// The same split-resize hook also stops the toolbar's 0.25s fade on toggle — see docs/gotchas.md.
 struct InspectorTitlebarFix: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { TitlebarOrderView() }
     func updateNSView(_ nsView: NSView, context: Context) {}
@@ -32,6 +33,7 @@ private final class TitlebarOrderView: NSView {
     }
 
     @objc private func trimContentTitlebar() {
+        suppressToolbarFade()
         guard let split = enclosingSplitView else { return }
         let titlebars = split.subviews
             .filter { $0.className == "NSTitlebarBackgroundView" }
@@ -55,5 +57,20 @@ private final class TitlebarOrderView: NSView {
         }
         guard content.frame.maxX > inspector.frame.minX else { return }
         content.frame.size.width = inspector.frame.minX - content.frame.minX
+    }
+
+    private func suppressToolbarFade() {
+        guard let themeFrame = window?.contentView?.superview,
+              let titlebar = themeFrame.subviews.first(where: { $0.className == "NSTitlebarContainerView" })
+        else { return }
+        for host in titlebar.descendants(where: { $0.className.contains("NSGlassEffectContainerView") }) {
+            host.layer?.actions = ["sublayers": NSNull()]
+        }
+    }
+}
+
+private extension NSView {
+    func descendants(where matches: (NSView) -> Bool) -> [NSView] {
+        subviews.flatMap { ($0.descendants(where: matches)) + (matches($0) ? [$0] : []) }
     }
 }

@@ -105,7 +105,7 @@ These two fail silently with the whole test suite green:
 **Full text of every cross-cutting gotcha below: `docs/gotchas.md`** — read it when a title looks relevant. File-specific gotchas live in the per-directory `CLAUDE.md` files (`Resources/`, `Views/Editor/`, `API/`, `Views/Media/`, `Views/Sidebar/`, `App/`, `AI/`, `Views/AI/`, `Views/Settings/`, `Views/`), which load only when working in that directory.
 
 - **A carried attribute is a script sink — everything the raw-attribute carrier snapshots gets replayed onto the live contenteditable**
-- **A toolbar-wide fade on inspector toggle is a macOS 27 bug, not Quill's**
+- **The toolbar-wide fade on inspector toggle is an implicit `sublayers` CATransition on the toolbar's glass hosting view, and `InspectorTitlebarFix` nulls that action**
 - **Measure the region the user is describing, not the whole strip**
 - **`AppState` orders taxonomies once, on assignment — the settings panel never sorts**
 - **The unsupported-block sentinel is a per-save random nonce, and must stay one**
