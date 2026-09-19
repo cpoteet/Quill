@@ -61,8 +61,19 @@ public final class AppState: ObservableObject {
     @Published public var posts: [WPPost] = []
     @Published public var pages: [WPPost] = []
     @Published public var localDrafts: [LocalDraft] = []
-    @Published public var categories: [WPCategory] = []
-    @Published public var tags: [WPTag] = []
+    @Published private var categoriesStorage: [WPCategory] = []
+    @Published private var tagsStorage: [WPTag] = []
+
+    // Sorted on assignment so PostSettingsPanel never sorts per render — see docs/gotchas.md.
+    public var categories: [WPCategory] {
+        get { categoriesStorage }
+        set { categoriesStorage = newValue.sortedByName() }
+    }
+
+    public var tags: [WPTag] {
+        get { tagsStorage }
+        set { tagsStorage = newValue.sortedByName() }
+    }
 
     @Published public var isLoadingList: Bool = true
     @Published public var hasLoadedList: Bool = false

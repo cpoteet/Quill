@@ -14,3 +14,16 @@ public struct WPTag: Identifiable, Codable, Sendable {
     public var slug: String
     public var count: Int
 }
+
+public protocol NamedTaxonomy {
+    var name: String { get }
+}
+
+extension WPCategory: NamedTaxonomy {}
+extension WPTag: NamedTaxonomy {}
+
+extension Array where Element: NamedTaxonomy {
+    public func sortedByName() -> [Element] {
+        sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+}

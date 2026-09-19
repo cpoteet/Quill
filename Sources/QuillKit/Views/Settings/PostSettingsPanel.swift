@@ -173,9 +173,7 @@ public struct PostSettingsPanel: View {
         let q = categorySearch.trimmingCharacters(in: .whitespaces)
         let pool = q.isEmpty ? categories : categories.filter { $0.name.localizedCaseInsensitiveContains(q) }
         let selected = pool.filter { settings.categoryIDs.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let unselected = pool.filter { !settings.categoryIDs.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return selected + unselected
     }
 
@@ -207,7 +205,7 @@ public struct PostSettingsPanel: View {
                 Divider()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(filteredCategories) { cat in
                             Toggle(
                                 cat.name,
@@ -259,7 +257,6 @@ public struct PostSettingsPanel: View {
 
     private var selectedTagNames: [String] {
         tags.filter { settings.tagIDs.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             .map { $0.name }
             + settings.newTagNames
     }
@@ -267,8 +264,7 @@ public struct PostSettingsPanel: View {
     private var filteredUnselectedTags: [WPTag] {
         let q = tagSearch.trimmingCharacters(in: .whitespaces)
         let unselected = tags.filter { !settings.tagIDs.contains($0.id) }
-        let pool = q.isEmpty ? unselected : unselected.filter { $0.name.localizedCaseInsensitiveContains(q) }
-        return pool.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return q.isEmpty ? unselected : unselected.filter { $0.name.localizedCaseInsensitiveContains(q) }
     }
 
     private var hasExactTagMatch: Bool {
@@ -312,7 +308,7 @@ public struct PostSettingsPanel: View {
                 Divider()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(filteredUnselectedTags) { tag in
                             Button(tag.name) {
                                 settings.tagIDs.insert(tag.id)

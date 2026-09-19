@@ -15,6 +15,7 @@ public struct ContentView: View {
                 .background(Color.wpContentSurface.ignoresSafeArea())
         }
         .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .frame(minWidth: 900, minHeight: 600)
         .onAppear(perform: loadCredentialsAtLaunch)
         .toolbar {
