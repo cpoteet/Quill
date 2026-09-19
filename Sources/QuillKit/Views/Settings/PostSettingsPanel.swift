@@ -448,17 +448,14 @@ public struct PostSettingsPanel: View {
     private func newTaxonomyRow(name: String, onRemove: @escaping () -> Void) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark.square.fill")
-                .foregroundStyle(Color.wpAmber)
+                .foregroundStyle(Color.accentColor)
                 .font(.system(size: 13))
             Text(name)
                 .font(.callout)
             Spacer()
             Text("new")
                 .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(Color.wpAmber)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(Color.wpAmber.opacity(0.12), in: Capsule())
+                .foregroundStyle(Color.accentColor)
             Button(action: onRemove) {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .medium))
@@ -475,7 +472,7 @@ public struct PostSettingsPanel: View {
         Button(action: action) {
             Label("Add \"\(label)\"", systemImage: "plus")
                 .font(.callout)
-                .foregroundStyle(Color.wpAmber)
+                .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)

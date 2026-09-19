@@ -109,7 +109,7 @@ struct EmptyEditorPlaceholder: View {
         VStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 38, weight: .light))
-                .foregroundStyle(Color.wpAmber.opacity(0.5))
+                .foregroundStyle(.tertiary)
             Text(message)
                 .font(.system(size: 13))
                 .foregroundStyle(.tertiary)

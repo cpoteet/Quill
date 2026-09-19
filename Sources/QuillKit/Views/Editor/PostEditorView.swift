@@ -531,11 +531,11 @@ public struct PostEditorView: View {
         return attributed
     }
 
-    // #1 Dismissible amber error banner
+    // #1 Dismissible error banner
     private var errorBanner: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(Color.wpAmber)
+                .foregroundStyle(.orange)
                 .font(.system(size: 13))
             Text(saveError ?? "")
                 .font(.system(size: 12))
@@ -553,7 +553,6 @@ public struct PostEditorView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(Color.wpAmber.opacity(0.08))
         .overlay(alignment: .bottom) { Divider() }
     }
 

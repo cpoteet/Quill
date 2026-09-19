@@ -137,7 +137,7 @@ public struct SidebarView: View {
     private func updateRow(_ update: UpdateInfo) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "arrow.up.circle.fill")
-                .foregroundStyle(Color.wpAmber)
+                .foregroundStyle(.secondary)
             Button("Quill \(update.version) available") {
                 NSWorkspace.shared.open(update.url)
             }

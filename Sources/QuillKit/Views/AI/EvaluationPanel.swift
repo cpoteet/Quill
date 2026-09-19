@@ -148,7 +148,7 @@ private struct EvaluationFindingCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(finding.issue.uppercased())
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.wpAmber)
+                    .foregroundStyle(.orange)
                     .tracking(0.5)
                 Text("\"\(finding.quote)\"")
                     .font(.system(size: 11))

@@ -19,7 +19,7 @@ chrome workarounds are deleted, and nothing replaces them.
 | Question | Decision |
 |---|---|
 | Deployment target | macOS 27 only. No backwards compatibility, no availability gates. |
-| Amber | App-wide accent via `.tint(.wpAmber)`, overriding the user's system accent. |
+| Amber | ~~App-wide accent via `.tint(.wpAmber)`, overriding the user's system accent.~~ **Reversed during execution.** The app uses the user's system accent. See Task 7.5 in the plan. |
 | Toolbar | One bar. Actions move into the window toolbar; the custom second row is deleted. |
 | Sidebar | Two columns. Sections become a segmented picker in the toolbar. |
 | Post title | Stays as a large editable field at the top of the document body. |
@@ -63,8 +63,8 @@ SwiftUI fighting it. The OS draws the title bar.
 `NSColor.wpSidebarBg` / `Color.wpSidebarBg` / `wpPanelBg` / `wpTitleBarBg`
 tokens.
 
-Retained: `Color.wpAmber`, `statusColor(_:)`, `ToastView`, `UploadStatusPill`
-and their view modifiers.
+Retained: `statusColor(_:)`, `ToastView`, `UploadStatusPill` and their view
+modifiers. (`Color.wpAmber` was retained here, then deleted by Task 7.5.)
 
 Retained **provisionally**: `rebuildsOnAppearanceChange()`. It works around a
 stale `NSAppearance` stamp on SwiftUI's `Picker`. Whether that still reproduces
@@ -193,15 +193,24 @@ accent), and hand-drawn containers give way to system materials.
 
 ## Amber strategy
 
-- `.tint(.wpAmber)` at the app root. This drives the sidebar selection capsule,
-  focus rings, the selected picker segment and the Publish pill.
-- `statusColor(_:)` unchanged — status dots keep their existing meanings.
-- Amber empty-state icons unchanged.
-- The editor's amber link colour CSS variable is unchanged.
+**This whole section was reversed during execution. See Task 7.5 in the plan.**
 
-`wpAmber` was originally tuned against a warm #F2F1EF panel. Against neutral
-system backgrounds it may need a small adjustment; this is judged in the running
-app, not in advance.
+What was specified: `.tint(.wpAmber)` at the app root driving the sidebar
+selection capsule, focus rings, the selected picker segment and the Publish pill.
+
+Why it did not survive. Two of the spike findings below proved false — `.tint`
+reaches neither the sidebar capsule nor the picker segment, and only an
+`AccentColor` asset plus `NSAccentColorName` moves the capsule. That asset wins
+only while the user's System Settings accent is "Multicolour", so the amber was
+invisible to any user who had chosen an accent. An identity that half the users
+never see is a default, not an identity. It also failed macOS's prominent and
+disabled button rendering, which assumes system-blue-like contrast.
+
+What shipped: the user's system accent, everywhere macOS draws it. The eleven
+explicit amber sites were sorted by meaning — accent, semantic, decorative —
+rather than swapped wholesale. `statusColor(_:)` is unchanged in rendered
+colour; status dots keep their existing meanings. The editor's amber link colour
+CSS variable is unchanged.
 
 ## Editor webview
 

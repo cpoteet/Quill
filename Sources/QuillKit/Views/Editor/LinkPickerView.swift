@@ -54,8 +54,6 @@ struct LinkPickerView: View {
     @ObservedObject var model: LinkPickerModel
     @FocusState private var fieldFocused: Bool
 
-    private static let amber = Color(red: 0xb4 / 255.0, green: 0x53 / 255.0, blue: 0x09 / 255.0)
-
     var body: some View {
         VStack(spacing: 0) {
             // ── URL / search field + Apply button ────────
@@ -84,7 +82,7 @@ struct LinkPickerView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(
-                            fieldFocused ? Self.amber : Color.primary.opacity(0.15),
+                            fieldFocused ? Color.accentColor : Color.primary.opacity(0.15),
                             lineWidth: 1
                         )
                 )

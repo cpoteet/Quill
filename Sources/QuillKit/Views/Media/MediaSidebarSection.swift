@@ -346,7 +346,7 @@ private struct MediaSidebarCell: View {
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(
-                    isSelected ? Color.wpAmber : Color(.separatorColor),
+                    isSelected ? Color.accentColor : Color(.separatorColor),
                     lineWidth: isSelected ? 2 : 0.5
                 )
         )

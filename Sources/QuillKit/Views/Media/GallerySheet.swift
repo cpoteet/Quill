@@ -79,6 +79,7 @@ public struct GallerySheet: View {
             Button("Insert Gallery") {
                 onInsert(selected, columns, cropped, linkTo, sizeSlug)
             }
+            .buttonStyle(.borderedProminent)
             .disabled(selected.isEmpty)
             .keyboardShortcut(.defaultAction)
         }

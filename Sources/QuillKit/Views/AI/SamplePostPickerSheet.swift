@@ -48,7 +48,7 @@ struct SamplePostPickerSheet: View {
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(isSelected ? Color.wpAmber : .secondary)
+                                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                                     Text(post.title.rendered.isEmpty ? "Untitled" : post.title.decodedTitle)
                                         .foregroundStyle(atLimit && !isSelected ? .secondary : .primary)
                                         .lineLimit(1)

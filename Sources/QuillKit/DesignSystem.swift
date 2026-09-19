@@ -1,13 +1,13 @@
 import SwiftUI
 
 extension Color {
-    static let wpAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
+    private static let draftAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
 
     /// Maps a PostItem.statusBadge string to a display color.
     static func statusColor(_ badge: String) -> Color {
         switch badge {
         case "publish":    return .green
-        case "draft":      return .wpAmber
+        case "draft":      return .draftAmber
         case "future":     return .blue
         case "pending":    return .orange
         case "private":    return .teal

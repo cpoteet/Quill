@@ -29,7 +29,6 @@ public struct QuillApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)
-                .tint(Color.wpAmber)
                 .onAppear {
                     let creds = try? CredentialsStore.load()
                     appState.credentials = creds
