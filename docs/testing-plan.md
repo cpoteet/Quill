@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-18 — 428 Swift tests + 1,202 JS tests (1,201 pass, 1 skipped), no failures._
+_Last updated: 2026-09-19 — 435 Swift tests + 1,202 JS tests (1,201 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (428 tests)
+1. **Swift tests** — `swift test` (435 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
 3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (428 tests, 28 suites)
+## Swift test suite (435 tests, 29 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -2952,6 +2952,41 @@ Run this on a **new local draft**, never a published post.
 - [ ] A classic bare `<table>` saves as a `core/table` figure and opens cleanly in Gutenberg.
 - [ ] **Known limit:** a table with explicit head/foot sections *and* a colspanned body cell gains a phantom empty cell in the header and footer. This is upstream of Quill's save; it is recorded, not fixed.
 
+
+
+### 7.x Media library (gallery, filters, inspector)
+
+Added 2026-09-19 with the native media panel. None of this is automated — the
+`NSCollectionView` bridge cannot be unit tested, and background computer-use
+clicks do not reach it (see `Views/Media/CLAUDE.md`). Full-screen control or a
+human is required.
+
+- [ ] Media opens on a gallery in the content column, not a sidebar grid.
+- [ ] The sidebar lists five filters: All Media, Images, Documents, Audio, Video.
+- [ ] Single-clicking a thumbnail selects it and opens the inspector.
+- [ ] Arrow keys move the selection left, right, up and down.
+- [ ] The inspector follows the selection and shows the right filename.
+- [ ] The toolbar's Media Info button is disabled when nothing is selected.
+- [ ] That button closes the inspector without clearing the selection ring.
+- [ ] With the inspector closed, selecting another image does NOT reopen it.
+- [ ] Pressing the button again reopens it, showing the current selection.
+- [ ] Right-clicking offers Show Details above the other items.
+- [ ] Show Details opens the panel on the right-clicked image, with the panel closed beforehand.
+- [ ] Editing alt text and clicking away saves, and shows "Saved".
+- [ ] Space opens the large preview. Space closes it. Escape closes it.
+- [ ] Double-clicking a thumbnail opens the large preview.
+- [ ] Typing a space in the search field does NOT open the preview.
+- [ ] Scrolling to the bottom loads the next page.
+- [ ] Each filter returns the right items; Documents covers PDFs but not `.txt`.
+- [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
+- [ ] The toolbar Refresh button reloads and keeps the active filter.
+- [ ] The toolbar New Media button opens the file picker and does NOT create a post.
+- [ ] File → New Media (⌘⌥N) opens the same file picker.
+- [ ] Right-clicking a thumbnail selects it and offers Copy URL, Open in Browser, Delete.
+- [ ] Deleting removes the thumbnail and clears the selection.
+- [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
+- [ ] No bottom button strip remains, and there is exactly one Refresh and one New button.
+- [ ] The gallery renders correctly in light and in dark appearance. Judge colour from a native-resolution screenshot, not a downsampled one.
 
 ---
 
