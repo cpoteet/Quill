@@ -13,8 +13,7 @@ public struct ContentView: View {
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.wpContentSurface.ignoresSafeArea())
         }
-        .navigationTitle("")
-        .toolbarBackground(.hidden, for: .windowToolbar)
+        .toolbar(removing: .title)
         .frame(minWidth: 900, minHeight: 600)
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -24,7 +23,7 @@ public struct ContentView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 280)
+                .fixedSize()
             }
         }
     }
@@ -61,8 +60,10 @@ public struct ContentView: View {
                     }
                 }
                 .id(media.id)
+                .navigationTitle(media.title.decodedTitle)
             } else {
                 EmptyEditorPlaceholder(section: .media, sectionIsEmpty: false)
+                    .navigationTitle("Quill")
             }
         } else if let item = appState.selectedItem {
             PostEditorView(item: item)
@@ -70,9 +71,11 @@ public struct ContentView: View {
             ProgressView()
                 .controlSize(.small)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .navigationTitle("Quill")
         } else {
             EmptyEditorPlaceholder(section: appState.selectedSection,
                                    sectionIsEmpty: appState.sectionIsEmpty)
+                .navigationTitle("Quill")
         }
     }
 }
@@ -111,8 +114,9 @@ struct EmptyEditorPlaceholder: View {
             Image(systemName: icon)
                 .font(.system(size: 38, weight: .light))
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
             Text(message)
-                .font(.system(size: 13))
+                .font(.body)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

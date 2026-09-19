@@ -21,9 +21,9 @@
       overflow: hidden;
     }
     @media (prefers-color-scheme: dark) {
-      body { background: #242424; color: #f0f0f0; }
+      body { background: #1e1e1e; color: #f0f0f0; }
     }
-    body.dark { background: #242424; color: #f0f0f0; }
+    body.dark { background: #1e1e1e; color: #f0f0f0; }
 
     /* ── Toolbar ─────────────────────────────────────── */
     #toolbar-wrap {
@@ -44,11 +44,11 @@
       transition: opacity 0.12s;
     }
     body.dark #toolbar-wrap::after {
-      background: linear-gradient(to right, transparent, rgba(36,36,36,0.96));
+      background: linear-gradient(to right, transparent, rgba(30,30,30,0.96));
     }
     @media (prefers-color-scheme: dark) {
       #toolbar-wrap::after {
-        background: linear-gradient(to right, transparent, rgba(36,36,36,0.96));
+        background: linear-gradient(to right, transparent, rgba(30,30,30,0.96));
       }
     }
     #toolbar-wrap.overflowing::after { opacity: 1; }
@@ -70,14 +70,14 @@
     }
     @media (prefers-color-scheme: dark) {
       #toolbar {
-        --toolbar-bg: #242424;
-        background: rgba(36, 36, 36, 0.96);
+        --toolbar-bg: #1e1e1e;
+        background: rgba(30, 30, 30, 0.96);
         border-color: rgba(255, 255, 255, 0.13);
       }
     }
     body.dark #toolbar {
-      --toolbar-bg: #242424;
-      background: rgba(36, 36, 36, 0.96);
+      --toolbar-bg: #1e1e1e;
+      background: rgba(30, 30, 30, 0.96);
       border-color: rgba(255, 255, 255, 0.13);
     }
 
@@ -428,7 +428,7 @@
     /* Generated setting groups append after this span, so pin it last visually. */
     #block-controls { order: 1; margin-left: 8px; }
     body.dark #toolbar-row2 {
-      background: rgba(36, 36, 36, 0.96);
+      background: rgba(30, 30, 30, 0.96);
       border-top-color: rgba(255,255,255,0.09);
     }
     #toolbar-tooltip {
@@ -474,9 +474,9 @@
       background: #ffffff;
     }
     @media (prefers-color-scheme: dark) {
-      #editor-wrap { background: #242424; }
+      #editor-wrap { background: #1e1e1e; }
     }
-    body.dark #editor-wrap { background: #242424; }
+    body.dark #editor-wrap { background: #1e1e1e; }
 
     /* ── Code view textarea ──────────────────────────── */
     #code-editor {

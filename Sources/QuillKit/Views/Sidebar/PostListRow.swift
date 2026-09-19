@@ -10,14 +10,15 @@ public struct PostListRow: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(item.title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.body.weight(.medium))
                 .lineLimit(2)
             HStack(spacing: 5) {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 6, height: 6)
+                    .accessibilityHidden(true)
                 Text(subtitle)
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -41,9 +42,12 @@ public struct PostListRow: View {
             }
             let date = formattedDate(post.date)
             switch post.status {
+            case "publish": return date + " · Published"
+            case "draft":   return date + " · Draft"
+            case "future":  return date + " · Scheduled"
             case "pending": return date + " · Pending"
             case "private": return date + " · Private"
-            default: return date
+            default:        return date + " · " + post.status.capitalized
             }
         case .local(let draft): return "\(draft.type.capitalized) Draft"
         }

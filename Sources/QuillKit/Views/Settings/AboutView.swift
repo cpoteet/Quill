@@ -15,15 +15,15 @@ struct AboutView: View {
                     .font(.title2.weight(.semibold))
 
                 Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")")
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .foregroundStyle(.secondary)
 
                 Text("© 2026 Chris Poteet")
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .foregroundStyle(.secondary)
 
                 Link("End User Licensing Agreement", destination: URL(string: "https://cpoteet.github.io/Quill-Releases/license.html")!)
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 2)
             }
@@ -37,7 +37,7 @@ struct AboutView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Third-Party Notices")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .tracking(0.8)
                         .textCase(.uppercase)
@@ -91,20 +91,20 @@ private struct NoticeEntry: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(name)
-                .font(.system(size: 12, weight: .medium))
+                .font(.callout.weight(.medium))
 
             if let dest = URL(string: url) {
                 Link(url, destination: dest)
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
             Text(copyright)
-                .font(.system(size: 11))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             Text(license)
-                .font(.system(size: 11))
+                .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
     }

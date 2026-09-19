@@ -37,7 +37,7 @@ public struct EvaluationPanel: View {
     private var header: some View {
         HStack {
             Text("Content Evaluation")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.callout.weight(.semibold))
             Spacer()
             Button("Close") { onClose() }
                 .controlSize(.small)
@@ -60,7 +60,7 @@ public struct EvaluationPanel: View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Evaluating content…")
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -70,7 +70,7 @@ public struct EvaluationPanel: View {
     private var shortContentView: some View {
         VStack(spacing: 8) {
             Text("Add more content before evaluating.")
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -82,7 +82,7 @@ public struct EvaluationPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(result.summary)
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .lineSpacing(2)
                     .padding(16)
 
@@ -93,7 +93,7 @@ public struct EvaluationPanel: View {
                     : "\(result.findings.count) finding\(result.findings.count == 1 ? "" : "s") — click to jump"
 
                 Text(countLabel)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.5)
@@ -126,9 +126,9 @@ public struct EvaluationPanel: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 12) {
             Text("Evaluation failed.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.callout.weight(.medium))
             Text(message)
-                .font(.system(size: 11))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Retry") { onReEvaluate() }
@@ -147,17 +147,17 @@ private struct EvaluationFindingCard: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(finding.issue.uppercased())
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(.orange)
                     .tracking(0.5)
                 Text("\"\(finding.quote)\"")
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .italic()
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                 if let suggestion = finding.suggestion {
                     Text("→ \(suggestion)")
-                        .font(.system(size: 11))
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -166,7 +166,7 @@ public struct PostEditorView: View {
                     VStack(spacing: 10) {
                         ProgressView()
                         Text("Loading editor…")
-                            .font(.system(size: 12))
+                            .font(.callout)
                             .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -223,48 +223,17 @@ public struct PostEditorView: View {
         }
         .uploadStatus($uploadStatus)
         .toast(message: $toastMessage, isError: $toastIsError, token: toastToken)
-        .sheet(isPresented: $showDiscardAlert) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Revert to Server Version?")
-                    .font(.headline)
-                Text("Your unsaved changes will be lost.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Spacer()
-                    Button("Cancel") { showDiscardAlert = false }
-                    Button("Revert") {
-                        showDiscardAlert = false
-                        discardChanges()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .keyboardShortcut(.return, modifiers: .command)
-                }
-            }
-            .padding(20)
-            .frame(width: 380)
+        .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Revert", role: .destructive) { discardChanges() }
+        } message: {
+            Text("Your unsaved changes will be lost.")
         }
-        .sheet(isPresented: $showAIReplaceAlert) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Replace Content?")
-                    .font(.headline)
-                Text("This will replace your current title and content. Continue?")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Spacer()
-                    Button("Cancel") { showAIReplaceAlert = false }
-                    Button("Continue") {
-                        showAIReplaceAlert = false
-                        isAISheetOpen = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: .command)
-                }
-            }
-            .padding(20)
-            .frame(width: 380)
+        .alert("Replace Content?", isPresented: $showAIReplaceAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Continue") { isAISheetOpen = true }
+        } message: {
+            Text("This will replace your current title and content.")
         }
         .sheet(isPresented: $isAISheetOpen) {
             if let settings = appState.aiSettings {
@@ -281,37 +250,16 @@ public struct PostEditorView: View {
                 }
             }
         }
-        .sheet(
-            isPresented: Binding(
-                get: { showConflictAlert },
-                set: { showConflictAlert = $0 }
-            )
-        ) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Conflict Detected")
-                    .font(.headline)
-                Text("This post was modified on the server since you last fetched it.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Spacer()
-                    Button("Cancel") { showConflictAlert = false }
-                    Button("Use Server") {
-                        showConflictAlert = false
-                        if case .remote(let post) = item {
-                            loadFromServer(postID: post.id)
-                        }
-                    }
-                    Button("Keep Local") {
-                        showConflictAlert = false
-                        saveToWordPress()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: .command)
+        .alert("Conflict Detected", isPresented: $showConflictAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Use Server") {
+                if case .remote(let post) = item {
+                    loadFromServer(postID: post.id)
                 }
             }
-            .padding(20)
-            .frame(width: 380)
+            Button("Keep Local") { saveToWordPress() }
+        } message: {
+            Text("This post was modified on the server since you last fetched it.")
         }
         .alert(
             "Preview Failed",
@@ -348,13 +296,15 @@ public struct PostEditorView: View {
             inspectorContent
                 .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
         }
+        .navigationTitle(title.isEmpty ? "Untitled" : title)
         .toolbar {
             ToolbarItem {
-                Circle()
-                    .fill(Color.statusColor(statusKey))
-                    .frame(width: 7, height: 7)
+                Image(systemName: statusSymbol(statusKey))
+                    .foregroundStyle(Color.statusColor(statusKey))
                     .help(statusBadgeLabel)
+                    .accessibilityLabel("Status: \(statusBadgeLabel)")
             }
+            .sharedBackgroundVisibility(.hidden)
             ToolbarItemGroup {
                 if !isRemote {
                     Button("Save Draft") { Task { await saveDraft() } }
@@ -389,6 +339,7 @@ public struct PostEditorView: View {
                     Image(systemName: "sidebar.right")
                 }
                 .help("Post Settings")
+                .accessibilityLabel("Post Settings")
             }
         }
         .background {
@@ -477,11 +428,11 @@ public struct PostEditorView: View {
             VStack(alignment: .leading, spacing: 4) {
                 if !alarm.title.isEmpty {
                     Text(alarm.title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(boldingNames(in: alarm.body, names: alarm.names))
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .lineSpacing(1.5)
                     .fixedSize(horizontal: false, vertical: true)
                 if alarm.blocksSaving {
@@ -491,7 +442,7 @@ public struct PostEditorView: View {
                         blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .acknowledged)
                     } label: {
                         Text("Save anyway, I understand")
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.subheadline.weight(.medium))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -508,6 +459,7 @@ public struct PostEditorView: View {
             if alarm.stage == .saved {
                 Button { blockRiskAlarm = nil } label: {
                     Image(systemName: "xmark").font(.system(size: 11, weight: .medium))
+                        .accessibilityLabel("Dismiss")
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -538,7 +490,7 @@ public struct PostEditorView: View {
                 .foregroundStyle(.orange)
                 .font(.system(size: 13))
             Text(saveError ?? "")
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
             Spacer()
@@ -550,6 +502,7 @@ public struct PostEditorView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss error")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)

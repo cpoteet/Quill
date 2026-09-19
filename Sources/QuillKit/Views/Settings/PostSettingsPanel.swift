@@ -423,7 +423,7 @@ public struct PostSettingsPanel: View {
 
     private func sectionLabel(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.footnote.weight(.semibold))
             .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(1.0)
@@ -452,7 +452,7 @@ public struct PostSettingsPanel: View {
                 .font(.callout)
             Spacer()
             Text("new")
-                .font(.system(size: 9, weight: .medium))
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(Color.accentColor)
             Button(action: onRemove) {
                 Image(systemName: "xmark")
@@ -460,6 +460,7 @@ public struct PostSettingsPanel: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(name)")
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
@@ -498,7 +499,7 @@ private struct TagChipGrid: View {
             ForEach(names, id: \.self) { name in
                 HStack(spacing: 3) {
                     Text(name)
-                        .font(.system(size: 11))
+                        .font(.subheadline)
                         .lineLimit(1)
                     Button {
                         onRemove(name)
@@ -508,6 +509,7 @@ private struct TagChipGrid: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(name)")
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)

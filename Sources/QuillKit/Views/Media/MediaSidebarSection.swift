@@ -73,10 +73,10 @@ struct MediaSidebarSection: View {
                         .font(.system(size: 24, weight: .light))
                         .foregroundStyle(.quaternary)
                     Text("No media yet")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.callout.weight(.medium))
                         .foregroundStyle(.tertiary)
                     Text("Upload with the + button below")
-                        .font(.system(size: 11))
+                        .font(.subheadline)
                         .foregroundStyle(.quaternary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -188,6 +188,7 @@ struct MediaSidebarSection: View {
             }
             .keyboardShortcut("r", modifiers: .command)
             .help("Refresh (⌘R)")
+            .accessibilityLabel("Refresh")
             .padding(.leading, 10)
             .padding(.vertical, 8)
 

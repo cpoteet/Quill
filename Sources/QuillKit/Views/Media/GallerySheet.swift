@@ -132,7 +132,7 @@ public struct GallerySheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("SELECTED (\(selected.count))")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .tracking(1.0)
                     .padding(.top, 12)
@@ -140,7 +140,7 @@ public struct GallerySheet: View {
 
                 if selected.isEmpty {
                     Text("Select images to add them to the gallery.")
-                        .font(.system(size: 12))
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                 } else {
@@ -173,7 +173,7 @@ public struct GallerySheet: View {
                                     .frame(width: 32, height: 32)
                                     .clipShape(RoundedRectangle(cornerRadius: 4))
                                     Text(sel.media.title.decodedTitle)
-                                        .font(.system(size: 12))
+                                        .font(.callout)
                                         .lineLimit(1)
                                     Spacer()
                                     // Chevron only — the row body stays free for drag-to-reorder.
@@ -206,6 +206,7 @@ public struct GallerySheet: View {
                                         }
                                         .buttonStyle(.plain)
                                         .help("Remove from gallery")
+                                        .accessibilityLabel("Remove from gallery")
                                     }
                                     // Buttons are click targets, not drag surfaces — keep the
                                     // arrow over them, and hand the open hand back on the way out
@@ -233,13 +234,13 @@ public struct GallerySheet: View {
                                         sectionLabel("Alt text")
                                         TextField("", text: $sel.alt)
                                             .textFieldStyle(.plain)
-                                            .font(.system(size: 11))
+                                            .font(.subheadline)
                                             .padding(5)
                                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
                                         sectionLabel("Caption")
                                         TextField("", text: $sel.caption)
                                             .textFieldStyle(.plain)
-                                            .font(.system(size: 11))
+                                            .font(.subheadline)
                                             .padding(5)
                                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
                                     }
@@ -313,7 +314,7 @@ public struct GallerySheet: View {
 
     private func sectionLabel(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.footnote.weight(.semibold))
             .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(1.0)

@@ -3,12 +3,8 @@ import SwiftUI
 extension Color {
     private static let draftAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
 
-    /// The editor's document surface. `editor.html` mirrors these two values; they must move together.
-    static let wpContentSurface = Color(nsColor: NSColor(name: nil) { appearance in
-        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 36 / 255.0, green: 36 / 255.0, blue: 36 / 255.0, alpha: 1)
-            : .white
-    })
+    /// The editor's document surface. `editor.html` mirrors this colour's two resolved values; they must move together.
+    static let wpContentSurface = Color(nsColor: .textBackgroundColor)
 
     /// Maps a PostItem.statusBadge string to a display color.
     static func statusColor(_ badge: String) -> Color {
@@ -22,6 +18,19 @@ extension Color {
         case "local-page": return Color(nsColor: .systemIndigo)
         default:           return Color(.tertiaryLabelColor)
         }
+    }
+}
+
+/// Shape carries the status alongside `Color.statusColor(_:)`, so colour is never the sole signal.
+func statusSymbol(_ badge: String) -> String {
+    switch badge {
+    case "publish":    return "checkmark.circle.fill"
+    case "draft":      return "pencil.circle.fill"
+    case "future":     return "clock.fill"
+    case "pending":    return "exclamationmark.circle.fill"
+    case "private":    return "lock.fill"
+    case "local-post", "local-page": return "internaldrive.fill"
+    default:           return "circle.fill"
     }
 }
 
@@ -39,8 +48,9 @@ struct ToastView: View {
             Image(systemName: systemImage)
                 .foregroundStyle(iconColor)
                 .font(.system(size: 13, weight: .medium))
+                .accessibilityHidden(true)
             Text(message)
-                .font(.system(size: 13))
+                .font(.body)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
@@ -60,7 +70,7 @@ struct UploadStatusPill: View {
             ProgressView()
                 .controlSize(.small)
             Text(message)
-                .font(.system(size: 13))
+                .font(.body)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)

@@ -18,7 +18,7 @@ public struct SidebarView: View {
         }
         .navigationSplitViewColumnWidth(min: 270, ideal: 310, max: 400)
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .navigation) {
                 Button {
                     Task { await loadCurrentSection() }
                 } label: {
@@ -26,6 +26,7 @@ public struct SidebarView: View {
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .help("Refresh (\u{2318}R)")
+                .accessibilityLabel("Refresh")
 
                 if appState.selectedSection != .localDrafts {
                     Button {
@@ -35,6 +36,7 @@ public struct SidebarView: View {
                     }
                     .keyboardShortcut("n", modifiers: .command)
                     .help("\(newButtonTitle) (\u{2318}N)")
+                    .accessibilityLabel(newButtonTitle)
                 }
             }
         }
@@ -138,6 +140,7 @@ public struct SidebarView: View {
         HStack(spacing: 6) {
             Image(systemName: "arrow.up.circle.fill")
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Button("Quill \(update.version) available") {
                 NSWorkspace.shared.open(update.url)
             }
@@ -151,8 +154,9 @@ public struct SidebarView: View {
             }
             .buttonStyle(.borderless)
             .help("Dismiss")
+            .accessibilityLabel("Dismiss update notice")
         }
-        .font(.system(size: 11))
+        .font(.subheadline)
         .padding(.vertical, 2)
     }
 
@@ -335,12 +339,13 @@ struct SidebarEmptyState: View {
             Image(systemName: icon)
                 .font(.system(size: 24, weight: .light))
                 .foregroundStyle(.quaternary)
+                .accessibilityHidden(true)
             Text(message)
-                .font(.system(size: 12, weight: .medium))
+                .font(.callout.weight(.medium))
                 .foregroundStyle(.tertiary)
             if let hint {
                 Text(hint)
-                    .font(.system(size: 11))
+                    .font(.subheadline)
                     .foregroundStyle(.quaternary)
             }
         }

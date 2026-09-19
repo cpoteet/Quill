@@ -61,7 +61,7 @@ struct MediaDetailView: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(.tertiary)
             Text("Preview unavailable")
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.tertiary)
         }
     }
@@ -107,10 +107,10 @@ struct MediaDetailView: View {
     private func metadataRow(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 13))
+                .font(.body)
                 .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
@@ -119,12 +119,12 @@ struct MediaDetailView: View {
     private var urlRow: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("URL")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
             HStack(alignment: .top, spacing: 8) {
                 Text(media.sourceURL)
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
                     .truncationMode(.middle)
@@ -138,6 +138,7 @@ struct MediaDetailView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Copy URL")
+                .accessibilityLabel("Copy URL")
             }
         }
     }
@@ -146,10 +147,10 @@ struct MediaDetailView: View {
     private var altTextRow: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("ALT TEXT")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
             TextField("", text: $altTextDraft, axis: .vertical)
-                .font(.system(size: 13))
+                .font(.body)
                 .lineLimit(2...4)
                 .textFieldStyle(.plain)
                 .padding(4)
@@ -163,11 +164,12 @@ struct MediaDetailView: View {
                 switch altSaveState {
                 case .saving:
                     ProgressView().scaleEffect(0.6)
-                    Text("Saving\u{2026}").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text("Saving\u{2026}").font(.footnote).foregroundStyle(.secondary)
                 case .saved:
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 10)).foregroundStyle(.green)
-                    Text("Saved").font(.system(size: 10)).foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Saved").font(.footnote).foregroundStyle(.secondary)
                 case .idle:
                     EmptyView()
                 }
