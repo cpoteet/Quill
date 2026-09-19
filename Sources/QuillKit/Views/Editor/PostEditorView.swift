@@ -326,7 +326,7 @@ public struct PostEditorView: View {
                     .keyboardShortcut("p", modifiers: [.command, .shift])
                     .disabled(isSaving)
             }
-            ToolbarSpacer(.fixed)
+            ToolbarSpacer(.flexible)
             ToolbarItem {
                 Button {
                     withAnimation {

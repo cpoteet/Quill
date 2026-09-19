@@ -17,7 +17,7 @@ public struct SidebarView: View {
                 MediaSidebarSection()
             }
         }
-        .navigationSplitViewColumnWidth(min: 270, ideal: 310, max: 400)
+        .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
