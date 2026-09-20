@@ -15,7 +15,6 @@ struct MediaSidebarSection: View {
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $appState.mediaSearchText, placement: .sidebar, prompt: "Search Media")
     }
 
     private func errorRow(_ error: String) -> some View {

@@ -18,17 +18,6 @@ public struct ContentView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .frame(minWidth: 900, minHeight: 600)
         .onAppear(perform: loadCredentialsAtLaunch)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Picker("Section", selection: sectionSelection) {
-                    ForEach(SidebarSection.allCases, id: \.self) { section in
-                        Text(section.shortTitle).tag(section)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .fixedSize()
-            }
-        }
     }
 
     private func loadCredentialsAtLaunch() {
@@ -40,19 +29,6 @@ public struct ContentView: View {
         appState.isLoadingMedia = false
         appState.hasLoadedMedia = true
         openSettings()
-    }
-
-    private var sectionSelection: Binding<SidebarSection> {
-        Binding(
-            get: { appState.selectedSection },
-            set: { section in
-                guard section != appState.selectedSection else { return }
-                appState.selectedItem = nil
-                appState.selectedMedia = nil
-                appState.searchText = ""
-                appState.selectedSection = section
-            }
-        )
     }
 
     @ViewBuilder

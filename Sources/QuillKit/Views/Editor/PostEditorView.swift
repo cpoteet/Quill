@@ -299,6 +299,7 @@ public struct PostEditorView: View {
         }
         .navigationTitle(title.isEmpty ? "Untitled" : title)
         .toolbar {
+            ToolbarSpacer(.flexible)
             ToolbarItemGroup {
                 if !isRemote {
                     Button("Save Draft") { Task { await saveDraft() } }
@@ -322,7 +323,7 @@ public struct PostEditorView: View {
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .disabled(isSaving)
             }
-            ToolbarSpacer(.flexible)
+            ToolbarSpacer(.fixed)
             ToolbarItem {
                 Button {
                     withAnimation {

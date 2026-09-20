@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 public struct SidebarView: View {
@@ -9,8 +10,44 @@ public struct SidebarView: View {
 
     public init() {}
 
+    private var sectionSelection: Binding<SidebarSection> {
+        Binding(
+            get: { appState.selectedSection },
+            set: { section in
+                guard section != appState.selectedSection else { return }
+                appState.selectedItem = nil
+                appState.selectedMedia = nil
+                appState.searchText = ""
+                appState.selectedSection = section
+            }
+        )
+    }
+
+    private func releaseSearchFocus() {
+        guard let window = NSApp.keyWindow else { return }
+        guard window.firstResponder is NSText || window.firstResponder is NSSearchField else { return }
+        window.makeFirstResponder(nil)
+    }
+
+    private var searchBinding: Binding<String> {
+        appState.selectedSection == .media ? $appState.mediaSearchText : $appState.searchText
+    }
+
+    private var searchPrompt: String {
+        appState.selectedSection == .media ? "Search Media" : "Search"
+    }
+
     public var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            VStack(spacing: 16) {
+                SidebarSectionPicker(selection: sectionSelection)
+
+                SidebarSearchField(text: searchBinding, prompt: searchPrompt)
+                    .frame(height: 24)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+
             if appState.selectedSection != .media {
                 postList
             } else {
@@ -18,6 +55,8 @@ public struct SidebarView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
+        .onChange(of: appState.selectedItem) { _, _ in releaseSearchFocus() }
+        .onChange(of: appState.selectedSection) { _, _ in releaseSearchFocus() }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -135,7 +174,6 @@ public struct SidebarView: View {
                 ProgressView().controlSize(.small)
             }
         }
-        .searchable(text: $appState.searchText, placement: .sidebar, prompt: "Search")
     }
 
     private func listErrorRow(_ error: String) -> some View {
