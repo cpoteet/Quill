@@ -321,10 +321,13 @@ public struct PostEditorView: View {
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                Button(publishButtonTitle) { Task { await publish() } }
-                    .buttonStyle(.glassProminent)
-                    .keyboardShortcut("p", modifiers: [.command, .shift])
-                    .disabled(isSaving)
+                Button { Task { await publish() } } label: {
+                    // cancels the wider insets an explicit buttonStyle forces in a toolbar
+                    Text(publishButtonTitle).padding(.horizontal, -11.5)
+                }
+                .buttonStyle(.glassProminent)
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .disabled(isSaving)
             }
             ToolbarSpacer(.flexible)
             ToolbarItem {
