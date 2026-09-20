@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-19 — 435 Swift tests + 1,202 JS tests (1,201 pass, 1 skipped), no failures._
+_Last updated: 2026-09-20 — 435 Swift tests + 1,207 JS tests (1,206 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 

@@ -333,8 +333,8 @@ describe('backref chrome in the editor', () => {
 // backrefs alike. jsdom does no cascade, so these assert the rules.
 describe('link colour is defined once per theme', () => {
   test('both themes are declared as variables on the root and body.dark', () => {
-    assert.match(source, /:root\s*\{\s*--link:\s*#[0-9a-f]{6};\s*\}/i)
-    assert.match(source, /body\.dark\s*\{\s*--link:\s*#[0-9a-f]{6};\s*\}/i)
+    assert.match(source, /:root\s*\{[^}]*--link:\s*#[0-9a-f]{6};/i)
+    assert.match(source, /body\.dark\s*\{[^}]*--link:\s*#[0-9a-f]{6};/i)
   })
 
   test('prose links, footnote markers and backrefs all read the variable', () => {

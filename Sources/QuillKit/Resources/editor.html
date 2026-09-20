@@ -8,8 +8,8 @@
 
     /* Every link in the editor -- prose, footnote markers, backrefs -- uses
        these two and nothing else. */
-    :root { --link: #1380c3; }
-    body.dark { --link: #5ab4f5; }
+    :root { --link: #a26814; --accent: #eea737; --caret: #bf801e; }
+    body.dark { --link: #f0b450; --accent: #f0b450; --caret: #eea737; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -497,14 +497,22 @@
     }
 
     .ProseMirror {
-      max-width: 720px;
+      max-width: 38.5em;
       margin: 0 auto;
       min-height: 100%;
       outline: none;
-      font-size: 16px;
-      line-height: 1.75;
-      caret-color: #007aff;
+      font-size: 16.5px;
+      line-height: 1.66;
+      letter-spacing: -0.003em;
+      caret-color: var(--caret);
       padding-bottom: 60vh;
+    }
+
+    /* Every modeled block inherits its selected state from this one rule. */
+    .ProseMirror .ProseMirror-selectednode {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 3px;
     }
     /* Gap-cursor: ProseMirror's built-in widget for caret positions next to
        atomic nodes (e.g. right after a gallery/embed) where no adjacent
@@ -521,19 +529,19 @@
       width: 0;
       height: 1.2em;
       border-top: none;
-      border-left: 1.5px solid #007aff;
+      border-left: 1.5px solid var(--caret);
     }
     .spell-error {
       text-decoration: red wavy underline;
       text-decoration-skip-ink: none;
     }
     .ProseMirror p { margin: 0 0 0.8em; }
-    .ProseMirror h1 { font-size: 2em;   font-weight: 700; margin: 1em 0 0.4em; }
-    .ProseMirror h2 { font-size: 1.5em; font-weight: 600; margin: 0.9em 0 0.35em; }
-    .ProseMirror h3 { font-size: 1.25em;font-weight: 600; margin: 0.8em 0 0.3em; }
-    .ProseMirror h4 { font-size: 1.1em; font-weight: 600; margin: 0.75em 0 0.25em; }
-    .ProseMirror h5 { font-size: 1em;   font-weight: 600; margin: 0.7em 0 0.2em; }
-    .ProseMirror h6 { font-size: 0.9em; font-weight: 600; margin: 0.65em 0 0.2em; color: #666; }
+    .ProseMirror h1 { font-size: 2em;    font-weight: 700; margin: 1.25em 0 0.3em; letter-spacing: -0.02em; }
+    .ProseMirror h2 { font-size: 1.3em;  font-weight: 600; margin: 1.7em 0 0.4em;  letter-spacing: -0.018em; }
+    .ProseMirror h3 { font-size: 1.16em; font-weight: 600; margin: 1.65em 0 0.4em; letter-spacing: -0.01em; }
+    .ProseMirror h4 { font-size: 1.08em; font-weight: 600; margin: 1.7em 0 0.4em; }
+    .ProseMirror h5 { font-size: 0.98em; font-weight: 600; margin: 1.75em 0 0.4em; }
+    .ProseMirror h6 { font-size: 0.9em;  font-weight: 600; margin: 1.8em 0 0.4em; color: #666; }
     .ProseMirror blockquote {
       border-left: 3px solid #ccc;
       margin: 0.8em 0;
@@ -582,10 +590,10 @@
     /* Nothing styles ProseMirror-selectednode here, so without this a selected
        separator looks exactly like an unselected one. */
     .ProseMirror hr.ProseMirror-selectednode {
-      background: rgba(0,122,255,0.11);
+      background: rgba(238,167,55,0.18);
       outline: none;
     }
-    body.dark .ProseMirror hr.ProseMirror-selectednode { background: rgba(10,132,255,0.24); }
+    body.dark .ProseMirror hr.ProseMirror-selectednode { background: rgba(240,180,80,0.26); }
     .ProseMirror hr.is-style-wide::before { width: 100%; }
     .ProseMirror hr.is-style-dots::before {
       content: '\00b7\00b7\00b7';
@@ -641,23 +649,21 @@
     .image-wrapper.is-style-rounded img { border-radius: 9999px; }
     .image-wrapper.ProseMirror-selectednode { outline: none; }
     .image-wrapper.selected img {
-      outline: 2px solid #007aff;
+      outline: 2px solid var(--accent);
       border-radius: 4px;
     }
-    body.dark .image-wrapper.selected img { outline-color: #0a84ff; }
 
     .resize-handle {
       position: absolute;
       width: 8px;
       height: 8px;
-      background: #007aff;
+      background: var(--accent);
       border: 1.5px solid #fff;
       border-radius: 2px;
       opacity: 0;
       pointer-events: none;
       z-index: 10;
     }
-    body.dark .resize-handle { background: #0a84ff; }
     .image-wrapper.selected .resize-handle { opacity: 1; pointer-events: auto; }
     .image-wrapper.align-left   { float: left;  display: block; margin: 0 1em 0.5em 0; }
     .image-wrapper.align-right  { float: right; display: block; margin: 0 0 0.5em 1em; }
@@ -838,7 +844,7 @@
       background: transparent;
     }
 
-    .ProseMirror .selectedCell { background: rgba(0,122,255,0.08); }
+    .ProseMirror .selectedCell { background: rgba(238,167,55,0.14); }
 
     /* Placeholder */
     .ProseMirror p.is-editor-empty:first-child::before {

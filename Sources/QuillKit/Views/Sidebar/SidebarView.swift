@@ -344,15 +344,6 @@ struct SidebarEmptyState: View {
     let section: SidebarSection
     let isSearching: Bool
 
-    private var icon: String {
-        switch section {
-        case .posts: return "doc.text"
-        case .pages: return "doc.plaintext"
-        case .localDrafts: return "pencil"
-        case .media: return "photo"
-        }
-    }
-
     private var message: String {
         switch section {
         case .posts: return "No posts yet"
@@ -375,7 +366,15 @@ struct SidebarEmptyState: View {
         if isSearching {
             ContentUnavailableView.search
         } else {
-            ContentUnavailableView(message, systemImage: icon, description: Text(hint))
+            ContentUnavailableView {
+                Label {
+                    Text(message)
+                } icon: {
+                    QuillMark.emptyStateIcon
+                }
+            } description: {
+                Text(hint)
+            }
         }
     }
 }

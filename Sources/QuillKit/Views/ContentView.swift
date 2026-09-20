@@ -102,15 +102,6 @@ struct EmptyEditorPlaceholder: View {
         }
     }
 
-    private var icon: String {
-        switch section {
-        case .posts: return "doc.text"
-        case .pages: return "doc.plaintext"
-        case .localDrafts: return "pencil"
-        case .media: return "photo"
-        }
-    }
-
     private var message: String {
         if sectionIsEmpty {
             return "No \(noun)s yet"
@@ -119,6 +110,12 @@ struct EmptyEditorPlaceholder: View {
     }
 
     var body: some View {
-        ContentUnavailableView(message, systemImage: icon)
+        ContentUnavailableView {
+            Label {
+                Text(message)
+            } icon: {
+                QuillMark.emptyStateIcon
+            }
+        }
     }
 }

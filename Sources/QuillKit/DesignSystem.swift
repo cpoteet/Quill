@@ -1,22 +1,34 @@
 import SwiftUI
 
 extension Color {
-    private static let draftAmber = Color(hue: 0.105, saturation: 0.82, brightness: 0.92)
+    private static func srgb(_ hex: UInt32) -> Color {
+        Color(.sRGB,
+              red:   Double((hex >> 16) & 0xFF) / 255,
+              green: Double((hex >> 8) & 0xFF) / 255,
+              blue:  Double(hex & 0xFF) / 255)
+    }
 
     /// The editor's document surface. `editor.html` mirrors this colour's two resolved values; they must move together.
     static let wpContentSurface = Color(nsColor: .textBackgroundColor)
 
+    /// The empty-state quill, sitting just above the background in either theme.
+    static let quillMark = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0x5A / 255, green: 0x53 / 255, blue: 0x48 / 255, alpha: 1)
+            : NSColor(srgbRed: 0xD8 / 255, green: 0xCD / 255, blue: 0xBD / 255, alpha: 1)
+    })
+
     /// Maps a PostItem.statusBadge string to a display color.
+    /// Local posts and pages share one colour; `PostListRow` already names the type in its subtitle.
     static func statusColor(_ badge: String) -> Color {
         switch badge {
-        case "publish":    return .green
-        case "draft":      return .draftAmber
-        case "future":     return .blue
-        case "pending":    return .orange
-        case "private":    return .teal
-        case "local-post": return .purple
-        case "local-page": return Color(nsColor: .systemIndigo)
-        default:           return Color(.tertiaryLabelColor)
+        case "publish":                  return srgb(0x3E9E63)
+        case "draft":                    return srgb(0xD99A2B)
+        case "future":                   return srgb(0x4A8CCE)
+        case "pending":                  return srgb(0xCF6B46)
+        case "private":                  return srgb(0x3E9FA8)
+        case "local-post", "local-page": return srgb(0x6C63C9)
+        default:                         return Color(.tertiaryLabelColor)
         }
     }
 }
@@ -27,7 +39,7 @@ func statusSymbol(_ badge: String) -> String {
     case "publish":    return "checkmark.circle.fill"
     case "draft":      return "pencil.circle.fill"
     case "future":     return "clock.circle.fill"
-    case "pending":    return "exclamationmark.circle.fill"
+    case "pending":    return "ellipsis.circle.fill"
     case "private":    return "lock.circle.fill"
     case "local-post", "local-page": return "tray.circle.fill"
     default:           return "circle.fill"

@@ -349,9 +349,22 @@ describe('gap-cursor styling', () => {
     // disabled) renders a black horizontal bar by default wherever the caret
     // sits next to an atomic node (e.g. right after a gallery/embed) with no
     // adjacent inline content. Guard against silently losing the override
-    // that restyles it to the app's blue vertical caret.
+    // that restyles it to the app's vertical caret.
     const source = fs.readFileSync(htmlPath, 'utf8')
-    assert.match(source, /\.ProseMirror-gapcursor:after\s*\{[^}]*border-left:\s*1\.5px solid #007aff/)
+    assert.match(source, /\.ProseMirror-gapcursor:after\s*\{[^}]*border-left:\s*1\.5px solid var\(--caret\)/)
+  })
+
+  test('the gap cursor reads the same token as caret-color, so the two cannot drift', () => {
+    const source = fs.readFileSync(htmlPath, 'utf8')
+    assert.match(source, /\.ProseMirror \{[^}]*caret-color:\s*var\(--caret\)/)
+  })
+})
+
+// One rule gives every modeled block its selected state; per-block copies would drift.
+describe('block selection styling', () => {
+  test('a single selectednode rule carries the accent for all blocks', () => {
+    const source = fs.readFileSync(htmlPath, 'utf8')
+    assert.match(source, /\.ProseMirror \.ProseMirror-selectednode \{[^}]*outline:\s*2px solid var\(--accent\)/)
   })
 })
 
