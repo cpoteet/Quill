@@ -51,6 +51,37 @@ public struct QuillApp: App {
                 }
                 .keyboardShortcut("f", modifiers: .command)
             }
+            CommandGroup(replacing: .saveItem) {
+                Button("Save") {
+                    appState.triggerSave = true
+                }
+                .keyboardShortcut("s", modifiers: .command)
+                .disabled(appState.selectedItem == nil || appState.editorIsSaving)
+
+                Button(appState.editorPublishTitle) {
+                    appState.triggerPublish = true
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .disabled(appState.selectedItem == nil || appState.editorIsSaving)
+
+                Divider()
+
+                Button("Revert to Saved\u{2026}") {
+                    appState.triggerRevert = true
+                }
+                .disabled(!appState.editorIsDirty || appState.selectedItem?.isRemote != true)
+
+                Button("Preview in Browser") {
+                    appState.triggerPreview = true
+                }
+                .disabled(appState.selectedItem?.isRemote != true || appState.editorIsSaving)
+            }
+            CommandGroup(after: .toolbar) {
+                Button("Refresh") {
+                    appState.triggerRefresh = true
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
             CommandGroup(replacing: .help) {
                 Button("Quill Help") {
                     NSWorkspace.shared.open(URL(string: "https://cpoteet.github.io/Quill-Releases/docs.html")!)

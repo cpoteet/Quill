@@ -3,6 +3,11 @@
 **Status as of 2026-09-18: every task in the plan is implemented and committed.**
 What remains is a human manual pass and whatever touch-ups come out of it.
 
+> **Historical document — superseded in places.** It records the state of the branch on
+> 2026-09-18 and is kept for the reasoning, not as current truth. Later commits reversed
+> some of it; the corrections are marked inline below. The root `CLAUDE.md` and
+> `docs/gotchas.md` are authoritative.
+
 Paste the block below as the first message of the new conversation.
 
 ---
@@ -69,6 +74,12 @@ irreversible local delete.
    `.tint` are all deleted. `Color.accentColor` is now the token for selection,
    focus and actions. Semantic colours (status dots, warnings) must **never**
    be the accent. `Color.wpAmber` no longer exists.
+
+   **Reversed again on 2026-09-20 (`c4fb527`).** Quill has its own amber accent once
+   more, delivered through `Assets.xcassets` + `NSAccentColorName` (not a `.tint()`,
+   which `List` selection ignores). The Multicolour caveat above still holds and is
+   documented in the root `CLAUDE.md`. Only the last sentence survives: semantic
+   colours must never be the accent, and `Color.wpAmber` still does not exist.
 
 2. **`.toolbarBackground(.hidden, for: .windowToolbar)` is back.** Task 2
    deleted it; Task 8's follow-up re-added it. Not a regression — Task 2 removed

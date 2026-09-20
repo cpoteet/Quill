@@ -1,6 +1,11 @@
 import SwiftUI
 import WebKit
 
+enum InspectorPane {
+    case settings
+    case evaluation
+}
+
 public struct PostEditorView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var services: AppServices
@@ -11,7 +16,7 @@ public struct PostEditorView: View {
     @State private var footnotesMeta: String = ""
     @State private var settings = PostSettings()
     @State private var stats = PostStats()
-    @State private var isSettingsOpen: Bool = false
+    @State private var inspectorPane: InspectorPane?
     @State private var isSaving: Bool = false
     @State private var saveError: String?
     @State private var previewError: String?
@@ -61,7 +66,6 @@ public struct PostEditorView: View {
     @State private var resultPanel: AIResultPanel = AIResultPanel()
 
     // Evaluation state
-    @State private var showEvaluationPanel: Bool = false
     @State private var isEvaluating: Bool = false
     @State private var evaluationResult: EvaluationResult? = nil
     @State private var evaluationError: String? = nil
@@ -152,8 +156,7 @@ public struct PostEditorView: View {
                     },
                     onTriggerEvaluate: {
                         if !isEvaluating {
-                            isSettingsOpen = false
-                            showEvaluationPanel = true
+                            inspectorPane = .evaluation
                             if evaluationResult == nil && evaluationError == nil {
                                 evaluationTask = Task { await executeEvaluation() }
                             }
@@ -272,30 +275,27 @@ public struct PostEditorView: View {
         } message: {
             Text(previewError ?? "")
         }
-        .onChange(of: item.id) { _ in
+        .onChange(of: item.id) {
             evaluationTask?.cancel()
             evaluationTask = nil
-            showEvaluationPanel = false
+            if inspectorPane == .evaluation { inspectorPane = nil }
             isEvaluating = false
             evaluationResult = nil
             evaluationError = nil
         }
-        .onChange(of: showEvaluationPanel) { open in
+        .onChange(of: inspectorPane) { _, pane in
+            let open = pane == .evaluation
             editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
         }
         .inspector(isPresented: Binding(
-            get: { isSettingsOpen || showEvaluationPanel },
-            set: { newValue in
-                if !newValue {
-                    isSettingsOpen = false
-                    showEvaluationPanel = false
-                }
-            }
+            get: { inspectorPane != nil },
+            set: { if !$0 { inspectorPane = nil } }
         )) {
             inspectorContent
                 .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
                 .background(InspectorTitlebarFix().frame(width: 0, height: 0))
         }
+        .background(DocumentEditedMarker(isEdited: isDirty).frame(width: 0, height: 0))
         .navigationTitle(title.isEmpty ? "Untitled" : title)
         .toolbar {
             ToolbarSpacer(.flexible)
@@ -337,17 +337,12 @@ public struct PostEditorView: View {
                 }
                 .help(isSaving ? "Saving…" : publishButtonTitle)
                 .accessibilityLabel(publishButtonTitle)
-                .keyboardShortcut("p", modifiers: [.command, .shift])
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
                 Button {
                     withAnimation {
-                        if showEvaluationPanel {
-                            showEvaluationPanel = false
-                        } else {
-                            isSettingsOpen.toggle()
-                        }
+                        inspectorPane = inspectorPane == nil ? .settings : nil
                     }
                 } label: {
                     Image(systemName: "sidebar.right")
@@ -355,12 +350,6 @@ public struct PostEditorView: View {
                 .help("Post Settings")
                 .accessibilityLabel("Post Settings")
             }
-        }
-        .background {
-            Button("") { Task { isRemote ? await publish() : await saveDraft() } }
-                .keyboardShortcut("s", modifiers: .command)
-                .hidden()
-                .disabled(isSaving)
         }
         .task(id: item.id) { await loadItem() }
         .onDisappear {
@@ -370,21 +359,48 @@ public struct PostEditorView: View {
                 Task { await flushToDB(for: loadedItem) }
             }
         }
-        .onChange(of: appState.triggerFindBar) { newValue in
+        .onChange(of: appState.triggerFindBar) { _, newValue in
             guard newValue else { return }
             appState.triggerFindBar = false
             editorWebView?.evaluateJavaScript("openFindBar()", completionHandler: nil)
         }
-        .onChange(of: appState.triggerPasteMarkdown) { newValue in
+        .onChange(of: appState.triggerPasteMarkdown) { _, newValue in
             guard newValue else { return }
             appState.triggerPasteMarkdown = false
             pasteAsMarkdown()
         }
+        .onChange(of: appState.triggerSave) { _, newValue in
+            guard newValue else { return }
+            appState.triggerSave = false
+            guard !isSaving else { return }
+            Task { isRemote ? await publish() : await saveDraft() }
+        }
+        .onChange(of: appState.triggerPublish) { _, newValue in
+            guard newValue else { return }
+            appState.triggerPublish = false
+            guard !isSaving else { return }
+            Task { await publish() }
+        }
+        .onChange(of: appState.triggerPreview) { _, newValue in
+            guard newValue else { return }
+            appState.triggerPreview = false
+            guard isRemote, !isSaving else { return }
+            Task { await openPreview() }
+        }
+        .onChange(of: appState.triggerRevert) { _, newValue in
+            guard newValue else { return }
+            appState.triggerRevert = false
+            guard isRemote, isDirty else { return }
+            showDiscardAlert = true
+        }
+        .onChange(of: isDirty, initial: true) { appState.editorIsDirty = isDirty }
+        .onChange(of: isSaving, initial: true) { appState.editorIsSaving = isSaving }
+        .onChange(of: publishButtonTitle, initial: true) { appState.editorPublishTitle = publishButtonTitle }
     }
 
     @ViewBuilder
     private var inspectorContent: some View {
-        if showEvaluationPanel {
+        if inspectorPane == .evaluation {
             EvaluationPanel(
                 state: evaluationPanelState,
                 onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
@@ -530,7 +546,7 @@ public struct PostEditorView: View {
             nsFont: .systemFont(ofSize: 22, weight: .semibold)
         )
         .frame(height: 28)
-        .onChange(of: title) { _ in scheduleAutosave() }
+        .onChange(of: title) { scheduleAutosave() }
     }
 
     private var publishButtonTitle: String {

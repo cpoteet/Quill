@@ -11,15 +11,25 @@ struct InspectorTitlebarFix: NSViewRepresentable {
 private final class TitlebarOrderView: NSView {
     private weak var observedTitlebar: NSView?
 
+    private weak var observedSplitView: NSSplitView?
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let split = enclosingSplitView else { return }
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(trimContentTitlebar),
-            name: NSSplitView.didResizeSubviewsNotification,
-            object: split
-        )
+        // Re-parenting calls this again; without the guard each move adds another observer.
+        if observedSplitView !== split {
+            if let previous = observedSplitView {
+                NotificationCenter.default.removeObserver(
+                    self, name: NSSplitView.didResizeSubviewsNotification, object: previous)
+            }
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(trimContentTitlebar),
+                name: NSSplitView.didResizeSubviewsNotification,
+                object: split
+            )
+            observedSplitView = split
+        }
         trimContentTitlebar()
     }
 

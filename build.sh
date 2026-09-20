@@ -8,6 +8,13 @@ MIN_MACOS="27.0"
 echo "▶ Closing $APP_NAME..."
 pkill -x "$APP_NAME" 2>/dev/null && sleep 0.5 || true
 
+if ! [ -d "$(xcode-select -p 2>/dev/null)/usr/bin" ] || ! xcrun -f actool >/dev/null 2>&1; then
+  echo "✗ actool not found. build.sh compiles Assets.xcassets, which needs full Xcode --"
+  echo "  the Command Line Tools alone do not provide it."
+  echo "  Install Xcode, then: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+  exit 1
+fi
+
 echo "▶ Building $APP_NAME..."
 swift build -c release 2>&1
 

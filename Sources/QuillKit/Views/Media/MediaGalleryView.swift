@@ -229,11 +229,8 @@ struct MediaGalleryView: NSViewRepresentable {
         scrollView.documentView = collectionView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
-        scrollView.contentView.postsBoundsChangedNotifications = true
 
         context.coordinator.collectionView = collectionView
-        context.coordinator.scrollView = scrollView
-        context.coordinator.observeScrolling()
         context.coordinator.items = items
         return scrollView
     }
@@ -248,38 +245,26 @@ struct MediaGalleryView: NSViewRepresentable {
         var items: [WPMedia] = []
         let menuTarget = MediaMenuTarget()
         weak var collectionView: MediaCollectionView?
-        weak var scrollView: NSScrollView?
         private var isApplyingSelection = false
 
         init(_ parent: MediaGalleryView) {
             self.parent = parent
         }
 
-        func observeScrolling() {
-            guard let contentView = scrollView?.contentView else { return }
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(boundsDidChange),
-                name: NSView.boundsDidChangeNotification,
-                object: contentView
-            )
-        }
-
-        @objc private func boundsDidChange() {
-            guard let scrollView, let documentView = scrollView.documentView else { return }
-            let visibleMaxY = scrollView.contentView.bounds.maxY
-            let threshold = documentView.bounds.height - scrollView.contentView.bounds.height * 1.5
-            guard visibleMaxY >= threshold else { return }
-            parent.onNeedMore()
-        }
-
         func apply(items newItems: [WPMedia], selection: WPMedia?) {
             guard let collectionView else { return }
-            if newItems.map(\.id) != items.map(\.id) {
+            let oldIDs = items.map(\.id)
+            let newIDs = newItems.map(\.id)
+            if oldIDs == newIDs {
                 items = newItems
-                collectionView.reloadData()
+            } else if !oldIDs.isEmpty, newIDs.count > oldIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
+                // Paging appends; inserting keeps the existing cells and their hosted thumbnails.
+                let appended = (oldIDs.count..<newIDs.count).map { IndexPath(item: $0, section: 0) }
+                items = newItems
+                collectionView.animator().insertItems(at: Set(appended))
             } else {
                 items = newItems
+                collectionView.reloadData()
             }
             isApplyingSelection = true
             defer { isApplyingSelection = false }
@@ -306,6 +291,15 @@ struct MediaGalleryView: NSViewRepresentable {
                 galleryItem.configure(with: media)
             }
             return item
+        }
+
+        // Paging trigger: the last cell coming on screen. Matches MediaPickerView and
+        // GallerySheet, whose SwiftUI grids use .onAppear on their last cell.
+        func collectionView(_ collectionView: NSCollectionView,
+                            willDisplay item: NSCollectionViewItem,
+                            forRepresentedObjectAt indexPath: IndexPath) {
+            guard indexPath.item >= items.count - 1 else { return }
+            parent.onNeedMore()
         }
 
         func collectionView(_ collectionView: NSCollectionView,

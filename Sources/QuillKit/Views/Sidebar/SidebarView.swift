@@ -18,6 +18,7 @@ public struct SidebarView: View {
                 appState.selectedItem = nil
                 appState.selectedMedia = nil
                 appState.searchText = ""
+                appState.mediaSearchText = ""
                 appState.selectedSection = section
             }
         )
@@ -25,12 +26,15 @@ public struct SidebarView: View {
 
     /// The WKWebView keeps first responder across a row click, which leaves the selection drawn unemphasized.
     private func focusPostList() {
+        guard appState.selectedSection != .media else { return }
         guard let window = NSApp.keyWindow,
               let root = window.contentView,
               let table = Self.firstTableView(in: root) else { return }
         window.makeFirstResponder(table)
     }
 
+    // The sidebar's list is the first table in the window; the inspector has none. If one is
+    // ever added there, scope this instead of widening it.
     private static func firstTableView(in view: NSView) -> NSTableView? {
         if let table = view as? NSTableView { return table }
         for sub in view.subviews {
@@ -50,7 +54,7 @@ public struct SidebarView: View {
     }
 
     private var searchPrompt: String {
-        appState.selectedSection == .media ? "Search Media" : "Search"
+        "Search \(appState.selectedSection.shortTitle)"
     }
 
     public var body: some View {
@@ -76,6 +80,11 @@ public struct SidebarView: View {
             focusPostList()
         }
         .onChange(of: appState.selectedSection) { _, _ in releaseSearchFocus() }
+        .onChange(of: appState.triggerRefresh) { _, newValue in
+            guard newValue else { return }
+            appState.triggerRefresh = false
+            Task { await loadCurrentSection() }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -83,7 +92,6 @@ public struct SidebarView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
-                .keyboardShortcut("r", modifiers: .command)
                 .help("Refresh (\u{2318}R)")
                 .accessibilityLabel("Refresh")
 
@@ -187,7 +195,7 @@ public struct SidebarView: View {
         .listStyle(.sidebar)
         .overlay {
             if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList {
-                SidebarEmptyState(section: appState.selectedSection,
+                SectionEmptyState(section: appState.selectedSection,
                                   isSearching: !appState.searchText.isEmpty)
             } else if !appState.hasLoadedList || appState.isLoadingList {
                 ProgressView().controlSize(.small)
@@ -359,7 +367,7 @@ public struct SidebarView: View {
     }
 }
 
-struct SidebarEmptyState: View {
+struct SectionEmptyState: View {
     let section: SidebarSection
     let isSearching: Bool
 

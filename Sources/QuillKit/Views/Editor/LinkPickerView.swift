@@ -116,7 +116,7 @@ struct LinkPickerView: View {
             }
         }
         .frame(width: 290)
-        .onChange(of: model.fieldText, perform: model.scheduleSearch)
+        .onChange(of: model.fieldText) { _, text in model.scheduleSearch(text) }
     }
 }
 

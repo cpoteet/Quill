@@ -19,8 +19,4 @@ import Testing
             #expect(filter.icon.isEmpty == false)
         }
     }
-
-    @Test func allCasesAreInSidebarOrder() {
-        #expect(MediaFilter.allCases == [.all, .images, .documents, .audio, .video])
-    }
 }

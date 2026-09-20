@@ -225,3 +225,46 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.sectionIsEmpty)
     }
 }
+
+// MARK: - Taxonomy ordering
+
+private func makeCategory(_ id: Int, _ name: String) -> WPCategory {
+    WPCategory(id: id, name: name, slug: name.lowercased(), count: 0, parent: 0)
+}
+
+private func makeTag(_ id: Int, _ name: String) -> WPTag {
+    WPTag(id: id, name: name, slug: name.lowercased(), count: 0)
+}
+
+@Suite struct TaxonomyOrderingTests {
+
+    @Test func assigningCategoriesSortsThem() {
+        let state = AppState()
+        state.categories = [makeCategory(1, "Zebra"), makeCategory(2, "apple"), makeCategory(3, "Mango")]
+        #expect(state.categories.map(\.name) == ["apple", "Mango", "Zebra"])
+    }
+
+    @Test func assigningTagsSortsThem() {
+        let state = AppState()
+        state.tags = [makeTag(1, "swift"), makeTag(2, "AppKit"), makeTag(3, "webkit")]
+        #expect(state.tags.map(\.name) == ["AppKit", "swift", "webkit"])
+    }
+
+    @Test func appendingToCategoriesKeepsThemSorted() {
+        let state = AppState()
+        state.categories = [makeCategory(1, "Beta"), makeCategory(2, "Delta")]
+        state.categories.append(makeCategory(3, "Alpha"))
+        #expect(state.categories.map(\.name) == ["Alpha", "Beta", "Delta"])
+    }
+
+    @Test func sortedByNameIgnoresCase() {
+        let sorted = [makeTag(1, "banana"), makeTag(2, "Apple"), makeTag(3, "cherry")].sortedByName()
+        #expect(sorted.map(\.name) == ["Apple", "banana", "cherry"])
+    }
+
+    @Test func sortedByNameUsesLocaleAwareComparison() {
+        let sorted = [makeCategory(1, "Zurich"), makeCategory(2, "\u{00E4}pfel"), makeCategory(3, "Apple")].sortedByName()
+        #expect(sorted.map(\.name).first != "Zurich")
+        #expect(sorted.map(\.name).last == "Zurich")
+    }
+}

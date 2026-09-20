@@ -24,12 +24,12 @@ struct MediaLibraryView: View {
                 appState.triggerMediaUpload = false
                 startUpload()
             }
-            .onChange(of: appState.triggerMediaUpload) { newValue in
+            .onChange(of: appState.triggerMediaUpload) { _, newValue in
                 guard newValue else { return }
                 appState.triggerMediaUpload = false
                 startUpload()
             }
-            .onChange(of: appState.triggerShowMediaDetails) { newValue in
+            .onChange(of: appState.triggerShowMediaDetails) { _, newValue in
                 guard newValue else { return }
                 appState.triggerShowMediaDetails = false
                 withAnimation { appState.isMediaInspectorOpen = true }
@@ -116,7 +116,7 @@ struct MediaLibraryView: View {
                 onSpace: { togglePreview() }
             )
         } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
-            SidebarEmptyState(section: .media,
+            SectionEmptyState(section: .media,
                               isSearching: !appState.mediaSearchText.isEmpty)
         } else {
             ProgressView()
@@ -132,6 +132,11 @@ extension MediaLibraryView {
             appState.isLoadingMedia = false
             appState.hasLoadedMedia = true
             return
+        }
+        // The search field sends on every keystroke; .task(id:) cancels the previous
+        // run, so sleeping here collapses a burst of typing into one request.
+        if !appState.mediaSearchText.isEmpty {
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
         }
         if appState.mediaItems.isEmpty { appState.isLoadingMedia = true }
         appState.mediaError = nil

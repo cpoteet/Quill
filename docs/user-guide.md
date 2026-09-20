@@ -112,11 +112,11 @@ The sidebar organizes your content into four sections, selectable via tabs at th
 - **Posts:** Lists all posts on your site, most recently published first. A search field lets you filter by title.
 - **Pages:** Lists all pages on your site, most recently published first, with the same search capability.
 - **Drafts:** Lists local drafts saved only on your Mac, not yet published or synced to WordPress.
-- **Media:** Displays your site's media library as a thumbnail grid for browsing and uploading files. These are listed by most recently uploaded.
+- **Media:** Switches the sidebar to a list of filters (All Media, Images, Documents, Audio, Video) and shows your library as a gallery in the main panel, most recently uploaded first.
 
 Click any post, page, draft, or media item to open it in the editor or detail view. Right-click a post or page for the option to move it to trash.
 
-To hide the sidebar and maximize writing space, click the **sidebar icon** at the left of the editor toolbar. Click it again to bring the sidebar back.
+To hide the sidebar and maximize writing space, click the **sidebar icon** at the left of the window toolbar. Click it again to bring the sidebar back.
 
 ### The Editor
 
@@ -125,19 +125,24 @@ The editor area has two parts:
 - **Title field:** A large text field at the top for the post or page title.
 - **Editor canvas:** The main writing area below, powered by a rich text editor that produces clean WordPress-compatible HTML.
 
-Above the title field is the **toolbar**, which contains:
+The window **toolbar** runs across the top. Its left side belongs to the sidebar, its right side to the editor:
 
-| Control | Description |
-|---|---|
-| Sidebar toggle | Shows or hides the left sidebar |
-| Status badge | Displays the current post status (Draft, Published, Scheduled, etc.) |
-| Save Draft | Saves the current post as a local draft or syncs changes to WordPress |
-| Revert | Discards unsaved changes and restores the last saved version |
-| Preview | Opens the current post's preview URL in your browser (for posts/pages in WordPress) |
-| Publish | Publishes or updates the post on your WordPress site |
-| Settings toggle | Shows or hides the right-side settings panel |
+| Control | Where | Description |
+|---|---|---|
+| Sidebar toggle | Left | Shows or hides the left sidebar |
+| Refresh | Left | Reloads the current section from WordPress (⌘R) |
+| New Post / New Page / New Media | Left | Creates a draft, or starts an upload |
+| Save Draft | Right | Saves a local draft (local drafts only) |
+| Revert | Right | Discards unsaved changes and restores the last saved version (remote posts only) |
+| Preview | Right | Opens the post's preview URL in your browser (remote posts only) |
+| Publish | Right | Publishes or updates the post on your WordPress site |
+| Post Settings | Right | Shows or hides the right-side settings panel |
 
-A small amber dot appears next to Save Draft when you have unsaved local changes.
+The buttons are icons; hover any of them for a label. A status symbol beside the title field shows the current state (Draft, Published, Scheduled, and so on).
+
+When you have unsaved changes, the window's close button shows the standard grey dot, the same way TextEdit and Pages mark an edited document. Saving clears it.
+
+Every editor action also has a menu item: **File → Save** (⌘S), **Publish** (⇧⌘P), **Revert to Saved**, and **Preview in Browser**. **View → Refresh** (⌘R) reloads the current section.
 
 ### The Settings Panel
 
@@ -324,7 +329,7 @@ Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole 
 #### For posts and pages already on WordPress
 
 - Press **⌘S** or click **Publish** to sync your changes to WordPress immediately.
-- An amber dot in the toolbar indicates you have unsaved changes.
+- The dot in the window's close button indicates you have unsaved changes; it clears when you save.
 - Click **Revert** to discard unsaved changes and restore the last saved version. A confirmation sheet appears; press **⌘↩** to confirm or **Escape** to cancel.
 
 **Autosave:** Quill automatically saves your work every 30 seconds after a change, so you don't lose progress if you close the app unexpectedly. For remote posts, autosaves are stored locally and applied if you reopen a post before manually saving.
@@ -565,7 +570,7 @@ The Status picker controls the publish state of the post or page:
 | Scheduled | Blue | Will publish automatically at the specified date and time |
 | Private | Teal | Visible only to logged-in WordPress administrators and editors |
 
-Local drafts (posts and pages not yet synced to WordPress) show a **Purple** badge (posts) or **Indigo** badge (pages) in the toolbar and sidebar.
+Local drafts (posts and pages not yet synced to WordPress) share one violet badge and a tray symbol in the sidebar; the row's subtitle says whether it is a post or a page.
 
 ### Publish Date
 
@@ -609,11 +614,11 @@ The Stats section displays a live word count and character count for the current
 
 ## Media Library
 
-The Media Library gives you access to all files uploaded to your WordPress site. Switch to the **Media** tab in the sidebar to browse your library as a thumbnail grid.
+The Media Library gives you access to all files uploaded to your WordPress site. Switch to the **Media** tab in the sidebar; the sidebar becomes a list of filters and the library fills the main panel as a gallery.
 
 ### Browsing
 
-Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to open its detail view in the main panel.
+Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to select it and open the inspector on the right; press Space or double-click to open a large preview. Arrow keys move the selection.
 
 The grid loads more items as you scroll. There is no button to press — keep scrolling and the next page appends at the bottom.
 
@@ -638,7 +643,7 @@ The metadata panel shows:
 
 To upload new media:
 
-- Click the **upload button** at the top of the Media sidebar, or
+- Click **New Media** in the toolbar, or
 - Use **File → New Media** (⌘⌥N) from anywhere in the app.
 
 Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and its detail view opens automatically.

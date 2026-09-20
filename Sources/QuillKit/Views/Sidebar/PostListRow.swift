@@ -42,28 +42,28 @@ public struct PostListRow: View {
     private var statusColor: Color { Color.statusColor(item.statusBadge) }
 
     private var subtitle: String {
+        guard case .remote(let post) = item else { return Self.subtitle(for: item, dateText: "") }
+        return Self.subtitle(for: item, dateText: Self.formattedDate(post.date))
+    }
+
+    nonisolated static func statusLabel(_ status: String) -> String {
+        switch status {
+        case "publish": return "Published"
+        case "draft":   return "Draft"
+        case "future":  return "Scheduled"
+        case "pending": return "Pending"
+        case "private": return "Private"
+        default:        return status.capitalized
+        }
+    }
+
+    nonisolated static func subtitle(for item: PostItem, dateText: String) -> String {
         switch item {
         case .remote(let post):
-            if post.type == "page" {
-                switch post.status {
-                case "publish": return "Published"
-                case "draft":   return "Draft"
-                case "private": return "Private"
-                case "pending": return "Pending"
-                case "future":  return "Scheduled"
-                default:        return post.status.capitalized
-                }
-            }
-            let date = formattedDate(post.date)
-            switch post.status {
-            case "publish": return date + " · Published"
-            case "draft":   return date + " · Draft"
-            case "future":  return date + " · Scheduled"
-            case "pending": return date + " · Pending"
-            case "private": return date + " · Private"
-            default:        return date + " · " + post.status.capitalized
-            }
-        case .local(let draft): return "\(draft.type.capitalized) Draft"
+            if post.type == "page" { return statusLabel(post.status) }
+            return dateText + " \u{00B7} " + statusLabel(post.status)
+        case .local(let draft):
+            return "\(draft.type.capitalized) Draft"
         }
     }
 
@@ -76,8 +76,8 @@ public struct PostListRow: View {
         }
     }()
 
-    private func formattedDate(_ iso: String) -> String {
-        for df in Self.dateFormatters {
+    nonisolated static func formattedDate(_ iso: String) -> String {
+        for df in dateFormatters {
             if let date = df.date(from: iso) {
                 return date.formatted(date: .abbreviated, time: .omitted)
             }

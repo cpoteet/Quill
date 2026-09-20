@@ -105,7 +105,7 @@ public struct EvaluationPanel: View {
                 }
 
                 Divider()
-                Button("↺  Re-evaluate") { onReEvaluate() }
+                Button { onReEvaluate() } label: { Label("Re-evaluate", systemImage: "arrow.clockwise") }
                     .controlSize(.small)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)

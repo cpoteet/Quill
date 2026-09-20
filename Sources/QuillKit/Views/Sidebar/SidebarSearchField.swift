@@ -34,14 +34,45 @@ struct SidebarSearchField: NSViewRepresentable {
     }
 }
 
-// AppKit hands first responder to the only focusable control in a SwiftUI window; .searchable never did
+// AppKit hands first responder to the only focusable control in a SwiftUI window, so the
+// field must refuse it for exactly as long as that automatic assignment lasts -- see
+// Sources/QuillKit/Views/Sidebar/CLAUDE.md.
 final class ClickToFocusSearchField: NSSearchField {
-    private var wasClicked = false
+    private var hasReleasedGuard = false
 
-    override var acceptsFirstResponder: Bool { wasClicked }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window else { return }
+        refusesFirstResponder = true
+        if window.isKeyWindow {
+            releaseGuardAfterInitialAssignment()
+        } else {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowDidBecomeKey),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+        }
+    }
+
+    @objc private func windowDidBecomeKey() {
+        releaseGuardAfterInitialAssignment()
+    }
+
+    // The automatic assignment happens as the window becomes key; releasing on the next
+    // runloop turn lands after it, leaving the field reachable by Tab and VoiceOver.
+    private func releaseGuardAfterInitialAssignment() {
+        guard !hasReleasedGuard else { return }
+        hasReleasedGuard = true
+        DispatchQueue.main.async { [weak self] in
+            self?.refusesFirstResponder = false
+        }
+    }
 
     override func mouseDown(with event: NSEvent) {
-        wasClicked = true
+        refusesFirstResponder = false
+        hasReleasedGuard = true
         window?.makeFirstResponder(self)
         super.mouseDown(with: event)
     }

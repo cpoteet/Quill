@@ -69,24 +69,22 @@ public struct PreferencesView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+
+            Section {
+                HStack {
+                    if isAnalyzing {
+                        Text("Analyzing writing style\u{2026}").foregroundStyle(.secondary).font(.caption)
+                    } else if saveSuccess {
+                        Text("Saved.").foregroundStyle(.secondary).font(.caption)
+                    }
+                    Spacer()
+                    Button("Save") { Task { await saveAll() } }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isSaving || isAnalyzing)
+                }
+            }
         }
         .formStyle(.grouped)
-        .padding(.bottom, -20) // cancels the grouped Form's trailing margin above the Save bar
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                if isAnalyzing {
-                    Text("Analyzing writing style\u{2026}").foregroundStyle(.secondary).font(.caption)
-                } else if saveSuccess {
-                    Text("Saved.").foregroundStyle(.secondary).font(.caption)
-                }
-                Spacer()
-                Button("Save") { Task { await saveAll() } }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isSaving || isAnalyzing)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-        }
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
         .sheet(isPresented: $isSamplePickerOpen) {

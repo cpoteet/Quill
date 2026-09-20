@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-20 — 435 Swift tests + 1,207 JS tests (1,206 pass, 1 skipped), no failures._
+_Last updated: 2026-09-20 — 451 Swift tests + 1,213 JS tests (1,212 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (435 tests)
+1. **Swift tests** — `swift test` (451 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
 3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (435 tests, 29 suites)
+## Swift test suite (451 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -117,6 +117,10 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
 | 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 8 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact |
 | 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt` — the Swift half of the AI output validity suite |
+| 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 3 | `MediaFilter` → WordPress `media_type` parameter mapping, and that every filter has a title and an icon |
+| 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
+| 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
+| 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
 
 ---
 
@@ -721,7 +725,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
-Tests the `sectionIsEmpty` computed property on `AppState`, used by `SidebarEmptyState` and `EmptyEditorPlaceholder` to show contextual empty-state messages.
+Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmptyState` and `EmptyEditorPlaceholder` to show contextual empty-state messages.
 
 | Test | What it checks |
 |---|---|
@@ -2530,15 +2534,24 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 ### 7.2 Sidebar, lists, navigation
 
 - [ ] Posts, Pages, Local Drafts, and Media sections each load and show their items.
-- [ ] Clicking a sidebar item highlights it with the app's warm accent color (not the default macOS blue).
+- [ ] Clicking a sidebar item highlights it with Quill's amber accent (not the default macOS blue). This holds only while the user's System Settings accent is "Multicolor" — see the root `CLAUDE.md`.
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
+- [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
+- [ ] The search prompt names the section: Search Posts, Search Pages, Search Drafts, Search Media.
+
+**Sidebar focus — the three checks.** Nothing here is automatable: the bug only appears once the WKWebView holds first responder, and scripted clicks cannot put it there (see the scripted-clicks gotcha in `docs/gotchas.md`). A selected row draws *emphasized* (solid amber, white text) when the list has focus and *unemphasized* (flat grey) when it does not. Grey is the failure. Last run green on 2026-09-20.
+
+- [ ] **The main case.** Open a post, click into the editor body and type a character, then click a different post in the sidebar → the newly selected row is amber, not grey.
+- [ ] **Media round trip.** Click into the editor body, switch to Media, click a few thumbnails, switch back to Posts and click a row → the row is amber and nothing flickers. `focusPostList()` returns early in Media mode; this checks the return trip still works.
+- [ ] **Settings open.** Open Settings (⌘,) and leave it open, click back on the main window and select a different post → the row is still amber. Clicking the main window makes it key first, so `NSApp.keyWindow` is correct by the time the handler runs.
+- [ ] Collapse the sidebar with the native toggle, then press ⌘R → the current section still refreshes. The shortcut lives on View → Refresh, not on the sidebar toolbar button, so a collapsed sidebar must not take it away.
 - [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears. The editor empty state says "post", "page", or "draft" depending on the active section.
 - [ ] Switch to the Media section → the post list, search bar, and toolbar are replaced by a thumbnail grid.
 - [ ] Scroll to the bottom of the Posts or Media list → more items load automatically; loading stops when all items have been fetched.
 - [ ] The dividers between sidebar/editor and editor/settings panels have no drag cursor — they are fixed boundaries, not resizable splitters.
-- [ ] Click the sidebar toggle button in the editor toolbar → sidebar slides away; click again → it slides back. The toggle button stays visible when the sidebar is hidden. The editor expands to fill the space.
+- [ ] Click the native sidebar toggle at the left of the window toolbar → the sidebar collapses; click again → it returns. The detail column expands to fill the space. `NavigationSplitView` owns this; there is no app-side visibility flag any more.
 - [ ] Upload a PDF via the Media tab → the sidebar cell shows a document icon (not a broken image); the detail panel shows a document icon with "Preview unavailable" (not "Image unavailable"); no alt text field appears.
-- [ ] Toggle the sidebar hidden then visible again repeatedly → the post list does not refetch from the server each time (no spinner flash on every toggle); it only reloads on the first load or when credentials actually change.
+- [ ] Collapse and expand the sidebar repeatedly → the post list does not refetch from the server each time (no spinner flash). The `lastLoadedCredentials` guard is what prevents it; collapsing no longer remounts the view, so this is now a guard against future remounts rather than a live trigger.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -2641,6 +2654,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Search while offline → the popover handles the error gracefully (no crash or hang).
 - [ ] Insert links with `http://` and `https://` URLs → Cmd+clicking them in the editor opens the system browser. Hold Cmd → links show an underline and pointer cursor. Release Cmd → cursor returns to normal. Insert a `mailto:` link → Cmd+clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link via code view → Cmd+clicking it does nothing (blocked for security).
 - [ ] Clicking a link without holding Cmd places the cursor inside the link text (for editing) — it does not open the link.
+- [ ] **The editor never navigates away.** Cmd+click an external link → it opens in the browser and the editor still shows the post (toolbar present, content intact, not a blank or remote page). Paste a `<meta http-equiv="refresh">` via code view → the editor stays put. This is the `decidePolicyFor` guard in `EditorCoordinator`; it is only wired up while that method matches `WKNavigationDelegate` exactly, so a "nearly matches" build warning means this test will fail.
 
 ### 7.6 Editor — code view
 
@@ -2715,7 +2729,9 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Switch directly between two posts (without going through Media) → edits from the first post don't leak into the second; no duplicate autosaves.
 - [ ] Edit a remote post and navigate away → the edits are stashed locally but not pushed to WordPress.
 - [ ] Successfully publish or update a post → reopen it → no "Unsaved changes restored" toast (the stash was cleared on save).
-- [ ] Edit a local draft → an amber dot appears next to it in the sidebar. Remote posts do not show this dot.
+- [ ] Edit a local draft → the window's close button shows the standard unsaved-changes dot. Save it (⌘S) → the dot clears.
+- [ ] Edit a remote post → the same dot appears, and clears on Update.
+- [ ] Switch from a dirty post to a clean one → the dot clears rather than sticking to the window.
 - [ ] Rapidly switch between several posts → no autosave data from one post appears in another; no crashes.
 - [ ] Quit the app with unsaved local-draft edits → relaunch → the edits are recovered.
 - [ ] Open a remote post, make edits → a "Revert" button appears in the editor header. Click it → a "Revert to Server Version?" dialog appears.
@@ -2791,23 +2807,19 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 
 ### 7.13 Window / appearance
 
-- [ ] In light mode, the sidebar, panels, and editor have the correct warm off-white tones. In dark mode, they use the correct dark tones. The window title bar matches the panel directly beneath it in both modes — it reads as one continuous surface, with no seam and no hint of the stock gray/white system material.
+The hand-painted title bar is gone (native-ui, 2026-09-18). The window toolbar is
+now the system toolbar drawing its own Liquid Glass, so the old title-bar colour
+matching and its four-way launch-appearance grid no longer apply. What replaced
+them is the toolbar-fade guard: see the toolbar-fade gotcha in `docs/gotchas.md`
+and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.md`.
+
 - [ ] With the app open, toggle dark mode in System Settings → the editor, toolbar, and sidebar all switch immediately without relaunching.
-- [ ] The boundaries between sidebar/editor and editor/settings-panel render as subtle gradient transitions, not hard lines.
-- [ ] Enter and exit full screen → the title bar color remains stable.
-
-**Title bar × launch appearance** — check all four combinations, quitting and relaunching for each launch mode. The title bar must match the panel beneath it in every one. This grid exists because the 2026-07-25 bug lived exactly on the launch axis: AppKit decides the window's backdrop *once at window creation* from the appearance in effect then, so testing only the toggle (with the app already running) passes while a cold launch in the other mode is broken. See `Sources/QuillKit/Views/CLAUDE.md`.
-
-- [ ] Set the system to **light**, launch Quill → title bar matches the panel.
-- [ ] Still running, switch the system to **dark** → title bar switches with it and still matches.
-- [ ] Quit. Set the system to **dark**, launch Quill → title bar matches the panel (not too dark, no wallpaper tint showing through).
-- [ ] Still running, switch the system to **light** → title bar switches with it and still matches (not a flat gray).
-
-**Title bar stability under state changes** — the title bar must hold its color *continuously*, never blinking to the stock material even for a frame. SwiftUI re-applies its own window-toolbar configuration on every view-graph update, so any state change is a chance for the bar to be reset; `.toolbarBackground(.hidden, for: .windowToolbar)` on `ContentView` is what keeps that configuration on our side. Watch the bar (don't glance away) while doing each:
-
-- [ ] Launch the app and watch through the post list arriving → no flash at any point, including the first second.
+- [ ] Enter and exit full screen → the window chrome stays stable.
+- [ ] Open a post, then toggle the inspector open and closed → the toolbar does not dim or fade. This is what `InspectorTitlebarFix` suppresses; watch the toolbar, do not glance away.
+- [ ] Re-expand the inspector after collapsing it → the content pane's titlebar background does not paint over the inspector's first 52pt.
+- [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
-- [ ] Switch sections (Posts → Pages → Drafts → Media) and toggle the sidebar → no flash.
+- [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.
 
 **Pickers across an appearance switch** — through macOS 26, SwiftUI stamped a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshed it, so a picker kept drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). Quill carried a `.rebuildsOnAppearanceChange()` modifier for this. macOS 27 fixes it: retested 2026-09-18 with the modifier reduced to a true no-op that never reads `colorScheme`, and the toolbar section picker and the inspector's Status picker both repainted correctly in both directions without a relaunch. The modifier is deleted. Keep checking both directions as a regression guard, since each leaves a picker wrong in a different way.
 
@@ -2879,7 +2891,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Save the post → fetch the raw HTML (`?context=edit`). The content ends with `<!-- wp:footnotes /-->` and **no** list; the bodies are in `meta.footnotes`. Markers are `<sup>` elements carrying core's `<fnId>-link` id, and there is no `↩` back-link anywhere in the content — WordPress renders that itself.
 - [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry in the editor.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
-- [ ] **Edit only a footnote body** — change nothing else in the post. The unsaved dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
+- [ ] **Edit only a footnote body** — change nothing else in the post. The window's unsaved-changes dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
 - [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone.
 - [ ] **Legacy migration:** open a post whose footnotes were written as an inline list by an older build. Save it without editing → unchanged. Now type one character and save → the bodies move into `meta.footnotes`, the list leaves the content, and no stray backref is stored.
 - [ ] Open a post with footnotes in code view → the source shows the delimiter, not the list. Leave code view without editing → the notes are still there.
@@ -2977,6 +2989,7 @@ human is required.
 - [ ] Double-clicking a thumbnail opens the large preview.
 - [ ] Typing a space in the search field does NOT open the preview.
 - [ ] Scrolling to the bottom loads the next page.
+- [ ] **A first page that fits the window still pages.** Make the window tall enough (or wide enough) that all 30 thumbnails are visible with no scrollbar → page 2 loads anyway. Paging hangs off the last cell being displayed, not off scrolling, so an unscrollable first page must not strand the library at 30 items.
 - [ ] Each filter returns the right items; Documents covers PDFs but not `.txt`.
 - [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
 - [ ] The toolbar Refresh button reloads and keeps the active filter.

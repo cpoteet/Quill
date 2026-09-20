@@ -37,6 +37,11 @@ public enum PostItem: Identifiable, Hashable {
         }
     }
 
+    public var isRemote: Bool {
+        if case .remote = self { return true }
+        return false
+    }
+
     public var title: String {
         switch self {
         case .remote(let p): return p.title.rendered.isEmpty ? "Untitled" : p.title.decodedTitle
@@ -98,6 +103,17 @@ public final class AppState: ObservableObject {
     @Published public var triggerShowMediaDetails: Bool = false
     @Published public var triggerFindBar: Bool = false
     @Published public var triggerPasteMarkdown: Bool = false
+    @Published public var triggerSave: Bool = false
+    @Published public var triggerPublish: Bool = false
+    @Published public var triggerPreview: Bool = false
+    @Published public var triggerRevert: Bool = false
+    @Published public var triggerRefresh: Bool = false
+
+    // Mirrored from PostEditorView so the File menu can enable its items; the editor is
+    // the only writer.
+    @Published public var editorIsDirty: Bool = false
+    @Published public var editorIsSaving: Bool = false
+    @Published public var editorPublishTitle: String = "Publish"
     @Published public var updateAvailable: UpdateInfo?
 
     public var aiEnabled: Bool {

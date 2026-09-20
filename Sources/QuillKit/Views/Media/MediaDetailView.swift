@@ -105,7 +105,7 @@ struct MediaDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
                 .onSubmit { commitAltText() }
                 .focused($altFieldFocused)
-                .onChange(of: altFieldFocused) { focused in
+                .onChange(of: altFieldFocused) { _, focused in
                     if !focused { commitAltText() }
                 }
             HStack {
@@ -124,7 +124,7 @@ struct MediaDetailView: View {
             }
             .frame(height: 14)
         }
-        .onChange(of: altTextDraft) { _ in
+        .onChange(of: altTextDraft) {
             altSaveState = .idle
         }
     }
