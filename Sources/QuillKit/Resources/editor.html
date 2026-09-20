@@ -3899,7 +3899,10 @@
           return flatten(tmp).trim()
         },
       },
-      onTransaction: () => updateToolbar(),
+      onTransaction: ({ transaction }) => {
+        if (transaction.docChanged || transaction.selectionSet) _toolbarIdle = false
+        updateToolbar()
+      },
       onCreate: () => {
         document.execCommand('enableObjectResizing', false, 'false')
         updateToolbar()
@@ -4937,6 +4940,9 @@
     const _embedBtn = document.getElementById('embed-button')
     const _footnoteBtn = document.getElementById('btn-footnote')
 
+    // The caret setContent leaves behind is not a selection the user made.
+    let _toolbarIdle = false
+
     // The site's own format-library.js composes the same single "noopener"
     // token core/button does, appended to whatever rel already says.
     _btnLinkNewTab.addEventListener('mousedown', e => {
@@ -4952,6 +4958,7 @@
     })
 
     function updateToolbar() {
+      if (_toolbarIdle) { _clearToolbarContext(); return }
       const inFootnote = _isInFootnote()
       _toggleBtns.forEach(([cmd, btn]) => {
         if (btn) btn.classList.toggle('active', editor.isActive(cmd))
@@ -5027,9 +5034,6 @@
       _embedBtn.disabled = inFootnote
       _footnoteBtn.disabled = inFootnote
       _updateSettingControls()
-      // Row 2 exists only while one of its groups does.
-      _row2.classList.toggle('visible',
-        _row2Groups.some(el => el && el.style.display !== 'none'))
       // Image alignment controls
       const selNode = editor.state.selection.node
       const selectedImage = selNode?.type.name === 'image' ? selNode : null
@@ -5046,7 +5050,31 @@
           btn.classList.remove('active')
         })
       }
+      // Row 2 exists only while one of its groups does.
+      _row2.classList.toggle('visible',
+        _row2Groups.some(el => el && el.style.display !== 'none'))
     }
+
+    function _clearToolbarContext() {
+      _toggleBtns.forEach(([, btn]) => { if (btn) btn.classList.remove('active') })
+      _buttonLinkBtn.classList.remove('active')
+      document.querySelectorAll('#image-align-controls button').forEach(btn => btn.classList.remove('active'))
+      headingCurrent.textContent = 'P'
+      headingButton.classList.remove('heading-active')
+      headingMenu.querySelectorAll('[data-heading-level]').forEach(item => {
+        item.classList.toggle('active', item.dataset.headingLevel === '0')
+      })
+      _row2Groups.forEach(el => { if (el) el.style.display = 'none' })
+      _row2.classList.remove('visible')
+      _undoBtn.disabled = !editor.can().undo()
+      _redoBtn.disabled = !editor.can().redo()
+    }
+
+    editor.on('focus', () => {
+      if (!_toolbarIdle) return
+      _toolbarIdle = false
+      updateToolbar()
+    })
 
     // ── Content change → Swift ─────────────────────────
     let debounce
@@ -5543,6 +5571,8 @@
       document.getElementById('editor-wrap').scrollTop = 0
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
       _postStats()
+      _toolbarIdle = true
+      updateToolbar()
     }
     window.openFindBar = _openFindBar
     window.getContent = () => codeViewActive

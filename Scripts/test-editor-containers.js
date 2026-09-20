@@ -790,6 +790,28 @@ describe('contextual toolbar row', () => {
     assert.deepEqual(shown(), [])
   })
 
+  test('loading a post whose last text is a link leaves the row hidden', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>See <a href="https://x.test">this</a></p>\n<!-- /wp:paragraph -->')
+    assert.equal(rowVisible(), false)
+    assert.deepEqual(shown(), [])
+    assert.equal(win.document.querySelector('[data-cmd="link"]').classList.contains('active'), false)
+  })
+
+  test('the row still appears once the caret is placed in that link', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>See <a href="https://x.test">this</a></p>\n<!-- /wp:paragraph -->')
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    assert.deepEqual(shown(), ['link-controls'])
+  })
+
+  test('the row clears when the caret leaves a selected image', () => {
+    win.setContent('<!-- wp:image -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt=""/></figure>\n<!-- /wp:image -->\n<!-- wp:paragraph -->\n<p>after</p>\n<!-- /wp:paragraph -->')
+    editor.commands.setNodeSelection(0)
+    assert.equal(rowVisible(), true)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    assert.equal(rowVisible(), false)
+    assert.deepEqual(shown(), [])
+  })
+
   test('the row appears for a container and names only that group', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertAccordion()
