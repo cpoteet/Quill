@@ -125,6 +125,7 @@ These two fail silently with the whole test suite green:
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**
 - **Background computer-use clicks do not reach the WKWebView's DOM handlers**
+- **Scripted clicks do not focus an `NSViewRepresentable` — only real `CGEvent` clicks do**
 - **Unicode curly quotes in Swift strings**
 
 ## Docs
