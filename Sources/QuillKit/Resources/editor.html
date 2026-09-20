@@ -5441,6 +5441,7 @@
         try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
         editor.commands.setTextSelection(0)
         editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
+        editor.commands.setTextSelection(0)
         _reportBlocksAtRisk(html)
       }
       document.getElementById('editor').style.display = ''
@@ -5572,6 +5573,9 @@
       // a stale one makes the replace drop incoming figure content.
       editor.commands.setTextSelection(0)
       editor.commands.setContent(wrapped || '', false)
+      // setContent maps the old caret into the new doc, and a landing next to an
+      // atom block becomes a NodeSelection that outlines it before any click.
+      editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
       document.getElementById('editor-wrap').scrollTop = 0
       clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered

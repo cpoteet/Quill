@@ -494,6 +494,33 @@ describe('gutenbergPassthrough - figure blocks and the rest of the document', ()
     assert.ok(!out.includes('data-quill-passthrough'), 'marker attributes do not leak into saved HTML')
   })
 
+  test('loading a post that ends with a passthrough leaves no node selected', () => {
+    win.setContent(
+      '<!-- wp:paragraph --><p>Subscribe to this blog via newsletter.</p><!-- /wp:paragraph -->\n' +
+      '<!-- wp:jetpack/subscriptions /-->'
+    )
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(editor.state.selection.node, undefined, 'no NodeSelection after load')
+    assert.equal(win.document.querySelectorAll('.passthrough-card.selected').length, 0)
+  })
+
+  test('exiting code view after an edit leaves no node selected', () => {
+    win.setContent(
+      '<!-- wp:paragraph --><p>Subscribe to this blog via newsletter.</p><!-- /wp:paragraph -->\n' +
+      '<!-- wp:jetpack/subscriptions /-->'
+    )
+    const toggle = win.document.getElementById('btn-code-view')
+    toggle.dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    const ta = win.document.getElementById('code-editor')
+    ta.value = ta.value.replace('Subscribe to this blog via newsletter.', 'Sub.')
+    ta.dispatchEvent(new win.Event('input', { bubbles: true }))
+    toggle.dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+
+    assert.equal(nodesOfType('gutenbergPassthrough').length, 1)
+    assert.equal(editor.state.selection.node, undefined, 'no NodeSelection after code view')
+    assert.equal(win.document.querySelectorAll('.passthrough-card.selected').length, 0)
+  })
+
   test('a classic figure with no wp-block class still parses as an image', () => {
     // The new figure rule selector is [class*="wp-block-"]; classic-editor
     // markup has no such class and must keep reaching the bare img[src] rule.
