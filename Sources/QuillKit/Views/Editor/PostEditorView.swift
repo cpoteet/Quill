@@ -301,26 +301,43 @@ public struct PostEditorView: View {
             ToolbarSpacer(.flexible)
             ToolbarItemGroup {
                 if !isRemote {
-                    Button("Save Draft") { Task { await saveDraft() } }
-                        .disabled(isSaving)
+                    Button { Task { await saveDraft() } } label: {
+                        Image(systemName: "tray.and.arrow.down")
+                    }
+                    .help("Save Draft")
+                    .accessibilityLabel("Save Draft")
+                    .disabled(isSaving)
                 }
                 if isRemote && isDirty {
-                    Button("Revert") { showDiscardAlert = true }
+                    Button { showDiscardAlert = true } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                    }
+                    .help("Revert")
+                    .accessibilityLabel("Revert")
                 }
                 if isRemote {
-                    Button("Preview") { Task { await openPreview() } }
-                        .disabled(isSaving)
+                    Button { Task { await openPreview() } } label: {
+                        Image(systemName: "eye")
+                    }
+                    .help("Preview")
+                    .accessibilityLabel("Preview")
+                    .disabled(isSaving)
                 }
-            }
-            ToolbarSpacer(.fixed)
-            ToolbarItem {
-                Button { Task { await publish() } } label: {
-                    // cancels the wider insets an explicit buttonStyle forces in a toolbar
-                    Text(publishButtonTitle).padding(.horizontal, -11.5)
+                // Guarded rather than .disabled(isSaving): the disabled style washes the
+                // button out for the whole round-trip, which reads as broken.
+                Button {
+                    guard !isSaving else { return }
+                    Task { await publish() }
+                } label: {
+                    if isSaving {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                    }
                 }
-                .buttonStyle(.glassProminent)
+                .help(isSaving ? "Saving…" : publishButtonTitle)
+                .accessibilityLabel(publishButtonTitle)
                 .keyboardShortcut("p", modifiers: [.command, .shift])
-                .disabled(isSaving)
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
