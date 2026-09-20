@@ -114,7 +114,7 @@ The sidebar organizes your content into four sections, selectable via tabs at th
 - **Drafts:** Lists local drafts saved only on your Mac, not yet published or synced to WordPress.
 - **Media:** Switches the sidebar to a list of filters (All Media, Images, Documents, Audio, Video) and shows your library as a gallery in the main panel, most recently uploaded first.
 
-Click any post, page, draft, or media item to open it in the editor or detail view. Right-click a post or page for the option to move it to trash.
+Click any post, page, or draft to open it in the editor; click a media item to select it. Right-click a post or page for the option to move it to trash. The search field above the list filters the current section — including Media, which searches your library by filename and title.
 
 To hide the sidebar and maximize writing space, click the **sidebar icon** at the left of the window toolbar. Click it again to bring the sidebar back.
 
@@ -137,6 +137,7 @@ The window **toolbar** runs across the top. Its left side belongs to the sidebar
 | Preview | Right | Opens the post's preview URL in your browser (remote posts only) |
 | Publish | Right | Publishes or updates the post on your WordPress site |
 | Post Settings | Right | Shows or hides the right-side settings panel |
+| Media Info | Right | Replaces Post Settings while the Media section is open; shows or hides the details inspector |
 
 The buttons are icons; hover any of them for a label. A status symbol beside the title field shows the current state (Draft, Published, Scheduled, and so on).
 
@@ -146,7 +147,7 @@ Every editor action also has a menu item: **File → Save** (⌘S), **Publish** 
 
 ### The Settings Panel
 
-The settings panel slides in from the right when you click the settings toggle in the toolbar. It contains publishing options for the current post or page, including status, scheduling, categories, tags, slug, excerpt, discussion settings, and a word count summary. Page-specific options include parent page selection. See [Post & Page Settings](#post--page-settings) for full details.
+The settings panel opens as an inspector on the right when you click **Post Settings** in the window toolbar. It contains publishing options for the current post or page, including status, scheduling, categories, tags, slug, excerpt, discussion settings, and a word count summary. Page-specific options include parent page selection. See [Post & Page Settings](#post--page-settings) for full details.
 
 ### Empty State
 
@@ -552,7 +553,7 @@ URLs from providers not listed above are saved as generic embeds. WordPress atte
 
 ## Post & Page Settings
 
-Click the settings toggle at the right end of the editor toolbar to open the settings panel. It slides in from the right and contains all publishing options for the current post or page.
+Click **Post Settings** at the right end of the window toolbar to open the settings panel. It opens as an inspector on the right of the window and contains all publishing options for the current post or page. The same slot is shared with the Evaluation panel, so opening one replaces the other.
 
 Changes made in the settings panel take effect when you next save or publish the post. They are not sent to WordPress automatically as you adjust them.
 
@@ -618,17 +619,30 @@ The Media Library gives you access to all files uploaded to your WordPress site.
 
 ### Browsing
 
-Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to select it and open the inspector on the right; press Space or double-click to open a large preview. Arrow keys move the selection.
+Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a generic file icon. Click any item to select it; press Space or double-click to open a large preview. Arrow keys move the selection.
 
 The grid loads more items as you scroll. There is no button to press — keep scrolling and the next page appends at the bottom.
 
-The sidebar filters narrow the grid to one kind of file. **Documents** covers PDFs and office files; plain-text files such as `.txt` and `.csv` are not listed there, and you'll find them under **All Media**.
+The sidebar filters narrow the grid to one kind of file. **Documents** covers PDFs and office files; plain-text files such as `.txt` and `.csv` are not listed there, and you'll find them under **All Media**. The search field above the filters searches within the active filter, so clear the search or switch to All Media if a file you expect is missing.
 
-### Detail View
+Right-click any item for:
 
-Clicking a media item opens a two-panel detail view: a large preview on the left and a metadata panel on the right.
+| Item | Action |
+|---|---|
+| Show Details | Opens the inspector on that item |
+| Copy URL | Copies the file's URL to the clipboard |
+| Open in Browser | Opens the item's WordPress attachment page (hidden when the item has no link) |
+| Delete… | Permanently deletes the file from WordPress — see [Deleting Media](#deleting-media) |
 
-The metadata panel shows:
+### Previewing
+
+Press **Space** or double-click a selected item to open a large preview over the gallery. Press **Space** again, press **Escape**, or click the background to dismiss it. Previews are shown for images; other file types display a placeholder.
+
+### Item Details
+
+Selecting an item does not open its details on its own. To see them, click **Media Info** at the right of the window toolbar, or right-click the item and choose **Show Details**. Either opens an inspector on the right of the window, which tracks whatever is selected until you close it.
+
+The inspector shows:
 
 | Field | Description |
 |---|---|
@@ -639,7 +653,7 @@ The metadata panel shows:
 | Uploaded | The date the file was uploaded |
 | URL | The full URL of the file, with a copy button |
 
-**Alt text** can be edited directly in the detail panel. Press **Return** or click away from the field to save the change to WordPress.
+**Alt text** can be edited directly in the inspector. Press **Return** or click away from the field to save the change to WordPress.
 
 ### Uploading
 
@@ -648,7 +662,7 @@ To upload new media:
 - Click **New Media** in the toolbar, or
 - Use **File → New Media** (⌘⌥N) from anywhere in the app.
 
-Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and its detail view opens automatically.
+Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and is selected; open **Media Info** if you want to see its details.
 
 If a filter is active that doesn't cover the file you just uploaded — uploading a PDF while **Images** is selected, say — the view switches to **All Media** so the new item is still in front of you.
 
@@ -706,7 +720,7 @@ If the generated content is long and hits an initial length limit, a **Post may 
 
 Click the **checkmark-circle icon** in the editor toolbar to evaluate the current post or page. The editor must contain at least around 100 words for evaluation to be available.
 
-Quill sends the full content to Claude and displays an **Evaluation panel** on the right side of the editor. The panel shows:
+Quill sends the full content to Claude and displays an **Evaluation panel** in the inspector on the right of the window. It shares that slot with Post Settings, so opening the evaluation replaces the settings panel. The panel shows:
 
 - A short prose **summary** of the overall writing quality
 - A list of specific **findings**, each tagged with a category (Grammar, Clarity, Readability, Wordiness, Passive Voice, or Tone) and an optional suggested rewrite
@@ -717,7 +731,7 @@ Quill sends the full content to Claude and displays an **Evaluation panel** on t
 
 **Style awareness:** If you have configured a writing style guide using sample posts (see Writing Style above), Claude uses it during evaluation to distinguish your intentional voice from genuine issues. Stylistic choices consistent with your established writing are not flagged.
 
-The checkmark-circle button is highlighted while the evaluation panel is open and is disabled while an evaluation is running.
+The checkmark-circle button is highlighted while the evaluation panel is open and is disabled while an evaluation is running. The panel has no close button of its own — click **Post Settings** in the window toolbar to close the inspector, and again to bring the settings back.
 
 ### In-Editor AI Operations
 
@@ -748,6 +762,7 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 | ⌘⇧N | New Page |
 | ⌘⌥N | New Media upload |
 | ⌘, | Open Settings |
+| ⌘R | Refresh the current section |
 | ⌘F | Open Find & Replace |
 
 ### Editor
@@ -770,6 +785,15 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 | ⌘⇧V | Paste as Markdown |
 | Esc | Step out of the block the cursor is in |
 | ⌘⇧⌫ | Delete the block the cursor is in |
+
+### Media Library
+
+| Shortcut | Action |
+|---|---|
+| ← → ↑ ↓ | Move the selection in the gallery |
+| Space | Open or close the large preview |
+| Esc | Close the preview |
+| ⌘⌥N | Upload a new file |
 
 ### Find & Replace
 
