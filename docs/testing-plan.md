@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-20 — 451 Swift tests + 1,213 JS tests (1,212 pass, 1 skipped), no failures._
+_Last updated: 2026-09-20 — 455 Swift tests + 1,215 JS tests (1,214 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,13 +16,13 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (451 tests)
+1. **Swift tests** — `swift test` (455 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
 3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
 5. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
 6. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
-7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (270 tests — live Tiptap editor in jsdom)
+7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 8. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (36 tests — live Tiptap editor in jsdom)
 9. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (36 tests — live Tiptap editor in jsdom)
 10. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (451 tests, 32 suites)
+## Swift test suite (455 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -95,7 +95,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 51 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text, streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 53 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -104,7 +104,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 5 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, drafts and autosaves independent |
 | 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 79 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
-| 14 | `PostItemTests` | `AppStateTests.swift` | 10 | `PostItem.id`, `.title`, `.statusBadge` computed properties |
+| 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
@@ -117,7 +117,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
 | 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 8 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact |
 | 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt` — the Swift half of the AI output validity suite |
-| 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 3 | `MediaFilter` → WordPress `media_type` parameter mapping, and that every filter has a title and an icon |
+| 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
@@ -245,14 +245,14 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (51 tests)
+### 5. Networking — `WordPressClientTests` (53 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 `@Suite(.serialized)` — runs sequentially because `MockURLProtocol.requestHandler` is a shared static. Uses `URLSessionConfiguration.ephemeral` with `MockURLProtocol` as the protocol class.
 
-#### URL & request construction (13 tests)
+#### URL & request construction (15 tests)
 
 | Test | What it checks |
 |---|---|
@@ -275,6 +275,8 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `uploadMediaEscapesQuotesInContentDispositionFilename` | End-to-end: quoted filename with `"` produces valid `Content-Disposition` header |
 | `uploadMediaStreamsFromFileNotHttpBody` | `uploadMedia(fileURL:)` uses `URLSession.upload(fromFile:)`, not `httpBody` (streaming regression guard) |
 | `fetchMediaItemHitsCorrectEndpointWithEditContext` | `GET /media/{id}?context=edit`, returns decoded `WPMedia` |
+| `fetchMediaSendsTheRequestedPageAndPageSize` | `page`, `per_page` and `media_type` parsed back out of the query with `URLComponents` — `GallerySheet.loadMoreMedia` loops until a page holds an image, so a dropped page parameter never terminates |
+| `fetchMediaOmitsOffsetUnlessAsked` | no `offset` key unless one is passed; a passed offset reaches the query beside `per_page` — the paging mode `MediaLibraryView` depends on |
 | `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
 | `updateMediaAltTextBodyContainsAltText` | Request body has `{"alt_text":"…"}` |
 | `updateMediaAltTextReturnsDecodedMedia` | Response decoded into `WPMedia` |
@@ -659,7 +661,7 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 
 ---
 
-### 14. View-model — `PostItemTests` (10 tests)
+### 14. View-model — `PostItemTests` (11 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -675,6 +677,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `remoteStatusBadgeIsPostStatus` | `post.status` (e.g. `"draft"`) used directly |
 | `localPostStatusBadgeIsLocalPost` | `type="post"` → `"local-post"` |
 | `localPageStatusBadgeIsLocalPage` | `type="page"` → `"local-page"` |
+| `onlyARemoteItemReportsItselfAsRemote` | `.isRemote` true for a remote post, false for a local draft — the sole gate on File → Revert to Saved… and Preview in Browser |
 
 ### 15. View-model — `SidebarSectionTests` (8 tests)
 
@@ -1899,7 +1902,7 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 
 ---
 
-## JS container tests (270 tests)
+## JS container tests (275 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2014,7 +2017,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `the insert button is a labelled pill like the heading dropdown` | A text label plus exactly one chevron SVG — no icon glyph |
 | `the menu closes after an insertion` | The `visible` class is dropped once a block is inserted |
 
-### `contextual toolbar row` (8 tests)
+### `contextual toolbar row` (13 tests)
 
 | Test | What it checks |
 |---|---|
@@ -2022,6 +2025,8 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `the row is hidden in ordinary prose` | Not visible, and no group is shown |
 | `the row appears for a container and names only that group` | An accordion shows `accordion-controls` and nothing else |
 | `the row disappears again when the cursor leaves` | Moving to a paragraph hides the row |
+| `a load leaves the heading indicator neutral even when the post opens on a heading` | `_clearToolbarContext` resets the heading indicator to `P` on load — the one part of the reset row 2 cannot see |
+| `placing the caret in that heading restores the indicator` | The same indicator reads `H2` and lights up once the caret is inside the heading |
 | `nested containers show both groups at once` | A button inside a column reveals both `buttons-controls` and `columns-controls` |
 | `the main toolbar keeps the groups that are not cursor-contextual` | The AI group and the insert menu stay in row 1 |
 
@@ -2732,6 +2737,7 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 - [ ] Edit a local draft → the window's close button shows the standard unsaved-changes dot. Save it (⌘S) → the dot clears.
 - [ ] Edit a remote post → the same dot appears, and clears on Update.
 - [ ] Switch from a dirty post to a clean one → the dot clears rather than sticking to the window.
+- [ ] Edit a post, then click the Media section without saving → the dot clears as the editor closes. SwiftUI can detach the marker view before it is dismantled, so a teardown that reads `nsView.window` finds nothing and leaves the dot lit with no editor open.
 - [ ] Rapidly switch between several posts → no autosave data from one post appears in another; no crashes.
 - [ ] Quit the app with unsaved local-draft edits → relaunch → the edits are recovered.
 - [ ] Open a remote post, make edits → a "Revert" button appears in the editor header. Click it → a "Revert to Server Version?" dialog appears.
@@ -2990,14 +2996,17 @@ human is required.
 - [ ] Typing a space in the search field does NOT open the preview.
 - [ ] Scrolling to the bottom loads the next page.
 - [ ] **A first page that fits the window still pages.** Make the window tall enough (or wide enough) that all 30 thumbnails are visible with no scrollbar → page 2 loads anyway. Paging hangs off the last cell being displayed, not off scrolling, so an unscrollable first page must not strand the library at 30 items.
-- [ ] Each filter returns the right items; Documents covers PDFs but not `.txt`.
+- [ ] Each filter returns the right items; Documents covers PDFs but not `.txt` — a `.txt`/`.csv`/`.vtt` file appears under All Media only (WordPress's `media_type` takes one value; see `docs/gotchas.md`).
 - [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
 - [ ] The toolbar New Media button opens the file picker and does NOT create a post.
 - [ ] File → New Media (⌘⌥N) opens the same file picker.
 - [ ] Right-clicking a thumbnail selects it and offers Copy URL, Open in Browser, Delete.
 - [ ] Deleting removes the thumbnail and clears the selection.
+- [ ] **Paging survives a local change.** Delete an item, then scroll to the bottom → the next page continues from where the grid ends, with nothing skipped. Upload an item, then scroll to the bottom → nothing appears twice. Paging sends an offset taken from the item count, so both cases self-correct; a page number would not.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
+- [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
+- [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
 - [ ] No bottom button strip remains, and there is exactly one Refresh and one New button.
 - [ ] The gallery renders correctly in light and in dark appearance. Judge colour from a native-resolution screenshot, not a downsampled one.
 
@@ -3168,6 +3177,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 138 | The banner blocked saving even on an untouched post, which saves `_rawHTML` back byte-for-byte and cannot lose anything — the user had to click through a content-deletion warning for a lossless save. `alarmBlocksSaving` adds `htmlContent != cleanContent` | 👁 §7.22 — same view-state limit |
 | 139 | Repairing a post in code view left saving blocked until it was reopened, because the editor only reported a non-empty at-risk list. It reports on every load and code-view edit now, empty included, and `nextAlarm` clears or preserves the stage | ✅ `BlockRiskAlarmTests.anEmptyReportClearsTheAlarm` + 3 more, `test-editor-preservation.js` `'a code-view edit that loses a block is reported'` + 👁 §7.22 |
 | 140 | `--check-fixtures` with no path silently launched the GUI instead of running the fixture check | ✅ manual: `./Quill.app/Contents/MacOS/Quill --check-fixtures` prints a usage line and exits 2 |
+| 141 | Media paging ran off a page cursor, so a local upload or delete shifted the server's rows under it — the next page repeated an item or skipped one. `MediaLibraryView.loadMoreMedia` sends `offset: appState.mediaItems.count` instead, because the local count *is* the window into the server's filtered list | ✅ `WordPressClientTests.fetchMediaOmitsOffsetUnlessAsked` + `fetchMediaSendsTheRequestedPageAndPageSize` + 👁 §7.x |
+| 142 | An upload made under a filter that excludes it was inserted into `mediaItems` anyway, so it was invisible and it desynced the paging offset. `MediaFilter.matches(_:)` now mirrors `mediaTypeParameter`, and a non-matching upload switches the filter to All Media | ✅ `MediaFilterTests.matchesAcceptsOnlyWhatTheServerFilterWouldReturn` + 👁 §7.x |
+| 143 | `DocumentEditedMarker.dismantleNSView` cleared the dot through `nsView.window`, which is already nil whenever SwiftUI detached the view first — the window's unsaved-changes dot stayed lit with no editor open. `MarkerView` holds a `weak var markedWindow` and clears through that | 👁 §7.9 — `NSViewRepresentable` teardown has no test harness |
+| 144 | The heading indicator kept the last post's level after a load, because `_clearToolbarContext` — the reset that runs in place of `updateToolbar` while `_toolbarIdle` is set — is the only path that touches it | ✅ `test-editor-containers.js` `'a load leaves the heading indicator neutral even when the post opens on a heading'` + `'placing the caret in that heading restores the indicator'` |
+| 145 | Two overlapping uploads shared `isUploading`, so the second's completion cleared the spinner while the first was still running. `MediaLibraryView` chains them through a `uploadTask` awaiting the previous one, the same pattern as `PostEditorView`'s `dropTask` | 👁 §7.x — SwiftUI view state with no harness |
 
 ---
 

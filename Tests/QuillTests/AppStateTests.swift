@@ -65,6 +65,12 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
     @Test func localPageStatusBadgeIsLocalPage() {
         #expect(PostItem.local(makeDraft(type: "page")).statusBadge == "local-page")
     }
+
+    // The File menu enables Revert and Preview off this flag alone.
+    @Test func onlyARemoteItemReportsItselfAsRemote() throws {
+        #expect(try PostItem.remote(makePost()).isRemote)
+        #expect(PostItem.local(makeDraft()).isRemote == false)
+    }
 }
 
 // MARK: - SidebarSection

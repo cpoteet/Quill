@@ -812,6 +812,21 @@ describe('contextual toolbar row', () => {
     assert.deepEqual(shown(), [])
   })
 
+  // _clearToolbarContext resets the heading indicator, the one part of it row 2 cannot see.
+  test('a load leaves the heading indicator neutral even when the post opens on a heading', () => {
+    win.setContent('<!-- wp:heading -->\n<h2>Chapter One</h2>\n<!-- /wp:heading -->')
+    const current = win.document.getElementById('heading-current')
+    assert.equal(current.textContent, 'P')
+    assert.equal(win.document.getElementById('heading-button').classList.contains('heading-active'), false)
+  })
+
+  test('placing the caret in that heading restores the indicator', () => {
+    win.setContent('<!-- wp:heading -->\n<h2>Chapter One</h2>\n<!-- /wp:heading -->')
+    editor.commands.setTextSelection(2)
+    assert.equal(win.document.getElementById('heading-current').textContent, 'H2')
+    assert.equal(win.document.getElementById('heading-button').classList.contains('heading-active'), true)
+  })
+
   test('the row appears for a container and names only that group', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertAccordion()

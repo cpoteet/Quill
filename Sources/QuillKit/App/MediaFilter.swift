@@ -39,4 +39,10 @@ public enum MediaFilter: String, CaseIterable, Identifiable, Sendable {
         case .video: return "video"
         }
     }
+
+    /// Mirrors `mediaTypeParameter`, so a local insert lands in the set a reload would return.
+    public func matches(_ media: WPMedia) -> Bool {
+        guard let mediaTypeParameter else { return true }
+        return media.mediaType == mediaTypeParameter
+    }
 }

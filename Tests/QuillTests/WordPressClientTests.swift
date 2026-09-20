@@ -891,4 +891,52 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(query.contains("media_type=") == false)
         #expect(query.contains("search=") == false)
     }
+
+    // GallerySheet loops until a page holds an image; a dropped `page` never terminates.
+    @Test func fetchMediaSendsTheRequestedPageAndPageSize() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200,
+                                    httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        func value(_ name: String) -> String? {
+            guard let url = capturedRequest?.url else { return nil }
+            return URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == name }?.value
+        }
+
+        _ = try await client.fetchMedia(page: 1, perPage: 30)
+        #expect(value("page") == "1")
+        #expect(value("per_page") == "30")
+
+        _ = try await client.fetchMedia(page: 4, perPage: 30, mediaType: "image")
+        #expect(value("page") == "4")
+        #expect(value("per_page") == "30")
+        #expect(value("media_type") == "image")
+    }
+
+    // MediaLibraryView pages by offset because it mutates its own window.
+    @Test func fetchMediaOmitsOffsetUnlessAsked() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200,
+                                    httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        func value(_ name: String) -> String? {
+            guard let url = capturedRequest?.url else { return nil }
+            return URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == name }?.value
+        }
+
+        _ = try await client.fetchMedia(perPage: 30)
+        #expect(value("offset") == nil)
+
+        _ = try await client.fetchMedia(perPage: 30, offset: 29)
+        #expect(value("offset") == "29")
+        #expect(value("per_page") == "30")
+    }
 }

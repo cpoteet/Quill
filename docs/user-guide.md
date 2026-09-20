@@ -622,6 +622,8 @@ Images appear as thumbnails. Non-image files (PDFs, documents, etc.) show a gene
 
 The grid loads more items as you scroll. There is no button to press — keep scrolling and the next page appends at the bottom.
 
+The sidebar filters narrow the grid to one kind of file. **Documents** covers PDFs and office files; plain-text files such as `.txt` and `.csv` are not listed there, and you'll find them under **All Media**.
+
 ### Detail View
 
 Clicking a media item opens a two-panel detail view: a large preview on the left and a metadata panel on the right.
@@ -647,6 +649,8 @@ To upload new media:
 - Use **File → New Media** (⌘⌥N) from anywhere in the app.
 
 Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and its detail view opens automatically.
+
+If a filter is active that doesn't cover the file you just uploaded — uploading a PDF while **Images** is selected, say — the view switches to **All Media** so the new item is still in front of you.
 
 HEIC photos are converted to JPEG automatically before they're sent to WordPress. WordPress accepts HEIC files but can't produce thumbnail and preview sizes from them, so an unconverted HEIC would appear in your media library with no dimensions and no resized versions. Conversion happens on your Mac, keeps the photo's full resolution and orientation, and leaves the original file on disk untouched. It applies wherever you upload: the Media sidebar, the image picker, the gallery picker, and drag-and-drop onto the editor. Other formats (JPEG, PNG, GIF, WebP, PDF, and so on) are uploaded as-is.
 

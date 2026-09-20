@@ -110,15 +110,18 @@ public struct WordPressClient: Sendable {
 
     // MARK: - Media
 
+    /// `offset` overrides `page` server-side, for paging a window the client itself mutates.
     public func fetchMedia(
         page: Int = 1,
         perPage: Int = 50,
         mediaType: String? = nil,
-        search: String? = nil
+        search: String? = nil,
+        offset: Int? = nil
     ) async throws -> [WPMedia] {
         var query = ["per_page": "\(perPage)", "page": "\(page)", "context": "edit"]
         if let mediaType, !mediaType.isEmpty { query["media_type"] = mediaType }
         if let search, !search.isEmpty { query["search"] = search }
+        if let offset { query["offset"] = "\(offset)" }
         let url = try endpoint("media", query: query)
         return try await get(url)
     }

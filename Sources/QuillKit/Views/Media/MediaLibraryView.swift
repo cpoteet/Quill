@@ -5,9 +5,9 @@ import UniformTypeIdentifiers
 struct MediaLibraryView: View {
     @EnvironmentObject private var appState: AppState
 
-    @State private var currentPage = 1
     @State private var hasMore = false
     @State private var isLoadingMore = false
+    @State private var uploadTask: Task<Void, Never>?
     @State private var isUploading = false
     @State private var previewedMedia: WPMedia?
     @State private var mediaPendingDelete: WPMedia?
@@ -140,7 +140,6 @@ extension MediaLibraryView {
         }
         if appState.mediaItems.isEmpty { appState.isLoadingMedia = true }
         appState.mediaError = nil
-        currentPage = 1
         do {
             let items = try await WordPressClient(credentials: creds)
                 .fetchMedia(page: 1,
@@ -167,15 +166,15 @@ extension MediaLibraryView {
         guard hasMore, !isLoadingMore, let creds = appState.credentials else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        let nextPage = currentPage + 1
+        // Offset, not a page: a local insert or delete makes a page cursor skip or repeat one.
+        let offset = appState.mediaItems.count
         do {
             let items = try await WordPressClient(credentials: creds)
-                .fetchMedia(page: nextPage,
-                            perPage: perPage,
+                .fetchMedia(perPage: perPage,
                             mediaType: appState.mediaFilter.mediaTypeParameter,
-                            search: appState.mediaSearchText)
+                            search: appState.mediaSearchText,
+                            offset: offset)
             appState.mediaItems.append(contentsOf: items)
-            currentPage = nextPage
             hasMore = items.count == perPage
         } catch is CancellationError {
         } catch {
@@ -230,7 +229,10 @@ extension MediaLibraryView {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }
         isUploading = true
-        Task {
+        // Serialized: overlapping uploads share `isUploading` — see the drop queue in PostEditorView.
+        let previous = uploadTask
+        uploadTask = Task {
+            await previous?.value
             defer { isUploading = false }
             do {
                 // Off the main actor — see the same call in PostEditorView.
@@ -244,7 +246,12 @@ extension MediaLibraryView {
                         filename: prepared.filename,
                         mimeType: prepared.mimeType
                     )
-                appState.mediaItems.insert(uploaded, at: 0)
+                // An item the filter excludes would also desync the count the offset paging uses.
+                if appState.mediaFilter.matches(uploaded) {
+                    appState.mediaItems.insert(uploaded, at: 0)
+                } else {
+                    appState.mediaFilter = .all
+                }
                 appState.selectedMedia = uploaded
             } catch {
                 uploadError = error.localizedDescription

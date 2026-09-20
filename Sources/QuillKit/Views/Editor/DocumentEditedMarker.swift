@@ -13,11 +13,14 @@ struct DocumentEditedMarker: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
-        nsView.window?.isDocumentEdited = false
+        (nsView as? MarkerView)?.clearMark()
     }
 }
 
 private final class MarkerView: NSView {
+    // Dismantle can run after SwiftUI has detached the view, when `window` is already nil.
+    private weak var markedWindow: NSWindow?
+
     var isEdited = false {
         didSet { apply() }
     }
@@ -27,8 +30,15 @@ private final class MarkerView: NSView {
         apply()
     }
 
+    func clearMark() {
+        guard let target = window ?? markedWindow, target.isDocumentEdited else { return }
+        target.isDocumentEdited = false
+    }
+
     private func apply() {
-        guard let window, window.isDocumentEdited != isEdited else { return }
+        guard let window else { return }
+        markedWindow = window
+        guard window.isDocumentEdited != isEdited else { return }
         window.isDocumentEdited = isEdited
     }
 }
