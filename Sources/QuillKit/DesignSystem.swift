@@ -26,10 +26,10 @@ func statusSymbol(_ badge: String) -> String {
     switch badge {
     case "publish":    return "checkmark.circle.fill"
     case "draft":      return "pencil.circle.fill"
-    case "future":     return "clock.fill"
+    case "future":     return "clock.circle.fill"
     case "pending":    return "exclamationmark.circle.fill"
-    case "private":    return "lock.fill"
-    case "local-post", "local-page": return "internaldrive.fill"
+    case "private":    return "lock.circle.fill"
+    case "local-post", "local-page": return "tray.circle.fill"
     default:           return "circle.fill"
     }
 }

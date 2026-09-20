@@ -299,13 +299,6 @@ public struct PostEditorView: View {
         }
         .navigationTitle(title.isEmpty ? "Untitled" : title)
         .toolbar {
-            ToolbarItem {
-                Image(systemName: statusSymbol(statusKey))
-                    .foregroundStyle(Color.statusColor(statusKey))
-                    .help(statusBadgeLabel)
-                    .accessibilityLabel("Status: \(statusBadgeLabel)")
-            }
-            .sharedBackgroundVisibility(.hidden)
             ToolbarItemGroup {
                 if !isRemote {
                     Button("Save Draft") { Task { await saveDraft() } }
@@ -400,7 +393,20 @@ public struct PostEditorView: View {
     }
 
     private var editorHeader: some View {
-        titleField
+        HStack(spacing: 10) {
+            statusIcon
+            titleField
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var statusIcon: some View {
+        Image(systemName: statusSymbol(statusKey))
+            .font(.system(size: 18))
+            .foregroundStyle(Color.statusColor(statusKey))
+            .help(statusBadgeLabel)
+            .accessibilityLabel("Status: \(statusBadgeLabel)")
     }
 
     private var statusBadgeLabel: String {
@@ -507,8 +513,6 @@ public struct PostEditorView: View {
             nsFont: .systemFont(ofSize: 22, weight: .semibold)
         )
         .frame(height: 28)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
         .onChange(of: title) { _ in scheduleAutosave() }
     }
 
