@@ -22,7 +22,7 @@ Runs everything — 435 Swift + 1,207 JS tests, all passing as of 2026-09-20 (1,
 
 **The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. Needs a current `./build.sh`.
 
-Requirements: Swift 6.3.1, macOS 27, and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
+Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
 **Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
 
@@ -32,6 +32,7 @@ Requirements: Swift 6.3.1, macOS 27, and `node` + `jsdom` installed in **`Script
 - **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`). To update Tiptap at any time, just tell Claude "check for new versions of Tiptap" — Claude will check the latest release, update the version in the script if needed, regenerate the bundle, update `editor.html` and `CLAUDE.md`, and rebuild.
 - **API:** WordPress REST API with Application Passwords (no plugin required)
 - **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
+- **Accent:** Quill owns its accent (amber `#C77700` light / `#BF801E` dark) via `Assets.xcassets` + `NSAccentColorName`, *not* a SwiftUI `.tint()` — `List` selection reads the bundle's accent and ignores the view tree, so a `.tint()` recolours the buttons and leaves the sidebar blue. macOS honours this only while the user's system accent is "Multicolor".
 - **URLSession:** Always use `URLSessionConfiguration.ephemeral` (default in `WordPressClient`) — prevents URLSession from touching the system keychain credential store
 
 ## Future architecture options
