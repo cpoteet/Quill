@@ -87,19 +87,21 @@ public struct EvaluationPanel: View {
                 SectionLabel(countLabel)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, result.findings.isEmpty ? 12 : 8)
+                    .padding(.bottom, result.findings.isEmpty ? 12 : 4)
 
                 if !result.findings.isEmpty {
-                    VStack(spacing: 8) {
-                        ForEach(Array(result.findings.enumerated()), id: \.offset) { _, finding in
-                            EvaluationFindingCard(
+                    VStack(spacing: 0) {
+                        ForEach(Array(result.findings.enumerated()), id: \.offset) { index, finding in
+                            if index > 0 {
+                                Divider().padding(.leading, 16)
+                            }
+                            EvaluationFindingRow(
                                 finding: finding,
                                 onTap: { onFindingSelected(finding.anchor ?? finding.quote) }
                             )
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 4)
                 }
 
                 Divider()
@@ -127,16 +129,18 @@ public struct EvaluationPanel: View {
     }
 }
 
-private struct EvaluationFindingCard: View {
+private struct EvaluationFindingRow: View {
     let finding: EvaluationFinding
     let onTap: () -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(finding.issue.uppercased())
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.secondary)
                     .tracking(0.5)
                 Text("\"\(finding.quote)\"")
                     .font(.subheadline)
@@ -151,9 +155,12 @@ private struct EvaluationFindingCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(isHovering ? Color.primary.opacity(0.06) : .clear)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
     }
 }
