@@ -29,21 +29,30 @@ public struct SidebarView: View {
                 .help("Refresh (\u{2318}R)")
                 .accessibilityLabel("Refresh")
 
-                if appState.selectedSection != .localDrafts {
-                    Button {
-                        if appState.selectedSection == .media {
-                            appState.triggerMediaUpload = true
-                        } else {
-                            createNewDraft()
-                        }
-                    } label: {
-                        Image(systemName: appState.selectedSection == .media
-                              ? "arrow.up.doc" : "square.and.pencil")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
-                    .help("\(newButtonTitle) (\u{2318}N)")
-                    .accessibilityLabel(newButtonTitle)
+                Button {
+                    appState.createNewDraft(type: "post", draftStore: services.draftStore)
+                } label: {
+                    Image(systemName: "note.text.badge.plus")
                 }
+                .help("New Post (\u{2318}N)")
+                .accessibilityLabel("New Post")
+
+                Button {
+                    appState.createNewDraft(type: "page", draftStore: services.draftStore)
+                } label: {
+                    Image(systemName: "book.badge.plus")
+                }
+                .help("New Page (\u{21E7}\u{2318}N)")
+                .accessibilityLabel("New Page")
+
+                Button {
+                    appState.selectedSection = .media
+                    appState.triggerMediaUpload = true
+                } label: {
+                    Image(systemName: "photo.badge.plus")
+                }
+                .help("New Media (\u{2325}\u{2318}N)")
+                .accessibilityLabel("New Media")
             }
         }
         .alert(
@@ -164,20 +173,6 @@ public struct SidebarView: View {
         }
         .font(.subheadline)
         .padding(.vertical, 2)
-    }
-
-    private var newButtonTitle: String {
-        switch appState.selectedSection {
-        case .posts: return "New Post"
-        case .pages: return "New Page"
-        case .localDrafts: return "New Draft"
-        case .media: return "New Media"
-        }
-    }
-
-    func createNewDraft() {
-        let type = appState.selectedSection == .pages ? "page" : "post"
-        appState.createNewDraft(type: type, draftStore: services.draftStore)
     }
 
     private func loadAllSections() async {
