@@ -1,39 +1,38 @@
-import AppKit
 import SwiftUI
 
-struct SidebarSectionPicker: NSViewRepresentable {
+struct SidebarSectionPicker: View {
     @Binding var selection: SidebarSection
 
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(
-            labels: SidebarSection.allCases.map(\.shortTitle),
-            trackingMode: .selectOne,
-            target: context.coordinator,
-            action: #selector(Coordinator.selectionChanged(_:))
-        )
-        control.segmentDistribution = .fillEqually
-        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        control.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return control
-    }
-
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
-        context.coordinator.selection = $selection
-        guard let index = SidebarSection.allCases.firstIndex(of: selection) else { return }
-        if control.selectedSegment != index { control.selectedSegment = index }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }
-
-    final class Coordinator: NSObject {
-        var selection: Binding<SidebarSection>
-
-        init(selection: Binding<SidebarSection>) { self.selection = selection }
-
-        @objc func selectionChanged(_ sender: NSSegmentedControl) {
-            let sections = SidebarSection.allCases
-            guard sections.indices.contains(sender.selectedSegment) else { return }
-            selection.wrappedValue = sections[sender.selectedSegment]
+    var body: some View {
+        GlassEffectContainer(spacing: 4) {
+            HStack(spacing: 4) {
+                ForEach(SidebarSection.allCases, id: \.self) { section in
+                    segment(for: section)
+                }
+            }
         }
+    }
+
+    private func segment(for section: SidebarSection) -> some View {
+        let isSelected = selection == section
+        return Button {
+            selection = section
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(height: 18)
+                Text(section.shortTitle)
+                    .font(.system(size: 10.5, weight: .medium))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+        }
+        .buttonStyle(.plain)
+        .glassEffect(isSelected ? .regular.interactive() : .identity, in: .rect(cornerRadius: 8))
+        .accessibilityLabel(section.rawValue)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
