@@ -1,0 +1,12 @@
+{
+  "fill" : { "solid" : "srgb:0.78039,0.46667,0.00000,1.00000" },
+  "groups" : [
+    {
+      "layers" : [ { "image-name" : "feather.svg", "name" : "Feather" } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.0 },
+      "specular" : false,
+      "translucency" : { "enabled" : false, "value" : 0.5 }
+    }
+  ],
+  "supported-platforms" : { "squares" : [ "macOS" ] }
+}

@@ -34,7 +34,6 @@ chmod +x "$APP_DIR/MacOS/$APP_NAME"
 
 # Resources
 cp "Sources/QuillKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
-cp "Sources/QuillKit/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp "Sources/QuillKit/Resources/tiptap-bundle.js" "$RESOURCES_DIR/tiptap-bundle.js"
 cp "Sources/QuillKit/Resources/marked-bundle.js" "$RESOURCES_DIR/marked-bundle.js"
 cp "Sources/QuillKit/Resources/editor-transforms.js" "$RESOURCES_DIR/editor-transforms.js"
@@ -43,11 +42,13 @@ cp "Sources/QuillKit/Resources/block-serializer.js" "$RESOURCES_DIR/block-serial
 cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descriptors.js"
 cp "Sources/QuillKit/Resources/block-settings.js" "$RESOURCES_DIR/block-settings.js"
 
-# Accent colour. Compiled, not copied — NSAccentColorName below only resolves out of Assets.car.
-xcrun actool Assets.xcassets \
+# Accent colour and app icon. Compiled, not copied — NSAccentColorName and
+# CFBundleIconName below only resolve out of Assets.car.
+xcrun actool Assets.xcassets AppIcon.icon \
   --compile "$RESOURCES_DIR" \
   --platform macosx \
   --minimum-deployment-target "$MIN_MACOS" \
+  --app-icon AppIcon \
   --output-partial-info-plist "$(mktemp -t quill-assets)" \
   --output-format human-readable-text > /dev/null
 
@@ -66,6 +67,7 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIconName</key><string>AppIcon</string>
   <key>NSAccentColorName</key><string>AccentColor</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
