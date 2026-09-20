@@ -48,7 +48,7 @@ Quill is free (but not open source).
 
 ### Requirements
 
-- **macOS:** macOS 26 (Tahoe) or later. Earlier versions of macOS may work but are not officially supported.
+- **macOS:** macOS 27 or later. Quill is built against macOS 27 and will not launch on earlier versions.
 - **WordPress:** A self-hosted WordPress site running WordPress 7.0 or later. Earlier versions may work but are not officially supported. Your site must be accessible over HTTPS.
 
 ### Downloading Quill
@@ -107,7 +107,7 @@ Quill's window has three panels: the **Sidebar** on the left, the **Editor** in 
 
 ### The Sidebar
 
-The sidebar organizes your content into four sections, selectable via tabs at the top:
+The sidebar organizes your content into four sections. A row of four icon buttons at the top switches between them, and the selected one is highlighted:
 
 - **Posts:** Lists all posts on your site, most recently published first. A search field lets you filter by title.
 - **Pages:** Lists all pages on your site, most recently published first, with the same search capability.
@@ -151,7 +151,7 @@ The settings panel opens as an inspector on the right when you click **Post Sett
 
 ### Empty State
 
-If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu, new content buttons in the sidebar, or keyboard shortcuts to create new content.
+If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu, the **New Post** / **New Page** / **New Media** buttons at the left of the window toolbar, or the keyboard shortcuts below to create new content.
 
 ---
 
@@ -159,7 +159,7 @@ If no post or page is selected, the editor area displays a placeholder prompting
 
 ### Creating Posts and Pages
 
-Use the **File** menu to create new content:
+Use the **File** menu, or the matching buttons at the left of the window toolbar:
 
 - **New Post** (⌘N)
 - **New Page** (⌘⇧N)
@@ -331,7 +331,7 @@ Use **Edit ▸ Paste as Markdown** (**⌘⇧V**) instead. It converts the whole 
 
 - Press **⌘S** or click **Publish** to sync your changes to WordPress immediately.
 - The dot in the window's close button indicates you have unsaved changes; it clears when you save.
-- Click **Revert** to discard unsaved changes and restore the last saved version. A confirmation sheet appears; press **⌘↩** to confirm or **Escape** to cancel.
+- Click **Revert** to discard unsaved changes and restore the last saved version. A confirmation alert appears; press **↩** to confirm or **Escape** to cancel.
 
 **Autosave:** Quill automatically saves your work every 30 seconds after a change, so you don't lose progress if you close the app unexpectedly. For remote posts, autosaves are stored locally and applied if you reopen a post before manually saving.
 
@@ -372,7 +372,7 @@ For example, adding `class="intro"` to a `<p>` tag in code view, switching back 
 
 **What survives saving but not visual edits.** Any HTML change you make in code view (including inline styles, data attributes, or custom elements without a `wp-block-*` class) is preserved when you save directly from code view or without making visual edits first. The raw HTML you wrote is sent to WordPress exactly as-is. However, if you return to the visual editor and make changes, the editor reconstructs the HTML from its internal model, and anything outside the supported schema (see the list above) is lost.
 
-**Unsupported Gutenberg blocks.** If your post contains a block Quill doesn't natively support (Audio, Video, Pullquote, Playlist, Accordion, Columns, Group, or a third-party plugin block), it appears in the visual editor as a card labeled with the block's name and the hint "Not editable in the visual editor; use Code View." This card preserves the block's original markup exactly, including any nested content, and survives edits you make elsewhere in the post; it's only lost if you delete the card itself. To edit the block's own content, use code view.
+**Unsupported Gutenberg blocks.** If your post contains a block Quill doesn't natively support (Audio, Video, Playlist, Cover, Group, Media & Text, Spacer, Custom HTML, or a third-party plugin block), it appears in the visual editor as a card labeled with the block's name and the hint "Not editable in the visual editor; use Code View." This card preserves the block's original markup exactly, including any nested content, and survives edits you make elsewhere in the post; it's only lost if you delete the card itself. To edit the block's own content, use code view.
 
 **Tip: making your own custom HTML survive visual edits.** If you hand-write a custom element in code view, such as a disclosure box, callout, or other snippet with no `wp-block-*` class, it is stripped down to plain text the moment you touch the visual editor, per the rule above. To protect it, add any class starting with `wp-block-` (for example `wp-block-group`) alongside your own class. Quill then treats it the same as an unsupported Gutenberg block: it survives as a preserved card, and you can still edit its contents in code view.
 
@@ -563,15 +563,18 @@ Changes made in the settings panel take effect when you next save or publish the
 
 The Status picker controls the publish state of the post or page:
 
-| Status | Color | Description |
-|---|---|---|
-| Draft | Amber | Saved to WordPress but not publicly visible |
-| Pending Review | Orange | Flagged for editorial review before publishing |
-| Published | Green | Live and publicly visible |
-| Scheduled | Blue | Will publish automatically at the specified date and time |
-| Private | Teal | Visible only to logged-in WordPress administrators and editors |
+| Status | Symbol | Color | Description |
+|---|---|---|---|
+| Draft | Pencil | Amber | Saved to WordPress but not publicly visible |
+| Pending Review | Ellipsis | Orange | Flagged for editorial review before publishing |
+| Published | Checkmark | Green | Live and publicly visible |
+| Scheduled | Clock | Blue | Will publish automatically at the specified date and time |
+| Private | Lock | Teal | Visible only to logged-in WordPress administrators and editors |
+| Local draft | Tray | Violet | Saved only on your Mac, not yet sent to WordPress |
 
-Local drafts (posts and pages not yet synced to WordPress) share one violet badge and a tray symbol in the sidebar; the row's subtitle says whether it is a post or a page.
+The symbol appears beside the title field in the editor; the sidebar shows the same status as a coloured dot next to each row's subtitle. Colour is never the only signal — the symbol carries the status too.
+
+Local drafts (posts and pages not yet synced to WordPress) share one violet status colour; the sidebar row's subtitle says whether it is a post or a page, and the editor shows a violet tray symbol beside the title.
 
 ### Publish Date
 
@@ -712,9 +715,9 @@ Click the **pencil icon** in the editor toolbar to open the content generator. T
 
 Quill writes a complete post or page, including a title and structured body, and loads it into the editor. If web search is enabled, Claude researches the topic before writing.
 
-If the editor already contains content, a **Replace Content?** confirmation sheet appears first. Press **⌘↩** to proceed or **Escape** (or Cancel) to go back.
+If the editor already contains content, a **Replace Content?** confirmation alert appears first. Press **↩** to proceed or **Escape** (or Cancel) to go back.
 
-If the generated content is long and hits an initial length limit, a **Post may be cut off** sheet appears. Choose **Get Full Version** (⌘↩) to request a longer response, or **Use What I Have** to accept the draft as-is. Getting the full version uses additional API budget.
+If the generated content is long and hits an initial length limit, a **Post may be cut off** alert appears. Choose **Get Full Version** (↩) to request a longer response, or **Use What I Have** to accept the draft as-is. Getting the full version uses additional API budget.
 
 ### Evaluating Writing Quality
 
@@ -814,7 +817,9 @@ The editor also converts Markdown syntax as you type — `# ` for a heading, `**
 
 | Shortcut | Action |
 |---|---|
-| ⌘↩ | Confirm primary action in any confirmation sheet (Generate Content, Replace Content?, Revert to Server Version?, Conflict Detected, Post may be cut off) |
+| ⌘↩ | **Generate** in the Generate Content sheet |
+| ↩ | Confirm the highlighted button in a confirmation alert (Replace Content?, Revert to Server Version?, Conflict Detected, Post may be cut off) |
+| Esc | Dismiss any sheet or alert without acting |
 
 ---
 
@@ -848,7 +853,7 @@ This banner should be rare. Blocks Quill has no editor for are normally preserve
 
 ### Gutenberg Block Compatibility
 
-Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, separators, images, galleries, tables, embeds, footnotes, links, and the container blocks Columns, Details, Buttons, Accordion and Tabs. Posts you write in Quill round-trip correctly through the Gutenberg editor.
+Quill produces clean, Gutenberg-compatible HTML for the content types it supports: paragraphs, headings, lists, blockquotes, code blocks, separators, images, galleries, tables, embeds, footnotes, links, and the container blocks Columns, Details, Buttons, Accordion, Tabs, Pullquote and Preformatted. Posts you write in Quill round-trip correctly through the Gutenberg editor.
 
 **Settings you apply in WordPress are kept.** A colour, a font size, a border radius, a block style, a link that opens in a new tab, a table's fixed layout — Quill carries these through an edit even where it offers no control for them, and writes them back the way WordPress wrote them. Editing a post in Quill should leave everything you set in Gutenberg exactly as you left it.
 
