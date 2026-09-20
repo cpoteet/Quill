@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarSectionPicker: View {
     @Binding var selection: SidebarSection
+    @State private var hoveredSection: SidebarSection?
 
     var body: some View {
         GlassEffectContainer(spacing: 4) {
@@ -15,6 +16,7 @@ struct SidebarSectionPicker: View {
 
     private func segment(for section: SidebarSection) -> some View {
         let isSelected = selection == section
+        let isHovered = hoveredSection == section && !isSelected
         return Button {
             selection = section
         } label: {
@@ -27,11 +29,23 @@ struct SidebarSectionPicker: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(isHovered ? 0.07 : 0))
+            )
             .contentShape(Rectangle())
-            .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .foregroundStyle(isSelected || isHovered ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
         }
         .buttonStyle(.plain)
         .glassEffect(isSelected ? .regular.interactive() : .identity, in: .rect(cornerRadius: 8))
+        .onHover { inside in
+            if inside {
+                hoveredSection = section
+            } else if hoveredSection == section {
+                hoveredSection = nil
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: isHovered)
         .accessibilityLabel(section.rawValue)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
