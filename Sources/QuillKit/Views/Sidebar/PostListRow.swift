@@ -32,8 +32,8 @@ public struct PostListRow: View {
             .overlay {
                 if isSelected {
                     Circle()
-                        .strokeBorder(Color.white, lineWidth: 1.5)
-                        .frame(width: 9, height: 9)
+                        .strokeBorder(Color.white, lineWidth: 1)
+                        .frame(width: 8, height: 8)
                 }
             }
             .accessibilityHidden(true)
