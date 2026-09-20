@@ -2,9 +2,11 @@ import SwiftUI
 
 public struct PostListRow: View {
     let item: PostItem
+    let isSelected: Bool
 
-    public init(item: PostItem) {
+    public init(item: PostItem, isSelected: Bool) {
         self.item = item
+        self.isSelected = isSelected
     }
 
     public var body: some View {
@@ -13,16 +15,28 @@ public struct PostListRow: View {
                 .font(.body.weight(.medium))
                 .lineLimit(2)
             HStack(spacing: 5) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
-                    .accessibilityHidden(true)
+                statusDot
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 6)
+    }
+
+    /// Amber selection swallows the warm status colours, so a selected dot gets a white ring.
+    private var statusDot: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 6, height: 6)
+            .overlay {
+                if isSelected {
+                    Circle()
+                        .strokeBorder(Color.white, lineWidth: 1.5)
+                        .frame(width: 9, height: 9)
+                }
+            }
+            .accessibilityHidden(true)
     }
 
     private var statusColor: Color { Color.statusColor(item.statusBadge) }
