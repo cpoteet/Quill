@@ -273,7 +273,6 @@ public struct PostEditorView: View {
             Text(previewError ?? "")
         }
         .onChange(of: item.id) { _ in
-            contentLoaded = false
             evaluationTask?.cancel()
             evaluationTask = nil
             showEvaluationPanel = false
@@ -595,6 +594,8 @@ public struct PostEditorView: View {
 
     private func loadItem() async {
         let requestedItem = item
+        // Reset here, never in onChange(of: item.id) — that handler runs after this task starts.
+        contentLoaded = false
 
         // Cancel any pending autosave for the old item — flushToDB handles persistence
         autosaveTask?.cancel()
