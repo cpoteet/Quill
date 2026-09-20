@@ -36,6 +36,14 @@ cp "Sources/QuillKit/Resources/block-serializer.js" "$RESOURCES_DIR/block-serial
 cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descriptors.js"
 cp "Sources/QuillKit/Resources/block-settings.js" "$RESOURCES_DIR/block-settings.js"
 
+# Accent colour. Compiled, not copied — NSAccentColorName below only resolves out of Assets.car.
+xcrun actool Assets.xcassets \
+  --compile "$RESOURCES_DIR" \
+  --platform macosx \
+  --minimum-deployment-target "$MIN_MACOS" \
+  --output-partial-info-plist "$(mktemp -t quill-assets)" \
+  --output-format human-readable-text > /dev/null
+
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -51,6 +59,7 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>NSAccentColorName</key><string>AccentColor</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSHighResolutionCapable</key><true/>

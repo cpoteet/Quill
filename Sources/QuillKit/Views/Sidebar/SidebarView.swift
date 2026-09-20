@@ -23,6 +23,22 @@ public struct SidebarView: View {
         )
     }
 
+    /// The WKWebView keeps first responder across a row click, which leaves the selection drawn unemphasized.
+    private func focusPostList() {
+        guard let window = NSApp.keyWindow,
+              let root = window.contentView,
+              let table = Self.firstTableView(in: root) else { return }
+        window.makeFirstResponder(table)
+    }
+
+    private static func firstTableView(in view: NSView) -> NSTableView? {
+        if let table = view as? NSTableView { return table }
+        for sub in view.subviews {
+            if let found = firstTableView(in: sub) { return found }
+        }
+        return nil
+    }
+
     private func releaseSearchFocus() {
         guard let window = NSApp.keyWindow else { return }
         guard window.firstResponder is NSText || window.firstResponder is NSSearchField else { return }
@@ -55,7 +71,10 @@ public struct SidebarView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
-        .onChange(of: appState.selectedItem) { _, _ in releaseSearchFocus() }
+        .onChange(of: appState.selectedItem) { _, _ in
+            releaseSearchFocus()
+            focusPostList()
+        }
         .onChange(of: appState.selectedSection) { _, _ in releaseSearchFocus() }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
