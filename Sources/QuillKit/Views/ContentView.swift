@@ -69,7 +69,7 @@ public struct ContentView: View {
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
                     } else {
                         Text("No Selection")
-                            .font(.callout)
+                            .font(.body)
                             .foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)

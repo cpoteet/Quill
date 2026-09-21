@@ -122,9 +122,9 @@ These two fail silently with the whole test suite green:
 - **Color tokens & surface components**
 - **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**
 - **A view placed in an `.inspector` must not set its own width**
-- **`SectionLabel` is the one uppercase caption above an inspector or sheet section**
+- **`SectionLabel` is the one heading above an inspector or sheet section**
 - **Sheet actions go in a bottom bar, never in a top header row**
-- **`.textFieldStyle(.plain)` is the house style for every text field**
+- **Inputs are system `.roundedBorder` fields; only a list gets a hand-drawn surface**
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**
 - **Background computer-use clicks do not reach the WKWebView's DOM handlers**

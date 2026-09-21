@@ -53,14 +53,14 @@ struct MediaDetailView: View {
 
                 urlRow
             }
-            .padding(20)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     @ViewBuilder
     private func metadataRow(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel(label)
             Text(value)
                 .font(.body)
@@ -70,11 +70,11 @@ struct MediaDetailView: View {
     }
 
     private var urlRow: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel("URL")
             HStack(alignment: .top, spacing: 8) {
                 Text(media.sourceURL)
-                    .font(.callout)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
                     .truncationMode(.middle)
@@ -95,14 +95,11 @@ struct MediaDetailView: View {
 
     @ViewBuilder
     private var altTextRow: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            SectionLabel("Alt text")
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel("Alt Text")
             TextField("", text: $altTextDraft, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.body)
+                .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
-                .padding(7)
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
                 .onSubmit { commitAltText() }
                 .focused($altFieldFocused)
                 .onChange(of: altFieldFocused) { _, focused in
@@ -112,12 +109,12 @@ struct MediaDetailView: View {
                 switch altSaveState {
                 case .saving:
                     ProgressView().scaleEffect(0.6)
-                    Text("Saving\u{2026}").font(.footnote).foregroundStyle(.secondary)
+                    Text("Saving\u{2026}").font(.subheadline).foregroundStyle(.secondary)
                 case .saved:
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 10)).foregroundStyle(.green)
+                        .font(.subheadline).foregroundStyle(.green)
                         .accessibilityHidden(true)
-                    Text("Saved").font(.footnote).foregroundStyle(.secondary)
+                    Text("Saved").font(.subheadline).foregroundStyle(.secondary)
                 case .idle:
                     EmptyView()
                 }

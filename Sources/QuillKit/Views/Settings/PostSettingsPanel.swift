@@ -118,7 +118,7 @@ public struct PostSettingsPanel: View {
 
     private var localDraftNote: some View {
         Label("Settings aren't saved for local drafts. Publish to WordPress to save them.", systemImage: "info.circle")
-            .font(.caption)
+            .font(.subheadline)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -198,58 +198,52 @@ public struct PostSettingsPanel: View {
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Categories")
-            VStack(spacing: 0) {
-                searchBar(
-                    placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
-
-                Divider()
-
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(filteredCategories) { cat in
-                            Toggle(
-                                cat.name,
-                                isOn: Binding(
-                                    get: { settings.categoryIDs.contains(cat.id) },
-                                    set: { on in
-                                        if on {
-                                            settings.categoryIDs.insert(cat.id)
-                                        } else {
-                                            settings.categoryIDs.remove(cat.id)
-                                        }
+            searchField(placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(filteredCategories) { cat in
+                        Toggle(
+                            cat.name,
+                            isOn: Binding(
+                                get: { settings.categoryIDs.contains(cat.id) },
+                                set: { on in
+                                    if on {
+                                        settings.categoryIDs.insert(cat.id)
+                                    } else {
+                                        settings.categoryIDs.remove(cat.id)
                                     }
-                                )
+                                }
                             )
-                            .toggleStyle(.checkbox)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                        }
+                        )
+                        .toggleStyle(.checkbox)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                    }
 
-                        ForEach(settings.newCategoryNames, id: \.self) { name in
-                            newTaxonomyRow(name: name) {
-                                settings.newCategoryNames.removeAll { $0 == name }
-                            }
-                        }
-
-                        let trimmed = categorySearch.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty && !hasExactCategoryMatch {
-                            addNewRow(label: trimmed) { addCategoryFromSearch() }
-                        }
-
-                        if filteredCategories.isEmpty && settings.newCategoryNames.isEmpty
-                            && categorySearch.trimmingCharacters(in: .whitespaces).isEmpty
-                        {
-                            emptyLabel("No categories")
+                    ForEach(settings.newCategoryNames, id: \.self) { name in
+                        newTaxonomyRow(name: name) {
+                            settings.newCategoryNames.removeAll { $0 == name }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 4)
+
+                    let trimmed = categorySearch.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty && !hasExactCategoryMatch {
+                        addNewRow(label: trimmed) { addCategoryFromSearch() }
+                    }
+
+                    if filteredCategories.isEmpty && settings.newCategoryNames.isEmpty
+                        && categorySearch.trimmingCharacters(in: .whitespaces).isEmpty
+                    {
+                        emptyLabel("No categories")
+                    }
                 }
-                .frame(maxHeight: 168)
-                .scrollIndicators(.visible)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 4)
             }
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+            .frame(maxHeight: 168)
+            .scrollIndicators(.visible)
+            .listSurface()
         }
     }
 
@@ -296,46 +290,38 @@ public struct PostSettingsPanel: View {
     private var tagsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Tags")
-            VStack(spacing: 0) {
-                if !selectedTagNames.isEmpty {
-                    TagChipGrid(names: selectedTagNames, onRemove: removeTagName)
-                        .padding(7)
-                    Divider()
-                }
-
-                searchBar(placeholder: "Search or add tags…", text: $tagSearch, onSubmit: addTagFromSearch)
-
-                Divider()
-
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(filteredUnselectedTags) { tag in
-                            Button(tag.name) {
-                                settings.tagIDs.insert(tag.id)
-                                tagSearch = ""
-                            }
-                            .buttonStyle(TaxonomyRowStyle())
-                        }
-
-                        let trimmed = tagSearch.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty && !hasExactTagMatch {
-                            addNewRow(label: trimmed) { addTagFromSearch() }
-                        }
-
-                        if filteredUnselectedTags.isEmpty
-                            && tagSearch.trimmingCharacters(in: .whitespaces).isEmpty
-                            && tags.isEmpty
-                        {
-                            emptyLabel("No tags")
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 4)
-                }
-                .frame(maxHeight: 156)
-                .scrollIndicators(.visible)
+            if !selectedTagNames.isEmpty {
+                TagChipGrid(names: selectedTagNames, onRemove: removeTagName)
             }
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+            searchField(placeholder: "Search or add tags…", text: $tagSearch, onSubmit: addTagFromSearch)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(filteredUnselectedTags) { tag in
+                        Button(tag.name) {
+                            settings.tagIDs.insert(tag.id)
+                            tagSearch = ""
+                        }
+                        .buttonStyle(TaxonomyRowStyle())
+                    }
+
+                    let trimmed = tagSearch.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty && !hasExactTagMatch {
+                        addNewRow(label: trimmed) { addTagFromSearch() }
+                    }
+
+                    if filteredUnselectedTags.isEmpty
+                        && tagSearch.trimmingCharacters(in: .whitespaces).isEmpty
+                        && tags.isEmpty
+                    {
+                        emptyLabel("No tags")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: 156)
+            .scrollIndicators(.visible)
+            .listSurface()
         }
     }
 
@@ -361,10 +347,7 @@ public struct PostSettingsPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Slug")
             TextField("", text: $settings.slug)
-                .textFieldStyle(.plain)
-                .font(.callout)
-                .padding(7)
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+                .textFieldStyle(.roundedBorder)
         }
     }
 
@@ -373,12 +356,9 @@ public struct PostSettingsPanel: View {
     private var excerptSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Excerpt")
-            TextEditor(text: $settings.excerpt)
-                .scrollContentBackground(.hidden)
-                .font(.callout)
-                .frame(height: 56)
-                .padding(7)
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+            TextField("", text: $settings.excerpt, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(3...6)
         }
     }
 
@@ -409,41 +389,32 @@ public struct PostSettingsPanel: View {
                     Text("\(stats.readingMinutes) min read")
                 }
             }
-            .font(.callout)
+            .font(.subheadline)
             .foregroundStyle(.secondary)
         }
     }
 
     // MARK: - Shared subviews
 
-    private func searchBar(placeholder: String, text: Binding<String>, onSubmit: @escaping () -> Void) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            TextField(placeholder, text: text)
-                .textFieldStyle(.plain)
-                .font(.callout)
-                .onSubmit(onSubmit)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
+    private func searchField(placeholder: String, text: Binding<String>, onSubmit: @escaping () -> Void) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.roundedBorder)
+            .onSubmit(onSubmit)
     }
 
     private func newTaxonomyRow(name: String, onRemove: @escaping () -> Void) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark.square.fill")
                 .foregroundStyle(Color.accentColor)
-                .font(.system(size: 13))
             Text(name)
-                .font(.callout)
+                .font(.body)
             Spacer()
             Text("new")
-                .font(.caption2.weight(.medium))
+                .font(.subheadline)
                 .foregroundStyle(Color.accentColor)
             Button(action: onRemove) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .medium))
+                    .imageScale(.small)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -457,7 +428,7 @@ public struct PostSettingsPanel: View {
     private func addNewRow(label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label("Add \"\(label)\"", systemImage: "plus")
-                .font(.callout)
+                .font(.body)
                 .foregroundStyle(Color.accentColor)
         }
         .buttonStyle(.plain)
@@ -468,7 +439,7 @@ public struct PostSettingsPanel: View {
 
     private func emptyLabel(_ text: String) -> some View {
         Text(text)
-            .font(.caption)
+            .font(.subheadline)
             .foregroundStyle(.tertiary)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
@@ -486,18 +457,18 @@ private struct TagChipGrid: View {
             ForEach(names, id: \.self) { name in
                 HStack(spacing: 3) {
                     Text(name)
-                        .font(.subheadline)
                         .lineLimit(1)
                     Button {
                         onRemove(name)
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .semibold))
+                            .imageScale(.small)
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Remove \(name)")
                 }
+                .font(.subheadline)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .background(.quaternary, in: Capsule())
@@ -551,10 +522,18 @@ private struct FlowLayout: Layout {
     }
 }
 
+private extension View {
+    /// Matches the fill macOS gives a `.roundedBorder` field in an inspector, so a list reads as one of them.
+    func listSurface() -> some View {
+        background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
 private struct TaxonomyRowStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.callout)
+            .font(.body)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)

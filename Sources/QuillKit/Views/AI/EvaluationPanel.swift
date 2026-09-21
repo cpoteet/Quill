@@ -32,7 +32,7 @@ public struct EvaluationPanel: View {
 
     private var header: some View {
         Text("Content Evaluation")
-            .font(.callout.weight(.semibold))
+            .font(.headline)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -52,7 +52,7 @@ public struct EvaluationPanel: View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Evaluating content…")
-                .font(.callout)
+                .font(.body)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -62,7 +62,7 @@ public struct EvaluationPanel: View {
     private var shortContentView: some View {
         VStack(spacing: 8) {
             Text("Add more content before evaluating.")
-                .font(.callout)
+                .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -74,7 +74,7 @@ public struct EvaluationPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(result.summary)
-                    .font(.callout)
+                    .font(.body)
                     .lineSpacing(2)
                     .padding(16)
 
@@ -84,7 +84,9 @@ public struct EvaluationPanel: View {
                     ? "No specific issues found"
                     : "\(result.findings.count) finding\(result.findings.count == 1 ? "" : "s") — click to jump"
 
-                SectionLabel(countLabel)
+                Text(countLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, result.findings.isEmpty ? 12 : 4)
@@ -116,7 +118,7 @@ public struct EvaluationPanel: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 12) {
             Text("Evaluation failed.")
-                .font(.callout.weight(.medium))
+                .font(.headline)
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -138,12 +140,11 @@ private struct EvaluationFindingRow: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(finding.issue.uppercased())
-                    .font(.caption2.weight(.semibold))
+                Text(finding.issue)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .tracking(0.5)
                 Text("\"\(finding.quote)\"")
-                    .font(.subheadline)
+                    .font(.body)
                     .italic()
                     .foregroundStyle(.primary)
                     .lineLimit(2)

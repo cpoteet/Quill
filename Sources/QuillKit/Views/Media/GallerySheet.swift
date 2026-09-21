@@ -229,18 +229,14 @@ public struct GallerySheet: View {
 
                                 if expandedIDs.contains(sel.id) {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        SectionLabel("Alt text")
+                                        SectionLabel("Alt Text")
                                         TextField("", text: $sel.alt)
-                                            .textFieldStyle(.plain)
-                                            .font(.subheadline)
-                                            .padding(5)
-                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+                                            .textFieldStyle(.roundedBorder)
+                                            .controlSize(.small)
                                         SectionLabel("Caption")
                                         TextField("", text: $sel.caption)
-                                            .textFieldStyle(.plain)
-                                            .font(.subheadline)
-                                            .padding(5)
-                                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.separator, lineWidth: 1))
+                                            .textFieldStyle(.roundedBorder)
+                                            .controlSize(.small)
                                     }
                                     .padding(.leading, 19)
                                     .padding(.bottom, 4)
