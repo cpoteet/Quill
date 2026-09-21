@@ -83,7 +83,7 @@ public struct QuillApp: App {
                 .keyboardShortcut("r", modifiers: .command)
             }
             CommandGroup(replacing: .help) {
-                Button("Quill Help") {
+                Button("User Guide") {
                     NSWorkspace.shared.open(URL(string: "https://quill.siolon.com/docs.html")!)
                 }
                 Button("Changelog") {

@@ -2524,7 +2524,11 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 
 ## Manual / functional test checklists
 
-Run these against a real WordPress test site (or a local Docker WordPress) using an Application Password. Build with `./build.sh` and `open Quill.app` before each pass.
+Run these against a real WordPress test site (or a local Docker WordPress) using an Application Password. Before each pass, quit the running app first — `build.sh` replaces the binary underneath it, so skipping the quit tests the old build:
+
+```bash
+osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+```
 
 > Tip: use a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.
 
@@ -2544,6 +2548,8 @@ Run these against a real WordPress test site (or a local Docker WordPress) using
 ### 7.2 Sidebar, lists, navigation
 
 - [ ] Posts, Pages, Local Drafts, and Media sections each load and show their items.
+- [ ] The section picker sits at the top of the sidebar, not in the window toolbar. Each segment carries an icon; hovering a segment shows a hover state and the pointer does not change to a resize cursor.
+- [ ] Switch sections with the picker → the list, the search prompt and the editor empty state all follow, and the selection in the old section is not carried over.
 - [ ] Clicking a sidebar item highlights it with Quill's amber accent (not the default macOS blue). This holds only while the user's System Settings accent is "Multicolor" — see the root `CLAUDE.md`.
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
 - [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
@@ -2831,8 +2837,10 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
 - [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.
+- [ ] Narrow the window until the editor toolbar runs out of room → buttons collapse into the overflow menu rather than crushing together or clipping their labels. Widen it again → they come back in the same order.
+- [ ] The editor action buttons read as one icon capsule, and the Publish/Update button keeps its colour rather than washing out when the window loses focus.
 
-**Pickers across an appearance switch** — through macOS 26, SwiftUI stamped a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshed it, so a picker kept drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). Quill carried a `.rebuildsOnAppearanceChange()` modifier for this. macOS 27 fixes it: retested 2026-09-18 with the modifier reduced to a true no-op that never reads `colorScheme`, and the toolbar section picker and the inspector's Status picker both repainted correctly in both directions without a relaunch. The modifier is deleted. Keep checking both directions as a regression guard, since each leaves a picker wrong in a different way.
+**Pickers across an appearance switch** — through macOS 26, SwiftUI stamped a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshed it, so a picker kept drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). Quill carried a `.rebuildsOnAppearanceChange()` modifier for this. macOS 27 fixes it: retested 2026-09-18 with the modifier reduced to a true no-op that never reads `colorScheme`, and the sidebar section picker and the inspector's Status picker both repainted correctly in both directions without a relaunch. The modifier is deleted. Keep checking both directions as a regression guard, since each leaves a picker wrong in a different way.
 
 - [ ] Open a post's settings panel in **light**, switch the system to **dark** → the Status picker (and Parent Page picker on a page) turns dark with light text, matching the panel.
 - [ ] Open the panel in **dark**, switch the system to **light** → the pickers turn light with dark, readable text.
@@ -2979,7 +2987,7 @@ Run this on a **new local draft**, never a published post.
 
 
 
-### 7.x Media library (gallery, filters, inspector)
+### 7.26 Media library (gallery, filters, inspector)
 
 Added 2026-09-19 with the native media panel. None of this is automated — the
 `NSCollectionView` bridge cannot be unit tested, and background computer-use
@@ -3016,6 +3024,32 @@ human is required.
 - [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
 - [ ] No bottom button strip remains, and there is exactly one Refresh and one New button.
 - [ ] The gallery renders correctly in light and in dark appearance. Judge colour from a native-resolution screenshot, not a downsampled one.
+
+### 7.27 Menu bar, Help & the public site
+
+Added 2026-09-20 with the open-source release work. The Help items and the About
+window's licence link all point at `quill.siolon.com`, which is published from
+`site/` by the GitHub Pages workflow — a 404 here means the deploy, not the app.
+
+**Help menu**
+- [ ] Help → **User Guide** opens `quill.siolon.com/docs.html` in the default browser, and the page loads (not a 404).
+- [ ] Help → **Changelog** opens `quill.siolon.com/changelog.html`, and the newest release at the top matches the running build's version.
+- [ ] The Help menu contains only those two items — no leftover "Quill Help" wording, and no macOS-injected Search field behaviour that swallows them.
+- [ ] About Quill → the **End User Licensing Agreement** link opens `quill.siolon.com/license.html`. The credit links (Tiptap, ProseMirror, SQLite.swift, Vecteezy) each open their own site.
+- [ ] The version shown in About matches the version the update checker compares against.
+
+**Menu commands**
+- [ ] File → New Post (⌘N) and New Page (⌘⇧N) each create a local draft in the right section, from any section including Media.
+- [ ] File → New Media (⌘⌥N) opens the file picker and does not create a post.
+- [ ] Edit → **Paste as Markdown** (⌘⇧V) converts Markdown on the clipboard into real blocks (a heading stays a heading, a list stays a list). Plain ⌘V in the same spot is unaffected and still pastes normally.
+- [ ] Edit → Find… (⌘F) opens the find bar; File → Save (⌘S) and Publish (⌘⇧P) match the buttons in the editor.
+- [ ] File → Revert to Saved… and Preview in Browser are enabled on a remote post and disabled on a local draft.
+- [ ] View → Refresh (⌘R) reloads the current section — including while the sidebar is collapsed.
+
+**The site itself**
+- [ ] `quill.siolon.com` loads over HTTPS, and the download link on it fetches the current release.
+- [ ] The docs page matches the app: check a few headings against `docs/user-guide.md`, and confirm nothing describes the pre-native-UI interface (a hand-painted title bar, a toolbar section picker, a sidebar media grid).
+- [ ] The changelog's newest entry lists this release's changes; older entries are left as they shipped, including the original "Quill Help" wording for v1.7.0.
 
 ---
 
@@ -3203,6 +3237,7 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **Dropped-image progress pill and drop-batch serialization (§7.4):** `UploadStatusPill`, the shared bottom slot it occupies with the toast, and the `dropTask` chaining that keeps overlapping Finder drops from interleaving are all SwiftUI view state with no test harness. The *messages* the pill and toast display are unit-tested; only the timing and layering are manual.
 - **Container row hit geometry (JS container tests):** jsdom reports a zeroed `getBoundingClientRect` for every element and gives Ranges no client rects, so how big a toggle's hit box renders and which character a pointer lands on can only be checked in a real browser. The CSS rules and the `mousedown` behavior behind those affordances *are* asserted.
 - **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
+- **Menu commands and the Help links (§7.27):** `CommandGroup` items in `QuillApp.swift` only exist once AppKit builds the menu bar, and the Help/About links leave the app entirely. Nothing here has a harness — the destinations must be clicked.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
 
 ## Test suite gotchas
