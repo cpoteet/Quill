@@ -1,6 +1,22 @@
 import AppKit
 import SwiftUI
 
+struct SidebarToggleButton: View {
+    @Binding var columnVisibility: NavigationSplitViewVisibility
+
+    private var isHidden: Bool { columnVisibility == .detailOnly }
+
+    var body: some View {
+        Button {
+            withAnimation { columnVisibility = isHidden ? .all : .detailOnly }
+        } label: {
+            Image(systemName: "sidebar.left")
+        }
+        .help(isHidden ? "Show Sidebar" : "Hide Sidebar")
+        .accessibilityLabel(isHidden ? "Show Sidebar" : "Hide Sidebar")
+    }
+}
+
 public struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var services: AppServices
@@ -8,7 +24,12 @@ public struct SidebarView: View {
     @State private var itemPendingDelete: PostItem? = nil
     @State private var deleteError: String? = nil
 
-    public init() {}
+    @Binding private var columnVisibility: NavigationSplitViewVisibility
+    @State private var isFullyOnScreen = true
+
+    public init(columnVisibility: Binding<NavigationSplitViewVisibility>) {
+        _columnVisibility = columnVisibility
+    }
 
     private var sectionSelection: Binding<SidebarSection> {
         Binding(
@@ -75,6 +96,9 @@ public struct SidebarView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
+        .toolbar(removing: .sidebarToggle)
+        // Adding toolbar items while the column is still sliding in overflows them into a » menu.
+        .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX >= 0 } action: { isFullyOnScreen = $0 }
         .onChange(of: appState.selectedItem) { _, _ in
             releaseSearchFocus()
             focusPostList()
@@ -86,39 +110,41 @@ public struct SidebarView: View {
             Task { await loadCurrentSection() }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button {
-                    Task { await loadCurrentSection() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh (\u{2318}R)")
-                .accessibilityLabel("Refresh")
+            ToolbarItem {
+                SidebarToggleButton(columnVisibility: $columnVisibility)
+            }
 
-                Button {
-                    appState.createNewDraft(type: "post", draftStore: services.draftStore)
-                } label: {
-                    Image(systemName: "note.text.badge.plus")
-                }
-                .help("New Post (\u{2318}N)")
-                .accessibilityLabel("New Post")
+            if isFullyOnScreen && columnVisibility != .detailOnly {
+                ToolbarSpacer(.flexible)
 
-                Button {
-                    appState.createNewDraft(type: "page", draftStore: services.draftStore)
-                } label: {
-                    Image(systemName: "book.badge.plus")
+                ToolbarItem {
+                    Button {
+                        Task { await loadCurrentSection() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Refresh (\u{2318}R)")
+                    .accessibilityLabel("Refresh")
                 }
-                .help("New Page (\u{21E7}\u{2318}N)")
-                .accessibilityLabel("New Page")
 
-                Button {
-                    appState.selectedSection = .media
-                    appState.triggerMediaUpload = true
-                } label: {
-                    Image(systemName: "photo.badge.plus")
+                ToolbarItem {
+                    Menu {
+                        Button("New Post", systemImage: "note.text.badge.plus") {
+                            appState.createNewDraft(type: "post", draftStore: services.draftStore)
+                        }
+                        Button("New Page", systemImage: "book.badge.plus") {
+                            appState.createNewDraft(type: "page", draftStore: services.draftStore)
+                        }
+                        Button("Upload Media", systemImage: "photo.badge.plus") {
+                            appState.selectedSection = .media
+                            appState.triggerMediaUpload = true
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .help("New")
+                    .accessibilityLabel("New")
                 }
-                .help("New Media (\u{2325}\u{2318}N)")
-                .accessibilityLabel("New Media")
             }
         }
         .alert(
@@ -382,10 +408,10 @@ struct SectionEmptyState: View {
 
     private var hint: String {
         switch section {
-        case .posts: return "Create one with the new-post button in the toolbar"
-        case .pages: return "Create one with the new-page button in the toolbar"
+        case .posts: return "Create one from the + menu in the toolbar"
+        case .pages: return "Create one from the + menu in the toolbar"
         case .localDrafts: return "Use File \u{2192} New Post/Page to start writing"
-        case .media: return "Create one with the new-media button in the toolbar"
+        case .media: return "Create one from the + menu in the toolbar"
         }
     }
 

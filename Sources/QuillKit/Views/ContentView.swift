@@ -3,12 +3,13 @@ import SwiftUI
 public struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.openSettings) private var openSettings
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
-            SidebarView()
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView(columnVisibility: $columnVisibility)
         } detail: {
             detailContent
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)

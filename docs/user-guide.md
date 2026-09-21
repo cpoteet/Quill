@@ -130,8 +130,8 @@ The window **toolbar** runs across the top. Its left side belongs to the sidebar
 | Control | Where | Description |
 |---|---|---|
 | Sidebar toggle | Left | Shows or hides the left sidebar |
-| Refresh | Left | Reloads the current section from WordPress (⌘R) |
-| New Post / New Page / New Media | Left | Creates a draft, or starts an upload |
+| Refresh | Left | Reloads the current section from WordPress (⌘R). Hidden while the sidebar is collapsed |
+| + menu | Left | New Post, New Page, or Upload Media. Hidden while the sidebar is collapsed |
 | Save Draft | Right | Saves a local draft (local drafts only) |
 | Revert | Right | Discards unsaved changes and restores the last saved version (remote posts only) |
 | Preview | Right | Opens the post's preview URL in your browser (remote posts only) |
@@ -151,7 +151,7 @@ The settings panel opens as an inspector on the right when you click **Post Sett
 
 ### Empty State
 
-If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu, the **New Post** / **New Page** / **New Media** buttons at the left of the window toolbar, or the keyboard shortcuts below to create new content.
+If no post or page is selected, the editor area displays a placeholder prompting you to select an item from the sidebar. Use the **File** menu, the **+** menu at the left of the window toolbar, or the keyboard shortcuts below to create new content.
 
 ---
 
@@ -159,7 +159,7 @@ If no post or page is selected, the editor area displays a placeholder prompting
 
 ### Creating Posts and Pages
 
-Use the **File** menu, or the matching buttons at the left of the window toolbar:
+Use the **File** menu, or the **+** menu at the left of the window toolbar:
 
 - **New Post** (⌘N)
 - **New Page** (⌘⇧N)

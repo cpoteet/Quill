@@ -2560,7 +2560,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] **The main case.** Open a post, click into the editor body and type a character, then click a different post in the sidebar → the newly selected row is amber, not grey.
 - [ ] **Media round trip.** Click into the editor body, switch to Media, click a few thumbnails, switch back to Posts and click a row → the row is amber and nothing flickers. `focusPostList()` returns early in Media mode; this checks the return trip still works.
 - [ ] **Settings open.** Open Settings (⌘,) and leave it open, click back on the main window and select a different post → the row is still amber. Clicking the main window makes it key first, so `NSApp.keyWindow` is correct by the time the handler runs.
-- [ ] Collapse the sidebar with the native toggle, then press ⌘R → the current section still refreshes. The shortcut lives on View → Refresh, not on the sidebar toolbar button, so a collapsed sidebar must not take it away.
+- [ ] Collapse the sidebar with the toolbar toggle → the toolbar shows only the sidebar toggle; Refresh and the + menu are gone. Expand it again → the order is toggle, Refresh, +, all above the sidebar. Press ⌘R → the current section still refreshes. The shortcut lives on View → Refresh, not on the toolbar Refresh button, so a collapsed sidebar must not take it away.
 - [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears. The editor empty state says "post", "page", or "draft" depending on the active section.
 - [ ] Switch to the Media section → the post list, search bar, and toolbar are replaced by a thumbnail grid.
 - [ ] Scroll to the bottom of the Posts or Media list → more items load automatically; loading stops when all items have been fetched.
@@ -3014,7 +3014,7 @@ human is required.
 - [ ] Each filter returns the right items; Documents covers PDFs but not `.txt` — a `.txt`/`.csv`/`.vtt` file appears under All Media only (WordPress's `media_type` takes one value; see `docs/gotchas.md`).
 - [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
-- [ ] The toolbar New Media button opens the file picker and does NOT create a post.
+- [ ] Toolbar + menu → Upload Media opens the file picker and does NOT create a post.
 - [ ] File → New Media (⌘⌥N) opens the same file picker.
 - [ ] Right-clicking a thumbnail selects it and offers Copy URL, Open in Browser, Delete.
 - [ ] Deleting removes the thumbnail and clears the selection.
@@ -3022,7 +3022,7 @@ human is required.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
 - [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
 - [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
-- [ ] No bottom button strip remains, and there is exactly one Refresh and one New button.
+- [ ] No bottom button strip remains, and there is exactly one Refresh button and one + menu.
 - [ ] The gallery renders correctly in light and in dark appearance. Judge colour from a native-resolution screenshot, not a downsampled one.
 
 ### 7.27 Menu bar, Help & the public site
