@@ -135,6 +135,11 @@ Confirm the build succeeds.
 
 ### Step 11 — Package Quill.zip
 
+**The name `Quill.zip` is load-bearing.** Every page of the site links to
+`https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip`, which GitHub
+resolves by asset name against whichever release is marked latest. A ZIP uploaded
+under any other name breaks the download button site-wide.
+
 ```bash
 cd "/Users/Chris/Documents/Claude/WP Mac App"
 ./build.sh
@@ -143,6 +148,26 @@ zip -r ~/Desktop/Quill.zip Quill.app LICENSE
 ```
 
 Report: "Quill.zip created at ~/Desktop/Quill.zip"
+
+### Step 12 — Attach it to the release
+
+Only when cutting a release, not on every deploy. Read `VERSION` from
+`CFBundleShortVersionString` in `build.sh`.
+
+```bash
+gh release create "v$VERSION" --repo cpoteet/Quill \
+  --title "Quill $VERSION" --notes-file NOTES.md ~/Desktop/Quill.zip
+gh release edit "v$VERSION" --repo cpoteet/Quill --latest
+```
+
+Verify the download link resolves before announcing:
+
+```bash
+curl -sIL -o /dev/null -w '%{http_code}\n' \
+  https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip
+```
+
+Expected: `200`.
 
 ---
 
@@ -162,6 +187,7 @@ Report: "Quill.zip created at ~/Desktop/Quill.zip"
 | 9 | Commit & push | all | — |
 | 10 | `./build.sh` | all | Build fails |
 | 11 | Package ZIP (deploy only) | all | Build failed |
+| 12 | Attach ZIP to a GitHub release, mark latest, verify the download 200s | all | Build failed |
 
 ## Red Flags
 
@@ -171,6 +197,7 @@ Report: "Quill.zip created at ~/Desktop/Quill.zip"
 - **Never** skip Step 5 and continue when tests are failing
 - **Never** conclude "no regressions" from structural analysis alone — the scenario walkthrough is folded into Step 6 and must actually be requested there
 - **Never** package a ZIP if the build failed
+- **Never** upload a release asset under a name other than `Quill.zip` — the site's download link resolves by asset name and breaks site-wide
 - **Never** commit without reviewing what's being staged
 - **Never** leave Step 8 until all three of `testing-plan.md`'s parts are updated — test tables, regression matrix, *and* manual checklists
 - **Never** run lane A on a diff that touched source, or lane B on a diff that added a new function or node — when torn, pick the heavier lane
