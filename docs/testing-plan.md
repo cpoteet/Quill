@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-20 — 455 Swift tests + 1,215 JS tests (1,214 pass, 1 skipped), no failures._
+_Last updated: 2026-09-20 — 460 Swift tests + 1,215 JS tests (1,214 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (455 tests)
+1. **Swift tests** — `swift test` (460 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
 3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (455 tests, 32 suites)
+## Swift test suite (460 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -111,7 +111,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 11 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 24 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time; dropped-image upload progress/summary message builders |
-| 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 7 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers |
+| 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
@@ -814,11 +814,11 @@ Static message builders behind the Finder-drop progress pill and its summary toa
 | `uploadFailureMessageWhenEveryFileInAMultiDropFails` | All three failed → `"3 of 3 images failed to upload"` |
 | `uploadFailureMessageForPartialMultiDropOmitsTheErrorText` | Partial batch failure summarizes as a count and deliberately drops the per-file error text |
 
-### 21. App — `UpdateCheckerTests` (7 tests)
+### 21. App — `UpdateCheckerTests` (12 tests)
 
 File: `Tests/QuillTests/UpdateCheckerTests.swift`
 
-Tests the `isNewer(remote:local:)` semantic version comparison used by the update checker.
+Tests the `isNewer(remote:local:)` semantic version comparison used by the update checker, and `normalizeVersion(_:)`, which strips the `v` prefix from a GitHub release tag before that comparison.
 
 | Test | What it checks |
 |---|---|
@@ -829,6 +829,11 @@ Tests the `isNewer(remote:local:)` semantic version comparison used by the updat
 | `olderVersionIsNotNewer` | `1.0.0` < `2.0.0` → `false` |
 | `differentSegmentCounts` | `1.0.1` > `1.0` → `true`; `1.0` < `1.0.1` → `false` |
 | `largeVersionNumbers` | `10.20.30` > `10.20.29` → `true`; `10.20.30` == `10.20.30` → `false` |
+| `stripsLeadingVFromTag` | `v2.0.0` → `2.0.0` |
+| `leavesBareVersionUnchanged` | `2.0.0` → `2.0.0` |
+| `stripsOnlyTheFirstCharacter` | `v1.11.0` → `1.11.0` |
+| `normalizedTagIsNewerThanCurrentBuild` | normalized `v2.0.0` > `1.11.0` → `true` |
+| `unnormalizedTagSilentlyFailsToCompare` | raw `v2.0.0` vs `1.11.0` → `false`, pinning the failure mode `normalizeVersion` exists to prevent |
 
 ### 22. API — `MimeTypeTests` (12 tests)
 
@@ -3096,7 +3101,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 56 | Footnote content restricted to inline-only (no images, block elements, keyboard shortcuts) | 👁 §7.20 |
 | 57 | Image drops rejected in footnotes with error toast | 👁 §7.20 |
 | 58 | Paste in footnotes strips block elements to inline text | 👁 §7.20 |
-| 59 | Update checker version comparison handles all semver cases | ✅ `UpdateCheckerTests` (7 tests) |
+| 59 | Update checker version comparison handles all semver cases, and strips the tag's `v` prefix first | ✅ `UpdateCheckerTests` (12 tests) |
 | 60 | Draft save failure shows error toast | 👁 §7.7 |
 | 61 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
 | 62 | Backspace/Delete passthrough inside footnotes (`_fnPassthrough`) | 👁 §7.20 (delete chars in footnote entry) |
