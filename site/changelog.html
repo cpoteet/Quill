@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — Quill</title>
+  <meta name="description" content="Release history for Quill, a native macOS app for WordPress.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="/" class="nav__logo">Quill</a>
+    <div class="nav__links">
+      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
+      <a href="docs.html" class="nav__link">Docs</a>
+      <a href="changelog.html" class="nav__link nav__link--active">Changelog</a>
+      <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary">Download</a>
+    </div>
+  </nav>
+
+  <section class="changelog-header">
+    <div class="changelog-header__inner">
+      <p class="eyebrow">Release History</p>
+      <h1 class="changelog-header__title">Changelog</h1>
+      <p class="changelog-header__sub">New releases are distributed as ZIP downloads on this page.</p>
+    </div>
+  </section>
+
+  <div class="releases">
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.11.0</span>
+          <span class="release__date">August 20, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Unmodeled Gutenberg Blocks Are Safe</h3>
+            <p class="release__body">Quill no longer damages blocks it does not have an editor for. Columns, Group, Accordion, Audio, Video, Pullquote, Playlist and third-party blocks now load as a static "Not editable in the visual editor" card. Quill preserves their HTML byte-for-byte and regenerates their block comments on save. Before this release, these blocks lost their markup on the first save.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Paste as Markdown (⌘⇧V)</h3>
+            <p class="release__body">Edit ▸ Paste as Markdown converts Markdown on the clipboard into formatted content: headings, lists, quotes, fenced code, rules, tables and images. Normal ⌘V is unchanged.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Alt Text and Captions for Gallery Images</h3>
+            <p class="release__body">The gallery sheet now has an expandable row per image with alt text and caption fields. Both save into the image's own <code>wp:image</code> block and load back when you reopen the post.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">HEIC Photos Upload Correctly</h3>
+            <p class="release__body">Quill converts HEIC and HEIF files to JPEG before upload. WordPress 7.1 accepts HEIC but cannot generate the smaller sizes for it, so those uploads produced an image with no thumbnails. Orientation and pixel dimensions survive the conversion. This applies to Finder drops, the media sidebar and the gallery sheet.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Upload Progress for Dropped Images</h3>
+            <p class="release__body">Dropping images into the editor now shows a progress pill with the file count and a result message. Drops that overlap are queued, so a second drop no longer clears the first one's status.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Standalone images save as real image blocks</strong> — A dragged or pasted image is now wrapped in <code>&lt;!-- wp:image --&gt;</code> comments with its width, size and link attributes, so WordPress treats it as a block instead of loose HTML.</li>
+            <li><strong>Decorative images</strong> — WordPress 7.1's "mark as decorative" toggle sets <code>role</code> on the image. Quill reads that attribute on load and writes it back on save.</li>
+            <li><strong>Cursor placement after inserting an image</strong> — The cursor lands in a new empty paragraph below the image instead of inside its empty caption.</li>
+            <li><strong>Markdown typing shortcuts documented</strong> — The user guide now lists the shortcuts the editor accepts as you type.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li>The title bar matches the app's warm panel color, no longer depends on the mode the app launched in, and no longer flashes on every state change.</li>
+            <li>Pickers and the heading selector pill keep the correct styling after a light/dark switch.</li>
+            <li>Nested lists no longer gain a stray <code>&lt;p&gt;</code> on every save.</li>
+            <li>Multi-line plain text pasted into a footnote stays inside the footnote.</li>
+            <li>The footnote back-arrow renders as text, not as an emoji.</li>
+            <li>The spell-check menu shows "No Suggestions" when there are no guesses.</li>
+            <li>The gallery sheet's alt/caption row responds to the pointer correctly, and a row's expanded state clears when you deselect the image.</li>
+            <li>HEIC conversion runs off the main thread, so the window no longer freezes while a large photo converts.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.10.0</span>
+          <span class="release__date">July 11, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Image Galleries</h3>
+            <p class="release__body">Create native WordPress galleries without leaving Quill. The new gallery button opens a multi-select media picker with a reorderable selection pane and controls for columns, crop, link destination, and image size. Upload new images directly from the sheet, and they're added to the gallery you're building. Galleries save as proper Gutenberg <code>wp:gallery</code>/<code>wp:image</code> block-comment HTML, and existing galleries round-trip verbatim (preserving captions and other details the structured attributes don't model).</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Link to Full Image</h3>
+            <p class="release__body">Images now have a "Link to Full Image" toggle in the image toolbar, wrapping the image in a link to its full-resolution original. Works for images sourced from your media library as well as dragged-in or pasted images without a media ID.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Code view preserves classes</strong> — Editing raw HTML in code view and switching back to the visual editor no longer strips CSS classes from any element.</li>
+            <li><strong>Taxonomy cache auto-refresh</strong> — Opening a post that references a tag or category created after the last cache refresh now re-fetches the taxonomy list automatically.</li>
+            <li><strong>Editor scroll reset</strong> — Switching between posts resets the editor scroll position instead of inheriting the previous post's scroll offset.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li>Hardened network error handling, sidebar remount guards, and MIME-type lookups.</li>
+            <li>Fixed a post-switch state race, a toast auto-dismiss timer bug, a cite regex edge case, and update-check retry behavior.</li>
+            <li>Gallery block-comment wrapping no longer accumulates orphaned whitespace between images on repeated saves.</li>
+            <li>Gallery picker no longer shows a stuck spinner when no credentials are configured.</li>
+            <li>Gallery Size picker's "Link to Full Image" now links to the true full-resolution original, not the display-size URL.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.9.0</span>
+          <span class="release__date">June 26, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Cmd+Click to Open Links</h3>
+            <p class="release__body">Hold Cmd and click any link in the editor to open it in your default browser. A visual indicator (pointer cursor + underline) appears while Cmd is held. Fragment-only links (footnote anchors) are correctly skipped.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Update Checker</h3>
+            <p class="release__body">Quill now checks for new versions on launch and shows a dismissable banner in the sidebar when an update is available.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Editor Overscroll &amp; Block Editing</h3>
+            <p class="release__body">The editor now has bottom overscroll so you can keep writing without the cursor pinned to the bottom of the window. Enter in image captions exits to a new paragraph. Blockquotes have a new Enter behavior (split or exit) and a cite toggle button in the toolbar.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">AI List &amp; Table Context</h3>
+            <p class="release__body">AI writing operations (Make Longer, Make Shorter, To Table, To List) now detect when your selection is inside a list or table and replace the whole container intelligently, instead of inserting fragments mid-structure.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Footnote content restrictions</strong> — Footnotes are now limited to inline-only elements; images, tables, and other block content are blocked on drop and paste. Keyboard shortcuts for block-level operations are disabled inside footnotes.</li>
+            <li><strong>Classic content support</strong> — Pre-Gutenberg posts (no <code>&lt;!-- wp: --&gt;</code> block comments) are now run through <code>wpautop()</code> on load for proper paragraph and line-break rendering.</li>
+            <li><strong>Empty states</strong> — Sidebar sections and the editor now show placeholder messaging when empty instead of blank space.</li>
+            <li><strong>HTML entity decoding</strong> — Post and media titles with HTML entities (smart quotes, ampersands, etc.) now display correctly throughout the UI.</li>
+            <li><strong>HTTP image loading</strong> — Old posts with <code>http://</code> image URLs now load correctly in the editor.</li>
+            <li><strong>Media picker pagination</strong> — The media picker sheet now paginates and has a cancel button.</li>
+            <li><strong>Dark mode links</strong> — Links in the editor are now readable in dark mode.</li>
+            <li><strong>Credential validation</strong> — The settings dialog now validates credentials before saving.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li>Excerpt field no longer adopts WordPress's auto-generated excerpt on load.</li>
+            <li>Footnote back-arrow positioned outside text flow (no longer shifts footnote text).</li>
+            <li>Backspace and Delete now work correctly inside footnotes.</li>
+            <li>Blockquote Enter respects depth guard for nested structures (tables, lists inside blockquotes).</li>
+            <li>Image toolbar scroll handler leak and position clamping fixed.</li>
+            <li>Anthropic web search citation tags stripped from AI-generated posts.</li>
+            <li>Loading spinners no longer get stuck when credentials are nil.</li>
+            <li>No more light-mode flash when loading the editor in dark mode.</li>
+            <li>Error toast shown when local draft save fails.</li>
+            <li>AI prompt uses correct <code>&lt;ol&gt;</code> tag for ordered lists.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.8.0</span>
+          <span class="release__date">June 18, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Post Evaluation</h3>
+            <p class="release__body">AI-powered writing critique panel. Click the checkmark-circle button in the editor toolbar to analyze your post and get categorized findings — Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone — with click-to-jump navigation to the flagged passage in your draft. Style-aware: respects your established voice when judging.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">AI Buttons in the Editor Toolbar</h3>
+            <p class="release__body">The Generate (pencil) and Evaluate (checkmark-circle) buttons now live inside the Tiptap formatting toolbar, alongside Bold, Italic, and other controls, instead of in the SwiftUI window chrome.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">New App Icon</h3>
+            <p class="release__body">Refreshed icon for v1.8.0.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Polished confirmation sheets</strong> — Revert, Replace, Conflict, and Truncation dialogs have updated styling.</li>
+            <li><strong>Sorted categories and tags</strong> — Categories and tags in the Post Settings panel are now sorted alphabetically.</li>
+            <li><strong>Toolbar tooltip tweaks</strong> — Arrow alignment and copy improvements.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li>Evaluation task is now cancelled when switching posts, preventing stale results from appearing on the wrong post.</li>
+            <li>Fixed generate dialog title and jump-to-finding focus behavior.</li>
+            <li>AI overwrite alert no longer triggers on posts with no real content.</li>
+            <li>Fixed adjacent inline elements collapsing in text extraction.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.7.0</span>
+          <span class="release__date">June 16, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Sidebar Toggle</h3>
+            <p class="release__body">A new button in the editor toolbar lets you hide and show the left sidebar panel, giving you a distraction-free full-width writing view.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">WordPress Block Comments in Code View</h3>
+            <p class="release__body">The HTML code view now preserves WordPress block comments (e.g. <code>&lt;!-- wp:paragraph --&gt;</code>) when you open it, so you see the same raw markup WordPress stores — not just the stripped inner HTML. Edits made in code view are synced back immediately, so <strong>⌘S</strong> saves without requiring you to exit code view first.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Improved Non-Image Media Panel</h3>
+            <p class="release__body">The media detail panel for audio, video, and document files now shows richer metadata and displays the file extension (e.g. <code>MP4</code>, <code>PDF</code>) in the Type field instead of a MIME type string.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Quill Help</h3>
+            <p class="release__body">The <strong>Help → Quill Help</strong> menu item now opens the online documentation at <a href="docs.html" class="content-link">quill.siolon.com/docs.html</a>.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Code view no-op exit</strong> — exiting code view without making any edits no longer calls <code>setContent</code>, which previously caused compounding whitespace and wiped Tiptap's visual state unnecessarily.</li>
+            <li><strong>Page status in sidebar</strong> — pages now show their status dot (Draft, Published, etc.) in the sidebar row, consistent with posts.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.6.0</span>
+          <span class="release__date">June 12, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Footnotes</h3>
+            <p class="release__body">Full footnote support, end to end. Insert a footnote via the toolbar button or right-click menu — a numbered superscript marker appears inline and a matching entry is added to the footnotes list at the bottom of the document. FootnoteSync keeps markers and list entries in sync as you write: delete a marker and its list entry is removed; reorder content and numbers update automatically. Each list entry has a back-arrow (↩) that jumps back to the marker. Footnote numbers and back-reference anchors are written as Gutenberg-compatible HTML on save.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Embed Blocks</h3>
+            <p class="release__body">Paste a URL from YouTube, Twitter/X, Vimeo, Spotify, or 20+ other providers and Quill renders a static embed card in the editor — visually distinct from a paragraph, but stored as a proper Gutenberg <code>wp:embed</code> block. Provider-specific CSS classes are applied automatically so WordPress renders the correct embed player on publish.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Find &amp; Replace</h3>
+            <p class="release__body">A find &amp; replace bar now lives at the top of the editor. Press <strong>⌘F</strong> to open it, type to highlight all matches, and step through them with the arrow buttons. The Replace field lets you swap individual matches or all at once. Dismissed with <strong>Escape</strong> or by clicking outside.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Live Stats</h3>
+            <p class="release__body">The settings panel now shows live word count, character count, and estimated reading time, updated as you type. Stats freeze while code view is active and refresh on exit.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Private and Pending Review Statuses</h3>
+            <p class="release__body">Two new statuses are available in the status picker: <strong>Private</strong> (published but visible only to logged-in users with sufficient permissions) and <strong>Pending Review</strong> (held for editorial sign-off). Both appear with their own sidebar dot color and are handled correctly in publish/update flows.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Discard Changes</h3>
+            <p class="release__body">A <strong>Revert</strong> button is now available in the editor toolbar when a post has unsaved changes. Clicking it discards all local edits since the last save and restores the last-saved version.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Status Badge</h3>
+            <p class="release__body">The breadcrumb at the top of the editor has been replaced with a live status badge showing the current post status (Draft, Published, Scheduled, etc.). The badge updates immediately when status changes.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Streaming media uploads</strong> — files are now streamed directly from disk using <code>URLSession.upload(for:fromFile:)</code>, avoiding loading the entire file into RAM before uploading. Helps with large images and videos.</li>
+            <li><strong>Settings panel note for local drafts</strong> — a brief info note now appears in the settings panel when editing a local draft, clarifying that categories, tags, and other metadata are set after publishing to WordPress.</li>
+            <li><strong>Toolbar tooltip polish</strong> — keyboard shortcuts removed from Undo, Redo, Bold, Italic, and Underline tooltips; "Ordered list" renamed to "Number list"; "Insert 3×3 table" shortened to "Insert table"; embed input now shows an "Insert media link" placeholder.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Startup flash</strong> — eliminated the white blank flash when the app first launches and the "Start writing…" placeholder flash when switching posts.</li>
+            <li><strong>Sidebar row hit testing</strong> — the entire sidebar row is now clickable, not just the title text area.</li>
+            <li><strong>Editor/settings clearing</strong> — switching sidebar sections (Posts → Media, etc.) now correctly clears the editor and settings panel rather than leaving the previous post visible.</li>
+            <li><strong>Media selection</strong> — switching between sidebar tabs now clears the selected media item, preventing stale detail panels.</li>
+            <li><strong>Image selection outline</strong> — the default ProseMirror blue outline on the image wrapper is suppressed; only the custom resize-handle selection indicator is shown.</li>
+            <li><strong>Panel style consistency</strong> — sidebar and settings panel backgrounds, borders, and shadow clipping are unified across all views.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.5.0</span>
+          <span class="release__date">June 7, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Image Captions</h3>
+            <p class="release__body">Images now support inline captions. Click an image to select it, then type below it to add a caption — saved as a Gutenberg <code>&lt;figcaption&gt;</code> block.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Alt Text</h3>
+            <p class="release__body">Images now carry alt text end-to-end: pre-populated from the WordPress media library when inserting, editable in the Media detail panel, and written to the <code>&lt;img alt="..."&gt;</code> attribute on save.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Class &amp; Attribute Preservation</h3>
+            <p class="release__body">Custom HTML classes and attributes (e.g. hand-edited in code view) are now preserved when Tiptap round-trips the document through its schema.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Interface Adjustments</h3>
+            <p class="release__body">The editor toolbar has been restyled with SVG icons and a heading-level dropdown replacing the separate H1–H6 buttons, with tooltips added to every control. The Media sidebar toolbar buttons now match the style of the Posts and Pages sidebars. The editor also updates its color scheme immediately when the system appearance changes while the app is open.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Spelling suggestions</strong> — Right-clicking a red-underlined word now shows up to 8 suggestions at the top of the context menu.</li>
+            <li><strong>Media tab reload</strong> — The Media tab always reloads when switched to, fixing a bug where a partial cache prevented new uploads from appearing.</li>
+            <li><strong>Image Reset button</strong> — Reset now correctly restores the full-resolution image source and original dimensions, not just clears inline size constraints.</li>
+            <li><strong>Resize handles</strong> — Resize handles are now positioned relative to the image frame only, so they no longer misalign when a caption is present.</li>
+            <li><strong>Context menu leaks</strong> — macOS AutoFill and Services items no longer leak into the editor or title field right-click menus.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.4.0</span>
+          <span class="release__date">June 6, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">About Window</h3>
+            <p class="release__body">Quill now has an About window (Quill → About Quill) showing the version, copyright, and third-party notices for Tiptap, ProseMirror, and SQLite.swift.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Code View</h3>
+            <p class="release__body">A new <code>&lt;/&gt;</code> button at the far right of the editor toolbar switches between the visual Tiptap editor and a raw HTML textarea. The HTML is pretty-printed on entry and parsed back into Tiptap when you return to visual mode — useful for inspecting or hand-editing Gutenberg block markup.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Keyboard Shortcuts</h3>
+            <p class="release__body">Three new File menu shortcuts: <strong>⌘N</strong> New Post, <strong>⌘⇧N</strong> New Page, and <strong>⌘⌥N</strong> New Media.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Link attributes</strong> — Links no longer add <code>target="_blank"</code> or <code>rel="noopener noreferrer nofollow"</code> to every anchor, keeping saved HTML clean.</li>
+            <li><strong>AI generate prompt</strong> — The prompt textarea is now locked while Claude is generating, preventing accidental edits mid-generation.</li>
+            <li><strong>Code view save</strong> — Exiting code view now correctly fires <code>contentChanged</code> so edits made in raw HTML are saved rather than silently dropped.</li>
+            <li><strong>Code view scroll</strong> — Code view opens scrolled to the top instead of the bottom.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.3.0</span>
+          <span class="release__date">June 2, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Blockquote Citations</h3>
+            <p class="release__body">Blockquotes now include an optional citation line. Toggling a blockquote auto-inserts a <code>&lt;cite&gt;</code> node; Enter/Backspace handle it gracefully. The cite element is omitted from saved HTML when empty, producing clean Gutenberg output.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">AI Context Menu</h3>
+            <p class="release__body">AI writing operations (Make Longer, Make Shorter, To Table, To List) moved from a floating pill to the right-click context menu, appearing only when text is selected and an API key is configured.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Excerpt field</strong> — Post excerpts now load correctly from remote posts and display in the settings panel with consistent styling.</li>
+            <li><strong>Taxonomy fetching</strong> — Categories and tags are now fetched with pagination support, so sites with large taxonomies load completely.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.2.0</span>
+          <span class="release__date">May 29, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Extended Heading Levels</h3>
+            <p class="release__body">H4, H5, and H6 now appear in the heading dropdown alongside H1–H3, giving you the full HTML heading range without leaving the editor.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">File Menu Commands</h3>
+            <p class="release__body"><strong>File → New Post</strong> and <strong>File → New Page</strong> create a local draft and open it immediately — no need to navigate the sidebar first. <strong>File → New Media…</strong> switches to the Media tab and opens the upload panel in one step.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Editor &amp; Interface Polish</h3>
+            <p class="release__body">The writing canvas is now white, giving the editor a cleaner, more focused feel. Settings panel rows are roomier, the sidebar tab selection and new-item button are more visually distinct, and the media detail view has been redesigned with a two-column layout.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>AI result acceptance</strong> — Gutenberg HTML transformation is now correctly applied when accepting an AI rewrite, matching the output of a manual save.</li>
+            <li><strong>AI selection pill</strong> — the ✦ pill now anchors below the selected text rather than floating above the bounding box.</li>
+            <li><strong>Unsaved changes toast</strong> — the "Unsaved changes restored" notice no longer appears incorrectly when opening a server post with no pending local edits.</li>
+            <li><strong>Media grid hit-testing</strong> — thumbnail clicks in the media browser now register at the correct position after scrolling.</li>
+            <li><strong>Gutenberg HTML fidelity</strong> — <code>toWordPressHTML</code> output more closely matches what the WordPress block editor produces, reducing round-trip diffs.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.1.0</span>
+          <span class="release__date">May 26, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Spell Checking</h3>
+            <p class="release__body">On-demand spell check via the <strong>ABC</strong> toolbar button. Misspelled words are underlined in red; right-clicking a highlighted word shows system correction suggestions. Squiggles clear as you edit.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Offline Editor Loading</h3>
+            <p class="release__body">Tiptap is now bundled locally rather than fetched from a CDN at launch. The editor loads instantly from disk with no network dependency.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Loading States</h3>
+            <p class="release__body">A spinner now appears while the post list is loading from WordPress and while the editor is initializing — replacing a blank white panel.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li><strong>Save Draft</strong> for local drafts now writes only to SQLite and never touches the WordPress API. Previously it would attempt a WordPress save and fail for unpublished local items.</li>
+            <li><strong>⌘S</strong> on remote posts now correctly triggers Update rather than showing the Save Draft button.</li>
+            <li>Conflict-detection baseline is now refreshed from the server each time a post is opened, preventing false "edited elsewhere" warnings on re-open.</li>
+            <li>Spell-check squiggles now clear only the word being edited rather than wiping all highlights on the first keystroke.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
+          <span class="release__version">v1.0.0</span>
+          <span class="release__date">May 24, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Initial Release</h2>
+          <ul class="release__list">
+            <li><strong>Post &amp; page editor</strong> — Full rich text editing with Tiptap, producing clean Gutenberg-compatible HTML. Headings, lists, blockquotes, code blocks, tables, bold, italic, inline code, and links.</li>
+            <li><strong>WordPress sync</strong> — Create, edit, publish, schedule, and trash posts and pages via the WordPress REST API. No plugin required — uses Application Passwords.</li>
+            <li><strong>Local drafts</strong> — Write offline and publish when ready. Drafts are stored in SQLite.</li>
+            <li><strong>Media library</strong> — Browse your WordPress media library, insert images into posts, and resize or align them inline.</li>
+            <li><strong>Image tools</strong> — Drag images from Finder directly into the editor. Resize with drag handles. Align left, center, or right with Gutenberg-compatible output.</li>
+            <li><strong>Link picker</strong> — Insert and edit links with a popover search across your existing posts and pages.</li>
+            <li><strong>Post settings</strong> — Manage categories, tags, slug, excerpt, scheduling, and discussion settings.</li>
+            <li><strong>AI writing assistant</strong> — Generate posts or rewrite selections using Claude, tuned to your writing style.</li>
+            <li><strong>Dark mode</strong> — Full light and dark mode support throughout.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__col">
+        <p class="footer__logo">Quill — A native macOS app for WordPress</p>
+        <p class="footer__disclaimer">Quill is provided as-is. No support is offered — feedback and bug reports are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
+      </div>
+      <div class="footer__col">
+        <p class="footer__disclaimer">© 2026 <a href="https://www.siolon.com" target="_blank" rel="noopener">Chris Poteet</a> · <a href="license.html">License</a> · <a href="privacy.html">Privacy</a></p>
+        <p class="footer__disclaimer">Uses <a href="https://tiptap.dev" target="_blank" rel="noopener">Tiptap</a> (© Tiptap GmbH), <a href="https://prosemirror.net" target="_blank" rel="noopener">ProseMirror</a> (© Marijn Haverbeke et al.), and <a href="https://github.com/stephencelis/SQLite.swift" target="_blank" rel="noopener">SQLite.swift</a> (© Stephen Celis) under the MIT License.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

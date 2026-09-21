@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Quill</title>
+  <meta name="description" content="Privacy policy for Quill, a native macOS app for WordPress.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="/" class="nav__logo">Quill</a>
+    <div class="nav__links">
+      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
+      <a href="docs.html" class="nav__link">Docs</a>
+      <a href="changelog.html" class="nav__link">Changelog</a>
+      <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary">Download</a>
+    </div>
+  </nav>
+
+  <section class="changelog-header">
+    <div class="changelog-header__inner">
+      <p class="eyebrow">Legal</p>
+      <h1 class="changelog-header__title">Privacy Policy</h1>
+      <p class="changelog-header__sub">What Quill stores, what it sends, and what it never does.</p>
+    </div>
+  </section>
+
+  <div class="license-body">
+    <div class="license-body__inner">
+
+      <div class="license-section">
+        <h2 class="license-section__title">What stays on your Mac</h2>
+        <p class="license-section__body">Quill stores the following data locally in <code>~/Library/Application Support/Quill/</code>:</p>
+        <ul class="license-list">
+          <li><strong>credentials.json</strong> — your WordPress site URL and Application Password. Stored as a plain JSON file with restricted permissions (chmod 600). Quill deliberately does not use the macOS system keychain to avoid password prompts when the app relaunches.</li>
+          <li><strong>ai_settings.json</strong> — your Anthropic API key and AI preferences (if you use the AI writing feature), also chmod 600.</li>
+          <li><strong>A local SQLite database</strong> — drafts you've started but not yet published, and autosaved versions of posts and pages you're editing. This is local only; it is not synced anywhere.</li>
+        </ul>
+      </div>
+
+      <div class="license-section">
+        <h2 class="license-section__title">What Quill sends over the network</h2>
+        <p class="license-section__body">Quill makes two kinds of outbound connections:</p>
+
+        <p class="license-section__body"><strong>1. Your WordPress site</strong><br>
+        Every read and write operation (loading posts, saving drafts, publishing, uploading media) goes directly to your WordPress site's REST API using the credentials you provide. Quill is the client; your site is the server. No third party is involved in this traffic.</p>
+
+        <p class="license-section__body"><strong>2. Anthropic's API (optional)</strong><br>
+        If you enable AI writing features and provide an Anthropic API key, the text you select or the topic you describe is sent to Anthropic's API to generate or improve content. This uses your own API key and is subject to <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">Anthropic's privacy policy</a>. AI features are entirely opt-in and require you to supply your own key — Quill has no built-in key and makes no AI calls without one.</p>
+      </div>
+
+      <div class="license-section">
+        <h2 class="license-section__title">What Quill never does</h2>
+        <ul class="license-list">
+          <li><strong>No analytics or telemetry.</strong> Quill does not collect usage data, crash reports, or any metrics about how you use the app.</li>
+          <li><strong>No accounts.</strong> There is no Quill account, no sign-in, and no central server. The app has no way to identify you.</li>
+          <li><strong>No cloud sync.</strong> Your local drafts and settings never leave your Mac unless you explicitly publish them to your own WordPress site.</li>
+          <li><strong>No advertising.</strong> Quill is not ad-supported and shares no data with advertisers.</li>
+        </ul>
+      </div>
+
+      <div class="license-section">
+        <h2 class="license-section__title">Deleting your data</h2>
+        <p class="license-section__body">To remove everything Quill stores on your Mac:</p>
+        <ul class="license-list">
+          <li>Quit Quill.</li>
+          <li>Delete <code>~/Library/Application Support/Quill/</code> — this removes credentials, AI settings, and the local draft database.</li>
+          <li>Delete <code>Quill.app</code> from your Applications folder.</li>
+        </ul>
+        <p class="license-section__body">Nothing else needs to be cleaned up. Quill leaves no other traces on your system.</p>
+      </div>
+
+      <div class="license-section">
+        <h2 class="license-section__title">Contact</h2>
+        <p class="license-section__body">Questions or concerns? Open an issue at <a href="https://github.com/cpoteet/Quill/issues" target="_blank" rel="noopener">github.com/cpoteet/Quill</a>.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__col">
+        <p class="footer__logo">Quill — A native macOS app for WordPress</p>
+        <p class="footer__disclaimer">Quill is provided as-is. No support is offered — feedback and bug reports are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
+      </div>
+      <div class="footer__col">
+        <p class="footer__disclaimer">© 2026 <a href="https://www.siolon.com" target="_blank" rel="noopener">Chris Poteet</a> · <a href="license.html">License</a> · <a href="privacy.html">Privacy</a></p>
+        <p class="footer__disclaimer">Uses <a href="https://tiptap.dev" target="_blank" rel="noopener">Tiptap</a> (© Tiptap GmbH), <a href="https://prosemirror.net" target="_blank" rel="noopener">ProseMirror</a> (© Marijn Haverbeke et al.), and <a href="https://github.com/stephencelis/SQLite.swift" target="_blank" rel="noopener">SQLite.swift</a> (© Stephen Celis) under the MIT License.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
