@@ -171,6 +171,9 @@ public struct SidebarView: View {
 
     private var postList: some View {
         List(selection: $appState.selectedItem) {
+            if let update = appState.updateAvailable {
+                updateRow(update)
+            }
             if let error = appState.listError {
                 listErrorRow(error)
             }
@@ -187,9 +190,6 @@ public struct SidebarView: View {
                             }
                         }
                     }
-            }
-            if let update = appState.updateAvailable {
-                updateRow(update)
             }
         }
         .listStyle(.sidebar)
