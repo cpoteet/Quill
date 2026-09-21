@@ -49,4 +49,4 @@ Nothing else needs to be cleaned up. Quill leaves no other traces on your system
 
 ## Contact
 
-Questions or concerns? Open an issue at [github.com/cpoteet/Quill-Releases](https://github.com/cpoteet/Quill-Releases/issues).
+Questions or concerns? Open an issue at [github.com/cpoteet/Quill](https://github.com/cpoteet/Quill/issues).

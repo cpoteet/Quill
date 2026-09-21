@@ -53,7 +53,7 @@ Quill is free (but not open source).
 
 ### Downloading Quill
 
-Quill is available for free at [cpoteet.github.io/Quill-Releases](https://cpoteet.github.io/Quill-Releases/). Download the latest release, unzip the file, and drag **Quill.app** into your `/Applications` folder.
+Quill is available for free at [quill.siolon.com](https://quill.siolon.com/). Download the latest release, unzip the file, and drag **Quill.app** into your `/Applications` folder.
 
 ### First Launch: macOS Security
 

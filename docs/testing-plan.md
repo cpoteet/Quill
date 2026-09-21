@@ -2909,8 +2909,9 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 
 ### 7.21 Update checker
 
-- [ ] Launch the app → if a newer version is available at `cpoteet.github.io/Quill-Releases/version.json`, a banner appears in the sidebar with the new version number.
-- [ ] Click "View Release" → opens the changelog URL in the default browser.
+- [ ] Launch the app → if the latest release at `api.github.com/repos/cpoteet/Quill/releases/latest` has a higher version than the running build, a banner appears in the sidebar with the new version number.
+- [ ] Click "View Release" → opens that release's GitHub page in the default browser.
+- [ ] The banner version number has no leading `v`, even though the Git tag does.
 - [ ] Click the dismiss (×) button → the banner disappears and does not reappear for the same version on subsequent launches.
 - [ ] If the remote version equals or is older than the current version, no banner appears.
 - [ ] With no internet connection at launch, toggle the sidebar hidden and visible again (or otherwise trigger a remount) once connectivity returns → the update check runs again and a banner appears if applicable (a failed first check should not permanently skip checking for the rest of the session).
