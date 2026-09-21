@@ -1,6 +1,6 @@
 END USER LICENSE AGREEMENT (EULA)
 
-Last Updated: June 4, 2026
+Last Updated: September 20, 2026
 
 This End User License Agreement ("EULA") is a legal agreement between you (the "User" or
 "You") and Chris Poteet ("Licensor", "we", or "us") governing your use of Quill (the
@@ -41,6 +41,12 @@ You may NOT:
 
   - Use the Software on a network or make it available to multiple users without explicit
     written permission from the Licensor.
+
+Notwithstanding the foregoing, the Licensor publishes the Software's source code in a
+public repository for reference and transparency. Reading that published source code is
+permitted and does not violate this Section. That publication grants no license to the
+source code: you may not modify, adapt, redistribute, or create derivative works from it,
+and every other restriction in this Section continues to apply in full.
 
 
 3. OWNERSHIP AND INTELLECTUAL PROPERTY
