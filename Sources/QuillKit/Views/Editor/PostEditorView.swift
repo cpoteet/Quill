@@ -471,12 +471,10 @@ public struct PostEditorView: View {
                 if !alarm.title.isEmpty {
                     Text(alarm.title)
                         .font(.callout.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(boldingNames(in: alarm.body, names: alarm.names))
                     .font(.callout)
                     .lineSpacing(1.5)
-                    .fixedSize(horizontal: false, vertical: true)
                 if alarm.blocksSaving {
                     Button("Save anyway, I understand") {
                         blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .acknowledged)
