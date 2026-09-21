@@ -332,7 +332,7 @@ public struct PostEditorView: View {
                     if isSaving {
                         ProgressView().controlSize(.small)
                     } else {
-                        Image(systemName: "paperplane.fill")
+                        Image(systemName: isUpdatingPublishedPost ? "arrow.up.circle" : "paperplane")
                     }
                 }
                 .help(isSaving ? "Saving…" : publishButtonTitle)
@@ -549,10 +549,17 @@ public struct PostEditorView: View {
         .onChange(of: title) { scheduleAutosave() }
     }
 
+    private var isPublishedRemote: Bool {
+        if case .remote(let p) = item, p.status == PostStatus.publish.rawValue { return true }
+        return false
+    }
+
+    private var isUpdatingPublishedPost: Bool {
+        settings.status == .publish && isPublishedRemote
+    }
+
     private var publishButtonTitle: String {
-        var isPublishedRemote = false
-        if case .remote(let p) = item, p.status == PostStatus.publish.rawValue { isPublishedRemote = true }
-        return Self.publishButtonTitle(status: settings.status, isPublishedRemote: isPublishedRemote)
+        Self.publishButtonTitle(status: settings.status, isPublishedRemote: isPublishedRemote)
     }
 
     private var isRemote: Bool {
