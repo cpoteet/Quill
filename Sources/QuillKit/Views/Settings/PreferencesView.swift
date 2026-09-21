@@ -34,57 +34,60 @@ public struct PreferencesView: View {
     }
 
     public var body: some View {
-        Form {
-            Section {
-                TextField("Site URL", text: $siteURL)
-                TextField("Username", text: $username)
-                SecureField("Application Password", text: $appPassword)
-            } header: {
-                Text("WordPress Credentials")
-            } footer: {
-                Text("Generate an application password in WordPress Admin \u{2192} Users \u{2192} Profile.")
-            }
-
-            Section("AI Writing") {
-                SecureField("Anthropic API Key", text: $aiAPIKey)
-                LabeledContent("Writing Style") {
-                    HStack(spacing: 8) {
-                        Button("Choose Posts") { isSamplePickerOpen = true }
-                            .disabled(posts.isEmpty)
-                        Text(aiSamplePostIDs.isEmpty
-                             ? "No samples selected"
-                             : "\(aiSamplePostIDs.count) post\(aiSamplePostIDs.count == 1 ? "" : "s") selected")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Toggle("Web Search", isOn: $aiWebSearchEnabled)
-            }
-
-            if let error = saveError {
+        VStack(spacing: 0) {
+            Form {
                 Section {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
+                    TextField("Site URL", text: $siteURL)
+                    TextField("Username", text: $username)
+                    SecureField("Application Password", text: $appPassword)
+                } header: {
+                    Text("WordPress Credentials")
+                } footer: {
+                    Text("Generate an application password in WordPress Admin \u{2192} Users \u{2192} Profile.")
                 }
-            }
 
-            Section {
-                HStack {
-                    if isAnalyzing {
-                        Text("Analyzing writing style\u{2026}").foregroundStyle(.secondary).font(.caption)
-                    } else if saveSuccess {
-                        Text("Saved.").foregroundStyle(.secondary).font(.caption)
+                Section("AI Writing") {
+                    SecureField("Anthropic API Key", text: $aiAPIKey)
+                    LabeledContent("Writing Style") {
+                        HStack(spacing: 8) {
+                            Button("Choose Posts") { isSamplePickerOpen = true }
+                                .disabled(posts.isEmpty)
+                            Text(aiSamplePostIDs.isEmpty
+                                 ? "No samples selected"
+                                 : "\(aiSamplePostIDs.count) post\(aiSamplePostIDs.count == 1 ? "" : "s") selected")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    Spacer()
-                    Button("Save") { Task { await saveAll() } }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isSaving || isAnalyzing)
+                    Toggle("Web Search", isOn: $aiWebSearchEnabled)
+                }
+
+                if let error = saveError {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
+            .formStyle(.grouped)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                if isAnalyzing {
+                    Text("Analyzing writing style\u{2026}").foregroundStyle(.secondary).font(.caption)
+                } else if saveSuccess {
+                    Text("Saved.").foregroundStyle(.secondary).font(.caption)
+                }
+                Spacer()
+                Button("Save") { Task { await saveAll() } }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isSaving || isAnalyzing)
+            }
+            .padding(.horizontal, 30)
+            .padding(.bottom, 20)
         }
-        .formStyle(.grouped)
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
         .sheet(isPresented: $isSamplePickerOpen) {
