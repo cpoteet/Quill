@@ -84,7 +84,10 @@ public struct QuillApp: App {
             }
             CommandGroup(replacing: .help) {
                 Button("Quill Help") {
-                    NSWorkspace.shared.open(URL(string: "https://cpoteet.github.io/Quill-Releases/docs.html")!)
+                    NSWorkspace.shared.open(URL(string: "https://quill.siolon.com/docs.html")!)
+                }
+                Button("Changelog") {
+                    NSWorkspace.shared.open(URL(string: "https://quill.siolon.com/changelog.html")!)
                 }
             }
             CommandGroup(replacing: .newItem) {
