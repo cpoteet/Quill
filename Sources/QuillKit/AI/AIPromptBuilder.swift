@@ -141,6 +141,8 @@ public struct AIPromptBuilder {
         let isTable = context == "table"
         let instruction: String
         let listTag = context == "orderedList" ? "<ol>" : "<ul>"
+        let words = selectedHTML.split(whereSeparator: \.isWhitespace).count
+        func scaled(_ factor: Double) -> Int { max(1, Int((Double(words) * factor).rounded())) }
         switch operation {
         case .makeLonger:
             if isList {
@@ -148,7 +150,8 @@ public struct AIPromptBuilder {
             } else if isTable {
                 instruction = "Expand the content of each table cell by adding detail or explanation. Preserve the table structure and the author's voice. Return only the expanded table as HTML — no preamble, no explanation."
             } else {
-                instruction = "Expand this content to roughly 2–3 times its current length by adding detail, examples, or explanation where it feels natural. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
+                let (target, ceiling): (Double, Double) = words < 40 ? (4, 5) : words <= 150 ? (2, 2.5) : (1.5, 2)
+                instruction = "Expand this content from \(words) words to about \(scaled(target)) words, and never more than \(scaled(ceiling)). Add new sentences that bring in supporting detail or explanation, rather than lengthening the existing sentences; a single sentence becomes about four sentences. Keep the same number of paragraphs — do not add new paragraphs, headings, or lists. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
             }
         case .makeShorter:
             if isList {
@@ -156,7 +159,8 @@ public struct AIPromptBuilder {
             } else if isTable {
                 instruction = "Condense each table cell to its essential content, removing redundancy while preserving meaning and the table structure. Return only the shortened table as HTML — no preamble, no explanation."
             } else {
-                instruction = "Condense this content to its essential points, removing redundancy while preserving meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
+                let (target, ceiling): (Double, Double) = words < 40 ? (0.7, 0.8) : words <= 150 ? (0.5, 0.6) : (0.4, 0.5)
+                instruction = "Condense this content from \(words) words to about \(scaled(target)) words, and never more than \(scaled(ceiling)). Cut the least essential sentences and tighten the wording of the rest; a single sentence stays one tighter sentence. Keep the same number of paragraphs — do not merge paragraphs or turn them into lists. Preserve the meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
             }
         case .convertToTable:
             instruction = "Convert this content into an HTML table. Use <table>, <thead>, <tbody>, <tr>, <th>, and <td> tags. Identify logical columns from the content. Return only the table HTML — no preamble, no explanation."

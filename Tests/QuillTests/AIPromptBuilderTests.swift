@@ -233,6 +233,34 @@ import Testing
         #expect(prompt.lowercased().contains("expand") || prompt.lowercased().contains("longer"))
     }
 
+    @Test func makeLongerStatesWordTargetFromSelection() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "one two three four five", operation: .makeLonger)
+        #expect(prompt.contains("from 5 words to about 20 words"))
+        #expect(prompt.contains("never more than 25"))
+        #expect(prompt.contains("same number of paragraphs"))
+    }
+
+    @Test func makeLongerScalesDownForLongerSelections() {
+        let paragraph = AIPromptBuilder.operationPrompt(selectedHTML: words(100), operation: .makeLonger)
+        #expect(paragraph.contains("to about 200 words, and never more than 250"))
+        let long = AIPromptBuilder.operationPrompt(selectedHTML: words(200), operation: .makeLonger)
+        #expect(long.contains("to about 300 words, and never more than 400"))
+    }
+
+    @Test func makeShorterScalesUpForLongerSelections() {
+        let sentence = AIPromptBuilder.operationPrompt(selectedHTML: words(10), operation: .makeShorter)
+        #expect(sentence.contains("from 10 words to about 7 words, and never more than 8"))
+        let paragraph = AIPromptBuilder.operationPrompt(selectedHTML: words(100), operation: .makeShorter)
+        #expect(paragraph.contains("to about 50 words, and never more than 60"))
+        let long = AIPromptBuilder.operationPrompt(selectedHTML: words(200), operation: .makeShorter)
+        #expect(long.contains("to about 80 words, and never more than 100"))
+        #expect(long.contains("same number of paragraphs"))
+    }
+
+    private func words(_ count: Int) -> String {
+        Array(repeating: "word", count: count).joined(separator: " ")
+    }
+
     @Test func makeShorterInstructionPresent() {
         let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "x", operation: .makeShorter)
         #expect(prompt.lowercased().contains("condense") || prompt.lowercased().contains("shorter"))

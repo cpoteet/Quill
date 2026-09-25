@@ -63,7 +63,6 @@ public struct PostEditorView: View {
     // AI state
     @State private var isAISheetOpen: Bool = false
     @State private var showAIReplaceAlert: Bool = false
-    @State private var currentSelectionRect: CGRect? = nil
     @State private var hasTextSelection: Bool = false
     @State private var editorWebView: WKWebView? = nil
     @State private var resultPanel: AIResultPanel = AIResultPanel()
@@ -131,7 +130,6 @@ public struct PostEditorView: View {
                         return fetched
                     },
                     onSelectionChanged: { rect in
-                        currentSelectionRect = rect
                         handleSelectionChange(rect: rect)
                     },
                     onStatsChanged: { words, characters in
@@ -1257,24 +1255,12 @@ public struct PostEditorView: View {
                 showArgs = jsonStr
             }
 
-            let resultRect: CGRect? = await withCheckedContinuation { continuation in
-                webView.evaluateJavaScript("showAIResult(\(showArgs))") { result, _ in
-                    if let dict = result as? [String: Any],
-                       let x = dict["x"] as? Double,
-                       let y = dict["y"] as? Double,
-                       let w = dict["width"] as? Double,
-                       let h = dict["height"] as? Double {
-                        continuation.resume(returning: CGRect(x: x, y: y, width: w, height: h))
-                    } else {
-                        continuation.resume(returning: currentSelectionRect)
-                    }
-                }
+            await withCheckedContinuation { continuation in
+                webView.evaluateJavaScript("showAIResult(\(showArgs))") { _, _ in continuation.resume() }
             }
 
-            // 5. Show accept/discard panel anchored below the result
-            let anchorRect = resultRect ?? currentSelectionRect ?? .zero
+            // 5. Show the accept/discard bar along the bottom of the editor
             resultPanel.show(
-                belowRect: anchorRect,
                 in: webView,
                 onAccept: {
                     webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)

@@ -6104,21 +6104,6 @@
 
       // Select the inserted range — browser selection acts as the visual highlight
       editor.chain().setTextSelection({ from: nodeFrom, to: _aiResultTo }).run()
-      const s = window.getSelection()
-      if (s && s.rangeCount > 0 && !s.isCollapsed) {
-        const r = s.getRangeAt(0).getBoundingClientRect()
-        if (r.width > 0 || r.height > 0) {
-          return { x: r.left, y: r.top, width: r.width, height: r.height }
-        }
-      }
-      // Fallback: browser selection has no usable rect (e.g. after table replacement).
-      // Use ProseMirror coordsAtPos so the panel still appears.
-      try {
-        const coords = editor.view.coordsAtPos(nodeFrom)
-        return { x: coords.left, y: coords.top, width: 200, height: coords.bottom - coords.top }
-      } catch (_) {
-        return { x: 0, y: 0, width: 0, height: 0 }
-      }
     }
 
     // Called by Swift when the user accepts the result.
