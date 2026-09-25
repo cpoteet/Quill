@@ -3053,7 +3053,7 @@ window's licence link all point at `quill.siolon.com`, which is published from
 
 **The site itself**
 - [ ] `quill.siolon.com` loads over HTTPS, and the download link on it fetches the current release.
-- [ ] The docs page matches the app: check a few headings against `docs/user-guide.md`, and confirm nothing describes the pre-native-UI interface (a hand-painted title bar, a toolbar section picker, a sidebar media grid).
+- [ ] The docs page (`site/docs.html`) matches the app: spot-check a few sections against the running build, and confirm nothing describes the pre-native-UI interface (a hand-painted title bar, a toolbar section picker, a sidebar media grid).
 - [ ] The changelog's newest entry lists this release's changes; older entries are left as they shipped, including the original "Quill Help" wording for v1.7.0.
 
 ---
