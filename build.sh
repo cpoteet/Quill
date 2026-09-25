@@ -52,6 +52,11 @@ xcrun actool Assets.xcassets AppIcon.icon \
   --output-partial-info-plist "$(mktemp -t quill-assets)" \
   --output-format human-readable-text > /dev/null
 
+if [ ! -f "$RESOURCES_DIR/Assets.car" ]; then
+  echo "✗ actool did not produce Assets.car -- the accent colour and app icon would be missing."
+  exit 1
+fi
+
 # Info.plist
 cat > "$APP_DIR/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

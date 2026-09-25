@@ -94,7 +94,6 @@ public struct SidebarView: View {
                 MediaSidebarSection()
             }
         }
-        .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
         .toolbar(removing: .sidebarToggle)
         // Adding toolbar items while the column is still sliding in overflows them into a » menu.
         .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX >= 0 } action: { isFullyOnScreen = $0 }
@@ -273,12 +272,12 @@ public struct SidebarView: View {
         }
         appState.categories = []
         appState.tags = []
+        appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
         do {
             async let posts = client.fetchAllPosts()
             async let pages = client.fetchAllPages()
             appState.posts = try await posts
             appState.pages = try await pages
-            appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []
             await loadTaxonomiesIfNeeded(client: client)
             appState.hasLoadedList = true
             appState.isLoadingList = false
@@ -385,13 +384,15 @@ struct SidebarErrorRow: View {
     @Environment(\.openSettings) private var openSettings
 
     private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
+    // Measured gap between the large-scale symbol's frame top and the triangle's apex.
+    private static let triangleTopInset: CGFloat = 1.5
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .symbolRenderingMode(.multicolor)
                 .imageScale(.large)
-                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.capHeight / 2 }
+                .alignmentGuide(.firstTextBaseline) { $0[.top] + Self.triangleTopInset + Self.capHeight }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
                 Text(message)

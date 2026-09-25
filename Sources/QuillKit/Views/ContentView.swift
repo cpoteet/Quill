@@ -10,6 +10,7 @@ public struct ContentView: View {
     public var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView(columnVisibility: $columnVisibility)
+                .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
         } detail: {
             detailContent
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)

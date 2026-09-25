@@ -47,6 +47,9 @@ public struct PostEditorView: View {
     @State private var blockRiskAlarm: BlockRiskAlarm? = nil
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
+    private static let calloutCapHeight = NSFont.preferredFont(forTextStyle: .callout).capHeight
+    // Measured gap between the 13pt triangle's frame top and its apex.
+    private static let triangleTopInset: CGFloat = 1.5
 
     // Parses date_gmt values without a timezone suffix (some WP versions); treated as UTC.
     private static let utcNoSuffixFormatter: DateFormatter = {
@@ -462,11 +465,11 @@ public struct PostEditorView: View {
     // this is content about to be deleted.
     private func blockRiskBanner(_ alarm: BlockRiskAlarm) -> some View {
         let danger = alarm.stage != .saved
-        return HStack(alignment: .top, spacing: 10) {
+        return HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: danger ? "exclamationmark.triangle.fill" : "clock.arrow.circlepath")
                 .foregroundStyle(danger ? Color.red : Color.secondary)
                 .font(.system(size: 13))
-                .padding(.top, 1)
+                .alignmentGuide(.firstTextBaseline) { $0[.top] + Self.triangleTopInset + Self.calloutCapHeight }
             VStack(alignment: .leading, spacing: 4) {
                 if !alarm.title.isEmpty {
                     Text(alarm.title)
@@ -513,10 +516,11 @@ public struct PostEditorView: View {
 
     // #1 Dismissible error banner
     private var errorBanner: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(.orange)
                 .font(.system(size: 13))
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.calloutCapHeight / 2 }
             Text(saveError ?? "")
                 .font(.callout)
                 .foregroundStyle(.primary)
