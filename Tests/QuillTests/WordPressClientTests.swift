@@ -300,6 +300,24 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(auth.count > "Basic ".count)
     }
 
+    @Test func requestsAcceptJSONSoWordPressHidesPHPWarnings() async throws {
+        var capturedRequests: [URLRequest] = []
+        MockURLProtocol.requestHandler = { request in
+            capturedRequests.append(request)
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        _ = try await client.fetchMediaItem(id: 1)
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        try Data([0x89, 0x50]).write(to: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        _ = try await client.uploadMedia(fileURL: tmp, filename: "photo.png", mimeType: "image/png")
+        #expect(capturedRequests.count == 2)
+        for request in capturedRequests {
+            #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
+        }
+    }
+
     @Test func uploadMediaSetsContentTypeFromMimeType() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

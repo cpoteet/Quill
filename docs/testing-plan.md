@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-20 — 460 Swift tests + 1,215 JS tests (1,214 pass, 1 skipped), no failures._
+_Last updated: 2026-09-25 — 462 Swift tests + 1,229 JS tests (1,228 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,9 +16,9 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (460 tests)
+1. **Swift tests** — `swift test` (462 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
-3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (46 tests — live Tiptap editor in jsdom)
+3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (48 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
 5. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
 6. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
@@ -29,7 +29,7 @@ This document is the authoritative reference for Quill's automated test suite an
 11. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
 12. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 13. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
-14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (23 tests — checked by WordPress's own block validator)
+14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (35 tests — checked by WordPress's own block validator)
 15. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the fifteen passed.
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (460 tests, 32 suites)
+## Swift test suite (462 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -95,7 +95,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 53 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 57 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -109,7 +109,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 11 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 12 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 24 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending); `PostStats` reading time; dropped-image upload progress/summary message builders |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
@@ -245,7 +245,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (53 tests)
+### 5. Networking — `WordPressClientTests` (57 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -263,6 +263,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `createPageUsesPostMethodOnPagesEndpoint` | `POST /pages` |
 | `updatePageUsesPutMethodOnPagesId` | `PUT /pages/{id}` |
 | `authorizationHeaderIncludedInRequests` | `Authorization: Basic …` on all requests |
+| `requestsAcceptJSONSoWordPressHidesPHPWarnings` | `Accept: application/json` on GET and upload requests, so a site with `WP_DEBUG_DISPLAY` on keeps PHP warnings out of the body |
 | `uploadMediaSetsContentTypeFromMimeType` | `Content-Type` matches passed mime type |
 | `uploadMediaSetsContentDispositionWithFilename` | `Content-Disposition` includes `filename="…"` |
 | `uploadMediaSpacesInFilenameArePercentEncoded` | Spaces in filenames percent-encoded in `filename*` part |
@@ -740,7 +741,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (11 tests)
+### 19. Security — `EditorCoordinatorTests` (12 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -757,6 +758,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 | `schemeCheckIsCaseInsensitive` | `HTTPS://` → allowed (lowercased before compare) |
 | `mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` | `media_details.sizes` missing a `"full"` entry gets one synthesized from `source_url`/top-level width/height |
 | `mediaSizesDictPreservesExistingFullEntry` | A server-provided `"full"` entry in `sizes` is not overwritten |
+| `misspelledWordsReturnsOnMainActorWithoutTrapping` | NSSpellChecker's callback, which arrives on its own queue, reaches a main-actor completion without Swift's isolation check trapping the process (the Check Spelling crash) |
 | `mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` | No `media_details.sizes` at all still yields a single `"full"` entry from `source_url` |
 | `mediaSizesDictReturnsNilWhenSourceURLIsEmpty` | Empty `source_url` → `nil` (no usable size data) |
 
@@ -1040,7 +1042,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS AI output validity tests (23 tests)
+## JS AI output validity tests (35 tests)
 
 `Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`.
 
@@ -1051,6 +1053,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 | `markup Claude sometimes writes saves as valid blocks` (8 tests) | Validity for the six shapes that used to fail, then one test each that the heading `id` becomes `anchor`, a custom class becomes `className`, `start` reaches the delimiter, a code language class moves to the `<pre>`, a table `<caption>` and a figure caption land in `<figcaption>`, plus idempotency |
 | `everything else Claude might write saves as valid blocks` (3 tests) | Validity for h1–h6, legacy inline tags, entities, divs, bare text, mixed lists, three quote shapes, header-less / merged-cell / foot-section tables, `<pre>`, images, `<dl>`, `<details>`, sectioning tags; no listed phrase is lost; idempotency |
 | `a right-click AI result saves as valid blocks` (3 tests) | The same validity check for a rewritten table, list, and pair of paragraphs |
+| `a right-click AI result replaces only the selection` (12 tests) | A sentence selected at the start, middle or end of a paragraph is replaced in place and the paragraph is not split; a selection across bold text and one across two paragraphs keep the text outside them; a two-paragraph result for the whole paragraph, or its start, middle or end, leaves no empty paragraph and no stray edge space; a second operation after a paragraph-splitting result still replaces the right text; Discard restores the original |
 
 ## JS fixture validity sweep (30 tests)
 
@@ -1063,7 +1066,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS preservation tests (46 tests)
+## JS preservation tests (48 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1125,9 +1128,11 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 | `a fully preserved post posts nothing` | |
 | `an ordinary post posts nothing` | |
 | `every real fixture posts nothing` | No false alarm on any live-site capture |
+| `every real fixture loaded twice in one post posts nothing` | A second copy of any block is accounted for; before the gallery fix, `gallery-block.html` and `post-17780.html` failed here and no other fixture did |
 | `a post whose block the wrap missed is reported` | Stubs `wrapUnsupportedBlocks` to a no-op and asserts the exact eight names are posted — the only way to prove the tripwire does not share the wrap's assumptions |
 | `the tripwire goes quiet again once the wrap is restored` | The stub did not leave state behind |
 | `one of two blocks with the same name going missing is reported` | The count is per instance, not per name, so losing one of a pair is still a loss |
+| `a second gallery in the same post is not reported` | Each source-backed `galleryBlock` counts its own name, so the second gallery is not treated as missing |
 | `a block nested inside a modeled container is counted too` | The count walks every depth, not just the top level |
 | `a code-view edit that loses a block is reported` | Hand-editing the source is the other way content goes missing, and it raises the banner the same way |
 
@@ -3223,6 +3228,12 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 143 | `DocumentEditedMarker.dismantleNSView` cleared the dot through `nsView.window`, which is already nil whenever SwiftUI detached the view first — the window's unsaved-changes dot stayed lit with no editor open. `MarkerView` holds a `weak var markedWindow` and clears through that | 👁 §7.9 — `NSViewRepresentable` teardown has no test harness |
 | 144 | The heading indicator kept the last post's level after a load, because `_clearToolbarContext` — the reset that runs in place of `updateToolbar` while `_toolbarIdle` is set — is the only path that touches it | ✅ `test-editor-containers.js` `'a load leaves the heading indicator neutral even when the post opens on a heading'` + `'placing the caret in that heading restores the indicator'` |
 | 145 | Two overlapping uploads shared `isUploading`, so the second's completion cleared the spinner while the first was still running. `MediaLibraryView` chains them through a `uploadTask` awaiting the previous one, the same pattern as `PostEditorView`'s `dropTask` | 👁 §7.x — SwiftUI view state with no harness |
+| 146 | Check Spelling crashed Quill: the NSSpellChecker completion closure inherited main-actor isolation and trapped when called on the text-checking queue. It is `@Sendable` now and hops to the main queue with plain strings | ✅ `EditorCoordinatorTests.misspelledWordsReturnsOnMainActorWithoutTrapping` |
+| 147 | A post with two galleries raised a false Gallery-at-risk banner, which blocks saving after an edit: `_accountedBlockCounts` added a source-backed node's own name only if the whole post's count lacked it | ✅ `test-editor-preservation.js` `'a second gallery in the same post is not reported'` |
+| 148 | Make Shorter / Make Longer (and the convert operations) on part of a paragraph replaced the whole paragraph, deleting unselected sentences. `showAIResult` now replaces exactly the selection, inserting a lone `<p>` result inline, and restores the pre-operation document itself rather than round-tripping HTML, which shifted positions after a split | ✅ `test-ai-output-validity.js` `'a right-click AI result replaces only the selection'` |
+| 149 | After publishing a remote draft the toolbar kept saying Publish until the post was reselected: `isPublishedRemote` read the post as selected, not the cached copy `save()` updates | 👁 §7 publish checks — SwiftUI view state with no harness |
+| 150 | The Media panel looped ~20 requests a second whenever a load failed, and flashed a second Media Info button: `.inspector` was attached outside `MediaLibraryView`, so its `.task` was rebuilt on every branch switch | 👁 manual — see `Views/Media/CLAUDE.md` |
+| 151 | On a site with `WP_DEBUG_DISPLAY` on, one PHP warning made every Media listing unreadable, because Quill's GET requests did not send `Accept: application/json`, the signal WordPress uses to turn `display_errors` off | ✅ `WordPressClientTests.requestsAcceptJSONSoWordPressHidesPHPWarnings` |
 
 ---
 

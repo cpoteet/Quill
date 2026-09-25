@@ -20,7 +20,6 @@ struct SidebarToggleButton: View {
 public struct SidebarView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var services: AppServices
-    @Environment(\.openSettings) private var openSettings
     @State private var itemPendingDelete: PostItem? = nil
     @State private var deleteError: String? = nil
 
@@ -201,7 +200,7 @@ public struct SidebarView: View {
                 updateRow(update)
             }
             if let error = appState.listError {
-                listErrorRow(error)
+                SidebarErrorRow(message: error)
             }
             ForEach(appState.filteredItems) { item in
                 PostListRow(item: item, isSelected: appState.selectedItem == item)
@@ -220,26 +219,14 @@ public struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .overlay {
-            if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList {
+            if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList
+                && appState.listError == nil {
                 SectionEmptyState(section: appState.selectedSection,
                                   isSearching: !appState.searchText.isEmpty)
             } else if !appState.hasLoadedList || appState.isLoadingList {
                 ProgressView().controlSize(.small)
             }
         }
-    }
-
-    private func listErrorRow(_ error: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(error, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-            Button("Open Blog Settings") { openSettings() }
-                .font(.caption)
-        }
-        .padding(.vertical, 4)
     }
 
     private func updateRow(_ update: UpdateInfo) -> some View {
@@ -390,6 +377,33 @@ public struct SidebarView: View {
         } else {
             appState.tags = (try? services.taxonomyCache.loadTags()) ?? []
         }
+    }
+}
+
+struct SidebarErrorRow: View {
+    let message: String
+    @Environment(\.openSettings) private var openSettings
+
+    private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor)
+                .imageScale(.large)
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.capHeight / 2 }
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open Blog Settings…") { openSettings() }
+                    .controlSize(.small)
+            }
+        }
+        .font(.subheadline)
+        .padding(.vertical, 6)
     }
 }
 

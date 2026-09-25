@@ -36,45 +36,6 @@ public struct ContentView: View {
     private var detailContent: some View {
         if appState.selectedSection == .media {
             MediaLibraryView()
-                .navigationTitle(appState.selectedMedia?.title.decodedTitle ?? "Media")
-                .toolbar {
-                    ToolbarSpacer(.flexible)
-                    ToolbarItem {
-                        Button {
-                            withAnimation { appState.isMediaInspectorOpen.toggle() }
-                        } label: {
-                            Image(systemName: "sidebar.right")
-                        }
-                        .help("Media Info")
-                        .accessibilityLabel("Media Info")
-                    }
-                }
-                .inspector(isPresented: $appState.isMediaInspectorOpen) {
-                    if let media = appState.selectedMedia {
-                        MediaDetailView(media: media) { [media] altText in
-                            guard let creds = appState.credentials else { return }
-                            guard let idx = appState.mediaItems.firstIndex(where: { $0.id == media.id }) else { return }
-                            do {
-                                let updated = try await WordPressClient(credentials: creds)
-                                    .updateMediaAltText(id: media.id, altText: altText)
-                                appState.mediaItems[idx] = updated
-                                if appState.selectedMedia?.id == updated.id {
-                                    appState.selectedMedia = updated
-                                }
-                            } catch {
-                                // Save failed silently — field retains the edited value
-                            }
-                        }
-                        .id(media.id)
-                        .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
-                    } else {
-                        Text("No Selection")
-                            .font(.body)
-                            .foregroundStyle(.tertiary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
-                    }
-                }
         } else if let item = appState.selectedItem {
             PostEditorView(item: item)
         } else if !appState.hasLoadedList || appState.isLoadingList {
@@ -84,7 +45,8 @@ public struct ContentView: View {
                 .navigationTitle("Quill")
         } else {
             EmptyEditorPlaceholder(section: appState.selectedSection,
-                                   sectionIsEmpty: appState.sectionIsEmpty)
+                                   sectionIsEmpty: appState.sectionIsEmpty,
+                                   loadFailed: appState.sectionIsEmpty && appState.listError != nil)
                 .navigationTitle("Quill")
         }
     }
@@ -93,6 +55,7 @@ public struct ContentView: View {
 struct EmptyEditorPlaceholder: View {
     let section: SidebarSection
     var sectionIsEmpty: Bool = false
+    var loadFailed: Bool = false
 
     private var noun: String {
         switch section {
@@ -104,6 +67,9 @@ struct EmptyEditorPlaceholder: View {
     }
 
     private var message: String {
+        if loadFailed {
+            return section == .media ? "Couldn't load media" : "Couldn't load \(noun)s"
+        }
         if sectionIsEmpty {
             return "No \(noun)s yet"
         }

@@ -14,7 +14,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 ./test.sh
 ```
 
-Runs everything — 460 Swift + 1,215 JS tests, all passing as of 2026-09-20 (1,214 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 462 Swift + 1,229 JS tests, all passing as of 2026-09-25 (1,228 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -37,7 +37,7 @@ Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets
 
 ## Future architecture options
 
-See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), a Gutenberg fixture-diff harness for automated markup-change detection (H), a gradient-matched title bar (I), and Quick Look for media preview (J).
+See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), a Gutenberg fixture-diff harness for automated markup-change detection (H), a gradient-matched title bar (I), Quick Look for media preview (J), and editable galleries (K).
 
 ## Architecture
 
@@ -136,7 +136,7 @@ These two fail silently with the whole test suite green:
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`
 - `docs/editor-gotchas.md` — the 70 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
-- `docs/future-architecture.md` — deferred design notes (A–I)
+- `docs/future-architecture.md` — deferred design notes (B–K)
 - `docs/user-guide.md` — end-user guide
 - `docs/wordpress-release-audit.md` — markup audit routine, run once per WP major release
 - `docs/editor-preview-gaps.md`, `docs/gutenberg-block-snippets.md`, `docs/Privacy.md`

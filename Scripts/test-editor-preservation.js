@@ -286,6 +286,16 @@ describe('the alarm reports only genuine loss', () => {
     }
   })
 
+  test('every real fixture loaded twice in one post posts nothing', () => {
+    const dir = path.resolve(__dirname, 'fixtures')
+    for (const name of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(dir, name), 'utf8')
+      posted.length = 0
+      win.setContent(html + '\n\n' + html)
+      assert.deepEqual(reportedNames(posted), [], name)
+    }
+  })
+
   // The check must not share the wrap's assumptions, or it goes green in
   // exactly the case it exists to catch.
   test('a post whose block the wrap missed is reported', () => {
@@ -315,6 +325,13 @@ describe('the alarm reports only genuine loss', () => {
     }
     assert.equal(posted.length, 1)
     assert.deepEqual(Array.from(posted[0].names), ['html'])
+  })
+
+  test('a second gallery in the same post is not reported', () => {
+    const gallery = fs.readFileSync(path.resolve(__dirname, 'fixtures/gallery-block.html'), 'utf8')
+    posted.length = 0
+    win.setContent(gallery + '\n\n' + gallery)
+    assert.deepEqual(reportedNames(posted), [])
   })
 
   test('a block nested inside a modeled container is counted too', () => {

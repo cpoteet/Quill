@@ -169,4 +169,16 @@ struct EditorPushDecisionTests {
         state.record(html: "<p>A</p>", footnotes: "[]")
         #expect(state.shouldPush(html: "", footnotes: ""))
     }
+
+    // MARK: - Spell checking
+
+    @MainActor @Test func misspelledWordsReturnsOnMainActorWithoutTrapping() async {
+        let words = await withCheckedContinuation { continuation in
+            EditorCoordinator.misspelledWords(in: "This sentance has a speling mistake.") {
+                continuation.resume(returning: $0)
+            }
+        }
+        #expect(words.contains("speling"))
+        #expect(words.contains("sentance"))
+    }
 }

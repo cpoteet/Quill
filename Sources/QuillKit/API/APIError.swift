@@ -11,7 +11,7 @@ public enum APIError: Error, LocalizedError {
         switch self {
         case .invalidURL: return "That doesn't look like a valid site URL. Make sure it starts with https://."
         case .httpError(let code, let body): return Self.friendlyHTTPMessage(code: code, rawBody: body)
-        case .decodingError: return "Quill couldn't read the response from WordPress. Try again, or check that your site is running a supported version."
+        case .decodingError: return "WordPress sent a reply Quill couldn't read. A plugin or theme may be adding text to it."
         case .networkError(let e):
             let msg = e.localizedDescription
             if NetworkErrorHeuristics.isConnectivityFailure(msg) {

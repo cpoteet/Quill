@@ -120,7 +120,7 @@ onto it" — its children are still replayed.
 - The image Reset button restores from the Full-size button's `_sizeData`, and must degrade to clearing constraints when sizes never loaded
 - Per-image toolbar controls gated on `requestMediaSizes` data must degrade, not disappear, for images with no `mediaId`
 - AI buttons are in the Tiptap toolbar, not the SwiftUI toolbar
-- `showAIResult` inserts at block-node boundaries, not text positions
+- `showAIResult` replaces exactly the selection, never the whole enclosing paragraph
 - AI operations detect list/table context
 - Strip inter-block whitespace text nodes before inserting AI HTML
 - Embeds render as static cards via `EmbedNodeView`, whose `renderHTML` returns a DOM node rather than an array spec

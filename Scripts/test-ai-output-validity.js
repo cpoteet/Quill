@@ -66,8 +66,10 @@ function saveGeneratedPost(html) {
 
 // beginAIOperation / showAIResult as PostEditorView drives them, then the save it triggers.
 function saveOperationResult(startHTML, caretText, resultHTML) {
-  win.setContent(startHTML)
-  win.syncContentToSwift()
+  if (startHTML !== null) {
+    win.setContent(startHTML)
+    win.syncContentToSwift()
+  }
   let caret = null
   editor.state.doc.descendants((node, pos) => {
     if (caret === null && node.isText && node.text.includes(caretText)) caret = pos + node.text.indexOf(caretText)
@@ -212,5 +214,107 @@ describe('a right-click AI result saves as valid blocks', () => {
     const saved = saveOperationResult(start, 'Pets are a big commitment', fixture('operation-paragraphs'))
     assertGutenbergValid(saved, ['core/paragraph'])
     assert.match(saved, /our guide<\/a>/)
+  })
+})
+
+describe('a right-click AI result replaces only the selection', () => {
+  const start = '<!-- wp:paragraph -->\n<p>First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.</p>\n<!-- /wp:paragraph -->'
+
+  for (const [where, selected, kept] of [
+    ['start', 'First sentence stays.', ['Middle sentence is rather long and wordy.', 'Last sentence stays.']],
+    ['middle', 'Middle sentence is rather long and wordy.', ['First sentence stays.', 'Last sentence stays.']],
+    ['end', 'Last sentence stays.', ['First sentence stays.', 'Middle sentence is rather long and wordy.']],
+  ]) {
+    test(`a sentence at the ${where} of a paragraph`, () => {
+      const saved = saveOperationResult(start, selected, '<p>Short.</p>')
+      assertGutenbergValid(saved, ['core/paragraph'])
+      for (const text of kept) assert.ok(saved.includes(text), `lost "${text}" in:\n${saved}`)
+      assert.ok(!saved.includes(selected), `the selection was not replaced in:\n${saved}`)
+      assert.equal(namesIn(saved).size, 1)
+      assert.equal((saved.match(/<p>/g) || []).length, 1, 'the paragraph was split:\n' + saved)
+    })
+  }
+
+  test('a selection that crosses bold text', () => {
+    const bold = '<!-- wp:paragraph -->\n<p>Keep this. Shorten <strong>this bold</strong> part please. Keep that.</p>\n<!-- /wp:paragraph -->'
+    win.setContent(bold)
+    let from = null
+    let to = null
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return
+      if (node.text.includes('Shorten')) from = pos + node.text.indexOf('Shorten')
+      if (node.text.includes('part please.')) to = pos + node.text.indexOf('part please.') + 'part please.'.length
+    })
+    editor.commands.setTextSelection({ from, to })
+    win.beginAIOperation()
+    win.showAIResult('<p>Short.</p>')
+    win.acceptAIResult()
+    win.syncContentToSwift()
+    const saved = sentToSwift.at(-1)
+    assertGutenbergValid(saved, ['core/paragraph'])
+    assert.ok(saved.includes('Keep this. Short. Keep that.'), saved)
+  })
+
+  test('a selection across two paragraphs keeps the text outside it', () => {
+    const two = '<!-- wp:paragraph -->\n<p>Before one. Selected one.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Selected two. After two.</p>\n<!-- /wp:paragraph -->'
+    win.setContent(two)
+    let from = null
+    let to = null
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return
+      if (node.text.includes('Selected one.')) from = pos + node.text.indexOf('Selected one.')
+      if (node.text.includes('Selected two.')) to = pos + node.text.indexOf('Selected two.') + 'Selected two.'.length
+    })
+    editor.commands.setTextSelection({ from, to })
+    win.beginAIOperation()
+    win.showAIResult('<p>Merged.</p>')
+    win.acceptAIResult()
+    win.syncContentToSwift()
+    const saved = sentToSwift.at(-1)
+    assertGutenbergValid(saved, ['core/paragraph'])
+    assert.ok(saved.includes('Before one.') && saved.includes('After two.'), saved)
+    assert.ok(!saved.includes('Selected'), saved)
+  })
+
+  for (const [where, selected] of [
+    ['the whole paragraph', 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.'],
+    ['the start of a paragraph', 'First sentence stays.'],
+    ['the end of a paragraph', 'Last sentence stays.'],
+    ['the middle of a paragraph', 'Middle sentence is rather long and wordy.'],
+  ]) {
+    test(`a two-paragraph result for ${where} leaves no empty paragraph`, () => {
+      const saved = saveOperationResult(start, selected, '<p>One.</p><p>Two.</p>')
+      assertGutenbergValid(saved, ['core/paragraph'])
+      assert.ok(!/<p>\s*<\/p>/.test(saved), 'empty paragraph in:\n' + saved)
+      assert.ok(saved.includes('One.') && saved.includes('Two.'), saved)
+    })
+  }
+
+  test('a block result in mid-paragraph leaves no stray space at the split', () => {
+    const saved = saveOperationResult(start, 'Middle sentence is rather long and wordy.', '<p>One.</p><p>Two.</p>')
+    assert.ok(saved.includes('<p>First sentence stays.</p>'), saved)
+    assert.ok(saved.includes('<p>Last sentence stays.</p>'), saved)
+  })
+
+  // Restoring through getHTML/setContent trimmed edge spaces and shifted every later position.
+  test('a second operation after a result that split a paragraph replaces the right text', () => {
+    const two = start + '\n\n<!-- wp:paragraph -->\n<p>Basic costs five dollars. Pro costs fifteen.</p>\n<!-- /wp:paragraph -->'
+    saveOperationResult(two, 'Middle sentence is rather long and wordy.', '<p>One.</p><p>Two.</p>')
+    saveOperationResult(null, 'Basic costs five dollars. Pro costs fifteen.', '<p>Short.</p>')
+    const texts = Array.from(editor.state.doc.toJSON().content, n => Array.from(n.content || [], c => c.text).join('').trim())
+    assert.deepEqual(texts, ['First sentence stays.', 'One.', 'Two.', 'Last sentence stays.', 'Short.'])
+  })
+
+  test('discarding restores the original paragraph', () => {
+    win.setContent(start)
+    let caret = null
+    editor.state.doc.descendants((node, pos) => {
+      if (caret === null && node.isText) caret = pos + node.text.indexOf('Middle')
+    })
+    editor.commands.setTextSelection({ from: caret, to: caret + 'Middle sentence is rather long and wordy.'.length })
+    win.beginAIOperation()
+    win.showAIResult('<p>Short.</p>')
+    win.discardAIResult()
+    assert.equal(editor.state.doc.textContent, 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.')
   })
 })

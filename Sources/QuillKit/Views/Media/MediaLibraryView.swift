@@ -18,6 +18,45 @@ struct MediaLibraryView: View {
 
     var body: some View {
         galleryWithAlerts
+            .navigationTitle(appState.selectedMedia?.title.decodedTitle ?? "Media")
+            .toolbar {
+                ToolbarSpacer(.flexible)
+                ToolbarItem {
+                    Button {
+                        withAnimation { appState.isMediaInspectorOpen.toggle() }
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .help("Media Info")
+                    .accessibilityLabel("Media Info")
+                }
+            }
+            .inspector(isPresented: $appState.isMediaInspectorOpen) {
+                if let media = appState.selectedMedia {
+                    MediaDetailView(media: media) { [media] altText in
+                        guard let creds = appState.credentials else { return }
+                        guard let idx = appState.mediaItems.firstIndex(where: { $0.id == media.id }) else { return }
+                        do {
+                            let updated = try await WordPressClient(credentials: creds)
+                                .updateMediaAltText(id: media.id, altText: altText)
+                            appState.mediaItems[idx] = updated
+                            if appState.selectedMedia?.id == updated.id {
+                                appState.selectedMedia = updated
+                            }
+                        } catch {
+                            // Save failed silently — field retains the edited value
+                        }
+                    }
+                    .id(media.id)
+                    .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                } else {
+                    Text("No Selection")
+                        .font(.body)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                }
+            }
             .task(id: reloadKey) { await loadMedia() }
             .onAppear {
                 guard appState.triggerMediaUpload else { return }
@@ -115,6 +154,8 @@ struct MediaLibraryView: View {
                 onContextAction: { action, media in handleContextAction(action, media) },
                 onSpace: { togglePreview() }
             )
+        } else if appState.mediaError != nil && !appState.isLoadingMedia {
+            EmptyEditorPlaceholder(section: .media, loadFailed: true)
         } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
             SectionEmptyState(section: .media,
                               isSearching: !appState.mediaSearchText.isEmpty)

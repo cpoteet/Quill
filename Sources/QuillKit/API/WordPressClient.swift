@@ -303,6 +303,8 @@ public struct WordPressClient: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue(credentials.basicAuthHeader, forHTTPHeaderField: "Authorization")
+        // WordPress turns off display_errors only for requests it recognises as JSON.
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
 

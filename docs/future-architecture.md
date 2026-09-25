@@ -180,3 +180,21 @@ A new WordPress release then collapses the whole audit to: bump the tag in the f
 - **Multi-select comes almost free** — the panel asks for `numberOfPreviewItems` and `previewItemAt:`, and `MediaGalleryView` already tracks a multi-selection. Wiring it to the full selection rather than one item is a few extra lines and is the part users notice.
 - **Downloads assume a public site.** These media URLs are public, so a plain `URLSession` fetch works. A private or password-protected site would need the credentialed session from `WordPressClient`, which is `.ephemeral` by deliberate decision (see the root `CLAUDE.md` keychain note) — do not swap in a default session to make a download easier.
 - **Verification is manual and needs full-screen control.** `NSCollectionView` selection does not respond to background computer-use clicks (see `Sources/QuillKit/Views/Media/CLAUDE.md`), so testing this means driving the app directly.
+
+---
+
+## Approach K: Editable galleries
+
+**Context (as of 2026-09-25):** A gallery loaded from an existing post is a read-only `galleryBlock` card that keeps the original figure verbatim in `sourceHTML` and saves it back byte for byte. Only galleries inserted from `GallerySheet` are built from Quill's own attributes. The 2026-08-13 alt/caption spec (`docs/superpowers/specs/2026-08-13-gallery-image-alt-caption-design.md`) considered re-editable galleries and rejected them for the reasons below. The question came up again after QA found the two-gallery false alarm (`docs/testing-plan.md` bug 147).
+
+**What Approach K would be:** Let the user edit a loaded gallery (images, order, captions, columns, link and size settings), rebuilding its markup from the model on save instead of re-emitting `sourceHTML`.
+
+**Why it wasn't done:** The verbatim path is what guarantees a loaded gallery survives unchanged. Rebuilding from the model drops or alters anything Quill does not model, and two losses are already known.
+
+**What a future implementer would need to know:**
+- **It would retire the bug class that produced the two-gallery false alarm, but only for edited galleries.** A rebuilt gallery is counted the normal way (one `gallery` per node, one `image` per nested image), so the at-risk alarm no longer reads inside a stored string for it. That bug is already fixed without this (`_accountedBlockCounts` counts each source-backed node's own name), and `test-editor-preservation.js` `'every real fixture loaded twice in one post posts nothing'` guards it.
+- **Fix the known losses first:** `galleryBlock.sizeSlug` is per-gallery while WordPress stores it per image, and the image link toggle collapses every WordPress link destination to `"media"`. Both are "known unfixed edge case" entries in `docs/editor-gotchas.md`.
+- **Carry what Quill doesn't model** through the raw-attribute carrier (`docs/block-model.md`), the same way other modeled blocks keep settings they do not draw.
+- **Keep `sourceHTML` for galleries the user has not touched.** Rebuild only a gallery that was actually edited, so an untouched post still saves byte for byte. The alarm then still has to handle source-backed galleries, which the current fix already does.
+- **The at-risk alarm cannot catch attribute loss.** It counts block names, so a gallery that saves with the wrong image sizes still counts as one gallery. Attribute loss is caught by the fixture validity sweep (`Scripts/test-fixture-validity.js`, WordPress's own validator), which needs gallery fixtures with per-image sizes, captions and each link destination before this ships.
+- **Inline editing on the card was rejected separately:** making `galleryBlock` non-atomic touches the ProseMirror paths with the worst regression history. Reopening the gallery in `GallerySheet` is the lower-risk editing surface.

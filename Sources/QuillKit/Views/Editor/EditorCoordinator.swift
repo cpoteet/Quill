@@ -163,16 +163,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         case "checkSpelling":
             guard let text = message.body as? String else { return }
-            let tag = NSSpellChecker.uniqueSpellDocumentTag()
-            NSSpellChecker.shared.requestChecking(
-                of: text,
-                range: NSRange(text.startIndex..., in: text),
-                types: NSTextCheckingResult.CheckingType.spelling.rawValue,
-                options: nil,
-                inSpellDocumentWithTag: tag
-            ) { _, results, _, _ in
-                NSSpellChecker.shared.closeSpellDocument(withTag: tag)
-                let misspelled = results.map { (text as NSString).substring(with: $0.range) }
+            Self.misspelledWords(in: text) { misspelled in
                 guard
                     let data = try? JSONSerialization.data(withJSONObject: misspelled),
                     let json = String(data: data, encoding: .utf8)
@@ -194,6 +185,22 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
         default:
             break
+        }
+    }
+
+    // NSSpellChecker calls back on its own queue; a main-actor closure here traps at entry.
+    static func misspelledWords(in text: String, completion: @escaping @MainActor ([String]) -> Void) {
+        let tag = NSSpellChecker.uniqueSpellDocumentTag()
+        NSSpellChecker.shared.requestChecking(
+            of: text,
+            range: NSRange(text.startIndex..., in: text),
+            types: NSTextCheckingResult.CheckingType.spelling.rawValue,
+            options: nil,
+            inSpellDocumentWithTag: tag
+        ) { @Sendable _, results, _, _ in
+            NSSpellChecker.shared.closeSpellDocument(withTag: tag)
+            let words = results.map { (text as NSString).substring(with: $0.range) }
+            DispatchQueue.main.async { completion(words) }
         }
     }
 

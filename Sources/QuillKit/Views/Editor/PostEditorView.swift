@@ -547,9 +547,15 @@ public struct PostEditorView: View {
         .onChange(of: title) { scheduleAutosave() }
     }
 
+    // `item` is the post as it was selected; a save updates only the cached copy.
+    private var remotePost: WPPost? {
+        guard case .remote(let post) = item else { return nil }
+        let cached = post.type == "page" ? appState.pages : appState.posts
+        return cached.first { $0.id == post.id } ?? post
+    }
+
     private var isPublishedRemote: Bool {
-        if case .remote(let p) = item, p.status == PostStatus.publish.rawValue { return true }
-        return false
+        remotePost?.status == PostStatus.publish.rawValue
     }
 
     private var isUpdatingPublishedPost: Bool {
@@ -1096,9 +1102,7 @@ public struct PostEditorView: View {
     }
 
     private func openPreview() async {
-        guard let creds = appState.credentials,
-            case .remote(let post) = item
-        else { return }
+        guard let creds = appState.credentials, let post = remotePost else { return }
         let client = WordPressClient(credentials: creds)
         let cleanExcerpt = settings.excerpt
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)

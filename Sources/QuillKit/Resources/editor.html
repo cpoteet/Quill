@@ -5526,10 +5526,10 @@
         // A node holding verbatim source holds its inner blocks in that string.
         const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
         if (source) {
-          countBlockNames(BlockParser.parse(source), counts)
-          if (BLOCK_NAME_FOR_NODE[node.type.name] && !counts.has(BLOCK_NAME_FOR_NODE[node.type.name])) {
-            add(BLOCK_NAME_FOR_NODE[node.type.name])
-          }
+          const own = countBlockNames(BlockParser.parse(source))
+          own.forEach((n, name) => counts.set(name, (counts.get(name) || 0) + n))
+          const name = BLOCK_NAME_FOR_NODE[node.type.name]
+          if (name && !own.has(name)) add(name)
           return false
         }
         if (node.type.name === 'gutenbergPassthrough') {
@@ -5905,11 +5905,17 @@
     })()
 
     // ── AI writing bridge ─────────────────────────────
-    let _aiOriginalHTML = null
+    let _aiOriginalDoc  = null
     let _aiFrom         = null
     let _aiTo           = null
     let _aiResultTo     = null
     let _aiInProgress   = false
+
+    // Swaps the saved document back in; an HTML round-trip trims edge spaces and shifts every later position.
+    function _restoreAIOriginal(emitUpdate) {
+      const tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, _aiOriginalDoc.content)
+      editor.view.dispatch(tr.setMeta('preventUpdate', !emitUpdate))
+    }
 
     // Report selection changes to Swift so it can show/hide AI context menu items.
     // Uses ProseMirror's selection (direction-independent) instead of
@@ -6004,7 +6010,7 @@
 
       _aiFrom         = from
       _aiTo           = to
-      _aiOriginalHTML = editor.getHTML()
+      _aiOriginalDoc  = editor.state.doc
       _aiInProgress   = true
 
       // Replace selected range with an animated loading placeholder
@@ -6038,7 +6044,7 @@
       if (!cleanHtml) return null
 
       // Restore original without emitting a contentChanged event
-      editor.commands.setContent(_aiOriginalHTML, false)
+      _restoreAIOriginal(false)
 
       // Determine insertion range.
       // Re-derive container boundaries from the restored doc rather than using
@@ -6064,19 +6070,33 @@
           nodeTo = $from.depth > 0 ? $from.after($from.depth) : $from.end()
         }
       } else {
-        const { state } = editor
-        const docSize = state.doc.content.size
-        const $from   = state.doc.resolve(Math.min(_aiFrom, docSize))
-        const $to     = state.doc.resolve(Math.min(_aiTo, docSize))
-        nodeFrom = $from.depth > 0 ? $from.before($from.depth) : 0
-        nodeTo   = $to.depth > 0   ? $to.after($to.depth)      : $to.end()
+        const docSize = editor.state.doc.content.size
+        nodeFrom = Math.min(_aiFrom, docSize)
+        nodeTo   = Math.min(_aiTo, docSize)
+      }
+
+      // A lone paragraph inside one paragraph goes in as inline text, or it splits the paragraph.
+      let insertHtml = cleanHtml
+      const $start = editor.state.doc.resolve(nodeFrom)
+      const $end = editor.state.doc.resolve(nodeTo)
+      const onlyChild = _tmp.childNodes.length === 1 ? _tmp.firstElementChild : null
+      if (onlyChild?.tagName === 'P' && $start.parent.isTextblock && $start.sameParent($end)) {
+        insertHtml = onlyChild.innerHTML
+      } else {
+        // Blocks inserted at a paragraph's edge leave an empty paragraph there, so take the edge too;
+        // mid-paragraph, take the separating space so neither half keeps it.
+        const doc = editor.state.doc
+        if ($start.parent.isTextblock && $start.parentOffset === 0) nodeFrom = $start.before()
+        else if ($start.parent.isTextblock && doc.textBetween(nodeFrom - 1, nodeFrom) === ' ') nodeFrom -= 1
+        if ($end.parent.isTextblock && $end.parentOffset === $end.parent.content.size) nodeTo = $end.after()
+        else if ($end.parent.isTextblock && doc.textBetween(nodeTo, nodeTo + 1) === ' ') nodeTo += 1
       }
 
       // Insert the result — this DOES emit contentChanged (marks post dirty).
       // preserveWhitespace: false prevents ProseMirror from wrapping the \n
       // characters Claude emits between <p> tags into blank paragraph nodes.
       editor.chain().focus()
-        .insertContentAt({ from: nodeFrom, to: nodeTo }, cleanHtml, {
+        .insertContentAt({ from: nodeFrom, to: nodeTo }, insertHtml, {
           parseOptions: { preserveWhitespace: false }
         })
         .run()
@@ -6107,7 +6127,7 @@
       if (_aiResultTo !== null) {
         editor.chain().focus().setTextSelection(_aiResultTo).run()
       }
-      _aiOriginalHTML = null
+      _aiOriginalDoc  = null
       _aiFrom         = null
       _aiTo           = null
       _aiResultTo     = null
@@ -6115,12 +6135,12 @@
     }
 
     // Called by Swift when the user discards the result (or on error).
-    // Restores original HTML and clears AI state. Emits contentChanged so Swift's
+    // Restores the original document and clears AI state. Emits contentChanged so Swift's
     // htmlContent is updated back to the pre-operation value.
     window.discardAIResult = () => {
-      if (_aiOriginalHTML !== null) {
-        editor.commands.setContent(_aiOriginalHTML)
-        _aiOriginalHTML = null
+      if (_aiOriginalDoc !== null) {
+        _restoreAIOriginal(true)
+        _aiOriginalDoc  = null
         _aiFrom         = null
         _aiTo           = null
         _aiResultTo     = null
