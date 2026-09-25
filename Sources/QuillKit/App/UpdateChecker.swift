@@ -50,7 +50,8 @@ public enum UpdateChecker {
         let dismissed = UserDefaults.standard.string(forKey: dismissedKey)
         guard isNewer(remote: remoteVersion, local: currentVersion),
               remoteVersion != dismissed,
-              let releaseURL = URL(string: payload.htmlURL) else {
+              let releaseURL = URL(string: payload.htmlURL),
+              releaseURL.scheme == "https", releaseURL.host == "github.com" else {
             return nil
         }
 

@@ -647,6 +647,20 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         }
     }
 
+    @Test func phpWarningAheadOfJSONExplainsThePluginCause() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                             headerFields: ["Content-Type": "application/json; charset=UTF-8"])!,
+             "Deprecated: Creation of dynamic property in /wp-content/plugins/x.php on line 12\n[]".data(using: .utf8)!)
+        }
+        await #expect {
+            _ = try await client.fetchPosts()
+        } throws: { error in
+            guard let apiError = error as? APIError, case .decodingError = apiError else { return false }
+            return apiError.errorDescription == "WordPress sent a reply Quill couldn't read. A plugin or theme may be adding text to it."
+        }
+    }
+
     @Test func networkFailureThrowsNetworkError() async throws {
         MockURLProtocol.requestHandler = { _ in
             throw URLError(.timedOut)

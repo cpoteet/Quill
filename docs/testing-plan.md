@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-25 — 465 Swift tests + 1,229 JS tests (1,228 pass, 1 skipped), no failures._
+_Last updated: 2026-09-25 — 470 Swift tests + 1,238 JS tests (1,237 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (465 tests)
+1. **Swift tests** — `swift test` (470 tests)
 2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
 3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (48 tests — live Tiptap editor in jsdom)
 4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
@@ -29,7 +29,7 @@ This document is the authoritative reference for Quill's automated test suite an
 11. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
 12. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 13. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
-14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (35 tests — checked by WordPress's own block validator)
+14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
 15. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the fifteen passed.
@@ -81,7 +81,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (465 tests, 32 suites)
+## Swift test suite (470 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -95,14 +95,14 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 57 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping, `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 58 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 13 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 5 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, drafts and autosaves independent |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 82 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 86 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
@@ -245,7 +245,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (57 tests)
+### 5. Networking — `WordPressClientTests` (58 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -298,7 +298,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `createCategoryUsesPostMethodOnCategoriesEndpoint` | `POST /categories` with `{"name":…}` |
 | `createTagUsesPostMethodOnTagsEndpoint` | `POST /tags` with `{"name":…}` |
 
-#### Error mapping (7 tests)
+#### Error mapping (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -308,6 +308,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `httpErrorPreservesBodyString` | Body string preserved in error |
 | `nonUtf8ResponseBodyBecomesEmptyString` | Non-UTF8 body → `body = ""`, no crash |
 | `successWithMalformedJsonThrowsDecodingError` | 200 + garbage JSON → `APIError.decodingError` (not `httpError`) |
+| `phpWarningAheadOfJSONExplainsThePluginCause` | 200 + a PHP `Deprecated:` line ahead of the JSON → `APIError.decodingError` whose message says a plugin or theme may be adding text to the reply |
 | `networkFailureThrowsNetworkError` | `URLError` from mock → `APIError.networkError` |
 
 #### Cancellation (1 test)
@@ -481,7 +482,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (82 tests)
+### 12. AI — `AIPromptBuilderTests` (86 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -514,7 +515,7 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `systemPromptWithEmptyStyleGuideExcludesStyleBlock` | Empty string guide → same as nil |
 | `systemPromptWithStyleGuideIncludesIt` | Non-empty guide appended to prompt |
 
-#### `generatePostPrompt` & `operationPrompt` (12 tests)
+#### `generatePostPrompt` & `operationPrompt` (21 tests)
 
 | Test | What it checks |
 |---|---|
@@ -532,6 +533,13 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `makeLongerWithTableContextUsesTableInstruction` | `context: "table"` → table cell expansion prompt |
 | `makeShorterWithTableContextUsesTableInstruction` | `context: "table"` → table cell condensation prompt |
 | `operationPromptWithNilContextUsesDefaultInstruction` | `context: nil` → default "expand this content" (not list/table-specific) |
+| `makeLongerStatesWordTargetFromSelection` | A 5-word selection gets "from 5 words to about 20 words", a ceiling of 25, and an instruction to keep the same number of paragraphs |
+| `makeLongerScalesDownForLongerSelections` | 100 words → about 200 (ceiling 250); 200 words → about 300 (ceiling 400) |
+| `makeShorterScalesUpForLongerSelections` | 10 words → about 7 (ceiling 8); 100 → about 50 (ceiling 60); 200 → about 80 (ceiling 100), keeping the paragraph count |
+| `lengthTiersSwitchAtFortyAndAfterOneHundredFiftyWords` | Make Longer/Shorter word targets at 39, 40, 150 and 151 words: under 40 words longer is ×4 and shorter ×0.7; 40–150 is ×2 and ×0.5; over 150 is ×1.5 and ×0.4, each with a hard ceiling |
+| `makeShorterNeverTargetsZeroWords` | A one-word selection gets a Make Shorter target of 1 word, not 0 |
+| `wordTargetCountsWordsAcrossParagraphBreaks` | Words split by `\n` and `\n\n` are counted separately (4 words, not 2) |
+| `listAndTableContextsGetNoWordTarget` | `bulletList`, `orderedList` and `table` contexts get no word target for either operation |
 
 #### `styleGuideGenerationPrompt` (3 tests)
 
@@ -1042,9 +1050,9 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS AI output validity tests (35 tests)
+## JS AI output validity tests (44 tests)
 
-`Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`.
+`Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
 | Test | What it checks |
 |------|----------------|
@@ -1053,7 +1061,16 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 | `markup Claude sometimes writes saves as valid blocks` (8 tests) | Validity for the six shapes that used to fail, then one test each that the heading `id` becomes `anchor`, a custom class becomes `className`, `start` reaches the delimiter, a code language class moves to the `<pre>`, a table `<caption>` and a figure caption land in `<figcaption>`, plus idempotency |
 | `everything else Claude might write saves as valid blocks` (3 tests) | Validity for h1–h6, legacy inline tags, entities, divs, bare text, mixed lists, three quote shapes, header-less / merged-cell / foot-section tables, `<pre>`, images, `<dl>`, `<details>`, sectioning tags; no listed phrase is lost; idempotency |
 | `a right-click AI result saves as valid blocks` (3 tests) | The same validity check for a rewritten table, list, and pair of paragraphs |
-| `a right-click AI result replaces only the selection` (12 tests) | A sentence selected at the start, middle or end of a paragraph is replaced in place and the paragraph is not split; a selection across bold text and one across two paragraphs keep the text outside them; a two-paragraph result for the whole paragraph, or its start, middle or end, leaves no empty paragraph and no stray edge space; a second operation after a paragraph-splitting result still replaces the right text; Discard restores the original |
+| `a right-click AI result replaces only the selection` (21 tests) | This row covers twelve of them; the nine `↳` rows below cover the rest. A sentence selected at the start, middle or end of a paragraph is replaced in place and the paragraph is not split; a selection across bold text and one across two paragraphs keep the text outside them (exactly `Before one.` / `Merged.` / `After two.`); a two-paragraph result for the whole paragraph, or its start, middle or end, leaves no empty paragraph and no stray edge space, checked against the exact paragraph sequence; a second operation after a paragraph-splitting result still replaces the right text; Discard restores the original |
+| ↳ `the highlighted result is exactly the inserted text, and accepting puts the caret after it` | After `showAIResult` the selection covers `Short.` and nothing else; after Accept the selection is an empty caret directly after it |
+| ↳ `discarding keeps a space the author just typed at the end of a paragraph, and tells Swift` | Discard restores the ProseMirror doc exactly, trailing space included, and posts the restored HTML to Swift once |
+| ↳ `a plain-text result holding an entity goes in as text, not markup` | `R&amp;D` is inserted as `R&D`, and the save holds no `&amp;amp;` |
+| ↳ `a plain-text result holding a non-breaking space goes in as text, not markup` | `&nbsp;` is inserted as a U+00A0 character, not the literal entity |
+| ↳ `a plain-text result holding a line break and indent goes in as text, not markup` | A newline plus indent inside the `<p>` collapses to one space |
+| ↳ `a selection with a trailing space keeps the space` | Selecting `…wordy. ` (with the space) still leaves `Short. Last sentence stays.` with one space between |
+| ↳ `a selection with a leading space keeps the space` | Selecting ` Middle…` (with the space) still leaves `stays. Short.` with one space between |
+| ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
+| ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 
 ## JS fixture validity sweep (30 tests)
 
@@ -2573,6 +2590,9 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] Click the native sidebar toggle at the left of the window toolbar → the sidebar collapses; click again → it returns. The detail column expands to fill the space. `NavigationSplitView` owns this; there is no app-side visibility flag any more.
 - [ ] Upload a PDF via the Media tab → the sidebar cell shows a document icon (not a broken image); the detail panel shows a document icon with "Preview unavailable" (not "Image unavailable"); no alt text field appears.
 - [ ] Collapse and expand the sidebar repeatedly → the post list does not refetch from the server each time (no spinner flash). The `lastLoadedCredentials` guard is what prevents it; collapsing no longer remounts the view, so this is now a guard against future remounts rather than a live trigger.
+- [ ] **Sidebar width.** Delete the saved window state (or launch on a fresh account) → the sidebar opens at about 310pt. Drag it narrower → it stops at 260pt. Quit and relaunch → it never restores below 260pt.
+- [ ] **Offline, Local Drafts shows the drafts and no error.** Turn off Wi-Fi and launch → Local Drafts lists every saved draft. The sidebar shows no error row, the empty-state overlay does not appear, and the detail placeholder does not say "Couldn't load…". Switch to Posts → the error row and "Couldn't load posts" appear there.
+- [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The error triangle lines up with the first line of the error text, not the middle of a wrapped message.
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -2728,6 +2748,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] Set a featured image → it appears on the post. Clear the featured image → it is removed on the server.
 - [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
 - [ ] In the page parent picker, the current page does not appear in the list. Save with a parent selected → the parent is set on the server.
+- [ ] The Publish button shows an outline paper plane on a draft (and for other status changes) and an outline up-arrow circle on a published post. Publish a remote draft → the button switches to Update, with the up-arrow icon, straight away, without reselecting the post.
 
 ### 7.8 Conflict detection
 
@@ -2792,6 +2813,8 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] Select text inside a bullet list, right-click → Make Longer/Shorter appear. The result preserves the list format.
 - [ ] Click inside a table, select some cells, right-click → Make Longer/Shorter appear. The result preserves the table structure.
 - [ ] Drag-select in reverse (from bottom to top) → AI menu items still appear for selections ≥ 10 characters.
+- [ ] Make Shorter on one sentence in the middle of a paragraph → only that sentence changes; the sentences before and after it stay, and the paragraph is not split.
+- [ ] Make Longer on one sentence → the result is a few sentences in the same paragraph, not several new paragraphs. Make Shorter on a long paragraph → it stays one paragraph.
 
 **Result handling**
 - [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
@@ -2800,11 +2823,16 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] If Claude errors or times out → the original text is restored, an error toast appears, and the editor is not corrupted.
 - [ ] Disconnect from the internet and trigger an AI operation → the error message reads as a clear "couldn't reach the Anthropic API" message, not a raw NSURLError string.
 - [ ] Trigger an AI operation via the right-click menu on one selection, then — while the result bar is still showing — right-click a different selection and trigger another AI operation. Only one Accept/Discard bar should be interactive; pressing Return or Escape does not double-fire.
+- [ ] Select a sentence and ask for a rewrite that will contain `&` (e.g. select "Research and development costs are high." and Make Shorter, which usually returns "R&D") → the editor shows `R&D`, not `R&amp;D`. Save and check the raw HTML → `R&amp;D`, never `R&amp;amp;D`.
+- [ ] Select a sentence together with the space after it (drag one character past the full stop) and Make Shorter → the result keeps one space before the next sentence. Repeat with the space before the sentence.
+- [ ] Start an AI operation, and while "✶ Rewriting…" is showing, click a different post → the new post opens unchanged, no Accept/Discard bar appears, and the reply never lands in it. Go back to the first post and check its content (known gap: the placeholder can be saved there; see `Views/Editor/CLAUDE.md`).
+- [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and an error toast appears; no Accept/Discard bar is shown over the placeholder.
 
 **AI result bar**
 - [ ] The Accept/Discard bar floats above the Quill window but does not float above other apps when you switch away from Quill.
 - [ ] The bar has no rectangular shadow artifact around it.
 - [ ] Both buttons are clearly visible in light mode and dark mode.
+- [ ] The bar sits centred at the bottom of the editor, not beside the result, so it never covers the rewritten text or the text around it. Resize the window while it shows → it stays centred at the bottom.
 - [ ] Trigger the AI result bar, then type in the sidebar search field → the bar stays visible and correctly positioned (doesn't disappear or duplicate).
 
 **Style guide**
@@ -2826,6 +2854,8 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 - [ ] Selected tag chips above the search box are in alphabetical order; unselected tags in the dropdown are also alphabetical.
 - [ ] The amber accent color is used throughout the settings panel.
 - [ ] Preferences opens from both the app menu (⌘,) and any in-app settings button. The sample post picker is populated (not empty).
+- [ ] The post settings, media and writing-check inspectors use Finder-style section headings (small, semibold, secondary, normal case, not uppercase), system rounded-border fields (the excerpt included), and the same 16pt margins. Compare against the sidebar in light and dark.
+- [ ] In Preferences, the Save button sits on the window background below the form, with no grey section box behind it.
 
 ### 7.13 Window / appearance
 
@@ -2929,6 +2959,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 
 - [ ] Launch the app → if the latest release at `api.github.com/repos/cpoteet/Quill/releases/latest` has a higher version than the running build, a banner appears in the sidebar with the new version number.
 - [ ] Click "View Release" → opens that release's GitHub page in the default browser.
+- [ ] The page "View Release" opens is an `https://github.com/…` URL. The checker ignores a release whose `html_url` is anything else, so no banner appears for it.
 - [ ] The banner version number has no leading `v`, even though the Git tag does.
 - [ ] The banner is the first row in the sidebar list, above the posts — not below them. Check with a site that has enough posts to fill the list.
 - [ ] Click the dismiss (×) button → the banner disappears and does not reappear for the same version on subsequent launches.
@@ -2951,6 +2982,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Reopen a post that was already saved with a block missing → **no** banner. The loss is already in the saved content, so there is nothing left to warn about.
 - [ ] **A post you have not edited never raises a blocking banner.** Open a post, do not type, press ⌘S → it saves. An untouched post writes its original bytes back, so there is nothing to lose.
 - [ ] Switch to another post and back → the banner state belongs to the post, not the window.
+- [ ] **The banner does not crash Quill.** Open a post whose banner appears, then toggle the inspector, resize the window, and switch posts → no crash. Save Settings while that post is open → no crash. A `.fixedSize` on the banner text caused an AppKit constraint loop here.
 
 ### 7.23 Container blocks & the insert menu
 
@@ -3027,6 +3059,8 @@ human is required.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
 - [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
 - [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
+- [ ] **A failed load does not loop.** Turn off Wi-Fi and open Media → one failed request (watch the network in Console or a proxy), not a stream of about 20 a second, and exactly one Media Info button in the toolbar.
+- [ ] On a site with `WP_DEBUG_DISPLAY` on and a plugin that prints a PHP warning, Media still loads. If a warning still reaches the reply, the error says a plugin or theme may be adding text to it.
 - [ ] No bottom button strip remains, and there is exactly one Refresh button and one + menu.
 - [ ] The gallery renders correctly in light and in dark appearance. Judge colour from a native-resolution screenshot, not a downsampled one.
 
@@ -3234,6 +3268,16 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 149 | After publishing a remote draft the toolbar kept saying Publish until the post was reselected: `isPublishedRemote` read the post as selected, not the cached copy `save()` updates | 👁 §7 publish checks — SwiftUI view state with no harness |
 | 150 | The Media panel looped ~20 requests a second whenever a load failed, and flashed a second Media Info button: `.inspector` was attached outside `MediaLibraryView`, so its `.task` was rebuilt on every branch switch | 👁 manual — see `Views/Media/CLAUDE.md` |
 | 151 | On a site with `WP_DEBUG_DISPLAY` on, one PHP warning made every Media listing unreadable, because Quill's GET requests did not send `Accept: application/json`, the signal WordPress uses to turn `display_errors` off | ✅ `WordPressClientTests.requestsAcceptJSONSoWordPressHidesPHPWarnings` |
+| 152 | A plugin or theme printing a PHP warning ahead of the JSON made every request fail with a generic decoding error. `APIError.decodingError` now says a plugin or theme may be adding text to the reply | ✅ `WordPressClientTests.phpWarningAheadOfJSONExplainsThePluginCause` |
+| 153 | Make Longer / Make Shorter gave Claude no length target, so the result did not scale with the selection. The prompt now names a word target tiered at 40 and 150 words, never 0, and none for list or table context | ✅ `AIPromptBuilderTests.lengthTiersSwitchAtFortyAndAfterOneHundredFiftyWords`, `makeShorterNeverTargetsZeroWords`, `wordTargetCountsWordsAcrossParagraphBreaks`, `listAndTableContextsGetNoWordTarget` |
+| 154 | A plain-text AI result inserted inline went in through Tiptap's `insertContentAt` as an HTML string, which Tiptap inserts verbatim when it has no marks: `R&amp;D` appeared literally and saved as `R&amp;amp;D`. It goes in as a text node built from the decoded text now | ✅ `test-ai-output-validity.js` `'a plain-text result holding … goes in as text, not markup'` (3 tests) + 👁 §7.11 |
+| 155 | A selection that included the space before or after a sentence lost that space, gluing the result to its neighbour. The inline range now shrinks off an edge space | ✅ `test-ai-output-validity.js` `'a selection with a {trailing, leading} space keeps the space'` (2 tests) + 👁 §7.11 |
+| 156 | A reply that was empty after cleanup left Accept/Discard showing over the "✶ Rewriting…" placeholder. `showAIResult` returns `true` or `null`, and Swift discards and shows the error toast on `null` | ✅ `test-ai-output-validity.js` `'showAIResult reports whether it inserted anything'` (JS half) + 👁 §7.11 (Swift half) |
+| 157 | Switching posts while an AI operation was in flight let the reply land in the newly opened post. `setContent` clears the AI state, `showAIResult` refuses with no operation in progress, and `PostEditorView` cancels `aiTask` and dismisses the result panel in `loadItem()`. Still open: the old post's flush can save the placeholder (`Views/Editor/CLAUDE.md`) | ✅ `test-ai-output-validity.js` `'a result that arrives after the post changed leaves the new post alone'` + 👁 §7.11 |
+| 158 | With the original kept as HTML, Discard went through `getHTML`/`setContent`, which trims a paragraph's trailing space. `_aiOriginalDoc` keeps the ProseMirror doc itself, and Discard posts the restored HTML to Swift | ✅ `test-ai-output-validity.js` `'discarding keeps a space the author just typed at the end of a paragraph, and tells Swift'` |
+| 159 | The highlight after `showAIResult` and the caret after Accept are computed from the inserted range, not the original selection | ✅ `test-ai-output-validity.js` `'the highlighted result is exactly the inserted text, and accepting puts the caret after it'` |
+| 160 | Offline, Local Drafts showed the network load's "Couldn't load…" error in the sidebar, the empty state and the detail placeholder, though drafts are local. `AppState.sectionListError` hides `listError` on Local Drafts | 👁 §7.2 — no test covers `sectionListError` |
+| 161 | The update banner offered and opened whatever `html_url` the releases API returned. It must now be `https` on `github.com` | 👁 §7.21 — the URL check has no unit test |
 
 ---
 

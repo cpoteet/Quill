@@ -72,6 +72,7 @@ public struct PostEditorView: View {
     @State private var evaluationResult: EvaluationResult? = nil
     @State private var evaluationError: String? = nil
     @State private var evaluationTask: Task<Void, Never>? = nil
+    @State private var aiTask: Task<Void, Never>? = nil
 
     public init(item: PostItem) {
         self.item = item
@@ -143,7 +144,7 @@ public struct PostEditorView: View {
                         editorWebView = webView
                     },
                     onAIOperation: { operation in
-                        Task { await executeAIOperation(operation) }
+                        aiTask = Task { await executeAIOperation(operation) }
                     },
                     onTriggerGenerate: {
                         let trimmed = htmlContent.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -356,6 +357,7 @@ public struct PostEditorView: View {
         .onDisappear {
             autosaveTask?.cancel()
             evaluationTask?.cancel()
+            aiTask?.cancel()
             if let loadedItem, isDirty {
                 Task { await flushToDB(for: loadedItem) }
             }
@@ -642,6 +644,9 @@ public struct PostEditorView: View {
         let requestedItem = item
         // Reset here, never in onChange(of: item.id) — that handler runs after this task starts.
         contentLoaded = false
+        aiTask?.cancel()
+        aiTask = nil
+        resultPanel.dismiss()
 
         // Cancel any pending autosave for the old item — flushToDB handles persistence
         autosaveTask?.cancel()
@@ -1242,8 +1247,8 @@ public struct PostEditorView: View {
                 systemPrompt: system,
                 useWebSearch: false
             ).text)
-            // 4. Show result in editor — JS replaces loading placeholder with result,
-            //    selects it, and returns a bounding rect for panel positioning.
+            guard !Task.isCancelled else { return }
+            // 4. Show result in editor — JS replaces loading placeholder with result and selects it.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),
                   let jsonStr = String(data: jsonData, encoding: .utf8) else { return }
 
@@ -1255,8 +1260,15 @@ public struct PostEditorView: View {
                 showArgs = jsonStr
             }
 
-            await withCheckedContinuation { continuation in
-                webView.evaluateJavaScript("showAIResult(\(showArgs))") { _, _ in continuation.resume() }
+            let inserted: Bool = await withCheckedContinuation { continuation in
+                webView.evaluateJavaScript("showAIResult(\(showArgs))") { result, _ in
+                    continuation.resume(returning: result as? Bool == true)
+                }
+            }
+            guard inserted else {
+                webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+                presentToast("Claude couldn't complete that — please try again.", isError: true)
+                return
             }
 
             // 5. Show the accept/discard bar along the bottom of the editor
@@ -1272,6 +1284,7 @@ public struct PostEditorView: View {
                 }
             )
         } catch {
+            guard !Task.isCancelled else { return }
             // Restore original text and show a toast
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
             presentToast("Claude couldn't complete that — please try again.", isError: true)

@@ -92,7 +92,8 @@
         </ol>
         <p class="docs-body">Quill opens normally from this point forward. This prompt only appears once per installation.</p>
         <h3 class="docs-h3">Updates</h3>
-        <p class="docs-body">Quill checks for new versions automatically on launch. When an update is available, a banner appears at the bottom of the sidebar with the new version number. Click <strong>View Release</strong> to open the release page in your browser. Click the <strong>×</strong> button to dismiss the banner; it does not reappear for the same version.</p>
+        <p class="docs-body">Quill checks for new versions automatically on launch. When an update is available, a banner appears at the top of the post list reading <strong>Quill <em>version</em> available</strong>. Click it to open the release page on GitHub in your browser. Click the <strong>×</strong> button to dismiss the banner; it does not reappear for the same version.</p>
+        <p class="docs-body">To see what changed in each release, choose <strong>Help → Changelog</strong>. <strong>Help → User Guide</strong> opens this guide.</p>
         <p class="docs-body">To update, download the new version from the release page, unzip it, and replace the existing <strong>Quill.app</strong> in your <code>/Applications</code> folder. Your credentials, drafts, and settings are stored separately and carry over automatically.</p>
       </section>
 
@@ -121,6 +122,9 @@
           <li>Click <strong>Save</strong>.</li>
         </ol>
         <p class="docs-body">Quill stores your credentials locally and connects to your site. Your posts and pages then load in the sidebar.</p>
+        <h3 class="docs-h3">If Quill Can't Load Your Site</h3>
+        <p class="docs-body">When a section fails to load, the sidebar shows the error above the list with an <strong>Open Blog Settings…</strong> button, and the editor area reads "Couldn't load posts" (or pages, or media). Check your credentials in Settings, then press <strong>⌘R</strong> to try again. Local drafts are stored on your Mac, so the Drafts section keeps working while your site is unreachable.</p>
+        <p class="docs-body">If the error says WordPress sent a reply Quill couldn't read, a plugin or theme on your site is adding text to its API responses, usually a PHP warning or notice. Fix or disable the plugin or theme that produces it.</p>
       </section>
 
       <section class="docs-section" id="the-interface">
@@ -131,7 +135,7 @@
         <ul class="docs-list">
           <li><strong>Posts:</strong> Lists all posts on your site, most recently published first. A search field lets you filter by title.</li>
           <li><strong>Pages:</strong> Lists all pages on your site, most recently published first, with the same search capability.</li>
-          <li><strong>Drafts:</strong> Lists local drafts saved only on your Mac, not yet published or synced to WordPress.</li>
+          <li><strong>Drafts:</strong> Lists local drafts saved only on your Mac, not yet published or synced to WordPress. They are available even when your site can't be reached.</li>
           <li><strong>Media:</strong> Switches the sidebar to a list of filters (All Media, Images, Documents, Audio, Video) and shows your library as a gallery in the main panel, most recently uploaded first.</li>
         </ul>
         <p class="docs-body">Click any post, page, or draft to open it in the editor; click a media item to select it. Right-click a post or page for the option to move it to trash. The search field above the list filters the current section — including Media, which searches your library by filename and title.</p>
@@ -155,7 +159,7 @@
               <tr><td>Save Draft</td><td>Right</td><td>Saves a local draft (local drafts only)</td></tr>
               <tr><td>Revert</td><td>Right</td><td>Discards unsaved changes and restores the last saved version (remote posts only)</td></tr>
               <tr><td>Preview</td><td>Right</td><td>Opens the post's preview URL in your browser (remote posts only)</td></tr>
-              <tr><td>Publish</td><td>Right</td><td>Publishes or updates the post on your WordPress site</td></tr>
+              <tr><td>Publish / Update</td><td>Right</td><td>Sends the post to your WordPress site. Its label follows the Status setting (Publish, Publish Draft, Schedule, Submit for Review, Publish Privately). Once the post is published, the button changes to <strong>Update</strong> with its own icon</td></tr>
               <tr><td>Post Settings</td><td>Right</td><td>Shows or hides the right-side settings panel</td></tr>
               <tr><td>Media Info</td><td>Right</td><td>Replaces Post Settings while the Media section is open; shows or hides the details inspector</td></tr>
             </tbody>
@@ -177,7 +181,7 @@
         <ul class="docs-list">
           <li><strong>New Post</strong> (⌘N)</li>
           <li><strong>New Page</strong> (⌘⇧N)</li>
-          <li><strong>New Media upload</strong> (⌘⌥N)</li>
+          <li><strong>New Media</strong> (⌘⌥N), called <strong>Upload Media</strong> in the + menu</li>
         </ul>
         <p class="docs-body">New posts and pages are created as <strong>local drafts</strong> and appear in the Drafts section of the sidebar immediately. They are saved only on your Mac until you publish them to WordPress.</p>
         <h3 class="docs-h3">The Editor</h3>
@@ -345,7 +349,7 @@
         </ul>
         <h4 class="docs-h4">For posts and pages already on WordPress</h4>
         <ul class="docs-list">
-          <li>Press <strong>⌘S</strong> or click <strong>Publish</strong> to sync your changes to WordPress immediately.</li>
+          <li>Press <strong>⌘S</strong> or click <strong>Publish</strong> to sync your changes to WordPress immediately. On a published post, the button is labelled <strong>Update</strong>.</li>
           <li>The dot in the window's close button indicates you have unsaved changes; it clears when you save.</li>
           <li>Click <strong>Revert</strong> to discard unsaved changes and restore the last saved version. A confirmation alert appears; press <strong>↩︎</strong> to confirm or <strong>Escape</strong> to cancel.</li>
         </ul>
@@ -405,7 +409,7 @@
         <p class="docs-body">Click <strong>Link to Full Image</strong> in the image toolbar to wrap the image in a link to its original, full-resolution file. Clicking the image on your published site opens (or downloads) the full-size version, and you may click it again to remove the link. This is independent of the image's displayed size, so you can show a small or resized image in the post while still linking to the original.</p>
         <h3 class="docs-h3" id="gallery">Gallery</h3>
         <p class="docs-body">Click the <strong>Gallery</strong> button in the toolbar to open the gallery picker. Click images in the media grid to select them: a checkmark appears on each selected image, and they're listed in the Selected panel in the order they'll appear. Drag a selected image by its grip handle to reorder it, or click the <strong>X</strong> next to it to remove it.</p>
-        <p class="docs-body">Click the chevron on a selected image to set its <strong>Alt text</strong> and <strong>Caption</strong>. Alt text is automatically loaded if set in the media library. Changes you make here apply only to this gallery, the media library item itself is untouched, so other posts using the same image are unaffected. Captions are plain text and appear alongside their image on your published site.</p>
+        <p class="docs-body">Click the chevron on a selected image to set its <strong>Alt Text</strong> and <strong>Caption</strong>. Alt text is automatically loaded if set in the media library. Changes you make here apply only to this gallery, the media library item itself is untouched, so other posts using the same image are unaffected. Captions are plain text and appear alongside their image on your published site.</p>
         <p class="docs-body">Click <strong>Upload</strong> in the gallery picker to add a new image from disk directly to your media library; it's added to the grid and automatically selected.</p>
         <p class="docs-body">Gallery settings, available once you've selected at least one image:</p>
         <ul class="docs-list">
@@ -542,7 +546,7 @@
         <h3 class="docs-h3">Publish Date</h3>
         <p class="docs-body">The Publish Date section appears for all statuses except Private. It contains a <strong>Schedule</strong> toggle. When turned on, the status is set to Scheduled and a date and time picker appears. When turned off, the status reverts to Draft if it was previously set to Scheduled.</p>
         <p class="docs-body">You can also set scheduling by selecting <strong>Scheduled</strong> directly in the Status picker; the date picker appears automatically with a default time one hour from now.</p>
-        <p class="docs-body">Once you have set the date and time, press <strong>⌘⇧P</strong> or click <strong>Publish</strong> to commit the scheduled post to WordPress. The post then publishes automatically at the chosen time.</p>
+        <p class="docs-body">Once you have set the date and time, press <strong>⌘⇧P</strong> or click the publish button, labelled <strong>Schedule</strong> for a scheduled post, to commit the scheduled post to WordPress. The post then publishes automatically at the chosen time.</p>
         <h3 class="docs-h3">Categories <span class="docs-meta">(Posts only)</span></h3>
         <p class="docs-body">The categories section lists all categories on your site. Check a category to assign it to the post. Checked categories always sort to the top of the list (alphabetically), followed by unchecked categories (also alphabetically). Use the search field to filter categories by name.</p>
         <p class="docs-body">To create a new category, type its name in the search field and press Enter. New categories are created on your WordPress site when the post is saved or published.</p>
@@ -601,11 +605,11 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body"><strong>Alt text</strong> can be edited directly in the inspector. Press <strong>Return</strong> or click away from the field to save the change to WordPress.</p>
+        <p class="docs-body"><strong>Alt Text</strong> can be edited directly in the inspector. Press <strong>Return</strong> or click away from the field to save the change to WordPress.</p>
         <h3 class="docs-h3">Uploading</h3>
         <p class="docs-body">To upload new media:</p>
         <ul class="docs-list">
-          <li>Click <strong>New Media</strong> in the toolbar, or</li>
+          <li>Choose <strong>Upload Media</strong> from the <strong>+</strong> menu at the left of the window toolbar, or</li>
           <li>Use <strong>File → New Media</strong> (⌘⌥N) from anywhere in the app.</li>
         </ul>
         <p class="docs-body">Both open a standard macOS file picker. Any file type supported by your WordPress installation can be uploaded. The new item appears at the top of the grid and is selected; open <strong>Media Info</strong> if you want to see its details.</p>
@@ -659,14 +663,15 @@
               <tr><th class="docs-table__col--label">Operation</th><th>What it does</th></tr>
             </thead>
             <tbody>
-              <tr><td>Make Longer</td><td>Expands the selected content with more detail and depth</td></tr>
-              <tr><td>Make Shorter</td><td>Condenses the selected content while preserving the key points</td></tr>
+              <tr><td>Make Longer</td><td>Expands the selected content by adding supporting sentences. The target length scales with the selection: a short passage grows to about four times its length, a long one to about one and a half times</td></tr>
+              <tr><td>Make Shorter</td><td>Condenses the selected content by cutting the least essential sentences and tightening the rest. A short passage shrinks to about 70% of its length, a long one to about 40%</td></tr>
               <tr><td>To Table</td><td>Converts the selected content into an HTML table</td></tr>
               <tr><td>To List</td><td>Converts the selected content into a bulleted or numbered list</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-body">These operations work on the selected text only and do not use web search. The result appears inline in the editor with an <strong>Accept</strong> or <strong>Discard</strong> panel. Accept to keep the change, or discard to restore the original text.</p>
+        <p class="docs-body">Make Longer and Make Shorter keep the same number of paragraphs; they don't add headings or lists, or merge paragraphs together.</p>
+        <p class="docs-body">These operations replace the selected text only and do not use web search. The result appears in place of your selection, highlighted, and a bar with <strong>Accept</strong> and <strong>Discard</strong> buttons appears along the bottom of the editor. Click <strong>Accept</strong> or press <strong>↩︎</strong> to keep the change. Click <strong>Discard</strong>, press <strong>Esc</strong>, or click anywhere else to restore the original text. If Claude returns nothing usable, your text is left unchanged and an error message appears instead.</p>
         <p class="docs-body"><strong>Lists and tables:</strong> When your selection is inside a list or table, Make Longer and Make Shorter automatically detect the structure and apply changes that preserve the format, expanding or condensing individual list items or table cells rather than converting them to plain paragraphs.</p>
       </section>
 
@@ -682,7 +687,7 @@
             <tbody>
               <tr><td>⌘N</td><td>New Post</td></tr>
               <tr><td>⌘⇧N</td><td>New Page</td></tr>
-              <tr><td>⌘⌥N</td><td>New Media upload</td></tr>
+              <tr><td>⌘⌥N</td><td>New Media (upload a file)</td></tr>
               <tr><td>⌘,</td><td>Open Settings</td></tr>
               <tr><td>⌘R</td><td>Refresh the current section</td></tr>
               <tr><td>⌘F</td><td>Open Find &amp; Replace</td></tr>
@@ -762,6 +767,7 @@
             </thead>
             <tbody>
               <tr><td>⌘↩︎</td><td><strong>Generate</strong> in the Generate Content sheet</td></tr>
+              <tr><td>↩︎ / Esc</td><td>Accept or discard an AI rewrite (Make Longer, Make Shorter, To Table, To List)</td></tr>
               <tr><td>↩︎</td><td>Confirm the highlighted button in a confirmation alert (Replace Content?, Revert to Server Version?, Conflict Detected, Post may be cut off)</td></tr>
               <tr><td>Esc</td><td>Dismiss any sheet or alert without acting</td></tr>
             </tbody>

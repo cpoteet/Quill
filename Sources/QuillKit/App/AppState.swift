@@ -143,6 +143,11 @@ public final class AppState: ObservableObject {
         }
     }
 
+    // Local Drafts load from SQLite, so a failed network load says nothing about them.
+    public var sectionListError: String? {
+        selectedSection == .localDrafts ? nil : listError
+    }
+
     public var filteredItems: [PostItem] {
         let items: [PostItem]
         switch selectedSection {

@@ -83,6 +83,10 @@ function saveOperationResult(startHTML, caretText, resultHTML) {
   return sentToSwift.at(-1)
 }
 
+function topLevelTexts() {
+  return Array.from(editor.state.doc.toJSON().content, n => Array.from(n.content || [], c => c.text).join(''))
+}
+
 describe('the validator itself', () => {
   test('passes markup the block editor wrote', () => {
     assert.deepEqual(problems('<!-- wp:heading {"level":3} -->\n<h3 class="wp-block-heading">A</h3>\n<!-- /wp:heading -->'), [])
@@ -220,20 +224,36 @@ describe('a right-click AI result saves as valid blocks', () => {
 describe('a right-click AI result replaces only the selection', () => {
   const start = '<!-- wp:paragraph -->\n<p>First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.</p>\n<!-- /wp:paragraph -->'
 
-  for (const [where, selected, kept] of [
-    ['start', 'First sentence stays.', ['Middle sentence is rather long and wordy.', 'Last sentence stays.']],
-    ['middle', 'Middle sentence is rather long and wordy.', ['First sentence stays.', 'Last sentence stays.']],
-    ['end', 'Last sentence stays.', ['First sentence stays.', 'Middle sentence is rather long and wordy.']],
+  for (const [where, selected, expected] of [
+    ['start', 'First sentence stays.', 'Short. Middle sentence is rather long and wordy. Last sentence stays.'],
+    ['middle', 'Middle sentence is rather long and wordy.', 'First sentence stays. Short. Last sentence stays.'],
+    ['end', 'Last sentence stays.', 'First sentence stays. Middle sentence is rather long and wordy. Short.'],
   ]) {
     test(`a sentence at the ${where} of a paragraph`, () => {
       const saved = saveOperationResult(start, selected, '<p>Short.</p>')
       assertGutenbergValid(saved, ['core/paragraph'])
-      for (const text of kept) assert.ok(saved.includes(text), `lost "${text}" in:\n${saved}`)
-      assert.ok(!saved.includes(selected), `the selection was not replaced in:\n${saved}`)
+      assert.deepEqual(topLevelTexts(), [expected])
       assert.equal(namesIn(saved).size, 1)
       assert.equal((saved.match(/<p>/g) || []).length, 1, 'the paragraph was split:\n' + saved)
     })
   }
+
+  test('the highlighted result is exactly the inserted text, and accepting puts the caret after it', () => {
+    win.setContent(start)
+    let from = null
+    editor.state.doc.descendants((node, pos) => {
+      if (from === null && node.isText) from = pos + node.text.indexOf('Middle')
+    })
+    editor.commands.setTextSelection({ from, to: from + 'Middle sentence is rather long and wordy.'.length })
+    win.beginAIOperation()
+    win.showAIResult('<p>Short.</p>')
+    const shown = editor.state.selection
+    assert.equal(editor.state.doc.textBetween(shown.from, shown.to), 'Short.')
+    win.acceptAIResult()
+    const caret = editor.state.selection
+    assert.ok(caret.empty)
+    assert.equal(editor.state.doc.textBetween(0, caret.from), 'First sentence stays. Short.')
+  })
 
   test('a selection that crosses bold text', () => {
     const bold = '<!-- wp:paragraph -->\n<p>Keep this. Shorten <strong>this bold</strong> part please. Keep that.</p>\n<!-- /wp:paragraph -->'
@@ -255,6 +275,53 @@ describe('a right-click AI result replaces only the selection', () => {
     assert.ok(saved.includes('Keep this. Short. Keep that.'), saved)
   })
 
+  for (const [what, result, inserted] of [
+    ['an entity', '<p>R&amp;D costs are high.</p>', 'R&D costs are high.'],
+    ['a non-breaking space', '<p>Ten&nbsp;km.</p>', 'Ten km.'],
+    ['a line break and indent', '<p>Costs are\n  high.</p>', 'Costs are high.'],
+  ]) {
+    test(`a plain-text result holding ${what} goes in as text, not markup`, () => {
+      const saved = saveOperationResult(start, 'Middle sentence is rather long and wordy.', result)
+      assertGutenbergValid(saved, ['core/paragraph'])
+      assert.deepEqual(topLevelTexts(), [`First sentence stays. ${inserted} Last sentence stays.`])
+      assert.ok(!saved.includes('&amp;amp;'), saved)
+    })
+  }
+
+  for (const [edge, selected] of [
+    ['trailing', 'Middle sentence is rather long and wordy. '],
+    ['leading', ' Middle sentence is rather long and wordy.'],
+  ]) {
+    test(`a selection with a ${edge} space keeps the space`, () => {
+      saveOperationResult(start, selected, '<p>Short.</p>')
+      assert.deepEqual(topLevelTexts(), ['First sentence stays. Short. Last sentence stays.'])
+    })
+  }
+
+  test('showAIResult reports whether it inserted anything', () => {
+    win.setContent(start)
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    win.beginAIOperation()
+    assert.equal(win.showAIResult('<p>   </p>'), null)
+    win.discardAIResult()
+    assert.equal(editor.state.doc.textContent, 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.')
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    win.beginAIOperation()
+    assert.equal(win.showAIResult('<p>Short.</p>'), true)
+    win.acceptAIResult()
+  })
+
+  test('a result that arrives after the post changed leaves the new post alone', () => {
+    win.setContent(start)
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    win.beginAIOperation()
+    const other = '<!-- wp:paragraph -->\n<p>A different post entirely.</p>\n<!-- /wp:paragraph -->'
+    win.setContent(other)
+    const before = editor.state.doc.toJSON()
+    assert.equal(win.showAIResult('<p>Short.</p>'), null)
+    assert.deepEqual(editor.state.doc.toJSON(), before)
+  })
+
   test('a selection across two paragraphs keeps the text outside it', () => {
     const two = '<!-- wp:paragraph -->\n<p>Before one. Selected one.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Selected two. After two.</p>\n<!-- /wp:paragraph -->'
     win.setContent(two)
@@ -272,21 +339,24 @@ describe('a right-click AI result replaces only the selection', () => {
     win.syncContentToSwift()
     const saved = sentToSwift.at(-1)
     assertGutenbergValid(saved, ['core/paragraph'])
-    assert.ok(saved.includes('Before one.') && saved.includes('After two.'), saved)
-    assert.ok(!saved.includes('Selected'), saved)
+    assert.deepEqual(topLevelTexts(), ['Before one.', 'Merged.', 'After two.'])
   })
 
-  for (const [where, selected] of [
-    ['the whole paragraph', 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.'],
-    ['the start of a paragraph', 'First sentence stays.'],
-    ['the end of a paragraph', 'Last sentence stays.'],
-    ['the middle of a paragraph', 'Middle sentence is rather long and wordy.'],
+  for (const [where, selected, expected] of [
+    ['the whole paragraph', 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.',
+      ['One.', 'Two.']],
+    ['the start of a paragraph', 'First sentence stays.',
+      ['One.', 'Two.', 'Middle sentence is rather long and wordy. Last sentence stays.']],
+    ['the end of a paragraph', 'Last sentence stays.',
+      ['First sentence stays. Middle sentence is rather long and wordy.', 'One.', 'Two.']],
+    ['the middle of a paragraph', 'Middle sentence is rather long and wordy.',
+      ['First sentence stays.', 'One.', 'Two.', 'Last sentence stays.']],
   ]) {
     test(`a two-paragraph result for ${where} leaves no empty paragraph`, () => {
       const saved = saveOperationResult(start, selected, '<p>One.</p><p>Two.</p>')
       assertGutenbergValid(saved, ['core/paragraph'])
       assert.ok(!/<p>\s*<\/p>/.test(saved), 'empty paragraph in:\n' + saved)
-      assert.ok(saved.includes('One.') && saved.includes('Two.'), saved)
+      assert.deepEqual(topLevelTexts(), expected)
     })
   }
 
@@ -301,8 +371,7 @@ describe('a right-click AI result replaces only the selection', () => {
     const two = start + '\n\n<!-- wp:paragraph -->\n<p>Basic costs five dollars. Pro costs fifteen.</p>\n<!-- /wp:paragraph -->'
     saveOperationResult(two, 'Middle sentence is rather long and wordy.', '<p>One.</p><p>Two.</p>')
     saveOperationResult(null, 'Basic costs five dollars. Pro costs fifteen.', '<p>Short.</p>')
-    const texts = Array.from(editor.state.doc.toJSON().content, n => Array.from(n.content || [], c => c.text).join('').trim())
-    assert.deepEqual(texts, ['First sentence stays.', 'One.', 'Two.', 'Last sentence stays.', 'Short.'])
+    assert.deepEqual(topLevelTexts(), ['First sentence stays.', 'One.', 'Two.', 'Last sentence stays.', 'Short.'])
   })
 
   test('discarding restores the original paragraph', () => {
@@ -316,5 +385,22 @@ describe('a right-click AI result replaces only the selection', () => {
     win.showAIResult('<p>Short.</p>')
     win.discardAIResult()
     assert.equal(editor.state.doc.textContent, 'First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.')
+  })
+
+  test('discarding keeps a space the author just typed at the end of a paragraph, and tells Swift', async () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Plain start, <strong>then bold</strong> and then plain.</p>\n<!-- /wp:paragraph -->')
+    editor.view.dispatch(editor.state.tr.insertText(' ', editor.state.doc.firstChild.nodeSize - 1))
+    win.syncContentToSwift()
+    const typed = sentToSwift.at(-1)
+    const original = editor.state.doc.toJSON()
+    editor.commands.setTextSelection({ from: 1, to: 20 })
+    win.beginAIOperation()
+    win.showAIResult('<p>Short.</p>')
+    const posted = sentToSwift.length
+    win.discardAIResult()
+    assert.deepEqual(editor.state.doc.toJSON(), original)
+    await new Promise(resolve => setTimeout(resolve, 600))
+    assert.equal(sentToSwift.length, posted + 1)
+    assert.equal(sentToSwift.at(-1), typed)
   })
 })

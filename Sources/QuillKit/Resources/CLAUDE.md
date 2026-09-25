@@ -123,6 +123,7 @@ onto it" — its children are still replayed.
 - `showAIResult` replaces exactly the selection, never the whole enclosing paragraph
 - AI operations detect list/table context
 - Strip inter-block whitespace text nodes before inserting AI HTML
+- Tiptap's `insertContentAt` inserts an unmarked HTML string verbatim — pass plain text as a text node
 - Embeds render as static cards via `EmbedNodeView`, whose `renderHTML` returns a DOM node rather than an array spec
 - `FootnotesList`/`FootnoteItem`/`FootnoteMarker` need `priority: 110` to beat the generic `ol`/`li` parse rules — do not remove it
 - Footnote numbers in the editor come from CSS counters

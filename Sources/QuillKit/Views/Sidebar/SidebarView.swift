@@ -198,7 +198,7 @@ public struct SidebarView: View {
             if let update = appState.updateAvailable {
                 updateRow(update)
             }
-            if let error = appState.listError {
+            if let error = appState.sectionListError {
                 SidebarErrorRow(message: error)
             }
             ForEach(appState.filteredItems) { item in
@@ -219,7 +219,7 @@ public struct SidebarView: View {
         .listStyle(.sidebar)
         .overlay {
             if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList
-                && appState.listError == nil {
+                && appState.sectionListError == nil {
                 SectionEmptyState(section: appState.selectedSection,
                                   isSearching: !appState.searchText.isEmpty)
             } else if !appState.hasLoadedList || appState.isLoadingList {

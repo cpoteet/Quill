@@ -47,7 +47,7 @@ public struct ContentView: View {
         } else {
             EmptyEditorPlaceholder(section: appState.selectedSection,
                                    sectionIsEmpty: appState.sectionIsEmpty,
-                                   loadFailed: appState.sectionIsEmpty && appState.listError != nil)
+                                   loadFailed: appState.sectionIsEmpty && appState.sectionListError != nil)
                 .navigationTitle("Quill")
         }
     }

@@ -14,7 +14,7 @@ osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.a
 ./test.sh
 ```
 
-Runs everything — 465 Swift + 1,229 JS tests, all passing as of 2026-09-25 (1,228 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 470 Swift + 1,238 JS tests, all passing as of 2026-09-25 (1,237 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -135,7 +135,7 @@ These two fail silently with the whole test suite green:
 
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`
-- `docs/editor-gotchas.md` — the 70 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
+- `docs/editor-gotchas.md` — the 71 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `docs/future-architecture.md` — deferred design notes (B–K)
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — markup audit routine, run once per WP major release

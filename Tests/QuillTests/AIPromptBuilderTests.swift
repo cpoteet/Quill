@@ -257,6 +257,44 @@ import Testing
         #expect(long.contains("same number of paragraphs"))
     }
 
+    @Test func lengthTiersSwitchAtFortyAndAfterOneHundredFiftyWords() {
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(39), operation: .makeLonger)
+            .contains("from 39 words to about 156 words, and never more than 195"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(40), operation: .makeLonger)
+            .contains("from 40 words to about 80 words, and never more than 100"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(150), operation: .makeLonger)
+            .contains("from 150 words to about 300 words, and never more than 375"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(151), operation: .makeLonger)
+            .contains("from 151 words to about 227 words, and never more than 302"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(39), operation: .makeShorter)
+            .contains("from 39 words to about 27 words, and never more than 31"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(40), operation: .makeShorter)
+            .contains("from 40 words to about 20 words, and never more than 24"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(150), operation: .makeShorter)
+            .contains("from 150 words to about 75 words, and never more than 90"))
+        #expect(AIPromptBuilder.operationPrompt(selectedHTML: words(151), operation: .makeShorter)
+            .contains("from 151 words to about 60 words, and never more than 76"))
+    }
+
+    @Test func makeShorterNeverTargetsZeroWords() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "Extraordinarily", operation: .makeShorter)
+        #expect(prompt.contains("to about 1 words, and never more than 1"))
+    }
+
+    @Test func wordTargetCountsWordsAcrossParagraphBreaks() {
+        let prompt = AIPromptBuilder.operationPrompt(selectedHTML: "One two\nthree\n\nfour", operation: .makeLonger)
+        #expect(prompt.contains("from 4 words to about 16 words"))
+    }
+
+    @Test func listAndTableContextsGetNoWordTarget() {
+        for context in ["bulletList", "orderedList", "table"] {
+            for operation in [AIWritingOperation.makeLonger, .makeShorter] {
+                let prompt = AIPromptBuilder.operationPrompt(selectedHTML: words(20), operation: operation, context: context)
+                #expect(!prompt.contains("words to about"), "\(context) \(operation)")
+            }
+        }
+    }
+
     private func words(_ count: Int) -> String {
         Array(repeating: "word", count: count).joined(separator: " ")
     }

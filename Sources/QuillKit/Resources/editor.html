@@ -5510,8 +5510,7 @@
       window.webkit.messageHandlers.triggerEvaluate.postMessage({})
     })
 
-    // Only the entry points that receive post_content wrap; the AI reject
-    // paths restore editor.getHTML(), which is already wrapped.
+    // Only the entry points that receive post_content wrap; the AI reject paths swap the saved doc back in.
     const _wrapIncoming = html =>
       html ? wrapUnsupportedBlocks(html, BlockParser.parse, serializeBlock, document) : html
 
@@ -5561,6 +5560,8 @@
         document.getElementById('toolbar').querySelectorAll('button, select').forEach(el => { el.disabled = false })
       }
       _closeFindBar()
+      _aiOriginalDoc = _aiFrom = _aiTo = _aiResultTo = null
+      _aiInProgress = false
       _footnotes = footnotesJSON || '[]'
       let storedFootnotes = []
       try { storedFootnotes = JSON.parse(_footnotes) } catch (e) { storedFootnotes = [] }
@@ -5963,7 +5964,7 @@
     })
 
     // Called by Swift when the user taps a pill button.
-    // Captures original HTML + selection positions, replaces selection with a loading
+    // Captures the original doc + selection positions, replaces selection with a loading
     // placeholder, and returns the selected plain text for use as prompt input.
     // Returns null if there is no valid selection (≥10 chars).
     window.beginAIOperation = () => {
@@ -6024,9 +6025,9 @@
 
     // Called by Swift with Claude's HTML result.
     // Restores the original document (silently), inserts the result at the original
-    // range, selects it for visual feedback, and returns the bounding rect so Swift
-    // can position the accept/discard panel.
+    // range, selects it for visual feedback, and returns true, or null if nothing was inserted.
     window.showAIResult = (html, cFrom, cTo) => {
+      if (_aiOriginalDoc === null) return null
       // Clean Claude's response through the DOM so regex edge-cases can't slip through
       const _tmp = document.createElement('div')
       _tmp.innerHTML = html
@@ -6047,9 +6048,7 @@
       _restoreAIOriginal(false)
 
       // Determine insertion range.
-      // Re-derive container boundaries from the restored doc rather than using
-      // saved positions — the getHTML/setContent round-trip can shift positions
-      // (especially for tables with complex internal structure).
+      // Re-derive container boundaries from the restored doc rather than trusting the saved positions.
       let nodeFrom, nodeTo
       if (typeof cFrom === 'number' && typeof cTo === 'number') {
         const docSize = editor.state.doc.content.size
@@ -6076,12 +6075,18 @@
       }
 
       // A lone paragraph inside one paragraph goes in as inline text, or it splits the paragraph.
-      let insertHtml = cleanHtml
+      let insertContent = cleanHtml
       const $start = editor.state.doc.resolve(nodeFrom)
       const $end = editor.state.doc.resolve(nodeTo)
       const onlyChild = _tmp.childNodes.length === 1 ? _tmp.firstElementChild : null
       if (onlyChild?.tagName === 'P' && $start.parent.isTextblock && $start.sameParent($end)) {
-        insertHtml = onlyChild.innerHTML
+        // Tiptap inserts an unmarked HTML string verbatim, entities and all, so plain text goes in as a text node.
+        insertContent = onlyChild.children.length
+          ? onlyChild.innerHTML
+          : { type: 'text', text: onlyChild.textContent.replace(/[ \t\r\n\f]+/g, ' ').replace(/^ | $/g, '') }
+        const doc = editor.state.doc
+        if (nodeTo - nodeFrom > 1 && doc.textBetween(nodeFrom, nodeFrom + 1) === ' ') nodeFrom += 1
+        if (nodeTo - nodeFrom > 1 && doc.textBetween(nodeTo - 1, nodeTo) === ' ') nodeTo -= 1
       } else {
         // Blocks inserted at a paragraph's edge leave an empty paragraph there, so take the edge too;
         // mid-paragraph, take the separating space so neither half keeps it.
@@ -6096,7 +6101,7 @@
       // preserveWhitespace: false prevents ProseMirror from wrapping the \n
       // characters Claude emits between <p> tags into blank paragraph nodes.
       editor.chain().focus()
-        .insertContentAt({ from: nodeFrom, to: nodeTo }, insertHtml, {
+        .insertContentAt({ from: nodeFrom, to: nodeTo }, insertContent, {
           parseOptions: { preserveWhitespace: false }
         })
         .run()
@@ -6104,6 +6109,7 @@
 
       // Select the inserted range — browser selection acts as the visual highlight
       editor.chain().setTextSelection({ from: nodeFrom, to: _aiResultTo }).run()
+      return true
     }
 
     // Called by Swift when the user accepts the result.
