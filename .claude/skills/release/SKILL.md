@@ -69,7 +69,9 @@ Dispatch one subagent with `$PREV`, `<version>` and this brief:
 >
 > Include only what a user of `<PREV>` would notice in `<version>`. Leave out docs, tests, refactors, build tooling and review cleanups. Leave out fixes for bugs that were introduced after `<PREV>`, because users never saw those bugs. Merge several commits about one feature into one entry.
 >
-> Write plainly: say what changed and what the user can now do. Use no marketing language. Use Quill's real menu, button and shortcut names.
+> Write for a user deciding whether to update. Each What's New entry is 1–3 sentences: what changed, then why it matters to them (what it fixes, what it lets them do, why it was built). Describe a broad change at the level the user experiences it ("custom chrome replaced by native controls"), not as a list of its parts. Leave out how-to detail such as shortcuts, click paths and every option a feature has; the user guide covers that. Merge related features into one entry, and order What's New by how much the change affects the user, not by how much code it took.
+>
+> Improvements and fixes get one sentence each, using Quill's real menu, button and shortcut names. Drop fixes too small for a user to have noticed. Use American spelling and no marketing language.
 >
 > Return Markdown in exactly this shape. Omit a section only if it would be empty.
 >
@@ -79,13 +81,13 @@ Dispatch one subagent with `$PREV`, `<version>` and this brief:
 > ## What's New
 >
 > ### Sentence-case feature name
-> One paragraph.
+> One to three sentences.
 >
 > ---
 >
 > ## Improvements
 >
-> - **Sentence-case name** — One or two sentences.
+> - **Sentence-case name** — One sentence.
 >
 > ---
 >
@@ -94,7 +96,7 @@ Dispatch one subagent with `$PREV`, `<version>` and this brief:
 > - One sentence per fix, stating the corrected behavior.
 > ```
 
-Use today's date. Read the draft yourself, then save it to `$TMPDIR/quill-notes-<version>.md`. `gh release view v1.11.0 --repo cpoteet/Quill --json body -q .body` shows a finished example.
+Use today's date. Read the draft yourself and cut any entry that runs past its limit, then save it to `$TMPDIR/quill-notes-<version>.md`. `gh release view v2.0.0 --repo cpoteet/Quill --json body -q .body` shows a finished example.
 
 ### Step 4 — Confirm notarization
 
