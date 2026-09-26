@@ -563,6 +563,12 @@ import Testing
         #expect(prompt.contains("Hello world"))
     }
 
+    @Test func promptKeepsBlockBoundariesAsParagraphBreaks() {
+        let html = "<h2>Continuing with Claude Code</h2>\n<p>I still know <em>next</em> to nothing.</p><ul><li>One</li><li>Two</li></ul>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(prompt.contains("Continuing with Claude Code\n\nI still know next to nothing.\n\nOne\n\nTwo"))
+    }
+
     @Test func promptDecodesHTMLEntities() {
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>a &amp; b &lt;c&gt;</p>", styleGuide: nil)
         #expect(prompt.contains("a & b <c>"))

@@ -290,6 +290,9 @@ public struct AIPromptBuilder {
         return EvaluationResult(summary: summary, findings: findings)
     }
 
+    // A control character, so the whitespace collapse below never eats it.
+    private static let blockBreak = "\u{1E}"
+
     private static func stripHTML(_ html: String) -> String {
         // Strip non-prose blocks entirely before tag removal so they don't produce
         // nonsensical evaluation findings.
@@ -323,11 +326,9 @@ public struct AIPromptBuilder {
             with: "",
             options: .regularExpression
         )
-        // Convert closing block tags to spaces (not newlines) so the plain-text output
-        // matches how findAndSelectText concatenates ProseMirror text nodes — with no separator.
         text = text.replacingOccurrences(
             of: #"</(p|h[1-6]|li|blockquote|pre|div)>"#,
-            with: " ",
+            with: blockBreak,
             options: .regularExpression
         )
         // Remove remaining tags (replace with space to prevent smashing adjacent inline elements)
@@ -357,11 +358,11 @@ public struct AIPromptBuilder {
             .replacingOccurrences(of: "&mdash;", with: "\u{2014}")
             .replacingOccurrences(of: "&#8230;", with: "\u{2026}")
             .replacingOccurrences(of: "&hellip;", with: "\u{2026}")
-        // Collapse all whitespace (spaces, tabs, newlines) and strip blank segments
         text = text
-            .components(separatedBy: .whitespacesAndNewlines)
+            .components(separatedBy: blockBreak)
+            .map { $0.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ") }
             .filter { !$0.isEmpty }
-            .joined(separator: " ")
+            .joined(separator: "\n\n")
         // Inline tags were replaced with spaces above, which injects a phantom
         // space before punctuation that immediately follows an inline element —
         // e.g. "<a>DSPM</a>, <a>Content</a>" becomes "DSPM , Content". English
