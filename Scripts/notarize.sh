@@ -53,7 +53,7 @@ xcrun stapler validate "$APP"
 echo "▶ Packaging Quill.zip..."
 mkdir "$WORK/stage"
 ditto "$APP" "$WORK/stage/$APP"
-cp LICENSE "$WORK/stage/LICENSE"
+cp LICENSE.md NOTICES.md "$WORK/stage/"
 mkdir -p "$OUT_DIR"
 rm -f "$OUT_DIR/Quill.zip"
 ditto -c -k --norsrc --noextattr --noqtn "$WORK/stage" "$OUT_DIR/Quill.zip"
@@ -61,7 +61,7 @@ ditto -c -k --norsrc --noextattr --noqtn "$WORK/stage" "$OUT_DIR/Quill.zip"
 echo "▶ Checking the packaged app as a user would receive it..."
 mkdir "$WORK/unpacked"
 ditto -x -k "$OUT_DIR/Quill.zip" "$WORK/unpacked"
-[ -f "$WORK/unpacked/LICENSE" ] || { echo "✗ LICENSE missing from Quill.zip."; exit 1; }
+for f in LICENSE.md NOTICES.md; do [ -f "$WORK/unpacked/$f" ] || { echo "✗ $f missing from Quill.zip."; exit 1; }; done
 spctl --assess --type execute -vv "$WORK/unpacked/$APP" 2>&1 | tee "$WORK/spctl.txt"
 grep -q "source=Notarized Developer ID" "$WORK/spctl.txt" \
   || { echo "✗ Gatekeeper does not see a notarized app."; exit 1; }

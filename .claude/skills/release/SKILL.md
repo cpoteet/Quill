@@ -52,7 +52,7 @@ git commit -am "chore: bump version to <version>" && git push
 
 Record `SHA=$(git rev-parse HEAD)`. It is the commit being notarized, and the release must point at it.
 
-Quit the dev build, then start the script with `run_in_background`. It builds with `./build.sh --release`, runs `--check-fixtures` against the signed app, submits to Apple and waits, staples the ticket, and writes `~/Desktop/Quill.zip` (the app plus `LICENSE`). Apple usually answers within 15 minutes.
+Quit the dev build, then start the script with `run_in_background`. It builds with `./build.sh --release`, runs `--check-fixtures` against the signed app, submits to Apple and waits, staples the ticket, and writes `~/Desktop/Quill.zip` (the app plus `LICENSE.md` and `NOTICES.md`). Apple usually answers within 15 minutes.
 
 ```bash
 pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2

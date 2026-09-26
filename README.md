@@ -34,6 +34,6 @@ Start with [CLAUDE.md](CLAUDE.md). It maps `Sources/QuillKit`, records the key d
 
 ## License
 
-Quill is **not** open source. The source is published for reference and transparency under the terms in [LICENSE](LICENSE), which grants no right to modify, redistribute, or create derivative works.
+Quill is **not** open source. The source is published for reference and transparency under the terms in [LICENSE](LICENSE.md), which grants no right to modify, redistribute, or create derivative works.
 
-Third-party components are listed in [NOTICES](NOTICES).
+Third-party components are listed in [NOTICES](NOTICES.md).

@@ -58,6 +58,13 @@ struct AboutView: View {
                     )
 
                     NoticeEntry(
+                        name: "Marked",
+                        url: "https://marked.js.org",
+                        copyright: "Copyright © 2011–2018 Christopher Jeffrey, 2018+ MarkedJS",
+                        license: "MIT License"
+                    )
+
+                    NoticeEntry(
                         name: "SQLite.swift",
                         url: "https://github.com/stephencelis/SQLite.swift",
                         copyright: "Copyright © 2014–2015 Stephen Celis",
