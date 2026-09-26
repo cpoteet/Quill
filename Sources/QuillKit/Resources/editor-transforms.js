@@ -12,10 +12,6 @@ const blockDescriptorRegistry = (typeof module !== 'undefined' && module.exports
   ? require('./block-descriptors.js')
   : globalThis
 
-const blockSerializer = (typeof module !== 'undefined' && module.exports)
-  ? require('./block-serializer.js')
-  : globalThis
-
 const NODE_FOR_TAG = {
   P: 'paragraph', H1: 'heading', H2: 'heading', H3: 'heading',
   H4: 'heading', H5: 'heading', H6: 'heading',
@@ -102,8 +98,18 @@ function overlayCarried(carried, attrs, ownedKeys) {
   return out
 }
 
+function unicodeEscape(ch) {
+  return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0')
+}
+
+// JSON that cannot end or break its HTML comment, escaped as WordPress writes it (measured in Scripts/test-block-serializer.js).
+function serializeAttributes(attrs) {
+  return JSON.stringify(attrs).replace(/\\[\\"]|--|[<>&]/g, token =>
+    token[0] === '\\' ? unicodeEscape(token[1]) : Array.from(token, unicodeEscape).join(''))
+}
+
 function delimiterAttrs(attrs) {
-  return Object.keys(attrs).length ? ' ' + blockSerializer.serializeAttributes(attrs) : ''
+  return Object.keys(attrs).length ? ' ' + serializeAttributes(attrs) : ''
 }
 
 function mergeClassNames(existing, extra) {
@@ -240,102 +246,20 @@ function isModeledFigure(el) {
   return Array.from(el.classList).some(c => QUILL_MODELED_FIGURE_CLASSES.has(c))
 }
 
-// Given a wp-block-* classed element that gutenbergPassthrough's parse rule
-// matched, extracts what's needed to preserve and re-display it. Returns null
-// if `el` has no wp-block-* class at all, or if any of its wp-block-* classes
-// names a block Quill models natively (which must go to its own node instead).
-//
-// Checks for immediately-adjacent `<!-- wp:name --> / <!-- /wp:name -->`
-// comment siblings (skipping whitespace-only text nodes in between, since
-// real Gutenberg source has a newline between a comment and its element).
-// Each top-level block paired with a literal slice of `html` where the
-// original continues with exactly the serialised bytes, otherwise with the
-// serialisation itself. The parser exposes no byte offsets, so the cursor
-// walk is what turns a reconstruction into a byte-for-byte copy.
-// WordPress's own delimiter pattern, rescanned here because parse() has no offsets.
-const BLOCK_DELIMITER = /<!--\s+(\/)?wp:([a-z][a-z0-9_-]*\/)?([a-z][a-z0-9_-]*)\s+({(?:(?!}\s+\/?-->).)*}\s+)?(\/)?-->/g
-
-// Byte ranges of the top-level blocks, or null when the delimiters do not nest.
-function topLevelBlockRanges(html) {
-  const ranges = []
-  let depth = 0
-  let start = -1
-  let name = null
-  BLOCK_DELIMITER.lastIndex = 0
-  let match
-  while ((match = BLOCK_DELIMITER.exec(html)) !== null) {
-    const blockName = (match[2] || 'core/') + match[3]
-    if (match[5]) {
-      if (depth === 0) ranges.push({ blockName, start: match.index, end: match.index + match[0].length })
-      continue
-    }
-    if (match[1]) {
-      if (depth === 0) return null
-      depth -= 1
-      if (depth === 0) {
-        ranges.push({ blockName: name, start, end: match.index + match[0].length })
-        start = -1
-        name = null
-      }
-      continue
-    }
-    if (depth === 0) {
-      start = match.index
-      name = blockName
-    }
-    depth += 1
+function missingClosers(block) {
+  const names = []
+  for (let b = block; b && b.closed === false; b = b.innerBlocks[b.innerBlocks.length - 1]) {
+    names.unshift(shortBlockName(b.blockName))
   }
-  return depth === 0 && start === -1 ? ranges : null
+  return names.map(name => `<!-- /wp:${name} -->`).join('')
 }
 
-function blockSourceSlices(html, parse, serializeBlock) {
-  const blocks = parse(html)
-  const attrsOf = block => block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null
-  const ranges = topLevelBlockRanges(html)
-  const named = blocks.filter(b => b.blockName)
-  const agrees = ranges && ranges.length === named.length &&
-    ranges.every((r, i) => r.blockName === named[i].blockName)
-
-  if (agrees) {
-    const out = []
-    let cursor = 0
-    let next = 0
-    for (const block of blocks) {
-      if (!block.blockName) {
-        const end = next < ranges.length ? ranges[next].start : html.length
-        out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor, end), exact: true })
-        cursor = end
-        continue
-      }
-      const range = ranges[next++]
-      if (range.start > cursor) {
-        out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor, range.start), exact: true })
-      }
-      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: html.slice(range.start, range.end), exact: true })
-      cursor = range.end
-    }
-    if (cursor < html.length) {
-      out.push({ blockName: null, attrsJSON: null, source: html.slice(cursor), exact: true })
-    }
-    return out
-  }
-
-  const out = []
-  let cursor = 0
-  for (const block of blocks) {
-    const text = serializeBlock(block)
-    const exact = html.startsWith(text, cursor)
-    if (exact) {
-      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: html.slice(cursor, cursor + text.length), exact: true })
-      cursor += text.length
-    } else {
-      // Advance past the block's real bytes, not the reconstruction's, or every later block misaligns.
-      const found = html.indexOf('<!-- /wp:', cursor)
-      out.push({ blockName: block.blockName, attrsJSON: attrsOf(block), source: text, exact: false })
-      cursor = found === -1 ? cursor + text.length : html.indexOf('-->', found) + 3
-    }
-  }
-  return out
+function blockSourceSlices(html, parse) {
+  return parse(html).map(block => ({
+    blockName: block.blockName,
+    attrsJSON: block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null,
+    source: html.slice(block.start, block.end) + missingClosers(block),
+  }))
 }
 
 // One preservation path per CLAUDE.md: freeform is prose, everything unmodeled wraps.
@@ -371,8 +295,8 @@ function unrepresentedBlockNames(expectedCounts, accountedCounts) {
   return missing
 }
 
-function wrapUnsupportedBlocks(html, parse, serializeBlock, doc) {
-  const slices = blockSourceSlices(html, parse, serializeBlock)
+function wrapUnsupportedBlocks(html, parse, doc) {
+  const slices = blockSourceSlices(html, parse)
   if (!slices.some(s => blockNeedsWrapping(s, doc))) return html
   return slices.map(slice => {
     if (!blockNeedsWrapping(slice, doc)) return slice.source
@@ -384,6 +308,14 @@ function wrapUnsupportedBlocks(html, parse, serializeBlock, doc) {
   }).join('')
 }
 
+// Given a wp-block-* classed element that gutenbergPassthrough's parse rule
+// matched, extracts what's needed to preserve and re-display it. Returns null
+// if `el` has no wp-block-* class at all, or if any of its wp-block-* classes
+// names a block Quill models natively (which must go to its own node instead).
+//
+// Checks for immediately-adjacent `<!-- wp:name --> / <!-- /wp:name -->`
+// comment siblings (skipping whitespace-only text nodes in between, since
+// real Gutenberg source has a newline between a comment and its element).
 // If found and their names match, blockName/attrsJSON are populated from the
 // comment text verbatim so toWordPressHTML can regenerate identical comments
 // on save. If not found, this is class-only markup (e.g. a live page's
@@ -1175,5 +1107,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
+  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
 }

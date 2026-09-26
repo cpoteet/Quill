@@ -1,6 +1,6 @@
 'use strict'
 
-// Reads WordPress block comments into a block tree with source offsets. Grammar: docs/superpowers/specs/2026-09-25-block-parser-rewrite-design.md
+// Reads WordPress block comments into a tree with source offsets; held to WordPress's parser by Scripts/test-block-parser.js (docs/block-model.md).
 
 function parseBlocks(html) {
   const WHITESPACE = /\s/

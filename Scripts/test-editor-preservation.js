@@ -53,16 +53,10 @@ before(async () => {
 
 after(() => { if (win) win.close() })
 
-describe('block parser and serializer are live in the editor', () => {
-  test('window.BlockParser.parse is callable', () => {
-    const blocks = win.BlockParser.parse('<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->')
+describe('the block parser is live in the editor', () => {
+  test('window.parseBlocks is callable', () => {
+    const blocks = win.parseBlocks('<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->')
     assert.equal(blocks.filter(b => b.blockName).length, 1)
-  })
-
-  test('window.serializeBlock is callable', () => {
-    const src = '<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->'
-    const block = win.BlockParser.parse(src).find(b => b.blockName)
-    assert.equal(win.serializeBlock(block), src)
   })
 })
 

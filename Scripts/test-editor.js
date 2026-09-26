@@ -1620,10 +1620,7 @@ describe('block delimiters', () => {
     assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
   })
 
-  // Every delimiter goes through core's serializeAttributes. The serializer's
-  // own suite feeds it attribute objects directly; these check that the
-  // transform actually routes through it, which a plain JSON.stringify would
-  // pass every string test while writing a delimiter core would re-escape.
+  // serializeAttributes is compared with WordPress in its own suite; these check the transform routes through it.
   describe('delimiter attributes are escaped the way core escapes them', () => {
     test("an embed URL's query ampersand is escaped", () => {
       const out = wp('<figure class="wp-block-embed is-provider-youtube">' +

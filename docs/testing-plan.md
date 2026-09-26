@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-26 — 470 Swift tests + 1,304 JS tests (1,303 pass, 1 skipped), no failures._
+_Last updated: 2026-09-26 — 470 Swift tests + 1,284 JS tests (1,283 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -18,18 +18,18 @@ This document is the authoritative reference for Quill's automated test suite an
 
 1. **Swift tests** — `swift test` (470 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (66 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (48 tests — live Tiptap editor in jsdom)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (91 tests — pure Node; `serializeAttributes` compared with WordPress)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
 6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
-7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
+7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (38 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
-9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (36 tests — live Tiptap editor in jsdom)
-10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (36 tests — live Tiptap editor in jsdom)
+9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
+10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
 11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
 12. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
 13. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-14. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
+14. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (228 tests — live Tiptap editor in jsdom)
 15. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
 16. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
 
@@ -979,39 +979,32 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (110 tests)
+## JS block serializer tests (91 tests)
 
 File: `Scripts/test-block-serializer.js`
-Under test: `Sources/QuillKit/Resources/block-parser-bundle.js`, `block-serializer.js`, `block-descriptors.js`
+Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
 
-Pure Node — no DOM, no jsdom, no Tiptap — which makes this the cheapest suite in the project and the fastest guard against the round-trip regression class that produced the three shipped comment-stripping bugs. Each file is read off disk and evaluated in its own `new Function` sandbox, so the suite tests the shipped source rather than a copy.
+Pure Node — no Tiptap; jsdom only supplies a `document` for the wrap tests — which makes this the cheapest suite in the project and the fastest guard against the round-trip regression class that produced the three shipped comment-stripping bugs. Each file is loaded from `Sources/`, so the suite tests the shipped source rather than a copy.
 
-**What is live:** all three files are loaded by `editor.html`. `block-descriptors.js` is read by `toWordPressHTML` — that is how saves get their `wp:` delimiters. `block-parser-bundle.js` (WordPress's own block parser, bundled by `Scripts/bundle-block-parser.sh`) and `block-serializer.js` (block tree → `post_content`) were re-hooked on 2026-09-12 for unsupported-block preservation: the parser enumerates a post's top-level blocks on load and the serializer produces each one's stored text. The ordinary save path is still `toWordPressHTML`, not the serializer.
+**What is live:** every file under test is loaded by `editor.html`. `block-descriptors.js` is read by `toWordPressHTML` — that is how saves get their `wp:` delimiters, with attributes written by `serializeAttributes`. `block-parser.js` (Quill's own parser, held to WordPress's by the block parser suite above) enumerates a post's top-level blocks on load with their source offsets, and each preserved block's stored text is cut from the original by those offsets.
 
-### `block parser bundle` (2 tests)
+### `block parser` (2 tests)
 
 | Test | What it checks |
 |---|---|
 | `parses a delimited paragraph` | `<!-- wp:paragraph -->` markup yields one block with `blockName: 'core/paragraph'` and its `innerHTML` intact |
 | `parses undelimited HTML as a freeform block` | Classic content with no delimiters yields a single `blockName: null` freeform block |
 
-### `block serializer` (5 tests)
+### `serializeAttributes matches WordPress` (15 tests)
+
+`serializeAttributes` in `editor-transforms.js` writes a delimiter's attribute JSON with `\"`, `\\`, `<`, `>`, `&` and each `--` pair as `\uXXXX` escapes, so the JSON can never end or corrupt its HTML comment. It is Quill's own, written from WordPress's measured output. The reference is `serializeRawBlock` from `@wordpress/blocks` (test-only, loaded through `Scripts/wp-validator.js`).
 
 | Test | What it checks |
 |---|---|
-| `round-trips a paragraph byte-identically` | parse → serialize returns the input unchanged |
-| `round-trips attributes without reordering or re-spacing` | `{"level":3}` comes back with identical key order and spacing — the serializer re-emits attributes, so any drift here is silent data change |
-| `round-trips nested blocks at their innerContent slots` | A `wp:paragraph` inside a `wp:group` is re-inserted at its `null` slot in the parent's `innerContent`, not appended |
-| `passes freeform content through untouched` | A block with no `blockName` emits its content with no delimiters added |
-| `strips the core/ prefix in delimiters` | `core/separator` is written as `wp:separator`, matching what WordPress writes |
+| 14 named cases | Ampersands, angle brackets, odd and even hyphen runs, a comment opener and closer, backslashes (alone, trailing, before a quote), quotes, control characters, U+2028 and emoji, special characters in a key, nested objects and arrays with numbers |
+| `2,000 generated attribute objects` | Seeded random keys and nested values built from the characters that need escaping |
 
-### `fixture round-trips` (5 tests)
-
-One test per `Scripts/fixtures/*.html`, globbed at load time — dropping a new capture in adds a test with no code change. Each asserts the file survives parse → serialize byte-identically. The corpus is real `post_content` from the live site: a two-item accordion, a captioned gallery, a tabs block, and one whole published post (classic prose, images, footnotes, two accordions), plus the hand-written `unsupported-blocks.html`.
-
-See `Scripts/fixtures/README.md` before changing a fixture — they are recordings of what one WordPress version wrote, never a specification of what core emits now, and `accordion-block.html` deliberately holds the old heading shape.
-
-### `block descriptors` (4 tests)
+### `block descriptors` (5 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1020,27 +1013,35 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `returns null for an unknown node` | An unregistered node name gets no descriptor, which is how `toWordPressHTML` knows to leave it alone |
 | `level 2 headings emit level 2, not a default` | Guards against a hardcoded level slipping in behind the `<h3>` case |
 
-### `blockSourceSlices` (9 tests)
+### `blockSourceSlices` (15 tests)
 
-The cursor walk that gives each top-level block a literal slice of the original `post_content`. The parser exposes no byte offsets, so the block's text has to come from `serializeBlock`, which is a reconstruction — the walk tests whether the original continues with exactly those bytes at the cursor and stores the real slice when it does.
+Each top-level block paired with its literal slice of the original `post_content`, cut by the `start`/`end` offsets `parseBlocks` reports. A block the parser had to close at the end of the input also gets the closing comments it was missing.
 
 | Test | What it checks |
 |---|---|
-| `a canonical block yields an exact slice of the original` | The common case is `exact: true` with `blockName` and `attrsJSON` populated |
-| `slices concatenate back to the original` | The walk loses nothing between blocks |
+| `a canonical block yields an exact slice of the original` | The slice is the input, with `blockName` and `attrsJSON` populated |
+| `slices concatenate back to the original` | Nothing is lost between blocks |
 | `inter-block whitespace is preserved as a freeform slice` | The `\n\n` WordPress writes between blocks comes back as a `blockName: null` slice, not dropped |
+| `a non-canonical self-closing block does not derail the blocks after it` | `<!-- wp:calendar  /-->` (two spaces) keeps its own bytes and the blocks after it are unaffected |
+| `a non-canonical opening comment keeps its own bytes` | Extra spacing in an opening comment survives |
+| `a nested block does not end its parent early` | An inner block's closing comment does not end the outer block's slice |
 | `a self-closing block yields an exact slice` | `<!-- wp:calendar /-->` round-trips |
 | `freeform content is reported with a null blockName` | Classic prose is not a block |
-| `non-canonical attribute formatting falls back, marked inexact` | `{"width":33.0}` serialises to `{"width":33}`, so the slice is marked inexact and stores the serialisation |
-| `an inexact block does not desynchronise the blocks after it` | The cursor recovers past the fallback, so the next block is still exact |
-| `an inexact nested block still yields faithful sources for what follows` | The recovery heuristic mis-lands on a nested block's closing delimiter, so this pins the consequence: later blocks may go inexact, but an inexact block's source is always a faithful serialisation, never a wrong slice |
-| `an inexact self-closing block still yields a faithful source for what follows` | Same guarantee where there is no closing delimiter to find at all |
+| `non-canonical attribute formatting keeps its own bytes` | `{"width":33.0}` is stored as written, not re-serialised to `{"width":33}` |
+| `a non-canonical block does not desynchronise the blocks after it` | The block after it is still its own exact slice |
+| `a nested block with non-canonical attrs keeps its own bytes` | Same, for attributes on an inner block |
+| `a self-closing block with non-canonical attrs keeps its own bytes` | Same, for `{"x":1e3}` on a self-closing block |
+| `an unclosed block keeps its text and gains its closing comment` | `<!-- wp:group -->…unclosed` is stored as the original text plus `<!-- /wp:group -->` |
+| `nested unclosed blocks gain closers innermost first` | `<!-- wp:group --><!-- wp:acme/x -->t` gains `<!-- /wp:acme/x --><!-- /wp:group -->`, keeping the third-party namespace |
+| `a stray close comment is left as freeform, the way the parser reads it` | Matches WordPress: the stray comment and everything after it is one freeform slice |
 
-### `blockSourceSlices over the real fixtures` (5 tests)
+### `blockSourceSlices over the real fixtures` (27 tests)
 
-One test per fixture: every block comes back `exact: true` and the slices concatenate to the file byte-for-byte. This is the evidence that canonical WordPress output never takes the fallback path.
+One test per `Scripts/fixtures/*.html`: the slices concatenate to the file byte for byte.
 
-### `blockNeedsWrapping` (11 tests)
+See `Scripts/fixtures/README.md` before changing a fixture — they are recordings of what one WordPress version wrote, never a specification of what core emits now, and `accordion-block.html` deliberately holds the old heading shape.
+
+### `blockNeedsWrapping` (12 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1056,7 +1057,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 | `freeform prose is never wrapped` | |
 | `a nested block inside a claimed block does not make the parent wrap` | A `wp:query` holding a `wp:post-title` is one top-level block, not two |
 
-### `wrapUnsupportedBlocks` (6 tests)
+### `wrapUnsupportedBlocks` (7 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1067,7 +1068,7 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 | `stores quotes and ampersands in the source without corruption` | Setting the attribute through the DOM escapes correctly and `getAttribute` returns the original |
 | `keeps supported blocks in place around a wrapped one` | Document order survives |
 
-### `unrepresentedBlockNames` (5 tests)
+### `countBlockNames and unrepresentedBlockNames` (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1112,19 +1113,18 @@ One test per fixture: every block comes back `exact: true` and the slices concat
 
 ---
 
-## JS preservation tests (48 tests)
+## JS preservation tests (47 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
 
 Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `window.getContent`, the same approach as the container and gallery suites. The pure helpers above cannot reach this path: preservation crosses `setContent`'s wrap, the `gutenbergPassthrough` parse rule, the node view, and `toWordPressHTML`'s unwrap. It is also the only layer that catches the classic-script `const`-is-not-on-`window` class of bug (see the root `CLAUDE.md` gotcha) — the pure-Node suite `require`s the module and so cannot see it.
 
-### `block parser and serializer are live in the editor` (2 tests)
+### `the block parser is live in the editor` (1 test)
 
 | Test | What it checks |
 |---|---|
-| `window.BlockParser.parse is callable` | The re-hooked `<script>` tag is present and the bundle exposes its global |
-| `window.serializeBlock is callable` | Same for the serializer, round-tripping a paragraph |
+| `window.parseBlocks is callable` | The `block-parser.js` `<script>` tag is present and `parseBlocks` is reachable on `window` (a top-level `const` would not be) |
 
 ### `unsupported blocks become passthrough cards` (8 tests)
 
@@ -1643,7 +1643,7 @@ The descriptor-driven delimiter pass added in the Gutenberg block-model work. `t
 
 ### `delimiter attributes are escaped the way core escapes them` (4 tests)
 
-Every delimiter goes through core's own `serializeAttributes`. A plain `JSON.stringify` passes every string test while writing a comment WordPress would re-escape — or one that terminates early.
+Every delimiter goes through `serializeAttributes`, which the block serializer suite holds to WordPress's output. A plain `JSON.stringify` passes every string test while writing a comment WordPress would re-escape — or one that terminates early.
 
 | Test | What it checks |
 |---|---|
@@ -3268,7 +3268,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 120 | A quote's non-paragraph inner blocks lost their delimiters — a heading or list inside a `core/quote` came back as bare markup, which fails core's validation. `blockquote`'s descriptor is now `shape: 'container'` and recurses like any other, skipping `<cite>` | ✅ `test-editor-block-settings.js` `'a quote holds inner blocks, not bare markup'` + `settings-quote-inner.html` |
 | 121 | A table's `has-fixed-layout` class was dropped, because the parse rule matches the `<figure>` and never saw the `<table>`'s own class. Gutenberg then accepted the block through a *deprecation* whose default is `false` and silently migrated the setting off, so every WordPress-made table lost fixed layout after any Quill edit with no error anywhere. The `hasFixedLayout` attribute now reads the class first and the comment second, and a Quill-inserted table gets the class so it matches the current `save()` | ✅ `test-editor-block-settings.js` `'a table carries its own fixed-layout setting'` + `settings-table-fixed.html` |
 | 122 | `<img>` and `<hr>` were written bare where core self-closes them, so every edited post diffed on every image and separator in WordPress revision history. The void-element pass steps over quoted attribute values (`(?:"[^"]*"|'[^']*'|[^>"'])*`) — a naive `<img[^>]*>` ends the match at the `>` inside an `alt="a <b> tag"`, because HTML escapes `&` and `"` in an attribute value but not `<` or `>` | ✅ `test-editor-block-settings.js` `'void elements are written the way core writes them'` + the gallery suite's hostile alt strings |
-| 123 | `blockSourceSlices` had no byte offsets, so it walked a cursor and resynced on `'<!-- /wp:'` — which for a self-closing block is the *next* block's close comment. One non-canonical block cost byte-exactness for every block after it. `topLevelBlockRanges` now scans WordPress's own delimiter pattern with a nesting depth counter and returns real offsets, falling back to the reconstruction walk only when the delimiters do not nest | ✅ `test-block-serializer.js` `'blockSourceSlices'` (incl. the non-canonical, nested and unclosed cases) |
+| 123 | `blockSourceSlices` had no byte offsets, so it walked a cursor and resynced on `'<!-- /wp:'` — which for a self-closing block is the *next* block's close comment. One non-canonical block cost byte-exactness for every block after it. `topLevelBlockRanges` now scans WordPress's own delimiter pattern with a nesting depth counter and returns real offsets, falling back to the reconstruction walk only when the delimiters do not nest. Since 2026-09-26 the offsets come from `parseBlocks` itself and `topLevelBlockRanges` is gone | ✅ `test-block-serializer.js` `'blockSourceSlices'` (incl. the non-canonical, nested and unclosed cases) |
 | 124 | Two preservation mechanisms with different fidelity: top-level unmodeled blocks were routed to the class-based `gutenbergPassthrough` card whenever their markup carried a `wp-block-*` class, and that card is not byte-exact — Tiptap's `elementFromString` strips inter-element whitespace before any parse rule runs, so Group, Cover and Media & Text lost the newlines between their inner blocks on every edit. A `wp:html` block holding one `wp-block-*` classed element also lost its identity entirely. `blockNeedsWrapping` is now `!!blockName && !modelsBlockName(blockName)` (plus the no-markup guard), so every unmodeled top-level block takes the exact-slice path and the class rule is left to hold nested blocks only | ✅ `test-block-serializer.js` `'blockNeedsWrapping'` + `'wrapUnsupportedBlocks'` + `settings-group.html`, `settings-media-text.html`, `settings-spacer.html` + 👁 `--check-fixtures` |
 | 125 | The data-loss tripwire compared *sets of names* over top-level blocks only, so a post with two `wp:html` blocks stayed silent when one went missing (the survivor accounted for the name) and never looked inside a modeled container at all. It now counts every block name at every depth on both sides and reports any name the document holds fewer of, and it runs after a code-view edit as well as a load | ✅ `test-editor-preservation.js` `'the alarm reports only genuine loss'` + `test-block-serializer.js` `'countBlockNames and unrepresentedBlockNames'` |
 | 126 | `EditorCoordinator.setContent` deduped on the HTML alone, so a footnote-only difference — an autosave restore, or two drafts sharing a body — never reached JS. `EditorPushState` holds both halves and each message handler records its own | ✅ `EditorPushDecisionTests` (4 tests) |

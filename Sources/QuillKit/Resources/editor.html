@@ -1556,8 +1556,7 @@
   <script src="./tiptap-bundle.js"></script>
   <script src="./marked-bundle.js"></script>
   <script src="./editor-transforms.js"></script>
-  <script src="./block-parser-bundle.js"></script>
-  <script src="./block-serializer.js"></script>
+  <script src="./block-parser.js"></script>
   <script src="./block-descriptors.js"></script>
   <script src="./block-settings.js"></script>
   <script>
@@ -5512,7 +5511,7 @@
 
     // Only the entry points that receive post_content wrap; the AI reject paths swap the saved doc back in.
     const _wrapIncoming = html =>
-      html ? wrapUnsupportedBlocks(html, BlockParser.parse, serializeBlock, document) : html
+      html ? wrapUnsupportedBlocks(html, parseBlocks, document) : html
 
     // Image, gallery and embed model a block through bespoke passes in
     // toWordPressHTML rather than a descriptor entry, so they need naming here.
@@ -5525,7 +5524,7 @@
         // A node holding verbatim source holds its inner blocks in that string.
         const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
         if (source) {
-          const own = countBlockNames(BlockParser.parse(source))
+          const own = countBlockNames(parseBlocks(source))
           own.forEach((n, name) => counts.set(name, (counts.get(name) || 0) + n))
           const name = BLOCK_NAME_FOR_NODE[node.type.name]
           if (name && !own.has(name)) add(name)
@@ -5545,7 +5544,7 @@
 
     function _reportBlocksAtRisk(originalHTML) {
       if (!originalHTML) return
-      const expected = countBlockNames(BlockParser.parse(originalHTML))
+      const expected = countBlockNames(parseBlocks(originalHTML))
       // Reported even when empty, or a post the user repaired keeps its banner.
       const names = unrepresentedBlockNames(expected, _accountedBlockCounts())
       window.webkit?.messageHandlers?.blocksAtRisk?.postMessage({ names })
