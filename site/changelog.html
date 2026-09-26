@@ -35,6 +35,85 @@
     <article class="release">
       <div class="release__inner">
         <div class="release__header">
+          <span class="release__version">v2.0.0</span>
+          <span class="release__date">September 25, 2026</span>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">What's New</h2>
+
+          <div class="release__feature">
+            <p class="release__body"><em>Note: Quill now requires macOS 27.</em></p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Apple Notarization</h3>
+            <p class="release__body">Quill is now no longer self-signed and is now notarized by Apple. This will eliminate Apple warnings, and it ensures Quill meets Apple's expectations for safe applications.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Native macOS UI</h3>
+            <p class="release__body">All of the custom chrome has been removed in favor of native macOS controls and user interface patterns. The app retains a light theme for a small visual identity.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Rebuilt Media Library</h3>
+            <p class="release__body">Media library changes to have prominent filters on the left, thumbnails in the middle, and the metadata panel remains on the right. This is meant to provide a more detailed browsing experience for media.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Posts Open in WordPress as Real Blocks</h3>
+            <p class="release__body">Posts written in Quill now open in the block editor as separate blocks instead of one Classic block. This brings Quill complete parity with the Gutenberg editor allowing you to move freely between them.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Nothing Is Lost When You Edit</h3>
+            <p class="release__body">Block settings Quill has no controls for, such as colors, font sizes and custom classes, now survive an edit. Custom HTML, shortcodes and other blocks Quill can't edit appear as cards and save back unchanged, and if a block would still be lost, Quill warns you before saving. If you opt to save to WordPress, Quill will convert classic posts into block compatible ones.</p>
+          </div>
+
+          <div class="release__feature">
+            <h3 class="release__feature-title">Seven More Editable Blocks</h3>
+            <p class="release__body">You can now edit Columns, Details, Buttons, Accordion, Tabs, Pullquote and Preformatted blocks, and insert them from the <strong>+</strong> menu in the editor toolbar. All of these blocks also support a handful of custom properties such as choosing the default tab in the Tabs block. These settings are shown in a new toolbar underneath the main one in the editor, and existing options were moved there for existing editor supported blocks.</p>
+          </div>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Improvements</h2>
+          <ul class="release__list">
+            <li><strong>Editor commands in the File menu</strong> — Save (⌘S), Publish (⇧⌘P), Revert to Saved… and Preview in Browser.</li>
+            <li><strong>Unsaved-changes dot</strong> — The window's close button shows a dot while you have unsaved changes.</li>
+            <li><strong>AI rewrites act on your selection</strong> — Make Longer and Make Shorter now change only the text you selected.</li>
+            <li><strong>Easier-to-read editor</strong> — The text column is narrower and the background matches the rest of the window.</li>
+            <li><strong>Clearer toolbar</strong> — Tooltips say what each button inserts, and the Table button lets you pick a size. The Underline button is gone, but ⌘U still works.</li>
+            <li><strong>Help menu</strong> — Help ▸ User Guide and the new Help ▸ Changelog open quill.siolon.com.</li>
+          </ul>
+        </div>
+
+        <div class="release__section">
+          <h2 class="release__section-title">Fixes</h2>
+          <ul class="release__list">
+            <li>Local drafts appear in Drafts even when your site can't be reached.</li>
+            <li>A post that fails to load no longer stops you saving the next local draft.</li>
+            <li>Media loads from sites whose plugins print PHP warnings into API replies.</li>
+            <li>The publish button changes to Update as soon as you publish a draft.</li>
+            <li>The sidebar shows the load error instead of "No posts yet".</li>
+            <li>Switching posts during an AI rewrite cancels it instead of writing into the new post.</li>
+            <li>An AI rewrite that returns nothing leaves your text unchanged.</li>
+            <li>The editor toolbar scrolls instead of overlapping its buttons when the window is narrow.</li>
+            <li>A post that ends in a link no longer opens with the link button active.</li>
+            <li>Two narrow images in a row sit on separate lines.</li>
+            <li>Clicking below a table, gallery, embed or separator at the end of a post puts the cursor after it.</li>
+            <li>Scrolling the media library after a delete or upload no longer skips or repeats an item.</li>
+            <li>Block settings containing <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code> or quotes, such as a YouTube URL with an ampersand, now save correctly.</li>
+            <li>An empty footnote's ↩︎ button stays on the footnote's line.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="release">
+      <div class="release__inner">
+        <div class="release__header">
           <span class="release__version">v1.11.0</span>
           <span class="release__date">August 20, 2026</span>
         </div>

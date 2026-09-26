@@ -82,15 +82,7 @@
         <h3 class="docs-h3">Downloading Quill</h3>
         <p class="docs-body">Quill is available for free at <a href="/" class="content-link">quill.siolon.com</a>. Download the latest release, unzip the file, and drag <strong>Quill.app</strong> into your <code>/Applications</code> folder.</p>
         <h3 class="docs-h3">First Launch: macOS Security</h3>
-        <p class="docs-body">Quill is not notarized by Apple, so macOS blocks it from opening the first time. This is expected. To allow it:</p>
-        <ol class="docs-ol">
-          <li>Attempt to open Quill. macOS displays a message saying the app cannot be opened.</li>
-          <li>Open <strong>System Settings</strong> and navigate to <strong>Privacy &amp; Security</strong>.</li>
-          <li>Scroll down to the Security section. A message there says Quill was blocked.</li>
-          <li>Click <strong>Open Anyway</strong>.</li>
-          <li>A confirmation dialog appears. Click <strong>Open</strong>.</li>
-        </ol>
-        <p class="docs-body">Quill opens normally from this point forward. This prompt only appears once per installation.</p>
+        <p class="docs-body">Quill is notarized by Apple. The first time you open it, macOS asks you to confirm opening an app downloaded from the internet. Click <strong>Open</strong>. This prompt only appears once per installation.</p>
         <h3 class="docs-h3">Updates</h3>
         <p class="docs-body">Quill checks for new versions automatically on launch. When an update is available, a banner appears at the top of the post list reading <strong>Quill <em>version</em> available</strong>. Click it to open the release page on GitHub in your browser. Click the <strong>×</strong> button to dismiss the banner; it does not reappear for the same version.</p>
         <p class="docs-body">To see what changed in each release, choose <strong>Help → Changelog</strong>. <strong>Help → User Guide</strong> opens this guide.</p>
@@ -298,7 +290,7 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">Underline has no Markdown equivalent. Use ⌘U or the toolbar.</p>
+        <p class="docs-body">Underline has no Markdown equivalent. Use ⌘U.</p>
         <h4 class="docs-h4">Automatic links</h4>
         <p class="docs-body">Typing a URL followed by a space turns it into a link automatically. This works for full URLs (<code>https://example.com</code>), bare domains (<code>www.example.com</code>), and email addresses (<code>name@example.com</code>).</p>
         <h4 class="docs-h4">What is not converted</h4>
@@ -423,7 +415,7 @@
         <p class="docs-body">Galleries authored outside Quill (e.g. in the WordPress block editor) load the same way, as a read-only card, and any captions or other details not covered by the settings above are preserved even after you make unrelated edits elsewhere in the post.</p>
         <h3 class="docs-h3" id="blockquotes">Blockquotes</h3>
         <p class="docs-body">Press <strong>⌘⇧B</strong> or click the <strong>Blockquote</strong> button in the toolbar to wrap the current block in a blockquote.</p>
-        <p class="docs-body"><strong>Adding a citation:</strong> When the cursor is inside a blockquote, a citation toggle button (bookmark icon) appears in the toolbar. Click it to add a citation line at the bottom of the blockquote, where you can type an author name or source. Click it again to remove the citation. Empty citations are automatically stripped when the post is saved.</p>
+        <p class="docs-body"><strong>Adding a citation:</strong> When the cursor is inside a blockquote, a <strong>Cite</strong> button appears in the toolbar. Click it to add a citation line at the bottom of the blockquote, where you can type an author name or source. Click it again to remove the citation. Empty citations are automatically stripped when the post is saved.</p>
         <p class="docs-body"><strong>Enter key behavior:</strong> Pressing <strong>Enter</strong> inside a blockquote creates a new paragraph within the blockquote. Pressing <strong>Enter</strong> on an empty line exits the blockquote and creates a new paragraph below it.</p>
         <p class="docs-body"><strong>Removing a blockquote:</strong> Press <strong>⌘⇧B</strong> again or click the Blockquote button to unwrap the blockquote, returning its contents to normal paragraphs.</p>
         <p class="docs-body"><strong>Pullquote</strong> is a separate block, for a quote meant to stand out from the text rather than sit in it. Insert it from the <strong>+</strong> menu. It takes a citation from the same <strong>Cite</strong> button.</p>
@@ -814,8 +806,6 @@
           <li>Revision history</li>
           <li>Media editing (cropping, rotating, etc.)</li>
         </ul>
-        <h3 class="docs-h3">Apple Notarization</h3>
-        <p class="docs-body">Quill is not notarized by Apple. macOS requires a one-time security bypass on first launch, as described in <a href="#requirements--installation" class="content-link">Requirements &amp; Installation</a>. After that, the app opens normally.</p>
       </section>
 
 
