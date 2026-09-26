@@ -22,6 +22,8 @@ Runs everything — 470 Swift + 1,238 JS tests, all passing as of 2026-09-25 (1,
 
 **The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. Needs a current `./build.sh`.
 
+**Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
+
 Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`, gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
 **Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
@@ -117,7 +119,7 @@ These two fail silently with the whole test suite green:
 - **Anything that writes `uploadStatus` must go through `dropTask`**
 - **WordPress's REST `media_type` takes one value, so the Documents filter cannot also cover text files**
 - **Media paging sends an offset, not a page number — the local item count is the window into the server's filtered list**
-- **Ad-hoc signing**
+- **Ad-hoc signing for dev, Developer ID only for release**
 - **Editor link colour is one CSS variable per theme**
 - **Color tokens & surface components**
 - **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**

@@ -1,22 +1,15 @@
 ---
 name: wrap-up
-description: Use when done with a session of Quill changes and want to run the standard end-of-session checklist. Pass 'deploy' as an argument to also package Quill.zip for distribution.
+description: Use when done with a session of Quill changes and want to run the standard end-of-session checklist.
 ---
 
 # Wrap-Up (Quill)
 
 ## Overview
 
-Standard end-of-session checklist for the Quill project. Ensures work is committed, tests pass, code is reviewed, docs are current, and the app is rebuilt. Add `deploy` to also package a release ZIP.
+Standard end-of-session checklist for the Quill project. Ensures work is committed, tests pass, code is reviewed, docs are current, and the app is rebuilt. Releases are a separate skill: `/release <version>`.
 
 **Announce at start:** "Running wrap-up checklist."
-
-## Invocation
-
-```
-/wrap-up          # standard checklist
-/wrap-up deploy   # standard checklist + package Quill.zip
-```
 
 ## Cost discipline
 
@@ -174,51 +167,6 @@ Confirm the build succeeds. If it fails, report the error and stop.
 
 ---
 
-## Deployment step (only when `deploy` argument present)
-
-### Step 11 — Verify in WebKit, then package Quill.zip
-
-Run the fixture check against the Step 10 build. It is the only test that runs in real WebKit, and it catches the WebKit/jsdom divergences every `./test.sh` suite misses. It exits non-zero on a mismatch; if it does, show the report and **stop** — do not package.
-
-```bash
-./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
-```
-
-**The name `Quill.zip` is load-bearing.** Every page of the site links to
-`https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip`, which GitHub
-resolves by asset name against whichever release is marked latest. A ZIP uploaded
-under any other name breaks the download button site-wide.
-
-```bash
-cd "/Users/Chris/Documents/Claude/WP Mac App"
-rm -f ~/Desktop/Quill.zip
-zip -r ~/Desktop/Quill.zip Quill.app LICENSE
-```
-
-Report: "Quill.zip created at ~/Desktop/Quill.zip"
-
-### Step 12 — Attach it to the release
-
-Only when cutting a release, not on every deploy. Read `VERSION` from
-`CFBundleShortVersionString` in `build.sh`.
-
-```bash
-gh release create "v$VERSION" --repo cpoteet/Quill \
-  --title "Quill $VERSION" --notes-file NOTES.md ~/Desktop/Quill.zip
-gh release edit "v$VERSION" --repo cpoteet/Quill --latest
-```
-
-Verify the download link resolves before announcing:
-
-```bash
-curl -sIL -o /dev/null -w '%{http_code}\n' \
-  https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip
-```
-
-Expected: `200`.
-
----
-
 ## Quick Reference
 
 | Step | Action | Lanes | Stop if… |
@@ -234,8 +182,6 @@ Expected: `200`.
 | 8 | Doc pass (**two subagents**): 8a testing-plan + CLAUDE.md; 8b whole-guide review of site/docs.html | B, C | — |
 | 9 | Commit & push, then `git tag -f wrap-up-last HEAD` | all | Run stopped early (skip the tag) |
 | 10 | Quit Quill, `./build.sh`, reopen | all | Build fails |
-| 11 | `--check-fixtures`, then package ZIP (deploy only) | all | Build failed or fixtures mismatch |
-| 12 | Attach ZIP to a GitHub release, mark latest, verify the download 200s | all | Build failed |
 
 ## Red Flags
 
@@ -245,8 +191,6 @@ Expected: `200`.
 - **Never** skip Step 5 and continue when tests are failing
 - **Never** conclude "no regressions" from structural analysis alone — the scenario walkthrough is part of the Step 6 brief and must be in it
 - **Never** use `/code-review` or `/security-review` for Step 6 — they don't reliably see the committed `BASE..HEAD` range
-- **Never** package a ZIP if the build failed or `--check-fixtures` reported a mismatch
-- **Never** upload a release asset under a name other than `Quill.zip` — the site's download link resolves by asset name and breaks site-wide
 - **Never** commit without reviewing what's being staged
 - **Never** leave Step 8 until all three of `testing-plan.md`'s parts are updated — test tables, regression matrix, *and* manual checklists
 - **Never** skip Step 8b on lane B or C because the session looks internal — the subagent reads the diff and makes that call

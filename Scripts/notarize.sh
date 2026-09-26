@@ -56,7 +56,7 @@ ditto "$APP" "$WORK/stage/$APP"
 cp LICENSE "$WORK/stage/LICENSE"
 mkdir -p "$OUT_DIR"
 rm -f "$OUT_DIR/Quill.zip"
-ditto -c -k --sequesterRsrc "$WORK/stage" "$OUT_DIR/Quill.zip"
+ditto -c -k --norsrc --noextattr --noqtn "$WORK/stage" "$OUT_DIR/Quill.zip"
 
 echo "▶ Checking the packaged app as a user would receive it..."
 mkdir "$WORK/unpacked"
