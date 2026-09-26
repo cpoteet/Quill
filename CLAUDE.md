@@ -5,10 +5,10 @@ Native macOS app for writing and managing WordPress content. Built with Swift Pa
 ## Build & run
 
 ```bash
-osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && open Quill.app
 ```
 
-**Run exactly that after every code change.** `build.sh` replaces the binary under a running process, so skipping the quit leaves the old app running and shows no visible change. If the build fails, report the error instead of opening.
+**Run exactly that after every code change.** `build.sh` replaces the binary under a running process, so skipping the quit leaves the old app running and shows no visible change. The quit matches the project's own binary by path, so it never closes the notarized copy in `/Applications` the user works in. If the build fails, report the error instead of opening.
 
 ```bash
 ./test.sh

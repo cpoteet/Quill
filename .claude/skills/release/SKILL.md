@@ -52,10 +52,10 @@ git commit -am "chore: bump version to <version>" && git push
 
 Record `SHA=$(git rev-parse HEAD)`. It is the commit being notarized, and the release must point at it.
 
-Quit Quill, then start the script with `run_in_background`. It builds with `./build.sh --release`, runs `--check-fixtures` against the signed app, submits to Apple and waits, staples the ticket, and writes `~/Desktop/Quill.zip` (the app plus `LICENSE`). Apple usually answers within 15 minutes.
+Quit the dev build, then start the script with `run_in_background`. It builds with `./build.sh --release`, runs `--check-fixtures` against the signed app, submits to Apple and waits, staples the ticket, and writes `~/Desktop/Quill.zip` (the app plus `LICENSE`). Apple usually answers within 15 minutes.
 
 ```bash
-osascript -e 'quit app "Quill"' 2>&1; sleep 2
+pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2
 Scripts/notarize.sh > "$TMPDIR/quill-notarize.log" 2>&1
 ```
 
@@ -107,6 +107,21 @@ The script left a release-signed `Quill.app` in the project. Rebuild the dev app
 ```bash
 ./build.sh 2>&1 | tail -1
 ```
+
+The user runs the notarized build day to day. Replace `/Applications/Quill.app` with the one in the zip, never with the project's dev build. First check whether the installed copy is running:
+
+```bash
+pgrep -f "^/Applications/Quill.app/Contents/MacOS/Quill" && echo "RUNNING"
+```
+
+If it prints `RUNNING`, ask the user to quit it and wait. Don't kill it, because it may hold unsaved work. Then install:
+
+```bash
+D=$(mktemp -d) && ditto -x -k ~/Desktop/Quill.zip "$D" && rm -rf /Applications/Quill.app && ditto "$D/Quill.app" /Applications/Quill.app && rm -rf "$D"
+spctl -a -vv /Applications/Quill.app
+```
+
+`spctl` must report `source=Notarized Developer ID`.
 
 ### Step 5 — Create the draft release
 
@@ -187,7 +202,7 @@ Expected: `200` and `v<version>`.
 | 1 | Bump both version keys in `build.sh`, commit, push | — |
 | 2 | Quit Quill; `Scripts/notarize.sh` in the background; record `SHA` | — |
 | 3 | Subagent drafts the notes; save them to `$TMPDIR` | — |
-| 4 | Log ends `✓ Notarized`; rebuild the dev app | Anything else |
+| 4 | Log ends `✓ Notarized`; rebuild the dev app; install the notarized app in `/Applications` | Anything else |
 | 5 | `gh release create --draft --target $SHA … Quill.zip`, then **wait for the user** | — |
 | 6 | Final notes from GitHub → new article in `changelog.html` | — |
 | 7 | Badge, download links, stale statements, anchors | — |

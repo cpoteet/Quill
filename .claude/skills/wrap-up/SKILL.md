@@ -160,7 +160,7 @@ Skip the tag if the run stopped early (failing tests at Step 5, unresolved revie
 Quit the running app first; `build.sh` replaces the binary under a running process, so skipping the quit leaves the old build on screen.
 
 ```bash
-osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && open Quill.app
 ```
 
 Confirm the build succeeds. If it fails, report the error and stop.

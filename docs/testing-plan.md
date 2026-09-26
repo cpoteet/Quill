@@ -2549,7 +2549,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 Run these against a real WordPress test site (or a local Docker WordPress) using an Application Password. Before each pass, quit the running app first — `build.sh` replaces the binary underneath it, so skipping the quit tests the old build:
 
 ```bash
-osascript -e 'quit app "Quill"' 2>&1; sleep 2 && ./build.sh 2>&1 && open Quill.app
+pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && open Quill.app
 ```
 
 > Tip: use a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.

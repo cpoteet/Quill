@@ -10,7 +10,7 @@ RELEASE=false
 [ "${1:-}" = "--release" ] && RELEASE=true
 
 echo "▶ Closing $APP_NAME..."
-pkill -x "$APP_NAME" 2>/dev/null && sleep 0.5 || true
+pkill -f "^$PWD/$APP_NAME.app/Contents/MacOS/$APP_NAME" 2>/dev/null && sleep 0.5 || true
 
 if ! [ -d "$(xcode-select -p 2>/dev/null)/usr/bin" ] || ! xcrun -f actool >/dev/null 2>&1; then
   echo "✗ actool not found. build.sh compiles Assets.xcassets, which needs full Xcode --"
