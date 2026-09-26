@@ -42,6 +42,7 @@ public struct PostEditorView: View {
     @State private var editorReady = false
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
+    @State private var showPastScheduleAlert: Bool = false
     @State private var contentSyncPending: Bool = false
     @State private var contentLoadFailed: Bool = false
     @State private var blockRiskAlarm: BlockRiskAlarm? = nil
@@ -237,6 +238,12 @@ public struct PostEditorView: View {
             Button("Continue") { isAISheetOpen = true }
         } message: {
             Text("This will replace your current title and content.")
+        }
+        .alert("Publish Now?", isPresented: $showPastScheduleAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Publish Now") { Task { await save(status: settings.status) } }
+        } message: {
+            Text(Self.pastScheduleMessage(for: settings.publishDate ?? Date()))
         }
         .sheet(isPresented: $isAISheetOpen) {
             if let settings = appState.aiSettings {
@@ -862,10 +869,15 @@ public struct PostEditorView: View {
     }
 
     private func publish() async {
+        if settings.status == .future && settings.scheduledDateHasPassed() {
+            showPastScheduleAlert = true
+            return
+        }
         await save(status: settings.status)
     }
 
-    private func save(status: PostStatus, force: Bool = false) async {
+    private func save(status requestedStatus: PostStatus, force: Bool = false) async {
+        let status = Self.effectiveStatus(requestedStatus, settings: settings)
         guard let creds = appState.credentials else { return }
         guard !contentLoadFailed else {
             saveError = "Can't save — this post never finished loading. Reopen it before making changes."
@@ -1092,6 +1104,15 @@ public struct PostEditorView: View {
         case .private: return "Publish Privately"
         case .publish: return isPublishedRemote ? "Update" : "Publish"
         }
+    }
+
+    // WordPress publishes a past-dated "future" post at once, so it is sent as what it becomes.
+    nonisolated static func effectiveStatus(_ status: PostStatus, settings: PostSettings, now: Date = Date()) -> PostStatus {
+        status == .future && settings.scheduledDateHasPassed(now: now) ? .publish : status
+    }
+
+    nonisolated static func pastScheduleMessage(for date: Date) -> String {
+        "This time has already passed. WordPress will publish the post now, dated \(date.formatted(date: .abbreviated, time: .shortened))."
     }
 
     nonisolated static func toastMessage(forStatus status: PostStatus) -> String {

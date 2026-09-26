@@ -45,6 +45,12 @@ public struct PostSettings: Equatable {
             publishDate = nil
         }
     }
+
+    // WordPress publishes a "future" post immediately when its date is under a minute away.
+    public func scheduledDateHasPassed(now: Date = Date()) -> Bool {
+        guard let publishDate else { return false }
+        return publishDate.timeIntervalSince(now) < 60
+    }
 }
 
 /// Live word/character counts reported by the JS editor. Reading time uses
@@ -163,6 +169,19 @@ public struct PostSettingsPanel: View {
                     ), displayedComponents: [.date, .hourAndMinute]
                 )
                 .labelsHidden()
+                TimelineView(.everyMinute) { context in
+                    if settings.scheduledDateHasPassed(now: context.date) {
+                        Label {
+                            Text("This time has passed. The post will publish immediately.")
+                        } icon: {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
         }
     }

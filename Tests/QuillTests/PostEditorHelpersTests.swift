@@ -151,6 +151,52 @@ import Testing
         #expect(s.publishDate == nil)
     }
 
+    @Test func scheduledDateEarlierTodayHasPassed() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(-8 * 3600)
+        #expect(s.scheduledDateHasPassed(now: now))
+    }
+
+    @Test func scheduledDateUnderAMinuteAwayHasPassed() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(30)
+        #expect(s.scheduledDateHasPassed(now: now))
+    }
+
+    @Test func scheduledDateInTheFutureHasNotPassed() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(3600)
+        #expect(s.scheduledDateHasPassed(now: now) == false)
+    }
+
+    @Test func missingScheduledDateHasNotPassed() {
+        #expect(PostSettings().scheduledDateHasPassed() == false)
+    }
+
+    @Test func pastScheduledDateIsSentAsPublish() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(-3600)
+        #expect(PostEditorView.effectiveStatus(.future, settings: s, now: now) == .publish)
+    }
+
+    @Test func futureScheduledDateIsSentAsFuture() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(3600)
+        #expect(PostEditorView.effectiveStatus(.future, settings: s, now: now) == .future)
+    }
+
+    @Test func nonScheduledStatusIsSentUnchanged() {
+        var s = PostSettings()
+        let now = Date()
+        s.publishDate = now.addingTimeInterval(-3600)
+        #expect(PostEditorView.effectiveStatus(.draft, settings: s, now: now) == .draft)
+    }
+
     // MARK: - PostStats reading time
 
     @Test func readingTimeZeroWordsIsZero() {
