@@ -2,8 +2,12 @@
 set -euo pipefail
 
 APP_NAME="Quill"
-BUNDLE_ID="com.quill.app"
+BUNDLE_ID="com.siolon.quill"
 MIN_MACOS="27.0"
+SIGN_IDENTITY="Developer ID Application: CHRISTOPHER LEE POTEET (NRCW9A2622)"
+
+RELEASE=false
+[ "${1:-}" = "--release" ] && RELEASE=true
 
 echo "▶ Closing $APP_NAME..."
 pkill -x "$APP_NAME" 2>/dev/null && sleep 0.5 || true
@@ -66,8 +70,8 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>CFBundleName</key><string>$APP_NAME</string>
   <key>CFBundleDisplayName</key><string>$APP_NAME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-  <key>CFBundleVersion</key><string>1.11.0</string>
-  <key>CFBundleShortVersionString</key><string>1.11.0</string>
+  <key>CFBundleVersion</key><string>2.0.0</string>
+  <key>CFBundleShortVersionString</key><string>2.0.0</string>
   <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Chris Poteet</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
@@ -93,6 +97,13 @@ cat > "$APP_DIR/Info.plist" <<EOF
 </dict>
 </plist>
 EOF
+
+if $RELEASE; then
+  echo "▶ Signing $APP_BUNDLE with Developer ID (hardened runtime)..."
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+  echo "✓ Built: $APP_BUNDLE (release, not launched)"
+  exit 0
+fi
 
 echo "▶ Signing $APP_BUNDLE..."
 codesign --force --sign - "$APP_BUNDLE"

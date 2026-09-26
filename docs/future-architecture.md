@@ -89,7 +89,7 @@ Deferred design notes for Quill. None of these are in the current implementation
 - `EditorView.swift` (`makeNSView`, ~line 70) is the single call site for `WKWebViewConfiguration()` — for option (a), set `config.websiteDataStore = .nonPersistent()` there.
 - For option (b), the query-param would need to be added consistently everywhere an image URL reaches the DOM: `ResizableImage`'s `renderHTML`/parse path, `insertImageAt` (Swift→JS bridge), the gallery node's `sourceHTML` verbatim re-render, and `gutenbergPassthrough`'s byte-for-byte preserved markup — the last two are especially risky since they're designed to preserve original HTML exactly, so injecting a query param there could break round-trip fidelity or the "identical to original" assumptions their tests assert on.
 - `WPMedia` (API/Models) may already carry a `modified` timestamp from the REST API that could serve as the cache-busting value instead of `Date()`, avoiding a fresh miss on every single load.
-- Manual workaround in the meantime: quit Quill and clear `~/Library/Caches/com.quill.app/WebKit/NetworkCache` (plus `Cache.db`/`Cache.db-shm`/`Cache.db-wal`/`fsCachedData` in the same directory) on disk.
+- Manual workaround in the meantime: quit Quill and clear `~/Library/Caches/com.siolon.quill/WebKit/NetworkCache` (plus `Cache.db`/`Cache.db-shm`/`Cache.db-wal`/`fsCachedData` in the same directory) on disk.
 
 ---
 
