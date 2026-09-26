@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-25 — 470 Swift tests + 1,238 JS tests (1,237 pass, 1 skipped), no failures._
+_Last updated: 2026-09-26 — 470 Swift tests + 1,304 JS tests (1,303 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -17,22 +17,23 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (470 tests)
-2. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
-3. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (48 tests — live Tiptap editor in jsdom)
-4. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
-5. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
-6. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
-7. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
-8. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (36 tests — live Tiptap editor in jsdom)
-9. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (36 tests — live Tiptap editor in jsdom)
-10. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
-11. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
-12. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-13. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
-14. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-15. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (66 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (110 tests — pure Node, no DOM)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (48 tests — live Tiptap editor in jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
+6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
+7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (36 tests — live Tiptap editor in jsdom)
+8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
+9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (36 tests — live Tiptap editor in jsdom)
+10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (36 tests — live Tiptap editor in jsdom)
+11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
+12. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
+13. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+14. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (227 tests — live Tiptap editor in jsdom)
+15. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
+16. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the fifteen passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the sixteen passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -947,6 +948,34 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
 File: `Tests/QuillTests/AIOutputFixtureTests.swift`
 
 The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/` sample's `.html` equal to what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt`, so the JS suite is checking what the app would really hand the editor rather than a hand-written approximation.
+
+---
+
+## JS block parser tests (66 tests)
+
+File: `Scripts/test-block-parser.js`
+Under test: `Sources/QuillKit/Resources/block-parser.js`
+Reference: `@wordpress/block-serialization-default-parser`, pinned in `Scripts/package.json` `devDependencies`. It is a test tool and never ships.
+
+Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every input, Quill's tree with `start`, `end` and `closed` removed must deep-equal WordPress's. When a comparison fails, WordPress's output is the correct one; change `block-parser.js`, not the test. The one exception is two or more blocks left open at the end of a post, where Quill nests them instead of repeating the inner block's text (see the design spec, `docs/superpowers/specs/2026-09-25-block-parser-rewrite-design.md`).
+
+### `matches WordPress` (61 tests)
+
+| Test | What it checks |
+|---|---|
+| `fixture <name>` (33 tests) | One per `*.html` in `Scripts/fixtures/` and `Scripts/fixtures/ai/`, globbed at load time |
+| 27 named edge cases | The delimiter grammar and tree-building rules measured against WordPress: whitespace and text between blocks, invalid and array attributes, unclosed blocks, stray and misnamed closers, nested text, near-miss comments (no space, uppercase), namespaced names, `}  -->` inside an attribute string, multi-line attributes, attributes on a closer, tab/CRLF/no-break-space delimiter whitespace, delimiters inside a `<script>` or an attribute value, empty nested blocks (`innerContent: [""]`), a closer with a self-closing slash, and non-JSON whitespace after the attributes (which WordPress parses as `attrs: null`) |
+| `matches WordPress on 2,000 generated inputs` | A seeded generator mixes openers, closers, self-closing comments, near-misses and text. Inputs with two or more unclosed blocks are skipped (the deliberate difference), and the test fails if more than a quarter are skipped |
+
+### Other tests (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `two unclosed blocks nest instead of repeating text` | The one deliberate difference from WordPress: `<!-- wp:a --><!-- wp:b --><p>x` gives one `core/a` holding `core/b`, both `closed: false`, with `<p>x` in one `innerHTML` only |
+| `top-level slices join back into the input` | Over every input above, the top-level `start`/`end` ranges cover the input with no gaps or overlaps |
+| `positions frame each block` | A named block's range starts with its opening comment and, when closed, ends with its closing comment; inner ranges lie within their parent's; a top-level freeform block's range is its `innerHTML` |
+| `non-ASCII text keeps exact offsets` | Emoji and CJK around and inside a block: offsets are UTF-16 indices and slices come back exact |
+| `a long run of unterminated attributes parses in under a second` | 5,000 repetitions of `<!-- wp:a {` with no closing brace, so a malformed paste cannot hang the editor |
 
 ---
 

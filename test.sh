@@ -19,6 +19,7 @@ run() {
 }
 
 run "Swift tests"  swift test
+run "JS block parser tests"  node --test Scripts/test-block-parser.js
 run "JS block serializer tests"  node --test Scripts/test-block-serializer.js
 run "JS preservation tests"  node --test Scripts/test-editor-preservation.js
 run "JS editor tests"  node --test Scripts/test-editor.js

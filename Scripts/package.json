@@ -3,6 +3,7 @@
   "private": true,
   "devDependencies": {
     "@wordpress/block-library": "10.4.0",
+    "@wordpress/block-serialization-default-parser": "5.55.0",
     "@wordpress/blocks": "15.27.0",
     "jsdom": "^26.0.0"
   },

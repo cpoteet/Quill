@@ -73,11 +73,12 @@ The 7.1 run found a better source than the one the skill documents. Use this ord
 3. Confirm the Studio site's version, then read the shipped `save()` source for every block on the checklist.
 4. For each change that alters saved `post_content`, replay the real markup through `editor.html` in jsdom and see what Quill does to it.
 5. Fix anything that loses data, following the `update-gutenberg-html-format` skill.
-6. Add tests to the relevant `Scripts/test-editor*.js`, then run `./test.sh` — all Swift and JS suites must pass.
-7. Update the per-element table in `Sources/QuillKit/Resources/CLAUDE.md` and the test-count lines in the root `CLAUDE.md`.
-8. Run `./build.sh`.
-9. Check `docs/future-architecture.md` and `docs/gutenberg-block-snippets.md` for claims the change just made false. The 7.1 run had to correct both.
-10. Commit to main. Report what was verified live versus inferred, and say plainly when nothing needed changing.
+6. Move the reference block parser to WordPress's latest release and re-run the comparison: in `Scripts/`, run `npm install --save-dev --save-exact @wordpress/block-serialization-default-parser@latest`, then `node --test Scripts/test-block-parser.js`. A failure means WordPress changed how it reads block comments, and the failing input shows where; fix `block-parser.js` to match.
+7. Add tests to the relevant `Scripts/test-editor*.js`, then run `./test.sh` — all Swift and JS suites must pass.
+8. Update the per-element table in `Sources/QuillKit/Resources/CLAUDE.md` and the test-count lines in the root `CLAUDE.md`.
+9. Run `./build.sh`.
+10. Check `docs/future-architecture.md` and `docs/gutenberg-block-snippets.md` for claims the change just made false. The 7.1 run had to correct both.
+11. Commit to main. Report what was verified live versus inferred, and say plainly when nothing needed changing.
 
 ---
 
