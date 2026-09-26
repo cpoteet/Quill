@@ -1,12 +1,12 @@
 # Round-trip fixtures
 
-Captures of real `post_content` from the live site, used to prove parse →
-serialize and `setContent` → `getContent` are lossless.
+Captures of real `post_content` from the live site, used to prove that Quill
+reads blocks as WordPress does and that `setContent` → `getContent` is lossless.
 
-`test-block-serializer.js` globs every `*.html` here, so dropping a new capture
-in adds it to the corpus. Anything that is not a fixture must not end in
-`.html`. The `ai/` subdirectory is a separate corpus (see its README) and is not
-globbed.
+`test-block-serializer.js` and `test-block-parser.js` glob every `*.html` here,
+so dropping a new capture in adds it to the corpus. Anything that is not a fixture must not end in
+`.html`. The `ai/` subdirectory is a separate corpus (see its README); only
+`test-block-parser.js` globs it too.
 
 `test-fixture-validity.js` loads, edits and saves every fixture here and fails
 if WordPress's validator finds anything wrong with Quill's save that it did not

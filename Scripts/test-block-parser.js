@@ -65,13 +65,14 @@ const edgeCases = [
   ['empty nested block', '<!-- wp:c --><!-- wp:b --><!-- /wp:b -->x<!-- /wp:c -->'],
   ['nested block ending in an inner block', '<!-- wp:c --><!-- wp:b -->z<!-- wp:d /--><!-- /wp:b --><!-- /wp:c -->'],
   ['closer with a self-closing slash', '<!-- wp:a -->x<!-- /wp:a /-->y'],
-  ['no-break space after attributes', '<!-- wp:a {"x":1} /-->'],
+  ['no-break space after attributes', '<!-- wp:a {"x":1}\u00a0/-->'],
   ['form feed after attributes', '<!-- wp:a {"x":1}\f-->x<!-- /wp:a -->'],
-  ['no-break space before attributes', '<!-- wp:a {"x":1} /-->'],
+  ['no-break space before attributes', '<!--\u00a0wp:a\u00a0{"x":1} /-->'],
 ]
 
-const NAMES = ['a', 'b', 'core/c', 'acme/w-x_1', 'A']
-const ATTRS = ['', '{"x":1}', '{"x":}', '{"s":"}  -->"}', '{\n"y":2\n}', '[1]']
+const NAMES = ['a', 'b', 'core/c', 'acme/w-x_1', 'A', 'a1', '9a', 'x/y/z', 'a/']
+const ATTRS = ['', '{}', '{"x":1}', '{"x":}', '{"s":"}  -->"}', '{\n"y":2\n}', '{"a":{"b":1}}', '[1]']
+const WS = [' ', ' ', '  ', '\t', '\n', '\r\n', '\f', '\u00a0', '\u2028']
 const NEAR_MISSES = ['<!--wp:a -->', '<!-- wp:a-->', '<!-- -->', '<!-- wp: -->']
 const TEXT = ['<p>t</p>', 'x', '  ', '\n\n', '}', ' -->', 'é😀']
 
@@ -87,11 +88,12 @@ function generate(count) {
       if (kind < 0.55) {
         const name = pick(NAMES)
         const attrs = pick(ATTRS)
-        const attrsPart = attrs ? attrs + ' ' : ''
+        const attrsPart = attrs ? attrs + pick(WS) : ''
+        const head = `<!--${pick(WS)}`
         const form = pick(['open', 'close', 'void'])
-        if (form === 'open') pieces.push(`<!-- wp:${name} ${attrsPart}-->`)
-        else if (form === 'close') pieces.push(`<!-- /wp:${name} ${attrsPart}-->`)
-        else pieces.push(`<!-- wp:${name} ${attrsPart}/-->`)
+        if (form === 'open') pieces.push(`${head}wp:${name}${pick(WS)}${attrsPart}-->`)
+        else if (form === 'close') pieces.push(`${head}/wp:${name}${pick(WS)}${attrsPart}${rand() < 0.2 ? '/' : ''}-->`)
+        else pieces.push(`${head}wp:${name}${pick(WS)}${attrsPart}/-->`)
       } else if (kind < 0.65) {
         pieces.push(pick(NEAR_MISSES))
       } else {
@@ -163,17 +165,21 @@ test('top-level slices join back into the input', () => {
   }
 })
 
-test('positions frame each block', () => {
+test('each block range re-parses as that block', () => {
   function check(src, block, parent) {
     const slice = src.slice(block.start, block.end)
     const where = `input: ${JSON.stringify(src)}, block: ${JSON.stringify(slice)}`
+    if (parent) assert.ok(block.start >= parent.start && block.end <= parent.end, where)
     if (block.blockName) {
-      assert.ok(slice.startsWith('<!--'), where)
-      if (block.closed !== false) assert.ok(slice.endsWith('-->'), where)
+      const again = parseBlocks(slice)
+      assert.equal(again.length, 1, where)
+      assert.equal(again[0].blockName, block.blockName, where)
+      assert.deepEqual(again[0].attrs, block.attrs, where)
+      assert.equal(again[0].innerHTML, block.innerHTML, where)
+      assert.equal(again[0].closed, block.closed, where)
     } else if (!parent) {
       assert.equal(slice, block.innerHTML, where)
     }
-    if (parent) assert.ok(block.start >= parent.start && block.end <= parent.end, where)
     for (const child of block.innerBlocks) check(src, child, block)
   }
   for (const src of allInputs) {

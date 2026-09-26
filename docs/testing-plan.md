@@ -56,6 +56,20 @@ in Gutenberg) was green in jsdom the whole time it was shipping, and the attribu
 ordering that hid it is WebKit-only. Two earlier WebKit-only failures — the
 widget-decoration keystroke drop and the empty-caret `<br>` — have the same shape.
 
+### A whole site against WordPress's parsers (once per WordPress release)
+
+```bash
+node Scripts/compare-export.js ~/Desktop/<export>.xml /Users/Chris/Dev/Studio
+```
+
+Reads a WordPress export (wp-admin → Tools → Export) and runs every item through
+Quill's `parseBlocks`, WordPress's JavaScript parser and the install's PHP parser
+(`Scripts/php-block-parser.php`), and checks that every preserved block's source
+rejoins into the original. Exit 0 is a match, 1 lists each item that differs, 3
+means the PHP comparison did not run. Not part of `./test.sh`, because the export
+is private site content that never enters the repo. Step 6 of the WordPress release
+checklist in `docs/wordpress-release-audit.md`.
+
 ### Run Swift tests only
 
 ```bash
@@ -965,7 +979,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 |---|---|
 | `fixture <name>` (33 tests) | One per `*.html` in `Scripts/fixtures/` and `Scripts/fixtures/ai/`, globbed at load time |
 | 27 named edge cases | The delimiter grammar and tree-building rules measured against WordPress: whitespace and text between blocks, invalid and array attributes, unclosed blocks, stray and misnamed closers, nested text, near-miss comments (no space, uppercase), namespaced names, `}  -->` inside an attribute string, multi-line attributes, attributes on a closer, tab/CRLF/no-break-space delimiter whitespace, delimiters inside a `<script>` or an attribute value, empty nested blocks (`innerContent: [""]`), a closer with a self-closing slash, and non-JSON whitespace after the attributes (which WordPress parses as `attrs: null`) |
-| `matches WordPress on 2,000 generated inputs` | A seeded generator mixes openers, closers, self-closing comments, near-misses and text. Inputs with two or more unclosed blocks are skipped (the deliberate difference), and the test fails if more than a quarter are skipped |
+| `matches WordPress on 2,000 generated inputs` | A seeded generator mixes openers, closers (some ending `/-->`), self-closing comments, near-misses and text, with names such as `9a`, `x/y/z` and `a/`, and every kind of delimiter whitespace — tab, CRLF, form feed, no-break space, U+2028. Inputs with two or more unclosed blocks are skipped (the deliberate difference), and the test fails if more than a quarter are skipped (about 9% are) |
 
 ### Other tests (5 tests)
 
@@ -973,7 +987,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 |---|---|
 | `two unclosed blocks nest instead of repeating text` | The one deliberate difference from WordPress: `<!-- wp:a --><!-- wp:b --><p>x` gives one `core/a` holding `core/b`, both `closed: false`, with `<p>x` in one `innerHTML` only |
 | `top-level slices join back into the input` | Over every input above, the top-level `start`/`end` ranges cover the input with no gaps or overlaps |
-| `positions frame each block` | A named block's range starts with its opening comment and, when closed, ends with its closing comment; inner ranges lie within their parent's; a top-level freeform block's range is its `innerHTML` |
+| `each block range re-parses as that block` | Cut out on its own, every named block's range parses back to exactly one block with the same name, attributes, `innerHTML` and `closed` flag, so an offset that lands on a neighbouring comment fails; inner ranges lie within their parent's; a top-level freeform block's range is its `innerHTML` |
 | `non-ASCII text keeps exact offsets` | Emoji and CJK around and inside a block: offsets are UTF-16 indices and slices come back exact |
 | `a long run of unterminated attributes parses in under a second` | 5,000 repetitions of `<!-- wp:a {` with no closing brace, so a malformed paste cannot hang the editor |
 

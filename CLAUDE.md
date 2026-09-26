@@ -96,7 +96,7 @@ All WordPress/Gutenberg HTML compatibility lives in three files:
 
 3. **`block-descriptors.js`** — maps each Tiptap node name to its Gutenberg block name, shape, `attrsFrom`, and `ownedAttrs`. `wrapInDelimiters` in `editor-transforms.js` emits `<!-- wp:name -->` delimiters for every descriptor, so teaching Quill a new modeled block is a descriptor entry, not another `toWordPressHTML` pass.
 
-See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table, and the `update-gutenberg-html-format` skill for the update workflow.
+See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table, the `update-gutenberg-html-format` skill for fixing one block, and `docs/wordpress-release-audit.md` for the per-release checklist.
 
 ## Gotchas
 
@@ -140,8 +140,8 @@ These two fail silently with the whole test suite green:
 - `docs/editor-gotchas.md` — the 71 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `docs/future-architecture.md` — deferred design notes (B–K)
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
-- `docs/wordpress-release-audit.md` — markup audit routine, run once per WP major release
-- `docs/editor-preview-gaps.md`, `docs/gutenberg-block-snippets.md`, `docs/Privacy.md`
+- `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
+- `docs/editor-preview-gaps.md`
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` — one spec + plan pair per feature, named by date
 - `Sources/QuillKit/Resources/CLAUDE.md` — per-element Gutenberg output reference table
 

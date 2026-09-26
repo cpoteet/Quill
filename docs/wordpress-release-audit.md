@@ -1,96 +1,108 @@
-# WordPress release markup audit
+# WordPress release checklist
 
-The routine Quill runs against each new WordPress major release to confirm its Gutenberg HTML round-trip is still correct. Written up on 2026-08-19 immediately after the WP 7.1 run, so the next release (7.2) can repeat it without rebuilding the procedure.
+Run this once per WordPress major release (about three times a year), on release day or soon after — not before: release notes describe intent, and only the shipped code is evidence. It confirms that Quill still reads and writes every block the way the new release does.
 
-Related: the `update-gutenberg-html-format` skill (how to *fix* a format change), `docs/future-architecture.md` Approach H (how to *automate* detection), `Sources/QuillKit/Resources/CLAUDE.md` (the per-element markup reference table this audit checks).
-
----
-
-## When to run it
-
-Once per WordPress major release, roughly three times a year. Run it on release day or shortly after — not before, because pre-release changelogs describe intent, and only the shipped `save()` code is evidence.
-
-The 7.1 audit was set up as two one-time scheduled tasks:
-
-| Task | Timing | Job |
-|---|---|---|
-| `wp-7-X-audit-preflight-reminder` | ~3 hours before the audit | Check the Studio site, tell the user what they must do by hand |
-| `wordpress-7-X-markup-audit` | Release day | The audit itself |
-
-Both prompts are preserved in `/Users/Chris/.claude/scheduled-tasks/`. Copy them, change the version number and the dates, and re-arm.
+To fix one block's markup once this checklist finds a change, use the `update-gutenberg-html-format` skill.
 
 ---
 
-## Pre-flight — user-only steps
+## Before you start (you, not Claude)
 
-An audit session cannot do these. It cannot launch an app, and it must never log into wp-admin.
+A Claude session cannot launch apps and must never sign into wp-admin, so these are yours:
 
-1. Launch the Studio app so the scratch WordPress site is running.
-2. Update that site to the new WordPress version (wp-admin → Dashboard → Updates).
-3. Leave Studio running through the audit.
-4. If Studio assigns a port other than 8881, update the port in `local-studio-credentials.json` and in the audit prompt.
+- [ ] Launch Studio, and update the scratch site to the new WordPress version (wp-admin → Dashboard → Updates). Leave Studio running. If Studio picks a port other than 8881, update it in `local-studio-credentials.json` and in the scheduled audit prompt.
+- [ ] Export the production site: wp-admin → **Tools → Export → All content**, saved to the Desktop. Step 6 reads it; delete it when the checklist is done.
+- [ ] Make sure Quill is connected to the Studio site, not production. The in-app step writes drafts.
 
-Verify with:
+Check the Studio site is up and on the new version:
 
 ```bash
 curl -s -m 5 http://localhost:8881/ | grep -io '<meta name="generator"[^>]*>'
 ```
 
-Three outcomes, and they have different fixes. No response means Studio is not running. A 7.0.x/older version means Studio runs but the site is not updated. The new version means full ground-truth mode.
-
-The audit still runs without the local site — it falls back to Gutenberg's GitHub fixtures — but the evidence is weaker. Never skip the audit because the site is down.
+No response means Studio is not running; an older version means the site was not updated. The checklist still runs without Studio, falling back to Gutenberg's GitHub fixtures, but the evidence is weaker and steps 6 and 13 lose their PHP and in-app halves. Never skip the release because the site is down.
 
 ---
 
-## Ground-truth sources, in the order that worked
+## The checklist
 
-The 7.1 run found a better source than the one the skill documents. Use this order.
+Work top to bottom. Each step says what passes.
 
-1. **Core's own shipped `save()` source, read from the live Studio install.** `/wp-includes/js/dist/block-library.js` — the unminified build, about 3 MB. This is the exact code that install runs, so it beats the GitHub fixtures, which need a tag-to-release mapping you have to guess at. The Studio install path is **`/Users/Chris/Dev/Studio/`**. Confirm it before reading anything: `/Users/Chris/Studio/codex/` is a *different, older* checkout that still sits at 7.0, and reading it silently yields wrong answers. Verify with `grep wp_version /Users/Chris/Dev/Studio/wp-includes/version.php`, or locate the tree that owns a known upload under `wp-content/uploads/`.
-2. **The live REST API for attribute schemas.** `GET /wp-json/wp/v2/block-types` lists every *server-registered* block. This is how the 7.1 run caught that Table of Contents ships `save()` code but is not registered — `/wp-json/wp/v2/block-types/core/table-of-contents` returned 404.
-3. **WordPress's own PHP parser, for validating markup you assemble by hand.** PHP is available on this machine. Running candidate markup through the install's `WP_Block_Parser` proves the block tree parses correctly with no stray freeform text. The 7.1 run used this to validate the Tabs snippet.
-4. **Quill's real `editor.html` in jsdom, to replay the markup.** Load the real markup, save it back, and compare. This is what turns "WordPress emits X" into "Quill does or does not survive X".
-5. **Gutenberg's GitHub fixtures**, `packages/block-library/src/*/test/fixtures/*.html`, as the fallback when no live install is available.
+### Confirm the release
 
-**Weak source, know the limit:** creating a post over the REST API stores exactly what you send. It does not run Gutenberg's client-side serialization, so `content.raw` comes back byte-identical to what you posted. That proves storage fidelity only, never how the editor serializes.
+- [ ] **1. The release shipped.** `api.wordpress.org/core/stable-check` is authoritative; the wordpress.org news post can lag by hours.
+- [ ] **2. Studio runs it.** `grep wp_version /Users/Chris/Dev/Studio/wp-includes/version.php` prints the new version. Read nothing from `/Users/Chris/Studio/codex/` — it is an older checkout and silently gives wrong answers.
 
-**Credentials:** `/Users/Chris/.claude/scheduled-tasks/wordpress-7-1-markup-audit/local-studio-credentials.json` (chmod 600) holds the Studio site URL, username, and application password. Never print the password value in a report.
+### Move the test references to the new release
+
+The comparison and validator suites run WordPress's own packages as test-only references. They must match the release, not npm's latest, which runs ahead of WordPress.
+
+- [ ] **3. Find the package versions the release ships.** WordPress builds from a pinned Gutenberg commit:
+
+  ```bash
+  V=7.2.0   # the new release
+  SHA=$(curl -s https://raw.githubusercontent.com/WordPress/wordpress-develop/$V/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['gutenberg']['sha'])")
+  for p in block-serialization-default-parser blocks block-library block-editor; do
+    echo "$p $(curl -s https://raw.githubusercontent.com/WordPress/gutenberg/$SHA/packages/$p/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")"
+  done
+  ```
+
+- [ ] **4. Pin them.** In `Scripts/`, run `npm install --save-dev --save-exact` with those four versions (`@wordpress/block-serialization-default-parser@…`, `@wordpress/blocks@…`, `@wordpress/block-library@…`, and `@wordpress/block-editor@…` only if it is listed), then set the same `blocks` and `block-editor` versions in the `overrides` block of `Scripts/package.json`.
+
+### Check that Quill reads blocks as WordPress does
+
+- [ ] **5. Parser comparison.** `node --test Scripts/test-block-parser.js` passes. A failure means WordPress changed how it reads block comments; the failing input shows where. Fix `block-parser.js` from the measured output — never by reading WordPress's parser source, which is GPL.
+- [ ] **6. Your whole site, through both of WordPress's parsers.**
+
+  ```bash
+  node Scripts/compare-export.js ~/Desktop/<export>.xml /Users/Chris/Dev/Studio
+  ```
+
+  Exit 0 and `✓ Quill reads every item exactly as WordPress does` passes. Exit 1 lists each item that differs, and says when WordPress's own JavaScript and PHP parsers disagree with each other on it (a no-break space or U+2028 inside a block comment is the known case). Exit 3 means the PHP comparison did not run — fix that before moving on. Delete the export afterwards.
+- [ ] **7. Full suite.** `./test.sh` passes. With the new packages pinned, the fixture-validity and AI-output suites now check Quill's saves against the new release's block validator.
+
+### Check what the release changed
+
+- [ ] **8. List every claimed change** from the release post and the dev notes, then check each against the shipped code and sort it into one of three results: no saved-markup change, editor-side capability only, or a real markup change. Only the third needs Quill work. Read `/Users/Chris/Dev/Studio/wp-includes/js/dist/block-library.js` for what each block's `save()` writes — to learn the format only; never copy its code into Quill.
+- [ ] **9. Standing items, whatever the notes say:**
+  - **New blocks.** A new block at the top level of a post is preserved byte for byte automatically. The risk is a new block *nested inside* a block Quill models: a `div` root goes to `gutenbergPassthrough`, but a `<figure>` root must not be in `QUILL_MODELED_FIGURE_CLASSES` (`editor-transforms.js`). WordPress 7.1's Playlist broke exactly here.
+  - **Blocks Quill models** — every name `modelsBlockName` in `block-descriptors.js` accepts: their `save()` output is unchanged. `core/footnotes` has no `save()`; check its meta key, marker anchor and server-rendered list against `docs/footnotes-meta.md`.
+  - **Block settings** — re-verify the table below against `block-library.js`. A changed class name or default is silent data loss.
+  - **New attributes on existing blocks** — an attribute that lives only in the block comment is carried automatically. One that draws a child element, or changes a class the node computes itself, needs work.
+- [ ] **10. The upload path.** Upload a JPEG and a HEIC through Quill to the Studio site, then read each attachment's stored metadata with PHP: `width`, `height` and `sizes` are populated. The 7.1 HEIC break changed no markup at all, so only this step would have caught it. Watch for core relaxing a rule on the assumption that a browser does the work.
+- [ ] **11. Each real markup change:** replay the real markup through `editor.html` in jsdom, then fix it with the `update-gutenberg-html-format` skill, which covers the tests.
+
+### Finish
+
+- [ ] **12. Real WebKit.** `./build.sh`, then `./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"` reports every fixture passing.
+- [ ] **13. In the app.** On a new local draft (never a published post), paste markup for each changed block through code view, edit a paragraph, Save Draft, and read the saved HTML from SQLite (see the `docs/gotchas.md` entry "Verify saved draft HTML straight from SQLite"). Discard the draft.
+- [ ] **14. Docs.** Update the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`, the test counts in the root `CLAUDE.md` and `docs/testing-plan.md`, and anything in `docs/future-architecture.md` the release made false.
+- [ ] **15. Record the run** under **Past runs** below: date, what was verified live versus inferred, findings, what changed in Quill, and open items. Say plainly when nothing needed changing.
+- [ ] **16. Commit**, once the user says so.
 
 ---
+
+## Evidence, strongest first
+
+1. **The shipped `block-library.js` in the Studio install** — the exact code that WordPress version runs, about 3 MB unminified. Better than GitHub fixtures, which need a tag-to-release mapping.
+2. **The live REST API for attribute schemas.** `GET /wp-json/wp/v2/block-types` lists every server-registered block. The 7.1 run caught that Table of Contents shipped `save()` code but was not registered (`/wp-json/wp/v2/block-types/core/table-of-contents` returned 404).
+3. **WordPress's PHP parser, for markup you assemble by hand.** `echo '["<markup>"]' | php Scripts/php-block-parser.php /Users/Chris/Dev/Studio` runs the install's `WP_Block_Parser` over a JSON array of strings; a clean tree with no stray freeform text proves the markup parses.
+4. **Quill's real `editor.html` in jsdom**, to turn "WordPress writes X" into "Quill does or does not survive X".
+5. **Gutenberg's GitHub fixtures**, `packages/block-library/src/*/test/fixtures/*.html`, when no live install is available.
+
+**Weak evidence:** a post created over the REST API stores exactly what you send and never runs the editor's serializer, so it proves storage only.
+
+**Credentials:** `/Users/Chris/.claude/scheduled-tasks/wordpress-7-1-markup-audit/local-studio-credentials.json` (chmod 600) holds the Studio URL, username and application password. Never print the password.
 
 ## Safety rules
 
-- **Never touch the production site.** Quill's configured credentials point at the user's real WordPress site. If a test genuinely needs Quill talking to WordPress, use a brand-new local draft, push it as a draft, name it obviously, and never publish. The 7.1 run needed none of this.
-- **Never log into wp-admin.** Application passwords do not work on the login form, and entering passwords into forms is off-limits. Use an existing authenticated browser session or skip the browser path.
-- Scratch content on the Studio site is unrestricted. That site exists for this.
+- **Never touch production.** Quill must be connected to the Studio site. Test only on new local drafts, never publish.
+- **Never sign into wp-admin.** Application passwords do not work on the login form, and entering passwords into forms is off-limits.
+- Scratch content on the Studio site is unrestricted; the site exists for this.
 
----
+## Scheduling
 
-## Steps
-
-1. Read the root `CLAUDE.md` and `Sources/QuillKit/Resources/CLAUDE.md` before touching project code. They carry the test-suite gotchas and the Edit-tool curly-quote warning that bites `Scripts/test-editor*.js`.
-2. Confirm the release actually shipped. `api.wordpress.org/core/stable-check` is authoritative; the wordpress.org/news post can lag by hours.
-3. Confirm the Studio site's version, then read the shipped `save()` source for every block on the checklist.
-4. For each change that alters saved `post_content`, replay the real markup through `editor.html` in jsdom and see what Quill does to it.
-5. Fix anything that loses data, following the `update-gutenberg-html-format` skill.
-6. Move the reference block parser to WordPress's latest release and re-run the comparison: in `Scripts/`, run `npm install --save-dev --save-exact @wordpress/block-serialization-default-parser@latest`, then `node --test Scripts/test-block-parser.js`. A failure means WordPress changed how it reads block comments, and the failing input shows where; fix `block-parser.js` to match.
-7. Add tests to the relevant `Scripts/test-editor*.js`, then run `./test.sh` — all Swift and JS suites must pass.
-8. Update the per-element table in `Sources/QuillKit/Resources/CLAUDE.md` and the test-count lines in the root `CLAUDE.md`.
-9. Run `./build.sh`.
-10. Check `docs/future-architecture.md` and `docs/gutenberg-block-snippets.md` for claims the change just made false. The 7.1 run had to correct both.
-11. Commit to main. Report what was verified live versus inferred, and say plainly when nothing needed changing.
-
----
-
-## The checklist to build
-
-For each release, list the changes the release notes claim, then verify each one against shipped code. Sort every item into one of three results: no saved-markup change, editor-side capability only, or a real markup change. Only the third needs Quill work.
-
-Always include these standing items, whatever the release notes say:
-
-- **Every new block.** Confirm its `wp-block-*` class and its root element. A `div` root is caught by `gutenbergPassthrough` automatically. **A `<figure>` root needs checking against `QUILL_MODELED_FIGURE_CLASSES`** — this is where 7.1 broke.
-- **The blocks Quill models natively** — heading, list, quote, code, separator, image, gallery, table, embed. Confirm their `save()` output is unchanged. `core/footnotes` has no `save()` at all: check instead that its meta key, marker anchor and server-rendered list still match `docs/footnotes-meta.md`.
-- **New attributes on existing blocks.** An attribute that lives only in the block-comment JSON is harmless. An attribute that reaches the HTML is not.
+The 7.1 run used two one-time scheduled tasks, both kept in `/Users/Chris/.claude/scheduled-tasks/`: `wp-7-1-audit-preflight-reminder` (about three hours before, to check Studio and tell the user what to do by hand) and `wordpress-7-1-markup-audit` (release day). For the next release, copy both, rename them, change the version, the date and the "what to check" list, point the audit prompt at this checklist, and move the credentials file somewhere version-neutral. Only the 7.1 tasks exist today.
 
 ---
 
@@ -131,16 +143,28 @@ caption's attachment to its figure.
 Verify the style slugs in one command:
 
 ```bash
-grep -o 'is-style-[a-z-]*' /tmp/block-library.js | sort -u
+grep -o 'is-style-[a-z-]*' /Users/Chris/Dev/Studio/wp-includes/js/dist/block-library.js | sort -u
 ```
 
 ---
 
-## Record: WordPress 7.1, audited 2026-08-19
+## Open items
+
+- **Table of Contents may register in a later release.** It is `nav`-rooted, so it is preserved either way; confirm when it registers.
+- **Formats other than HEIC may break uploads the same way.** Only HEIC/HEIF convert to JPEG. TIFF and similar depend on the host's image editor. Re-check if users report it.
+- **The test packages were ahead of 7.1.2** (checked 2026-09-26): `block-library` 10.4.0 against the 10.2.0 WordPress 7.1.2 ships, `blocks` 15.27.0 against 15.24.0, `block-serialization-default-parser` 5.55.0 against 5.51.0. Steps 3–4 align them on the next run.
+
+Closed since the 7.1 run: self-closing server-rendered blocks (`core/icon`, `core/latest-posts`) and the Shortcode block are preserved byte for byte by unsupported-block preservation (2026-09-12) and covered by `Scripts/fixtures/unsupported-blocks.html`.
+
+---
+
+## Past runs
+
+### WordPress 7.1, audited 2026-08-19
 
 Ran a day early, on release day. Studio site was on 7.1, so this was full ground-truth mode. Commits `f552d07`, `c182896`, `a4342d2`.
 
-### Findings
+#### Findings
 
 | Item | Result |
 |---|---|
@@ -155,7 +179,7 @@ Ran a day early, on release day. Studio site was on 7.1, so this was full ground
 | Heading, list, quote, code, separator, table, embed, preformatted | All unchanged. |
 | Client-side media processing | **Real behavior change for uploads.** No saved-markup change. Broke HEIC uploads for non-browser clients. Fixed. See below. |
 
-### What changed in Quill
+#### What changed in Quill
 
 **1. Figure-rooted blocks were being destroyed** — much bigger than the Playlist block that exposed it. `gutenbergPassthrough`'s rule was `[class*="wp-block-"]:not(figure)`, on the assumption Quill's own rules covered every `wp-block-*` figure. Only four do. Verified in jsdom: `wp-block-audio` collapsed to a caption-only `<p>`, `wp-block-video` to an empty `<p>`, `wp-block-pullquote` was rewritten as a quote block, and `wp-block-playlist` lost its wrapper, comments and figcaption. Audio, video and pullquote had been broken for a long time. Fixed with a second figure-only parse rule that defers to `QUILL_MODELED_FIGURE_CLASSES` (image, gallery, embed, table) and otherwise preserves the figure byte-for-byte.
 
@@ -172,25 +196,3 @@ Fixed with `Sources/QuillKit/API/ImageConversion.swift`: HEIC/HEIF convert to JP
 Verified end to end against the live 7.1 site: the same source HEIC went from `width=NULL, sizes=NONE` to `1600x1000` with five sub-sizes.
 
 Verification: 13 new JS tests for the markup fixes, 11 new Swift tests for the conversion, full suite 349 Swift + 282 JS passing, `./build.sh` succeeded.
-
-### Open items to carry into the next audit
-
-- **Server-rendered blocks are still lost.** `core/icon`, `core/breadcrumbs`, `core/latest-posts` and similar save as a self-closing `<!-- wp:icon {...} /-->` comment with no HTML element. Tiptap drops comment nodes on parse, so they disappear after a visual edit. Pre-existing since WP 5.0, not a 7.1 regression. Fixing it means modeling comment-only blocks — a design change, not an audit fix.
-- **The Shortcode block is still untested.** It serializes as bare text with no wrapping element, so passthrough may have nothing to catch. Noted in `docs/gutenberg-block-snippets.md`.
-- **Table of Contents may ship in a later release.** It is `nav`-rooted, so passthrough should handle it, but confirm when it registers.
-- **Any new figure-rooted block is the high-risk case.** Check it first.
-- **Audit the upload path, not just the markup.** The 7.1 HEIC break shipped no markup change at all, so a fixture diff would have missed it entirely. Add a standing step: upload a JPEG and a HEIC in Quill's exact request shape, then read the stored attachment metadata with PHP. Check `width`, `height` and `sizes` are populated. Watch for core relaxing a rule on the assumption that a browser does the work — that assumption is exactly where a native client falls through.
-- **Other formats may break the same way.** Only HEIC/HEIF convert today. TIFF and similar depend on the host's image editor, so a site with a thin GD build can still store an unusable attachment. Re-check if users report it.
-
----
-
-## Replicating for WordPress 7.2
-
-1. Find the release date. Do not assume — check the WordPress release schedule.
-2. Copy the two task prompts from `/Users/Chris/.claude/scheduled-tasks/wordpress-7-1-markup-audit/` and `.../wp-7-1-audit-preflight-reminder/`, renaming for 7.2.
-3. In the audit prompt, replace the version numbers, the release date, and the "What to check" list with 7.2's announced changes. Keep the standing items above.
-4. Point the credentials line at whichever path the 7.1 credentials file ends up at — it currently sits inside the 7.1 task directory.
-5. Update the ground-truth section to lead with the shipped `block-library.js` source, which is what this doc now records and the older task prompt did not.
-6. Arm both tasks: the reminder about three hours ahead, the audit on release day.
-
-If Approach H (the fixture-diff harness in `docs/future-architecture.md`) gets built first, most of this collapses into bumping a version tag and reading a test diff. The audit routine stays useful for the parts a fixture diff cannot see — new blocks, root-element changes, and editor-only capabilities.
