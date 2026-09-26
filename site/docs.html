@@ -9,43 +9,45 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="images/quill-icon.svg" type="image/svg+xml">
 </head>
 <body>
 
   <nav class="nav">
-    <a href="/" class="nav__logo">Quill</a>
-    <div class="nav__links">
-      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
-      <a href="docs.html" class="nav__link nav__link--active">Docs</a>
+    <a href="/" class="nav__logo"><img src="images/quill-icon.svg" alt="" class="nav__icon">Quill</a>
+    <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+    <div class="nav__links" id="nav-links">
+      <a href="docs.html" class="nav__link nav__link--active" aria-current="page">User Guide</a>
       <a href="changelog.html" class="nav__link">Changelog</a>
+      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
       <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary">Download</a>
     </div>
   </nav>
 
-  <section class="changelog-header">
-    <div class="changelog-header__inner">
-      <p class="eyebrow">Reference</p>
-      <h1 class="changelog-header__title">User Guide</h1>
-      <p class="changelog-header__sub">A reference manual for Quill, the native macOS WordPress editor.</p>
+  <section class="page-header">
+    <div class="page-header__inner">
+      <p class="eyebrow">Reference · v2.0.0</p>
+      <h1 class="page-header__title">User Guide</h1>
+      <p class="page-header__sub">A reference manual for Quill, the native macOS WordPress editor.</p>
     </div>
   </section>
 
   <div class="docs-layout">
 
-    <aside class="docs-toc">
-      <p class="docs-toc__heading">Contents</p>
-      <ul class="docs-toc__list">
-        <li><a href="#introduction" class="docs-toc__link">Introduction</a></li>
-        <li><a href="#requirements--installation" class="docs-toc__link">Requirements and Installation</a></li>
-        <li><a href="#connecting-to-wordpress" class="docs-toc__link">Connecting to WordPress</a></li>
-        <li><a href="#the-interface" class="docs-toc__link">Quill's Interface</a></li>
-        <li><a href="#writing--editing" class="docs-toc__link">Writing and Editing</a></li>
-        <li><a href="#content-elements" class="docs-toc__link">Content Elements</a></li>
-        <li><a href="#post--page-settings" class="docs-toc__link">Post and Page Settings</a></li>
-        <li><a href="#media-library" class="docs-toc__link">Media Library</a></li>
-        <li><a href="#ai-writing-features" class="docs-toc__link">AI Writing Features</a></li>
-        <li><a href="#keyboard-reference" class="docs-toc__link">Keyboard Shortcuts</a></li>
-        <li><a href="#limitations--compatibility" class="docs-toc__link">Limitations and Compatibility</a></li>
+    <aside class="toc">
+      <p class="toc__heading">Contents</p>
+      <ul class="toc__list">
+        <li><a href="#introduction" class="toc__link">Introduction</a></li>
+        <li><a href="#requirements--installation" class="toc__link">Requirements and Installation</a></li>
+        <li><a href="#connecting-to-wordpress" class="toc__link">Connecting to WordPress</a></li>
+        <li><a href="#the-interface" class="toc__link">Quill's Interface</a></li>
+        <li><a href="#writing--editing" class="toc__link">Writing and Editing</a></li>
+        <li><a href="#content-elements" class="toc__link">Content Elements</a></li>
+        <li><a href="#post--page-settings" class="toc__link">Post and Page Settings</a></li>
+        <li><a href="#media-library" class="toc__link">Media Library</a></li>
+        <li><a href="#ai-writing-features" class="toc__link">AI Writing Features</a></li>
+        <li><a href="#keyboard-reference" class="toc__link">Keyboard Shortcuts</a></li>
+        <li><a href="#limitations--compatibility" class="toc__link">Limitations and Compatibility</a></li>
       </ul>
     </aside>
 
@@ -622,113 +624,64 @@
         <h2 class="docs-h2">Keyboard Shortcuts</h2>
         <p class="docs-body">The editor also converts Markdown as you type, such as <code># </code> for a heading or <code>**bold**</code>. The full list is in <a href="#markdown-shortcuts" class="content-link">Markdown Shortcuts</a>.</p>
         <h3 class="docs-h3">App</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>⌘N</td><td>New post</td></tr>
-              <tr><td>⇧⌘N</td><td>New page</td></tr>
-              <tr><td>⌥⌘N</td><td>Upload a file to the media library</td></tr>
-              <tr><td>⌘,</td><td>Settings</td></tr>
-              <tr><td>⌘R</td><td>Refresh the current section</td></tr>
-              <tr><td>↩︎</td><td>Choose the highlighted button in an alert</td></tr>
-              <tr><td>Esc</td><td>Close an alert or sheet without doing anything</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘N</kbd></dt><dd class="docs-keys__action">New post</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘N</kbd></dt><dd class="docs-keys__action">New page</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌥⌘N</kbd></dt><dd class="docs-keys__action">Upload a file to the media library</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘,</kbd></dt><dd class="docs-keys__action">Settings</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘R</kbd></dt><dd class="docs-keys__action">Refresh the current section</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>↩︎</kbd></dt><dd class="docs-keys__action">Choose the highlighted button in an alert</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Close an alert or sheet without doing anything</dd></div>
+        </dl>
         <h3 class="docs-h3">Saving</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>⌘S</td><td>Save: on your Mac for a local draft, to WordPress for anything else</td></tr>
-              <tr><td>⇧⌘P</td><td>Publish, using the current status (same as the publish button)</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘S</kbd></dt><dd class="docs-keys__action">Save: on your Mac for a local draft, to WordPress for anything else</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘P</kbd></dt><dd class="docs-keys__action">Publish, using the current status (same as the publish button)</dd></div>
+        </dl>
         <h3 class="docs-h3">Editing</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>⌘Z</td><td>Undo</td></tr>
-              <tr><td>⇧⌘Z</td><td>Redo</td></tr>
-              <tr><td>⌘B</td><td>Bold</td></tr>
-              <tr><td>⌘I</td><td>Italic</td></tr>
-              <tr><td>⌘U</td><td>Underline (no toolbar button)</td></tr>
-              <tr><td>⇧⌘S</td><td>Strikethrough</td></tr>
-              <tr><td>⌘E</td><td>Inline code</td></tr>
-              <tr><td>⌥⌘0</td><td>Paragraph</td></tr>
-              <tr><td>⌥⌘1 to ⌥⌘6</td><td>Heading 1 to Heading 6</td></tr>
-              <tr><td>⇧⌘8</td><td>Bulleted list</td></tr>
-              <tr><td>⇧⌘7</td><td>Numbered list</td></tr>
-              <tr><td>⇧⌘B</td><td>Quote</td></tr>
-              <tr><td>⌥⌘C</td><td>Code block</td></tr>
-              <tr><td>⇧↩︎</td><td>Line break without starting a new paragraph</td></tr>
-              <tr><td>⇧⌘V</td><td>Paste as Markdown</td></tr>
-              <tr><td>⌘F</td><td>Find and replace</td></tr>
-              <tr><td>Esc</td><td>Move out of the block the cursor is in</td></tr>
-              <tr><td>⇧⌘⌫</td><td>Delete the block the cursor is in</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘Z</kbd></dt><dd class="docs-keys__action">Undo</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘Z</kbd></dt><dd class="docs-keys__action">Redo</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘B</kbd></dt><dd class="docs-keys__action">Bold</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘I</kbd></dt><dd class="docs-keys__action">Italic</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘U</kbd></dt><dd class="docs-keys__action">Underline (no toolbar button)</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘S</kbd></dt><dd class="docs-keys__action">Strikethrough</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘E</kbd></dt><dd class="docs-keys__action">Inline code</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌥⌘0</kbd></dt><dd class="docs-keys__action">Paragraph</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌥⌘1</kbd><span class="visually-hidden"> to </span><kbd>⌥⌘6</kbd></dt><dd class="docs-keys__action">Heading 1 to Heading 6</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘8</kbd></dt><dd class="docs-keys__action">Bulleted list</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘7</kbd></dt><dd class="docs-keys__action">Numbered list</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘B</kbd></dt><dd class="docs-keys__action">Quote</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌥⌘C</kbd></dt><dd class="docs-keys__action">Code block</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧↩︎</kbd></dt><dd class="docs-keys__action">Line break without starting a new paragraph</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘V</kbd></dt><dd class="docs-keys__action">Paste as Markdown</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘F</kbd></dt><dd class="docs-keys__action">Find and replace</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Move out of the block the cursor is in</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘⌫</kbd></dt><dd class="docs-keys__action">Delete the block the cursor is in</dd></div>
+        </dl>
         <h3 class="docs-h3">Find and Replace</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>↩︎</td><td>Next match</td></tr>
-              <tr><td>⇧↩︎</td><td>Previous match</td></tr>
-              <tr><td>Esc</td><td>Close the find bar</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>↩︎</kbd></dt><dd class="docs-keys__action">Next match</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧↩︎</kbd></dt><dd class="docs-keys__action">Previous match</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Close the find bar</dd></div>
+        </dl>
         <h3 class="docs-h3">Tables</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Tab</td><td>Next cell (adds a row from the last cell)</td></tr>
-              <tr><td>⇧Tab</td><td>Previous cell</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Tab</kbd></dt><dd class="docs-keys__action">Next cell (adds a row from the last cell)</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧Tab</kbd></dt><dd class="docs-keys__action">Previous cell</dd></div>
+        </dl>
         <h3 class="docs-h3">Media Library</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>← → ↑ ↓</td><td>Move the selection</td></tr>
-              <tr><td>Space</td><td>Open or close the large preview</td></tr>
-              <tr><td>Esc</td><td>Close the preview</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></dt><dd class="docs-keys__action">Move the selection</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Space</kbd></dt><dd class="docs-keys__action">Open or close the large preview</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Close the preview</dd></div>
+        </dl>
         <h3 class="docs-h3">AI</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--key">Shortcut</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>⌘↩︎</td><td>Generate, in the Generate Content window</td></tr>
-              <tr><td>↩︎</td><td>Accept an AI rewrite</td></tr>
-              <tr><td>Esc</td><td>Discard an AI rewrite</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <dl class="docs-keys">
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘↩︎</kbd></dt><dd class="docs-keys__action">Generate, in the Generate Content window</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>↩︎</kbd></dt><dd class="docs-keys__action">Accept an AI rewrite</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Discard an AI rewrite</dd></div>
+        </dl>
       </section>
 
       <section class="docs-section" id="limitations--compatibility">
@@ -775,7 +728,7 @@
   <footer class="footer">
     <div class="footer__inner">
       <div class="footer__col">
-        <p class="footer__logo">Quill — A native macOS app for WordPress</p>
+        <p class="footer__logo"><img src="images/quill-icon.svg" alt="" class="footer__icon">Quill — A native macOS app for WordPress</p>
         <p class="footer__disclaimer">Quill is provided as-is. No support is offered. <a href="https://github.com/cpoteet/Quill/issues">Feedback and bug reports</a> are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
       </div>
       <div class="footer__col">
@@ -785,36 +738,7 @@
     </div>
   </footer>
 
-  <script>
-    (function () {
-      const sections = document.querySelectorAll('.docs-section[id]');
-      const tocLinks = document.querySelectorAll('.docs-toc__link');
-      const NAV_HEIGHT = 80;
-
-      function update() {
-        let activeId = null;
-        let maxTop = -Infinity;
-
-        sections.forEach(function (section) {
-          const top = section.getBoundingClientRect().top;
-          if (top <= NAV_HEIGHT && top > maxTop) {
-            maxTop = top;
-            activeId = section.id;
-          }
-        });
-
-        if (!activeId && sections.length) {
-          activeId = sections[0].id;
-        }
-
-        tocLinks.forEach(function (link) {
-          link.classList.toggle('docs-toc__link--active', link.getAttribute('href') === '#' + activeId);
-        });
-      }
-
-      window.addEventListener('scroll', update, { passive: true });
-      update();
-    })();
-  </script>
+  <script src="scroll-spy.js"></script>
+  <script src="nav.js"></script>
 </body>
 </html>

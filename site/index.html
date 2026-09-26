@@ -9,15 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="images/quill-icon.svg" type="image/svg+xml">
 </head>
 <body>
 
   <nav class="nav">
-    <a href="/" class="nav__logo">Quill</a>
-    <div class="nav__links">
-      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
-      <a href="docs.html" class="nav__link">Docs</a>
+    <a href="/" class="nav__logo"><img src="images/quill-icon.svg" alt="" class="nav__icon">Quill</a>
+    <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+    <div class="nav__links" id="nav-links">
+      <a href="docs.html" class="nav__link">User Guide</a>
       <a href="changelog.html" class="nav__link">Changelog</a>
+      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
       <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary">Download</a>
     </div>
   </nav>
@@ -28,17 +30,19 @@
         <h1 class="hero__headline">Your WordPress site deserves a real Mac app.</h1>
         <p class="hero__subline">Write, edit, and publish from a native, fast macOS app. Connects directly to your self-hosted WordPress site with all the WordPress capabilities you'd expect.</p>
         <div class="hero__cta">
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary" id="download">Download</a>
-          <span class="version-badge">v2.0 · macOS Golden Gate</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large" id="download">Download for Mac</a>
+          <a href="docs.html" class="text-link">Read the User Guide →</a>
         </div>
-        <p class="hero__callouts">No subscription · No plugins · Works offline</p>
       </div>
       <div class="hero__screenshot">
-        <img
-          src="images/post-view.png"
-          alt="Quill app showing the post editor with rich text and settings panel"
-          class="hero__img"
-        >
+        <picture>
+          <source srcset="images/post-view-dark.png" media="(prefers-color-scheme: dark)">
+          <img
+            src="images/post-view.png"
+            alt="Quill app showing the post editor with rich text and settings panel"
+            class="hero__img"
+          >
+        </picture>
       </div>
     </div>
   </section>
@@ -48,21 +52,24 @@
   <div class="feature-row__inner">
     <div class="feature-row__text">
       <p class="eyebrow">Editor</p>
-      <h2 class="feature-row__headline">A full-featured editor.<br>No browser required.</h2>
-      <p class="feature-row__body">Write posts and pages with the full formatting toolkit: headings, tables, code blocks, links, and lists. Drag images from Finder directly into the document and Quill uploads them to your media library in one step.</p>
+      <h2 class="feature-row__headline">A full-featured editor.<br />No browser required.</h2>
+      <p class="feature-row__body">Write posts and pages with the full formatting toolkit in a modern editor experience all tuned inside a modern and familiar Mac experience.</p>
       <ul class="feature-list">
-        <li>Renders all in Gutenberg-compatible markup without the pain of using Gutenberg</li>
-        <li>Add links by searching through existing content like Gutenberg</li>
+        <li>Renders everything in Gutenberg-compatible markup</li>
+        <li>Supports several additional blocks like tabs, accordion, and details</li>
         <li>Inline image resizing with drag handles and dimension fields</li>
         <li>Support for the most common post and page metadata</li>
       </ul>
     </div>
     <div class="feature-row__image">
-      <img
-        src="images/page-view.png"
-        alt="Quill page editor showing rich text formatting toolbar and page settings panel"
-        class="feature-img"
-      >
+      <picture>
+        <source srcset="images/page-view-dark.png" media="(prefers-color-scheme: dark)">
+        <img
+          src="images/page-view.png"
+          alt="Quill page editor showing rich text formatting toolbar and page settings panel"
+          class="feature-img"
+        >
+      </picture>
     </div>
   </div>
 </section>
@@ -70,15 +77,18 @@
   <div class="feature-row__inner">
     <div class="feature-row__text">
       <p class="eyebrow">Media Library</p>
-      <h2 class="feature-row__headline">Your media library,<br>right there.</h2>
-      <p class="feature-row__body">Browse your full WordPress media library without opening the admin area. A thumbnail grid with a details panel shows filename, dimensions, upload date, and source URL. Right-click any file to copy its URL, open in browser, or delete it. Upload with ⌘N, refresh with ⌘R.</p>
+      <h2 class="feature-row__headline">Your media library,<br />right there.</h2>
+      <p class="feature-row__body">Browse your full WordPress media library without opening the admin area. A thumbnail grid with a details panel shows filename, dimensions, upload date, and source URL. Right-click any file to copy its URL, open in browser, or delete it. Also shows documents, video, and audio files.</p>
     </div>
     <div class="feature-row__image">
-      <img
-        src="images/media-view.png"
-        alt="Quill media library showing thumbnail grid and file metadata panel"
-        class="feature-img"
-      >
+      <picture>
+        <source srcset="images/media-view-dark.png" media="(prefers-color-scheme: dark)">
+        <img
+          src="images/media-view.png"
+          alt="Quill media library showing thumbnail grid and file metadata panel"
+          class="feature-img"
+        >
+      </picture>
     </div>
   </div>
 </section>
@@ -96,11 +106,14 @@
       </ul>
     </div>
     <div class="feature-row__image">
-      <img
-        src="images/ai-writing.png"
-        alt="Quill showing the Generate Post with Claude dialog"
-        class="feature-img"
-      >
+      <picture>
+        <source srcset="images/ai-writing-dark.png" media="(prefers-color-scheme: dark)">
+        <img
+          src="images/ai-writing.png"
+          alt="Quill showing the Generate Post with Claude dialog"
+          class="feature-img"
+        >
+      </picture>
     </div>
   </div>
 </section>
@@ -118,75 +131,93 @@
       </ul>
     </div>
     <div class="feature-row__image">
-      <img
-        src="images/draft-view.png"
-        alt="Quill showing a local draft with the Publish Draft button in the toolbar"
-        class="feature-img"
-      >
+      <picture>
+        <source srcset="images/draft-view-dark.png" media="(prefers-color-scheme: dark)">
+        <img
+          src="images/draft-view.png"
+          alt="Quill showing a local draft with the Publish Draft button in the toolbar"
+          class="feature-img"
+        >
+      </picture>
     </div>
   </div>
 </section>
   </div>
 
-  <section class="requirements">
-  <div class="requirements__inner">
-    <h2 class="requirements__heading">What you need</h2>
-    <div class="requirements__grid">
-      <div class="requirement-item">
-        <p class="requirement-item__title">macOS Golden Gate with Apple Silicon</p>
-        <p class="requirement-item__note">Quill will not launch on earlier versions</p>
+  <section class="setup">
+    <div class="setup__inner">
+      <div>
+        <h2 class="setup__heading">What you need</h2>
+        <ul class="requirements">
+          <li class="requirement-item">
+            <div>
+              <p class="requirement-item__title">macOS Golden Gate with Apple Silicon</p>
+              <p class="requirement-item__note">Quill will not launch on earlier versions</p>
+            </div>
+          </li>
+          <li class="requirement-item">
+            <div>
+              <p class="requirement-item__title">Self-hosted WordPress 7+</p>
+              <p class="requirement-item__note">May work in older versions but not tested</p>
+            </div>
+          </li>
+          <li class="requirement-item">
+            <div>
+              <p class="requirement-item__title">WordPress.com is not supported</p>
+              <p class="requirement-item__note">Quill uses the self-hosted REST API</p>
+            </div>
+          </li>
+          <li class="requirement-item">
+            <div>
+              <p class="requirement-item__title">HTTPS required</p>
+              <p class="requirement-item__note">The app requires HTTPS to connect</p>
+            </div>
+          </li>
+        </ul>
       </div>
-      <div class="requirement-item">
-        <p class="requirement-item__title">Self-hosted WordPress 7+</p>
-        <p class="requirement-item__note">May work in older versions but not tested</p>
-      </div>
-      <div class="requirement-item">
-        <p class="requirement-item__title">WordPress.com is not supported</p>
-        <p class="requirement-item__note">Quill uses the self-hosted REST API</p>
-      </div>
-      <div class="requirement-item">
-        <p class="requirement-item__title">HTTPS required</p>
-        <p class="requirement-item__note">The app requires HTTPS to connect</p>
+      <div>
+        <h2 class="setup__heading">Up and running in minutes</h2>
+        <ol class="steps">
+          <li class="step">
+            <span class="step__number">01</span>
+            <div class="step__content">
+              <p class="step__title">Download and unzip</p>
+              <p class="step__body">Download the ZIP, unzip it, and move <code>Quill.app</code> to your <code>/Applications</code> folder.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step__number">02</span>
+            <div class="step__content">
+              <p class="step__title">Generate an Application Password</p>
+              <p class="step__body">In your WordPress admin, go to <strong>Users → Profile → Application Passwords</strong> and create a new one. Copy it, you won't be able to see it again.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step__number">03</span>
+            <div class="step__content">
+              <p class="step__title">Connect your site</p>
+              <p class="step__body">Launch Quill. Enter your site URL, WordPress username, and the Application Password. Click Save, you're in.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step__number">04</span>
+            <div class="step__content">
+              <p class="step__title">Input Claude API for Content Generation (Optional)</p>
+              <p class="step__body">Create an API key in the <a href="https://platform.claude.com" target="_blank" rel="noopener" class="content-link">Claude Platform Dashboard</a> and enter it into the settings window. You can choose up to 5 posts to build a personal writing style and enable web search.</p>
+            </div>
+          </li>
+        </ol>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-  <section class="getting-started">
-    <div class="getting-started__inner">
-      <h2 class="getting-started__heading">Up and running in minutes</h2>
-      <ol class="steps">
-        <li class="step">
-          <span class="step__number">01</span>
-          <div class="step__content">
-            <p class="step__title">Download and unzip</p>
-            <p class="step__body">Download the ZIP, unzip it, and move <code>Quill.app</code> to your <code>/Applications</code> folder.</p>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step__number">02</span>
-          <div class="step__content">
-            <p class="step__title">Generate an Application Password</p>
-            <p class="step__body">In your WordPress admin, go to <strong>Users → Profile → Application Passwords</strong> and create a new one. Copy it, you won't be able to see it again.</p>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step__number">03</span>
-          <div class="step__content">
-            <p class="step__title">Connect your site</p>
-            <p class="step__body">Launch Quill. Enter your site URL, WordPress username, and the Application Password. Click Save, you're in.</p>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step__number">04</span>
-          <div class="step__content">
-            <p class="step__title">Input Claude API for Content Generation (Optional)</p>
-            <p class="step__body">Create an API key in the <a href="https://platform.claude.com" target="_blank" rel="noopener" class="content-link">Claude Platform Dashboard</a> and enter it into the settings window. You can choose up to 5 posts to build a personal writing style and enable web search.</p>
-          </div>
-        </li>
-      </ol>
-      <div class="gatekeeper-note">
-        <strong>First launch:</strong> macOS asks you to confirm opening an app downloaded from the internet. Click Open. You only need to do this once.
+  <section class="closing-cta">
+    <div class="closing-cta__inner">
+      <img src="images/quill-icon.svg" alt="Quill app icon" class="closing-cta__icon">
+      <h2 class="closing-cta__headline">Quill is free to use.</h2>
+      <div class="closing-cta__actions">
+        <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large">Download for Mac</a>
+        <a href="changelog.html" class="text-link">What's new in 2.0 →</a>
       </div>
     </div>
   </section>
@@ -194,7 +225,7 @@
   <footer class="footer">
     <div class="footer__inner">
       <div class="footer__col">
-        <p class="footer__logo">Quill — A native macOS app for WordPress</p>
+        <p class="footer__logo"><img src="images/quill-icon.svg" alt="" class="footer__icon">Quill — A native macOS app for WordPress</p>
         <p class="footer__disclaimer">Quill is provided as-is. No support is offered. <a href="https://github.com/cpoteet/Quill/issues">Feedback and bug reports</a> are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
       </div>
       <div class="footer__col">
@@ -204,5 +235,6 @@
     </div>
   </footer>
 
+  <script src="nav.js"></script>
 </body>
 </html>

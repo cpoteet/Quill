@@ -152,23 +152,30 @@ Read the final notes back from GitHub. They may differ from your draft.
 gh release view "v<version>" --repo cpoteet/Quill --json body,isDraft,publishedAt
 ```
 
-Insert a new `<article class="release">` as the first child of `<div class="releases">` in `site/changelog.html`. Copy the structure of the entry below it. Mapping from the Markdown:
+Insert a new `<article class="release" id="v<version>">` as the first child of `<main class="releases">` in `site/changelog.html`, and copy the structure of the entry below it. Then:
+
+- Move the `Download` button (`a.btn-primary.btn-primary--compact` in `release__header`) from the previous release to the new one. Only the latest release has it.
+- Add `<li><a href="#v<version>" class="toc__link"><span>v<version></span><span class="toc__date">Mon D</span></a></li>` as the first item of the Releases rail (`aside.toc`).
+
+Mapping from the Markdown:
 
 | Markdown | changelog.html |
 |---|---|
-| version | `<span class="release__version">v<version></span>` |
+| version | `<h2 class="release__version">v<version></h2>` in `header.release__header` |
 | `_Released YYYY-MM-DD_` | `<span class="release__date">Month D, YYYY</span>`, using `publishedAt` once the release is published |
-| `## What's New` → `### Name` + paragraph | `release__section` › `h2.release__section-title`; each feature is a `div.release__feature` with `h3.release__feature-title` in **Title Case** and `p.release__body` |
-| `## Improvements` → `- **Name** — text` | `ul.release__list` › `<li><strong>Name</strong> — text</li>` |
-| `## Fixes` → `- text` | `ul.release__list` › `<li>text</li>` |
+| `## What's New` → `### Name` + paragraph | `section.release__section` › `h3.release__section-title`; each feature is a `div.release__feature` with `h4.release__feature-title` in **Title Case** and `p.release__body` |
+| `## Improvements` → `- **Name** — text` | `section.release__section` › `ul.release__list` › `<li><strong>Name</strong> — text</li>` |
+| `## Fixes` → `- text` | `details.release__fixes` › `summary.release__section-title` + `ul.release__list` › `<li>text</li>` |
 | `` `code` `` | `<code>`, with `<`, `>` and `&` escaped |
 | `---` | nothing (sections are already separate) |
+
+Every section title ends in `<span class="release__count">(N)</span>`. For What's New, N counts only the features with a title. For Improvements and Fixes, N is the number of items.
 
 ### Step 7 — Site pass
 
 Check every page in `site/` against the new release:
 
-1. **Version:** `grep -n 'version-badge' site/index.html`. The badge reads `v<major>.<minor> · …`. Update the number.
+1. **Version:** `grep -n "What's new in\|Reference ·" site/index.html site/docs.html`. The home page's closing link reads `What's new in <major>.<minor> →` and the User Guide eyebrow reads `Reference · v<version>`. Update both.
 2. **Download links:** every `Download` link must be exactly `https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip` (`grep -n 'releases/' site/*.html`).
 3. **Stale statements:** for each item in the release notes, `grep -n` the site for the old behavior, labels and names, and correct every hit. Include the install, first-launch, requirements and update sections of `index.html` and `docs.html`.
 4. **Contents links:** every `href="#…"` on a page you edited must still resolve to an `id` on that page.

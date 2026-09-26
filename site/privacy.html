@@ -9,24 +9,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="images/quill-icon.svg" type="image/svg+xml">
 </head>
 <body>
 
   <nav class="nav">
-    <a href="/" class="nav__logo">Quill</a>
-    <div class="nav__links">
-      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
-      <a href="docs.html" class="nav__link">Docs</a>
+    <a href="/" class="nav__logo"><img src="images/quill-icon.svg" alt="" class="nav__icon">Quill</a>
+    <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+    <div class="nav__links" id="nav-links">
+      <a href="docs.html" class="nav__link">User Guide</a>
       <a href="changelog.html" class="nav__link">Changelog</a>
+      <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
       <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary">Download</a>
     </div>
   </nav>
 
-  <section class="changelog-header">
-    <div class="changelog-header__inner">
+  <section class="page-header">
+    <div class="page-header__inner">
       <p class="eyebrow">Legal</p>
-      <h1 class="changelog-header__title">Privacy Policy</h1>
-      <p class="changelog-header__sub">What Quill stores, what it sends, and what it never does.</p>
+      <h1 class="page-header__title">Privacy Policy</h1>
+      <p class="page-header__sub">What Quill stores, what it sends, and what it never does.</p>
     </div>
   </section>
 
@@ -56,12 +58,24 @@
 
       <div class="license-section">
         <h2 class="license-section__title">What Quill never does</h2>
-        <ul class="license-list">
-          <li><strong>No analytics or telemetry.</strong> Quill does not collect usage data, crash reports, or any metrics about how you use the app.</li>
-          <li><strong>No accounts.</strong> There is no Quill account, no sign-in, and no central server. The app has no way to identify you.</li>
-          <li><strong>No cloud sync.</strong> Your local drafts and settings never leave your Mac unless you explicitly publish them to your own WordPress site.</li>
-          <li><strong>No advertising.</strong> Quill is not ad-supported and shares no data with advertisers.</li>
-        </ul>
+        <div class="never-grid">
+          <div class="never-card">
+            <p class="never-card__title">No analytics or telemetry.</p>
+            <p class="never-card__body">Quill does not collect usage data, crash reports, or any metrics about how you use the app.</p>
+          </div>
+          <div class="never-card">
+            <p class="never-card__title">No accounts.</p>
+            <p class="never-card__body">There is no Quill account, no sign-in, and no central server. The app has no way to identify you.</p>
+          </div>
+          <div class="never-card">
+            <p class="never-card__title">No cloud sync.</p>
+            <p class="never-card__body">Your local drafts and settings never leave your Mac unless you explicitly publish them to your own WordPress site.</p>
+          </div>
+          <div class="never-card">
+            <p class="never-card__title">No advertising.</p>
+            <p class="never-card__body">Quill is not ad-supported and shares no data with advertisers.</p>
+          </div>
+        </div>
       </div>
 
       <div class="license-section">
@@ -86,8 +100,8 @@
   <footer class="footer">
     <div class="footer__inner">
       <div class="footer__col">
-        <p class="footer__logo">Quill — A native macOS app for WordPress</p>
-        <p class="footer__disclaimer">Quill is provided as-is. No support is offered — feedback and bug reports are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
+        <p class="footer__logo"><img src="images/quill-icon.svg" alt="" class="footer__icon">Quill — A native macOS app for WordPress</p>
+        <p class="footer__disclaimer">Quill is provided as-is. No support is offered. <a href="https://github.com/cpoteet/Quill/issues">Feedback and bug reports</a> are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
       </div>
       <div class="footer__col">
         <p class="footer__disclaimer">© 2026 <a href="https://www.siolon.com" target="_blank" rel="noopener">Chris Poteet</a> · <a href="license.html">License</a> · <a href="privacy.html">Privacy</a></p>
@@ -96,5 +110,6 @@
     </div>
   </footer>
 
+  <script src="nav.js"></script>
 </body>
 </html>
