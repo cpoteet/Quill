@@ -1759,7 +1759,7 @@
         const tb = document.getElementById('image-toolbar')
         if (tb?._activeNodeView === this) {
           document.getElementById('img-tb-w').value   = node.attrs.width  ?? ''
-          document.getElementById('img-tb-h').value   = node.attrs.height ?? ''
+          document.getElementById('img-tb-h').value   = node.attrs.height ?? _impliedHeight(this.img, node.attrs.width) ?? ''
           document.getElementById('img-tb-alt').value = node.attrs.alt    ?? ''
           const linkBtn = document.getElementById('img-tb-link')
           if (linkBtn) linkBtn.classList.toggle('active', node.attrs.linkTo === 'media')
@@ -1859,11 +1859,13 @@
           const newH = Math.round(parseFloat(this.img.style.height) || this.img.offsetHeight)
           this.img.style.width  = ''
           this.img.style.height = ''
+          const implied = _impliedHeight(this.img, newW)
+          const height = implied != null && Math.abs(newH - implied) <= 1 ? null : newH
 
           const pos = this.getPos()
           if (typeof pos === 'number') {
             const { state, dispatch } = this.editor.view
-            dispatch(state.tr.setNodeMarkup(pos, null, { ...this.node.attrs, width: newW, height: newH }))
+            dispatch(state.tr.setNodeMarkup(pos, null, { ...this.node.attrs, width: newW, height }))
           }
         }
 
@@ -1873,6 +1875,15 @@
     }
 
     // ── Image toolbar helpers ──────────────────────────
+    function _withSizeClass(figureClass, slug) {
+      const rest = (figureClass || '').split(/\s+/).filter(c => c && !c.startsWith('size-'))
+      return [...rest, 'size-' + slug].join(' ')
+    }
+
+    function _impliedHeight(img, width) {
+      return width != null && img.naturalWidth ? Math.round(width * img.naturalHeight / img.naturalWidth) : null
+    }
+
     function _positionImageToolbar(tb, wrapper) {
       const wRect = wrapper.getBoundingClientRect()
       const tbWrap = document.getElementById('toolbar-wrap')
@@ -1889,7 +1900,7 @@
         let w = nv.node.attrs.width
         let h = nv.node.attrs.height
         if (w == null && nv.img.naturalWidth)  w = nv.img.naturalWidth
-        if (h == null && nv.img.naturalHeight) h = nv.img.naturalHeight
+        if (h == null) h = _impliedHeight(nv.img, w)
         document.getElementById('img-tb-w').value = w ?? ''
         document.getElementById('img-tb-h').value = h ?? ''
       }
@@ -5609,11 +5620,9 @@
 
     window.isInFootnote = () => _isInFootnote()
 
-    window.insertImage = (url, width, height, mediaId, alt) => {
+    window.insertImage = (url, mediaId, alt) => {
       if (_isInFootnote()) return
       const attrs = { src: url }
-      if (width   != null) attrs.width   = width
-      if (height  != null) attrs.height  = height
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt
       editor.chain().focus().setImage(attrs).run()
@@ -5820,8 +5829,10 @@
         const newH = Math.max(50, parseInt(e.target.value) || 50)
         let newW = nv?.node.attrs.width ?? null
         const attrs = nv?.node.attrs
-        if (attrs?.width && attrs?.height) {
-          newW = Math.round(newH * (attrs.width / attrs.height))
+        const baseW = attrs?.width ?? nv?.img.naturalWidth
+        const baseH = attrs?.height ?? (nv && _impliedHeight(nv.img, baseW))
+        if (baseW && baseH) {
+          newW = Math.round(newH * (baseW / baseH))
           document.getElementById('img-tb-w').value = newW
         }
         commitDims(newW, newH)
@@ -5834,14 +5845,12 @@
         const pos = nv.getPos()
         if (typeof pos !== 'number') return
         const { state, dispatch } = nv.editor.view
-        // Restore to full-size URL and dimensions if WordPress media sizes are available;
-        // otherwise just remove the explicit constraints.
+        // Restore the full-size URL when WordPress media sizes are available.
         const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
         const newAttrs = { ...nv.node.attrs, width: null, height: null }
         if (fullBtn?._sizeData) {
-          newAttrs.src    = fullBtn._sizeData.url
-          newAttrs.width  = fullBtn._sizeData.width
-          newAttrs.height = fullBtn._sizeData.height
+          newAttrs.src         = fullBtn._sizeData.url
+          newAttrs.figureClass = _withSizeClass(nv.node.attrs.figureClass, 'full')
         }
         dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))
         document.getElementById('img-tb-w').value = ''
@@ -5872,13 +5881,14 @@
           const tb = document.getElementById('image-toolbar')
           const nv = tb?._activeNodeView
           if (!nv || !btn._sizeData) return
-          const { url, width, height } = btn._sizeData
           const pos = nv.getPos()
           if (typeof pos !== 'number') return
           const { state, dispatch } = nv.editor.view
-          dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, src: url, width, height }))
-          document.getElementById('img-tb-w').value = width
-          document.getElementById('img-tb-h').value = height
+          dispatch(state.tr.setNodeMarkup(pos, null, {
+            ...nv.node.attrs,
+            src: btn._sizeData.url,
+            figureClass: _withSizeClass(nv.node.attrs.figureClass, btn.dataset.size),
+          }))
         })
       })
 

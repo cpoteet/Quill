@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-26 — 471 Swift tests + 1,284 JS tests (1,283 pass, 1 skipped), no failures._
+_Last updated: 2026-09-26 — 471 Swift tests + 1,288 JS tests (1,287 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -21,7 +21,7 @@ This document is the authoritative reference for Quill's automated test suite an
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (91 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
-6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (76 tests — live Tiptap editor in jsdom)
+6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (80 tests — live Tiptap editor in jsdom)
 7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (38 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
@@ -1746,7 +1746,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS keyboard tests (76 tests)
+## JS keyboard tests (80 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3322,6 +3322,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 159 | The highlight after `showAIResult` and the caret after Accept are computed from the inserted range, not the original selection | ✅ `test-ai-output-validity.js` `'the highlighted result is exactly the inserted text, and accepting puts the caret after it'` |
 | 160 | Offline, Local Drafts showed the network load's "Couldn't load…" error in the sidebar, the empty state and the detail placeholder, though drafts are local. `AppState.sectionListError` hides `listError` on Local Drafts | 👁 §7.2 — no test covers `sectionListError` |
 | 161 | The update banner offered and opened whatever `html_url` the releases API returned. It must now be `https` on `github.com` | 👁 §7.21 — the URL check has no unit test |
+| 162 | Quill saved pixel heights core never writes, so `style="width:650px;height:480px"` squashed the image wherever `max-width` narrowed it. Now, as in core: a proportional drag saves the width with `height:auto` (a drag off the natural ratio, or a typed H, still saves a height); `window.insertImage` takes no dimensions, so an inserted image saves none; a size button swaps the URL and `size-*` class and keeps any width; Reset clears both dimensions | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` drag, size-button, Reset and insert tests |
 
 ---
 

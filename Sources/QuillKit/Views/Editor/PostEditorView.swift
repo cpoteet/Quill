@@ -188,8 +188,6 @@ public struct PostEditorView: View {
                         "url":     selected.sourceURL,
                         "mediaId": selected.id,
                     ]
-                    if let w = selected.mediaDetails?.width  { info["width"]  = w }
-                    if let h = selected.mediaDetails?.height { info["height"] = h }
                     if !selected.altText.isEmpty { info["alt"] = selected.altText }
                     NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                     showImagePicker = false
@@ -1042,8 +1040,6 @@ public struct PostEditorView: View {
                     mimeType: prepared.mimeType
                 )
                 var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
-                if let w = media.mediaDetails?.width  { info["width"]  = w }
-                if let h = media.mediaDetails?.height { info["height"] = h }
                 if !media.altText.isEmpty { info["alt"] = media.altText }
                 NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                 inserted += 1

@@ -599,14 +599,72 @@ describe('image dimensions round-trip', () => {
     assert.ok(!doc.querySelector('img').hasAttribute('width'))
   })
 
-  test('an image inserted by Quill with dimensions saves core-compatible markup', () => {
+  test('an image inserted by Quill saves no dimensions, as core does', () => {
     editor.commands.setContent('<p></p>', false)
-    win.insertImage('http://x/p.jpg', 640, 480, 99, 'alt text')
+    win.insertImage('http://x/p.jpg', 99, 'alt text')
     const out = save()
     const img = docOf(out).querySelector('img')
-    assert.equal(img.getAttribute('style'), 'width:640px;height:480px')
-    assert.ok(!img.hasAttribute('width') && !img.hasAttribute('height'))
-    assert.deepEqual(attrsOf(out), { id: 99, width: '640px', height: '480px' })
+    assert.ok(!img.hasAttribute('style') && !img.hasAttribute('width') && !img.hasAttribute('height'))
+    assert.ok(!docOf(out).querySelector('figure').classList.contains('is-resized'))
+    assert.deepEqual(attrsOf(out), { id: 99 })
+  })
+
+  // jsdom lays nothing out, so the drag starts from the handler's 300×200 fallback.
+  function drag(handle, dx, dy, natural = [1200, 800]) {
+    editor.commands.setContent('<figure><img src="http://x/p.jpg" alt=""></figure>', false)
+    const img = editor.view.dom.querySelector('.image-frame img')
+    Object.defineProperty(img, 'naturalWidth', { value: natural[0] })
+    Object.defineProperty(img, 'naturalHeight', { value: natural[1] })
+    editor.view.dom.querySelector('.resize-handle.' + handle)
+      .dispatchEvent(new win.MouseEvent('mousedown', { clientX: 0, clientY: 0, bubbles: true }))
+    win.document.dispatchEvent(new win.MouseEvent('mousemove', { clientX: dx, clientY: dy }))
+    win.document.dispatchEvent(new win.MouseEvent('mouseup', {}))
+    return editor.state.doc.firstChild.attrs
+  }
+
+  test('a proportional drag saves the width with height:auto, as core does', () => {
+    assert.equal(drag('se', 100, 0).height, null)
+    const out = save()
+    assert.equal(docOf(out).querySelector('img').getAttribute('style'), 'width:400px;height:auto')
+    assert.equal(attrsOf(out).width, '400px')
+    assert.ok(!('height' in attrsOf(out)))
+  })
+
+  const sizeBtn = slug => win.document.querySelector(`#image-toolbar [data-size="${slug}"]`)
+  function withSizes(sizes, fn) {
+    editor.commands.setContent(RESIZED, false)
+    editor.commands.setNodeSelection(0)
+    for (const [slug, data] of Object.entries(sizes)) sizeBtn(slug)._sizeData = data
+    try { fn() } finally { for (const slug of Object.keys(sizes)) sizeBtn(slug)._sizeData = null }
+  }
+
+  test('picking a size swaps the URL and size class and keeps the width, as core does', () => {
+    withSizes({ medium: { url: 'http://x/p-300.jpg', width: 300, height: 200 } }, () => sizeBtn('medium').click())
+    const out = save()
+    const img = docOf(out).querySelector('img')
+    assert.equal(img.getAttribute('src'), 'http://x/p-300.jpg')
+    assert.equal(img.getAttribute('style'), 'width:640px;height:auto')
+    assert.equal(attrsOf(out).sizeSlug, 'medium')
+    assert.equal(attrsOf(out).width, '640px')
+    assert.ok(!docOf(out).querySelector('figure').classList.contains('size-full'))
+  })
+
+  test('Reset restores the full-size URL and clears the dimensions', () => {
+    withSizes({ full: { url: 'http://x/p-orig.jpg', width: 4000, height: 3000 } }, () => {
+      win.document.getElementById('img-tb-reset').click()
+    })
+    const out = save()
+    const img = docOf(out).querySelector('img')
+    assert.equal(img.getAttribute('src'), 'http://x/p-orig.jpg')
+    assert.ok(!img.hasAttribute('style'))
+    assert.equal(attrsOf(out).sizeSlug, 'full')
+    assert.ok(!('width' in attrsOf(out)) && !('height' in attrsOf(out)))
+  })
+
+  test('a drag that stretches the image off its natural ratio keeps an explicit height', () => {
+    const attrs = drag('e', 100, 0)
+    assert.equal(attrs.width, 400)
+    assert.equal(attrs.height, 200)
   })
 })
 
@@ -618,7 +676,7 @@ describe('window.insertImage cursor placement', () => {
   test('inserting into an empty document leaves the cursor in a paragraph below', () => {
     editor.commands.setContent('<p></p>', false)
     editor.commands.focus()
-    win.insertImage('http://x/p.jpg', 800, 600, 42, 'alt text')
+    win.insertImage('http://x/p.jpg', 42, 'alt text')
     assert.equal(doc(), 'image[] | paragraph()')
     assert.equal(selParent(), 'paragraph')
   })
@@ -635,7 +693,7 @@ describe('window.insertImage cursor placement', () => {
   test('the caption is left empty and still holds the image attrs', () => {
     editor.commands.setContent('<p></p>', false)
     editor.commands.focus()
-    win.insertImage('http://x/p.jpg', 800, 600, 42, 'alt text')
+    win.insertImage('http://x/p.jpg', 42, 'alt text')
     const img = editor.state.doc.firstChild
     assert.equal(img.type.name, 'image')
     assert.equal(img.content.size, 0)
@@ -650,9 +708,9 @@ describe('window.insertImage cursor placement', () => {
     // in the paragraph the previous call created, not stack blank paragraphs.
     editor.commands.setContent('<p></p>', false)
     editor.commands.focus()
-    win.insertImage('http://x/a.jpg', 100, 50, 1)
-    win.insertImage('http://x/b.jpg', 100, 50, 2)
-    win.insertImage('http://x/c.jpg', 100, 50, 3)
+    win.insertImage('http://x/a.jpg', 1)
+    win.insertImage('http://x/b.jpg', 2)
+    win.insertImage('http://x/c.jpg', 3)
     assert.equal(doc(), 'image[] | image[] | image[] | paragraph()')
     const srcs = []
     editor.state.doc.descendants(n => { if (n.type.name === 'image') srcs.push(n.attrs.src) })
@@ -663,8 +721,8 @@ describe('window.insertImage cursor placement', () => {
   test('a multi-image drop saves one wp:image pair per image, in drop order', () => {
     editor.commands.setContent('<p></p>', false)
     editor.commands.focus()
-    win.insertImage('http://x/a.jpg', 100, 50, 1)
-    win.insertImage('http://x/b.jpg', 100, 50, 2)
+    win.insertImage('http://x/a.jpg', 1)
+    win.insertImage('http://x/b.jpg', 2)
     const out = win.toWordPressHTML(editor.getHTML())
     const ids = [...out.matchAll(/<!-- wp:image \{"id":(\d+)[^}]*\} -->/g)].map(m => m[1])
     assert.deepEqual(ids, ['1', '2'])
@@ -677,7 +735,7 @@ describe('window.insertImage cursor placement', () => {
   test('the saved figure carries no caption and no empty paragraph', () => {
     editor.commands.setContent('<p>before</p>', false)
     editor.commands.focus('end')
-    win.insertImage('http://x/r.jpg', 800, 600, 42, 'alt text')
+    win.insertImage('http://x/r.jpg', 42, 'alt text')
     const out = win.toWordPressHTML(editor.getHTML())
     const figure = out.match(/<figure class="wp-block-image[^"]*">[\s\S]*?<\/figure>/)[0]
     assert.doesNotMatch(figure, /<figcaption/)
