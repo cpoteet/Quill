@@ -1778,6 +1778,7 @@
         setTimeout(() => {
           const tb = document.getElementById('image-toolbar')
           if (tb && tb.contains(document.activeElement)) return
+          if (this.wrapper.classList.contains('selected')) return
           if (tb?._activeNodeView === this) _hideImageToolbar()
         }, 80)
       }
@@ -1861,7 +1862,7 @@
           this.img.style.height = ''
           const implied = _impliedHeight(this.img, newW)
           const height = implied != null && Math.abs(newH - implied) <= 1 ? null : newH
-          _setImageAttrs(this, { ...this.node.attrs, width: newW, height })
+          _setImageAttrs(this.editor, this.getPos(), { ...this.node.attrs, width: newW, height })
         }
 
         document.addEventListener('mousemove', onMove)
@@ -1871,12 +1872,11 @@
 
     // ── Image toolbar helpers ──────────────────────────
     // setNodeMarkup maps a NodeSelection as deleted, so reselect or the toolbar loses its image.
-    function _setImageAttrs(nv, attrs) {
-      const pos = nv.getPos()
+    function _setImageAttrs(editor, pos, attrs) {
       if (typeof pos !== 'number') return
-      const { selection } = nv.editor.state
+      const { selection } = editor.state
       const wasSelected = selection.node && selection.from === pos
-      const chain = nv.editor.chain().command(({ tr }) => { tr.setNodeMarkup(pos, null, attrs); return true })
+      const chain = editor.chain().command(({ tr }) => { tr.setNodeMarkup(pos, null, attrs); return true })
       ;(wasSelected ? chain.setNodeSelection(pos) : chain).run()
     }
 
@@ -3939,9 +3939,7 @@
       if (!node || node.type.name !== 'image') return
       const pos = state.selection.from
       const newAlignment = node.attrs.alignment === value ? null : value
-      editor.view.dispatch(
-        state.tr.setNodeMarkup(pos, null, { ...node.attrs, alignment: newAlignment })
-      )
+      _setImageAttrs(editor, pos, { ...node.attrs, alignment: newAlignment })
       editor.view.focus()
     }
 
@@ -5809,7 +5807,7 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        _setImageAttrs(nv, { ...nv.node.attrs, width: newW, height: newH })
+        _setImageAttrs(nv.editor, nv.getPos(), { ...nv.node.attrs, width: newW, height: newH })
       }
 
       document.getElementById('img-tb-w').addEventListener('change', e => {
@@ -5851,7 +5849,7 @@
           newAttrs.src         = fullBtn._sizeData.url
           newAttrs.figureClass = _withSizeClass(nv.node.attrs.figureClass, 'full')
         }
-        _setImageAttrs(nv, newAttrs)
+        _setImageAttrs(nv.editor, nv.getPos(), newAttrs)
         document.getElementById('img-tb-w').value = ''
         document.getElementById('img-tb-h').value = ''
       })
@@ -5861,7 +5859,7 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        _setImageAttrs(nv, { ...nv.node.attrs, alt: value || null })
+        _setImageAttrs(nv.editor, nv.getPos(), { ...nv.node.attrs, alt: value || null })
       }
       document.getElementById('img-tb-alt').addEventListener('input', e => {
         clearTimeout(_altDebounceTimer)
@@ -5877,7 +5875,7 @@
           const tb = document.getElementById('image-toolbar')
           const nv = tb?._activeNodeView
           if (!nv || !btn._sizeData) return
-          _setImageAttrs(nv, {
+          _setImageAttrs(nv.editor, nv.getPos(), {
             ...nv.node.attrs,
             src: btn._sizeData.url,
             figureClass: _withSizeClass(nv.node.attrs.figureClass, btn.dataset.size),
@@ -5900,7 +5898,7 @@
         } else {
           newAttrs.linkHref = null
         }
-        _setImageAttrs(nv, newAttrs)
+        _setImageAttrs(nv.editor, nv.getPos(), newAttrs)
       })
     })()
 

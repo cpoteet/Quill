@@ -705,6 +705,15 @@ describe('image toolbar visibility', () => {
     win.document.getElementById('img-tb-link').click()
     assert.equal(editor.state.selection.node?.attrs.linkTo, 'media')
   })
+
+  test('an alignment button keeps the image selected and the toolbar open', async () => {
+    selectImage()
+    win.document.querySelector('[data-cmd="alignCenter"]')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    await wait(100)
+    assert.equal(editor.state.selection.node?.attrs.alignment, 'center')
+    assert.equal(tb().style.display, 'flex')
+  })
 })
 
 describe('window.insertImage cursor placement', () => {
