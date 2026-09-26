@@ -668,6 +668,45 @@ describe('image dimensions round-trip', () => {
   })
 })
 
+describe('image toolbar visibility', () => {
+  const tb = () => win.document.getElementById('image-toolbar')
+  const wait = ms => new Promise(r => setTimeout(r, ms))
+
+  function selectImage() {
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', false)
+    editor.commands.setNodeSelection(0)
+    assert.equal(tb().style.display, 'flex')
+  }
+
+  test('committing alt text keeps the image selected', () => {
+    selectImage()
+    const alt = win.document.getElementById('img-tb-alt')
+    alt.focus()
+    alt.value = 'a photo'
+    alt.dispatchEvent(new win.Event('blur'))
+    assert.equal(editor.state.selection.node?.attrs.alt, 'a photo')
+  })
+
+  test('moving the caret out after editing alt text hides the toolbar', async () => {
+    selectImage()
+    const alt = win.document.getElementById('img-tb-alt')
+    alt.focus()
+    alt.value = 'a photo'
+    alt.dispatchEvent(new win.Event('blur'))
+    await wait(100)
+    editor.commands.focus()
+    editor.commands.setTextSelection(editor.state.doc.content.size - 2)
+    await wait(100)
+    assert.equal(tb().style.display, 'none')
+  })
+
+  test('the Link to Full Image toggle keeps the image selected', () => {
+    selectImage()
+    win.document.getElementById('img-tb-link').click()
+    assert.equal(editor.state.selection.node?.attrs.linkTo, 'media')
+  })
+})
+
 describe('window.insertImage cursor placement', () => {
   before(() => { editor.commands.setContent('<p></p>', false) })
 

@@ -1861,12 +1861,7 @@
           this.img.style.height = ''
           const implied = _impliedHeight(this.img, newW)
           const height = implied != null && Math.abs(newH - implied) <= 1 ? null : newH
-
-          const pos = this.getPos()
-          if (typeof pos === 'number') {
-            const { state, dispatch } = this.editor.view
-            dispatch(state.tr.setNodeMarkup(pos, null, { ...this.node.attrs, width: newW, height }))
-          }
+          _setImageAttrs(this, { ...this.node.attrs, width: newW, height })
         }
 
         document.addEventListener('mousemove', onMove)
@@ -1875,6 +1870,16 @@
     }
 
     // ── Image toolbar helpers ──────────────────────────
+    // setNodeMarkup maps a NodeSelection as deleted, so reselect or the toolbar loses its image.
+    function _setImageAttrs(nv, attrs) {
+      const pos = nv.getPos()
+      if (typeof pos !== 'number') return
+      const { selection } = nv.editor.state
+      const wasSelected = selection.node && selection.from === pos
+      const chain = nv.editor.chain().command(({ tr }) => { tr.setNodeMarkup(pos, null, attrs); return true })
+      ;(wasSelected ? chain.setNodeSelection(pos) : chain).run()
+    }
+
     function _withSizeClass(figureClass, slug) {
       const rest = (figureClass || '').split(/\s+/).filter(c => c && !c.startsWith('size-'))
       return [...rest, 'size-' + slug].join(' ')
@@ -5804,10 +5809,7 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        const pos = nv.getPos()
-        if (typeof pos !== 'number') return
-        const { state, dispatch } = nv.editor.view
-        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, width: newW, height: newH }))
+        _setImageAttrs(nv, { ...nv.node.attrs, width: newW, height: newH })
       }
 
       document.getElementById('img-tb-w').addEventListener('change', e => {
@@ -5842,9 +5844,6 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        const pos = nv.getPos()
-        if (typeof pos !== 'number') return
-        const { state, dispatch } = nv.editor.view
         // Restore the full-size URL when WordPress media sizes are available.
         const fullBtn = document.querySelector('#image-toolbar [data-size="full"]')
         const newAttrs = { ...nv.node.attrs, width: null, height: null }
@@ -5852,7 +5851,7 @@
           newAttrs.src         = fullBtn._sizeData.url
           newAttrs.figureClass = _withSizeClass(nv.node.attrs.figureClass, 'full')
         }
-        dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))
+        _setImageAttrs(nv, newAttrs)
         document.getElementById('img-tb-w').value = ''
         document.getElementById('img-tb-h').value = ''
       })
@@ -5862,10 +5861,7 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        const pos = nv.getPos()
-        if (typeof pos !== 'number') return
-        const { state, dispatch } = nv.editor.view
-        dispatch(state.tr.setNodeMarkup(pos, null, { ...nv.node.attrs, alt: value || null }))
+        _setImageAttrs(nv, { ...nv.node.attrs, alt: value || null })
       }
       document.getElementById('img-tb-alt').addEventListener('input', e => {
         clearTimeout(_altDebounceTimer)
@@ -5881,14 +5877,11 @@
           const tb = document.getElementById('image-toolbar')
           const nv = tb?._activeNodeView
           if (!nv || !btn._sizeData) return
-          const pos = nv.getPos()
-          if (typeof pos !== 'number') return
-          const { state, dispatch } = nv.editor.view
-          dispatch(state.tr.setNodeMarkup(pos, null, {
+          _setImageAttrs(nv, {
             ...nv.node.attrs,
             src: btn._sizeData.url,
             figureClass: _withSizeClass(nv.node.attrs.figureClass, btn.dataset.size),
-          }))
+          })
         })
       })
 
@@ -5896,8 +5889,6 @@
         const tb = document.getElementById('image-toolbar')
         const nv = tb?._activeNodeView
         if (!nv) return
-        const pos = nv.getPos()
-        if (typeof pos !== 'number') return
         const turningOn = nv.node.attrs.linkTo !== 'media'
         const newAttrs = { ...nv.node.attrs, linkTo: turningOn ? 'media' : 'none' }
         if (turningOn) {
@@ -5909,8 +5900,7 @@
         } else {
           newAttrs.linkHref = null
         }
-        const { state, dispatch } = nv.editor.view
-        dispatch(state.tr.setNodeMarkup(pos, null, newAttrs))
+        _setImageAttrs(nv, newAttrs)
       })
     })()
 
