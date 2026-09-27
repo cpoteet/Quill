@@ -39,7 +39,7 @@ Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets
 
 ## Future architecture options
 
-See `docs/future-architecture.md` for deferred design notes: local draft settings persistence (B), image figure-first model (C), LanguageTool grammar checking (D), generic Gutenberg passthrough (E — since implemented as the `gutenbergPassthrough` node; doc entry is the original design context), editor image cache-busting (F), native Pullquote block (G), a Gutenberg fixture-diff harness for automated markup-change detection (H), a gradient-matched title bar (I), Quick Look for media preview (J), and editable galleries (K).
+Deferred design decisions are tracked as GitHub issues on `cpoteet/Quill`, not in `docs/`. Open or comment on an issue rather than adding a design-notes file.
 
 ## Architecture
 
@@ -140,7 +140,6 @@ These three fail silently with the whole test suite green:
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
 - `docs/editor-gotchas.md` — the 78 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
-- `docs/future-architecture.md` — deferred design notes (B–K)
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
 - `docs/editor-preview-gaps.md`
