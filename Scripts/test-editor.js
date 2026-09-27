@@ -1452,10 +1452,17 @@ describe('inlineFootnotes', () => {
     assert.ok(out.indexOf('fn-a') < out.indexOf('fn-b'))
   })
 
-  test('round-trips with extractFootnotes', () => {
+  test('round-trips with extractFootnotes, the delimiter separated like any block', () => {
     const original = '<p>x</p><ol class="wp-block-footnotes"><li id="fn-a">A <em>note</em></li></ol>'
     const r = extractFootnotes(original, new JSDOM('<!doctype html><body>').window.document)
-    assert.equal(inline(r.content, r.footnotes), original)
+    assert.equal(r.content, '<p>x</p>\n\n<!-- wp:footnotes /-->')
+    assert.equal(inline(r.content, r.footnotes), '<p>x</p>\n\n<ol class="wp-block-footnotes"><li id="fn-a">A <em>note</em></li></ol>')
+  })
+
+  test('extractFootnotes leaves the rest of the saved markup byte for byte', () => {
+    const html = '<hr class="wp-block-separator"/>\n<p>a<img src="x.png" alt=""/></p><ol class="wp-block-footnotes"><li id="fn-a">n</li></ol>'
+    const r = extractFootnotes(html, new JSDOM('<!doctype html><body>').window.document)
+    assert.equal(r.content, '<hr class="wp-block-separator"/>\n<p>a<img src="x.png" alt=""/></p>\n\n<!-- wp:footnotes /-->')
   })
 
   test('empty meta leaves the delimiter alone for the passthrough card', () => {
@@ -1521,6 +1528,16 @@ describe('standalone image block comments', () => {
   test('a linked image records linkDestination media', () => {
     const html = '<figure class="wp-block-image"><a href="https://example.com/p.jpg"><img src="https://example.com/p.jpg" alt="" data-media-id="7"></a></figure>'
     assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
+  test('a link to the full-size file of a sized image records linkDestination media', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/p-scaled.jpg"><img src="https://example.com/p-1024x683.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
+  test('a link to another page records linkDestination custom', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/about/"><img src="https://example.com/p.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'custom' })
   })
 
   test('an aligned image records its alignment', () => {

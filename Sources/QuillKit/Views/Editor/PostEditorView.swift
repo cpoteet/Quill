@@ -165,6 +165,13 @@ public struct PostEditorView: View {
                             }
                         }
                     },
+                    onImagesPasted: { images in
+                        let previous = dropTask
+                        dropTask = Task {
+                            await previous?.value
+                            await handlePastedImages(images)
+                        }
+                    },
                     aiEnabled: appState.aiEnabled,
                     hasTextSelection: hasTextSelection
                 )
@@ -1028,16 +1035,76 @@ public struct PostEditorView: View {
     // MARK: - Drag & Drop
 
     private func handleDroppedImages(_ urls: [URL]) async {
-        guard let creds = appState.credentials else { return }
-        let client = WordPressClient(credentials: creds)
         let files = urls.filter { $0.isFileURL }
-        guard !files.isEmpty else { return }
+        await uploadImages(files.map { ($0, Self.insertAtCursor) })
+    }
+
+    // A token marks an image already in the document, which only has its source swapped.
+    private func handlePastedImages(_ images: [PastedImage]) async {
+        guard appState.credentials != nil else {
+            presentToast("Connect a WordPress site to upload pasted images", isError: true)
+            return
+        }
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("QuillPaste-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        var uploads: [(URL, (WPMedia) -> Void)] = []
+        for (index, image) in images.enumerated() {
+            let ext = Self.fileExtension(for: image.data, mimeType: image.mimeType)
+            let file = folder.appendingPathComponent("pasted-image-\(index + 1).\(ext)")
+            guard (try? image.data.write(to: file)) != nil else { continue }
+            guard let token = image.token else {
+                uploads.append((file, Self.insertAtCursor))
+                continue
+            }
+            uploads.append((file, { [editorWebView] media in
+                let args = [token, media.sourceURL].compactMap { Self.jsonLiteral($0) }.joined(separator: ", ")
+                editorWebView?.evaluateJavaScript("window.resolvePastedImage?.(\(args), \(media.id))", completionHandler: nil)
+            }))
+        }
+        await uploadImages(uploads)
+    }
+
+    private static func insertAtCursor(_ media: WPMedia) {
+        var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
+        if !media.altText.isEmpty { info["alt"] = media.altText }
+        NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+    }
+
+    // The bytes decide: Word labels its JPEGs image/png, and WordPress refuses a mismatched extension.
+    nonisolated static func fileExtension(for data: Data, mimeType: String) -> String {
+        let head = [UInt8](data.prefix(12))
+        if head.starts(with: [0xFF, 0xD8, 0xFF]) { return "jpg" }
+        if head.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return "png" }
+        if head.starts(with: [0x47, 0x49, 0x46, 0x38]) { return "gif" }
+        if head.count == 12, head.starts(with: [0x52, 0x49, 0x46, 0x46]), Array(head[8..<12]) == [0x57, 0x45, 0x42, 0x50] { return "webp" }
+        if head.count == 12, Array(head[4..<8]) == Array("ftyp".utf8) { return "heic" }
+        switch mimeType.lowercased() {
+        case "image/jpeg", "image/jpg": return "jpg"
+        case "image/gif": return "gif"
+        case "image/webp": return "webp"
+        case "image/heic": return "heic"
+        case "image/tiff": return "tiff"
+        default: return "png"
+        }
+    }
+
+    private static func jsonLiteral(_ value: String) -> String? {
+        guard let data = try? JSONEncoder().encode(value) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func uploadImages(_ files: [(URL, (WPMedia) -> Void)]) async {
+        guard let creds = appState.credentials, !files.isEmpty else { return }
+        let client = WordPressClient(credentials: creds)
 
         var inserted = 0
         var didConvert = false
         var firstError: String? = nil
 
-        for (index, url) in files.enumerated() {
+        for (index, (url, place)) in files.enumerated() {
             uploadStatus = Self.uploadStatusText(index: index + 1, total: files.count)
             do {
                 // Off the main actor: decode + re-encode is CPU-bound and this
@@ -1051,9 +1118,7 @@ public struct PostEditorView: View {
                     filename: prepared.filename,
                     mimeType: prepared.mimeType
                 )
-                var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
-                if !media.altText.isEmpty { info["alt"] = media.altText }
-                NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+                place(media)
                 inserted += 1
                 if prepared.didConvert { didConvert = true }
             } catch {

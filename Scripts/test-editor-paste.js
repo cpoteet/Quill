@@ -30,8 +30,11 @@ const nodeCrypto = require('crypto')
 
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
 
+const { problems, resaved, close: closeValidator } = require('./wp-validator.js')
+
 let editor
 let win
+const sentToSwift = []
 
 // Compact, readable structural summary of a ProseMirror JSON doc.
 function summarize(json) {
@@ -88,6 +91,7 @@ before(async () => {
   if (!win.matchMedia) win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
   if (!win.requestAnimationFrame) win.requestAnimationFrame = cb => setTimeout(cb, 0)
   if (!win.ResizeObserver) win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  win.webkit = { messageHandlers: { contentChanged: { postMessage: html => sentToSwift.push(html) } } }
 
   editor = await new Promise((resolve, reject) => {
     let tries = 0
@@ -98,7 +102,7 @@ before(async () => {
   })
 })
 
-after(() => { if (win) win.close() })
+after(() => { if (win) win.close(); closeValidator() })
 
 describe('paste into footnotes', () => {
   test('multi-line plain text stays inside the footnote', () => {
@@ -185,6 +189,36 @@ describe('window.insertMarkdown', () => {
     assert.match(doc(), /image\(/)
   })
 
+  test('an image on an empty line replaces that line instead of leaving an empty paragraph', () => {
+    editor.commands.setContent('<p>Intro</p><p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('![alt](https://example.com/a.jpg)')
+    assert.equal(doc(), 'paragraph("Intro") | image()')
+  })
+
+  test('an image inside a line of text splits it around the image', () => {
+    editor.commands.setContent('<p>Intro</p><p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('before ![alt](https://example.com/a.jpg) after')
+    assert.equal(doc(), 'paragraph("Intro") | paragraph("before") | image() | paragraph("after")')
+  })
+
+  test('a linked image on its own line keeps its link', () => {
+    md('[![alt](https://example.com/a.jpg)](https://example.com/page)')
+    assert.equal(doc(), 'image()')
+    assert.equal(editor.getJSON().content[0].attrs.linkHref, 'https://example.com/page')
+  })
+
+  test('aligned table columns save as valid Gutenberg table markup', () => {
+    md('| L | C | R |\n|:--|:-:|--:|\n| a | b | c |')
+    win.syncContentToSwift()
+    const saved = sentToSwift.at(-1)
+    assert.match(saved, /<td class="has-text-align-center" data-align="center">b<\/td>/)
+    assert.doesNotMatch(saved, / align="/)
+    assert.deepEqual(problems(saved), [], saved)
+    assert.equal(resaved(saved), saved)
+  })
+
   test('task list checkboxes degrade to plain list items', () => {
     md('- [ ] todo\n- [x] done')
     assert.equal(doc(), 'bulletList(listItem(paragraph("todo")),listItem(paragraph("done")))')
@@ -238,4 +272,46 @@ describe('paste into a code block preserves line breaks', () => {
     paste({ 'text/plain': 'const a = 1\nconst b = 2' })
     assert.equal(doc(), 'codeBlock("const a = 1\\nconst b = 2")')
   })
+})
+
+describe('copy and paste inside Quill', () => {
+  const fixturesDir = path.resolve(__dirname, 'fixtures')
+
+  function saved() {
+    win.syncContentToSwift()
+    return sentToSwift.at(-1)
+  }
+
+  // ProseMirror's own copy handler writes the clipboard; the paste reads it back.
+  function copyAll() {
+    editor.commands.focus()
+    editor.commands.selectAll()
+    const data = {}
+    const ev = new win.Event('copy', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', {
+      value: { setData: (t, v) => { data[t] = v }, getData: t => data[t] || '', clearData: () => {}, types: [] },
+    })
+    editor.view.dom.dispatchEvent(ev)
+    return data
+  }
+
+  function roundTrip(name) {
+    win.setContent(fs.readFileSync(path.join(fixturesDir, name), 'utf8'))
+    const original = saved()
+    const clipboard = copyAll()
+    assert.match(clipboard['text/html'] || '', /data-pm-slice/, 'the copy went through ProseMirror')
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste(clipboard)
+    return { original, pasted: saved() }
+  }
+
+  for (const name of fs.readdirSync(fixturesDir).filter(f => f.endsWith('.html')).sort()) {
+    test(`${name} pastes back exactly as it saved`, () => {
+      const { original, pasted } = roundTrip(name)
+      assert.doesNotMatch(pasted, /data-pm-slice/)
+      assert.equal(pasted, original)
+      assert.deepEqual(problems(pasted), problems(original), pasted)
+    })
+  }
 })

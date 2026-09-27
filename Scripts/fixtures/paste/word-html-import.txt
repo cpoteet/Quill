@@ -1,0 +1,17 @@
+Quarterly report
+This is bold, italic, underlined, struck, H2O, x2 and a link.
+Lists
+•	First bullet
+•	Second bullet
+o	Nested bullet
+•	Third bullet
+1.	Step one
+2.	Step two
+1.	Sub step
+3.	Step three
+Table
+Name	Value
+Alpha	42
+Beta	7
+Centered line
+Closing paragraph.

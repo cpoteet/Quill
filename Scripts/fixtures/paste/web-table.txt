@@ -1,0 +1,5 @@
+
+Quarterly numbers
+Name	Region	Total
+Alpha	North	1,200
+Merged cell	900

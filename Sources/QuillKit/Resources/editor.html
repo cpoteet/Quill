@@ -813,6 +813,9 @@
       vertical-align: top;
       min-width: 60px;
     }
+    .ProseMirror .has-text-align-left { text-align: left; }
+    .ProseMirror .has-text-align-center { text-align: center; }
+    .ProseMirror .has-text-align-right { text-align: right; }
     body.dark .ProseMirror th,
     body.dark .ProseMirror td { border-color: #555; }
     .ProseMirror th { background: #f5f5f5; font-weight: 600; }
@@ -1620,6 +1623,7 @@
             default: null,
             keepOnSplit: false,
             parseHTML: el => {
+              if (el.hasAttribute('data-quill-caption')) return el.getAttribute('data-quill-caption')
               const cap = el.querySelector(el.tagName === 'FIGURE' ? ':scope > figcaption' : ':scope > caption')
               return cap ? cap.innerHTML : null
             },
@@ -1630,6 +1634,8 @@
             default: true,
             keepOnSplit: false,
             parseHTML: el => {
+              const own = el.getAttribute('data-quill-fixed-layout')
+              if (own !== null) return own === 'true'
               const inner = el.tagName === 'FIGURE' ? el.querySelector(':scope > table') : el
               if (inner && inner.classList.contains('has-fixed-layout')) return true
               const key = blockCommentAttr(el, 'hasFixedLayout')
@@ -1651,6 +1657,8 @@
             default: 'body',
             keepOnSplit: false,
             parseHTML: el => {
+              const own = el.getAttribute('data-quill-row')
+              if (own) return own
               const section = el.parentElement && el.parentElement.tagName
               if (section === 'THEAD') return 'head'
               if (section === 'TFOOT') return 'foot'
@@ -2331,7 +2339,7 @@
               cropped: el.classList.contains('is-cropped'),
               linkTo: firstImg?.parentElement.tagName === 'A' ? 'media' : 'none',
               sizeSlug: sizeMatch ? sizeMatch[1] : 'large',
-              sourceHTML: el.outerHTML,
+              sourceHTML: sourceHTMLOf(el),
             }
           },
         }]
@@ -2785,6 +2793,8 @@
     function isCarryableAttr(name, value) {
       const lower = String(name).toLowerCase()
       if (lower.startsWith('on')) return false
+      // ProseMirror's clipboard marker; it reads it during the paste, so it is dropped here, not stripped earlier.
+      if (lower === 'data-pm-slice') return false
       if (!CARRY_URL_ATTRS.has(lower)) return true
       // Whitespace and control characters are stripped first: a browser ignores
       // them inside a scheme, so "java\tscript:" would otherwise pass.
@@ -3065,7 +3075,7 @@
               blockLabel: el.getAttribute('data-quill-unsupported-label') || 'Block',
               blockName: null,
               attrsJSON: null,
-              sourceHTML: el.outerHTML,
+              sourceHTML: sourceHTMLOf(el),
               unsupportedSource: el.getAttribute('data-quill-unsupported-source'),
             }),
           },
@@ -3796,7 +3806,12 @@
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
-        StarterKit.configure({
+        // Gutenberg lets inline code sit inside a link or bold; Tiptap's code mark excludes every other mark.
+        StarterKit.extend({
+          addExtensions() {
+            return this.parent().map(ext => ext.name === 'code' ? ext.extend({ excludes: '' }) : ext)
+          },
+        }).configure({
           blockquote: false,
           paragraph: false,
           heading: false,
@@ -3886,16 +3901,55 @@
           }
           return false
         },
+        handlePaste(view, event, slice) {
+          const data = event.clipboardData
+          if (!data || _plainFallbackPastes.has(event)) return false
+          if (_isInFootnote() || view.state.selection.$from.parent.type.spec.code) return false
+          const text = data.getData('text/plain') || ''
+          const html = data.getData('text/html') || ''
+          const files = Array.from(data.files || []).filter(f => /^image\//.test(f.type))
+          if (files.length && !html && !text.trim()) {
+            _uploadPastedFiles(files)
+            return true
+          }
+          if (/\ssrc=["']?(?:data:image\/|blob:)/i.test(html)) setTimeout(_uploadInlinePastedImages, 0)
+          const url = text.trim()
+          if (/^https?:\/\/\S+$/.test(url) && detectEmbedProvider(url) && _inEmptyTopLevelParagraph(view.state)) {
+            const { $from } = view.state.selection
+            const embed = view.state.schema.nodes.embedBlock.create({ url })
+            view.dispatch(view.state.tr.replaceWith($from.before(), $from.after(), embed).scrollIntoView())
+            return true
+          }
+          // WebKit's HTML for a selection holding a closed <details> is the empty wrapper; the plain text is whole.
+          if (/<details\b/i.test(html)) {
+            const letters = s => (s.match(/[\p{L}\p{N}]/gu) || []).length
+            const plain = letters(text)
+            if (plain > 0 && letters(slice.content.textBetween(0, slice.content.size, ' ', ' ')) < plain / 2) {
+              _plainFallbackPastes.add(event)
+              view.pasteText(text, event)
+              return true
+            }
+          }
+          return false
+        },
         transformPastedText(text) {
           // ProseMirror only routes through transformPastedHTML when the clipboard
           // carries a text/html flavor; a text/plain paste takes a separate branch
           // that splits on newlines into paragraphs. Without this, multi-line text
           // pasted into a footnote (inline content only) put its first line in the
           // entry and dropped the rest outside the footnotes list as siblings.
-          if (!_isInFootnote()) return text
+          // A whitespace-only line would otherwise become an empty paragraph.
+          if (!_isInFootnote()) return text.replace(/^[ \t\u00a0]+$/gm, '')
           return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
         },
         transformPastedHTML(html) {
+          // The cleanup must never be the reason a paste fails; unclean beats nothing.
+          try {
+            html = cleanPastedHTML(html)
+            if (editor.isActive('listItem')) html = pastedBlocksAsListItems(html)
+          } catch (e) {
+            console.error('paste cleanup failed', e)
+          }
           if (!_isInFootnote()) return html
           const tmp = document.createElement('div')
           tmp.innerHTML = html
@@ -3959,6 +4013,67 @@
         if (name === 'footnoteItem' || name === 'footnotesList') return true
       }
       return false
+    }
+
+    // ── Paste helpers ─────────────────────────────────
+    const _plainFallbackPastes = new WeakSet()
+
+    // A pasted image the site does not host yet: Swift uploads it, then inserts it or swaps it in place.
+    const _pendingPastedImages = new Map()
+    let _pastedImageSeq = 0
+
+    function _readAsDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      })
+    }
+
+    async function _uploadPastedFiles(files) {
+      const images = await Promise.all(files.map(async f => ({ token: null, dataURL: await _readAsDataURL(f), name: f.name || '' })))
+      window.webkit?.messageHandlers?.uploadPastedImages?.postMessage({ images })
+    }
+
+    async function _uploadInlinePastedImages() {
+      const pending = new Set(_pendingPastedImages.values())
+      const sources = new Set()
+      editor.state.doc.descendants(node => {
+        const src = node.type.name === 'image' ? node.attrs.src : null
+        if (src && /^(?:data:image\/|blob:)/.test(src) && !pending.has(src)) sources.add(src)
+      })
+      const images = []
+      for (const src of sources) {
+        const token = 'paste-' + (++_pastedImageSeq)
+        _pendingPastedImages.set(token, src)
+        try {
+          const dataURL = src.startsWith('blob:') ? await _readAsDataURL(await (await fetch(src)).blob()) : src
+          images.push({ token, dataURL, name: '' })
+        } catch (e) {
+          _pendingPastedImages.delete(token)
+        }
+      }
+      if (images.length) window.webkit?.messageHandlers?.uploadPastedImages?.postMessage({ images })
+    }
+
+    window.resolvePastedImage = (token, url, mediaId) => {
+      const src = _pendingPastedImages.get(token)
+      _pendingPastedImages.delete(token)
+      if (!src) return
+      const tr = editor.state.tr
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'image' && node.attrs.src === src) tr.setNodeMarkup(pos, null, { ...node.attrs, src: url, mediaId })
+      })
+      if (tr.docChanged) editor.view.dispatch(tr)
+    }
+
+    window.forgetPastedImage = token => { _pendingPastedImages.delete(token) }
+
+    // Where the block editor turns a pasted URL into an embed.
+    function _inEmptyTopLevelParagraph(state) {
+      const { $from, empty } = state.selection
+      return empty && $from.depth === 1 && $from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
     }
 
     // Both quote blocks allow a trailing cite, so both get the control.
@@ -5755,26 +5870,8 @@
         return 'parse-error'
       }
 
-      const tmp = document.createElement('div')
-      tmp.innerHTML = html
-      // marked passes raw HTML in the source straight through. The schema parse
-      // below would drop these anyway (no matching node), but strip them up front
-      // so nothing executable is ever built into a live DOM tree. <input> also
-      // covers GFM task-list checkboxes, which have no Quill equivalent — the item
-      // degrades to a plain list item rather than a broken node.
-      tmp.querySelectorAll('script, style, iframe, object, embed, form, input').forEach(el => el.remove())
-      // marked terminates fenced code with a newline, which would show as an empty
-      // last line in the code block. Drop it so the block matches what was pasted.
-      tmp.querySelectorAll('pre > code').forEach(el => {
-        el.textContent = el.textContent.replace(/\n+$/, '')
-      })
-      // Remove whitespace-only text nodes between blocks — ProseMirror wraps the
-      // first \n marked emits between block tags in a blank paragraph even with
-      // preserveWhitespace: false. Same gotcha as the AI-insert path.
-      Array.from(tmp.childNodes).forEach(n => {
-        if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n.remove()
-      })
-      const clean = tmp.innerHTML.trim()
+      // Raw HTML in the source, task-list checkboxes, column alignment and <p>-wrapped images: docs/paste.md.
+      const clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
 
       editor.chain().focus().insertContent(clean, {

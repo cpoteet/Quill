@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 478 Swift + 1,293 JS tests, all passing as of 2026-09-27 (1,292 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 483 Swift + 1,370 JS tests, all passing as of 2026-09-27 (1,369 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -84,7 +84,8 @@ Concepts that have their own doc:
 - **Block model** — adding a block setting, the raw-attribute carrier, unsupported-block preservation, the `gutenbergPassthrough` node: `docs/block-model.md`
 - **Footnotes live in post meta, not `post_content`**: `docs/footnotes-meta.md`
 - **Code view** — the `</>` toggle and its `_rawHTML` / `_rawHTMLOnLoad` / `_codeViewOriginal` state: `docs/code-view.md`
-- **Paste as Markdown (⌘⇧V)** — `AppState.triggerPasteMarkdown` → `PostEditorView.pasteAsMarkdown()` → `window.insertMarkdown(text)`; deliberately bypasses ProseMirror's clipboard plumbing so ⌘V is unaffected
+- **Paste (⌘V)** — HTML from outside Quill is reduced to what Quill models before it is parsed (`cleanPastedHTML`); a copy made inside Quill is recognised by ProseMirror's `data-pm-slice` and left alone; pasted images upload through the drop queue: `docs/paste.md`
+- **Paste as Markdown (⌘⇧V)** — `AppState.triggerPasteMarkdown` → `PostEditorView.pasteAsMarkdown()` → `window.insertMarkdown(text)`; bypasses ProseMirror's clipboard plumbing, but marked's HTML goes through the same `cleanPastedHTML`
 
 ## Maintaining Gutenberg HTML compatibility
 
@@ -100,10 +101,11 @@ See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output re
 
 ## Gotchas
 
-These two fail silently with the whole test suite green:
+These three fail silently with the whole test suite green:
 
 - **`build.sh` copies each `Resources/` file by name — a new resource needs its own `cp` line or it 404s at runtime** — the assemble step lists each file individually rather than copying the directory. Swift builds fine and the tests pass (jsdom loads from the source tree), so a missing line shows up only as a silently undefined global in the running app.
 - **A top-level `const` in a Resources JS file is NOT reachable as `window.x` from `editor.html`; only `function` declarations are** — classic scripts share one global lexical scope, so a top-level `const` is reachable by *bare identifier* from another classic script but never as a property of `window`/`globalThis`. Since `editor-transforms.js` resolves `block-descriptors.js` as `globalThis` in the browser and as a CommonJS `require` under Node, a `const` reads `undefined` in the app while working perfectly in every Node test. Anything crossing that boundary must be a `function` declaration (`modelsBlockName` is the pattern) or explicitly assigned to `window`. Only the real-`editor.html`-in-jsdom harness catches this class of bug.
+- **WKWebView rewrites pasted HTML before the page sees it, and jsdom cannot** — HTML from another app or site arrives with every element's computed style inline and its comments stripped, and a selection holding `<details>` is mis-serialized. A paste fix proven only in jsdom proves nothing about that; run the real-WebKit harness (`Scripts/fixtures/paste/README.md`), and keep new captures of what WebKit delivered in `Scripts/fixtures/paste/`.
 
 **Full text of every cross-cutting gotcha below: `docs/gotchas.md`** — read it when a title looks relevant. File-specific gotchas live in the per-directory `CLAUDE.md` files (`Resources/`, `Views/Editor/`, `API/`, `Views/Media/`, `Views/Sidebar/`, `App/`, `AI/`, `Views/AI/`, `Views/Settings/`, `Views/`), which load only when working in that directory.
 
@@ -136,8 +138,8 @@ These two fail silently with the whole test suite green:
 ## Docs
 
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
-- `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`
-- `docs/editor-gotchas.md` — the 71 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
+- `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
+- `docs/editor-gotchas.md` — the 78 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `docs/future-architecture.md` — deferred design notes (B–K)
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release

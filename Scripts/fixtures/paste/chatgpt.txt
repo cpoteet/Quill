@@ -1,0 +1,20 @@
+Setup steps
+Install the
+tool
+and run
+npm i
+.
+First step
+Second step
+bash
+Copy code
+npm install
+npm run build
+Option
+Default
+debug
+false
+Quoted tip
+Final
+line
+.

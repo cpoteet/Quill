@@ -181,4 +181,27 @@ struct EditorPushDecisionTests {
         #expect(words.contains("speling"))
         #expect(words.contains("sentance"))
     }
+
+    // MARK: - Pasted images
+
+    @Test("a base64 image data URL decodes to its bytes, type and token")
+    func pastedImageDecodesDataURL() {
+        let image = PastedImage.decode(["token": "paste-1", "dataURL": "data:image/png;base64,iVBORw0K"])
+        #expect(image?.token == "paste-1")
+        #expect(image?.mimeType == "image/png")
+        #expect(image?.data == Data(base64Encoded: "iVBORw0K"))
+    }
+
+    @Test("a screenshot paste has no token, so it goes in at the cursor")
+    func pastedImageWithoutToken() {
+        #expect(PastedImage.decode(["token": NSNull(), "dataURL": "data:image/jpeg;base64,/9j/"])?.token == nil)
+    }
+
+    @Test("anything that is not a base64 image data URL is refused")
+    func pastedImageRefusesOtherURLs() {
+        #expect(PastedImage.decode(["dataURL": "data:text/html;base64,PGI+"]) == nil)
+        #expect(PastedImage.decode(["dataURL": "data:image/png,rawbytes"]) == nil)
+        #expect(PastedImage.decode(["dataURL": "https://example.com/a.png"]) == nil)
+        #expect(PastedImage.decode([:]) == nil)
+    }
 }

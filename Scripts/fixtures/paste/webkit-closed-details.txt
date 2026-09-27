@@ -1,0 +1,11 @@
+Term
+Definition
+Plain details
+Press Cmd+V, HTML, small, styled span, font tag.
+
+Div soup line one
+Div soup line two
+ 
+Name Submit
+
+Trailing paragraph.

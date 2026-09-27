@@ -1,0 +1,6 @@
+Copied heading
+Centered with
+red
+Item
+Go
+Inside group

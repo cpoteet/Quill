@@ -1,0 +1,11 @@
+Paragraph before images.
+
+Figure image
+A caption here
+Inline inline image in text.
+
+linked
+
+WordPress emoji 😀 in text.
+
+picture element

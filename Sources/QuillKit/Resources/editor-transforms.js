@@ -308,6 +308,14 @@ function wrapUnsupportedBlocks(html, parse, doc) {
   }).join('')
 }
 
+// The element as authored, without the marker ProseMirror adds to copied HTML.
+function sourceHTMLOf(el) {
+  if (!el.hasAttribute('data-pm-slice')) return el.outerHTML
+  const copy = el.cloneNode(true)
+  copy.removeAttribute('data-pm-slice')
+  return copy.outerHTML
+}
+
 // Given a wp-block-* classed element that gutenbergPassthrough's parse rule
 // matched, extracts what's needed to preserve and re-display it. Returns null
 // if `el` has no wp-block-* class at all, or if any of its wp-block-* classes
@@ -329,6 +337,8 @@ function parsePassthroughBlock(el) {
   // on the element hands it back to its own node, so an ordinary list/heading
   // can never be swallowed by the catch-all.
   if (wpClasses.some(c => QUILL_MODELED_BLOCK_CLASSES.has(c))) return null
+  // Quill's own table render, arriving through a copy inside the editor.
+  if (el.tagName === 'TABLE' && el.hasAttribute('data-quill-fixed-layout')) return null
 
   function adjacentComment(node, direction) {
     let n = node[direction]
@@ -346,7 +356,7 @@ function parsePassthroughBlock(el) {
       blockLabel: passthroughLabelFromBlockName(openMatch[1]),
       blockName: openMatch[1],
       attrsJSON: openMatch[2] || null,
-      sourceHTML: el.outerHTML,
+      sourceHTML: sourceHTMLOf(el),
     }
   }
 
@@ -354,7 +364,7 @@ function parsePassthroughBlock(el) {
     blockLabel: passthroughLabelFromClass(wpClass),
     blockName: null,
     attrsJSON: null,
-    sourceHTML: el.outerHTML,
+    sourceHTML: sourceHTMLOf(el),
   }
 }
 
@@ -454,6 +464,11 @@ function applyImageDimensions(figure, img) {
   if (width != null || height != null) figure.classList.add('is-resized')
 }
 
+// WordPress names every size of one upload after it: p.jpg, p-scaled.jpg, p-1024x683.jpg.
+function uploadStem(url) {
+  return String(url || '').split(/[?#]/)[0].replace(/(?:-(?:\d+x\d+|scaled|rotated))+(?=\.\w+$)/, '')
+}
+
 function imageBlockAttrs(figure, img) {
   const attrs = {}
   const id = (img.getAttribute('class') || '').match(/wp-image-(\d+)/)
@@ -467,13 +482,15 @@ function imageBlockAttrs(figure, img) {
   else if (/(?:^|;)\s*height\s*:\s*auto\b/i.test(style)) attrs.height = 'auto'
   const size = (figure.getAttribute('class') || '').match(/(?:^|\s)size-([\w-]+)/)
   if (size) attrs.sizeSlug = size[1]
-  const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
-  if (align) attrs.align = align
   if (img.parentNode && img.parentNode.tagName === 'A') {
     // A destination core set wins; inferring turns a custom URL into a media link.
     const carried = (carriedBlockAttrs(figure) || {}).linkDestination
-    attrs.linkDestination = (carried && carried !== 'none') ? carried : 'media'
+    const toImageFile = uploadStem(img.parentNode.getAttribute('href')) === uploadStem(img.getAttribute('src'))
+    attrs.linkDestination = (carried && carried !== 'none') ? carried : (toImageFile ? 'media' : 'custom')
   }
+  // After linkDestination: core serializes its keys in block.json order.
+  const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
+  if (align) attrs.align = align
   const role = img.getAttribute('role')
   if (role === 'none' || role === 'presentation') attrs.isDecorative = true
   return attrs
@@ -1050,8 +1067,14 @@ function extractFootnotes(html, doc) {
     li.querySelectorAll('.footnote-backref').forEach(a => a.remove())
     footnotes.push({ id: li.id, content: li.innerHTML.trim() })
   })
-  list.replaceWith(doc.createComment(' wp:footnotes /'))
-  return { content: div.innerHTML, footnotes }
+  // Spliced out of the string: re-serializing the DOM would undo the save's self-closed <hr/> and <img/>.
+  const at = /\s*<ol\b[^>]*\bclass="[^"]*\bwp-block-footnotes\b[^"]*"[^>]*>[\s\S]*?<\/ol>/.exec(html)
+  if (!at) {
+    list.replaceWith(doc.createComment(' wp:footnotes /'))
+    return { content: div.innerHTML, footnotes }
+  }
+  const before = html.slice(0, at.index)
+  return { content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + html.slice(at.index + at[0].length), footnotes }
 }
 
 // Rebuilds the editable list from meta. A post whose meta is empty keeps the
@@ -1075,6 +1098,600 @@ function inlineFootnotes(html, footnotes, doc) {
   })
   comment.replaceWith(ol)
   return div.innerHTML
+}
+
+// ── Paste cleanup (docs/paste.md) ─────────────────
+
+const PASTE_DROP = 'script, style, meta, link, title, xml, noscript, template, object, embed, applet, ' +
+  'input, select, textarea, option, svg, canvas, map, head, ' +
+  // Text a sighted reader never sees; aria-hidden text is the reverse, visible and kept.
+  '[class*="screen-reader-text"], [class*="visually-hidden"], [class*="sr-only"]'
+
+const PASTE_KEEP_CLASS = /^(?:wp-block-[\w-]+|wp-element-[\w-]+|wp-image-\d+|wp-embed-aspect-[\w-]+|wp-has-aspect-ratio|has-[\w-]+|is-style-[\w-]+|is-resized|is-cropped|is-open|is-not-stacked-on-mobile|is-type-[\w-]+|is-provider-[\w-]+|align(?:left|right|center|wide|full|none)|size-[\w-]+|columns-\d+|language-[\w-]+|fn)$/
+
+// Classes the front end adds when it renders a block; saved markup never has them.
+const PASTE_RENDER_CLASS = /(?:^|-)is-layout-|^wp-container-|^wp-elements-|^wp-block-post-|^wp-block-paragraph$|^is-content-justification-|^has-global-padding$|^has-text-align-(?:start|end|justify)$/
+
+const PASTE_KEEP_ATTRS = {
+  A: ['href', 'target', 'rel', 'title'],
+  IMG: ['src', 'alt', 'title', 'width', 'height'],
+  TD: ['colspan', 'rowspan', 'data-align'],
+  TH: ['colspan', 'rowspan', 'scope', 'data-align'],
+  OL: ['start', 'reversed'],
+  LI: ['id'],
+  H1: ['id'], H2: ['id'], H3: ['id'], H4: ['id'], H5: ['id'], H6: ['id'],
+  DETAILS: ['open', 'name'],
+  VIDEO: ['src', 'controls'],
+  AUDIO: ['src', 'controls'],
+  SUP: ['data-fn'],
+  ABBR: ['title'],
+  TIME: ['datetime'],
+}
+
+const PASTE_BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE',
+  'PRE', 'TABLE', 'FIGURE', 'HR', 'DETAILS', 'DL', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'MAIN', 'ASIDE',
+  'NAV', 'ADDRESS', 'FIELDSET', 'FORM'])
+
+const PASTE_MONO_FONT = /monospace|menlo|monaco|consolas|courier|sf mono|source code|fira code|jetbrains mono/i
+
+function cleanPastedHTML(html, doc) {
+  if (!doc && typeof document !== 'undefined') doc = document
+  const root = doc.createElement('div')
+  root.innerHTML = html
+  // Quill's own copy: ProseMirror reads this marker after the hook, and the carrier drops it.
+  if (root.querySelector('[data-pm-slice]')) return html
+
+  const keepStyle = new Set()
+  const listFormats = wordListFormats(root)
+  removePasteChrome(root)
+  // A copy button is chrome; any other button's label is content (MDN puts version numbers in them).
+  root.querySelectorAll('button').forEach(b => {
+    if (/\bcop(?:y|ied)\b|clipboard/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') || '') + ' ' + (b.getAttribute('title') || ''))) b.remove()
+    else unwrapElement(b)
+  })
+  // Core's table cells and list items hold text, not image blocks.
+  root.querySelectorAll('td img, th img, li img').forEach(img => img.replaceWith(doc.createTextNode(img.getAttribute('alt') || '')))
+  root.querySelectorAll('span.Apple-converted-space').forEach(s => s.replaceWith(doc.createTextNode(' ')))
+  unwrapPasteWrappers(root)
+  convertWordLists(root, listFormats, keepStyle)
+  normalizePastedCode(root, doc)
+  convertPastedMedia(root, doc)
+  root.querySelectorAll('img:not([alt])').forEach(img => img.setAttribute('alt', ''))
+  // The front end appends a back-link to each footnote; Quill draws its own.
+  root.querySelectorAll('ol.wp-block-footnotes li a').forEach(a => { if (/^[\s\u21a9\ufe0e\ufe0f]*$/.test(a.textContent)) a.remove() })
+  root.querySelectorAll('img.emoji, img.wp-smiley').forEach(img => img.replaceWith(doc.createTextNode(img.getAttribute('alt') || '')))
+  pasteStylesToTags(root, doc)
+  convertPastedAlignment(root)
+  flattenPastedCells(root, doc)
+  convertPresetClasses(root)
+  convertDefinitionLists(root, doc)
+  stripPasteAttributes(root, keepStyle)
+  unwrapAll(root, 'span:not([class]):not([style]), font, a:not([href])')
+  pushLinksIntoBlocks(root)
+  flattenPastedDivs(root, doc)
+  hoistBlockImages(root, doc)
+  removeEmptyPastedBlocks(root)
+  return root.innerHTML.trim()
+}
+
+function unwrapElement(el) {
+  el.replaceWith(...Array.from(el.childNodes))
+}
+
+function unwrapAll(root, selector) {
+  Array.from(root.querySelectorAll(selector)).reverse().forEach(unwrapElement)
+}
+
+function removePasteChrome(root) {
+  root.querySelectorAll(PASTE_DROP + ', br.Apple-interchange-newline').forEach(el => el.remove())
+  root.querySelectorAll('[style]').forEach(el => {
+    const style = el.getAttribute('style')
+    if (/display:\s*none|mso-hide:\s*all|mso-element:\s*comment/i.test(style)) el.remove()
+  })
+  // Only an image the page can read survives: a local file:// or cid: source is unreachable once pasted.
+  root.querySelectorAll('img').forEach(img => { if (!/^\s*(?:https?:|data:image\/|blob:|\/)/i.test(img.getAttribute('src') || '')) img.remove() })
+  // Block delimiters survive; Word's conditional comments and everything else do not.
+  const walker = root.ownerDocument.createTreeWalker(root, 128)
+  const comments = []
+  while (walker.nextNode()) comments.push(walker.currentNode)
+  comments.forEach(c => { if (!/^\s*\/?wp:/.test(c.data)) c.remove() })
+  root.querySelectorAll('*').forEach(el => {
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name.startsWith('data-quill-')) el.removeAttribute(attr.name)
+    }
+  })
+}
+
+function unwrapPasteWrappers(root) {
+  // WebKit wraps a selection holding an open <details> in a second one with no summary.
+  unwrapAll(root, 'details:not(:has(> summary))')
+  // HTML's <details> is core/details, its attributes in core's order since the carrier keeps source order.
+  root.querySelectorAll('details').forEach(d => {
+    const name = d.getAttribute('name')
+    const open = d.hasAttribute('open')
+    d.removeAttribute('name')
+    d.removeAttribute('open')
+    d.classList.add('wp-block-details')
+    if (name !== null) d.setAttribute('name', name)
+    if (open) d.setAttribute('open', '')
+  })
+  // Google Docs wraps the whole selection in a <b> that is explicitly not bold.
+  unwrapAll(root, 'b[id^="docs-internal-guid"]')
+  // Word's bookmarks and its footnote and comment anchors point nowhere once pasted.
+  unwrapAll(root, 'a[name]:not([href]), a[href^="#_ftn"], a[href^="#_edn"], a[href^="#_msocom"]')
+  root.querySelectorAll('*').forEach(el => { if (el.tagName === 'O:P' || el.tagName.startsWith('V:')) el.remove() })
+  // Quill's cite is a quote's citation block; an inline <cite> (a reference, a title) is just its text.
+  Array.from(root.querySelectorAll('cite')).reverse().forEach(c => { if (!c.parentElement || c.parentElement.tagName !== 'BLOCKQUOTE') unwrapElement(c) })
+}
+
+// Word lists: one paragraph per item, level and list id in `mso-list`, format in the <style>.
+function wordListFormats(root) {
+  const formats = {}
+  root.querySelectorAll('style').forEach(style => {
+    const re = /@list\s+(l\d+):level(\d+)\s*\{([^}]*)\}/g
+    let m
+    while ((m = re.exec(style.textContent))) {
+      const format = /mso-level-number-format:\s*([\w-]+)/.exec(m[3])
+      formats[`${m[1]}:${m[2]}`] = format ? format[1] : 'decimal'
+    }
+  })
+  return formats
+}
+
+const WORD_LIST_TYPE = { 'alpha-lower': 'lower-alpha', 'alpha-upper': 'upper-alpha', 'roman-lower': 'lower-roman', 'roman-upper': 'upper-roman' }
+
+function wordListMarker(el) {
+  const marker = Array.from(el.querySelectorAll('span')).find(s => /mso-list:\s*ignore/i.test(s.getAttribute('style') || ''))
+  const text = marker ? marker.textContent.replace(/[\s ]+/g, ' ').trim() : ''
+  if (marker) marker.remove()
+  return text
+}
+
+function wordListFormatFromMarker(text) {
+  if (/^\d+[.)]?$/.test(text)) return 'decimal'
+  if (/^[ivxlc]+[.)]$/.test(text)) return 'roman-lower'
+  if (/^[IVXLC]+[.)]$/.test(text)) return 'roman-upper'
+  if (/^[a-z][.)]$/.test(text)) return 'alpha-lower'
+  if (/^[A-Z][.)]$/.test(text)) return 'alpha-upper'
+  return 'bullet'
+}
+
+function convertWordLists(root, formats, keepStyle) {
+  const isItem = el => /mso-list:\s*l\d+\s+level\d+/i.test(el.getAttribute('style') || '')
+  const items = Array.from(root.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div')).filter(isItem)
+  const done = new Set()
+  for (const first of items) {
+    if (done.has(first)) continue
+    const run = [first]
+    for (let next = first.nextElementSibling; next && isItem(next); next = next.nextElementSibling) run.push(next)
+    run.forEach(el => done.add(el))
+    buildWordList(run, formats, keepStyle)
+  }
+}
+
+function buildWordList(run, formats, keepStyle) {
+  const doc = run[0].ownerDocument
+  const stack = []
+  const tops = []
+  for (const p of run) {
+    const [, id, levelText] = /mso-list:\s*(l\d+)\s+level(\d+)/i.exec(p.getAttribute('style'))
+    const level = parseInt(levelText, 10)
+    const markerText = wordListMarker(p)
+    const format = formats[`${id}:${level}`] || wordListFormatFromMarker(markerText)
+    const ordered = format !== 'bullet' && format !== 'image' && format !== 'none'
+    while (stack.length && stack[stack.length - 1].level > level) stack.pop()
+    const top = stack[stack.length - 1]
+    if (top && top.level === level && (top.id !== id || top.ordered !== ordered)) stack.pop()
+    if (!stack.length || stack[stack.length - 1].level < level) {
+      const list = doc.createElement(ordered ? 'ol' : 'ul')
+      const type = WORD_LIST_TYPE[format]
+      if (type) {
+        list.setAttribute('style', `list-style-type:${type}`)
+        list.setAttribute('data-quill-block-attrs', JSON.stringify({ ordered: true, type }))
+        keepStyle.add(list)
+      }
+      const start = ordered && format === 'decimal' ? parseInt(markerText, 10) : NaN
+      if (start > 1) list.setAttribute('start', String(start))
+      const parent = stack[stack.length - 1]
+      if (parent) {
+        let li = parent.list.lastElementChild
+        if (!li) { li = doc.createElement('li'); parent.list.appendChild(li) }
+        li.appendChild(list)
+      } else {
+        tops.push(list)
+      }
+      stack.push({ level, id, ordered, list })
+    }
+    const li = doc.createElement('li')
+    while (p.firstChild) li.appendChild(p.firstChild)
+    stack[stack.length - 1].list.appendChild(li)
+  }
+  run[0].before(...tops)
+  run.forEach(p => p.remove())
+}
+
+// Code: one <pre><code> holding only the code's text, whatever chrome the source drew around it.
+function normalizePastedCode(root, doc) {
+  const isCodeBox = el => {
+    const style = el.getAttribute('style') || ''
+    return /white-space:\s*pre/i.test(style) && PASTE_MONO_FONT.test(style)
+  }
+  Array.from(root.querySelectorAll('div, p')).filter(isCodeBox).forEach(el => {
+    if (el.closest('pre')) return
+    for (let up = el.parentElement; up && up !== root; up = up.parentElement) if (isCodeBox(up)) return
+    const pre = doc.createElement('pre')
+    const code = doc.createElement('code')
+    code.textContent = textWithBreaks(el)
+    pre.appendChild(code)
+    el.replaceWith(pre)
+  })
+  root.querySelectorAll('pre').forEach(pre => {
+    const inner = pre.querySelector('code')
+    const lang = inner && Array.from(inner.classList).find(c => /^language-[\w-]+$/.test(c))
+    const code = doc.createElement('code')
+    if (lang) code.className = lang
+    code.textContent = textWithBreaks(inner || pre)
+    pre.replaceChildren(code)
+    if (lang) removeLanguageLabel(root, pre, lang.slice('language-'.length))
+  })
+  root.querySelectorAll('span, font').forEach(el => {
+    if (el.closest('pre, code')) return
+    const font = (el.getAttribute('style') || '') + ' ' + (el.getAttribute('face') || '')
+    if (!/font-family/i.test(font) && !el.hasAttribute('face')) return
+    if (!PASTE_MONO_FONT.test(font) || !el.textContent.trim()) return
+    const code = doc.createElement('code')
+    code.textContent = el.textContent
+    el.replaceWith(code)
+  })
+}
+
+function textWithBreaks(el) {
+  let out = ''
+  const walk = node => {
+    if (node.nodeType === 3) { out += node.data; return }
+    if (node.nodeType !== 1) return
+    if (node.tagName === 'BR') { out += '\n'; return }
+    const block = /^(?:DIV|P|LI|TR|H[1-6])$/.test(node.tagName)
+    if (block && out && !out.endsWith('\n')) out += '\n'
+    node.childNodes.forEach(walk)
+    if (block && out && !out.endsWith('\n')) out += '\n'
+  }
+  el.childNodes.forEach(walk)
+  return out.replace(/ /g, ' ').replace(/\n+$/, '')
+}
+
+// Chat apps label a code block with its language just above it.
+function removeLanguageLabel(root, pre, lang) {
+  let el = pre
+  for (let depth = 0; depth < 4 && el && el !== root; depth++, el = el.parentElement) {
+    for (let sib = el.previousElementSibling, seen = 0; sib && seen < 3; sib = sib.previousElementSibling, seen++) {
+      const text = sib.textContent.trim().toLowerCase()
+      if (!text) continue
+      if (text === lang.toLowerCase() && !sib.querySelector('img, pre, table, ul, ol')) sib.remove()
+      return
+    }
+  }
+}
+
+// An embedded player's src, back to the page URL WordPress embeds from.
+function embedURLFromFrame(src) {
+  let url
+  try { url = new URL(src, 'https://example.com') } catch (_) { return null }
+  const host = url.hostname.replace(/^www\./, '')
+  let m
+  if ((host === 'youtube.com' || host === 'youtube-nocookie.com') && (m = url.pathname.match(/^\/embed\/([\w-]{6,})/))) return `https://www.youtube.com/watch?v=${m[1]}`
+  if (host === 'player.vimeo.com' && (m = url.pathname.match(/^\/video\/(\d+)/))) return `https://vimeo.com/${m[1]}`
+  if (host === 'open.spotify.com' && (m = url.pathname.match(/^\/embed\/(\w+)\/(\w+)/))) return `https://open.spotify.com/${m[1]}/${m[2]}`
+  return null
+}
+
+function embedFigure(doc, url, caption) {
+  const figure = doc.createElement('figure')
+  figure.className = embedClassFor(url)
+  const wrapper = doc.createElement('div')
+  wrapper.className = 'wp-block-embed__wrapper'
+  wrapper.textContent = `\n${url}\n`
+  figure.appendChild(wrapper)
+  if (caption) figure.appendChild(caption)
+  return figure
+}
+
+function convertPastedMedia(root, doc) {
+  root.querySelectorAll('iframe').forEach(frame => {
+    const url = embedURLFromFrame(frame.getAttribute('src') || '')
+    const figure = frame.closest('figure')
+    const target = figure || frame
+    if (!url) { target.remove(); return }
+    const caption = figure && figure.querySelector('figcaption')
+    target.replaceWith(embedFigure(doc, url, caption))
+  })
+  root.querySelectorAll('figure.wp-block-embed').forEach(figure => {
+    const wrapper = figure.querySelector('.wp-block-embed__wrapper')
+    const url = wrapper && wrapper.textContent.trim()
+    if (!url || !/^https?:\/\//.test(url)) figure.remove()
+  })
+  // core/video and core/audio have no Quill node; with their delimiters they are preserved as blocks.
+  root.querySelectorAll('video, audio').forEach(media => {
+    const kind = media.tagName.toLowerCase()
+    const source = media.getAttribute('src') || (media.querySelector('source[src]') || { getAttribute: () => '' }).getAttribute('src')
+    const figure = media.closest('figure')
+    const target = figure || media
+    if (!/^https?:\/\//.test(source || '')) { target.remove(); return }
+    const out = doc.createElement('figure')
+    out.className = `wp-block-${kind}`
+    const player = doc.createElement(kind)
+    player.setAttribute('controls', '')
+    player.setAttribute('src', source)
+    out.appendChild(player)
+    const caption = figure && figure.querySelector('figcaption')
+    if (caption) out.appendChild(caption)
+    target.replaceWith(doc.createComment(` wp:${kind} `), out, doc.createComment(` /wp:${kind} `))
+  })
+}
+
+// Formatting a source drew with CSS becomes the tag Quill models, before the CSS goes.
+function pasteStylesToTags(root, doc) {
+  Array.from(root.querySelectorAll('b, strong')).reverse().forEach(el => {
+    if (/^(?:normal|lighter|[1-4]00)$/.test(el.style.fontWeight)) unwrapElement(el)
+  })
+  root.querySelectorAll('span, font').forEach(el => {
+    const s = el.style
+    const wraps = []
+    const weight = s.fontWeight
+    if ((weight === 'bold' || weight === 'bolder' || parseInt(weight, 10) >= 600) && !el.closest('b, strong, h1, h2, h3, h4, h5, h6, th')) wraps.push('strong')
+    if (/italic|oblique/.test(s.fontStyle) && !el.closest('i, em')) wraps.push('em')
+    const decoration = `${s.textDecoration} ${s.textDecorationLine}`
+    if (/line-through/.test(decoration) && !el.closest('s, del, strike')) wraps.push('s')
+    if (/underline/.test(decoration) && !el.closest('u, a')) wraps.push('u')
+    if (s.verticalAlign === 'super' && !el.closest('sup')) wraps.push('sup')
+    if (s.verticalAlign === 'sub' && !el.closest('sub')) wraps.push('sub')
+    for (const tag of wraps) {
+      const wrap = doc.createElement(tag)
+      while (el.firstChild) wrap.appendChild(el.firstChild)
+      el.appendChild(wrap)
+    }
+  })
+}
+
+function pasteAlignment(el) {
+  const value = String(el.style.textAlign || el.getAttribute('align') || '').toLowerCase()
+  return /^(?:left|center|right)$/.test(value) ? value : null
+}
+
+// Core's own paste handler turns text-align into these; Word puts a cell's alignment on its paragraph.
+function convertPastedAlignment(root) {
+  root.querySelectorAll('td, th').forEach(cell => {
+    const only = cell.children.length === 1 && /^(?:P|DIV)$/.test(cell.firstElementChild.tagName) ? cell.firstElementChild : null
+    const align = pasteAlignment(cell) || (only && pasteAlignment(only))
+    if (align) {
+      cell.classList.add('has-text-align-' + align)
+      cell.setAttribute('data-align', align)
+    }
+    // Core writes class and data-align ahead of scope and spans; the carrier keeps source order.
+    for (const name of ['scope', 'colspan', 'rowspan']) {
+      if (!cell.hasAttribute(name)) continue
+      const value = cell.getAttribute(name)
+      cell.removeAttribute(name)
+      cell.setAttribute(name, value)
+    }
+  })
+  root.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {
+    if (el.closest('td, th, li')) return
+    const fromClass = /(?:^|\s)has-text-align-(center|right)(?:\s|$)/.exec(el.className)
+    const align = pasteAlignment(el) || (fromClass && fromClass[1])
+    if (align !== 'center' && align !== 'right') return
+    el.classList.add('has-text-align-' + align)
+    el.setAttribute('data-quill-block-attrs', JSON.stringify({ style: { typography: { textAlign: align } } }))
+  })
+}
+
+// Core's table cells are rich text, so blocks inside a pasted cell become lines.
+function flattenPastedCells(root, doc) {
+  const linesOf = container => {
+    const lines = []
+    let current = []
+    const flush = () => {
+      if (current.some(n => n.nodeType === 1 || n.textContent.trim())) lines.push(current)
+      current = []
+    }
+    for (const node of Array.from(container.childNodes)) {
+      if (node.nodeType !== 1) { current.push(node); continue }
+      if (node.tagName === 'BR') { flush(); continue }
+      if (node.tagName === 'TABLE') {
+        flush()
+        node.querySelectorAll('tr').forEach(tr => {
+          const text = Array.from(tr.children).map(c => c.textContent.trim()).filter(Boolean).join(' ')
+          if (text) lines.push([doc.createTextNode(text)])
+        })
+        continue
+      }
+      if (PASTE_BLOCK_TAGS.has(node.tagName)) { flush(); lines.push(...linesOf(node)); continue }
+      current.push(node)
+    }
+    flush()
+    return lines
+  }
+  Array.from(root.querySelectorAll('td, th')).reverse().forEach(cell => {
+    const blocks = Array.from(cell.children).filter(c => PASTE_BLOCK_TAGS.has(c.tagName))
+    if (!blocks.length || (cell.children.length === 1 && blocks[0].tagName === 'P')) return
+    const lines = linesOf(cell)
+    cell.replaceChildren(...lines.flatMap((line, i) => (i ? [doc.createElement('br'), ...line] : line)))
+  })
+}
+
+// A preset class becomes the delimiter attribute core draws it from, keys in core's order.
+function convertPresetClasses(root) {
+  root.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote').forEach(el => {
+    const attrs = {}
+    for (const c of el.classList) {
+      let m
+      if ((m = /^has-([\w-]+)-background-color$/.exec(c))) attrs.backgroundColor = m[1]
+      else if ((m = /^has-([\w-]+)-gradient-background$/.exec(c))) attrs.gradient = m[1]
+      else if ((m = /^has-([\w-]+)-font-size$/.exec(c))) attrs.fontSize = m[1]
+      else if ((m = /^has-([\w-]+)-font-family$/.exec(c))) attrs.fontFamily = m[1]
+      else if ((m = /^has-([\w-]+)-color$/.exec(c)) && !/^(?:text|link|background|inline|border)$/.test(m[1])) attrs.textColor = m[1]
+    }
+    if (!Object.keys(attrs).length) return
+    const carried = JSON.parse(el.getAttribute('data-quill-block-attrs') || '{}')
+    const ordered = {}
+    for (const key of ['backgroundColor', 'textColor', 'gradient', 'fontFamily', 'fontSize']) if (attrs[key]) ordered[key] = attrs[key]
+    el.setAttribute('data-quill-block-attrs', JSON.stringify({ ...ordered, ...carried }))
+  })
+}
+
+function convertDefinitionLists(root, doc) {
+  root.querySelectorAll('dt, dd').forEach(item => {
+    // An item that already holds paragraphs keeps them; wrapping them would nest a <p> in a <p>.
+    if (Array.from(item.children).some(c => PASTE_BLOCK_TAGS.has(c.tagName))) { unwrapElement(item); return }
+    const p = doc.createElement('p')
+    if (item.tagName === 'DT') {
+      const strong = doc.createElement('strong')
+      while (item.firstChild) strong.appendChild(item.firstChild)
+      p.appendChild(strong)
+    } else {
+      while (item.firstChild) p.appendChild(item.firstChild)
+    }
+    item.replaceWith(p)
+  })
+  unwrapAll(root, 'dl')
+}
+
+// Core's inline colour: a transparent background, and a colour only when no preset class names one.
+function normalizeInlineColor(mark) {
+  const background = mark.style.backgroundColor || 'rgba(0, 0, 0, 0)'
+  const preset = Array.from(mark.classList).some(c => /^has-[\w-]+-color$/.test(c) && c !== 'has-inline-color')
+  const color = mark.style.color
+  mark.setAttribute('style', `background-color:${background}` + (!preset && color ? `;color:${color}` : ''))
+}
+
+function stripPasteAttributes(root, keepStyle) {
+  root.querySelectorAll('mark.has-inline-color').forEach(normalizeInlineColor)
+  root.querySelectorAll('*').forEach(el => {
+    // Only a footnote entry needs its id; anywhere else it becomes a stray anchor.
+    let keep = el.tagName === 'LI' && !el.closest('ol.wp-block-footnotes') ? [] : PASTE_KEEP_ATTRS[el.tagName] || []
+    if (el.tagName === 'A' && el.closest('sup[data-fn]')) keep = [...keep, 'id']
+    const inlineColor = el.tagName === 'MARK' && el.classList.contains('has-inline-color')
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name
+      if (name === 'class') continue
+      if (name === 'style' && (keepStyle.has(el) || inlineColor)) continue
+      if (name === 'data-quill-block-attrs') continue
+      if (keep.includes(name) && !(name === 'href' && /^\s*(?:javascript|vbscript|data):/i.test(attr.value))) continue
+      el.removeAttribute(name)
+    }
+    if (el.hasAttribute('class')) {
+      const kept = Array.from(el.classList).filter(c => PASTE_KEEP_CLASS.test(c) && !PASTE_RENDER_CLASS.test(c))
+      if (kept.length) el.setAttribute('class', kept.join(' '))
+      else el.removeAttribute('class')
+    }
+  })
+}
+
+function keepsPastedDiv(div) {
+  if (div.closest('figure')) return true
+  return Array.from(div.classList).some(c => c.startsWith('wp-block-') &&
+    blockDescriptorRegistry.modelsBlockName('core/' + c.slice('wp-block-'.length)))
+}
+
+// A link around blocks (a card) becomes the same link inside each innermost block.
+function pushLinksIntoBlocks(root) {
+  const isBlock = el => PASTE_BLOCK_TAGS.has(el.tagName)
+  Array.from(root.querySelectorAll('a[href]')).reverse().forEach(a => {
+    const blocks = Array.from(a.querySelectorAll('*')).filter(el => isBlock(el) && !Array.from(el.children).some(isBlock))
+    if (!blocks.length) return
+    for (const block of blocks) {
+      const link = a.cloneNode(false)
+      link.append(...Array.from(block.childNodes))
+      block.appendChild(link)
+    }
+    unwrapElement(a)
+  })
+}
+
+// A div is either a block Quill models, a wrapper around blocks, or a line of text.
+function flattenPastedDivs(root, doc) {
+  const wrappers = new Set(['DIV', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'MAIN', 'ASIDE', 'NAV', 'ADDRESS', 'FIELDSET', 'FORM', 'CENTER'])
+  // Custom elements (a hyphen in the tag) are a site's own wrappers, inline or block.
+  const custom = el => el.tagName.includes('-')
+  Array.from(root.querySelectorAll('*')).filter(el => wrappers.has(el.tagName) || custom(el)).reverse().forEach(div => {
+    if (custom(div)) { unwrapElement(div); return }
+    if (div.tagName === 'DIV' && keepsPastedDiv(div)) return
+    const hasBlock = Array.from(div.children).some(c => PASTE_BLOCK_TAGS.has(c.tagName))
+    if (!hasBlock) {
+      if (!div.textContent.trim() && !div.querySelector('img')) { div.remove(); return }
+      const p = doc.createElement('p')
+      while (div.firstChild) p.appendChild(div.firstChild)
+      div.replaceWith(p)
+      return
+    }
+    let run = null
+    Array.from(div.childNodes).forEach(node => {
+      if (node.nodeType === 1 && PASTE_BLOCK_TAGS.has(node.tagName)) { run = null; return }
+      if (node.nodeType === 3 && !node.data.trim() && !run) { node.remove(); return }
+      if (!run) { run = doc.createElement('p'); node.before(run) }
+      run.appendChild(node)
+    })
+    unwrapElement(div)
+  })
+}
+
+// An image is a block in Quill; left inside a <p>, the parser splits the <p> and leaves an empty one behind.
+function hoistBlockImages(root, doc) {
+  root.querySelectorAll('p').forEach(p => {
+    if (!p.querySelector('img, figure')) return
+    const parts = []
+    let run = doc.createElement('p')
+    const flush = () => {
+      if (run.textContent.trim()) parts.push(run)
+      run = doc.createElement('p')
+    }
+    Array.from(p.childNodes).forEach(child => {
+      const isImage = child.nodeName === 'IMG' || child.nodeName === 'FIGURE' ||
+        (child.nodeName === 'A' && child.querySelector('img') && !child.textContent.trim())
+      if (isImage) { flush(); parts.push(child) }
+      else run.appendChild(child)
+    })
+    flush()
+    p.replaceWith(...parts)
+  })
+}
+
+function removeEmptyPastedBlocks(root) {
+  root.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {
+    if (el.querySelector('img, figure, iframe, video, audio')) return
+    if (!el.textContent.replace(/[\s ​]/g, '')) el.remove()
+  })
+  // Whitespace between blocks becomes a blank paragraph; between inline runs it is a word space.
+  const isBlock = n => n && n.nodeType === 1 && PASTE_BLOCK_TAGS.has(n.tagName)
+  Array.from(root.childNodes).forEach(node => {
+    const betweenBlocks = isBlock(node.previousSibling) || isBlock(node.nextSibling)
+    if ((node.nodeName === 'BR' || (node.nodeType === 3 && !node.data.trim())) && betweenBlocks) node.remove()
+  })
+}
+
+// Blocks pasted into a list item become further items, as the block editor pastes them.
+function pastedBlocksAsListItems(html, doc) {
+  if (!doc && typeof document !== 'undefined') doc = document
+  const root = doc.createElement('div')
+  root.innerHTML = html
+  if (root.querySelector('[data-pm-slice]')) return html
+  const blocks = Array.from(root.children)
+  const strayText = Array.from(root.childNodes).some(n => n.nodeType === 3 && n.data.trim())
+  if (strayText || blocks.length === 0) return html
+  if (blocks.length === 1 && !/^(?:UL|OL)$/.test(blocks[0].tagName)) return html
+  if (!blocks.every(el => /^(?:P|H[1-6]|UL|OL|BLOCKQUOTE)$/.test(el.tagName))) return html
+  const list = doc.createElement('ul')
+  const item = from => {
+    const li = doc.createElement('li')
+    li.append(...Array.from(from.childNodes))
+    list.appendChild(li)
+  }
+  for (const el of blocks) {
+    if (el.tagName === 'UL' || el.tagName === 'OL') Array.from(el.children).forEach(li => list.appendChild(li))
+    else if (el.tagName === 'BLOCKQUOTE') el.querySelectorAll(':scope > p').forEach(item)
+    else item(el)
+  }
+  return list.outerHTML
 }
 
 // Embed provider table. `aspect: true` providers get Gutenberg's 16:9 classes.
@@ -1109,5 +1726,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes }
+  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
 }

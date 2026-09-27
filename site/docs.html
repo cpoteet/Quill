@@ -289,21 +289,31 @@
         <h3 class="docs-h3" id="pasting">Pasting</h3>
         <p class="docs-body">What you get when you paste depends on what's on the clipboard. Text copied from a web page, a word processor or a chat app carries formatting, and ⌘V handles it. Plain-text Markdown needs its own command.</p>
         <h4 class="docs-h4">Formatted Text (⌘V)</h4>
-        <p class="docs-body">Quill rebuilds pasted content with its own formatting instead of keeping the original markup, so you don't inherit another app's fonts, colours or stray code. Text pasted from Word or Google Docs matches the rest of your post.</p>
-        <p class="docs-body">Headings, paragraphs, lists (nested ones too), quotes, tables, images, links and inline formatting all come through, along with any classes and IDs already on them. Blocks copied from another WordPress site's editor are kept exactly as they were.</p>
-        <p class="docs-body">Some things are dropped without any warning:</p>
+        <p class="docs-body">Quill rebuilds pasted content with its own formatting instead of keeping the original markup, so you don't inherit another app's fonts, colours or stray code. Text pasted from Word or Google Docs matches the rest of your post, and WordPress accepts every block it produces without asking to repair it.</p>
+        <p class="docs-body">Headings, paragraphs, lists (nested ones too), quotes, tables, images, links and inline formatting all come through. Centred and right-aligned paragraphs and table cells keep their alignment. Content copied from a WordPress site keeps its preset colours and font sizes.</p>
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
-              <tr><th class="docs-table__col--label">Pasted</th><th>Result</th></tr>
+              <tr><th class="docs-table__col--label">Pasted from</th><th>What you get</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>&lt;iframe&gt;</code>, <code>&lt;video&gt;</code>, <code>&lt;audio&gt;</code></td><td>Removed. Nothing is inserted</td></tr>
-              <tr><td>Definition lists</td><td>Turned into ordinary paragraphs</td></tr>
+              <tr><td>Word</td><td>Real bulleted and numbered lists, nested as they were, including lettered and Roman-numeral levels</td></tr>
+              <tr><td>A code editor such as VS Code</td><td>One code block, with its line breaks and indentation</td></tr>
+              <tr><td>ChatGPT or Claude</td><td>Code blocks keep their code, without the language label or the Copy button</td></tr>
+              <tr><td>A YouTube, Vimeo or Spotify player on a web page</td><td>An embed of the video or track</td></tr>
+              <tr><td>A video or audio player with a web address</td><td>A WordPress video or audio block</td></tr>
+              <tr><td>Any other <code>&lt;iframe&gt;</code>, such as a map</td><td>Removed. Nothing is inserted</td></tr>
+              <tr><td>A definition list</td><td>A bold paragraph for each term, followed by its definition</td></tr>
+              <tr><td>An image inside a table cell or list item</td><td>Its description (alt text). WordPress table cells and list items hold text, not images</td></tr>
+              <tr><td>Several paragraphs, lists or a table inside one table cell</td><td>Lines in that cell, one per paragraph or list item</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-body">The one most likely to catch you out is a YouTube <code>&lt;iframe&gt;</code> copied from a page's source, which inserts nothing. Use the <strong>Embed</strong> button with the video's URL instead (see <a href="#embeds" class="content-link">Embeds</a>). After a large paste, it's worth a look in <a href="#code-view" class="content-link">code view</a> to confirm everything arrived.</p>
+        <p class="docs-body">Paragraphs pasted into a list item become further items in that list, as they do in the WordPress editor.</p>
+        <p class="docs-body">A YouTube, Vimeo, X, Spotify, SoundCloud, TikTok or Instagram link pasted on its own into an empty line becomes an embed. Pasted into a sentence, it stays a link.</p>
+        <p class="docs-body">A screenshot, or an image file copied in the Finder, uploads to your media library when you paste it and is inserted at the cursor, the same as dragging it in (see <a href="#images" class="content-link">Images</a>). Pictures inside a pasted Word document upload too, and each one switches to its media library copy when the upload finishes.</p>
+        <p class="docs-body">Copying and pasting inside Quill keeps every block exactly as it was, including accordions, tabs, galleries and tables.</p>
+        <p class="docs-body">After a large paste, it's worth a look in <a href="#code-view" class="content-link">code view</a> to confirm everything arrived.</p>
         <h4 class="docs-h4">Markdown (⇧⌘V)</h4>
         <p class="docs-body">The <a href="#markdown-shortcuts" class="content-link">Markdown Shortcuts</a> only work on text you type. If you paste Markdown with ⌘V, most of it arrives as plain characters, so <code># Heading</code> stays <code># Heading</code>. A few pieces, such as <code>**bold**</code> and <code>`code`</code>, do convert, which leaves the text half formatted.</p>
         <p class="docs-body">Choose <strong>Edit → Paste as Markdown</strong> (⇧⌘V) instead. It converts everything on the clipboard at once and inserts it at the cursor: headings, lists, quotes, tables, code blocks, separators, links and inline formatting.</p>

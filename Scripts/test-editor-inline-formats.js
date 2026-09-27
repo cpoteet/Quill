@@ -206,3 +206,16 @@ describe('a link keeps the attributes the mark does not model', () => {
     assert.match(editAndSave(src), /<a href="https:\/\/example\.com">x<\/a>/)
   })
 })
+
+describe('inline code keeps the marks around it', () => {
+  test('a link around inline code survives an edit', () => {
+    const out = editAndSave('<!-- wp:paragraph -->\n<p>Use <a href="https://x.test/"><code>UIFontDescriptor</code></a> here.</p>\n<!-- /wp:paragraph -->')
+    assert.match(out, /href="https:\/\/x.test\/"/)
+    assert.match(out, /<code>UIFontDescriptor<\/code>/)
+  })
+
+  test('bold around inline code survives an edit', () => {
+    const out = editAndSave('<!-- wp:paragraph -->\n<p>A <strong><code>flag</code></strong> here.</p>\n<!-- /wp:paragraph -->')
+    assert.match(out, /<strong><code>flag<\/code><\/strong>/)
+  })
+})

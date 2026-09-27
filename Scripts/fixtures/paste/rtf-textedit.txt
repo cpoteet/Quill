@@ -1,0 +1,12 @@
+Big bold title line
+Plain, bold, italic, underline, strike, red, larger and a link.
+	•	Bullet A
+	•	Bullet B
+	1	Number 1
+	2	Number 2
+Centered text
+R1C1
+R1C2
+R2C1
+R2C2
+Last paragraph.

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-27 — 478 Swift tests + 1,293 JS tests (1,292 pass, 1 skipped), no failures._
+_Last updated: 2026-09-27 — 483 Swift tests + 1,370 JS tests (1,369 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,24 +16,25 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (478 tests)
+1. **Swift tests** — `swift test` (483 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (66 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (91 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (259 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (262 tests via Node's built-in runner + jsdom)
 6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (84 tests — live Tiptap editor in jsdom)
 7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (38 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
-11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (19 tests — live Tiptap editor in jsdom)
-12. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (20 tests — live Tiptap editor in jsdom)
-13. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-14. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (228 tests — live Tiptap editor in jsdom)
-15. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-16. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (31 tests — same validator, over every fixture)
+11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (50 tests — live Tiptap editor in jsdom)
+12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (41 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+13. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
+14. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (228 tests — live Tiptap editor in jsdom)
+16. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
+17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (31 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the sixteen passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the seventeen passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -55,6 +56,10 @@ re-serialization bug (hex colours becoming `rgb()`, invalidating every coloured 
 in Gutenberg) was green in jsdom the whole time it was shipping, and the attribute
 ordering that hid it is WebKit-only. Two earlier WebKit-only failures — the
 widget-decoration keystroke drop and the empty-caret `<br>` — have the same shape.
+
+### Paste in real WebKit (after changing paste handling)
+
+`Scripts/paste-harness/harness.swift` pastes real clipboards into the bundled `editor.html` with a native `paste:`, so WebKit's own sanitizer runs first, which no jsdom suite can reproduce. Its modes, and how to check its output with WordPress's validator, are in `Scripts/fixtures/paste/README.md`. Run it after any change to `cleanPastedHTML`, the paste hooks or the carrier. It uses the system pasteboard.
 
 ### A whole site against WordPress's parsers (once per WordPress release)
 
@@ -96,7 +101,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (478 tests, 32 suites)
+## Swift test suite (483 tests, 32 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -124,8 +129,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 12 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 31 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 15 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 33 | `previewURL` query/fragment handling; status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -765,7 +770,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (12 tests)
+### 19. Security — `EditorCoordinatorTests` (15 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -785,10 +790,13 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 | `misspelledWordsReturnsOnMainActorWithoutTrapping` | NSSpellChecker's callback, which arrives on its own queue, reaches a main-actor completion without Swift's isolation check trapping the process (the Check Spelling crash) |
 | `mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` | No `media_details.sizes` at all still yields a single `"full"` entry from `source_url` |
 | `mediaSizesDictReturnsNilWhenSourceURLIsEmpty` | Empty `source_url` → `nil` (no usable size data) |
+| `pastedImageDecodesDataURL` | A base64 image data URL from the editor decodes to its bytes, MIME type and token |
+| `pastedImageWithoutToken` | A screenshot paste has no token, so it is inserted at the cursor |
+| `pastedImageRefusesOtherURLs` | A non-image, non-base64 or non-data URL is refused |
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (31 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (33 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -829,6 +837,13 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 | `pastScheduledDateIsSentAsPublish` | `effectiveStatus` turns `future` with a past date into `publish`, so the toast and status picker report what WordPress actually did |
 | `futureScheduledDateIsSentAsFuture` | `future` with a date an hour out stays `future` |
 | `nonScheduledStatusIsSentUnchanged` | Any non-`future` status passes through untouched, even with a past `publishDate` |
+
+#### Pasted-image file extension (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `pastedImageFileExtensionFollowsTheBytesNotTheLabel` | JPEG, PNG, WebP and HEIC bytes pick their own extension whatever the label says; Word labels its JPEGs `image/png` and WordPress refuses a mismatched upload |
+| `pastedImageFileExtensionFallsBackToItsType` | Unrecognised bytes fall back to the MIME type, then to `png` |
 
 #### Dropped-image upload feedback (10 tests)
 
@@ -1251,7 +1266,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (259 tests)
+## JS editor tests (262 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1556,7 +1571,8 @@ The inverse, run on load so the notes are editable in the editor.
 |---|---|
 | `materialises the list from meta at the delimiter` | |
 | `restores footnotes in meta order` | |
-| `round-trips with extractFootnotes` | |
+| `round-trips with extractFootnotes, the delimiter separated like any block` | The list becomes `<!-- wp:footnotes /-->` after a blank line, as core separates blocks, and inlines back |
+| `extractFootnotes leaves the rest of the saved markup byte for byte` | The list is spliced out of the string; re-serializing the DOM undid the save's self-closed `<hr/>` and `<img/>` |
 | `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta behind it is shown as a non-editable card rather than an empty list |
 | `meta without a delimiter in the content changes nothing` | |
 
@@ -1636,7 +1652,7 @@ The inverse, run on load so the notes are editable in the editor.
 
 ---
 
-### standalone image block comments (9 tests)
+### standalone image block comments (11 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1645,6 +1661,8 @@ The inverse, run on load so the notes are editable in the editor.
 | an image with no media id is wrapped with no attributes | Bare `<!-- wp:image -->`, matching what core writes when it has nothing to record |
 | a size class is carried into the comment as sizeSlug | `size-large` on the figure becomes `sizeSlug:'large'` |
 | a linked image records linkDestination media | An `<a>` parent of the `<img>` becomes `linkDestination:'media'` |
+| a link to the full-size file of a sized image records linkDestination media | `p-scaled.jpg` linked from `p-1024x683.jpg` is the same upload, so still `media` |
+| a link to another page records linkDestination custom | An href that is not the image's file becomes `linkDestination:'custom'`, as core's paste converter and link control write it |
 | an aligned image records its alignment | `alignleft` (moved to the figure by the pass above) becomes `align:'left'` |
 | gallery images keep exactly one wp:image pair and the gallery is not image-wrapped | Guard: the standalone pass skips anything inside `.wp-block-gallery`, so nested images are wrapped once by the gallery pass and the gallery figure itself gets `wp:gallery`, never `wp:image` |
 | wrapping a standalone image is idempotent across repeated saves | `wp(wp(html))` is byte-identical to `wp(html)`, one comment pair — the strip-then-rewrap cycle does not stack |
@@ -2481,7 +2499,7 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ---
 
-## JS paste tests (19 tests)
+## JS paste tests (50 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2507,7 +2525,7 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `single-line plain text is inserted as-is` | One paragraph, no wrapping |
 | `block HTML keeps its structure` | A heading and a list arrive as a heading and a list |
 
-### `window.insertMarkdown` (11 tests)
+### `window.insertMarkdown` (15 tests)
 
 | Test | What it checks |
 |---|---|
@@ -2516,6 +2534,10 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `emits no blank paragraphs between blocks` | No empty paragraphs padding the output |
 | `converts tables` | GFM tables become real table nodes |
 | `keeps images, matching what an HTML paste does` | Image handling is consistent with the HTML paste path |
+| `an image on an empty line replaces that line instead of leaving an empty paragraph` | marked's `<p>` around an image is removed before insert, so no empty paragraph is left above the image |
+| `an image inside a line of text splits it around the image` | Text before and after an inline image become their own paragraphs |
+| `a linked image on its own line keeps its link` | Unwrapping the `<p>` keeps the `<a>` around the image |
+| `aligned table columns save as valid Gutenberg table markup` | GFM column alignment saves as `has-text-align-*` plus `data-align`, and WordPress's validator accepts it unchanged |
 | `task list checkboxes degrade to plain list items` | Quill has no task-list node, so checkboxes become ordinary items rather than raw text |
 | `strips raw script tags in the source` | `<script>` in Markdown source does not reach the document |
 | `refuses inside a footnote and leaves the document untouched` | Refusal is total — no partial insert |
@@ -2528,6 +2550,32 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | Test | What it checks |
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
+
+### `copy and paste inside Quill` (27 tests)
+
+One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseMirror's own copy handler, paste into an empty post, and save. The save must equal the fixture's own save, carry no `data-pm-slice`, and add no validation problem. ProseMirror's clipboard marker used to be saved on the first pasted block, invalidating accordions, galleries, buttons, columns, details, quotes, lists, separators and tabs. A copied table used to come back as classic HTML, because the unsupported-block rule claimed Quill's own `<table class="wp-block-table">` render.
+
+---
+
+## JS paste source tests (41 tests)
+
+File: `Scripts/test-editor-paste-sources.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the editor, from Word, Google Docs, web pages, a WordPress front end, VS Code, chat apps, Notes, the block editor and TextEdit) into the real editor in jsdom, and judges each save with WordPress's own validator. What the cleanup does is in `docs/paste.md`.
+
+| Group | Tests | What it checks |
+|---|---|---|
+| `every captured clipboard pastes as valid, clean Gutenberg markup` | 16 | One per source: no validation problem, WordPress would save it back unchanged, no foreign style, attribute, class, bare span or empty paragraph, and every word of the plain-text flavor is kept (the chat apps' "Copy code" and language labels excepted) |
+| `what each source becomes` | 9 | Word lists become nested core lists with a lettered sub-level; Word and Docs alignment becomes core's `textAlign`; Word's formatting becomes plain marks; VS Code becomes one code block; chat-app code keeps its code and drops the label and copy button; Docs' not-bold wrapper does not bold everything; WordPress emoji become the character; a phrase lands inside a paragraph with its word spaces; a front-end copy loses its render-only classes and gets its embed back |
+| `paste fallbacks` | 6 | WebKit's empty HTML for a closed `<details>` falls back to the plain text, short or long; its extra wrapper around an open `<details>` is dropped; a YouTube URL in an empty paragraph becomes an embed, and stays a link in a sentence or for an unknown host |
+| `pasted images the site does not host yet` | 3 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id; an unreadable `file:` image is dropped |
+| `outside HTML cannot reach Quill internals` | 1 | Pasted `data-quill-block-attrs`, event handlers and `javascript:` links never reach the save |
+| `pasting into a list item` | 1 | Pasted blocks become further items, not paragraphs packed into one `<li>` |
+| `pasted table cells hold text, as core cells do` | 1 | A list and a nested table inside a cell become lines, and a cell image its alt text |
+| `inline <cite>` | 2 | Wikipedia's inline citations stay inside their reference items and what follows stays outside; a quote's `<cite>` is still a citation |
+| `block links` | 1 | A card link around blocks becomes the same link inside each block, with no empty paragraphs |
+| `custom elements` | 1 | A site's custom-element wrappers leave neither empty paragraphs nor broken lines |
 
 ---
 
@@ -2552,7 +2600,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 
 ---
 
-## JS inline format tests (20 tests)
+## JS inline format tests (22 tests)
 
 `Scripts/test-editor-inline-formats.js` — the real `editor.html` in jsdom. Covers the
 inline marks Quill has no toolbar control for, and the Link mark's attribute carrier.
@@ -2568,6 +2616,8 @@ inline marks Quill has no toolbar control for, and the Link mark's attribute car
 | the anchor round-trips byte-identically with no edit | carried attributes land in source order |
 | the modelled attributes still win over the snapshot | a re-linked anchor takes the new `href`, keeps its `title` |
 | a plain link gains nothing | no empty attributes added |
+| a link around inline code survives an edit | Tiptap's code mark excluded every other mark, so a post's `<a><code>` lost its link on the first edit |
+| bold around inline code survives an edit | the same, for `<strong><code>` |
 
 ## JS block settings registry tests (13 tests)
 
@@ -3153,6 +3203,19 @@ window's licence link all point at `quill.siolon.com`, which is published from
 - [ ] The docs page (`site/docs.html`) matches the app: spot-check a few sections against the running build, and confirm nothing describes the pre-native-UI interface (a hand-painted title bar, a toolbar section picker, a sidebar media grid).
 - [ ] The changelog's newest entry lists this release's changes; older entries are left as they shipped, including the original "Quill Help" wording for v1.7.0.
 
+### 7.28 Paste
+
+On a new local draft, connected to a test site (a pasted image uploads to the connected site's media library). After each paste, Save Draft and read the bytes from SQLite (`docs/gotchas.md`), then check them with `Scripts/wp-validator.js` or paste them into the block editor's code editor: no block may come up as "unexpected or invalid content". The automated side is `Scripts/test-editor-paste-sources.js` and the harness in `Scripts/fixtures/paste/README.md`.
+
+- [ ] A Word document with bulleted and numbered lists (one lettered sub-level), a table with right-aligned numbers, a centered line and an embedded picture: the lists are real nested lists, the lettered level stays lettered, the centered line and the cells stay aligned, and the picture uploads (pill, then one toast) and ends with the site's URL, not a `data:` URL.
+- [ ] A Google Doc with bold, italic, a link, a nested list and a table: the formatting survives and nothing else turns bold.
+- [ ] A Safari selection of a WordPress post on the live site: headings, paragraphs, images and an embedded YouTube video come through, and no `is-layout-*`/`wp-container-*` class or inline style is saved.
+- [ ] Code copied from VS Code is one code block with its indentation; code copied from ChatGPT or Claude has no "Copy code" or language-label line.
+- [ ] A screenshot (⌘⇧⌃4) pasted with ⌘V uploads and is inserted at the cursor. A Finder image file copied with ⌘C does the same.
+- [ ] A YouTube URL pasted alone on an empty line becomes an embed; pasted into a sentence it stays a link.
+- [ ] Copy three blocks inside Quill (a list, an accordion and a table) and paste them into another post: they save exactly as the originals.
+- [ ] Paste several paragraphs into a list item: each becomes its own item.
+
 ---
 
 ## Non-functional & resilience
@@ -3344,6 +3407,10 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 162 | Quill saved pixel heights core never writes, so `style="width:650px;height:480px"` squashed the image wherever `max-width` narrowed it. Now, as in core: a proportional drag saves the width with `height:auto` (a drag off the natural ratio, or a typed H, still saves a height); `window.insertImage` takes no dimensions, so an inserted image saves none; a size button swaps the URL and `size-*` class and keeps any width; Reset clears both dimensions | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` drag, size-button, Reset and insert tests |
 | 163 | Editing an image's alt text, size or link left the image toolbar open after the caret moved elsewhere: `setNodeMarkup` dropped the NodeSelection while focus was in the toolbar, so `deselectNode` never hid it | ✅ `test-editor-keyboard.js` `'image toolbar visibility'` |
 | 164 | An alignment button dropped the image's NodeSelection, so row 2's alignment group vanished and the caret landed in the caption | ✅ `test-editor-keyboard.js` `'image toolbar visibility'` alignment test |
+| 165 | Copying blocks inside Quill saved ProseMirror's `data-pm-slice` marker on the first pasted block, which Gutenberg then reported as invalid; a copied table came back as classic HTML | ✅ `test-editor-paste.js` `'copy and paste inside Quill'` (27 tests) |
+| 166 | Paste from outside Quill saved WebKit's computed inline styles and every source's own attributes and classes, so 14 of 21 sampled sources produced invalid blocks; Word lists arrived as paragraphs with "·" markers, VS Code as paragraphs of spans, chat-app code split around its UI | ✅ `test-editor-paste-sources.js` (41 tests) + the real-WebKit harness |
+| 167 | A post with footnotes lost the self-closing slash on every `<hr/>` and `<img/>`, and its footnotes delimiter was glued to the block before it, because `extractFootnotes` re-serialized the whole post | ✅ `test-editor.js` `'extractFootnotes leaves the rest of the saved markup byte for byte'` |
+| 168 | A link or bold around inline code was dropped on the first edit, because Tiptap's code mark excludes every other mark | ✅ `test-editor-inline-formats.js` `'inline code keeps the marks around it'` |
 
 ---
 
@@ -3359,6 +3426,7 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **Container row hit geometry (JS container tests):** jsdom reports a zeroed `getBoundingClientRect` for every element and gives Ranges no client rects, so how big a toggle's hit box renders and which character a pointer lands on can only be checked in a real browser. The CSS rules and the `mousedown` behavior behind those affordances *are* asserted.
 - **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
 - **Menu commands and the Help links (§7.27):** `CommandGroup` items in `QuillApp.swift` only exist once AppKit builds the menu bar, and the Help/About links leave the app entirely. Nothing here has a harness — the destinations must be clicked.
+- **A pasted image's real upload (§7.28):** the editor's `uploadPastedImages` message is checked in jsdom and in real WebKit (the harness answers each token itself), `PastedImage.decode` and the extension sniffing are unit-tested, and the upload loop is the one drops use. The round trip to a live media library, the pill and the source swap after it are manual, and need a test site: pasting an image uploads it.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
 
 ## Test suite gotchas

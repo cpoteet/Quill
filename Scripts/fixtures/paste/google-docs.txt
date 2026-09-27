@@ -1,0 +1,18 @@
+Section heading
+Plain then 
+bold
+, 
+italic
+, 
+struck
+, 
+a link
+.
+Bullet one
+Nested bullet
+Bullet two
+Name
+Value
+Alpha
+42
+Centered line

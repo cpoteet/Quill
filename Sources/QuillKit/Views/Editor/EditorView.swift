@@ -21,6 +21,7 @@ public struct EditorView: NSViewRepresentable {
     var onAIOperation: ((AIWritingOperation) -> Void)?
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
+    var onImagesPasted: (([PastedImage]) -> Void)?
     var aiEnabled: Bool
     var hasTextSelection: Bool
 
@@ -44,6 +45,7 @@ public struct EditorView: NSViewRepresentable {
         onAIOperation: ((AIWritingOperation) -> Void)? = nil,
         onTriggerGenerate: (() -> Void)? = nil,
         onTriggerEvaluate: (() -> Void)? = nil,
+        onImagesPasted: (([PastedImage]) -> Void)? = nil,
         aiEnabled: Bool = false,
         hasTextSelection: Bool = false
     ) {
@@ -66,6 +68,7 @@ public struct EditorView: NSViewRepresentable {
         self.onAIOperation = onAIOperation
         self.onTriggerGenerate = onTriggerGenerate
         self.onTriggerEvaluate = onTriggerEvaluate
+        self.onImagesPasted = onImagesPasted
         self.aiEnabled = aiEnabled
         self.hasTextSelection = hasTextSelection
     }
@@ -91,6 +94,7 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "triggerGenerate")
         config.userContentController.add(context.coordinator, name: "triggerEvaluate")
         config.userContentController.add(context.coordinator, name: "openLink")
+        config.userContentController.add(context.coordinator, name: "uploadPastedImages")
 
         let webView = DroppableWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -112,6 +116,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onFootnotesChange = onFootnotesChange
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
+        context.coordinator.onImagesPasted = onImagesPasted
         loadEditorHTML(in: webView)
         return webView
     }
@@ -135,6 +140,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onFootnotesChange = onFootnotesChange
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
+        context.coordinator.onImagesPasted = onImagesPasted
         if context.coordinator.aiEnabled != aiEnabled {
             context.coordinator.aiEnabled = aiEnabled
             nsView.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: nil)

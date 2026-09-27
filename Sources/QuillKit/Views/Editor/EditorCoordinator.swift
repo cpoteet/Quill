@@ -25,6 +25,27 @@ struct EditorPushState {
     }
 }
 
+/// A pasted image the site does not host yet; a `token` means it is already in the document.
+public struct PastedImage: Sendable {
+    public let token: String?
+    public let data: Data
+    public let mimeType: String
+
+    static func decode(_ entry: [String: Any]) -> PastedImage? {
+        guard
+            let dataURL = entry["dataURL"] as? String,
+            let comma = dataURL.firstIndex(of: ","),
+            dataURL.hasPrefix("data:image/")
+        else { return nil }
+        let header = dataURL[dataURL.index(dataURL.startIndex, offsetBy: 5)..<comma]
+        guard header.hasSuffix(";base64"),
+              let data = Data(base64Encoded: String(dataURL[dataURL.index(after: comma)...]))
+        else { return nil }
+        let mimeType = String(header.dropLast(";base64".count))
+        return PastedImage(token: entry["token"] as? String, data: data, mimeType: mimeType)
+    }
+}
+
 public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     var isReady: Bool = false
     var pendingHTML: String?
@@ -43,6 +64,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onFootnotesChange: ((String) -> Void)?
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
+    var onImagesPasted: (([PastedImage]) -> Void)?
     var aiEnabled: Bool = false
     var syncAfterNextSetContent: Bool = false
     private var linkPopover: NSPopover?
@@ -175,6 +197,14 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             DispatchQueue.main.async { self.onTriggerGenerate?() }
         case "triggerEvaluate":
             DispatchQueue.main.async { self.onTriggerEvaluate?() }
+        case "uploadPastedImages":
+            guard let entries = (message.body as? [String: Any])?["images"] as? [[String: Any]] else { return }
+            // Base64 decoding a screenshot is real work; keep it off the main thread.
+            DispatchQueue.global(qos: .userInitiated).async {
+                let images = entries.compactMap(PastedImage.decode)
+                guard !images.isEmpty else { return }
+                DispatchQueue.main.async { self.onImagesPasted?(images) }
+            }
         case "openLink":
             if let urlString = message.body as? String,
                let url = URL(string: urlString),

@@ -56,6 +56,23 @@ import Testing
 
     // MARK: - Dropped-image upload feedback
 
+    @Test func pastedImageFileExtensionFollowsTheBytesNotTheLabel() {
+        let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0])
+        #expect(PostEditorView.fileExtension(for: jpeg, mimeType: "image/png") == "jpg")
+        let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0])
+        #expect(PostEditorView.fileExtension(for: png, mimeType: "image/jpeg") == "png")
+        let webp = Data("RIFF\0\0\0\0WEBP".utf8)
+        #expect(PostEditorView.fileExtension(for: webp, mimeType: "image/png") == "webp")
+        let heic = Data([0, 0, 0, 0x18] + Array("ftypheic".utf8))
+        #expect(PostEditorView.fileExtension(for: heic, mimeType: "image/png") == "heic")
+    }
+
+    @Test func pastedImageFileExtensionFallsBackToItsType() {
+        let unknown = Data([1, 2, 3])
+        #expect(PostEditorView.fileExtension(for: unknown, mimeType: "image/gif") == "gif")
+        #expect(PostEditorView.fileExtension(for: unknown, mimeType: "image/x-unknown") == "png")
+    }
+
     @Test func uploadStatusTextForSingleFile() {
         #expect(PostEditorView.uploadStatusText(index: 1, total: 1) == "Uploading image…")
     }

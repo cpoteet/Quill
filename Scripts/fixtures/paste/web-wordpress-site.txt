@@ -1,0 +1,28 @@
+Centered WP heading
+Big centered paragraph
+
+Text with red inline color.
+
+Paragraph with background
+
+WP list item
+WP quote text
+
+WP cite
+Pullquote text
+
+Pull cite
+wp image
+WP caption
+Button text
+Column A
+
+Column B
+
+H1	H2
+c1	c2
+wp code block
+
+Footnote ref1 in text.
+
+The footnote. ↩︎
