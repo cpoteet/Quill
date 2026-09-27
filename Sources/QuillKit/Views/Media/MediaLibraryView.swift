@@ -20,6 +20,17 @@ struct MediaLibraryView: View {
         galleryWithAlerts
             .navigationTitle(appState.selectedMedia?.title.decodedTitle ?? "Media")
             .toolbar {
+                if previewedMedia != nil {
+                    ToolbarItem(placement: .navigation) {
+                        Button {
+                            previewedMedia = nil
+                        } label: {
+                            Image(systemName: "chevron.backward")
+                        }
+                        .help("Back to Media")
+                        .accessibilityLabel("Back to Media")
+                    }
+                }
                 ToolbarSpacer(.flexible)
                 ToolbarItem {
                     Button {
@@ -58,6 +69,11 @@ struct MediaLibraryView: View {
                 }
             }
             .task(id: reloadKey) { await loadMedia() }
+            .onChange(of: reloadKey) { previewedMedia = nil }
+            .onChange(of: appState.mediaFilter) {
+                appState.mediaItems = []
+                appState.isLoadingMedia = true
+            }
             .onAppear {
                 guard appState.triggerMediaUpload else { return }
                 appState.triggerMediaUpload = false
@@ -158,6 +174,7 @@ struct MediaLibraryView: View {
             EmptyEditorPlaceholder(section: .media, loadFailed: true)
         } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
             SectionEmptyState(section: .media,
+                              mediaFilter: appState.mediaFilter,
                               isSearching: !appState.mediaSearchText.isEmpty)
         } else {
             ProgressView()

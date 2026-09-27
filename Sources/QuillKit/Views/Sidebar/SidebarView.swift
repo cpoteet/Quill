@@ -410,9 +410,13 @@ struct SidebarErrorRow: View {
 
 struct SectionEmptyState: View {
     let section: SidebarSection
+    var mediaFilter: MediaFilter = .all
     let isSearching: Bool
 
     private var message: String {
+        if section == .media, mediaFilter != .all {
+            return "No \(mediaFilter.title.lowercased())"
+        }
         switch section {
         case .posts: return "No posts yet"
         case .pages: return "No pages yet"
@@ -422,6 +426,9 @@ struct SectionEmptyState: View {
     }
 
     private var hint: String {
+        if section == .media, mediaFilter != .all {
+            return "Choose All Media to see everything in your library"
+        }
         switch section {
         case .posts: return "Create one from the + menu in the toolbar"
         case .pages: return "Create one from the + menu in the toolbar"
