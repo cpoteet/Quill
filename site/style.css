@@ -580,16 +580,20 @@ kbd {
 .footer__inner {
   max-width: 1180px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 24px 64px;
-  align-items: start;
+  align-items: flex-start;
 }
 
 .footer__col {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.footer__col:first-child {
+  flex: 1 1 320px;
 }
 
 .footer__logo {
@@ -624,6 +628,25 @@ kbd {
 }
 
 .footer__disclaimer a:hover {
+  color: var(--color-accent-text);
+}
+
+.footer__links {
+  display: flex;
+  gap: 24px;
+}
+
+.footer__links a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-line);
+  text-underline-offset: 3px;
+  transition: color var(--transition);
+}
+
+.footer__links a:hover {
   color: var(--color-accent-text);
 }
 
