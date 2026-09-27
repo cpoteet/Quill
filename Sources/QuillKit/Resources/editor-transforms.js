@@ -463,6 +463,8 @@ function imageBlockAttrs(figure, img) {
   if (width) attrs.width = width[1] + 'px'
   const height = style.match(styleDimensionRegex('height'))
   if (height) attrs.height = height[1] + 'px'
+  // Pre-9.47 block editors rebuild the style from the comment: docs/editor-gotchas.md
+  else if (/(?:^|;)\s*height\s*:\s*auto\b/i.test(style)) attrs.height = 'auto'
   const size = (figure.getAttribute('class') || '').match(/(?:^|\s)size-([\w-]+)/)
   if (size) attrs.sizeSlug = size[1]
   const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))

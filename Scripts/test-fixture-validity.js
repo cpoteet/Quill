@@ -12,7 +12,7 @@ const nodeCrypto = require('crypto')
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
 const fixturesDir = path.resolve(__dirname, 'fixtures')
 
-const { problems, resaved, close: closeValidator } = require('./wp-validator.js')
+const { problems, resaved, attributesOf, close: closeValidator } = require('./wp-validator.js')
 
 let editor
 let win
@@ -89,5 +89,17 @@ describe('the sweep can fail', () => {
     const source = '<p>Classic prose.</p>'
     assert.equal(problems(source).length, 1)
     assert.deepEqual(newProblems(editAndSave(source), source), [])
+  })
+})
+
+// The current validator can't see this; pre-9.47 block editors can (docs/editor-gotchas.md)
+describe('older block editors', () => {
+  test('a resized image comment carries the height:auto its style shows', () => {
+    const source = '<!-- wp:image {"id":7,"width":"600px","height":"auto","sizeSlug":"full"} -->\n'
+      + '<figure class="wp-block-image size-full is-resized"><img src="https://x.test/a.png" alt="" class="wp-image-7" style="width:600px;height:auto"/></figure>\n'
+      + '<!-- /wp:image -->'
+    const saved = editAndSave(source)
+    assert.match(saved, /style="width:600px;height:auto"/)
+    assert.equal(attributesOf(saved)[0].height, 'auto', 'saved markup:\n' + saved)
   })
 })

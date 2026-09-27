@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-26 — 478 Swift tests + 1,292 JS tests (1,291 pass, 1 skipped), no failures._
+_Last updated: 2026-09-27 — 478 Swift tests + 1,293 JS tests (1,292 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -31,7 +31,7 @@ This document is the authoritative reference for Quill's automated test suite an
 13. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 14. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (228 tests — live Tiptap editor in jsdom)
 15. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-16. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (30 tests — same validator, over every fixture)
+16. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (31 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the sixteen passed.
 
@@ -1124,7 +1124,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 
-## JS fixture validity sweep (30 tests)
+## JS fixture validity sweep (31 tests)
 
 `Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture.
 
@@ -1132,6 +1132,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 |------|----------------|
 | one test per fixture (27 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
 | `the sweep can fail` (3 tests) | A heading level mismatch and invented classic HTML are reported as new; classic prose Quill converts to blocks is not |
+| `older block editors` › `a resized image comment carries the height:auto its style shows` | WordPress's parser reads `height: 'auto'` back out of Quill's comment. The current validator cannot catch its absence (block-library 9.47+ adds `height:auto` itself), but editors on an older block-library — the Jetpack iOS app's GutenbergKit 0.19.0 ships 9.41.0 — rebuild the style from the comment alone and flag the image as invalid |
 
 ---
 
@@ -1349,7 +1350,7 @@ Core stores a resized image as an inline `style` on the `<img>` plus an `is-resi
 | `no dimensions means no is-resized and no style` | |
 | `stale is-resized is stripped when the image has no dimensions` | Resizing back to the original must not leave the class behind |
 | `dimensions are carried into the wp:image comment attributes as px strings` | Core stores them as `"320px"`, not numbers |
-| `width alone carries only width into the comment attributes` | |
+| `width alone carries height:auto into the comment attributes, as core does` | Core's resize drag stores `height: 'auto'`; without it, pre-9.47 block editors report the image as invalid |
 | `an unresized image carries no width or height comment attribute` | |
 | `an existing width style on the img survives without duplicating` | |
 | `dimension handling is idempotent across a second save` | |

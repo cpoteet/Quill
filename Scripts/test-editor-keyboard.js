@@ -627,7 +627,7 @@ describe('image dimensions round-trip', () => {
     const out = save()
     assert.equal(docOf(out).querySelector('img').getAttribute('style'), 'width:400px;height:auto')
     assert.equal(attrsOf(out).width, '400px')
-    assert.ok(!('height' in attrsOf(out)))
+    assert.equal(attrsOf(out).height, 'auto')
   })
 
   const sizeBtn = slug => win.document.querySelector(`#image-toolbar [data-size="${slug}"]`)

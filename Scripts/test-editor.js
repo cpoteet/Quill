@@ -501,11 +501,9 @@ describe('toWordPressHTML — image dimensions', () => {
     assert.deepEqual(attrsOf(out), { width: '640px', height: '480px' })
   })
 
-  // core leaves height undefined when only a width is set; save() then forces
-  // height:auto in the style, so the attribute stays absent on both sides.
-  test('width alone carries only width into the comment attributes', () => {
+  test('width alone carries height:auto into the comment attributes, as core does', () => {
     const out = wp('<figure><img src="a.jpg" width="640"><figcaption></figcaption></figure>')
-    assert.deepEqual(attrsOf(out), { width: '640px' })
+    assert.deepEqual(attrsOf(out), { width: '640px', height: 'auto' })
   })
 
   test('an unresized image carries no width or height comment attribute', () => {
@@ -516,7 +514,7 @@ describe('toWordPressHTML — image dimensions', () => {
   test('an existing width style on the img survives without duplicating', () => {
     const out = wp('<figure><img src="a.jpg" style="width:640px;height:auto"><figcaption></figcaption></figure>')
     assert.equal(imgOf(out).getAttribute('style'), 'width:640px;height:auto')
-    assert.deepEqual(attrsOf(out), { width: '640px' })
+    assert.deepEqual(attrsOf(out), { width: '640px', height: 'auto' })
   })
 
   test('dimension handling is idempotent across a second save', () => {

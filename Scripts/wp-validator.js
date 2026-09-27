@@ -44,6 +44,11 @@ function resaved(html) {
   return quiet(() => serialize(parse(html)))
 }
 
+// The attributes core parses out of each top-level block: what an editor's save() rebuilds from.
+function attributesOf(html) {
+  return quiet(() => parse(html)).map(b => b.attributes)
+}
+
 function namesIn(html) {
   return new Set(blockNames(quiet(() => parse(html))))
 }
@@ -52,4 +57,4 @@ function close() {
   wpDom.window.close()
 }
 
-module.exports = { problems, resaved, namesIn, close }
+module.exports = { problems, resaved, namesIn, attributesOf, close }
