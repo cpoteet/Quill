@@ -819,10 +819,9 @@ public struct PostEditorView: View {
 
     private func scheduleAutosave() {
         autosaveTask?.cancel()
-        let expectedItemID = item.id
         autosaveTask = Task {
             try? await Task.sleep(for: .seconds(30))
-            if !Task.isCancelled && isDirty && item.id == expectedItemID { await performAutosave() }
+            if !Task.isCancelled && isDirty { await performAutosave() }
         }
     }
 
