@@ -1156,8 +1156,6 @@ function cleanPastedHTML(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
-  // Quill's own copy: ProseMirror reads this marker after the hook, and the carrier drops it.
-  if (root.querySelector('[data-pm-slice]')) return html
 
   const keepStyle = new Set()
   const listFormats = wordListFormats(root)
@@ -1692,11 +1690,10 @@ function pastedBlocksAsListItems(html, doc) {
   if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
-  if (root.querySelector('[data-pm-slice]')) return html
   const blocks = Array.from(root.children)
   const strayText = Array.from(root.childNodes).some(n => n.nodeType === 3 && n.data.trim())
   if (strayText || blocks.length === 0) return html
-  if (blocks.length === 1 && !/^(?:UL|OL)$/.test(blocks[0].tagName)) return html
+  if (blocks.length === 1 && !/^(?:UL|OL|BLOCKQUOTE)$/.test(blocks[0].tagName)) return html
   if (!blocks.every(el => /^(?:P|H[1-6]|UL|OL|BLOCKQUOTE)$/.test(el.tagName))) return html
   const list = doc.createElement('ul')
   const item = from => {
@@ -1704,11 +1701,13 @@ function pastedBlocksAsListItems(html, doc) {
     li.append(...Array.from(from.childNodes))
     list.appendChild(li)
   }
-  for (const el of blocks) {
+  const add = el => {
     if (el.tagName === 'UL' || el.tagName === 'OL') Array.from(el.children).forEach(li => list.appendChild(li))
-    else if (el.tagName === 'BLOCKQUOTE') el.querySelectorAll(':scope > p').forEach(item)
+    else if (el.tagName === 'BLOCKQUOTE' && Array.from(el.childNodes).every(n =>
+      (n.nodeType === 3 && !n.data.trim()) || /^(?:P|H[1-6]|UL|OL|BLOCKQUOTE|CITE)$/.test(n.nodeName))) Array.from(el.children).forEach(add)
     else item(el)
   }
+  blocks.forEach(add)
   return list.outerHTML
 }
 

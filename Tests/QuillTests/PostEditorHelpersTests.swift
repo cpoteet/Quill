@@ -76,6 +76,28 @@ import Testing
         #expect(baseline == nil)
     }
 
+    // MARK: - Stash after a save that finished on another post
+
+    @Test func stashMatchingTheSaveIsDeleted() {
+        #expect(PostEditorView.stashAfterSave(snapshot(serverModified: "old"), title: "Hello", content: "<p>Local</p>",
+                                              footnotes: "", serverModified: "new") == nil)
+        #expect(PostEditorView.stashAfterSave(nil, title: "Hello", content: "<p>Local</p>", footnotes: "", serverModified: "new") == nil)
+    }
+
+    @Test func stashWithLaterEditsIsKeptOnTheSavedVersion() {
+        let kept = PostEditorView.stashAfterSave(snapshot(content: "<p>Later</p>", serverModified: "old"), title: "Hello",
+                                                 content: "<p>Local</p>", footnotes: "", serverModified: "new")
+        #expect(kept?.content == "<p>Later</p>")
+        #expect(kept?.serverModified == "new")
+    }
+
+    @Test func stashDifferingOnlyInFootnotesIsKept() {
+        let kept = PostEditorView.stashAfterSave(snapshot(serverModified: "old"), title: "Hello", content: "<p>Local</p>",
+                                                 footnotes: #"[{"id":"a","content":"Note"}]"#, serverModified: "new")
+        #expect(kept?.footnotes == "")
+        #expect(kept?.serverModified == "new")
+    }
+
     // MARK: - Preview conflict check
 
     @Test func previewOverwritesOnlyADraft() {
@@ -115,6 +137,8 @@ import Testing
         #expect(PostEditorView.fileExtension(for: webp, mimeType: "image/png") == "webp")
         let heic = Data([0, 0, 0, 0x18] + Array("ftypheic".utf8))
         #expect(PostEditorView.fileExtension(for: heic, mimeType: "image/png") == "heic")
+        let gif = Data("GIF89a\0\0\0\0\0\0".utf8)
+        #expect(PostEditorView.fileExtension(for: gif, mimeType: "image/png") == "gif")
     }
 
     @Test func pastedImageFileExtensionFallsBackToItsType() {
@@ -425,6 +449,36 @@ import Testing
         #expect(first["url"] as? String == "https://example.com/p1-1024x683.jpg")
     }
 
+    @Test func galleryPayloadUnchangedSizeKeepsEachImagesOwnURL() throws {
+        let edited = image(id: 1, url: "https://example.com/p1-e1790000000-1024x683.jpg")
+        let new = try media(id: 2)
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: edited, media: try media(id: 1), id: 1),
+                GallerySelection(media: new, alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([edited]))
+        let out = images(payload)
+        #expect(out[0]["url"] as? String == "https://example.com/p1-e1790000000-1024x683.jpg")
+        #expect(out[0]["sizeSlug"] as? String == "large")
+        #expect(out[1]["url"] as? String == new.sizedURL(for: "large"))
+    }
+
+    @Test func galleryPayloadUnchangedSharedSizeGivesNewImagesThatSize() throws {
+        let thumb = image(id: 1, url: "https://example.com/p1-150x150.jpg", sizeSlug: "thumbnail")
+        let new = try media(id: 2)
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: thumb, media: try media(id: 1), id: 1),
+                GallerySelection(media: new, alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "thumbnail", editing: edit([thumb]))
+        let out = images(payload)
+        #expect(out[0]["url"] as? String == "https://example.com/p1-150x150.jpg")
+        #expect(out[1]["sizeSlug"] as? String == "thumbnail")
+        #expect(out[1]["url"] as? String == new.sizedURL(for: "thumbnail"))
+    }
+
     @Test func galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo() throws {
         let existing = image(id: 1, url: "u", href: "https://example.com/att-1/")
         let new = try media(id: 2, link: "https://example.com/att-2/")
@@ -489,5 +543,61 @@ import Testing
         #expect(Set(first.keys) == ["id", "url", "fullUrl", "alt", "caption"])
         #expect(first["url"] as? String == "https://example.com/p2-150x150.jpg")
         #expect(Set(payload.keys) == ["images", "columns", "cropped", "linkTo", "sizeSlug"])
+    }
+
+    @Test func galleryEditShowsKeepLinksForAFullImageGalleryWithOtherLinks() {
+        let file = GalleryImage(
+            id: 1, url: "https://example.com/a-1024x683.jpg", fullUrl: "https://example.com/a.jpg", alt: "", caption: "",
+            captionHTML: nil, sizeSlug: "large", href: "https://example.com/a.jpg", blockAttrs: nil, extraClasses: "")
+        #expect(!edit([file], linkTo: "media").showsKeepLinks)
+        var custom = file
+        custom.href = "https://example.com/about/"
+        #expect(edit([file, custom], linkTo: "media").showsKeepLinks)
+        var unlinked = file
+        unlinked.href = nil
+        #expect(edit([file, unlinked], linkTo: "media").showsKeepLinks)
+    }
+
+    @Test func galleryPayloadKeepLinksLinksNewImagesToTheFileInAFullImageGallery() throws {
+        let existing = image(id: 1, url: "u", href: "https://example.com/about/")
+        let new = try media(id: 2)
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: existing, media: try media(id: 1), id: 1),
+                GallerySelection(media: new, alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "keep", sizeSlug: "large", editing: edit([existing], linkTo: "media"))
+        let out = images(payload)
+        #expect(out[0]["href"] as? String == "https://example.com/about/")
+        #expect(out[1]["href"] as? String == "https://example.com/p2.jpg")
+        #expect(out[1]["blockAttrs"] == nil)
+        #expect(payload["linkTo"] as? String == "media")
+    }
+
+    @Test func galleryPayloadKeepLinksLeavesNewImagesUnlinkedInAnUnlinkedGallery() throws {
+        let existing = image(id: 1, url: "u", href: "https://example.com/wishlist")
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: existing, media: try media(id: 1), id: 1),
+                GallerySelection(media: try media(id: 2), alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "keep", sizeSlug: "large", editing: edit([existing], linkTo: "none"))
+        let out = images(payload)
+        #expect(out[0]["href"] as? String == "https://example.com/wishlist")
+        #expect(out[1]["href"] is NSNull)
+        #expect(payload["linkTo"] as? String == "none")
+    }
+
+    @Test func galleryPayloadFollowsTheSheetOrder() throws {
+        let first = image(id: 1, url: "https://example.com/p1-1024x683.jpg")
+        let second = image(id: 2, url: "https://example.com/p2-1024x683.jpg")
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: second, media: try media(id: 2), id: 2),
+                GallerySelection(existing: first, media: try media(id: 1), id: 1),
+            ],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "mixed", editing: edit([first, second]))
+        #expect(images(payload).compactMap { $0["id"] as? Int } == [2, 1])
+        #expect(images(payload).compactMap { $0["url"] as? String } == [second.url, first.url])
     }
 }

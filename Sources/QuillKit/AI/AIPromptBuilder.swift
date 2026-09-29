@@ -327,7 +327,7 @@ public struct AIPromptBuilder {
             options: .regularExpression
         )
         text = text.replacingOccurrences(
-            of: #"</(p|h[1-6]|li|blockquote|pre|div)>"#,
+            of: #"</(p|h[1-6]|li|blockquote|pre|div|td|th|summary|dt|dd)>"#,
             with: blockBreak,
             options: .regularExpression
         )

@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 507 Swift + 1,452 JS tests, all passing as of 2026-09-29 (1,451 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 518 Swift + 1,481 JS tests, all passing as of 2026-09-29 (1,480 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -84,7 +84,7 @@ Concepts that have their own doc:
 - **Block model** — adding a block setting, the raw-attribute carrier, unsupported-block preservation, the `gutenbergPassthrough` node: `docs/block-model.md`
 - **Footnotes live in post meta, not `post_content`**: `docs/footnotes-meta.md`
 - **Code view** — the `</>` toggle and its `_rawHTML` / `_rawHTMLOnLoad` / `_codeViewOriginal` state: `docs/code-view.md`
-- **Paste (⌘V)** — HTML from outside Quill is reduced to what Quill models before it is parsed (`cleanPastedHTML`); a copy made inside Quill is recognised by ProseMirror's `data-pm-slice` and left alone; pasted images upload through the drop queue: `docs/paste.md`
+- **Paste (⌘V)** — HTML from outside Quill is reduced to what Quill models before it is parsed (`cleanPastedHTML`); a copy made inside Quill is recognised by ProseMirror's `data-pm-slice` plus the remembered text of Quill's last copy, and left alone (the marker alone is not enough, other ProseMirror apps write it); pasted images upload through the drop queue: `docs/paste.md`
 - **Paste as Markdown (⌘⇧V)** — `AppState.triggerPasteMarkdown` → `PostEditorView.pasteAsMarkdown()` → `window.insertMarkdown(text)`; bypasses ProseMirror's clipboard plumbing, but marked's HTML goes through the same `cleanPastedHTML`
 
 ## Maintaining Gutenberg HTML compatibility
@@ -120,6 +120,7 @@ These three fail silently with the whole test suite green:
 - **New JS dependencies get their own bundle script, not a `bundle-tiptap.sh` edit**
 - **Synchronous image work must not run on the main actor**
 - **Anything that writes `uploadStatus` must go through `dropTask`**
+- **A section switch rebuilds `PostEditorView`, so async work checks `appState.selectedItem` as well as `loadedItem`**
 - **WordPress's REST `media_type` takes one value, so the Documents filter cannot also cover text files**
 - **Media paging sends an offset, not a page number — the local item count is the window into the server's filtered list**
 - **Ad-hoc signing for dev, Developer ID only for release**

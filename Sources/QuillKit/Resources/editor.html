@@ -4027,6 +4027,11 @@
           }
           return false
         },
+        // Blocks pasted into an empty paragraph replace it, as in the block editor, rather than the first taking its attributes.
+        transformPasted(slice, view, plain) {
+          if (plain || slice.openStart === 0 || !slice.content.firstChild?.isTextblock || !_inEmptyTopLevelParagraph(view.state)) return slice
+          return new slice.constructor(slice.content, 0, slice.openEnd)
+        },
         transformPastedText(text) {
           // ProseMirror only routes through transformPastedHTML when the clipboard
           // carries a text/html flavor; a text/plain paste takes a separate branch
@@ -4039,9 +4044,13 @@
         },
         transformPastedHTML(html) {
           // The cleanup must never be the reason a paste fails; unclean beats nothing.
+          const quillCopy = _pasteIsQuillCopy
+          _pasteIsQuillCopy = false
           try {
-            html = cleanPastedHTML(html)
-            if (editor.isActive('listItem')) html = pastedBlocksAsListItems(html)
+            if (!quillCopy) {
+              html = cleanPastedHTML(html)
+              if (editor.isActive('listItem')) html = pastedBlocksAsListItems(html)
+            }
           } catch (e) {
             console.error('paste cleanup failed', e)
           }
@@ -4081,6 +4090,10 @@
       },
     })
     window._tiptapEditor = editor
+    // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
+    for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste]]) {
+      document.addEventListener(type, event => { if (editor.view.dom.contains(event.target)) handler(event) }, true)
+    }
 
     function setImageAlignment(value) {
       const { state } = editor
@@ -4112,6 +4125,21 @@
 
     // ── Paste helpers ─────────────────────────────────
     const _plainFallbackPastes = new WeakSet()
+
+    // Every ProseMirror editor marks its copies with data-pm-slice; Quill's own also matches the text it last copied.
+    let _lastCopiedText = null
+    let _pasteIsQuillCopy = false
+    const _sameText = (a, b) => a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim()
+    function _rememberCopy() {
+      const slice = editor.state.selection.content()
+      _lastCopiedText = editor.view.someProp('clipboardTextSerializer', f => f(slice, editor.view))
+        ?? slice.content.textBetween(0, slice.content.size, '\n\n')
+    }
+    function _classifyPaste(event) {
+      const html = event.clipboardData?.getData('text/html') || ''
+      const text = event.clipboardData?.getData('text/plain') || ''
+      _pasteIsQuillCopy = _lastCopiedText !== null && /\sdata-pm-slice=/.test(html) && _sameText(text, _lastCopiedText)
+    }
 
     // A pasted image the site does not host yet: Swift uploads it, then inserts it or swaps it in place.
     const _pendingPastedImages = new Map()
@@ -4160,7 +4188,7 @@
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'image' && node.attrs.src === src) tr.setNodeMarkup(pos, null, { ...node.attrs, src: url, mediaId })
       })
-      if (tr.docChanged) editor.view.dispatch(tr)
+      if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false))
     }
 
     window.forgetPastedImage = token => { _pendingPastedImages.delete(token) }

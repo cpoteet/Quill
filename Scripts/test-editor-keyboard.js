@@ -666,6 +666,45 @@ describe('image dimensions round-trip', () => {
     assert.equal(attrs.width, 400)
     assert.equal(attrs.height, 200)
   })
+
+  function selectWithNaturalSize(html, natural) {
+    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent(html, false)
+    const img = editor.view.dom.querySelector('.image-frame img')
+    Object.defineProperty(img, 'naturalWidth', { value: natural[0], configurable: true })
+    Object.defineProperty(img, 'naturalHeight', { value: natural[1], configurable: true })
+    editor.commands.setNodeSelection(0)
+  }
+
+  function typeHeight(value) {
+    const field = win.document.getElementById('img-tb-h')
+    field.value = String(value)
+    field.dispatchEvent(new win.Event('change'))
+    return editor.state.doc.firstChild.attrs
+  }
+
+  test('the height field shows the height a width-only image implies', () => {
+    selectWithNaturalSize(RESIZED, [1280, 800])
+    assert.equal(win.document.getElementById('img-tb-w').value, '640')
+    assert.equal(win.document.getElementById('img-tb-h').value, '400')
+  })
+
+  test('typing a height on a width-only image keeps its ratio', () => {
+    selectWithNaturalSize(RESIZED, [1280, 800])
+    const attrs = typeHeight(200)
+    assert.equal(attrs.width, 320)
+    assert.equal(attrs.height, 200)
+    assert.equal(win.document.getElementById('img-tb-w').value, '320')
+  })
+
+  test('typing a height on an unresized image scales from its natural size', () => {
+    selectWithNaturalSize('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure>', [1200, 800])
+    assert.equal(win.document.getElementById('img-tb-w').value, '1200')
+    assert.equal(win.document.getElementById('img-tb-h').value, '800')
+    const attrs = typeHeight(400)
+    assert.equal(attrs.width, 600)
+    assert.equal(attrs.height, 400)
+  })
 })
 
 describe('image toolbar visibility', () => {

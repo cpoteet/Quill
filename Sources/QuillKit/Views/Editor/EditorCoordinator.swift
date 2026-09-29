@@ -44,6 +44,15 @@ public struct PastedImage: Sendable {
         let mimeType = String(header.dropLast(";base64".count))
         return PastedImage(token: entry["token"] as? String, data: data, mimeType: mimeType)
     }
+
+    /// Frees the editor to send these images again on a later paste; a no-op for any already resolved.
+    static func forgetScript(_ tokens: [String]) -> String? {
+        guard !tokens.isEmpty,
+              let data = try? JSONEncoder().encode(tokens),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return "\(json).forEach(t => window.forgetPastedImage?.(t))"
+    }
 }
 
 public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
@@ -197,9 +206,21 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             guard let entries = (message.body as? [String: Any])?["images"] as? [[String: Any]] else { return }
             // Base64 decoding a screenshot is real work; keep it off the main thread.
             DispatchQueue.global(qos: .userInitiated).async {
-                let images = entries.compactMap(PastedImage.decode)
-                guard !images.isEmpty else { return }
-                DispatchQueue.main.async { self.onImagesPasted?(images) }
+                var images: [PastedImage] = []
+                var rejected: [String] = []
+                for entry in entries {
+                    if let image = PastedImage.decode(entry) {
+                        images.append(image)
+                    } else if let token = entry["token"] as? String {
+                        rejected.append(token)
+                    }
+                }
+                DispatchQueue.main.async {
+                    if let script = PastedImage.forgetScript(rejected) {
+                        self.webView?.evaluateJavaScript(script, completionHandler: nil)
+                    }
+                    if !images.isEmpty { self.onImagesPasted?(images) }
+                }
             }
         case "openLink":
             if let urlString = message.body as? String,

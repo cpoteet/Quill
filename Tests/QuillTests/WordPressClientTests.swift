@@ -419,17 +419,18 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
     }
 
     @Test func fetchMediaByIdsBatchesPastOneHundred() async throws {
-        var queries: [String] = []
+        var queries: [[String: String]] = []
         MockURLProtocol.requestHandler = { request in
-            queries.append(request.url?.query ?? "")
+            let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            queries.append(Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first }))
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     "[\(minimalMediaJSON)]".data(using: .utf8)!)
         }
         let media = try await client.fetchMedia(ids: Array(1...150))
         #expect(queries.count == 2)
-        #expect(queries.first?.contains("per_page=100") == true)
-        #expect(queries.last?.contains("per_page=50") == true)
-        #expect(queries.last?.contains("include=101") == true || queries.last?.contains("include=101%2C") == true)
+        #expect(queries.map { $0["per_page"] } == ["100", "50"])
+        #expect(queries.first?["include"] == (1...100).map(String.init).joined(separator: ","))
+        #expect(queries.last?["include"] == (101...150).map(String.init).joined(separator: ","))
         #expect(media.count == 2)
     }
 

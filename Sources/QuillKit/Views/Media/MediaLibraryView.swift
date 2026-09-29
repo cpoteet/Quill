@@ -212,7 +212,7 @@ extension MediaLibraryView {
             appState.hasLoadedMedia = true
             appState.isLoadingMedia = false
         } catch is CancellationError {
-            appState.isLoadingMedia = false
+            // The replacing load owns isLoadingMedia.
         } catch {
             appState.mediaError = error.localizedDescription
             appState.hasLoadedMedia = true

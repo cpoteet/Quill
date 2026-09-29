@@ -136,6 +136,7 @@
               <tr><td>Sidebar</td><td>Left</td><td>Hides or shows the sidebar</td></tr>
               <tr><td>Refresh</td><td>Left</td><td>Reloads the current section from WordPress (⌘R). Hidden while the sidebar is hidden</td></tr>
               <tr><td>+</td><td>Left</td><td>A menu with New Post, New Page and Upload Media. Hidden while the sidebar is hidden</td></tr>
+              <tr><td>Back to Media</td><td>Left</td><td>Closes the large preview in the media library. Shown only while a preview is open</td></tr>
               <tr><td>Save Draft</td><td>Right</td><td>Saves a local draft on your Mac. Shown only for local drafts</td></tr>
               <tr><td>Revert</td><td>Right</td><td>Throws away unsaved changes and reloads the post from WordPress. Shown only when a post that's already on WordPress has unsaved changes</td></tr>
               <tr><td>Preview</td><td>Right</td><td>Opens a preview of the post in your browser. Shown only for posts already on WordPress</td></tr>
@@ -176,7 +177,7 @@
               <tr><td>B</td><td>⌘B</td><td>Bold</td></tr>
               <tr><td>I</td><td>⌘I</td><td>Italic</td></tr>
               <tr><td>S</td><td>⇧⌘S</td><td>Strikethrough</td></tr>
-              <tr><td>A</td><td>⌘E</td><td>Inline code</td></tr>
+              <tr><td>A</td><td>⌘E</td><td>Inline code. It can be combined with bold, italic or a link</td></tr>
               <tr><td>Link</td><td></td><td>Adds, changes or removes a link. See <a href="#links" class="content-link">Links</a></td></tr>
               <tr><td>Bullet list</td><td>⇧⌘8</td><td>Turns the current block into a bulleted list</td></tr>
               <tr><td>Number list</td><td>⇧⌘7</td><td>Turns the current block into a numbered list</td></tr>
@@ -309,10 +310,10 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">Paragraphs pasted into a list item become further items in that list, as they do in the WordPress editor.</p>
+        <p class="docs-body">Paragraphs and quotes pasted into a list item become further items in that list, as they do in the WordPress editor. Blocks pasted into an empty paragraph replace it.</p>
         <p class="docs-body">A YouTube, Vimeo, X, Spotify, SoundCloud, TikTok or Instagram link pasted on its own into an empty line becomes an embed. Pasted into a sentence, it stays a link.</p>
-        <p class="docs-body">A screenshot, or an image file copied in the Finder, uploads to your media library when you paste it and is inserted at the cursor, the same as dragging it in (see <a href="#images" class="content-link">Images</a>). Pictures inside a pasted Word document upload too, and each one switches to its media library copy when the upload finishes.</p>
-        <p class="docs-body">Copying and pasting inside Quill keeps every block exactly as it was, including accordions, tabs, galleries and tables.</p>
+        <p class="docs-body">A screenshot, or an image file copied in the Finder, uploads to your media library when you paste it and is inserted at the cursor, the same as dragging it in (see <a href="#images" class="content-link">Images</a>). Pictures inside a pasted Word document upload too, and each one switches to its media library copy when the upload finishes. ⌘Z after an upload removes the pasted content.</p>
+        <p class="docs-body">Copying and pasting inside Quill keeps every block exactly as it was, including accordions, tabs, galleries and tables. Content copied from another app built on the same kind of editor, such as Confluence, is cleaned like any other outside paste.</p>
         <p class="docs-body">After a large paste, it's worth a look in <a href="#code-view" class="content-link">code view</a> to confirm everything arrived.</p>
         <h4 class="docs-h4">Markdown (⇧⌘V)</h4>
         <p class="docs-body">The <a href="#markdown-shortcuts" class="content-link">Markdown Shortcuts</a> only work on text you type. If you paste Markdown with ⌘V, most of it arrives as plain characters, so <code># Heading</code> stays <code># Heading</code>. A few pieces, such as <code>**bold**</code> and <code>`code`</code>, do convert, which leaves the text half formatted.</p>
@@ -332,13 +333,14 @@
         <h4 class="docs-h4">Posts and Pages on WordPress</h4>
         <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>.</p>
         <p class="docs-body"><strong>Revert</strong> throws away your unsaved changes and reloads the post from WordPress. Quill asks you to confirm first.</p>
-        <p class="docs-body">Before saving, Quill checks whether the post has been changed on WordPress since you opened it, for example in the WordPress editor. If it has, a <strong>Conflict Detected</strong> alert gives you three choices: <strong>Keep Local</strong> saves your version over the one on WordPress, <strong>Use Server</strong> throws away your changes and loads the WordPress version, and <strong>Cancel</strong> does nothing.</p>
+        <p class="docs-body">Before saving, Quill checks whether the post has been changed on WordPress since you opened it, for example in the WordPress editor. If it has, a <strong>Conflict Detected</strong> alert gives you three choices: <strong>Keep Local</strong> saves your version over the one on WordPress, <strong>Use Server</strong> throws away your changes for good, including the autosave on your Mac, and loads the WordPress version, and <strong>Cancel</strong> does nothing.</p>
+        <p class="docs-body">If you switch to another post while a save is running, the save still finishes for the post you saved, and a message names it: "<em>Title</em>: Published", for example. If the save fails, the message says which post wasn't saved and why. If that post was changed on WordPress in the meantime, the message says so, and you choose which version to keep the next time you open it.</p>
         <h4 class="docs-h4">Autosave</h4>
-        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item. For a local draft, this updates the draft. For a post on WordPress, the autosave stays on your Mac and nothing is sent to your site. If you reopen the post before saving it to WordPress, even after quitting Quill, your changes come back and Quill shows "Unsaved changes restored".</p>
+        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item. For a local draft, this updates the draft. For a post on WordPress, the autosave stays on your Mac and nothing is sent to your site. If you reopen the post before saving it to WordPress, even after quitting Quill, your changes come back and Quill shows "Unsaved changes restored". If the post was edited on WordPress in the meantime, the restored changes don't overwrite that edit: when you save, the Conflict Detected alert asks which version to keep.</p>
         <h3 class="docs-h3">Preview</h3>
         <p class="docs-body">Click <strong>Preview</strong> to see the post in your browser the way it looks on your site. Preview works only for posts and pages already on WordPress, not for local drafts.</p>
-        <p class="docs-body">For a <strong>published</strong> post, Quill sends your unsaved changes to WordPress as a temporary revision. Only the preview shows them; the live post doesn't change.</p>
-        <p class="docs-body">For a <strong>draft</strong>, WordPress saves your changes into the draft itself, because drafts don't keep a separate preview copy. Previewing a draft is the same as saving it to WordPress.</p>
+        <p class="docs-body">For a <strong>published</strong> post, and any other status except draft, Quill sends your unsaved changes to WordPress as a temporary revision. Only the preview shows them; the live post doesn't change.</p>
+        <p class="docs-body">For a <strong>draft</strong>, WordPress saves your changes into the draft itself, because drafts don't keep a separate preview copy. Previewing a draft is the same as saving it to WordPress. Because of that, if the draft was changed on WordPress since you opened it, Preview shows the Conflict Detected alert first. <strong>Keep Local</strong> previews and saves your version, and <strong>Use Server</strong> discards your changes.</p>
         <h3 class="docs-h3">Find and Replace</h3>
         <p class="docs-body">Press ⌘F (or choose <strong>Edit → Find…</strong>) to open the find bar. Type in <strong>Find</strong> to highlight every match. Press Return for the next match and ⇧Return for the previous one, or use the arrow buttons. Turn on <strong>Aa</strong> to match upper and lower case exactly.</p>
         <p class="docs-body">To replace text, type the new text in <strong>Replace</strong>, then click <strong>Replace</strong> for the current match or <strong>All</strong> for every match. Press Esc or click <strong>✕</strong> to close the bar.</p>
@@ -381,7 +383,7 @@
         <p class="docs-body">Type a description in the <strong>Alt</strong> field in the image toolbar. Screen readers read it out, and search engines use it. If the image already has alt text in the media library, Quill fills it in when you insert the image.</p>
         <p class="docs-body">An image marked as decorative in the WordPress editor stays marked that way when you edit and save in Quill. Quill has no control for this setting, and it doesn't add or remove it.</p>
         <h4 class="docs-h4">Alignment</h4>
-        <p class="docs-body">With an image selected, the left, center and right buttons in the second toolbar row float it to one side with text wrapping around it, or center it.</p>
+        <p class="docs-body">With an image selected, the left, center and right buttons in the second toolbar row float it to one side with text wrapping around it, or center it. The image stays selected after you change its alignment, so the image toolbar stays open.</p>
         <h4 class="docs-h4" id="captions">Captions</h4>
         <p class="docs-body">A caption is optional. To add one, click the space just below the image and type. Press Return to leave the caption and start a new paragraph. Because the cursor lands below the image after you insert it, typing straight away adds body text, not a caption.</p>
         <h4 class="docs-h4">Linking to the Full-Size Image</h4>
@@ -399,9 +401,10 @@
         </ul>
         <div class="docs-note"><strong>About Size:</strong> WordPress usually offers the browser several sizes of each image and lets it choose, which is what keeps photos sharp on Retina screens. On a modern high-resolution display you may see no difference between Medium and Large for that reason. Size still matters in older browsers, RSS feeds and email, and it always changes how much data the page loads.</div>
         <p class="docs-body">Click <strong>Insert Gallery</strong> to add the gallery as a single block. The button is available once at least one image is selected.</p>
-        <p class="docs-body">In the editor, a gallery shows as a grid of thumbnails. To change one, double-click it, select it and press Return, or click <strong>Edit</strong> under the thumbnails. The gallery picker opens as <strong>Edit Gallery</strong> with the gallery's images, settings, alt text and captions filled in. Make your changes and click <strong>Update Gallery</strong> to replace the gallery in place. Edit ▸ Undo puts the old one back.</p>
+        <p class="docs-body">In the editor, a gallery shows as a grid of thumbnails. To change one, double-click it, select it and press Return, or click <strong>Edit</strong> under the thumbnails. The gallery picker opens as <strong>Edit Gallery</strong> with the gallery's images, settings, alt text and captions filled in. While the images load, the picker is dimmed; if they can't be loaded, it shows the error and a <strong>Retry</strong> button. Make your changes and click <strong>Update Gallery</strong> to replace the gallery in place. <strong>Edit → Undo</strong> puts the old one back. An update keeps each image's current file unless you choose a different Size.</p>
+        <p class="docs-body">If the gallery is changed or removed from the post while the picker is open, the update isn't applied and Quill shows "The post changed while the gallery was open, so the gallery wasn't updated."</p>
         <p class="docs-body">Galleries made in the WordPress editor can be edited the same way, and anything the picker doesn't show is kept: each image's size, link and "open in new tab" setting, block style and theme classes, colours, spacing and aspect ratio, and captions with formatting such as bold or links. A gallery that uses WordPress's default column layout keeps it until you change <strong>Columns</strong>. A formatted caption stays formatted unless you change its text; a changed caption is saved as plain text. An image that is no longer in your media library keeps its own file and size.</p>
-        <p class="docs-body">Two settings only appear when you edit a gallery made elsewhere:</p>
+        <p class="docs-body">These options only appear when you edit a gallery made elsewhere:</p>
         <ul class="docs-list">
           <li><strong>Size: Mixed</strong> appears when the gallery's images use different sizes. Leave it to keep each image's size; images you add get Large. Picking any other size applies it to every image.</li>
           <li>If every image uses a size your theme adds, such as <strong>Medium Large</strong>, the Size menu shows it by name.</li>
@@ -524,6 +527,7 @@
         <p class="docs-body">The Publish Date section appears for every status except Private. Turn on <strong>Schedule</strong> to set the status to Scheduled and show a date and time picker, set to an hour from now. Turn it off to go back to Draft.</p>
         <p class="docs-body">Choosing <strong>Scheduled</strong> in the Status menu does the same thing.</p>
         <p class="docs-body">When the date and time are right, click the publish button, which now reads <strong>Schedule</strong>, or press ⇧⌘P. WordPress publishes the post at that time.</p>
+        <p class="docs-body">If the date and time have passed, or are less than a minute away, WordPress publishes the post immediately instead of scheduling it. The picker then shows "This time has passed. The post will publish immediately." When you save or publish, a <strong>Publish Now?</strong> alert states the date the post will carry. <strong>Publish Now</strong> continues and the post goes live. <strong>Cancel</strong> keeps it unsaved so you can change the time.</p>
         <h3 class="docs-h3">Categories <span class="docs-meta">(Posts only)</span></h3>
         <p class="docs-body">Every category on your site is listed here in alphabetical order. Tick a category to assign it; ticked categories move to the top of the list. Type in the field above the list to filter it.</p>
         <p class="docs-body">To add a new category, type its name and press Return, or click <strong>Add "<em>name</em>"</strong>. It's marked "new" and is created on your site when you save or publish the post.</p>
@@ -546,7 +550,7 @@
         <p class="docs-body">Click <strong>Media</strong> at the top of the sidebar to browse everything uploaded to your site. The sidebar shows a list of filters and the library fills the main area as a grid, newest first.</p>
         <h3 class="docs-h3">Browsing</h3>
         <p class="docs-body">Images show as thumbnails, and other files show a file icon. Click an item to select it, and use the arrow keys to move the selection. More items load as you scroll.</p>
-        <p class="docs-body">The filters narrow the grid to one kind of file. <strong>Documents</strong> covers PDFs and office files. Plain-text files such as <code>.txt</code> and <code>.csv</code> aren't included there; you'll find them under <strong>All Media</strong>. The search field searches within the current filter, so if a file you expect is missing, clear the search or switch to All Media.</p>
+        <p class="docs-body">The filters narrow the grid to one kind of file. <strong>Documents</strong> covers PDFs and office files. Plain-text files such as <code>.txt</code> and <code>.csv</code> aren't included there; you'll find them under <strong>All Media</strong>. The search field searches within the current filter, so if a file you expect is missing, clear the search or switch to All Media. A filter with nothing in it reads "No images" (or documents, audio, video) and suggests choosing <strong>All Media</strong>.</p>
         <p class="docs-body">Right-click an item for these commands:</p>
         <div class="docs-table-wrap">
           <table class="docs-table">
@@ -562,7 +566,7 @@
           </table>
         </div>
         <h3 class="docs-h3">Previewing</h3>
-        <p class="docs-body">Press Space or double-click an item to see a large preview over the grid. Press Space or Esc again, or click outside the preview, to close it. Only images can be previewed; other files show a placeholder.</p>
+        <p class="docs-body">Press Space or double-click an item to see a large preview over the grid. Press Space or Esc again, or click outside the preview, to close it. You can also click <strong>Back to Media</strong> at the left of the window toolbar. Switching filters, searching or refreshing closes the preview. Only images can be previewed; other files show a placeholder.</p>
         <h3 class="docs-h3">Details</h3>
         <p class="docs-body">To see an item's details, click <strong>Media Info</strong> at the right end of the window toolbar, or right-click the item and choose <strong>Show Details</strong>. The inspector opens on the right and follows whichever item is selected until you close it.</p>
         <div class="docs-table-wrap">
@@ -613,7 +617,7 @@
         <p class="docs-body">Click the checkmark button in the toolbar to have Claude review the current post or page. It needs at least 100 words; with fewer, the panel asks you to add more.</p>
         <p class="docs-body">The results open in the inspector on the right, in place of Post Settings. They include a short summary and a list of findings. Each finding has a category (Grammar, Clarity, Readability, Wordiness, Passive Voice or Tone) and sometimes a suggested rewrite.</p>
         <ul class="docs-list">
-          <li>Click a finding to select that sentence in the editor and scroll to it.</li>
+          <li>Click a finding to select that sentence in the editor and scroll to it. Paragraphs, list items and table cells are read separately, so a finding never runs across two of them.</li>
           <li>Click <strong>Re-evaluate</strong> at the bottom of the panel to run the review again after you've made changes.</li>
           <li>If you've set up a <a href="#writing-style" class="content-link">writing style</a>, Claude takes it into account and doesn't flag choices that match how you normally write.</li>
         </ul>
@@ -672,6 +676,7 @@
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘B</kbd></dt><dd class="docs-keys__action">Quote</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌥⌘C</kbd></dt><dd class="docs-keys__action">Code block</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧↩︎</kbd></dt><dd class="docs-keys__action">Line break without starting a new paragraph</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>↩︎</kbd></dt><dd class="docs-keys__action">Edit the selected gallery</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘V</kbd></dt><dd class="docs-keys__action">Paste as Markdown</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘F</kbd></dt><dd class="docs-keys__action">Find and replace</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Move out of the block the cursor is in</dd></div>

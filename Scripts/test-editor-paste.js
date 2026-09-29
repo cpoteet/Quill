@@ -138,6 +138,13 @@ describe('paste into the body is unaffected', () => {
     assert.equal(doc(), 'paragraph("line one") | paragraph("line two")')
   })
 
+  test('a line holding only spaces between two lines leaves no empty paragraph', () => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.focus('end')
+    paste({ 'text/plain': 'line one\n \t \nline two' })
+    assert.equal(doc(), 'paragraph("line one") | paragraph("line two")')
+  })
+
   test('single-line plain text is inserted as-is', () => {
     editor.commands.setContent('<p></p>')
     editor.commands.focus('end')
@@ -314,4 +321,46 @@ describe('copy and paste inside Quill', () => {
       assert.deepEqual(problems(pasted), problems(original), pasted)
     })
   }
+
+  test('a copy holding a line break is still recognised as Quill\'s own', () => {
+    const original = '<!-- wp:paragraph {"metadata":{"name":"Intro"},"backgroundColor":"accent"} -->\n<p class="has-accent-background-color has-background">one<br>two</p>\n<!-- /wp:paragraph -->'
+    win.setContent(original)
+    const before = saved()
+    const clipboard = copyAll()
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste(clipboard)
+    assert.equal(saved(), before)
+  })
+
+  const foreign = '<p data-pm-slice="1 1 []" style="text-align:center">Centered</p>' +
+    '<h2 class="heading-anchor" style="color:red">Head</h2><p><span style="font-weight:bold">Bold</span></p>'
+
+  test("another ProseMirror editor's copy is cleaned like any outside paste", () => {
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste({ 'text/html': foreign, 'text/plain': 'Centered\n\nHead\n\nBold' })
+    const pasted = saved()
+    assert.doesNotMatch(pasted, /style="|<span|data-pm-slice|heading-anchor/)
+    assert.match(pasted, /<strong>Bold<\/strong>/)
+    assert.deepEqual(problems(pasted), [], pasted)
+  })
+
+  test('the same markup pasted right after a Quill copy of other text is still cleaned', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Something else</p>\n<!-- /wp:paragraph -->')
+    copyAll()
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste({ 'text/html': foreign, 'text/plain': 'Centered\n\nHead\n\nBold' })
+    assert.doesNotMatch(saved(), /style="|<span|heading-anchor/)
+  })
+
+  test('Paste as Markdown cleans raw HTML that carries the marker', () => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('<p data-pm-slice="1 1 []"><span style="color:red">Red</span> text</p>')
+    const pasted = saved()
+    assert.doesNotMatch(pasted, /style="|<span|data-pm-slice/)
+    assert.match(pasted, /Red text/)
+  })
 })

@@ -1545,9 +1545,24 @@ describe('standalone image block comments', () => {
     assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'custom' })
   })
 
+  test('a link to a rotated copy with a query string still records linkDestination media', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/p-rotated.jpg?ver=2"><img src="https://example.com/p-300x200.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
+  test('a link to a different upload records linkDestination custom', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/q.jpg"><img src="https://example.com/p-1024x683.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'custom' })
+  })
+
   test('an aligned image records its alignment', () => {
     const html = '<figure class="wp-block-image"><img class="alignleft" src="https://example.com/p.jpg" alt="" data-media-id="7"></figure>'
     assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, align: 'left' })
+  })
+
+  test('align is written after linkDestination, in core order', () => {
+    const html = '<figure class="wp-block-image size-large"><a href="https://example.com/p.jpg"><img class="alignleft" src="https://example.com/p-1024x683.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.equal(nodesOf(wp(html))[0].nodeValue, ' wp:image {"id":7,"sizeSlug":"large","linkDestination":"media","align":"left"} ')
   })
 
   test('gallery images keep exactly one wp:image pair and the gallery is not image-wrapped', () => {

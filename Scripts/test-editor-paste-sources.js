@@ -220,6 +220,11 @@ describe('paste fallbacks', () => {
     assert.deepEqual(problems(saved), [], saved)
   })
 
+  test('plain text pasted into an empty formatted paragraph keeps that formatting', () => {
+    const saved = pastePlain('hello', '<!-- wp:paragraph {"style":{"typography":{"textAlign":"center"}}} -->\n<p class="has-text-align-center"></p>\n<!-- /wp:paragraph -->')
+    assert.match(saved, /^<!-- wp:paragraph \{"style":\{"typography":\{"textAlign":"center"\}\}\} -->\n<p class="has-text-align-center">hello<\/p>/)
+  })
+
   test('the same URL pasted into a sentence stays a link', () => {
     const saved = pastePlain('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '<!-- wp:paragraph -->\n<p>Watch </p>\n<!-- /wp:paragraph -->')
     assert.doesNotMatch(saved, /wp:embed/)
@@ -268,6 +273,38 @@ describe('pasted images the site does not host yet', () => {
     assert.doesNotMatch(saved, /data:image/)
     assert.match(saved, /<!-- wp:image \{"id":321\} -->\n<figure class="wp-block-image"><img src="https:\/\/example.com\/wp-content\/uploads\/chart.png" alt="Chart" class="wp-image-321"\/><\/figure>/)
     assert.deepEqual(problems(saved), [], saved)
+  })
+
+  test('an image Swift gave up on is sent again when it is pasted again', async () => {
+    uploads.length = 0
+    const html = `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`
+    pasteData({ 'text/html': html, 'text/plain': 'Before' })
+    await settle()
+    win.forgetPastedImage(uploads[0].token)
+    pasteData({ 'text/html': html, 'text/plain': 'Before' })
+    await settle()
+    assert.equal(uploads.length, 2)
+    assert.notEqual(uploads[1].token, uploads[0].token)
+    win.forgetPastedImage(uploads[1].token)
+  })
+
+  test('one undo after the upload lands takes back the paste, not just the swap to the uploaded file', async () => {
+    uploads.length = 0
+    pasteData({ 'text/html': `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`, 'text/plain': 'Before' })
+    await settle()
+    await new Promise(resolve => setTimeout(resolve, 600))
+    win.resolvePastedImage(uploads[0].token, 'https://example.com/wp-content/uploads/chart.png', 321)
+    editor.commands.undo()
+    win.syncContentToSwift()
+    assert.doesNotMatch(sentToSwift.at(-1), /data:image|chart\.png/)
+  })
+
+  test('a redo after that brings back the uploaded file, not the base64', () => {
+    editor.commands.redo()
+    win.syncContentToSwift()
+    const saved = sentToSwift.at(-1)
+    assert.doesNotMatch(saved, /data:image/)
+    assert.match(saved, /<img src="https:\/\/example.com\/wp-content\/uploads\/chart.png" alt="Chart" class="wp-image-321"\/>/)
   })
 
   test('an image whose file the page cannot read is dropped rather than saved as a dead link', () => {
@@ -409,5 +446,152 @@ describe('definition lists', () => {
     const saved = sentToSwift.at(-1)
     assert.doesNotMatch(saved, /<p><\/p>/)
     assert.match(saved, /<p><strong>Clipboard<\/strong><\/p>[\s\S]*<p>Reads and writes\.<\/p>[\s\S]*<p><strong>Plain term<\/strong><\/p>[\s\S]*<p>Plain definition<\/p>/)
+  })
+})
+
+function pasteHTML(html, text, target = '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->', typed = '') {
+  win.setContent(target)
+  editor.commands.focus('end')
+  if (typed) editor.commands.insertContent(typed)
+  const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+  const data = { 'text/html': html, 'text/plain': text }
+  Object.defineProperty(ev, 'clipboardData', { value: { getData: t => data[t] || '', types: Object.keys(data), files: [] } })
+  editor.view.dom.dispatchEvent(ev)
+  win.syncContentToSwift()
+  return sentToSwift.at(-1)
+}
+
+const blocksOf = saved => [...saved.matchAll(/<!-- wp:([\w/-]+)/g)].map(m => m[1])
+
+describe('players a source embeds', () => {
+  test('a video or audio player becomes a core block, and one the site cannot reach is dropped', () => {
+    const saved = pasteHTML('<p>Before</p><figure><video src="https://x.test/v.mp4" autoplay muted></video><figcaption>Clip</figcaption></figure>' +
+      '<audio><source src="https://x.test/a.mp3"></audio><video src="file:///Users/me/v.mp4"></video><p>After</p>', 'Before Clip After')
+    assert.deepEqual(blocksOf(saved), ['paragraph', 'video', 'audio', 'paragraph'])
+    assert.match(saved, /<!-- wp:video -->\n<figure class="wp-block-video"><video controls="" src="https:\/\/x.test\/v.mp4"><\/video><figcaption>Clip<\/figcaption><\/figure>\n<!-- \/wp:video -->/)
+    assert.match(saved, /<!-- wp:audio -->\n<figure class="wp-block-audio"><audio controls="" src="https:\/\/x.test\/a.mp3"><\/audio><\/figure>\n<!-- \/wp:audio -->/)
+    assert.doesNotMatch(saved, /autoplay|muted|file:/)
+  })
+
+  test('Vimeo, privacy-mode YouTube and Spotify players become embeds of their page URL, and any other frame is dropped', () => {
+    const saved = pasteHTML('<p>A</p><iframe src="https://player.vimeo.com/video/76979871?h=abc"></iframe>' +
+      '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"></iframe>' +
+      '<figure><iframe src="https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"></iframe><figcaption>Song</figcaption></figure>' +
+      '<iframe src="https://ads.example.com/frame"></iframe><p>B</p>', 'A Song B')
+    assert.deepEqual(blocksOf(saved), ['paragraph', 'embed', 'embed', 'embed', 'paragraph'])
+    const urls = [...saved.matchAll(/<!-- wp:embed \{"url":"([^"]+)","type":"(\w+)","providerNameSlug":"(\w+)"/g)].map(m => m.slice(1).join(' '))
+    assert.deepEqual(urls, [
+      'https://vimeo.com/76979871 video vimeo',
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ video youtube',
+      'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC rich spotify',
+    ])
+    assert.match(saved, /https:\/\/open.spotify.com\/track\/4uLU6hMCjMI75M1A2tKUQC\n<\/div><figcaption>Song<\/figcaption><\/figure>/)
+    assert.doesNotMatch(saved, /iframe|ads\.example/)
+  })
+})
+
+describe('styles a source wrote as preset classes', () => {
+  test('colour and size presets become delimiter attributes in core order', () => {
+    const saved = pasteHTML('<p>Lead</p><p class="has-primary-color has-accent-background-color has-large-font-size has-text-color has-background">Styled</p>' +
+      '<h2 class="has-vivid-red-color has-huge-font-size">Head</h2><ul class="has-luminous-vivid-amber-background-color has-background"><li>one</li></ul>', 'Lead Styled Head one')
+    assert.match(saved, /<!-- wp:paragraph \{"backgroundColor":"accent","textColor":"primary","fontSize":"large"\} -->\n<p class="has-primary-color has-accent-background-color has-large-font-size has-text-color has-background">Styled<\/p>/)
+    assert.match(saved, /<!-- wp:heading \{"textColor":"vivid-red","fontSize":"huge"\} -->\n<h2 class="has-vivid-red-color has-huge-font-size wp-block-heading">Head<\/h2>/)
+    assert.match(saved, /<!-- wp:list \{"backgroundColor":"luminous-vivid-amber"\} -->\n<ul class="has-luminous-vivid-amber-background-color has-background wp-block-list">/)
+    assert.deepEqual(problems(saved), [], saved)
+  })
+
+  test('the first block pasted into an empty paragraph keeps its attributes and replaces it', () => {
+    const saved = pasteHTML('<p class="has-accent-background-color has-background">Styled</p><p>Two</p>', 'Styled Two')
+    assert.match(saved, /^<!-- wp:paragraph \{"backgroundColor":"accent"\} -->\n<p class="has-accent-background-color has-background">Styled<\/p>/)
+    assert.deepEqual(blocksOf(saved), ['paragraph', 'paragraph'])
+    assert.deepEqual(problems(saved), [], saved)
+  })
+
+  test('the first block pasted into a paragraph with text still joins it', () => {
+    const saved = pasteHTML('<p class="has-accent-background-color has-background">Styled</p><p>Two</p>', 'Styled Two',
+      '<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->', ' ')
+    assert.match(saved, /^<!-- wp:paragraph -->\n<p>Start Styled<\/p>/)
+  })
+
+  test('an inline colour keeps a background, and its own colour only when no preset class names one', () => {
+    const saved = pasteHTML('<p>Some <mark style="color:#cf2e2e;font-size:30px" class="has-inline-color">red</mark> and ' +
+      '<mark style="background-color:yellow;color:#000" class="has-inline-color has-vivid-red-color">preset</mark>.</p>', 'Some red and preset.')
+    assert.match(saved, /<mark style="background-color:rgba\(0, 0, 0, 0\);color:rgb\(207, 46, 46\)" class="has-inline-color">red<\/mark>/)
+    assert.match(saved, /<mark style="background-color:yellow" class="has-inline-color has-vivid-red-color">preset<\/mark>/)
+  })
+})
+
+describe('what a reader never sees', () => {
+  test('hidden text is dropped, and a button keeps its label unless it is a copy button', () => {
+    const saved = pasteHTML('<p>Visible<span class="screen-reader-text"> one</span><span class="visually-hidden"> two</span>' +
+      '<span style="display: none"> three</span><span style="mso-hide:all"> four</span>.</p>' +
+      '<p>Version <button>v2.1</button> <button aria-label="Copy to clipboard"><span>⧉</span></button></p>', 'Visible. Version v2.1')
+    assert.match(saved, /<p>Visible\.<\/p>/)
+    assert.match(saved, /<p>Version v2\.1<\/p>/)
+    assert.doesNotMatch(saved, /button|⧉/)
+  })
+
+  test("a front-end footnote's back-link is dropped and the note keeps its text", () => {
+    footnotesMeta = '[]'
+    const saved = pasteHTML('<p>Text<sup data-fn="f1" class="fn"><a href="#f1" id="f1-link">1</a></sup></p>' +
+      '<ol class="wp-block-footnotes"><li id="f1">Note. <a href="#f1-link" aria-label="Jump to footnote reference 1">↩︎</a></li></ol>', 'Text1 Note.')
+    assert.match(saved, /<!-- wp:footnotes \/-->$/)
+    const notes = JSON.parse(footnotesMeta)
+    assert.equal(notes.length, 1)
+    assert.equal(notes[0].content.trim(), 'Note.')
+  })
+})
+
+describe('pasted table alignment', () => {
+  test("a cell's alignment becomes core's class and data-align, written ahead of scope and colspan", () => {
+    const saved = pasteHTML('<p>Lead</p><table><thead><tr><th colspan="2" scope="col" style="text-align:right">H</th></tr></thead>' +
+      '<tbody><tr><td align="center">a</td><td><p style="text-align:right">b</p></td></tr></tbody></table>', 'Lead H a b')
+    assert.match(saved, /<th class="has-text-align-right" data-align="right" scope="col" colspan="2">H<\/th>/)
+    assert.match(saved, /<td class="has-text-align-center" data-align="center">a<\/td><td class="has-text-align-right" data-align="right">b<\/td>/)
+    assert.deepEqual(problems(saved), [], saved)
+    assert.equal(resaved(saved), saved)
+  })
+})
+
+describe('Word numbering', () => {
+  test('a Word list that starts past one keeps its start number', () => {
+    const saved = pasteHTML('<p>Lead</p>' +
+      "<p class=MsoListParagraph style='mso-list:l0 level1 lfo1'><span style='mso-list:Ignore'>3.<span>&nbsp;&nbsp;</span></span>Third</p>" +
+      "<p class=MsoListParagraph style='mso-list:l0 level1 lfo1'><span style='mso-list:Ignore'>4.<span>&nbsp;&nbsp;</span></span>Fourth</p>", 'Lead 3. Third 4. Fourth')
+    assert.match(saved, /<!-- wp:list \{"ordered":true,"start":3\} -->\n<ol start="3" class="wp-block-list"><!-- wp:list-item -->\n<li>Third<\/li>\n<!-- \/wp:list-item -->\n\n<!-- wp:list-item -->\n<li>Fourth<\/li>/)
+    assert.deepEqual(problems(saved), [], saved)
+  })
+})
+
+describe('pasting into a list item, continued', () => {
+  const listTarget = '<!-- wp:list -->\n<ul class="wp-block-list"><!-- wp:list-item -->\n<li>Item</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->'
+
+  test('a single paragraph joins the item it is pasted into', () => {
+    const saved = pasteHTML('<p>just <em>this</em></p>', 'just this', listTarget, ' ')
+    assert.equal((saved.match(/<li>/g) || []).length, 1)
+    assert.match(saved, /<li>Item just <em>this<\/em><\/li>/)
+  })
+
+  test("a quote's paragraphs pasted with other blocks become items of their own", () => {
+    const saved = pasteHTML('<p>p1</p><blockquote><p>q1</p><p>q2</p></blockquote>', 'p1 q1 q2', listTarget, ' ')
+    assert.deepEqual([...saved.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1]), ['Item p1', 'q1', 'q2'])
+    assert.doesNotMatch(saved, /<blockquote|<li><p>/)
+  })
+
+  const items = saved => [...saved.matchAll(/<li>([^<]*)<\/li>/g)].map(m => m[1])
+
+  test('a quote pasted on its own becomes items too', () => {
+    const saved = pasteHTML('<blockquote><p>q1</p><p>q2</p></blockquote>', 'q1 q2', listTarget, ' ')
+    assert.deepEqual(items(saved), ['Item q1', 'q2'])
+    assert.doesNotMatch(saved, /<blockquote|<li><p>/)
+  })
+
+  test("a quote's citation, bare text, headings and lists all survive as items", () => {
+    assert.deepEqual(items(pasteHTML('<p>Intro</p><blockquote><p>Quoted</p><cite>Author Name</cite></blockquote>', 'Intro Quoted Author Name', listTarget, ' ')),
+      ['Item Intro', 'Quoted', 'Author Name'])
+    assert.deepEqual(items(pasteHTML('<p>Intro</p><blockquote>Bare quoted text</blockquote>', 'Intro Bare quoted text', listTarget, ' ')),
+      ['Item Intro', 'Bare quoted text'])
+    assert.deepEqual(items(pasteHTML('<p>Intro</p><blockquote><h3>Head</h3><ul><li>a</li><li>b</li></ul></blockquote>', 'Intro Head a b', listTarget, ' ')),
+      ['Item Intro', 'Head', 'a', 'b'])
   })
 })

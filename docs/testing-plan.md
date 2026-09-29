@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 507 Swift tests + 1,452 JS tests (1,451 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 518 Swift tests + 1,481 JS tests (1,480 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,18 +16,18 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (507 tests)
+1. **Swift tests** — `swift test` (518 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (265 tests via Node's built-in runner + jsdom)
-6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (84 tests — live Tiptap editor in jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (268 tests via Node's built-in runner + jsdom)
+6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
-11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (52 tests — live Tiptap editor in jsdom)
-12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (41 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
+12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 13. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 14. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
@@ -51,9 +51,9 @@ save-again, printing a per-fixture report and the first byte of any difference. 
 exits non-zero on a mismatch.
 
 It then runs the **script handler probes**: every `Scripts/fixtures/script-sinks/*.html`
-(a nested preserved block, an image caption, a gallery caption, each carrying an
-`<img onerror>` that counts itself in `window.__quillScriptRan`) through load, save,
-code view, copy, a gallery rebuild and paste, as does the corpus fixture
+(a nested preserved block, an image caption, a gallery caption, and a gallery image with handlers on the image, its link and its figure, each carrying an
+`<img onerror>` or handler attribute that counts itself in `window.__quillScriptRan`) through load, save,
+code view, copy, a gallery rebuild (with the gallery's `sourceHTML` cleared, so the image and link attributes go through the carrier) and paste, as does the corpus fixture
 `settings-script-handlers.html` (a Custom HTML block). It fails if any handler ran.
 jsdom never loads images, so this is the only test that can see post markup run
 script inside the editor. Proven to fail: pointing `inertDocument()` at the live page
@@ -68,7 +68,7 @@ widget-decoration keystroke drop and the empty-caret `<br>` — have the same sh
 
 ### Paste in real WebKit (after changing paste handling)
 
-`Scripts/paste-harness/harness.swift` pastes real clipboards into the bundled `editor.html` with a native `paste:`, so WebKit's own sanitizer runs first, which no jsdom suite can reproduce. Its modes, and how to check its output with WordPress's validator, are in `Scripts/fixtures/paste/README.md`. Run it after any change to `cleanPastedHTML`, the paste hooks or the carrier. It uses the system pasteboard.
+`Scripts/paste-harness/harness.swift` pastes real clipboards into the bundled `editor.html` with a native `paste:`, so WebKit's own sanitizer runs first, which no jsdom suite can reproduce. Its modes, and how to check its output with WordPress's validator, are in `Scripts/fixtures/paste/README.md`. Run it after any change to `cleanPastedHTML`, the paste hooks or the carrier. It uses the system pasteboard. Its `quill` mode copies and pastes every corpus fixture inside the editor: 28 of 29 come back byte-for-byte. `accordion-block` does not, because its copy never reaches the pasteboard in the harness; the result is identical at the commit before the copy-provenance change, so it is a harness quirk, not an editor bug. It is also where WebKit was seen running ProseMirror's own paste handler on the editor element before a listener on that element, which jsdom does not show, so the copy, cut and paste listeners are on `document` in the capture phase (`docs/paste.md`).
 
 ### A whole site against WordPress's parsers (once per WordPress release)
 
@@ -110,7 +110,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (507 tests, 33 suites)
+## Swift test suite (518 tests, 33 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -131,15 +131,15 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 13 | Autosave CRUD, one-per-post, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 5 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, drafts and autosaves independent |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 87 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 88 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, table cells, `<summary>` and `<dt>`/`<dd>` read as block breaks in the evaluation text, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
 | 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 15 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 38 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 16 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 41 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -150,7 +150,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
-| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 16 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links / None / Full Image, an image with no `WPMedia` |
+| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 
 ---
 
@@ -308,7 +308,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `fetchMediaItemHitsCorrectEndpointWithEditContext` | `GET /media/{id}?context=edit`, returns decoded `WPMedia` |
 | `fetchMediaByIdsSendsIncludeAndPerPage` | `fetchMedia(ids:)` sends `include` in the given order, `per_page` equal to the count, `context=edit` — the request `GallerySheet` makes to reopen a gallery |
 | `fetchMediaByIdsSendsNothingForNoIds` | No ids, no request (an empty `include` would return the whole library) |
-| `fetchMediaByIdsBatchesPastOneHundred` | 150 ids → requests of 100 and 50, WordPress's `per_page` cap |
+| `fetchMediaByIdsBatchesPastOneHundred` | 150 ids → requests of 100 and 50, WordPress's `per_page` cap; the two `include` lists are exactly ids 1–100 and 101–150 |
 | `fetchMediaSendsTheRequestedPageAndPageSize` | `page`, `per_page` and `media_type` parsed back out of the query with `URLComponents` — `GallerySheet.loadMoreMedia` loops until a page holds an image, so a dropped page parameter never terminates |
 | `fetchMediaOmitsOffsetUnlessAsked` | no `offset` key unless one is passed; a passed offset reaches the query beside `per_page` — the paging mode `MediaLibraryView` depends on |
 | `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
@@ -515,7 +515,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (86 tests)
+### 12. AI — `AIPromptBuilderTests` (88 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -602,13 +602,14 @@ Pure function tests — no network, no async. `parseGenerateResponse` has been p
 | `anchorFieldEmptyStringBecomesNil` | `ANCHOR: ""` → `nil` (not empty string) |
 | `anchorFieldCaseInsensitivePrefix` | Lowercase `anchor:` accepted |
 
-#### `evaluatePostPrompt` (18 tests)
+#### `evaluatePostPrompt` (19 tests)
 
 | Test | What it checks |
 |---|---|
 | `promptIncludesTitle` | Post title embedded in prompt |
 | `promptStripsHTMLTags` | HTML removed, text content preserved |
 | `promptKeepsBlockBoundariesAsParagraphBreaks` | Headings, paragraphs and list items reach Claude separated by blank lines, not run together |
+| `promptKeepsTableCellsAndDetailsApartFromTheNextBlock` | `</td>`, `</th>`, `</summary>`, `</dt>` and `</dd>` are block breaks, so table cells, a `<details>` summary and definition terms reach Claude on their own lines rather than run together |
 | `promptDecodesHTMLEntities` | `&amp;` / `&lt;` / `&gt;` decoded |
 | `promptDecodesSmartQuoteEntities` | `&ldquo;` / `&rdquo;` / `&rsquo;` decoded to Unicode typography chars |
 | `promptDecodesTypographicDashAndEllipsis` | `&ndash;` / `&mdash;` / `&hellip;` decoded |
@@ -783,7 +784,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (15 tests)
+### 19. Security — `EditorCoordinatorTests` (16 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -806,10 +807,11 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 | `pastedImageDecodesDataURL` | A base64 image data URL from the editor decodes to its bytes, MIME type and token |
 | `pastedImageWithoutToken` | A screenshot paste has no token, so it is inserted at the cursor |
 | `pastedImageRefusesOtherURLs` | A non-image, non-base64 or non-data URL is refused |
+| `pastedImageForgetScript` | Every token Swift is done with becomes one `window.forgetPastedImage` call, JSON-encoded (a quote in a token stays escaped), and an empty list makes no call at all, so a pasted image whose upload ended, failed or was rejected can be sent again when pasted again |
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (38 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (41 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -835,6 +837,16 @@ A restored autosave keeps the server `modified` it was edited from as the confli
 | `autosaveOnChangedServerKeepsItsOwnBaseline` | Server changed since the autosave → baseline is the autosave's older timestamp, so the save-time check fires |
 | `autosaveWithBlankTimestampNeverMatchesTheServer` | Blank `serverModified` → blank baseline, which never matches, so the alert fires (the safe side) |
 | `emptyAutosaveWithUnchangedTitleIsDiscarded` | Empty body and unchanged title → `nil`, the autosave is dropped |
+
+#### `stashAfterSave` (3 tests)
+
+`save()` can finish for a post the user has switched away from. It then cannot touch the editor's state, so it deletes that post's autosave stash if the stash holds what was just saved, and otherwise keeps it re-based on the saved version so a later save does not raise a false conflict.
+
+| Test | What it checks |
+|---|---|
+| `stashMatchingTheSaveIsDeleted` | A stash with the saved title, content and footnotes → `nil` (delete it); no stash → `nil` |
+| `stashWithLaterEditsIsKeptOnTheSavedVersion` | A stash whose content differs from what was saved is kept, with `serverModified` set to the saved post's |
+| `stashDifferingOnlyInFootnotesIsKept` | A stash that matches in title and content but not footnotes is kept, so an edited note is not lost |
 
 #### Preview conflict check (1 test)
 
@@ -874,7 +886,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 
 | Test | What it checks |
 |---|---|
-| `pastedImageFileExtensionFollowsTheBytesNotTheLabel` | JPEG, PNG, WebP and HEIC bytes pick their own extension whatever the label says; Word labels its JPEGs `image/png` and WordPress refuses a mismatched upload |
+| `pastedImageFileExtensionFollowsTheBytesNotTheLabel` | JPEG, PNG, WebP, HEIC and GIF bytes pick their own extension whatever the label says; Word labels its JPEGs `image/png` and WordPress refuses a mismatched upload |
 | `pastedImageFileExtensionFallsBackToItsType` | Unrecognised bytes fall back to the MIME type, then to `png` |
 
 #### Dropped-image upload feedback (10 tests)
@@ -1020,7 +1032,7 @@ The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/
 
 ---
 
-### 31. Editor — `GalleryEditTests` (16 tests)
+### 31. Editor — `GalleryEditTests` (22 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift half of editing a gallery: decoding what `window.editGallery` posts, and building what `window.insertGallery` receives. Spec: `docs/superpowers/specs/2026-09-11-gallery-editing-design.md`.
 
@@ -1033,11 +1045,17 @@ File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift
 | `galleryEditSharedSizeIsTheInitialSize` | One shared size starts the Size menu there |
 | `galleryEditShowsKeepLinksForAttachmentGalleries` | `attachment` shows Keep Current Links; `media` with every image linked to its own file does not |
 | `galleryEditShowsKeepLinksForACustomLinkInAnUnlinkedGallery` | A custom link inside a `none` gallery shows it; an unlinked gallery does not |
+| `galleryEditShowsKeepLinksForAFullImageGalleryWithOtherLinks` | A `media` gallery whose images all link to their own file does not show it; one with a custom link or an unlinked image does |
 | `galleryPayloadKeepsUntouchedKeys` | `blockAttrs`, `extraClasses`, `extraAttrs`, `captionHTML` go back unchanged, plus `replace: true` |
 | `galleryPayloadDropsCaptionHTMLWhenCaptionChanged` | A changed caption is sent as plain text only |
 | `galleryPayloadMixedKeepsEachSize` | Mixed keeps each image's size and URL; a new image gets Large; no gallery `sizeSlug` is sent |
 | `galleryPayloadPickedSizeAppliesToEveryImage` | Picking a size resizes an existing image through its `WPMedia` |
 | `galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo` | Keep Current Links keeps existing `href`s, links a new image to its attachment page with `linkDestination: attachment` in core's key order, sends the gallery's own `linkTo` and `keepLinks: true` |
+| `galleryPayloadUnchangedSizeKeepsEachImagesOwnURL` | With the Size menu left where it started (`initialSizeSlug`), an existing image keeps its own `src`, including a `-e…` edited-copy URL, while a new image gets the gallery size |
+| `galleryPayloadUnchangedSharedSizeGivesNewImagesThatSize` | A gallery that shares one non-default size (Thumbnail) keeps its images' URLs, and a new image is added at that size |
+| `galleryPayloadKeepLinksLinksNewImagesToTheFileInAFullImageGallery` | Keep Current Links in a `media` gallery keeps existing `href`s, links a new image to its file with no invented `blockAttrs`, and sends `linkTo: media` |
+| `galleryPayloadKeepLinksLeavesNewImagesUnlinkedInAnUnlinkedGallery` | Keep Current Links in a `none` gallery keeps an existing custom `href`, leaves a new image with `href: null` and sends `linkTo: none` |
+| `galleryPayloadFollowsTheSheetOrder` | Images come out in the order the sheet shows them, ids and URLs together, not in the order they were in the block |
 | `galleryPayloadFullImageReplacesLinks` | Full Image links every image to its full-size file (`fullUrl` for an image with no `WPMedia`), `keepLinks: false` |
 | `galleryPayloadNoneUnlinksEveryImage` | None sends `href: null` for every image |
 | `galleryPayloadImageWithoutMediaKeepsItsURL` | An image the library did not return keeps its URL and size, and sends no id |
@@ -1322,7 +1340,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (263 tests)
+## JS editor tests (268 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1709,7 +1727,7 @@ The inverse, run on load so the notes are editable in the editor.
 
 ---
 
-### standalone image block comments (11 tests)
+### standalone image block comments (14 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1720,7 +1738,10 @@ The inverse, run on load so the notes are editable in the editor.
 | a linked image records linkDestination media | An `<a>` parent of the `<img>` becomes `linkDestination:'media'` |
 | a link to the full-size file of a sized image records linkDestination media | `p-scaled.jpg` linked from `p-1024x683.jpg` is the same upload, so still `media` |
 | a link to another page records linkDestination custom | An href that is not the image's file becomes `linkDestination:'custom'`, as core's paste converter and link control write it |
+| a link to a rotated copy with a query string still records linkDestination media | `p-rotated.jpg?ver=2` linked from `p-300x200.jpg` is the same upload, so `media`; the version query does not make it another file |
+| a link to a different upload records linkDestination custom | A link to `q.jpg` from `p-1024x683.jpg` is a different file, so `custom` |
 | an aligned image records its alignment | `alignleft` (moved to the figure by the pass above) becomes `align:'left'` |
+| align is written after linkDestination, in core order | A linked, large, left-aligned image writes exactly `{"id":7,"sizeSlug":"large","linkDestination":"media","align":"left"}`, the string as core writes it, not just the same keys |
 | gallery images keep exactly one wp:image pair and the gallery is not image-wrapped | Guard: the standalone pass skips anything inside `.wp-block-gallery`, so nested images are wrapped once by the gallery pass and the gallery figure itself gets `wp:gallery`, never `wp:image` |
 | wrapping a standalone image is idempotent across repeated saves | `wp(wp(html))` is byte-identical to `wp(html)`, one comment pair — the strip-then-rewrap cycle does not stack |
 | data-media-id never reaches the saved output | The attribute is gone and `wp-image-201` is present |
@@ -1838,7 +1859,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS keyboard tests (80 tests)
+## JS keyboard tests (87 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1940,6 +1961,30 @@ WordPress 7.1's "Mark as decorative" image toggle writes `role="none"` on the `<
 | `a classic bare img keeps its role through the save transform` | Classic (non-Gutenberg) `<img>` markup keeps `role` on save |
 | `role stays on the img when the image also links to its full size` | With `linkTo: 'media'`, `role` lands on the `<img>` nested in the `<a>`, not on the anchor |
 | `an empty role attribute is dropped rather than emitted as role=""` | `role=""` is treated as absent, not serialized as an empty attribute |
+
+### `image dimensions round-trip` (17 tests)
+
+Quill saves an image's width the way core does: a width with `height:auto`, and a pixel height only when the height was set independently (a drag off the natural ratio, or a typed H). The image toolbar's W and H fields are checked against natural sizes set on the `<img>`, since jsdom loads no images.
+
+| Test | What it checks |
+|---|---|
+| `a style width on the img parses into the width attr` | `style="width:640px"` loads as `width: 640` |
+| `height:auto parses as no height` | `height:auto` does not become a pixel height |
+| `a resized image saves back with its style and is-resized intact` | Saves `width:640px;height:auto` and keeps `is-resized` on the figure |
+| `a resized image saves its dimensions into the comment attributes` | The comment carries `width: "640px"` |
+| `the saved img carries no width or height attribute` | Only the `style` carries the size |
+| `is-resized is dropped when the image loses its dimensions` | No dimensions, no class |
+| `is-resized is not carried as a stale figure class` | The class is derived on save, not stored |
+| `a resized image round-trips idempotently` | Saving twice gives the same markup |
+| `legacy width/height attributes are converted to a style on save` | A classic `<img width="640" height="480">` becomes `style="width:640px;height:480px"` |
+| `an image inserted by Quill saves no dimensions, as core does` | `window.insertImage` takes no dimensions |
+| `a proportional drag saves the width with height:auto, as core does` | A drag on the natural ratio writes a width only |
+| `picking a size swaps the URL and size class and keeps the width, as core does` | A size button changes `src` and `size-*`, not the width |
+| `Reset restores the full-size URL and clears the dimensions` | Reset removes both dimensions |
+| `a drag that stretches the image off its natural ratio keeps an explicit height` | An off-ratio drag still saves a height |
+| `the height field shows the height a width-only image implies` | A 640-wide image on a 1280×800 file shows H `400`, not a blank field |
+| `typing a height on a width-only image keeps its ratio` | H `200` on that image saves width `320` and height `200`, and the W field follows |
+| `typing a height on an unresized image scales from its natural size` | H `400` on a 1200×800 image with no dimensions saves 600×400 |
 
 ### `image toolbar visibility` (4 tests)
 
@@ -2619,7 +2664,7 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ---
 
-## JS paste tests (51 tests)
+## JS paste tests (56 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2637,13 +2682,14 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `block HTML is flattened into the footnote` | A heading and a list paste in as plain text — the pre-existing `transformPastedHTML` guard |
 | `CRLF and lone-CR line endings collapse the same way` | Windows and old-Mac line endings behave like `\n` |
 
-### `paste into the body is unaffected` (3 tests)
+### `paste into the body is unaffected` (4 tests)
 
 | Test | What it checks |
 |---|---|
 | `multi-line plain text still becomes one paragraph per line` | The footnote handling did not change ordinary paste |
 | `single-line plain text is inserted as-is` | One paragraph, no wrapping |
 | `block HTML keeps its structure` | A heading and a list arrive as a heading and a list |
+| `a line holding only spaces between two lines leaves no empty paragraph` | A line of spaces and a tab between two lines of pasted plain text is dropped, not turned into an empty paragraph |
 
 ### `window.insertMarkdown` (15 tests)
 
@@ -2671,13 +2717,24 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
 
+### `where a paste came from` (4 tests)
+
+Every ProseMirror or Tiptap app (Confluence, Substack, GitLab) writes `data-pm-slice`, and WebKit keeps it, so the marker alone does not mean the copy was Quill's. A paste is Quill's own only when it carries the marker **and** its `text/plain` matches, whitespace-normalised, the text of Quill's last copy or cut. See `docs/paste.md`.
+
+| Test | What it checks |
+|---|---|
+| `another ProseMirror editor's copy is cleaned like any outside paste` | HTML carrying `data-pm-slice` with no Quill copy behind it goes through `cleanPastedHTML`: inline styles, spans, a foreign class and the marker are gone, a bold span becomes `<strong>`, and WordPress's validator finds no problem |
+| `the same markup pasted right after a Quill copy of other text is still cleaned` | A Quill copy of one passage does not vouch for a later paste of different text that carries the marker |
+| `Paste as Markdown cleans raw HTML that carries the marker` | `window.insertMarkdown` always cleans, since `cleanPastedHTML` no longer checks the marker itself |
+| `a copy holding a line break is still recognised as Quill's own` | The remembered text comes from the editor's own clipboard text serializer, which writes a hard break as `\n`; `textBetween` drops it, so a copy with a `<br>` would be cleaned as an outside paste and lose carried attributes such as `metadata` |
+
 ### `copy and paste inside Quill` (27 tests)
 
 One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseMirror's own copy handler, paste into an empty post, and save. The save must equal the fixture's own save, carry no `data-pm-slice`, and add no validation problem. ProseMirror's clipboard marker used to be saved on the first pasted block, invalidating accordions, galleries, buttons, columns, details, quotes, lists, separators and tabs. A copied table used to come back as classic HTML, because the unsupported-block rule claimed Quill's own `<table class="wp-block-table">` render.
 
 ---
 
-## JS paste source tests (41 tests)
+## JS paste source tests (58 tests)
 
 File: `Scripts/test-editor-paste-sources.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2688,10 +2745,12 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 |---|---|---|
 | `every captured clipboard pastes as valid, clean Gutenberg markup` | 16 | One per source: no validation problem, WordPress would save it back unchanged, no foreign style, attribute, class, bare span or empty paragraph, and every word of the plain-text flavor is kept (the chat apps' "Copy code" and language labels excepted) |
 | `what each source becomes` | 9 | Word lists become nested core lists with a lettered sub-level; Word and Docs alignment becomes core's `textAlign`; Word's formatting becomes plain marks; VS Code becomes one code block; chat-app code keeps its code and drops the label and copy button; Docs' not-bold wrapper does not bold everything; WordPress emoji become the character; a phrase lands inside a paragraph with its word spaces; a front-end copy loses its render-only classes and gets its embed back |
-| `paste fallbacks` | 6 | WebKit's empty HTML for a closed `<details>` falls back to the plain text, short or long; its extra wrapper around an open `<details>` is dropped; a YouTube URL in an empty paragraph becomes an embed, and stays a link in a sentence or for an unknown host |
-| `pasted images the site does not host yet` | 3 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id; an unreadable `file:` image is dropped |
+| `paste fallbacks` | 7 | WebKit's empty HTML for a closed `<details>` falls back to the plain text, short or long; its extra wrapper around an open `<details>` is dropped; a YouTube URL in an empty paragraph becomes an embed, and stays a link in a sentence or for an unknown host; plain text pasted into an empty formatted paragraph keeps that paragraph's alignment, since `transformPasted` leaves a plain-text slice open |
+| `pasted images the site does not host yet` | 6 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id; an unreadable `file:` image is dropped; an image Swift gave up on (`forgetPastedImage`) is sent again when pasted again; one undo after the upload lands takes back the whole paste, not just the swap from base64 to the uploaded file; a redo brings back the uploaded file, not the base64 |
 | `outside HTML cannot reach Quill internals` | 1 | Pasted `data-quill-block-attrs`, event handlers and `javascript:` links never reach the save |
-| `pasting into a list item` | 1 | Pasted blocks become further items, not paragraphs packed into one `<li>` |
+| `pasting into a list item` | 5 | Pasted blocks become further items, not paragraphs packed into one `<li>`; a single pasted paragraph joins the item; a quote's paragraphs pasted with other blocks become items of their own; a quote pasted alone becomes items too; a quote's citation, bare text, headings and nested lists all survive as items |
+| `pasting blocks into a paragraph` | 2 | The first block pasted into an empty top-level paragraph replaces it and keeps its attributes, as in the block editor; pasted into a paragraph with text, it still joins that paragraph |
+| `cleanPastedHTML structure` | 8 | A video or audio player becomes a core block and one the site cannot reach (`file:`) is dropped; Vimeo, privacy-mode YouTube and Spotify frames become embeds of their page URL and any other frame is dropped; colour and size presets become delimiter attributes in core's order; `mark.has-inline-color` keeps a background, and its own colour only when no preset class names one; hidden and screen-reader text is dropped, and a button keeps its label unless it is a copy button; a front-end footnote's back-link is dropped and the note keeps its text; a table cell's alignment becomes core's class and `data-align`, written ahead of `scope` and `colspan`; a Word list that starts past one keeps its start number |
 | `pasted table cells hold text, as core cells do` | 1 | A list and a nested table inside a cell become lines, and a cell image its alt text |
 | `inline <cite>` | 2 | Wikipedia's inline citations stay inside their reference items and what follows stays outside; a quote's `<cite>` is still a citation |
 | `block links` | 1 | A card link around blocks becomes the same link inside each block, with no empty paragraphs |
@@ -2917,6 +2976,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] **Editing a gallery** (new local draft; paste `Scripts/fixtures/settings-gallery.html` in code view, switch back): double-click the first card, select the second and press Return, and click the first card's **Edit** link → each opens **Edit Gallery** with its images in order, its columns, **Keep Current Links**, and **Mixed** for the second gallery. Reorder, change an alt text, change one caption, click **Update Gallery**, Save Draft, then read the draft from SQLite (`docs/gotchas.md`): the attachment links, the custom link, the untouched formatted caption and `is-style-rounded` are all still there, and the gallery comment's keys are in the same order as the fixture. Open the first gallery again, pick **Full Image**, Update → `linkTo` and every `linkDestination` are `media`, still in core's key order. Cmd+Z → exactly that update is undone.
 - [ ] Open a gallery for editing, click **Cancel**, then click the toolbar Gallery button and insert → a **new** gallery appears after the selected one; the selected gallery is untouched.
 - [ ] Insert a gallery of library images, then edit it → thumbnails, titles and grid checkmarks come back; add an image, pick Full Image and Thumbnail, Update → every image is a `-150x150` file linked to its full-size upload.
+- [ ] Edit a gallery whose images were resized or edited in WordPress (one image's file ends `-e…` or is a `-rotated` copy): change only the alt text or the order, leave Size where it opened, Update → each existing image still points at the same file it had, and the gallery's Size menu did not rewrite them to one size. Add an image without touching Size → the new image uses the gallery's size, and the others keep their files. Then change Size → every image switches to it.
 - [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
 - [ ] Insert a gallery (or embed) at the very end of a post, then click just after it → the caret shows as a thin blue vertical bar (not a black horizontal bar). Type → a new paragraph is created at that position and text is entered normally.
 - [ ] Click a single (non-gallery) image → in the image toolbar, toggle "Link to Full Image" on → save and check code view/raw HTML: the `<img>` is wrapped in `<a href>` pointing at the media's full-resolution URL. Toggle it back off → save again → the `<a>` wrapper is removed. Open a post with a pre-existing linked image (authored outside Quill) → the toggle shows as already on.
@@ -2986,12 +3046,16 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
 - [ ] In the page parent picker, the current page does not appear in the list. Save with a parent selected → the parent is set on the server.
 - [ ] The Publish button shows an outline paper plane on a draft (and for other status changes) and an outline up-arrow circle on a published post. Publish a remote draft → the button switches to Update, with the up-arrow icon, straight away, without reselecting the post.
+- [ ] **Save, then switch posts while it runs.** Edit post A, press ⌘S, and click post B in the sidebar before the save returns (throttle the network to make the window wide enough). B stays selected and shows its own title and content. A toast names A: “A”: Published, or “A” wasn't saved: with the reason. Reopen A → it has the saved content and no "Unsaved changes restored" toast. Edit B and save → no conflict alert.
+- [ ] Repeat with the switch going to another section (Media, Pages) instead of another post → the section you switched to stays selected. The post still saves. The off-post toast is drawn on the editor that the section switch removed, so it does not show; that is known.
+- [ ] Publish a **local draft**, then click another section while the request runs → the selection is not pulled back to the newly published post.
+- [ ] Type a new category name in the settings panel, press Publish, and switch to another post during the request → the category is created and appears in the category list, but is not ticked on the post you switched to. Switch away from a post with a typed but unsaved new category or tag name → the name is not carried into the next post you open.
 
 ### 7.8 Conflict detection
 
 - [ ] Open a remote post in Quill. Edit the same post from another client (or directly on the server) so its `modified` date changes. Save in Quill → a "Conflict Detected" dialog appears.
   - [ ] Click "Keep Local" (⌘↩) → Quill saves its version, overwriting the server.
-  - [ ] Click "Use Server" → Quill reloads the server's content, discarding local edits.
+  - [ ] Click "Use Server" → Quill reloads the server's content, discarding local edits. Save again straight away → no second conflict alert. Close and reopen the post → no "Unsaved changes restored" toast, and the edits you rejected do not come back (Use Server deletes the autosave stash). Footnotes show the server's too.
   - [ ] Click "Cancel" → the dialog closes and editing continues; no data is lost.
 - [ ] Open a post, immediately save without anyone else changing it → no conflict alert appears.
 - [ ] Preview a draft post, then save → no spurious conflict alert appears.
@@ -3019,6 +3083,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
   - [ ] Click "Cancel" → editing continues; no data is lost.
 - [ ] The Revert button does not appear for local drafts.
 - [ ] The Revert button does not appear for a remote post that has not been edited.
+- [ ] Click Revert, confirm, then switch to another post before the reload returns → the other post keeps its own content; the reverted post's server copy does not land in it.
 - [ ] Trigger two toasts in quick succession (e.g. two rapid saves) → the second toast's 2-second dismiss timer is not cut short by the first toast's timer; it stays visible for its own full duration.
 
 ### 7.10 Delete / trash
@@ -3287,6 +3352,7 @@ human is required.
 - [ ] **A first page that fits the window still pages.** Make the window tall enough (or wide enough) that all 30 thumbnails are visible with no scrollbar → page 2 loads anyway. Paging hangs off the last cell being displayed, not off scrolling, so an unscrollable first page must not strand the library at 30 items.
 - [ ] Each filter returns the right items; Documents covers PDFs but not `.txt` — a `.txt`/`.csv`/`.vtt` file appears under All Media only (WordPress's `media_type` takes one value; see `docs/gotchas.md`).
 - [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
+- [ ] Switch between filters quickly (Images, Documents, Audio, back to All Media) → each shows a spinner while it loads and never flashes "No media yet" before its items arrive. A filter that really has nothing still ends on the empty state.
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
 - [ ] Toolbar + menu → Upload Media opens the file picker and does NOT create a post.
 - [ ] File → New Media (⌘⌥N) opens the same file picker.
@@ -3338,7 +3404,11 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 - [ ] A screenshot (⌘⇧⌃4) pasted with ⌘V uploads and is inserted at the cursor. A Finder image file copied with ⌘C does the same.
 - [ ] A YouTube URL pasted alone on an empty line becomes an embed; pasted into a sentence it stays a link.
 - [ ] Copy three blocks inside Quill (a list, an accordion and a table) and paste them into another post: they save exactly as the originals.
-- [ ] Paste several paragraphs into a list item: each becomes its own item.
+- [ ] Paste several paragraphs into a list item: each becomes its own item. Paste a blockquote with a citation, a heading and a nested list into a list item → all of it arrives as items, none dropped. Paste a lone blockquote into a list item → it becomes items too.
+- [ ] Paste a heading, a list and a paragraph into an empty paragraph → the first block replaces the empty paragraph and keeps its own attributes (a centred heading stays centred). Paste the same into a paragraph that already has text → the first block joins that paragraph.
+- [ ] Copy a passage from another ProseMirror or Tiptap editor (a Confluence page, a Substack draft, GitLab) and paste it → it is cleaned like any outside paste: no inline styles, foreign classes or `data-pm-slice` in the saved HTML. Then copy a passage inside Quill and paste it back → it comes back exactly as saved, and stays exact after a second copy and paste. Quit and relaunch Quill and paste a copy made before the relaunch → it is treated as an outside paste and cleaned, which is expected.
+- [ ] Paste a screenshot, switch off the network before the upload finishes so it fails, then paste the same screenshot again with the network on → it uploads this time, rather than staying an inline base64 image. Do the same with an image pasted inside HTML from a web page.
+- [ ] Paste an image and wait for the upload to finish, then press ⌘Z once → the whole paste is undone, not just the swap back to the base64 image. Press ⌘⇧Z → the image returns with its uploaded URL, not the base64.
 
 ---
 
@@ -3536,6 +3606,19 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 167 | A post with footnotes lost the self-closing slash on every `<hr/>` and `<img/>`, and its footnotes delimiter was glued to the block before it, because `extractFootnotes` re-serialized the whole post | ✅ `test-editor.js` `'extractFootnotes leaves the rest of the saved markup byte for byte'` |
 | 168 | A link or bold around inline code was dropped on the first edit, because Tiptap's code mark excludes every other mark | ✅ `test-editor-inline-formats.js` `'inline code keeps the marks around it'` |
 | 169 | Editing any post rewrote every loaded gallery's block comments from its HTML: attachment-page and custom links became `media`, the gallery's size and each image's unmodelled attributes were dropped, and `ids` was added. The result still validated, so no test saw it | ✅ `test-editor-block-settings.js` `'settings-gallery.html saves byte-identically once edited'`; `test-fixture-validity.js` `'settings-gallery.html keeps every block's comment attributes'` |
+| 170 | A pasted image's token was never released once Swift finished with it, so pasting the same image again after a failed upload stayed base64 for good. Swift now releases every token when done (success, failure, no credentials, temp-write failure and entries `PastedImage.decode` rejects) through `PastedImage.forgetScript` → `window.forgetPastedImage` | ✅ `EditorCoordinatorTests.pastedImageForgetScript` + `test-editor-paste-sources.js` `'an image Swift gave up on is sent again when it is pasted again'` + 👁 §7.28 (the Swift call sites) |
+| 171 | The swap from base64 to the uploaded URL was its own undo step, so one ⌘Z after an upload restored the base64. `window.resolvePastedImage` dispatches with `addToHistory: false` | ✅ `test-editor-paste-sources.js` `'one undo after the upload lands takes back the paste…'` and `'a redo after that brings back the uploaded file…'` |
+| 172 | Pasting a quote into a list item dropped its citation, bare text, headings and nested lists, and a lone quote pasted into an item was not converted at all. `pastedBlocksAsListItems` turns each into items | ✅ `test-editor-paste-sources.js` `pasting into a list item` (4 tests) |
+| 173 | The first block pasted into an empty paragraph was merged into it and lost its attributes, unlike the block editor. `transformPasted` closes the slice start for an empty top-level paragraph, but not for a plain-text paste, which would otherwise wipe the empty paragraph's own alignment; a paragraph with text still joins | ✅ `test-editor-paste-sources.js` `'the first block pasted into an empty paragraph…'` and `'…into a paragraph with text still joins it'` |
+| 174 | A paste was treated as Quill's own on `data-pm-slice` alone and skipped cleanup, but every ProseMirror or Tiptap app writes that marker (Confluence, Substack, GitLab) and WebKit keeps it. `_rememberCopy` records the text of Quill's last copy or cut, and a paste is Quill's only with the marker and matching `text/plain`. The listeners sit on `document` in the capture phase because WebKit ran ProseMirror's handler first | ✅ `test-editor-paste.js` `'where a paste came from'` (4 tests); the copy round-trip in real WebKit is the paste harness's `quill` mode (`docs/paste.md`) |
+| 175 | A save that finished after the user switched posts could write its results (clean state, toast, created terms) into the view of whichever post was open, and left the saved post's autosave stash to raise a false conflict or restore stale edits. `save()` captures its inputs up front, writes view state only while `stillOnPost()`, and settles the stash with `stashAfterSave`. `stillOnPost()` checks `appState.selectedItem` as well as `loadedItem`, because a section switch rebuilds `PostEditorView` and never changes the old view's `loadedItem`; without that a local-draft publish pulled the selection back | ✅ `PostEditorHelpersTests` `stashMatchingTheSaveIsDeleted`, `stashWithLaterEditsIsKeptOnTheSavedVersion`, `stashDifferingOnlyInFootnotesIsKept` + 👁 §7.7 (the switching itself is SwiftUI view state) |
+| 176 | "Use Server" in the conflict alert left the autosave stash, so the rejected edits came back on the next open and the conflict repeated. It now calls `discardChanges()`, which deletes the stash first; `loadFromServer` also resets `footnotesMeta` and checks `loadedItem` after its fetch | 👁 §7.8 — no test drives the alert |
+| 177 | Updating a gallery without changing Size rewrote every existing image to the gallery-wide size URL, replacing edited and rotated copies. An existing image keeps its own `src` unless Size differs from `initialSizeSlug` | ✅ `GalleryEditTests.galleryPayloadUnchangedSizeKeepsEachImagesOwnURL` and `galleryPayloadUnchangedSharedSizeGivesNewImagesThatSize` + 👁 §7.4 |
+| 178 | Switching Media filters flashed "No media yet": the cancelled load's `CancellationError` branch cleared `isLoadingMedia` while the replacing load was starting. The branch now leaves the flag to the replacing load | 👁 §7.26 — `MediaLibraryView.loadMedia` has no harness |
+| 179 | The evaluation text ran table cells, `<summary>` and `<dt>`/`<dd>` into the next block, because `stripHTML` only broke on other closing tags | ✅ `EvaluatePostPromptTests.promptKeepsTableCellsAndDetailsApartFromTheNextBlock` |
+| 180 | The image toolbar's H field must show the height a width-only image implies, and a typed H must keep its ratio (or scale from natural size when the image has no dimensions) | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` height-field tests (3) |
+| 181 | A link to a rotated copy of the same upload, even with `?ver=`, must record `linkDestination` `media` (a different upload records `custom`), and `align` follows `linkDestination` in the `wp:image` comment as in core | ✅ `test-editor.js` `'standalone image block comments'` (rotated copy, different upload, key order) |
+| 182 | An event-handler attribute on a gallery image, its link or its figure must never run in the editor, through load, save, code view, copy, a gallery rebuild or paste | ✅ `--check-fixtures` script handler probe `Scripts/fixtures/script-sinks/gallery-img-handler.html` (real WebKit) |
 
 ---
 
@@ -3551,7 +3634,8 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **Container row hit geometry (JS container tests):** jsdom reports a zeroed `getBoundingClientRect` for every element and gives Ranges no client rects, so how big a toggle's hit box renders and which character a pointer lands on can only be checked in a real browser. The CSS rules and the `mousedown` behavior behind those affordances *are* asserted.
 - **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
 - **Menu commands and the Help links (§7.27):** `CommandGroup` items in `QuillApp.swift` only exist once AppKit builds the menu bar, and the Help/About links leave the app entirely. Nothing here has a harness — the destinations must be clicked.
-- **A pasted image's real upload (§7.28):** the editor's `uploadPastedImages` message is checked in jsdom and in real WebKit (the harness answers each token itself), `PastedImage.decode` and the extension sniffing are unit-tested, and the upload loop is the one drops use. The round trip to a live media library, the pill and the source swap after it are manual, and need a test site: pasting an image uploads it.
+- **Saves that finish off-post (§7.7):** `save()`'s `stillOnPost()` check, the toast naming the post and the `appState`-only category and tag writes are SwiftUI view state. `stashAfterSave`, the stash decision, is unit-tested; the switching is manual.
+- **A pasted image's real upload (§7.28):** the editor's `uploadPastedImages` message is checked in jsdom and in real WebKit (the harness answers each token itself), `PastedImage.decode`, `PastedImage.forgetScript` and the extension sniffing are unit-tested, the undo and redo of the source swap are checked in jsdom, and the upload loop is the one drops use. The round trip to a live media library, the pill and the source swap after it are manual, and need a test site: pasting an image uploads it.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
 
 ## Test suite gotchas

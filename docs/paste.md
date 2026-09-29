@@ -4,7 +4,13 @@ How HTML from the clipboard becomes Gutenberg markup, and why each step exists. 
 
 ## The two kinds of paste
 
-**A copy made inside Quill** carries ProseMirror's `data-pm-slice` marker on its first element. Its HTML is Quill's own render, so it is left exactly as it is. ProseMirror reads the marker *after* `transformPastedHTML` returns, to rebuild how the slice was opened, so the marker must never be stripped in the hook. It is dropped where it would be saved instead: `isCarryableAttr` refuses it, and `sourceHTMLOf` removes it from the verbatim `sourceHTML` that galleries, embeds and passthrough blocks keep.
+**A copy made inside Quill** carries ProseMirror's `data-pm-slice` marker on its first element. Its HTML is Quill's own render, so it is left exactly as it is. The marker alone does not identify it: every ProseMirror or Tiptap app writes the marker (Confluence, Substack, GitLab), and WebKit keeps it. editor.html therefore remembers the plain text of Quill's last copy or cut (`_rememberCopy`), and `_classifyPaste` calls a paste Quill's own only when its HTML carries the marker **and** its `text/plain` matches that text, ignoring whitespace differences. `transformPastedHTML` reads the result once and clears it. A copy made before a relaunch is not remembered, so it is treated as an outside paste and cleaned.
+
+The copy, cut and paste listeners are on `document` in the capture phase. In real WebKit ProseMirror's paste handler on the editor element ran before a listener on that element, and ProseMirror's cut has emptied the selection by the time its handlers finish. jsdom shows neither.
+
+`cleanPastedHTML` and `pastedBlocksAsListItems` do not check the marker themselves, so anything that reaches them is cleaned. That includes Paste as Markdown, whose raw HTML is always cleaned.
+
+ProseMirror reads the marker *after* `transformPastedHTML` returns, to rebuild how the slice was opened, so the marker must never be stripped in the hook. It is dropped where it would be saved instead: `isCarryableAttr` refuses it, and `sourceHTMLOf` removes it from the verbatim `sourceHTML` that galleries, embeds and passthrough blocks keep.
 
 **Anything else** is reduced to what Quill models. Every source leaves attributes Gutenberg's `save()` would not write, and the raw-attribute carrier (`docs/block-model.md`) would otherwise save them all. Gutenberg then reports the block as invalid. Before this cleanup existed, 14 of 21 sampled outside pastes saved invalid blocks.
 
@@ -32,7 +38,8 @@ Order matters: anything that reads a style runs before the styles are stripped.
 
 ## Around the cleanup
 
-- **Pasting into a list item:** `pastedBlocksAsListItems` turns the pasted blocks into further items, as the block editor does. Left alone, ProseMirror packs them into one `<li>` as paragraphs.
+- **Pasting into a list item:** `pastedBlocksAsListItems` turns the pasted blocks into further items, as the block editor does. Left alone, ProseMirror packs them into one `<li>` as paragraphs. A single pasted paragraph joins the item instead. A quote becomes items too, whether pasted alone or with other blocks: its paragraphs, citation, bare text, headings and nested lists each become an item. A quote holding anything else is left as one item.
+- **Pasting blocks into an empty paragraph:** `transformPasted` in `editor.html` closes the start of the slice when the cursor is in an empty top-level paragraph and the first pasted node is a text block. The first block replaces the paragraph and keeps its own attributes (a centred heading stays centred), as in the block editor. Pasted into a paragraph with text, the first block still joins it.
 - **A lone URL** pasted into an empty top-level paragraph becomes an embed when `detectEmbedProvider` knows the host (`handlePaste`). In a sentence it stays a link.
 - **WebKit's `<details>` bug:** when a selection copied from a web page holds a closed `<details>`, WebKit's HTML flavor is just the empty `<details>`, while the plain text is whole. When the HTML contains `<details>` and its parsed text is under half of the plain text, `handlePaste` pastes the plain text. The fallback is gated on `<details>` so that a source whose plain text is Markdown (`[label](url)` has more letters than `label`) keeps its rich HTML.
 - **Plain text:** a whitespace-only line would become an empty paragraph, so `transformPastedText` empties it first.
@@ -41,6 +48,8 @@ Order matters: anything that reads a style runs before the styles are stripped.
 ## Images that are not on the site yet
 
 A screenshot or an image file on the clipboard arrives as `clipboardData.files`, with no HTML. Word puts its images in the HTML as `data:` URLs, and RTFD-backed pastes can use `blob:` URLs. The editor reads the bytes and posts them to the `uploadPastedImages` handler. Clipboard files go without a token and are inserted at the cursor when uploaded. Images already in the document go with a token, and `window.resolvePastedImage(token, url, mediaId)` swaps the uploaded URL in. `PostEditorView.handlePastedImages` runs through the same `dropTask` queue and `uploadImages` loop as a Finder drop, so the pill and the toast behave the same. The file extension comes from the image's bytes, because Word labels its JPEGs `image/png` and WordPress refuses an upload whose extension disagrees with its contents. Without a connected site, the images stay as `data:` URLs and a toast says why.
+
+Swift releases every token when it is done with it, whatever the outcome: success, a failed upload, no credentials, a temp-file write failure, and entries `PastedImage.decode` rejects. `PastedImage.forgetScript(_:)` builds one call to `window.forgetPastedImage` per token. Without the release, the editor treats an image with a live token as still in flight, so pasting the same image again after a failure would never retry it and it would stay base64. `resolvePastedImage` dispatches its swap with `addToHistory: false`, so the swap is not its own undo step: one ⌘Z after an upload takes back the whole paste, and ⌘⇧Z brings back the uploaded URL rather than the base64.
 
 ## Verifying a change here
 

@@ -204,4 +204,10 @@ struct EditorPushDecisionTests {
         #expect(PastedImage.decode(["dataURL": "https://example.com/a.png"]) == nil)
         #expect(PastedImage.decode([:]) == nil)
     }
+
+    @Test("every token Swift is done with is released, JSON-encoded, and none means no call")
+    func pastedImageForgetScript() {
+        #expect(PastedImage.forgetScript([]) == nil)
+        #expect(PastedImage.forgetScript(["paste-1", "a\"b"]) == #"["paste-1","a\"b"].forEach(t => window.forgetPastedImage?.(t))"#)
+    }
 }

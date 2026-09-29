@@ -260,11 +260,7 @@ public struct PostEditorView: View {
         }
         .alert("Conflict Detected", isPresented: $showConflictAlert) {
             Button("Cancel", role: .cancel) {}
-            Button("Use Server") {
-                if case .remote(let post) = item {
-                    loadFromServer(postID: post.id)
-                }
-            }
+            Button("Use Server") { discardChanges() }
             Button("Keep Local") {
                 if conflictFromPreview {
                     Task { await openPreview(force: true) }
@@ -672,6 +668,8 @@ public struct PostEditorView: View {
         saveError = nil
         blockRiskAlarm = nil
         contentLoadFailed = false
+        settings.newCategoryNames = []
+        settings.newTagNames = []
 
         switch requestedItem {
         case .remote(let post):
@@ -897,48 +895,70 @@ public struct PostEditorView: View {
         defer { isSaving = false }
 
         let client = WordPressClient(credentials: creds)
+        // Captured up front so the save finishes for this post even if the user switches mid-save.
         let savedItemID = item.id
+        let savedTitle = title
+        let savedContent = htmlContent
+        let savedFootnotes = footnotesMeta
+        let baseline = lastSavedServerModified
+        var saved = settings
+        // A section switch rebuilds this view, leaving the old one's loadedItem unchanged; the selection moves in both cases.
+        func stillOnPost() -> Bool { loadedItem?.id == savedItemID && appState.selectedItem?.id == savedItemID }
+        func report(_ message: String) {
+            if stillOnPost() {
+                saveError = message
+            } else {
+                presentToast("“\(savedTitle)” wasn't saved: \(message)", isError: true)
+            }
+        }
 
         // Create any pending new categories/tags before building the payload.
         // Remove each name from the pending list as soon as it succeeds — if a later
         // name fails, retrying must not re-submit already-created names (WordPress
         // rejects those with "term_exists", wedging the save until the user notices).
         do {
-            while let name = settings.newCategoryNames.first {
+            while let name = saved.newCategoryNames.first {
                 let cat = try await client.createCategory(name: name)
-                settings.categoryIDs.insert(cat.id)
                 appState.categories.append(cat)
-                settings.newCategoryNames.removeFirst()
+                saved.categoryIDs.insert(cat.id)
+                saved.newCategoryNames.removeFirst()
+                if stillOnPost() {
+                    settings.categoryIDs.insert(cat.id)
+                    settings.newCategoryNames.removeAll { $0 == name }
+                }
             }
 
-            while let name = settings.newTagNames.first {
+            while let name = saved.newTagNames.first {
                 let tag = try await client.createTag(name: name)
-                settings.tagIDs.insert(tag.id)
                 appState.tags.append(tag)
-                settings.newTagNames.removeFirst()
+                saved.tagIDs.insert(tag.id)
+                saved.newTagNames.removeFirst()
+                if stillOnPost() {
+                    settings.tagIDs.insert(tag.id)
+                    settings.newTagNames.removeAll { $0 == name }
+                }
             }
         } catch {
-            saveError = "Failed to create taxonomy: \(error.localizedDescription)"
+            report("Failed to create taxonomy: \(error.localizedDescription)")
             return
         }
-        guard loadedItem?.id == savedItemID else { return }
 
-        let cleanExcerpt = settings.excerpt
+        let cleanExcerpt = saved.excerpt
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = PostPayload(
-            title: title,
-            content: htmlContent,
+            title: savedTitle,
+            content: savedContent,
             excerpt: cleanExcerpt,
             status: status.rawValue,
-            dateGmt: settings.publishDate.map { Self.iso8601Formatter.string(from: $0) },
-            featuredMedia: settings.featuredMediaID > 0 ? settings.featuredMediaID : nil,
-            categories: Array(settings.categoryIDs),
-            tags: Array(settings.tagIDs),
-            slug: settings.slug.isEmpty ? nil : settings.slug,
-            commentStatus: settings.commentStatus,
-            parent: postType == "page" ? settings.parentID : nil,
-            footnotes: footnotesMeta
+            dateGmt: saved.publishDate.map { Self.iso8601Formatter.string(from: $0) },
+            featuredMedia: saved.featuredMediaID > 0 ? saved.featuredMediaID : nil,
+            categories: Array(saved.categoryIDs),
+            tags: Array(saved.tagIDs),
+            slug: saved.slug.isEmpty ? nil : saved.slug,
+            commentStatus: saved.commentStatus,
+            parent: postType == "page" ? saved.parentID : nil,
+            footnotes: savedFootnotes
         )
 
         do {
@@ -949,10 +969,13 @@ public struct PostEditorView: View {
                         post.type == "page"
                         ? try await client.fetchPage(id: post.id)
                         : try await client.fetchPost(id: post.id)
-                    guard loadedItem?.id == savedItemID else { return }
-                    if current.modified != lastSavedServerModified {
-                        conflictFromPreview = false
-                        showConflictAlert = true
+                    if current.modified != baseline {
+                        if stillOnPost() {
+                            conflictFromPreview = false
+                            showConflictAlert = true
+                        } else {
+                            report("it was changed on the server. Open it to choose which version to keep.")
+                        }
                         return
                     }
                 }
@@ -960,7 +983,6 @@ public struct PostEditorView: View {
                     post.type == "page"
                     ? try await client.updatePage(id: post.id, payload: payload)
                     : try await client.updatePost(id: post.id, payload: payload)
-                try? services.autosaveStore.delete(postID: post.id)
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
                     if let idx = appState.pages.firstIndex(where: { $0.id == updated.id }) {
@@ -971,26 +993,41 @@ public struct PostEditorView: View {
                         appState.posts[idx] = updated
                     }
                 }
-                guard loadedItem?.id == savedItemID else { return }
+                guard stillOnPost() else {
+                    let stash = try? services.autosaveStore.load(postID: post.id)
+                    if let kept = Self.stashAfterSave(stash, title: savedTitle, content: savedContent,
+                                                      footnotes: savedFootnotes, serverModified: updated.modified) {
+                        try? services.autosaveStore.save(postID: post.id, title: kept.title, content: kept.content,
+                                                         footnotes: kept.footnotes, serverModified: kept.serverModified)
+                    } else {
+                        try? services.autosaveStore.delete(postID: post.id)
+                    }
+                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status))")
+                    return
+                }
+                try? services.autosaveStore.delete(postID: post.id)
                 lastSavedServerModified = updated.modified
-                cleanTitle = title
-                cleanContent = htmlContent
-                cleanFootnotes = footnotesMeta
+                cleanTitle = savedTitle
+                cleanContent = savedContent
+                cleanFootnotes = savedFootnotes
             case .local(let draft):
                 let created =
                     draft.type == "page"
                     ? try await client.createPage(payload)
                     : try await client.createPost(payload)
                 try services.draftStore.delete(id: draft.id)
-                lastSavedServerModified = created.modified
                 appState.localDrafts.removeAll { $0.id == draft.id }
                 if draft.type == "page" {
                     appState.pages.insert(created, at: 0)
-                    appState.selectedSection = .pages
                 } else {
                     appState.posts.insert(created, at: 0)
-                    appState.selectedSection = .posts
                 }
+                guard stillOnPost() else {
+                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status))")
+                    return
+                }
+                lastSavedServerModified = created.modified
+                appState.selectedSection = draft.type == "page" ? .pages : .posts
                 appState.selectedItem = .remote(created)
             }
             settings.status = status
@@ -1000,8 +1037,17 @@ public struct PostEditorView: View {
             }
             presentToast(Self.toastMessage(forStatus: status))
         } catch {
-            saveError = error.localizedDescription
+            report(error.localizedDescription)
         }
+    }
+
+    // nil deletes the stash; otherwise it holds edits newer than the save, re-based on the version the save made.
+    nonisolated static func stashAfterSave(
+        _ stash: AutosaveSnapshot?, title: String, content: String, footnotes: String, serverModified: String
+    ) -> AutosaveSnapshot? {
+        guard var stash, stash.title != title || stash.content != content || stash.footnotes != footnotes else { return nil }
+        stash.serverModified = serverModified
+        return stash
     }
 
     private func saveToWordPress() {
@@ -1019,14 +1065,16 @@ public struct PostEditorView: View {
             guard let creds = appState.credentials,
                 case .remote(let current) = item
             else { return }
+            let requestedID = item.id
             let client = WordPressClient(credentials: creds)
             let fetched =
                 current.type == "page"
                 ? try? await client.fetchPage(id: postID)
                 : try? await client.fetchPost(id: postID)
-            if let post = fetched {
+            if let post = fetched, loadedItem?.id == requestedID {
                 title = post.title.decodedTitle
                 htmlContent = post.content.editorHTML
+                footnotesMeta = post.footnotes
                 lastSavedServerModified = post.modified
                 cleanTitle = title
                 cleanContent = htmlContent
@@ -1044,6 +1092,11 @@ public struct PostEditorView: View {
 
     // A token marks an image already in the document, which only has its source swapped.
     private func handlePastedImages(_ images: [PastedImage]) async {
+        defer {
+            if let script = PastedImage.forgetScript(images.compactMap(\.token)) {
+                editorWebView?.evaluateJavaScript(script, completionHandler: nil)
+            }
+        }
         guard appState.credentials != nil else {
             presentToast("Connect a WordPress site to upload pasted images", isError: true)
             return
@@ -1164,8 +1217,10 @@ public struct PostEditorView: View {
         let images: [[String: Any]] = selections.map { sel in
             let existing = sel.existing
             let media = sel.media
-            let keepsSize = sizeSlug == "mixed" || media == nil
-            let size = keepsSize ? (existing?.sizeSlug ?? "large") : sizeSlug
+            // An image already in the gallery keeps its own file unless the user picked a new size for all of them.
+            let sizeUnchanged = sizeSlug == "mixed" || sizeSlug == editing.initialSizeSlug
+            let keepsSize = existing != nil && (media == nil || sizeUnchanged)
+            let size = keepsSize ? (existing?.sizeSlug ?? "large") : (sizeSlug == "mixed" ? "large" : sizeSlug)
             let url: String
             if let existing, keepsSize {
                 url = existing.url

@@ -145,7 +145,7 @@ onto it" — its children are still replayed.
 - Stats freeze in code view
 - `crypto.randomUUID()` is available in WKWebView on macOS 13+ even with `file://` URLs
 - `updateToolbar()` caches its button references at init — never `document.querySelector` inside it, it runs on every keystroke
-- ProseMirror reads `data-pm-slice` after `transformPastedHTML`, so Quill's own copy is detected there and the marker dropped in the carrier, never stripped in the hook
+- A paste is Quill's own only when it carries `data-pm-slice` and its plain text matches Quill's last copy; the marker alone proves nothing, and it is never stripped in the hook
 - The table node renders `class="wp-block-table"` on the `<table>` itself, so the passthrough catch-all must not claim a table Quill rendered
 - Outside paste must strip `data-quill-*` before the cleanup adds its own
 - `aria-hidden` text is visible; only visually-hidden classes are chrome

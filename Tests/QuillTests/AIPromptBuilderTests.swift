@@ -569,6 +569,13 @@ import Testing
         #expect(prompt.contains("Continuing with Claude Code\n\nI still know next to nothing.\n\nOne\n\nTwo"))
     }
 
+    @Test func promptKeepsTableCellsAndDetailsApartFromTheNextBlock() {
+        let html = "<p>A</p><figure class=\"wp-block-table\"><table><tr><td>x</td><th>y</th></tr></table></figure>" +
+            "<details><summary>More</summary><p>Inside</p></details><dl><dt>Term</dt><dd>Def</dd></dl><p>B</p>"
+        let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: html, styleGuide: nil)
+        #expect(prompt.contains("A\n\nx\n\ny\n\nMore\n\nInside\n\nTerm\n\nDef\n\nB"))
+    }
+
     @Test func promptDecodesHTMLEntities() {
         let prompt = AIPromptBuilder.evaluatePostPrompt(title: "T", html: "<p>a &amp; b &lt;c&gt;</p>", styleGuide: nil)
         #expect(prompt.contains("a & b <c>"))
