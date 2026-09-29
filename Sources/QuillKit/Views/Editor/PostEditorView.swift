@@ -21,6 +21,7 @@ public struct PostEditorView: View {
     @State private var saveError: String?
     @State private var previewError: String?
     @State private var showConflictAlert: Bool = false
+    @State private var conflictFromPreview = false
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
@@ -261,7 +262,13 @@ public struct PostEditorView: View {
                     loadFromServer(postID: post.id)
                 }
             }
-            Button("Keep Local") { saveToWordPress() }
+            Button("Keep Local") {
+                if conflictFromPreview {
+                    Task { await openPreview(force: true) }
+                } else {
+                    saveToWordPress()
+                }
+            }
         } message: {
             Text("This post was modified on the server since you last fetched it.")
         }
@@ -716,10 +723,11 @@ public struct PostEditorView: View {
 
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
             if let snap = try? services.autosaveStore.load(postID: post.id) {
-                if shouldRestoreAutosave(snap, over: loadedPost) {
+                if let baseline = Self.autosaveRestoreBaseline(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
                     footnotesMeta = snap.footnotes
+                    lastSavedServerModified = baseline
                     presentToast("Unsaved changes restored")
                 } else {
                     try? services.autosaveStore.delete(postID: post.id)
@@ -778,15 +786,16 @@ public struct PostEditorView: View {
         cleanFootnotes = post.footnotes
     }
 
-    private func shouldRestoreAutosave(_ snap: AutosaveSnapshot, over post: WPPost) -> Bool {
+    // nil discards the autosave; otherwise the server version it was edited from, so a save after a web edit hits the conflict alert.
+    nonisolated static func autosaveRestoreBaseline(_ snap: AutosaveSnapshot, over post: WPPost) -> String? {
         let snapContent = snap.content.trimmingCharacters(in: .whitespacesAndNewlines)
         let serverContent = post.content.editorHTML.trimmingCharacters(in: .whitespacesAndNewlines)
         if snapContent.isEmpty,
            !serverContent.isEmpty,
            snap.title == post.title.decodedTitle {
-            return false
+            return nil
         }
-        return true
+        return snap.serverModified
     }
 
     // MARK: - Autosave
@@ -937,6 +946,7 @@ public struct PostEditorView: View {
                         ? try await client.fetchPage(id: post.id)
                         : try await client.fetchPost(id: post.id)
                     if current.modified != lastSavedServerModified {
+                        conflictFromPreview = false
                         showConflictAlert = true
                         return
                     }
@@ -1257,14 +1267,31 @@ public struct PostEditorView: View {
         }
     }
 
-    private func openPreview() async {
+    // WordPress writes an author's draft preview straight into the post; other statuses get a separate autosave.
+    nonisolated static func previewOverwritesPost(status: String) -> Bool {
+        status == PostStatus.draft.rawValue
+    }
+
+    private func openPreview(force: Bool = false) async {
         guard let creds = appState.credentials, let post = remotePost else { return }
         let client = WordPressClient(credentials: creds)
         let cleanExcerpt = settings.excerpt
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: cleanExcerpt, status: post.status)
+        let overwritesPost = Self.previewOverwritesPost(status: post.status)
         do {
+            if overwritesPost && !force {
+                let current =
+                    post.type == "page"
+                    ? try await client.fetchPage(id: post.id)
+                    : try await client.fetchPost(id: post.id)
+                if current.modified != lastSavedServerModified {
+                    conflictFromPreview = true
+                    showConflictAlert = true
+                    return
+                }
+            }
             let autosave =
                 post.type == "page"
                 ? try await client.createPageAutosave(postID: post.id, payload: payload)
@@ -1275,10 +1302,7 @@ public struct PostEditorView: View {
                 return
             }
             NSWorkspace.shared.open(url)
-            // For draft posts, WordPress may update the parent post's modified date when
-            // creating an autosave (drafts have no separate revision state). Refresh the
-            // baseline so a subsequent save doesn't trigger a false conflict alert.
-            if post.status == "draft" || post.status == "pending" {
+            if overwritesPost {
                 if let fresh = try? await (post.type == "page"
                     ? client.fetchPage(id: post.id)
                     : client.fetchPost(id: post.id)) {

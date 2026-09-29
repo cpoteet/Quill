@@ -35,6 +35,56 @@ import Testing
         #expect(url?.query == "preview=true")
     }
 
+    // MARK: - Autosave restore baseline
+
+    private func serverPost(title: String = "Hello", content: String = "<p>Server</p>", modified: String) throws -> WPPost {
+        let json = """
+        {"id":7,"title":{"rendered":"\(title)"},"content":{"rendered":"\(content)"},
+         "status":"draft","date":"2026-01-01T00:00:00","modified":"\(modified)",
+         "slug":"hello","link":"https://example.com/hello"}
+        """
+        return try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
+    }
+
+    private func snapshot(title: String = "Hello", content: String = "<p>Local</p>", serverModified: String) -> AutosaveSnapshot {
+        AutosaveSnapshot(postID: 7, title: title, content: content, footnotes: "", savedAt: Date(), serverModified: serverModified)
+    }
+
+    @Test func autosaveOnUnchangedServerKeepsTheServerBaseline() throws {
+        let post = try serverPost(modified: "2026-09-01T10:00:00")
+        let baseline = PostEditorView.autosaveRestoreBaseline(snapshot(serverModified: "2026-09-01T10:00:00"), over: post)
+        #expect(baseline == post.modified)
+    }
+
+    @Test func autosaveOnChangedServerKeepsItsOwnBaseline() throws {
+        let post = try serverPost(modified: "2026-09-02T12:00:00")
+        let baseline = PostEditorView.autosaveRestoreBaseline(snapshot(serverModified: "2026-09-01T10:00:00"), over: post)
+        #expect(baseline == "2026-09-01T10:00:00")
+        #expect(baseline != post.modified)
+    }
+
+    @Test func autosaveWithBlankTimestampNeverMatchesTheServer() throws {
+        let post = try serverPost(modified: "2026-09-01T10:00:00")
+        let baseline = PostEditorView.autosaveRestoreBaseline(snapshot(serverModified: ""), over: post)
+        #expect(baseline == "")
+        #expect(baseline != post.modified)
+    }
+
+    @Test func emptyAutosaveWithUnchangedTitleIsDiscarded() throws {
+        let post = try serverPost(modified: "2026-09-01T10:00:00")
+        let baseline = PostEditorView.autosaveRestoreBaseline(snapshot(content: "  ", serverModified: "2026-09-01T10:00:00"), over: post)
+        #expect(baseline == nil)
+    }
+
+    // MARK: - Preview conflict check
+
+    @Test func previewOverwritesOnlyADraft() {
+        #expect(PostEditorView.previewOverwritesPost(status: "draft"))
+        for status in ["pending", "publish", "future", "private"] {
+            #expect(!PostEditorView.previewOverwritesPost(status: status))
+        }
+    }
+
     // MARK: - Status helpers
 
     @Test func publishButtonTitlePerStatus() {
