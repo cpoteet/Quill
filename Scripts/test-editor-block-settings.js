@@ -1387,6 +1387,11 @@ describe('attributes on a node\'s child elements survive', () => {
     assert.doesNotMatch(out, /linkDestination/)
   })
 
+  test('an unlinked image keeps the "none" core wrote', () => {
+    const out = save('<!-- wp:image {"id":1,"linkDestination":"none"} -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt="" class="wp-image-1"/></figure>\n<!-- /wp:image -->')
+    assert.match(out, /"linkDestination":"none"/)
+  })
+
   test('a non-dimension style on the img survives', () => {
     assert.match(save(fixture('settings-image-custom-link.html')), /style="border-radius:12px"/)
   })
@@ -1431,8 +1436,8 @@ describe('the whole settings fixture corpus', () => {
   const dir = path.resolve(__dirname, 'fixtures')
   const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
 
-  test('the corpus is the twenty-one fixtures the scan produced', () => {
-    assert.equal(names.length, 21)
+  test('the corpus is the twenty-two settings fixtures', () => {
+    assert.equal(names.length, 22)
   })
 
   for (const name of names) {

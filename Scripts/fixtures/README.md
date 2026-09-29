@@ -36,6 +36,7 @@ an unedited capture.
 | `settings-details.html` | A `core/details` with a `name`, and a panel paragraph carrying a `placeholder` |
 | `settings-tabs.html` | A `core/tabs` with two tabs |
 | `settings-embed.html` | A responsive YouTube `core/embed`, whose URL holds the `\u0026` escape |
+| `settings-gallery.html` | Hand-written, not a site capture, then passed through core's own `serialize(parse())` so the bytes are what WordPress writes: a `core/gallery` linked to attachment pages at Medium with a gallery caption and an image class, and one with mixed sizes, a custom link and a formatted caption |
 
 The twelve `settings-*.html` files were captured together from one throwaway
 draft on WordPress 7.1 (`block-library.js` of 2026-08-20), which was deleted

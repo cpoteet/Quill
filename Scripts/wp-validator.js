@@ -19,7 +19,7 @@ function quiet(fn) {
 }
 
 quiet(() => require('@wordpress/block-library').registerCoreBlocks())
-const { parse, serialize } = require('@wordpress/blocks')
+const { parse, serialize, getBlockType } = require('@wordpress/blocks')
 
 function blockNames(blocks, into = []) {
   for (const b of blocks) { into.push(b.name); blockNames(b.innerBlocks, into) }
@@ -49,6 +49,25 @@ function attributesOf(html) {
   return quiet(() => parse(html)).map(b => b.attributes)
 }
 
+// The comment attributes of every block core accepts as valid, keyed by its path of block names.
+function commentAttributes(html) {
+  const out = {}
+  const walk = (blocks, prefix) => {
+    const seen = {}
+    for (const b of blocks) {
+      if (!b.name || b.name === 'core/missing' || b.name === 'core/freeform') continue
+      seen[b.name] = (seen[b.name] ?? -1) + 1
+      const key = `${prefix}${b.name}#${seen[b.name]}`
+      if (!b.isValid) continue
+      const defs = getBlockType(b.name).attributes
+      out[key] = Object.fromEntries(Object.entries(b.attributes).filter(([k]) => !defs[k] || !defs[k].source))
+      walk(b.innerBlocks, key + ' > ')
+    }
+  }
+  quiet(() => walk(parse(html), ''))
+  return out
+}
+
 function namesIn(html) {
   return new Set(blockNames(quiet(() => parse(html))))
 }
@@ -57,4 +76,4 @@ function close() {
   wpDom.window.close()
 }
 
-module.exports = { problems, resaved, namesIn, attributesOf, close }
+module.exports = { problems, resaved, namesIn, attributesOf, commentAttributes, close }

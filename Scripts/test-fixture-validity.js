@@ -12,7 +12,7 @@ const nodeCrypto = require('crypto')
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
 const fixturesDir = path.resolve(__dirname, 'fixtures')
 
-const { problems, resaved, attributesOf, close: closeValidator } = require('./wp-validator.js')
+const { problems, resaved, attributesOf, commentAttributes, close: closeValidator } = require('./wp-validator.js')
 
 let editor
 let win
@@ -70,6 +70,13 @@ describe('WordPress accepts every fixture after a Quill edit', () => {
       const saved = editAndSave(source)
       assert.deepEqual(newProblems(saved, source), [], 'saved markup:\n' + saved)
       if (resaved(source) === source) assert.equal(resaved(saved), saved, 'WordPress would rewrite what Quill saved')
+    })
+
+    test(`${name} keeps every block's comment attributes`, () => {
+      const source = fs.readFileSync(path.join(fixturesDir, name), 'utf8')
+      const before = commentAttributes(source)
+      const after = commentAttributes(editAndSave(source))
+      for (const key of Object.keys(before).filter(k => k in after)) assert.deepEqual(after[key], before[key], key)
     })
   }
 })

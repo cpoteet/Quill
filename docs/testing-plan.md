@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-27 — 483 Swift tests + 1,370 JS tests (1,369 pass, 1 skipped), no failures._
+_Last updated: 2026-09-28 — 483 Swift tests + 1,407 JS tests (1,406 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -17,22 +17,22 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (483 tests)
-2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (66 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (91 tests — pure Node; `serializeAttributes` compared with WordPress)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (67 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (92 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (262 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (263 tests via Node's built-in runner + jsdom)
 6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (84 tests — live Tiptap editor in jsdom)
 7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (38 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
-11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (50 tests — live Tiptap editor in jsdom)
+11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (51 tests — live Tiptap editor in jsdom)
 12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (41 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 13. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 14. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (228 tests — live Tiptap editor in jsdom)
+15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (232 tests — live Tiptap editor in jsdom)
 16. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (31 tests — same validator, over every fixture)
+17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (60 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the seventeen passed.
 
@@ -988,7 +988,7 @@ The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/
 
 ---
 
-## JS block parser tests (66 tests)
+## JS block parser tests (67 tests)
 
 File: `Scripts/test-block-parser.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`
@@ -1016,7 +1016,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (91 tests)
+## JS block serializer tests (92 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1072,7 +1072,7 @@ Each top-level block paired with its literal slice of the original `post_content
 | `nested unclosed blocks gain closers innermost first` | `<!-- wp:group --><!-- wp:acme/x -->t` gains `<!-- /wp:acme/x --><!-- /wp:group -->`, keeping the third-party namespace |
 | `a stray close comment is left as freeform, the way the parser reads it` | Matches WordPress: the stray comment and everything after it is one freeform slice |
 
-### `blockSourceSlices over the real fixtures` (27 tests)
+### `blockSourceSlices over the real fixtures` (28 tests)
 
 One test per `Scripts/fixtures/*.html`: the slices concatenate to the file byte for byte.
 
@@ -1139,13 +1139,14 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 
-## JS fixture validity sweep (31 tests)
+## JS fixture validity sweep (60 tests)
 
-`Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture.
+`Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture, then the block-comment attributes WordPress parses from each.
 
 | Test | What it checks |
 |------|----------------|
-| one test per fixture (27 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
+| one test per fixture (28 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
+| `<fixture> keeps every block's comment attributes` (28 tests) | Every block core parses as valid in both the fixture and the save has the same comment attributes (those with no `source` in the markup), matched by its path of block names. Catches a setting rewritten or dropped even when the result still validates — how galleries lost their link destination and size unnoticed |
 | `the sweep can fail` (3 tests) | A heading level mismatch and invented classic HTML are reported as new; classic prose Quill converts to blocks is not |
 | `older block editors` › `a resized image comment carries the height:auto its style shows` | WordPress's parser reads `height: 'auto'` back out of Quill's comment. The current validator cannot catch its absence (block-library 9.47+ adds `height:auto` itself), but editors on an older block-library — the Jetpack iOS app's GutenbergKit 0.19.0 ships 9.41.0 — rebuild the style from the comment alone and flag the image as invalid |
 
@@ -1266,7 +1267,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (262 tests)
+## JS editor tests (263 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1576,11 +1577,11 @@ The inverse, run on load so the notes are editable in the editor.
 | `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta behind it is shown as a non-editable card rather than an empty list |
 | `meta without a delimiter in the content changes nothing` | |
 
-### `toWordPressHTML` — gallery (16 tests)
+### `toWordPressHTML` — gallery (17 tests)
 
 | Test | What it checks |
 |---|---|
-| `gallery figure gets wp:gallery and wp:image comment wrappers` | `figure.wp-block-gallery` + nested `figure.wp-block-image` gets `<!-- wp:gallery {ids,columns,linkTo} -->` and per-image `<!-- wp:image {...} -->` comments |
+| `gallery figure gets wp:gallery and wp:image comment wrappers` | `figure.wp-block-gallery` + nested `figure.wp-block-image` gets `<!-- wp:gallery {columns,linkTo} -->` (no `ids`: core does not write them for a gallery of nested images) and per-image `<!-- wp:image {...} -->` comments |
 | `gallery wrapping is idempotent` | Running `toWordPressHTML` twice produces byte-identical output — no compounding whitespace between images on repeated saves |
 | `gallery image captions survive the save transform` | A `figcaption.wp-element-caption` inside a nested gallery image figure is still present after the transform — the generic figure pass reaches nested gallery figures, so no gallery-specific caption pass is needed |
 | `a gallery caption stays the last child of its own nested image figure` | DOM-structural guard (replaces a weaker substring check): the caption is not hoisted onto the `figure.wp-block-gallery` wrapper, sits after its `<img>` as the figure's last element child, and belongs to the right image — the captionless second image gains none |
@@ -1592,6 +1593,7 @@ The inverse, run on load so the notes are editable in the editor.
 | `outer gallery figure does not gain wp-block-image class` | The generic image-figure transform excludes `.wp-block-gallery`, so the wrapper figure isn't misclassified |
 | `gallery with linkTo=media wraps images in anchors and records linkDestination` | Images already wrapped in `<a href>` produce `"linkTo":"media"` / `"linkDestination":"media"` |
 | `cropped=false omits is-cropped class and sets imageCrop:false` | Missing `is-cropped` class → explicit `"imageCrop":false` (only emitted at the non-default) |
+| `a gallery whose images share a size other than large writes that size on the gallery` | A sheet-inserted gallery at Medium writes `"sizeSlug":"medium"` on `wp:gallery`, as core does; `large` is core's default and is omitted |
 | `sizeSlug is read from the image figure class, not hardcoded` | `size-medium` on the image figure produces `"sizeSlug":"medium"`, not a hardcoded `"large"` |
 | `an image with no wp-image-N class omits the id key instead of writing null` | Images without a recognized media ID omit `"id"` entirely rather than writing `"id":null` |
 | `stripping pre-existing wp:image comments does not consume the images between them` | Regression guard: a loaded gallery's `sourceHTML` can have zero characters between one image's `<!-- /wp:image -->` and the next's `<!-- wp:image -->`; the strip regex must not greedily span past the first comment and delete the images between them |
@@ -2499,7 +2501,7 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ---
 
-## JS paste tests (50 tests)
+## JS paste tests (51 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2628,7 +2630,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (227 tests)
+## JS block settings tests (232 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2646,7 +2648,8 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
 | `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
 | `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
-| `the whole settings fixture corpus` | All twelve `settings-*.html` come back untouched with no edit, and save idempotently once edited |
+| `the whole settings fixture corpus` | All twenty-two `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
+| `an unlinked image keeps the "none" core wrote` | An unlinked image whose comment says `"linkDestination":"none"` keeps it; one that says `"custom"` still loses it (`an unlinked image writes no linkDestination`) |
 | `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |
 | `every class-writing setting claims its class` | A drift guard with no runtime symptom: a setting that writes a class on its node's own root needs that node to claim `class` in `RAW_ATTRS_MODELED`, or the raw-attribute replay puts the source's class list back and resurrects the token the user just turned off |
 | `every registry entry is covered` | Fails if a registry entry's name appears in no test — the drift guard |
@@ -3411,6 +3414,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 166 | Paste from outside Quill saved WebKit's computed inline styles and every source's own attributes and classes, so 14 of 21 sampled sources produced invalid blocks; Word lists arrived as paragraphs with "·" markers, VS Code as paragraphs of spans, chat-app code split around its UI | ✅ `test-editor-paste-sources.js` (41 tests) + the real-WebKit harness |
 | 167 | A post with footnotes lost the self-closing slash on every `<hr/>` and `<img/>`, and its footnotes delimiter was glued to the block before it, because `extractFootnotes` re-serialized the whole post | ✅ `test-editor.js` `'extractFootnotes leaves the rest of the saved markup byte for byte'` |
 | 168 | A link or bold around inline code was dropped on the first edit, because Tiptap's code mark excludes every other mark | ✅ `test-editor-inline-formats.js` `'inline code keeps the marks around it'` |
+| 169 | Editing any post rewrote every loaded gallery's block comments from its HTML: attachment-page and custom links became `media`, the gallery's size and each image's unmodelled attributes were dropped, and `ids` was added. The result still validated, so no test saw it | ✅ `test-editor-block-settings.js` `'settings-gallery.html saves byte-identically once edited'`; `test-fixture-validity.js` `'settings-gallery.html keeps every block's comment attributes'` |
 
 ---
 

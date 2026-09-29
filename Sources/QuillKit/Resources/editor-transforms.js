@@ -482,11 +482,13 @@ function imageBlockAttrs(figure, img) {
   else if (/(?:^|;)\s*height\s*:\s*auto\b/i.test(style)) attrs.height = 'auto'
   const size = (figure.getAttribute('class') || '').match(/(?:^|\s)size-([\w-]+)/)
   if (size) attrs.sizeSlug = size[1]
+  const carried = (carriedBlockAttrs(figure) || {}).linkDestination
   if (img.parentNode && img.parentNode.tagName === 'A') {
     // A destination core set wins; inferring turns a custom URL into a media link.
-    const carried = (carriedBlockAttrs(figure) || {}).linkDestination
     const toImageFile = uploadStem(img.parentNode.getAttribute('href')) === uploadStem(img.getAttribute('src'))
     attrs.linkDestination = (carried && carried !== 'none') ? carried : (toImageFile ? 'media' : 'custom')
+  } else if (carried === 'none') {
+    attrs.linkDestination = 'none'
   }
   // After linkDestination: core serializes its keys in block.json order.
   const align = ['left', 'right', 'center'].find(a => figure.classList.contains('align' + a))
@@ -543,6 +545,13 @@ function toWordPressHTML(html, doc) {
     el.replaceWith(placeholder)
   })
 
+  // The strip below deletes a gallery's nested wp:image comments, so their attrs move onto the figure first.
+  div.querySelectorAll('figure.wp-block-gallery > figure.wp-block-image:not([data-quill-block-attrs])').forEach(figure => {
+    const comment = precedingSignificantNode(figure)
+    const match = comment && comment.nodeType === 8 && comment.nodeValue.match(/^\s*wp:image\s+(\{[\s\S]*\})\s*$/)
+    if (match) figure.setAttribute('data-quill-block-attrs', match[1])
+  })
+
   div.innerHTML = div.innerHTML
     .replace(/<!-- wp:embed [\s\S]*?-->\n?/g, '')
     .replace(/\n?<!-- \/wp:embed -->/g, '')
@@ -593,6 +602,8 @@ function toWordPressHTML(html, doc) {
     applyImageDimensions(figure, img)
   })
 
+  const IMAGE_OWNED_ATTRS = ['id', 'sizeSlug', 'width', 'height', 'align', 'linkDestination', 'isDecorative']
+
   // Standalone images → wp:image block comments. Without them WordPress parses
   // the figure as classic HTML rather than a core/image block, so the block
   // editor offers no image controls for it. Gallery-nested images are skipped —
@@ -601,8 +612,7 @@ function toWordPressHTML(html, doc) {
     if (figure.closest('.wp-block-gallery')) return
     const img = figure.querySelector('img')
     if (!img) return
-    const attrs = mergeCarried(figure, imageBlockAttrs(figure, img),
-      ['id', 'sizeSlug', 'width', 'height', 'align', 'linkDestination', 'isDecorative'])
+    const attrs = mergeCarried(figure, imageBlockAttrs(figure, img), IMAGE_OWNED_ATTRS)
     const open = ` wp:image${delimiterAttrs(attrs)} `
     wrapElementWithComments(doc, figure, open, ' /wp:image ')
   })
@@ -799,33 +809,25 @@ function toWordPressHTML(html, doc) {
         figure.removeChild(node)
       }
     })
-    const ids = []
-    let linkTo = 'none'
+    const carried = carriedBlockAttrs(figure) || {}
+    const sizes = new Set()
+    let linkTo = carried.linkTo || 'none'
     imageFigures.forEach((imgFigure, i) => {
       const img = imgFigure.querySelector('img')
       if (!img) return
-      const idMatch = img.className.match(/wp-image-(\d+)/)
-      const id = idMatch ? parseInt(idMatch[1], 10) : null
-      if (id !== null) ids.push(id)
-      const linkedToMedia = img.parentElement.tagName === 'A'
-      if (i === 0) linkTo = linkedToMedia ? 'media' : 'none'
-      // Read the real size slug from the image figure's own class rather than
-      // hardcoding "large" — this matters once galleryBlock can round-trip an
-      // existing gallery's original figure verbatim (Task 2's sourceHTML attr),
-      // where the true sizeSlug may not be "large".
-      const sizeMatch = imgFigure.className.match(/size-(\S+)/)
-      const sizeSlug = sizeMatch ? sizeMatch[1] : 'large'
-      const imageAttrs = {}
-      if (id !== null) imageAttrs.id = id
-      imageAttrs.sizeSlug = sizeSlug
-      imageAttrs.linkDestination = linkedToMedia ? 'media' : 'none'
+      const imageAttrs = mergeCarried(imgFigure, imageBlockAttrs(imgFigure, img), IMAGE_OWNED_ATTRS)
+      if (!imageAttrs.linkDestination) imageAttrs.linkDestination = 'none'
+      sizes.add(imageAttrs.sizeSlug)
+      if (i === 0 && !carried.linkTo && imageAttrs.linkDestination !== 'none') linkTo = 'media'
       if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
       wrapElementWithComments(doc, imgFigure, ` wp:image${delimiterAttrs(imageAttrs)} `, ' /wp:image ')
     })
-    const galleryAttrs = { ids, columns, linkTo }
+    const galleryAttrs = { columns, linkTo }
     if (!cropped) galleryAttrs.imageCrop = false
-    const mergedGallery = mergeCarried(figure, galleryAttrs,
-      ['columns', 'imageCrop', 'linkTo', 'sizeSlug', 'ids'])
+    // Core omits the default size, and core never writes ids for a gallery of nested images.
+    const [size] = sizes
+    if (!('sizeSlug' in carried) && sizes.size === 1 && size && size !== 'large') galleryAttrs.sizeSlug = size
+    const mergedGallery = mergeCarried(figure, galleryAttrs, ['columns', 'imageCrop', 'linkTo'])
     wrapElementWithComments(doc, figure, ` wp:gallery${delimiterAttrs(mergedGallery)} `, ' /wp:gallery ')
   })
 

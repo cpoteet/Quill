@@ -1096,7 +1096,7 @@ describe('toWordPressHTML — gallery', () => {
 
   test('gallery figure gets wp:gallery and wp:image comment wrappers', () => {
     const out = wp(GALLERY_FIGURE)
-    assert.match(out, /<!-- wp:gallery \{"ids":\[145,146,147\],"columns":3,"linkTo":"none"\} -->/)
+    assert.match(out, /<!-- wp:gallery \{"columns":3,"linkTo":"none"\} -->/)
     assert.match(out, /<!-- \/wp:gallery -->/)
     const openImg = (out.match(/<!-- wp:image /g) || []).length
     const closeImg = (out.match(/<!-- \/wp:image -->/g) || []).length
@@ -1226,9 +1226,14 @@ describe('toWordPressHTML — gallery', () => {
       '<!-- /wp:image -->' +
       '</figure>'
     const out = wp(alreadyWrapped)
-    assert.match(out, /"ids":\[145,146\]/)
+    assert.equal((out.match(/<!-- wp:image /g) || []).length, 2)
     assert.ok(out.includes('wp-image-145'))
     assert.ok(out.includes('wp-image-146'))
+  })
+
+  test('a gallery whose images share a size other than large writes that size on the gallery', () => {
+    const out = wp(GALLERY_FIGURE.replace(/size-large/g, 'size-medium'))
+    assert.match(out, /<!-- wp:gallery \{"columns":3,"linkTo":"none","sizeSlug":"medium"\} -->/)
   })
 
   // Regression: the non-greedy attrs group must use `[\s\S]*?`, not `.*?` — JS `.`
