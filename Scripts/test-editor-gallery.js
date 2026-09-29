@@ -13,6 +13,9 @@ const path = require('path')
 const nodeCrypto = require('crypto')
 
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
+const fixture = name => fs.readFileSync(path.resolve(__dirname, 'fixtures', name), 'utf8')
+
+const { problems, commentAttributes, close: closeValidator } = require('./wp-validator.js')
 
 let editor
 let win
@@ -47,7 +50,7 @@ before(async () => {
   })
 })
 
-after(() => { if (win) win.close() })
+after(() => { if (win) win.close(); closeValidator() })
 
 describe('galleryBlock — insert and render', () => {
   test('inserting a galleryBlock renders wp-block-gallery figure with nested image figures', () => {
@@ -596,5 +599,302 @@ describe('galleryBlock — captions survive load → edit → save', () => {
     assert.equal(win.toWordPressHTML(saved), saved)
     assert.equal((saved.match(/<figcaption/g) || []).length, 2)
     assert.equal((saved.match(/<!-- wp:image /g) || []).length, 2)
+  })
+})
+
+describe('galleryBlock — default columns', () => {
+  test('saving a columns-default gallery after an unrelated edit writes no column count', () => {
+    const src = '<!-- wp:gallery {"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-default is-cropped"><!-- wp:image {"id":1,"sizeSlug":"large","linkDestination":"none"} -->\n<figure class="wp-block-image size-large"><img src="https://x.test/a.png" alt="" class="wp-image-1"/></figure>\n<!-- /wp:image --></figure>\n<!-- /wp:gallery -->'
+    win.setContent('<p>Intro</p>' + src)
+    editor.commands.insertContentAt(1, 'X')
+    const out = win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
+    assert.match(out, /<!-- wp:gallery \{"linkTo":"none"\} -->/)
+    assert.match(out, /columns-default/)
+  })
+})
+
+describe('galleryBlock — rebuilding a loaded gallery', () => {
+  function rebuild(src) {
+    win.setContent(src)
+    const tr = editor.state.tr
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'galleryBlock') tr.setNodeMarkup(pos, null, { ...node.attrs, sourceHTML: null })
+    })
+    editor.view.dispatch(tr)
+    return win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
+  }
+
+  test('settings-gallery.html rebuilt from the node comes back byte for byte', () => {
+    assert.equal(rebuild(fixture('settings-gallery.html')), fixture('settings-gallery.html'))
+  })
+
+  test('gallery-block.html rebuilt from the node keeps every comment attribute', () => {
+    const src = fixture('gallery-block.html')
+    assert.deepEqual(commentAttributes(rebuild(src)), commentAttributes(src))
+    assert.deepEqual(problems(rebuild(src)), [])
+  })
+
+  test('a theme class on an image figure survives a rebuild', () => {
+    assert.match(rebuild(fixture('gallery-block.html')), /class="wp-block-image size-large image-plain"/)
+  })
+
+  test('an image with no media id keeps its url through a rebuild', () => {
+    const src = '<!-- wp:gallery {"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-default is-cropped"><!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->\n<figure class="wp-block-image size-large"><img src="https://x.test/hotlinked.png" alt=""/></figure>\n<!-- /wp:image --></figure>\n<!-- /wp:gallery -->'
+    assert.match(rebuild(src), /src="https:\/\/x\.test\/hotlinked\.png"/)
+  })
+
+  const SUPPORTS_GALLERY = '<!-- wp:gallery {"columns":2,"linkTarget":"_blank","linkTo":"media","backgroundColor":"pale-pink","anchor":"shots","style":{"spacing":{"padding":{"top":"10px"}}}} -->\n' +
+    '<figure class="wp-block-gallery has-nested-images columns-2 is-cropped has-pale-pink-background-color has-background" id="shots" style="padding-top:10px"><!-- wp:image {"id":1,"aspectRatio":"1","scale":"cover","sizeSlug":"large","linkDestination":"media"} -->\n' +
+    '<figure class="wp-block-image size-large"><a href="https://x.test/a.png" target="_blank" rel="noreferrer noopener"><img src="https://x.test/a-1024x683.png" alt="" class="wp-image-1" style="aspect-ratio:1;object-fit:cover"/></a></figure>\n' +
+    '<!-- /wp:image --></figure>\n' +
+    '<!-- /wp:gallery -->'
+
+  test('attributes the node does not model survive a rebuild', () => {
+    assert.deepEqual(problems(SUPPORTS_GALLERY), [])
+    assert.equal(rebuild(SUPPORTS_GALLERY), SUPPORTS_GALLERY)
+  })
+
+  test('an unedited gallery keeps unmodelled attributes through an unrelated edit and save', () => {
+    win.setContent('<p>Intro</p>' + SUPPORTS_GALLERY)
+    editor.commands.insertContentAt(1, 'X')
+    const out = win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
+    assert.equal(out.slice(out.indexOf('<!-- wp:gallery')), SUPPORTS_GALLERY)
+  })
+
+  // Handlers are kept byte for byte; the WebKit fixture check proves they never run: docs/gotchas.md.
+  test('a script handler on a carried attribute is saved as WordPress wrote it', () => {
+    const src = SUPPORTS_GALLERY.replace('target="_blank"', 'target="_blank" onclick="alert(1)"').replace('id="shots"', 'id="shots" onmouseover="alert(2)"')
+    assert.equal(rebuild(src), src)
+  })
+
+  test('a columns-default gallery keeps its default columns through a rebuild', () => {
+    const src = '<!-- wp:gallery {"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-default is-cropped"><!-- wp:image {"id":1,"sizeSlug":"large","linkDestination":"none"} -->\n<figure class="wp-block-image size-large"><img src="https://x.test/a.png" alt="" class="wp-image-1"/></figure>\n<!-- /wp:image --></figure>\n<!-- /wp:gallery -->'
+    assert.equal(rebuild(src), src)
+  })
+
+  test('a loaded gallery keeps a script handler in its caption through a save', () => {
+    const src = fixture('settings-gallery.html').replace('<strong>live</strong>', '<strong onclick="alert(1)">live</strong>')
+    win.setContent(src)
+    assert.equal(win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content, src)
+  })
+
+  test('the copy marker on a gallery copied inside Quill is not saved', () => {
+    const src = fixture('settings-gallery.html').replace('<figure class="wp-block-gallery alignwide', '<figure data-pm-slice="0 0 []" class="wp-block-gallery alignwide')
+    assert.doesNotMatch(rebuild(src), /data-pm-slice/)
+  })
+
+  test('a rebuilt gallery keeps a script handler in its caption', () => {
+    const src = fixture('settings-gallery.html').replace('<strong>live</strong>', '<strong onclick="alert(1)">live</strong>')
+    assert.equal(rebuild(src), src)
+  })
+})
+
+describe('galleryBlock — editing', () => {
+  const posted = []
+  const galleries = () => {
+    const out = []
+    editor.state.doc.descendants(node => { if (node.type.name === 'galleryBlock') out.push(node) })
+    return out
+  }
+  const galleryPos = n => {
+    const out = []
+    editor.state.doc.descendants((node, pos) => { if (node.type.name === 'galleryBlock') out.push(pos) })
+    return out[n]
+  }
+  const reversed = n => [...galleries()[n].attrs.images].reverse()
+  const save = () => win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
+  const replaceFirst = () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+  }
+
+  before(() => {
+    win.webkit = { messageHandlers: { insertGallery: { postMessage: m => posted.push(m) } } }
+  })
+  after(() => { delete win.webkit })
+
+  test('editGallery posts the node attrs under edit', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    assert.equal(posted.at(-1).edit.linkTo, 'attachment')
+    assert.equal(posted.at(-1).edit.images.length, 2)
+  })
+
+  test('editGallery resolves each image link and size for a gallery inserted from the sheet', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertGallery(JSON.stringify({ images: [{ id: 9, url: 'https://x.test/n-300x200.png', fullUrl: 'https://x.test/n.png', alt: '', caption: '' }], columns: 3, cropped: true, linkTo: 'media', sizeSlug: 'medium' }))
+    win.editGallery(galleryPos(0))
+    const [image] = posted.at(-1).edit.images
+    assert.equal(image.href, 'https://x.test/n.png')
+    assert.equal(image.sizeSlug, 'medium')
+    assert.equal(image.extraClasses, '')
+  })
+
+  test('replace swaps the gallery in one undo step and clears sourceHTML', async () => {
+    win.setContent(fixture('settings-gallery.html'))
+    // Past prosemirror-history's newGroupDelay, or the load and the replace share one undo step.
+    await new Promise(r => setTimeout(r, 600))
+    win.editGallery(galleryPos(0))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.equal(galleries().length, 2)
+    assert.equal(galleries()[0].attrs.sourceHTML, null)
+    assert.equal(galleries()[0].attrs.columns, 3)
+    editor.commands.undo()
+    assert.notEqual(galleries()[0].attrs.sourceHTML, null)
+  })
+
+  test('replace does nothing when the post changed while the sheet was open', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    win.setContent(fixture('settings-gallery.html'))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.equal(galleries().length, 2)
+    assert.notEqual(galleries()[0].attrs.sourceHTML, null)
+  })
+
+  test('the toolbar Gallery button after a cancelled edit inserts instead of replacing', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    win.document.querySelector('[data-cmd="gallery"]').dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    assert.deepEqual(Object.keys(posted.at(-1)), [])
+    win.insertGallery(JSON.stringify({ images: [{ id: 9, url: 'https://x.test/n.png', alt: '', caption: '' }], columns: 3, cropped: true, linkTo: 'none', sizeSlug: 'large' }))
+    assert.equal(galleries().length, 3)
+  })
+
+  test('inserting while a gallery card is selected adds a gallery after it instead of replacing it', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    editor.commands.setNodeSelection(galleryPos(0))
+    win.insertGallery(JSON.stringify({ images: [{ id: 9, url: 'https://x.test/n.png', alt: '', caption: '' }], columns: 3, cropped: true, linkTo: 'none', sizeSlug: 'large' }))
+    assert.equal(galleries().length, 3)
+    assert.notEqual(galleries()[0].attrs.sourceHTML, null)
+    assert.equal(galleries()[1].attrs.images[0].id, 9)
+  })
+
+  test('an Update with nothing changed saves the gallery byte for byte', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const { images } = posted.at(-1).edit
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images, columns: 2, cropped: true, linkTo: 'attachment', sizeSlug: 'medium' }))
+    assert.equal(save(), fixture('settings-gallery.html'))
+  })
+
+  test('switching to Full Image keeps the comment keys in core order', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const images = posted.at(-1).edit.images.map(i => ({ ...i, href: i.fullUrl || i.url }))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: false, images, columns: 2, cropped: true, linkTo: 'media', sizeSlug: 'medium' }))
+    const out = save()
+    assert.match(out, /<!-- wp:gallery \{"columns":2,"linkTo":"media","sizeSlug":"medium","align":"wide","className":"is-style-framed"\} -->/)
+    assert.match(out, /<!-- wp:image \{"id":102,"sizeSlug":"medium","linkDestination":"media","className":"is-style-rounded"\} -->/)
+  })
+
+  test('a carried gallery sizeSlug is dropped once the sizes are mixed', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const images = posted.at(-1).edit.images.map((i, n) => n === 0 ? { ...i, sizeSlug: 'large' } : i)
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images, columns: 2, cropped: true, linkTo: 'attachment' }))
+    assert.equal('sizeSlug' in JSON.parse(galleries()[0].attrs.blockAttrs), false)
+    assert.equal('ids' in JSON.parse(galleries()[0].attrs.blockAttrs), false)
+  })
+
+  test('replace still applies when the gallery only moved while the sheet was open', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    editor.commands.insertContentAt(0, '<p>Above</p>')
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.equal(galleries().length, 2)
+    assert.equal(galleries()[0].attrs.sourceHTML, null)
+    assert.equal(galleries()[0].attrs.columns, 3)
+  })
+
+  test('a columns-default gallery is sent with no column count and keeps it when none comes back', () => {
+    const src = '<!-- wp:gallery {"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-default is-cropped"><!-- wp:image {"id":1,"sizeSlug":"large","linkDestination":"none"} -->\n<figure class="wp-block-image size-large"><img src="https://x.test/a.png" alt="" class="wp-image-1"/></figure>\n<!-- /wp:image --></figure>\n<!-- /wp:gallery -->'
+    win.setContent(src)
+    win.editGallery(galleryPos(0))
+    assert.equal(posted.at(-1).edit.columns, null)
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: posted.at(-1).edit.images, columns: null, cropped: true, linkTo: 'none', sizeSlug: 'large' }))
+    assert.equal(save(), src)
+  })
+
+  test('a replace payload without a remembered edit inserts nothing', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    win.document.querySelector('[data-cmd="gallery"]').dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.equal(galleries().length, 2)
+    assert.notEqual(galleries()[0].attrs.sourceHTML, null)
+  })
+
+  test('the replaced gallery keeps linkTo under Keep Current Links and its shared size', () => {
+    replaceFirst()
+    const attrs = JSON.parse(galleries()[0].attrs.blockAttrs)
+    assert.equal(attrs.linkTo, 'attachment')
+    assert.equal(attrs.sizeSlug, 'medium')
+    assert.equal(attrs.align, 'wide')
+    assert.match(save(), /"linkDestination":"attachment"/)
+  })
+
+  test('a new image sent with an attachment destination saves as an attachment link', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const added = { id: 9, url: 'https://x.test/n-300x200.png', fullUrl: 'https://x.test/n.png', alt: '', caption: '', sizeSlug: 'medium', href: 'https://x.test/?attachment_id=9', blockAttrs: '{"id":9,"sizeSlug":"medium","linkDestination":"attachment"}', extraClasses: '' }
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: [...posted.at(-1).edit.images, added], columns: 2, cropped: true, linkTo: 'attachment', sizeSlug: 'medium' }))
+    assert.match(save(), /<!-- wp:image \{"id":9,"sizeSlug":"medium","linkDestination":"attachment"\} -->/)
+  })
+
+  test('switching to Full Image drops carried link destinations', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const images = posted.at(-1).edit.images.map(i => ({ ...i, href: i.fullUrl || i.url }))
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: false, images, columns: 2, cropped: true, linkTo: 'media' }))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.doesNotMatch(out, /"linkDestination":"attachment"/)
+    assert.doesNotMatch(out, /"linkTo":"attachment"/)
+  })
+
+  test('the edited gallery saves byte-identically on a second save', () => {
+    replaceFirst()
+    const first = save()
+    win.setContent(first)
+    editor.commands.insertContentAt(editor.state.doc.content.size, '<p>x</p>')
+    editor.commands.undo()
+    assert.equal(save(), first)
+  })
+
+  test('double-click on the card calls editGallery', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    const count = posted.length
+    editor.view.nodeDOM(galleryPos(1)).dispatchEvent(new win.MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+    assert.equal(posted.length, count + 1)
+    assert.equal(posted.at(-1).edit.images[0].sizeSlug, 'thumbnail')
+  })
+
+  test('Return on a selected card calls editGallery', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    const count = posted.length
+    editor.commands.setNodeSelection(galleryPos(0))
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }))
+    assert.equal(posted.length, count + 1)
+    assert.equal(galleries().length, 2)
+  })
+
+  test('double-clicking the card Edit link asks for the sheet once', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    const count = posted.length
+    const link = editor.view.nodeDOM(galleryPos(0)).querySelector('.gallery-card-hint button')
+    link.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+    link.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }))
+    link.dispatchEvent(new win.MouseEvent('dblclick', { bubbles: true, cancelable: true, detail: 2 }))
+    assert.equal(posted.length, count + 1)
+  })
+
+  test('the card Edit link calls editGallery', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    const count = posted.length
+    const link = editor.view.nodeDOM(galleryPos(0)).querySelector('.gallery-card-hint button')
+    assert.equal(link.textContent, 'Edit')
+    link.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
+    assert.equal(posted.length, count + 1)
   })
 })

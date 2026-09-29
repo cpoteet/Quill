@@ -55,7 +55,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onReady: () -> Void
     weak var webView: WKWebView?
     var onInsertImage: (() -> Void)?
-    var onInsertGallery: (() -> Void)?
+    var onInsertGallery: ((GalleryEdit?) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
@@ -96,14 +96,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     }
 
     @objc private func handleInsertGallery(_ note: Notification) {
-        guard
-            let images   = note.userInfo?["images"] as? [[String: Any]],
-            let columns  = note.userInfo?["columns"] as? Int,
-            let cropped  = note.userInfo?["cropped"] as? Bool,
-            let linkTo   = note.userInfo?["linkTo"] as? String,
-            let sizeSlug = note.userInfo?["sizeSlug"] as? String
-        else { return }
-        insertGallery(images: images, columns: columns, cropped: cropped, linkTo: linkTo, sizeSlug: sizeSlug)
+        guard let payload = note.userInfo as? [String: Any], payload["images"] is [[String: Any]] else { return }
+        insertGallery(payload: payload)
     }
 
     // WKScriptMessageHandler
@@ -132,7 +126,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         case "insertImage":
             DispatchQueue.main.async { self.onInsertImage?() }
         case "insertGallery":
-            DispatchQueue.main.async { self.onInsertGallery?() }
+            let edit = GalleryEdit(body: message.body)
+            DispatchQueue.main.async { self.onInsertGallery?(edit) }
         case "showLinkPicker":
             guard
                 let body    = message.body as? [String: Any],
@@ -322,15 +317,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         wv.evaluateJavaScript("insertImage(\(urlStr), \(idStr), \(altStr))", completionHandler: nil)
     }
 
-    func insertGallery(images: [[String: Any]], columns: Int, cropped: Bool, linkTo: String, sizeSlug: String) {
+    func insertGallery(payload: [String: Any]) {
         guard let wv = webView else { return }
-        let payload: [String: Any] = [
-            "images": images,
-            "columns": columns,
-            "cropped": cropped,
-            "linkTo": linkTo,
-            "sizeSlug": sizeSlug,
-        ]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
               let jsonStr = String(data: jsonData, encoding: .utf8),
               let escapedData = try? JSONEncoder().encode(jsonStr),

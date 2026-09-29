@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-28 — 483 Swift tests + 1,407 JS tests (1,406 pass, 1 skipped), no failures._
+_Last updated: 2026-09-28 — 502 Swift tests + 1,447 JS tests (1,446 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,23 +16,23 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (483 tests)
-2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (67 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (92 tests — pure Node; `serializeAttributes` compared with WordPress)
+1. **Swift tests** — `swift test` (502 tests)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (263 tests via Node's built-in runner + jsdom)
 6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (84 tests — live Tiptap editor in jsdom)
-7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (38 tests — live Tiptap editor in jsdom)
+7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (70 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
-11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (51 tests — live Tiptap editor in jsdom)
+11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (52 tests — live Tiptap editor in jsdom)
 12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (41 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 13. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 14. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (232 tests — live Tiptap editor in jsdom)
+15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
 16. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (60 tests — same validator, over every fixture)
+17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the seventeen passed.
 
@@ -49,6 +49,15 @@ Loads the real `editor.html` in an offscreen WKWebView and runs every
 `Scripts/fixtures/settings-*.html` through load → save-untouched → save-after-edit →
 save-again, printing a per-fixture report and the first byte of any difference. It
 exits non-zero on a mismatch.
+
+It then runs the **script handler probes**: every `Scripts/fixtures/script-sinks/*.html`
+(a nested preserved block, an image caption, a gallery caption, each carrying an
+`<img onerror>` that counts itself in `window.__quillScriptRan`) through load, save,
+code view, copy, a gallery rebuild and paste, as does the corpus fixture
+`settings-script-handlers.html` (a Custom HTML block). It fails if any handler ran.
+jsdom never loads images, so this is the only test that can see post markup run
+script inside the editor. Proven to fail: pointing `inertDocument()` at the live page
+makes it report 23 runs.
 
 **This is the only test that runs in WebKit, and it must be green before a release.**
 Every jsdom suite can pass while WebKit does something else: the inline-style
@@ -101,7 +110,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (483 tests, 32 suites)
+## Swift test suite (502 tests, 33 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -115,7 +124,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 4 | `Credentials.basicAuthHeader` base64 encoding |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 58 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 61 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -141,6 +150,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
+| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 16 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links / None / Full Image, an image with no `WPMedia` |
 
 ---
 
@@ -265,7 +275,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (58 tests)
+### 5. Networking — `WordPressClientTests` (61 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -296,6 +306,9 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `uploadMediaEscapesQuotesInContentDispositionFilename` | End-to-end: quoted filename with `"` produces valid `Content-Disposition` header |
 | `uploadMediaStreamsFromFileNotHttpBody` | `uploadMedia(fileURL:)` uses `URLSession.upload(fromFile:)`, not `httpBody` (streaming regression guard) |
 | `fetchMediaItemHitsCorrectEndpointWithEditContext` | `GET /media/{id}?context=edit`, returns decoded `WPMedia` |
+| `fetchMediaByIdsSendsIncludeAndPerPage` | `fetchMedia(ids:)` sends `include` in the given order, `per_page` equal to the count, `context=edit` — the request `GallerySheet` makes to reopen a gallery |
+| `fetchMediaByIdsSendsNothingForNoIds` | No ids, no request (an empty `include` would return the whole library) |
+| `fetchMediaByIdsBatchesPastOneHundred` | 150 ids → requests of 100 and 50, WordPress's `per_page` cap |
 | `fetchMediaSendsTheRequestedPageAndPageSize` | `page`, `per_page` and `media_type` parsed back out of the query with `URLComponents` — `GallerySheet.loadMoreMedia` loops until a page holds an image, so a dropped page parameter never terminates |
 | `fetchMediaOmitsOffsetUnlessAsked` | no `offset` key unless one is passed; a passed offset reaches the query beside `per_page` — the paging mode `MediaLibraryView` depends on |
 | `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
@@ -987,6 +1000,29 @@ File: `Tests/QuillTests/AIOutputFixtureTests.swift`
 The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/` sample's `.html` equal to what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt`, so the JS suite is checking what the app would really hand the editor rather than a hand-written approximation.
 
 ---
+
+### 31. Editor — `GalleryEditTests` (16 tests)
+
+File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift half of editing a gallery: decoding what `window.editGallery` posts, and building what `window.insertGallery` receives. Spec: `docs/superpowers/specs/2026-09-11-gallery-editing-design.md`.
+
+| Test | What it checks |
+|---|---|
+| `galleryEditDecodesTheEditBody` | Images decode in order, a null or missing key becomes nil/empty, sizes that differ give `initialSizeSlug == "mixed"` |
+| `galleryEditDecodesDefaultColumnsAsNil` | A `columns-default` gallery (`columns: null`) still decodes, so it opens in edit mode |
+| `galleryPayloadKeepsDefaultColumnsWhenUntouched` | Columns the user never changed go back as `null`, keeping core's default layout |
+| `galleryEditIsNilForAnInsertBody` | The toolbar's `{}` body opens the sheet in insert mode |
+| `galleryEditSharedSizeIsTheInitialSize` | One shared size starts the Size menu there |
+| `galleryEditShowsKeepLinksForAttachmentGalleries` | `attachment` shows Keep Current Links; `media` with every image linked to its own file does not |
+| `galleryEditShowsKeepLinksForACustomLinkInAnUnlinkedGallery` | A custom link inside a `none` gallery shows it; an unlinked gallery does not |
+| `galleryPayloadKeepsUntouchedKeys` | `blockAttrs`, `extraClasses`, `extraAttrs`, `captionHTML` go back unchanged, plus `replace: true` |
+| `galleryPayloadDropsCaptionHTMLWhenCaptionChanged` | A changed caption is sent as plain text only |
+| `galleryPayloadMixedKeepsEachSize` | Mixed keeps each image's size and URL; a new image gets Large; no gallery `sizeSlug` is sent |
+| `galleryPayloadPickedSizeAppliesToEveryImage` | Picking a size resizes an existing image through its `WPMedia` |
+| `galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo` | Keep Current Links keeps existing `href`s, links a new image to its attachment page with `linkDestination: attachment` in core's key order, sends the gallery's own `linkTo` and `keepLinks: true` |
+| `galleryPayloadFullImageReplacesLinks` | Full Image links every image to its full-size file (`fullUrl` for an image with no `WPMedia`), `keepLinks: false` |
+| `galleryPayloadNoneUnlinksEveryImage` | None sends `href: null` for every image |
+| `galleryPayloadImageWithoutMediaKeepsItsURL` | An image the library did not return keeps its URL and size, and sends no id |
+| `galleryPayloadInsertKeepsTheInsertShape` | With no edit, the payload is exactly the insert keys it always was |
 
 ## JS block parser tests (67 tests)
 
@@ -1911,7 +1947,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 
 ---
 
-## JS gallery tests (36 tests)
+## JS gallery tests (70 tests)
 
 File: `Scripts/test-editor-gallery.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2011,6 +2047,57 @@ Regression suite for the greedy-comment-strip class of bug (matrix row 91), re-r
 | `the edited save is idempotent — captions do not duplicate or drift` | Re-saving the edited output is byte-identical, with exactly two `<figcaption>`s and two `<!-- wp:image ` comments — no compounding on repeated saves |
 
 ---
+
+### `galleryBlock` — default columns (1 test)
+
+| Test | What it checks |
+|---|---|
+| `saving a columns-default gallery after an unrelated edit writes no column count` | Core's `columns-default` markup gets no `"columns":3` in its comment (a validator mismatch before) |
+
+### `galleryBlock` — rebuilding a loaded gallery (11 tests)
+
+Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node was loaded with, script handlers included. jsdom never loads images, so whether a handler *runs* is proved only by the WebKit fixture check's script probes.
+
+| Test | What it checks |
+|---|---|
+| `settings-gallery.html rebuilt from the node comes back byte for byte` | Per-image size, attachment and custom links, block-style class, formatted image caption, gallery caption, `alignwide` and `className` all rebuilt from node attrs |
+| `gallery-block.html rebuilt from the node keeps every comment attribute` | An older Quill-written gallery: same `commentAttributes`, no validator problems |
+| `a theme class on an image figure survives a rebuild` | `image-plain` rides on `extraClasses` |
+| `an image with no media id keeps its url through a rebuild` | A hotlinked image |
+| `attributes the node does not model survive a rebuild` | Core output with `linkTarget` (`target`/`rel`), a background colour, padding, an anchor and an image aspect ratio comes back byte for byte and validator-clean |
+| `an unedited gallery keeps unmodelled attributes through an unrelated edit and save` | The `sourceHTML` path keeps an image `style` (moved to `data-quill-style` so the save pass splices it back) |
+| `a script handler on a carried attribute is saved as WordPress wrote it` | `extraAttrs` round-trip byte for byte, handlers included |
+| `a columns-default gallery keeps its default columns through a rebuild` | `columns: null` renders `columns-default` |
+| `a loaded gallery keeps a script handler in its caption through a save` | The `sourceHTML` path, parsed through `inertGalleryMarkup`, is byte for byte |
+| `the copy marker on a gallery copied inside Quill is not saved` | `data-pm-slice` is never carried as an extra attribute |
+| `a rebuilt gallery keeps a script handler in its caption` | Caption markup is byte for byte |
+
+### `galleryBlock` — editing (20 tests)
+
+`window.editGallery` and the `replace` path of `window.insertGallery`, with `webkit.messageHandlers.insertGallery` stubbed.
+
+| Test | What it checks |
+|---|---|
+| `editGallery posts the node attrs under edit` | Body is `{ edit }`, `linkTo` read from the carried comment (`attachment`) |
+| `editGallery resolves each image link and size for a gallery inserted from the sheet` | A gallery inserted this session (no per-image `href`/`sizeSlug`) is sent with them resolved, so Keep Current Links cannot unlink it |
+| `replace swaps the gallery in one undo step and clears sourceHTML` | One `setNodeMarkup`; one Cmd+Z restores the loaded gallery |
+| `replace does nothing when the post changed while the sheet was open` | The document was reloaded: no insert, no replace |
+| `replace still applies when the gallery only moved while the sheet was open` | The edited node is found by identity, not by its old position |
+| `a columns-default gallery is sent with no column count and keeps it when none comes back` | `columns: null` round-trips byte for byte |
+| `the toolbar Gallery button after a cancelled edit inserts instead of replacing` | The toolbar clears the remembered edit and posts `{}` |
+| `inserting while a gallery card is selected adds a gallery after it instead of replacing it` | Insert goes after a node selection |
+| `a replace payload without a remembered edit inserts nothing` | |
+| `the replaced gallery keeps linkTo under Keep Current Links and its shared size` | `ids` dropped, `sizeSlug` kept in place |
+| `a carried gallery sizeSlug is dropped once the sizes are mixed` | |
+| `an Update with nothing changed saves the gallery byte for byte` | Replace + save reproduces `settings-gallery.html` |
+| `switching to Full Image keeps the comment keys in core order` | `linkTo`/`linkDestination` rewritten in place |
+| `switching to Full Image drops carried link destinations` | No `attachment` survives |
+| `the edited gallery saves byte-identically on a second save` | |
+| `double-click on the card calls editGallery` | |
+| `Return on a selected card calls editGallery` | And does not split or delete the card |
+| `the card Edit link calls editGallery` | The `Edit` button in `.gallery-card-hint` |
+| `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
+| `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
 ## JS container tests (275 tests)
 
@@ -2648,7 +2735,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
 | `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
 | `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
-| `the whole settings fixture corpus` | All twenty-two `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
+| `the whole settings fixture corpus` | All twenty-three `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
 | `an unlinked image keeps the "none" core wrote` | An unlinked image whose comment says `"linkDestination":"none"` keeps it; one that says `"custom"` still loses it (`an unlinked image writes no linkDestination`) |
 | `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |
 | `every class-writing setting claims its class` | A drift guard with no runtime symptom: a setting that writes a class on its node's own root needs that node to claim `class` in `RAW_ATTRS_MODELED`, or the raw-attribute replay puts the source's class list back and resurrects the token the user just turned off |
@@ -2795,7 +2882,10 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] After editing alt text/caption in the sheet, check the image in the WordPress media library (or the Media tab) → its library alt text and caption are **unchanged** (sheet edits are insert-time only).
 - [ ] Insert a captioned gallery, make an unrelated visual edit elsewhere in the post, save, re-fetch the raw content → all captions and alts are still present and not duplicated.
 - [ ] Save a post containing a sheet-inserted gallery, then make an unrelated visual edit elsewhere in the post and save again → re-fetch the raw content and confirm the gallery block comments are still present (this is the fix for the previous `_rawHTML`-only silent-drop behavior).
-- [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a read-only thumbnail-grid card, not exploded into individual resizable images. Clicking it does not open `GallerySheet` (insert-only for v1).
+- [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a thumbnail-grid card, not exploded into individual resizable images. A single click only selects it.
+- [ ] **Editing a gallery** (new local draft; paste `Scripts/fixtures/settings-gallery.html` in code view, switch back): double-click the first card, select the second and press Return, and click the first card's **Edit** link → each opens **Edit Gallery** with its images in order, its columns, **Keep Current Links**, and **Mixed** for the second gallery. Reorder, change an alt text, change one caption, click **Update Gallery**, Save Draft, then read the draft from SQLite (`docs/gotchas.md`): the attachment links, the custom link, the untouched formatted caption and `is-style-rounded` are all still there, and the gallery comment's keys are in the same order as the fixture. Open the first gallery again, pick **Full Image**, Update → `linkTo` and every `linkDestination` are `media`, still in core's key order. Cmd+Z → exactly that update is undone.
+- [ ] Open a gallery for editing, click **Cancel**, then click the toolbar Gallery button and insert → a **new** gallery appears after the selected one; the selected gallery is untouched.
+- [ ] Insert a gallery of library images, then edit it → thumbnails, titles and grid checkmarks come back; add an image, pick Full Image and Thumbnail, Update → every image is a `-150x150` file linked to its full-size upload.
 - [ ] Open a post containing a gallery with an image caption (authored outside Quill) → make an unrelated visual edit elsewhere and save → re-fetch the raw content and confirm the caption is still present (verifies the `sourceHTML` verbatim round-trip, not just the structured reconstruction path).
 - [ ] Insert a gallery (or embed) at the very end of a post, then click just after it → the caret shows as a thin blue vertical bar (not a black horizontal bar). Type → a new paragraph is created at that position and text is entered normally.
 - [ ] Click a single (non-gallery) image → in the image toolbar, toggle "Link to Full Image" on → save and check code view/raw HTML: the `<img>` is wrapped in `<a href>` pointing at the media's full-resolution URL. Toggle it back off → save again → the `<a>` wrapper is removed. Open a post with a pre-existing linked image (authored outside Quill) → the toggle shows as already on.

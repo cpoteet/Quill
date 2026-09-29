@@ -1,20 +1,40 @@
 import SwiftUI
 
-/// One image queued for insertion, with the alt text and caption that will be
-/// written into this gallery's markup. Seeded from the media library item;
-/// edits here never write back to the library.
-///
-/// `public` because `GallerySheet.init` is public and its `onInsert` closure
-/// references this type.
+/// One gallery row; alt and caption are this gallery's only, and `media` is nil for an image the library did not return.
 public struct GallerySelection: Identifiable {
-    public let media: WPMedia
+    public var media: WPMedia?
+    public var existing: GalleryImage?
     public var alt: String
     public var caption: String
-    public var id: Int { media.id }
+    public let id: Int
+
+    public init(media: WPMedia, alt: String, caption: String) {
+        self.media = media
+        self.alt = alt
+        self.caption = caption
+        self.id = media.id
+    }
+
+    public init(existing: GalleryImage, media: WPMedia?, id: Int) {
+        self.existing = existing
+        self.media = media
+        self.alt = existing.alt
+        self.caption = existing.caption
+        self.id = id
+    }
+
+    var thumbnailURL: String {
+        media?.thumbnailURL ?? existing?.url ?? ""
+    }
+
+    var title: String {
+        media?.title.decodedTitle ?? URL(string: existing?.url ?? "")?.lastPathComponent ?? ""
+    }
 }
 
 public struct GallerySheet: View {
-    var onInsert: (_ images: [GallerySelection], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void
+    var editing: GalleryEdit?
+    var onInsert: (_ images: [GallerySelection], _ columns: Int?, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void
     var onCancel: (() -> Void)?
 
     @EnvironmentObject private var appState: AppState
@@ -28,22 +48,37 @@ public struct GallerySheet: View {
     @State private var isLoadingMore = false
     @State private var selected: [GallerySelection] = []
     @State private var expandedIDs: Set<Int> = []
-    @State private var columns: Int = 3
-    @State private var cropped: Bool = true
-    @State private var linkTo: String = "none"
-    @State private var sizeSlug: String = "large"
+    @State private var columns: Int?
+    @State private var cropped: Bool
+    @State private var linkTo: String
+    @State private var sizeSlug: String
+    @State private var isLoadingSelection: Bool
+    @State private var selectionError: String?
 
     public init(
-        onInsert: @escaping (_ images: [GallerySelection], _ columns: Int, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void,
+        editing: GalleryEdit? = nil,
+        onInsert: @escaping (_ images: [GallerySelection], _ columns: Int?, _ cropped: Bool, _ linkTo: String, _ sizeSlug: String) -> Void,
         onCancel: (() -> Void)? = nil
     ) {
+        self.editing = editing
         self.onInsert = onInsert
         self.onCancel = onCancel
+        _columns = State(initialValue: editing == nil ? 3 : editing?.columns)
+        _cropped = State(initialValue: editing?.cropped ?? true)
+        _sizeSlug = State(initialValue: editing?.initialSizeSlug ?? "large")
+        _isLoadingSelection = State(initialValue: editing != nil)
+        let initialLink: String
+        if let editing {
+            initialLink = editing.showsKeepLinks ? "keep" : (editing.linkTo == "media" ? "media" : "none")
+        } else {
+            initialLink = "none"
+        }
+        _linkTo = State(initialValue: initialLink)
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            Text("Insert Gallery")
+            Text(editing == nil ? "Insert Gallery" : "Edit Gallery")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
@@ -57,6 +92,7 @@ public struct GallerySheet: View {
             Divider()
             actionBar
         }
+        .task { await loadSelection() }
         .task { await loadMedia() }
         .alert(
             "Upload Failed",
@@ -74,18 +110,18 @@ public struct GallerySheet: View {
     private var actionBar: some View {
         HStack(spacing: 12) {
             Button("Upload…") { uploadFromDisk() }
-                .disabled(isUploading)
+                .disabled(isUploading || isLoadingSelection)
             if isUploading {
                 ProgressView().controlSize(.small)
             }
             Spacer()
             Button("Cancel") { onCancel?() }
                 .keyboardShortcut(.cancelAction)
-            Button("Insert Gallery") {
+            Button(editing == nil ? "Insert Gallery" : "Update Gallery") {
                 onInsert(selected, columns, cropped, linkTo, sizeSlug)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(selected.isEmpty)
+            .disabled(selected.isEmpty || isLoadingSelection || selectionError != nil)
             .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)
@@ -117,6 +153,8 @@ public struct GallerySheet: View {
                         }
                     }
                     .padding(12)
+                    .allowsHitTesting(!isLoadingSelection)
+                    .opacity(isLoadingSelection ? 0.5 : 1)
                     if isLoadingMore {
                         ProgressView()
                             .controlSize(.small)
@@ -136,7 +174,23 @@ public struct GallerySheet: View {
                     .padding(.top, 12)
                     .padding(.horizontal, 12)
 
-                if selected.isEmpty {
+                if isLoadingSelection {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 12)
+                } else if let selectionError {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(selectionError)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Button("Retry") {
+                            isLoadingSelection = true
+                            Task { await loadSelection() }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                } else if selected.isEmpty {
                     Text("Select images to add them to the gallery.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -161,7 +215,7 @@ public struct GallerySheet: View {
                                             expandedIDs.remove(sel.id)
                                             NSCursor.openHand.set()
                                         }
-                                    AsyncImage(url: URL(string: sel.media.thumbnailURL)) { phase in
+                                    AsyncImage(url: URL(string: sel.thumbnailURL)) { phase in
                                         if case .success(let image) = phase {
                                             image.resizable().aspectRatio(contentMode: .fill)
                                         } else {
@@ -170,7 +224,7 @@ public struct GallerySheet: View {
                                     }
                                     .frame(width: 32, height: 32)
                                     .clipShape(RoundedRectangle(cornerRadius: 4))
-                                    Text(sel.media.title.decodedTitle)
+                                    Text(sel.title)
                                         .font(.callout)
                                         .lineLimit(1)
                                     Spacer()
@@ -272,7 +326,7 @@ public struct GallerySheet: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel("Columns")
-                Stepper("\(columns)", value: $columns, in: 1...8)
+                Stepper("\(shownColumns)", value: Binding(get: { shownColumns }, set: { columns = $0 }), in: 1...8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -285,6 +339,9 @@ public struct GallerySheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel("Link To")
                 Picker("", selection: $linkTo) {
+                    if editing?.showsKeepLinks == true {
+                        Text("Keep Current Links").tag("keep")
+                    }
                     Text("None").tag("none")
                     Text("Full Image").tag("media")
                 }
@@ -295,6 +352,11 @@ public struct GallerySheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel("Size")
                 Picker("", selection: $sizeSlug) {
+                    if sizeSlug == "mixed" {
+                        Text("Mixed").tag("mixed")
+                    } else if !Self.standardSizes.contains(sizeSlug) {
+                        Text(Self.sizeName(sizeSlug)).tag(sizeSlug)
+                    }
                     Text("Thumbnail").tag("thumbnail")
                     Text("Medium").tag("medium")
                     Text("Large").tag("large")
@@ -320,6 +382,54 @@ public struct GallerySheet: View {
     }
 
     private let perPage = 50
+
+    private static let standardSizes: Set<String> = ["thumbnail", "medium", "large", "full"]
+
+    /// A theme's own size slug as a menu title, e.g. `medium_large` → "Medium Large".
+    private static func sizeName(_ slug: String) -> String {
+        slug.split(whereSeparator: { $0 == "_" || $0 == "-" }).map { $0.capitalized }.joined(separator: " ")
+    }
+
+    /// Core's default layout shows up to three columns until the user picks a count.
+    private var shownColumns: Int {
+        columns ?? min(max(selected.count, 1), 3)
+    }
+
+    /// An image the library does not return, or a repeat, keeps its own URL and gets a negative id.
+    private func loadSelection() async {
+        guard let editing, isLoadingSelection else { return }
+        defer { isLoadingSelection = false }
+        selectionError = nil
+        var library: [Int: WPMedia] = [:]
+        let ids = editing.images.compactMap(\.id)
+        if !ids.isEmpty {
+            guard let creds = appState.credentials else {
+                selectionError = "No WordPress site configured."
+                return
+            }
+            do {
+                let items = try await WordPressClient(credentials: creds).fetchMedia(ids: ids)
+                library = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            } catch {
+                selectionError = error.localizedDescription
+                return
+            }
+        }
+        var used: Set<Int> = []
+        var nextOrphanID = -1
+        selected = editing.images.map { image in
+            let media = image.id.flatMap { library[$0] }
+            let id: Int
+            if let mediaID = media?.id, !used.contains(mediaID) {
+                id = mediaID
+            } else {
+                id = nextOrphanID
+                nextOrphanID -= 1
+            }
+            used.insert(id)
+            return GallerySelection(existing: image, media: media, id: id)
+        }
+    }
 
     private func uploadFromDisk() {
         guard let creds = appState.credentials else { return }

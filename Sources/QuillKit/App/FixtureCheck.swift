@@ -107,7 +107,33 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
             }
         }
         print("\n\(rows.count - failures)/\(rows.count) passed")
-        exit(failures == 0 ? 0 : 1)
+        runScriptSinkProbes(in: dir.appendingPathComponent("script-sinks"), failures: failures)
+    }
+
+    private func runScriptSinkProbes(in dir: URL, failures: Int) {
+        let sources = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasSuffix(".html") }
+            .sorted()
+            .compactMap { try? String(contentsOf: dir.appendingPathComponent($0), encoding: .utf8) }
+        guard !sources.isEmpty,
+              let payload = try? JSONSerialization.data(withJSONObject: sources),
+              let json = String(data: payload, encoding: .utf8) else { fail("no script-sinks/*.html probes in \(dir.path)") }
+        print("Script handler probes — \(sources.count) sources")
+        webView.evaluateJavaScript("window.__runScriptSinkProbes(\(jsStringLiteral(json))); true") { _, error in
+            if let error { self.fail("the script probes threw: \(error.localizedDescription)") }
+            self.checkNoScriptRan(failures: failures)
+        }
+    }
+
+    private func checkNoScriptRan(failures: Int) {
+        // A missing image's error event arrives after the corpus returns.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.webView.evaluateJavaScript("window.__quillScriptRan || 0") { value, _ in
+                let ran = value as? Int ?? 0
+                print(ran > 0 ? "FAIL  a script handler in post content ran \(ran) time(s) inside the editor" : "  ok    no script handler ran")
+                exit(failures == 0 && ran == 0 ? 0 : 1)
+            }
+        }
     }
 
     private func firstDifference(_ expected: String, _ actual: String) -> String {

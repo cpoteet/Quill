@@ -1,7 +1,7 @@
 # Editable Galleries — Design Spec
 
 **Date:** 2026-09-11, revised 2026-09-28
-**Status:** Approved, not yet implemented
+**Status:** Implemented 2026-09-28
 **Plan:** [2026-09-28-gallery-editing.md](../plans/2026-09-28-gallery-editing.md)
 **Issue:** cpoteet/Quill#5
 

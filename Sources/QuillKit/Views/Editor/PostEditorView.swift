@@ -24,7 +24,7 @@ public struct PostEditorView: View {
     @State private var autosaveTask: Task<Void, Never>?
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
-    @State private var showGallerySheet = false
+    @State private var gallerySheet: GallerySheetRequest?
     @State private var toastMessage: String? = nil
     @State private var toastIsError: Bool = false
     // Bumped on every presentToast() call so the toast's dismiss timer restarts even when
@@ -101,8 +101,8 @@ public struct PostEditorView: View {
                     onInsertImage: {
                         showImagePicker = true
                     },
-                    onInsertGallery: {
-                        showGallerySheet = true
+                    onInsertGallery: { edit in
+                        gallerySheet = GallerySheetRequest(editing: edit)
                     },
                     onImageFilesDropped: { urls in
                         // Serialized: overlapping drops share `uploadStatus`, so a second
@@ -205,28 +205,15 @@ public struct PostEditorView: View {
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
             }
-            .sheet(isPresented: $showGallerySheet) {
-                GallerySheet(onInsert: { selections, columns, cropped, linkTo, sizeSlug in
-                    let imagePayload: [[String: Any]] = selections.map { sel in
-                        [
-                            "id": sel.media.id,
-                            "url": sel.media.sizedURL(for: sizeSlug),
-                            "fullUrl": sel.media.sourceURL,
-                            "alt": sel.alt,
-                            "caption": sel.caption,
-                        ]
-                    }
-                    let info: [String: Any] = [
-                        "images": imagePayload,
-                        "columns": columns,
-                        "cropped": cropped,
-                        "linkTo": linkTo,
-                        "sizeSlug": sizeSlug,
-                    ]
+            .sheet(item: $gallerySheet) { request in
+                GallerySheet(editing: request.editing, onInsert: { selections, columns, cropped, linkTo, sizeSlug in
+                    let info = Self.galleryPayload(
+                        selections: selections, columns: columns, cropped: cropped,
+                        linkTo: linkTo, sizeSlug: sizeSlug, editing: request.editing)
                     NotificationCenter.default.post(name: .insertGalleryData, object: nil, userInfo: info)
-                    showGallerySheet = false
+                    gallerySheet = nil
                 }, onCancel: {
-                    showGallerySheet = false
+                    gallerySheet = nil
                 })
                 .environmentObject(appState)
                 .frame(minWidth: 720, minHeight: 480)
@@ -1137,6 +1124,86 @@ public struct PostEditorView: View {
         } else {
             presentToast(Self.uploadSuccessMessage(inserted: inserted, didConvert: didConvert))
         }
+    }
+
+    /// The `window.insertGallery` payload; see Views/Media/CLAUDE.md (edit mode) for `"keep"` and `"mixed"`.
+    nonisolated static func galleryPayload(
+        selections: [GallerySelection], columns: Int?, cropped: Bool,
+        linkTo: String, sizeSlug: String, editing: GalleryEdit?
+    ) -> [String: Any] {
+        guard let editing else {
+            let images: [[String: Any]] = selections.compactMap { sel in
+                guard let media = sel.media else { return nil }
+                return [
+                    "id": media.id,
+                    "url": media.sizedURL(for: sizeSlug),
+                    "fullUrl": media.sourceURL,
+                    "alt": sel.alt,
+                    "caption": sel.caption,
+                ]
+            }
+            return ["images": images, "columns": columns ?? 3, "cropped": cropped, "linkTo": linkTo, "sizeSlug": sizeSlug]
+        }
+        let keepLinks = linkTo == "keep"
+        let images: [[String: Any]] = selections.map { sel in
+            let existing = sel.existing
+            let media = sel.media
+            let keepsSize = sizeSlug == "mixed" || media == nil
+            let size = keepsSize ? (existing?.sizeSlug ?? "large") : sizeSlug
+            let url: String
+            if let existing, keepsSize {
+                url = existing.url
+            } else {
+                url = media?.sizedURL(for: size) ?? existing?.url ?? ""
+            }
+            let fullUrl = media?.sourceURL ?? existing?.fullUrl
+            let href: String?
+            switch linkTo {
+            case "keep" where existing != nil:
+                href = existing?.href
+            case "keep":
+                switch editing.linkTo {
+                case "attachment": href = media?.link
+                case "media": href = fullUrl ?? url
+                default: href = nil
+                }
+            case "media":
+                href = fullUrl ?? url
+            default:
+                href = nil
+            }
+            var image: [String: Any] = [
+                "url": url,
+                "alt": sel.alt,
+                "caption": sel.caption,
+                "sizeSlug": size,
+                "href": href ?? NSNull(),
+                "extraClasses": existing?.extraClasses ?? "",
+            ]
+            if let id = media?.id ?? existing?.id { image["id"] = id }
+            if let fullUrl { image["fullUrl"] = fullUrl }
+            if let blockAttrs = existing?.blockAttrs {
+                image["blockAttrs"] = blockAttrs
+            } else if existing == nil, keepLinks, editing.linkTo == "attachment", let media, href != nil {
+                // Written in core's key order; an attachment page cannot be told apart from a custom link.
+                image["blockAttrs"] = "{\"id\":\(media.id),\"sizeSlug\":\"\(size)\",\"linkDestination\":\"attachment\"}"
+            }
+            if let extraAttrs = existing?.extraAttrs { image["extraAttrs"] = extraAttrs }
+            if let existing, let captionHTML = existing.captionHTML, sel.caption == existing.caption {
+                image["captionHTML"] = captionHTML
+            }
+            return image
+        }
+        var payload: [String: Any] = [
+            "images": images,
+            "columns": columns ?? NSNull(),
+            "cropped": cropped,
+            "linkTo": keepLinks ? editing.linkTo : linkTo,
+            "replace": true,
+            "keepLinks": keepLinks,
+        ]
+        if sizeSlug != "mixed" { payload["sizeSlug"] = sizeSlug }
+        return payload
     }
 
     nonisolated static func uploadStatusText(index: Int, total: Int) -> String {

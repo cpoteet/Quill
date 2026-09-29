@@ -391,6 +391,48 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(media.id == 5)
     }
 
+    @Test func fetchMediaByIdsSendsIncludeAndPerPage() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[\(minimalMediaJSON)]".data(using: .utf8)!)
+        }
+        let media = try await client.fetchMedia(ids: [3, 1, 2])
+        let query = capturedRequest?.url?.query ?? ""
+        #expect(capturedRequest?.url?.path.hasSuffix("media") == true)
+        #expect(query.contains("include=3,1,2") || query.contains("include=3%2C1%2C2"))
+        #expect(query.contains("per_page=3"))
+        #expect(query.contains("context=edit"))
+        #expect(media.map(\.id) == [5])
+    }
+
+    @Test func fetchMediaByIdsSendsNothingForNoIds() async throws {
+        var requests = 0
+        MockURLProtocol.requestHandler = { request in
+            requests += 1
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("[]".utf8))
+        }
+        let media = try await client.fetchMedia(ids: [])
+        #expect(media.isEmpty)
+        #expect(requests == 0)
+    }
+
+    @Test func fetchMediaByIdsBatchesPastOneHundred() async throws {
+        var queries: [String] = []
+        MockURLProtocol.requestHandler = { request in
+            queries.append(request.url?.query ?? "")
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[\(minimalMediaJSON)]".data(using: .utf8)!)
+        }
+        let media = try await client.fetchMedia(ids: Array(1...150))
+        #expect(queries.count == 2)
+        #expect(queries.first?.contains("per_page=100") == true)
+        #expect(queries.last?.contains("per_page=50") == true)
+        #expect(queries.last?.contains("include=101") == true || queries.last?.contains("include=101%2C") == true)
+        #expect(media.count == 2)
+    }
+
     @Test func updateMediaAltTextSendsPostToMediaEndpoint() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

@@ -342,7 +342,7 @@ describe('wrapUnsupportedBlocks', () => {
   // The fixtures that deliberately hold blocks Quill does not model; every
   // other one is supported end to end and must come through the wrap untouched.
   const HOLDS_UNMODELED = new Set([
-    'unsupported-blocks.html', 'settings-group.html', 'settings-media-text.html', 'settings-spacer.html',
+    'unsupported-blocks.html', 'settings-group.html', 'settings-media-text.html', 'settings-spacer.html', 'settings-script-handlers.html',
   ])
 
   test('leaves every fully supported fixture untouched', () => {

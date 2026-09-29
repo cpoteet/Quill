@@ -8,7 +8,7 @@ public struct EditorView: NSViewRepresentable {
     var onContentChange: (String) -> Void
     var onEditorReady: (() -> Void)?
     var onInsertImage: (() -> Void)?
-    var onInsertGallery: (() -> Void)?
+    var onInsertGallery: ((GalleryEdit?) -> Void)?
     var onImageFilesDropped: (([URL]) -> Void)?
     var onDropRejected: ((String) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
@@ -32,7 +32,7 @@ public struct EditorView: NSViewRepresentable {
         onContentChange: @escaping (String) -> Void,
         onEditorReady: (() -> Void)? = nil,
         onInsertImage: (() -> Void)? = nil,
-        onInsertGallery: (() -> Void)? = nil,
+        onInsertGallery: ((GalleryEdit?) -> Void)? = nil,
         onImageFilesDropped: (([URL]) -> Void)? = nil,
         onDropRejected: ((String) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,

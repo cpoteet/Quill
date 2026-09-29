@@ -14,13 +14,13 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 483 Swift + 1,407 JS tests, all passing as of 2026-09-28 (1,406 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 502 Swift + 1,447 JS tests, all passing as of 2026-09-28 (1,446 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
 ```
 
-**The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. Needs a current `./build.sh`.
+**The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
 
 **Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 
@@ -77,7 +77,7 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
 - `Sources/QuillKit/API/ImageConversion.swift` — HEIC/HEIF → JPEG before upload (WP 7.1 accepts HEIC but can't generate sub-sizes for it); used by all three upload paths
-- `Sources/QuillKit/Views/Media/GallerySheet.swift` — native gallery picker; posts `.insertGalleryData`, which `EditorCoordinator` turns into `window.insertGallery(json)`
+- `Sources/QuillKit/Views/Media/GallerySheet.swift` — native gallery picker, also opened in edit mode by `window.editGallery` (`GalleryEdit.swift`); posts `.insertGalleryData` with `PostEditorView.galleryPayload(...)`, which `EditorCoordinator` forwards whole to `window.insertGallery(json)`
 
 Concepts that have their own doc:
 
@@ -110,6 +110,7 @@ These three fail silently with the whole test suite green:
 **Full text of every cross-cutting gotcha below: `docs/gotchas.md`** — read it when a title looks relevant. File-specific gotchas live in the per-directory `CLAUDE.md` files (`Resources/`, `Views/Editor/`, `API/`, `Views/Media/`, `Views/Sidebar/`, `App/`, `AI/`, `Views/AI/`, `Views/Settings/`, `Views/`), which load only when working in that directory.
 
 - **A carried attribute is a script sink — everything the raw-attribute carrier snapshots gets replayed onto the live contenteditable**
+- **Post markup is parsed only into `inertDocument()`, never into an element of the live page**
 - **The toolbar-wide fade on inspector toggle is an implicit `sublayers` CATransition on the toolbar's glass hosting view, and `InspectorTitlebarFix` nulls that action**
 - **Measure the region the user is describing, not the whole strip**
 - **`AppState` orders taxonomies once, on assignment — the settings panel never sorts**
@@ -139,7 +140,7 @@ These three fail silently with the whole test suite green:
 
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
-- `docs/editor-gotchas.md` — the 78 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
+- `docs/editor-gotchas.md` — the 77 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
 - `docs/editor-preview-gaps.md`

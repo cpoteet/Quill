@@ -126,6 +126,22 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    /// One request per 100 items, WordPress's `per_page` cap; an empty `include` would return the whole library.
+    public func fetchMedia(ids: [Int]) async throws -> [WPMedia] {
+        var media: [WPMedia] = []
+        for start in stride(from: 0, to: ids.count, by: 100) {
+            let batch = ids[start..<min(start + 100, ids.count)]
+            let query = [
+                "include": batch.map(String.init).joined(separator: ","),
+                "per_page": "\(batch.count)",
+                "context": "edit",
+            ]
+            let page: [WPMedia] = try await get(try endpoint("media", query: query))
+            media.append(contentsOf: page)
+        }
+        return media
+    }
+
     public func fetchMediaItem(id: Int) async throws -> WPMedia {
         let url = try endpoint("media/\(id)", query: ["context": "edit"])
         return try await get(url)

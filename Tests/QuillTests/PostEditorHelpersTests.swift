@@ -230,3 +230,214 @@ import Testing
         #expect(PostStats(words: 1000, characters: 5000).readingMinutes == 5)  // 1000/238 = 4.2 → 5
     }
 }
+
+@Suite struct GalleryEditTests {
+
+    private func media(id: Int, link: String = "https://example.com/?attachment_id=1") throws -> WPMedia {
+        let json = """
+        {"id":\(id),"title":{"rendered":"p\(id)"},"source_url":"https://example.com/p\(id).jpg",\
+        "media_type":"image","mime_type":"image/jpeg","link":"\(link)",\
+        "media_details":{"sizes":{"large":{"source_url":"https://example.com/p\(id)-1024x683.jpg","width":1024,"height":683},\
+        "thumbnail":{"source_url":"https://example.com/p\(id)-150x150.jpg","width":150,"height":150}}}}
+        """
+        return try JSONDecoder().decode(WPMedia.self, from: Data(json.utf8))
+    }
+
+    private func image(
+        id: Int?, url: String, sizeSlug: String? = "large", href: String? = nil,
+        caption: String = "", captionHTML: String? = nil, blockAttrs: String? = nil, extraClasses: String = ""
+    ) -> GalleryImage {
+        GalleryImage(
+            id: id, url: url, fullUrl: nil, alt: "", caption: caption, captionHTML: captionHTML,
+            sizeSlug: sizeSlug, href: href, blockAttrs: blockAttrs, extraClasses: extraClasses)
+    }
+
+    private func edit(_ images: [GalleryImage], linkTo: String = "none") -> GalleryEdit {
+        GalleryEdit(images: images, columns: 2, cropped: true, linkTo: linkTo)
+    }
+
+    private func images(_ payload: [String: Any]) -> [[String: Any]] {
+        payload["images"] as? [[String: Any]] ?? []
+    }
+
+    @Test func galleryEditDecodesTheEditBody() {
+        let body: [String: Any] = ["edit": [
+            "images": [
+                ["id": 7, "url": "https://example.com/a-150x150.jpg", "alt": "A", "caption": "", "sizeSlug": "thumbnail",
+                 "href": NSNull(), "blockAttrs": NSNull(), "captionHTML": NSNull(), "extraClasses": ""],
+                ["id": NSNull(), "url": "https://x.test/b.png", "alt": "", "caption": "B", "sizeSlug": "large"],
+            ],
+            "columns": 2, "cropped": false, "linkTo": "none",
+        ]]
+        let decoded = GalleryEdit(body: body)
+        #expect(decoded?.images.map(\.url) == ["https://example.com/a-150x150.jpg", "https://x.test/b.png"])
+        #expect(decoded?.images.first?.id == 7)
+        #expect(decoded?.images.last?.id == nil)
+        #expect(decoded?.images.last?.extraClasses == "")
+        #expect(decoded?.cropped == false)
+        #expect(decoded?.initialSizeSlug == "mixed")
+    }
+
+    @Test func galleryEditDecodesDefaultColumnsAsNil() {
+        let body: [String: Any] = ["edit": [
+            "images": [["id": 1, "url": "u", "sizeSlug": "large"]],
+            "columns": NSNull(), "cropped": true, "linkTo": "none",
+        ]]
+        let decoded = GalleryEdit(body: body)
+        #expect(decoded != nil)
+        #expect(decoded?.columns == nil)
+    }
+
+    @Test func galleryPayloadKeepsDefaultColumnsWhenUntouched() throws {
+        let existing = image(id: 1, url: "u")
+        let payload = PostEditorView.galleryPayload(
+            selections: [GallerySelection(existing: existing, media: try media(id: 1), id: 1)],
+            columns: nil, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([existing]))
+        #expect(payload["columns"] is NSNull)
+    }
+
+    @Test func galleryEditIsNilForAnInsertBody() {
+        #expect(GalleryEdit(body: [String: Any]()) == nil)
+    }
+
+    @Test func galleryEditSharedSizeIsTheInitialSize() {
+        let decoded = edit([image(id: 1, url: "a", sizeSlug: "medium"), image(id: 2, url: "b", sizeSlug: "medium")])
+        #expect(decoded.initialSizeSlug == "medium")
+    }
+
+    @Test func galleryEditShowsKeepLinksForAttachmentGalleries() {
+        #expect(edit([image(id: 1, url: "a", href: "https://example.com/att/")], linkTo: "attachment").showsKeepLinks)
+        let media = edit([
+            image(id: 1, url: "https://example.com/a.jpg", href: "https://example.com/a.jpg"),
+            image(id: 2, url: "https://example.com/b.jpg", href: "https://example.com/b.jpg"),
+        ], linkTo: "media")
+        #expect(!media.showsKeepLinks)
+    }
+
+    @Test func galleryEditShowsKeepLinksForACustomLinkInAnUnlinkedGallery() {
+        let mixed = edit([image(id: 1, url: "a", href: "https://example.com/wishlist"), image(id: 2, url: "b")], linkTo: "none")
+        #expect(mixed.showsKeepLinks)
+        #expect(!edit([image(id: 1, url: "a")], linkTo: "none").showsKeepLinks)
+    }
+
+    @Test func galleryPayloadKeepsUntouchedKeys() throws {
+        let existing = image(id: 1, url: "https://example.com/p1-1024x683.jpg", href: "https://example.com/att/",
+                             caption: "Hi", captionHTML: "<em>Hi</em>", blockAttrs: "{\"id\":1}", extraClasses: "image-plain")
+        var withCarried = existing
+        withCarried.extraAttrs = "{\"a\":[[\"target\",\"_blank\"]]}"
+        let sel = GallerySelection(existing: withCarried, media: try media(id: 1), id: 1)
+        let payload = PostEditorView.galleryPayload(
+            selections: [sel], columns: 2, cropped: true, linkTo: "keep", sizeSlug: "large",
+            editing: edit([withCarried], linkTo: "attachment"))
+        let first = try #require(images(payload).first)
+        #expect(first["extraAttrs"] as? String == "{\"a\":[[\"target\",\"_blank\"]]}")
+        #expect(first["blockAttrs"] as? String == "{\"id\":1}")
+        #expect(first["extraClasses"] as? String == "image-plain")
+        #expect(first["captionHTML"] as? String == "<em>Hi</em>")
+        #expect(payload["replace"] as? Bool == true)
+    }
+
+    @Test func galleryPayloadDropsCaptionHTMLWhenCaptionChanged() throws {
+        let existing = image(id: 1, url: "u", caption: "Hi", captionHTML: "<em>Hi</em>")
+        var sel = GallerySelection(existing: existing, media: try media(id: 1), id: 1)
+        sel.caption = "Hello"
+        let payload = PostEditorView.galleryPayload(
+            selections: [sel], columns: 2, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([existing]))
+        let first = try #require(images(payload).first)
+        #expect(first["captionHTML"] == nil || first["captionHTML"] is NSNull)
+        #expect(first["caption"] as? String == "Hello")
+    }
+
+    @Test func galleryPayloadMixedKeepsEachSize() throws {
+        let small = image(id: 1, url: "https://example.com/p1-150x150.jpg", sizeSlug: "thumbnail")
+        let new = try media(id: 2)
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: small, media: try media(id: 1), id: 1),
+                GallerySelection(media: new, alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "mixed", editing: edit([small]))
+        let out = images(payload)
+        #expect(out[0]["sizeSlug"] as? String == "thumbnail")
+        #expect(out[0]["url"] as? String == "https://example.com/p1-150x150.jpg")
+        #expect(out[1]["sizeSlug"] as? String == "large")
+        #expect(out[1]["url"] as? String == new.sizedURL(for: "large"))
+        #expect(payload["sizeSlug"] == nil)
+    }
+
+    @Test func galleryPayloadPickedSizeAppliesToEveryImage() throws {
+        let small = image(id: 1, url: "https://example.com/p1-150x150.jpg", sizeSlug: "thumbnail")
+        let payload = PostEditorView.galleryPayload(
+            selections: [GallerySelection(existing: small, media: try media(id: 1), id: 1)],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([small]))
+        let first = try #require(images(payload).first)
+        #expect(first["sizeSlug"] as? String == "large")
+        #expect(first["url"] as? String == "https://example.com/p1-1024x683.jpg")
+    }
+
+    @Test func galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo() throws {
+        let existing = image(id: 1, url: "u", href: "https://example.com/att-1/")
+        let new = try media(id: 2, link: "https://example.com/att-2/")
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: existing, media: try media(id: 1), id: 1),
+                GallerySelection(media: new, alt: "", caption: ""),
+            ],
+            columns: 2, cropped: true, linkTo: "keep", sizeSlug: "large", editing: edit([existing], linkTo: "attachment"))
+        let out = images(payload)
+        #expect(out[0]["href"] as? String == "https://example.com/att-1/")
+        #expect(out[1]["href"] as? String == "https://example.com/att-2/")
+        #expect(payload["keepLinks"] as? Bool == true)
+        #expect(payload["linkTo"] as? String == "attachment")
+        #expect(out[1]["blockAttrs"] as? String == "{\"id\":2,\"sizeSlug\":\"large\",\"linkDestination\":\"attachment\"}")
+        #expect(out[0]["blockAttrs"] == nil)
+    }
+
+    @Test func galleryPayloadFullImageReplacesLinks() throws {
+        let linked = image(id: 1, url: "u", href: "https://example.com/att-1/")
+        let orphan = GalleryImage(
+            id: nil, url: "https://x.test/h-300x200.png", fullUrl: "https://x.test/h.png", alt: "", caption: "",
+            captionHTML: nil, sizeSlug: "medium", href: nil, blockAttrs: nil, extraClasses: "")
+        let payload = PostEditorView.galleryPayload(
+            selections: [
+                GallerySelection(existing: linked, media: try media(id: 1), id: 1),
+                GallerySelection(existing: orphan, media: nil, id: -1),
+            ],
+            columns: 2, cropped: true, linkTo: "media", sizeSlug: "large", editing: edit([linked, orphan], linkTo: "attachment"))
+        let out = images(payload)
+        #expect(out[0]["href"] as? String == "https://example.com/p1.jpg")
+        #expect(out[1]["href"] as? String == "https://x.test/h.png")
+        #expect(payload["keepLinks"] as? Bool == false)
+    }
+
+    @Test func galleryPayloadNoneUnlinksEveryImage() throws {
+        let linked = image(id: 1, url: "u", href: "https://example.com/att-1/")
+        let payload = PostEditorView.galleryPayload(
+            selections: [GallerySelection(existing: linked, media: try media(id: 1), id: 1)],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([linked], linkTo: "attachment"))
+        let first = try #require(images(payload).first)
+        #expect(first["href"] is NSNull)
+    }
+
+    @Test func galleryPayloadImageWithoutMediaKeepsItsURL() throws {
+        let orphan = image(id: nil, url: "https://x.test/hotlinked.png", sizeSlug: "medium")
+        let payload = PostEditorView.galleryPayload(
+            selections: [GallerySelection(existing: orphan, media: nil, id: -1)],
+            columns: 2, cropped: true, linkTo: "none", sizeSlug: "large", editing: edit([orphan]))
+        let first = try #require(images(payload).first)
+        #expect(first["url"] as? String == "https://x.test/hotlinked.png")
+        #expect(first["sizeSlug"] as? String == "medium")
+        #expect(first["id"] == nil || first["id"] is NSNull)
+    }
+
+    @Test func galleryPayloadInsertKeepsTheInsertShape() throws {
+        let new = try media(id: 2)
+        let payload = PostEditorView.galleryPayload(
+            selections: [GallerySelection(media: new, alt: "A", caption: "C")],
+            columns: 3, cropped: false, linkTo: "media", sizeSlug: "thumbnail", editing: nil)
+        let first = try #require(images(payload).first)
+        #expect(Set(first.keys) == ["id", "url", "fullUrl", "alt", "caption"])
+        #expect(first["url"] as? String == "https://example.com/p2-150x150.jpg")
+        #expect(Set(payload.keys) == ["images", "columns", "cropped", "linkTo", "sizeSlug"])
+    }
+}

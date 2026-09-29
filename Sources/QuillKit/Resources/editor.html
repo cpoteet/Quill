@@ -977,6 +977,11 @@
       border-radius: 4px;
     }
     .gallery-card-hint { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; }
+    .gallery-card-hint button {
+      font: inherit; font-style: normal; color: var(--link);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .gallery-card-hint button:hover { text-decoration: underline; }
     body.dark .gallery-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
     body.dark .gallery-card-hint { color: #777; }
     /* ── Passthrough card (unsupported Gutenberg block) ─── */
@@ -2266,11 +2271,10 @@
     // Saved HTML is the Gutenberg gallery figure (nested wp-block-image
     // figures, wrapped with wp:gallery/wp:image comments by toWordPressHTML);
     // in the editor it renders as a static thumbnail-grid card — all editing
-    // happens in the native GallerySheet, not in Tiptap. Read-only: galleries
-    // loaded from existing posts render the same card but are not re-openable
-    // for editing in v1.
+    // happens in the native GallerySheet (double-click, Return, or the card's
+    // Edit link), which replaces the node in place.
     class GalleryNodeView {
-      constructor(node) {
+      constructor(node, getPos) {
         this.dom = document.createElement('div')
         this.dom.className = 'gallery-card'
         const grid = document.createElement('div')
@@ -2284,12 +2288,47 @@
         const hint = document.createElement('div')
         hint.className = 'gallery-card-hint'
         const count = node.attrs.images.length
-        hint.textContent = `${count} image${count === 1 ? '' : 's'} · Renders as a WordPress gallery`
+        hint.textContent = `${count} image${count === 1 ? '' : 's'} · Renders as a WordPress gallery · `
+        const edit = document.createElement('button')
+        edit.type = 'button'
+        edit.textContent = 'Edit'
+        edit.addEventListener('click', event => { if (event.detail < 2) window.editGallery(getPos()) })
+        hint.appendChild(edit)
+        this.dom.addEventListener('dblclick', event => { if (!edit.contains(event.target)) window.editGallery(getPos()) })
         this.dom.append(grid, hint)
       }
       selectNode()   { this.dom.classList.add('selected') }
       deselectNode() { this.dom.classList.remove('selected') }
     }
+
+    function galleryAlign(blockAttrs) {
+      try { return JSON.parse(blockAttrs || '{}')?.align || null } catch (e) { return null }
+    }
+
+    // Parsed inert, never by innerHTML on a live element: docs/gotchas.md (script sink).
+    function inertGalleryMarkup(html) {
+      const template = document.createElement('template')
+      template.innerHTML = html
+      return template.content
+    }
+
+    function appendCaption(cap, { captionHTML, caption }) {
+      if (!captionHTML) { cap.textContent = caption; return }
+      cap.appendChild(inertGalleryMarkup(captionHTML))
+    }
+
+    function unmodeledAttrs(el, modeled) {
+      if (!el) return []
+      return Array.from(el.attributes)
+        .filter(attr => !modeled.includes(attr.name))
+        .map(attr => [attr.name, attr.value])
+    }
+
+    function setAttrPairs(el, pairs) {
+      (pairs || []).forEach(([name, value]) => el.setAttribute(name, value))
+    }
+
+    const GALLERY_MODELED_CLASS = /^(wp-block-gallery|has-nested-images|columns-\S+|is-cropped|align\S+)$/
 
     const GalleryBlock = TiptapNode.create({
       name: 'galleryBlock',
@@ -2305,6 +2344,9 @@
           cropped:    { default: true },
           linkTo:     { default: 'none' },
           sizeSlug:   { default: 'large' },
+          captionHTML: { default: null },
+          extraClasses: { default: '' },
+          extraAttrs: { default: [] },
           // Verbatim copy of the original figure's outerHTML, captured on load.
           // When set, renderHTML re-emits this unchanged instead of reconstructing
           // from the structured attrs above — preserves captions, original
@@ -2323,22 +2365,45 @@
             const images = imageFigures.map(fig => {
               const img = fig.querySelector('img')
               const idMatch = img?.className.match(/wp-image-(\d+)/)
-              return {
-                id: idMatch ? parseInt(idMatch[1], 10) : null,
-                url: img?.getAttribute('src') || '',
-                alt: img?.getAttribute('alt') || '',
-                caption: fig.querySelector('figcaption')?.textContent || '',
+              const url = img?.getAttribute('src') || ''
+              const href = img?.parentElement.tagName === 'A' ? img.parentElement.getAttribute('href') : null
+              const figcaption = fig.querySelector('figcaption')
+              const sizeMatch = fig.className.match(/(?:^|\s)size-(\S+)/)
+              const anchor = img?.parentElement.tagName === 'A' ? img.parentElement : null
+              const carried = {
+                figure: unmodeledAttrs(fig, ['class', 'data-quill-block-attrs']),
+                a: unmodeledAttrs(anchor, ['href']),
+                img: unmodeledAttrs(img, ['src', 'alt', 'class']),
               }
+              const image = {
+                id: idMatch ? parseInt(idMatch[1], 10) : null,
+                url,
+                alt: img?.getAttribute('alt') || '',
+                caption: figcaption?.textContent || '',
+                captionHTML: figcaption ? figcaption.innerHTML : null,
+                sizeSlug: sizeMatch ? sizeMatch[1] : null,
+                href,
+                blockAttrs: fig.getAttribute('data-quill-block-attrs') || blockCommentAttrsJSON(fig),
+                extraClasses: Array.from(fig.classList).filter(c => c !== 'wp-block-image' && !c.startsWith('size-')).join(' '),
+                extraAttrs: Object.values(carried).some(pairs => pairs.length) ? JSON.stringify(carried) : null,
+              }
+              if (href && uploadStem(href) === uploadStem(url)) image.fullUrl = href
+              return image
             })
+            const galleryCaption = Array.from(el.children).find(c => c.tagName === 'FIGCAPTION')
             const columnsMatch = el.className.match(/columns-(\d+)/)
+            const carriedClasses = carriedClassName(el.getAttribute('data-quill-block-attrs') || blockCommentAttrsJSON(el)).split(/\s+/)
             const firstImg = imageFigures[0].querySelector('img')
             const sizeMatch = imageFigures[0].className.match(/size-(\S+)/)
             return {
               images,
-              columns: columnsMatch ? parseInt(columnsMatch[1], 10) : 3,
+              columns: columnsMatch ? parseInt(columnsMatch[1], 10) : null,
               cropped: el.classList.contains('is-cropped'),
               linkTo: firstImg?.parentElement.tagName === 'A' ? 'media' : 'none',
               sizeSlug: sizeMatch ? sizeMatch[1] : 'large',
+              captionHTML: galleryCaption ? galleryCaption.innerHTML : null,
+              extraClasses: Array.from(el.classList).filter(c => !GALLERY_MODELED_CLASS.test(c) && !carriedClasses.includes(c)).join(' '),
+              extraAttrs: unmodeledAttrs(el, ['class', 'data-quill-block-attrs', 'data-pm-slice']),
               sourceHTML: sourceHTMLOf(el),
             }
           },
@@ -2347,43 +2412,73 @@
 
       renderHTML({ node }) {
         if (node.attrs.sourceHTML) {
-          const wrapper = document.createElement('div')
-          wrapper.innerHTML = node.attrs.sourceHTML
-          return wrapper.firstElementChild
+          const source = inertGalleryMarkup(node.attrs.sourceHTML).firstElementChild
+          // toWordPressHTML rebuilds an image's style from data-quill-style, so a loaded one moves there.
+          source.querySelectorAll('figure.wp-block-image img[style]').forEach(img => {
+            img.setAttribute('data-quill-style', img.getAttribute('style'))
+            img.removeAttribute('style')
+          })
+          return source
         }
         const figure = document.createElement('figure')
-        figure.className = `wp-block-gallery has-nested-images columns-${node.attrs.columns}` +
-          (node.attrs.cropped ? ' is-cropped' : '')
+        const align = galleryAlign(node.attrs.blockAttrs)
+        figure.className = 'wp-block-gallery' + (align ? ` align${align}` : '') +
+          ` has-nested-images columns-${node.attrs.columns ?? 'default'}` + (node.attrs.cropped ? ' is-cropped' : '') +
+          (node.attrs.extraClasses ? ` ${node.attrs.extraClasses}` : '')
+        setAttrPairs(figure, node.attrs.extraAttrs)
         node.attrs.images.forEach(image => {
+          let carried = {}
+          try { carried = JSON.parse(image.extraAttrs || '{}') || {} } catch (e) {}
           const imgFigure = document.createElement('figure')
-          imgFigure.className = `wp-block-image size-${node.attrs.sizeSlug || 'large'}`
+          imgFigure.className = `wp-block-image size-${image.sizeSlug || node.attrs.sizeSlug || 'large'}` +
+            (image.extraClasses ? ` ${image.extraClasses}` : '')
+          setAttrPairs(imgFigure, carried.figure)
+          if (image.blockAttrs) imgFigure.setAttribute('data-quill-block-attrs', image.blockAttrs)
           const img = document.createElement('img')
           img.setAttribute('src', image.url)
           img.setAttribute('alt', image.alt || '')
           if (image.id) img.classList.add(`wp-image-${image.id}`)
-          if (node.attrs.linkTo === 'media') {
+          setAttrPairs(img, (carried.img || []).map(([name, value]) => [name === 'style' ? 'data-quill-style' : name, value]))
+          const href = image.href !== undefined ? image.href : (node.attrs.linkTo === 'media' ? (image.fullUrl || image.url) : null)
+          if (href) {
             const a = document.createElement('a')
-            a.setAttribute('href', image.fullUrl || image.url)
+            a.setAttribute('href', href)
+            setAttrPairs(a, carried.a)
             a.appendChild(img)
             imgFigure.appendChild(a)
           } else {
             imgFigure.appendChild(img)
           }
-          // Plain text only — textContent, never innerHTML: caption text comes
-          // straight from a TextField in GallerySheet and must not inject markup.
-          if (image.caption) {
+          if (image.captionHTML || image.caption) {
             const cap = document.createElement('figcaption')
             cap.className = 'wp-element-caption'
-            cap.textContent = image.caption
+            appendCaption(cap, image)
             imgFigure.appendChild(cap)
           }
           figure.appendChild(imgFigure)
         })
+        if (node.attrs.captionHTML) {
+          const cap = document.createElement('figcaption')
+          cap.className = 'blocks-gallery-caption wp-element-caption'
+          appendCaption(cap, { captionHTML: node.attrs.captionHTML })
+          figure.appendChild(cap)
+        }
         return figure
       },
 
       addNodeView() {
-        return ({ node }) => new GalleryNodeView(node)
+        return ({ node, getPos }) => new GalleryNodeView(node, getPos)
+      },
+
+      addKeyboardShortcuts() {
+        return {
+          Enter: ({ editor }) => {
+            const { selection } = editor.state
+            if (selection.node?.type.name !== 'galleryBlock') return false
+            window.editGallery(selection.from)
+            return true
+          },
+        }
       },
     })
 
@@ -3951,7 +4046,7 @@
             console.error('paste cleanup failed', e)
           }
           if (!_isInFootnote()) return html
-          const tmp = document.createElement('div')
+          const tmp = inertDocument().createElement('div')
           tmp.innerHTML = html
           const BLOCK_TAGS = new Set(['DIV','P','H1','H2','H3','H4','H5','H6',
             'BLOCKQUOTE','PRE','TABLE','THEAD','TBODY','TR','TD','TH',
@@ -4307,6 +4402,7 @@
       },
       gallery: () => {
         if (_isInFootnote()) return
+        _galleryEdit = null
         if (window.webkit?.messageHandlers?.insertGallery) {
           window.webkit.messageHandlers.insertGallery.postMessage({})
         }
@@ -5568,7 +5664,7 @@
         let stored = []
         try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
         editor.commands.setTextSelection(0)
-        editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored, document)), false)
+        editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored)), false)
         editor.commands.setTextSelection(0)
         _reportBlocksAtRisk(html)
       }
@@ -5640,7 +5736,7 @@
 
     // Only the entry points that receive post_content wrap; the AI reject paths swap the saved doc back in.
     const _wrapIncoming = html =>
-      html ? wrapUnsupportedBlocks(html, parseBlocks, document) : html
+      html ? wrapUnsupportedBlocks(html, parseBlocks) : html
 
     // Image, gallery and embed model a block through bespoke passes in
     // toWordPressHTML rather than a descriptor entry, so they need naming here.
@@ -5693,7 +5789,7 @@
       _footnotes = footnotesJSON || '[]'
       let storedFootnotes = []
       try { storedFootnotes = JSON.parse(_footnotes) } catch (e) { storedFootnotes = [] }
-      const wrapped = _wrapIncoming(inlineFootnotes(html, storedFootnotes, document))
+      const wrapped = _wrapIncoming(inlineFootnotes(html, storedFootnotes))
       // The raw stores keep the unwrapped original, so an unedited post saves
       // back byte-identically and code view shows real post_content.
       _rawHTML = html || null
@@ -5727,6 +5823,21 @@
       const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
       return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, saved: edited }
     })
+    // Every path post markup takes through the editor, for FixtureCheck to prove no handler in it runs.
+    window.__runScriptSinkProbes = json => JSON.parse(json).forEach(source => {
+      window.setContent(source)
+      formatHTML(source)
+      formatHTML(extractFootnotes(toWordPressHTML(editor.getHTML())).content)
+      editor.view.serializeForClipboard(editor.state.doc.slice(0, editor.state.doc.content.size))
+      const tr = editor.state.tr
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'galleryBlock') tr.setNodeMarkup(pos, null, { ...node.attrs, sourceHTML: null })
+      })
+      editor.view.dispatch(tr)
+      extractFootnotes(toWordPressHTML(editor.getHTML()))
+      window.setContent('<p></p>')
+      editor.view.pasteHTML(source)
+    })
     window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {
       _rawHTML = null
@@ -5757,12 +5868,78 @@
         .scrollIntoView()
         .run()
     }
+    // The gallery node the sheet was opened on; a replace applies only while the document still holds it.
+    let _galleryEdit = null
+    window.editGallery = (pos) => {
+      const node = editor.state.doc.nodeAt(pos)
+      if (node?.type.name !== 'galleryBlock') return
+      _galleryEdit = node
+      const { columns, cropped } = node.attrs
+      const linkTo = parsedBlockAttrs(node.attrs.blockAttrs).linkTo ?? node.attrs.linkTo
+      const images = node.attrs.images.map(image => ({
+        ...image,
+        sizeSlug: image.sizeSlug || node.attrs.sizeSlug || 'large',
+        href: image.href !== undefined ? image.href : (node.attrs.linkTo === 'media' ? (image.fullUrl || image.url) : null),
+        extraClasses: image.extraClasses || '',
+      }))
+      window.webkit?.messageHandlers?.insertGallery?.postMessage({ edit: { images, columns, cropped, linkTo } })
+    }
+    function parsedBlockAttrs(json) {
+      try {
+        const parsed = JSON.parse(json || '{}')
+        return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {}
+      } catch (e) {
+        return {}
+      }
+    }
+    // Rewrites keys the comment already has, in place, so they keep core's order; undefined removes one.
+    function withKeys(json, changes) {
+      if (!json) return json
+      const attrs = parsedBlockAttrs(json)
+      for (const [key, value] of Object.entries(changes)) {
+        if (!(key in attrs)) continue
+        if (value === undefined) delete attrs[key]
+        else attrs[key] = value
+      }
+      return JSON.stringify(attrs)
+    }
+    function replaceEditedGallery(payload) {
+      const edited = _galleryEdit
+      _galleryEdit = null
+      let pos = null
+      editor.state.doc.descendants((node, at) => {
+        if (node === edited) pos = at
+      })
+      if (!edited || pos === null) return
+      const edit = { pos, node: edited }
+      const images = payload.keepLinks ? payload.images
+        : payload.images.map(image => ({ ...image, blockAttrs: withKeys(image.blockAttrs, { linkDestination: image.href ? 'media' : 'none' }) }))
+      const sizes = new Set(images.map(image => image.sizeSlug))
+      const [size] = sizes
+      const galleryChanges = { ids: undefined, sizeSlug: sizes.size === 1 && size && size !== 'large' ? size : undefined }
+      if (!payload.keepLinks) galleryChanges.linkTo = payload.linkTo
+      const attrs = {
+        ...edit.node.attrs,
+        images,
+        columns: payload.columns ?? edit.node.attrs.columns,
+        cropped: payload.cropped ?? edit.node.attrs.cropped,
+        linkTo: payload.linkTo ?? edit.node.attrs.linkTo,
+        sizeSlug: payload.sizeSlug ?? edit.node.attrs.sizeSlug,
+        sourceHTML: null,
+        blockAttrs: withKeys(edit.node.attrs.blockAttrs, galleryChanges),
+      }
+      editor.chain().focus().command(({ tr }) => {
+        tr.setNodeMarkup(edit.pos, null, attrs)
+        return true
+      }).run()
+    }
     window.insertGallery = (json) => {
       if (_isInFootnote()) return
       let payload
       try { payload = JSON.parse(json) } catch { return }
       if (!Array.isArray(payload.images) || payload.images.length === 0) return
-      editor.chain().focus().insertContent({
+      if (payload.replace) return replaceEditedGallery(payload)
+      const gallery = {
         type: 'galleryBlock',
         attrs: {
           images: payload.images,
@@ -5771,7 +5948,11 @@
           linkTo: payload.linkTo ?? 'none',
           sizeSlug: payload.sizeSlug ?? 'large',
         },
-      }).run()
+      }
+      // A selected block (often the gallery just edited or cancelled) stays; the new gallery goes after it.
+      const { selection } = editor.state
+      const chain = editor.chain().focus()
+      ;(selection.node ? chain.insertContentAt(selection.to, gallery) : chain.insertContent(gallery)).run()
     }
     window.insertTabs = (count) => {
       if (_isInFootnote()) return false
@@ -6123,7 +6304,7 @@
     window.showAIResult = (html, cFrom, cTo) => {
       if (_aiOriginalDoc === null) return null
       // Clean Claude's response through the DOM so regex edge-cases can't slip through
-      const _tmp = document.createElement('div')
+      const _tmp = inertDocument().createElement('div')
       _tmp.innerHTML = html
       // Remove empty block elements (<p></p>, <p>&nbsp;</p>, etc.)
       _tmp.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {

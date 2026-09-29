@@ -25,6 +25,7 @@ an unedited capture.
 | `tabs-block.html` | A `core/tabs` with a tab list and panels |
 | `unsupported-blocks.html` | Hand-written, not a site capture: one of each block shape Quill cannot model, so Custom HTML, a shortcode, three self-closing dynamic blocks, a synced pattern, a page break, a read-more, and a third-party block with no `wp-block-` class |
 | `settings-paragraph.html` | A `core/paragraph` with `dropCap` |
+| `settings-script-handlers.html` | Hand-written: a Custom HTML block whose `<img onerror>` counts itself in `window.__quillScriptRan`. Saved byte for byte like any fixture; `--check-fixtures` also fails if the handler ever ran |
 | `settings-list.html` | A `core/list`, ordered, with `start`, `reversed` and `type: upper-roman` |
 | `settings-quote.html` | A `core/quote` in the Plain style, with a `<cite>` |
 | `settings-separator.html` | A `core/separator` in the Dots style |
@@ -86,3 +87,12 @@ every `settings-*.html` here through the real WKWebView — load, save untouched
 save after an edit, and save again for idempotency. The jsdom suites cannot see
 a WebKit/jsdom divergence, and the inline-style bug that motivated this runner
 was green in jsdom while invalidating every coloured block in WordPress.
+
+## `script-sinks/`
+
+Not round-trip fixtures, and not globbed by any jsdom suite (the globs are not
+recursive). Each file carries an `<img onerror>` that counts itself in
+`window.__quillScriptRan`, placed where post markup takes a path the corpus does not
+cover: a nested preserved block, an image caption, a gallery caption.
+`--check-fixtures` runs them through load, save, code view, copy, a gallery rebuild and
+paste (`window.__runScriptSinkProbes` in `editor.html`) and fails if any handler ran.

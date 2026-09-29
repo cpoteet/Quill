@@ -59,6 +59,12 @@ function precedingSignificantNode(el) {
   return node
 }
 
+// Post markup parsed here never loads an image or runs a handler: docs/gotchas.md (script sink).
+function inertDocument() {
+  if (!inertDocument.doc) inertDocument.doc = document.implementation.createHTMLDocument('')
+  return inertDocument.doc
+}
+
 function alreadyDelimited(el, name) {
   const node = precedingSignificantNode(el)
   if (!node || node.nodeType !== 8) return false
@@ -296,6 +302,7 @@ function unrepresentedBlockNames(expectedCounts, accountedCounts) {
 }
 
 function wrapUnsupportedBlocks(html, parse, doc) {
+  doc = doc || inertDocument()
   const slices = blockSourceSlices(html, parse)
   if (!slices.some(s => blockNeedsWrapping(s, doc))) return html
   return slices.map(slice => {
@@ -499,7 +506,7 @@ function imageBlockAttrs(figure, img) {
 }
 
 function toWordPressHTML(html, doc) {
-  if (!doc && typeof document !== 'undefined') doc = document
+  if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const div = doc.createElement('div')
   // Strip existing wp:embed block comments — will re-add fresh ones below.
   // The attrs-matching group is non-greedy (`[\s\S]*?`) and stops at the first
@@ -791,7 +798,7 @@ function toWordPressHTML(html, doc) {
   // string replace, so repeated saves and duplicate content don't double-wrap.
   div.querySelectorAll('figure.wp-block-gallery').forEach(figure => {
     const columnsMatch = figure.className.match(/columns-(\d+)/)
-    const columns = columnsMatch ? parseInt(columnsMatch[1], 10) : 3
+    const columns = columnsMatch ? parseInt(columnsMatch[1], 10) : null
     const cropped = figure.classList.contains('is-cropped')
     const imageFigures = Array.from(figure.children).filter(
       c => c.tagName === 'FIGURE' && c.classList.contains('wp-block-image')
@@ -822,7 +829,7 @@ function toWordPressHTML(html, doc) {
       if (i > 0) figure.insertBefore(doc.createTextNode('\n\n'), imgFigure)
       wrapElementWithComments(doc, imgFigure, ` wp:image${delimiterAttrs(imageAttrs)} `, ' /wp:image ')
     })
-    const galleryAttrs = { columns, linkTo }
+    const galleryAttrs = columns === null ? { linkTo } : { columns, linkTo }
     if (!cropped) galleryAttrs.imageCrop = false
     // Core omits the default size, and core never writes ids for a gallery of nested images.
     const [size] = sizes
@@ -919,7 +926,7 @@ function toWordPressHTML(html, doc) {
 }
 
 function formatHTML(html, doc) {
-  if (!doc && typeof document !== 'undefined') doc = document
+  if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const BLOCK = new Set(['p','h1','h2','h3','h4','h5','h6',
     'ul','ol','li','blockquote','pre','figure','figcaption',
     'table','thead','tbody','tfoot','tr','th','td','cite','div'])
@@ -1057,7 +1064,7 @@ function footnotesComment(root) {
 // Returns { content, footnotes } -- the list swapped for the delimiter, and the
 // bodies to store in meta.
 function extractFootnotes(html, doc) {
-  doc = doc || document
+  doc = doc || inertDocument()
   const div = doc.createElement('div')
   div.innerHTML = html || ''
   const list = div.querySelector('ol.wp-block-footnotes')
@@ -1082,7 +1089,7 @@ function extractFootnotes(html, doc) {
 // Rebuilds the editable list from meta. A post whose meta is empty keeps the
 // bare delimiter, which wrapUnsupportedBlocks then preserves as a card.
 function inlineFootnotes(html, footnotes, doc) {
-  doc = doc || document
+  doc = doc || inertDocument()
   if (!Array.isArray(footnotes) || footnotes.length === 0) return html || ''
   const div = doc.createElement('div')
   div.innerHTML = html || ''
@@ -1137,7 +1144,7 @@ const PASTE_BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
 const PASTE_MONO_FONT = /monospace|menlo|monaco|consolas|courier|sf mono|source code|fira code|jetbrains mono/i
 
 function cleanPastedHTML(html, doc) {
-  if (!doc && typeof document !== 'undefined') doc = document
+  if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
   // Quill's own copy: ProseMirror reads this marker after the hook, and the carrier drops it.
@@ -1673,7 +1680,7 @@ function removeEmptyPastedBlocks(root) {
 
 // Blocks pasted into a list item become further items, as the block editor pastes them.
 function pastedBlocksAsListItems(html, doc) {
-  if (!doc && typeof document !== 'undefined') doc = document
+  if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
   if (root.querySelector('[data-pm-slice]')) return html
