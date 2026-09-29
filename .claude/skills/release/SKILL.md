@@ -163,13 +163,14 @@ Mapping from the Markdown:
 |---|---|
 | version | `<h2 class="release__version">v<version></h2>` in `header.release__header` |
 | `_Released YYYY-MM-DD_` | `<span class="release__date">Month D, YYYY</span>`, using `publishedAt` once the release is published |
+| A note about the whole release (e.g. a new macOS requirement) | `<p class="release__note">text</p>` directly after `header.release__header`, never a `div.release__feature` |
 | `## What's New` → `### Name` + paragraph | `section.release__section` › `h3.release__section-title`; each feature is a `div.release__feature` with `h4.release__feature-title` in **Title Case** and `p.release__body` |
 | `## Improvements` → `- **Name** — text` | `section.release__section` › `ul.release__list` › `<li><strong>Name</strong> — text</li>` |
 | `## Fixes` → `- text` | `details.release__fixes` › `summary.release__section-title` + `ul.release__list` › `<li>text</li>` |
 | `` `code` `` | `<code>`, with `<`, `>` and `&` escaped |
 | `---` | nothing (sections are already separate) |
 
-Every section title ends in `<span class="release__count">(N)</span>`. For What's New, N counts only the features with a title. For Improvements and Fixes, N is the number of items.
+Every section title ends in `<span class="release__count">(N)</span>`. N is the number of features or items in that section.
 
 ### Step 7 — Site pass
 
