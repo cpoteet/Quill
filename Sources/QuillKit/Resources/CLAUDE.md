@@ -59,7 +59,10 @@ restating it.
 
 **On the way out to the delimiter:** `overlayCarried` walks the carried keys in the
 order WordPress wrote them, replacing an owned key that the node still computes,
-dropping an owned key it no longer does, then appending genuinely new keys.
+dropping an owned key it no longer does. A genuinely new key goes in front of the first
+carried supports key (`SUPPORTS_KEYS`: `align`, `className`, `anchor`, `style`, colours,
+`metadata`…) if it is one of the block's own attributes, and at the end if it is a supports
+key, because core serializes a block's own attributes before the ones its supports register.
 `descriptor.ownedAttrs` is what makes absence meaningful — without it, a setting the
 user switched off is indistinguishable from a block that never had it.
 

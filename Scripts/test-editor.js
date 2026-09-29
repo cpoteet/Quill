@@ -1640,6 +1640,16 @@ describe('block delimiters', () => {
     assert.equal((out.match(/<!-- wp:gallery/g) || []).length, 1)
   })
 
+  describe('a key Quill adds lands where core would write it', () => {
+    test("a block's own key goes before carried supports keys", () => {
+      assert.match(wp('<h3 data-quill-block-attrs=\'{"className":"intro"}\'>x</h3>'), /<!-- wp:heading \{"level":3,"className":"intro"\} -->/)
+    })
+
+    test('a supports key still follows the carried supports keys', () => {
+      assert.match(wp('<p id="x" data-quill-block-attrs=\'{"align":"center"}\'>x</p>'), /<!-- wp:paragraph \{"align":"center","anchor":"x"\} -->/)
+    })
+  })
+
   // serializeAttributes is compared with WordPress in its own suite; these check the transform routes through it.
   describe('delimiter attributes are escaped the way core escapes them', () => {
     test("an embed URL's query ampersand is escaped", () => {
@@ -1758,14 +1768,12 @@ describe('anchor and className supports', () => {
     assert.equal(opener('<p data-quill-block-attrs=\'{"className":"kept"}\' class="lead">T</p>'),
       '<!-- wp:paragraph {"className":"kept"} -->')
     assert.equal(opener('<h3 data-quill-block-attrs=\'{"anchor":"kept"}\' id="other">T</h3>'),
-      '<!-- wp:heading {"anchor":"kept","level":3} -->')
+      '<!-- wp:heading {"level":3,"anchor":"kept"} -->')
   })
 
-  // The carried key keeps the position WordPress gave it, so a post does not
-  // come back with its delimiter attributes reshuffled on every save.
-  test('a carried key keeps its place ahead of a derived one', () => {
+  test('a derived block key goes ahead of a carried supports key, as core writes it', () => {
     const out = opener('<h3 data-quill-block-attrs=\'{"metadata":{"name":"N"}}\' id="a">T</h3>')
-    assert.ok(out.indexOf('"metadata"') < out.indexOf('"level"'), out)
+    assert.equal(out, '<!-- wp:heading {"level":3,"metadata":{"name":"N"},"anchor":"a"} -->')
   })
 })
 

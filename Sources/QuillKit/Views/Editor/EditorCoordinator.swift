@@ -65,6 +65,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
     var onImagesPasted: (([PastedImage]) -> Void)?
+    var onGalleryUpdateDropped: (() -> Void)?
     var aiEnabled: Bool = false
     var syncAfterNextSetContent: Bool = false
     private var linkPopover: NSPopover?
@@ -324,7 +325,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
               let escapedData = try? JSONEncoder().encode(jsonStr),
               let escapedStr = String(data: escapedData, encoding: .utf8)
         else { return }
-        wv.evaluateJavaScript("insertGallery(\(escapedStr))", completionHandler: nil)
+        wv.evaluateJavaScript("insertGallery(\(escapedStr))") { result, _ in
+            if result as? String == "gallery-gone" { self.onGalleryUpdateDropped?() }
+        }
     }
 
     // WKNavigationDelegate

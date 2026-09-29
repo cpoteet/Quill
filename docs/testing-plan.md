@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 507 Swift tests + 1,447 JS tests (1,446 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 507 Swift tests + 1,452 JS tests (1,451 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -20,9 +20,9 @@ This document is the authoritative reference for Quill's automated test suite an
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (263 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (265 tests via Node's built-in runner + jsdom)
 6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (84 tests — live Tiptap editor in jsdom)
-7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (70 tests — live Tiptap editor in jsdom)
+7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
 9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
@@ -1739,6 +1739,15 @@ The descriptor-driven delimiter pass added in the Gutenberg block-model work. `t
 | `does not double-wrap already-delimited content` | Saving already-delimited content twice is byte-identical — the guard against the comment-stacking regression class |
 | `leaves gallery delimiters exactly as they are` | The gallery fixture still ends up with exactly one `wp:gallery` opener, so the new pass does not collide with the three blocks that already had delimiters |
 
+### `a key Quill adds lands where core would write it` (2 tests)
+
+Core writes a block's own attributes first and its supports attributes (`align`, `className`, `anchor`, `style`, colours, `metadata`…) after. `overlayCarried` puts a new own key in front of the first carried supports key; a new supports key still goes last.
+
+| Test | What it checks |
+|---|---|
+| `a block's own key goes before carried supports keys` | A heading's new `level` lands before a carried `className` |
+| `a supports key still follows the carried supports keys` | A new `anchor` stays after a carried `align` |
+
 ### `delimiter attributes are escaped the way core escapes them` (4 tests)
 
 Every delimiter goes through `serializeAttributes`, which the block serializer suite holds to WordPress's output. A plain `JSON.stringify` passes every string test while writing a comment WordPress would re-escape — or one that terminates early.
@@ -1777,7 +1786,7 @@ Core's `anchor` and `customClassName` supports. A block that came from outside G
 | `only the custom tokens survive a mixed class list` | |
 | `a block marked noAnchor keeps its id out of the delimiter` | Four blocks have no anchor support in their `block.json`; writing one makes Gutenberg reject the block. The `id` still rides the markup |
 | `what WordPress carried wins over what the markup implies` | |
-| `a carried key keeps its place ahead of a derived one` | WordPress's own key order is preserved, so a post does not come back with its delimiter attributes reshuffled on every save |
+| `a derived block key goes ahead of a carried supports key, as core writes it` | A new `level` lands before carried `metadata` and the derived `anchor`, matching core's registration order |
 
 ### `ordered list start and reversed` (5 tests)
 
@@ -2091,7 +2100,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `the copy marker on a gallery copied inside Quill is not saved` | `data-pm-slice` is never carried as an extra attribute |
 | `a rebuilt gallery keeps a script handler in its caption` | Caption markup is byte for byte |
 
-### `galleryBlock` — editing (20 tests)
+### `galleryBlock` — editing (23 tests)
 
 `window.editGallery` and the `replace` path of `window.insertGallery`, with `webkit.messageHandlers.insertGallery` stubbed.
 
@@ -2101,12 +2110,15 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `editGallery resolves each image link and size for a gallery inserted from the sheet` | A gallery inserted this session (no per-image `href`/`sizeSlug`) is sent with them resolved, so Keep Current Links cannot unlink it |
 | `replace swaps the gallery in one undo step and clears sourceHTML` | One `setNodeMarkup`; one Cmd+Z restores the loaded gallery |
 | `replace does nothing when the post changed while the sheet was open` | The document was reloaded: no insert, no replace |
+| `a dropped replace reports gallery-gone so Swift can tell the user` | `insertGallery` returns `'gallery-gone'`; `EditorCoordinator` turns it into a toast |
+| `an applied replace does not report gallery-gone` | A replace that lands reports no drop, so no toast |
 | `replace still applies when the gallery only moved while the sheet was open` | The edited node is found by identity, not by its old position |
 | `a columns-default gallery is sent with no column count and keeps it when none comes back` | `columns: null` round-trips byte for byte |
 | `the toolbar Gallery button after a cancelled edit inserts instead of replacing` | The toolbar clears the remembered edit and posts `{}` |
 | `inserting while a gallery card is selected adds a gallery after it instead of replacing it` | Insert goes after a node selection |
 | `a replace payload without a remembered edit inserts nothing` | |
 | `the replaced gallery keeps linkTo under Keep Current Links and its shared size` | `ids` dropped, `sizeSlug` kept in place |
+| `a gallery sizeSlug added by an edit lands before align and className` | The example from cpoteet/Quill#8: a new key goes ahead of carried supports keys, as core writes it |
 | `a carried gallery sizeSlug is dropped once the sizes are mixed` | |
 | `an Update with nothing changed saves the gallery byte for byte` | Replace + save reproduces `settings-gallery.html` |
 | `switching to Full Image keeps the comment keys in core order` | `linkTo`/`linkDestination` rewritten in place |

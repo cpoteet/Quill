@@ -91,16 +91,25 @@ function mergeCarried(el, attrs, ownedKeys) {
   return overlayCarried(carriedBlockAttrs(el), attrs, ownedKeys)
 }
 
+// Attributes core's block supports register, which it serializes after a block's own.
+const SUPPORTS_KEYS = new Set(['align', 'anchor', 'className', 'style', 'backgroundColor', 'textColor', 'gradient', 'fontFamily', 'fontSize', 'borderColor', 'layout', 'lock', 'metadata'])
+
 // A carried key keeps the position WordPress gave it; see Resources/CLAUDE.md.
 function overlayCarried(carried, attrs, ownedKeys) {
   const owned = new Set(ownedKeys || [])
   const next = attrs || {}
+  const kept = Object.keys(carried || {}).filter(key => key in next || !owned.has(key))
+  const added = Object.keys(next).filter(key => !kept.includes(key))
+  const firstSupports = kept.findIndex(key => SUPPORTS_KEYS.has(key))
+  const split = firstSupports === -1 ? kept.length : firstSupports
+  const order = [
+    ...kept.slice(0, split),
+    ...added.filter(key => !SUPPORTS_KEYS.has(key)),
+    ...kept.slice(split),
+    ...added.filter(key => SUPPORTS_KEYS.has(key)),
+  ]
   const out = {}
-  for (const key of Object.keys(carried || {})) {
-    if (key in next) out[key] = next[key]
-    else if (!owned.has(key)) out[key] = carried[key]
-  }
-  for (const key of Object.keys(next)) if (!(key in out)) out[key] = next[key]
+  for (const key of order) out[key] = key in next ? next[key] : carried[key]
   return out
 }
 

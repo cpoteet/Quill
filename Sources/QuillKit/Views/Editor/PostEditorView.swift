@@ -173,6 +173,9 @@ public struct PostEditorView: View {
                             await handlePastedImages(images)
                         }
                     },
+                    onGalleryUpdateDropped: {
+                        presentToast("The post changed while the gallery was open, so the gallery wasn't updated.", isError: true)
+                    },
                     aiEnabled: appState.aiEnabled,
                     hasTextSelection: hasTextSelection
                 )

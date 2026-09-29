@@ -5910,7 +5910,7 @@
       editor.state.doc.descendants((node, at) => {
         if (node === edited) pos = at
       })
-      if (!edited || pos === null) return
+      if (!edited || pos === null) return 'gallery-gone'
       const edit = { pos, node: edited }
       const images = payload.keepLinks ? payload.images
         : payload.images.map(image => ({ ...image, blockAttrs: withKeys(image.blockAttrs, { linkDestination: image.href ? 'media' : 'none' }) }))

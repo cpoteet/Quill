@@ -22,6 +22,7 @@ public struct EditorView: NSViewRepresentable {
     var onTriggerGenerate: (() -> Void)?
     var onTriggerEvaluate: (() -> Void)?
     var onImagesPasted: (([PastedImage]) -> Void)?
+    var onGalleryUpdateDropped: (() -> Void)?
     var aiEnabled: Bool
     var hasTextSelection: Bool
 
@@ -46,6 +47,7 @@ public struct EditorView: NSViewRepresentable {
         onTriggerGenerate: (() -> Void)? = nil,
         onTriggerEvaluate: (() -> Void)? = nil,
         onImagesPasted: (([PastedImage]) -> Void)? = nil,
+        onGalleryUpdateDropped: (() -> Void)? = nil,
         aiEnabled: Bool = false,
         hasTextSelection: Bool = false
     ) {
@@ -69,6 +71,7 @@ public struct EditorView: NSViewRepresentable {
         self.onTriggerGenerate = onTriggerGenerate
         self.onTriggerEvaluate = onTriggerEvaluate
         self.onImagesPasted = onImagesPasted
+        self.onGalleryUpdateDropped = onGalleryUpdateDropped
         self.aiEnabled = aiEnabled
         self.hasTextSelection = hasTextSelection
     }
@@ -117,6 +120,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
         context.coordinator.onImagesPasted = onImagesPasted
+        context.coordinator.onGalleryUpdateDropped = onGalleryUpdateDropped
         loadEditorHTML(in: webView)
         return webView
     }
@@ -141,6 +145,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onTriggerGenerate = onTriggerGenerate
         context.coordinator.onTriggerEvaluate = onTriggerEvaluate
         context.coordinator.onImagesPasted = onImagesPasted
+        context.coordinator.onGalleryUpdateDropped = onGalleryUpdateDropped
         if context.coordinator.aiEnabled != aiEnabled {
             context.coordinator.aiEnabled = aiEnabled
             nsView.evaluateJavaScript("window.setAIEnabled?.(\(aiEnabled))", completionHandler: nil)

@@ -753,6 +753,21 @@ describe('galleryBlock — editing', () => {
     assert.notEqual(galleries()[0].attrs.sourceHTML, null)
   })
 
+  test('a dropped replace reports gallery-gone so Swift can tell the user', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    win.setContent(fixture('settings-gallery.html'))
+    const status = win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.equal(status, 'gallery-gone')
+  })
+
+  test('an applied replace does not report gallery-gone', () => {
+    win.setContent(fixture('settings-gallery.html'))
+    win.editGallery(galleryPos(0))
+    const status = win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images: reversed(0), columns: 3, cropped: true, linkTo: 'attachment' }))
+    assert.notEqual(status, 'gallery-gone')
+  })
+
   test('the toolbar Gallery button after a cancelled edit inserts instead of replacing', () => {
     win.setContent(fixture('settings-gallery.html'))
     win.editGallery(galleryPos(0))
@@ -787,6 +802,14 @@ describe('galleryBlock — editing', () => {
     const out = save()
     assert.match(out, /<!-- wp:gallery \{"columns":2,"linkTo":"media","sizeSlug":"medium","align":"wide","className":"is-style-framed"\} -->/)
     assert.match(out, /<!-- wp:image \{"id":102,"sizeSlug":"medium","linkDestination":"media","className":"is-style-rounded"\} -->/)
+  })
+
+  test('a gallery sizeSlug added by an edit lands before align and className', () => {
+    win.setContent(fixture('settings-gallery.html').replace('"linkTo":"attachment","sizeSlug":"medium",', '"linkTo":"attachment",'))
+    win.editGallery(galleryPos(0))
+    const { images } = posted.at(-1).edit
+    win.insertGallery(JSON.stringify({ replace: true, keepLinks: true, images, columns: 2, cropped: true, linkTo: 'attachment', sizeSlug: 'medium' }))
+    assert.match(save(), /<!-- wp:gallery \{"columns":2,"linkTo":"attachment","sizeSlug":"medium","align":"wide","className":"is-style-framed"\} -->/)
   })
 
   test('a carried gallery sizeSlug is dropped once the sizes are mixed', () => {
