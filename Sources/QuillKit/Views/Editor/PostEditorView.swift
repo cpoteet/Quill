@@ -895,6 +895,7 @@ public struct PostEditorView: View {
         defer { isSaving = false }
 
         let client = WordPressClient(credentials: creds)
+        let savedItemID = item.id
 
         // Create any pending new categories/tags before building the payload.
         // Remove each name from the pending list as soon as it succeeds — if a later
@@ -918,6 +919,7 @@ public struct PostEditorView: View {
             saveError = "Failed to create taxonomy: \(error.localizedDescription)"
             return
         }
+        guard loadedItem?.id == savedItemID else { return }
 
         let cleanExcerpt = settings.excerpt
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -945,6 +947,7 @@ public struct PostEditorView: View {
                         post.type == "page"
                         ? try await client.fetchPage(id: post.id)
                         : try await client.fetchPost(id: post.id)
+                    guard loadedItem?.id == savedItemID else { return }
                     if current.modified != lastSavedServerModified {
                         conflictFromPreview = false
                         showConflictAlert = true
@@ -955,10 +958,6 @@ public struct PostEditorView: View {
                     post.type == "page"
                     ? try await client.updatePage(id: post.id, payload: payload)
                     : try await client.updatePost(id: post.id, payload: payload)
-                lastSavedServerModified = updated.modified
-                cleanTitle = title
-                cleanContent = htmlContent
-                cleanFootnotes = footnotesMeta
                 try? services.autosaveStore.delete(postID: post.id)
                 // Keep appState cache fresh so reopening the post loads the latest date/status
                 if post.type == "page" {
@@ -970,6 +969,11 @@ public struct PostEditorView: View {
                         appState.posts[idx] = updated
                     }
                 }
+                guard loadedItem?.id == savedItemID else { return }
+                lastSavedServerModified = updated.modified
+                cleanTitle = title
+                cleanContent = htmlContent
+                cleanFootnotes = footnotesMeta
             case .local(let draft):
                 let created =
                     draft.type == "page"
@@ -1280,12 +1284,14 @@ public struct PostEditorView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: cleanExcerpt, status: post.status)
         let overwritesPost = Self.previewOverwritesPost(status: post.status)
+        let previewedItemID = item.id
         do {
             if overwritesPost && !force {
                 let current =
                     post.type == "page"
                     ? try await client.fetchPage(id: post.id)
                     : try await client.fetchPost(id: post.id)
+                guard loadedItem?.id == previewedItemID else { return }
                 if current.modified != lastSavedServerModified {
                     conflictFromPreview = true
                     showConflictAlert = true
@@ -1305,7 +1311,7 @@ public struct PostEditorView: View {
             if overwritesPost {
                 if let fresh = try? await (post.type == "page"
                     ? client.fetchPage(id: post.id)
-                    : client.fetchPost(id: post.id)) {
+                    : client.fetchPost(id: post.id)), loadedItem?.id == previewedItemID {
                     lastSavedServerModified = fresh.modified
                 }
             }
