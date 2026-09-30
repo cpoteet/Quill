@@ -1251,14 +1251,14 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 | `editing while Claude responds` (6 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited |
 
-## JS fixture validity sweep (60 tests)
+## JS fixture validity sweep (62 tests)
 
 `Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture, then the block-comment attributes WordPress parses from each.
 
 | Test | What it checks |
 |------|----------------|
-| one test per fixture (28 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
-| `<fixture> keeps every block's comment attributes` (28 tests) | Every block core parses as valid in both the fixture and the save has the same comment attributes (those with no `source` in the markup), matched by its path of block names. Catches a setting rewritten or dropped even when the result still validates — how galleries lost their link destination and size unnoticed |
+| one test per fixture (29 tests) | Quill's save has no validator finding the fixture lacked; if the fixture re-saves byte-identically in WordPress, so does Quill's save |
+| `<fixture> keeps every block's comment attributes` (29 tests) | Every block core parses as valid in the fixture is still present and valid in the save, with the same comment attributes (those with no `source` in the markup), matched by its path of block names. A block missing from the save fails; it used to be skipped. The one allowed change: in `accordion-block.html` and `post-17780.html` a paragraph comment around a `<ul>` is saved as a list at the same position. Catches a setting rewritten or dropped even when the result still validates — how galleries lost their link destination and size unnoticed |
 | `the sweep can fail` (3 tests) | A heading level mismatch and invented classic HTML are reported as new; classic prose Quill converts to blocks is not |
 | `older block editors` › `a resized image comment carries the height:auto its style shows` | WordPress's parser reads `height: 'auto'` back out of Quill's comment. The current validator cannot catch its absence (block-library 9.47+ adds `height:auto` itself), but editors on an older block-library — the Jetpack iOS app's GutenbergKit 0.19.0 ships 9.41.0 — rebuild the style from the comment alone and flag the image as invalid |
 
@@ -2884,7 +2884,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `an unlinked image keeps the "none" core wrote` | An unlinked image whose comment says `"linkDestination":"none"` keeps it; one that says `"custom"` still loses it (`an unlinked image writes no linkDestination`) |
 | `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |
 | `every class-writing setting claims its class` | A drift guard with no runtime symptom: a setting that writes a class on its node's own root needs that node to claim `class` in `RAW_ATTRS_MODELED`, or the raw-attribute replay puts the source's class list back and resurrects the token the user just turned off |
-| `every registry entry is covered` | Fails if a registry entry's name appears in no test — the drift guard |
+| `every registry entry is covered` | Fails if a registry entry is named by no test in this file (before this check) or the containers suite — the drift guard. A block-style setting must have each of its option classes (`is-style-outline`, …) mentioned, since the name `className` is everywhere |
 
 **Recorded limit — sections plus colspan.** When a table has explicit `<thead>`/`<tfoot>` *and* a colspanned body cell, ProseMirror pads every row to a uniform cell count at parse time, so the header and footer each gain a phantom empty cell. This is upstream of anything the save transform can reach; in isolation colspan round-trips correctly and sections round-trip correctly, and only the combination fails. `test-editor-containers.js`'s `RECORDED LIMIT: sections plus a colspan gain a phantom cell` **asserts the phantom cell**, so if it is ever fixed upstream that test fails and points here.
 
@@ -3292,7 +3292,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 
 ### 7.20 Footnotes
 
-- [ ] Right-click and choose Insert Footnote → a superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
+- [ ] Click the toolbar's `*` (Footnote) button → a superscript `[1]` appears at the cursor and a matching entry appears in the footnotes list at the bottom of the document.
 - [ ] Insert a second footnote → it is numbered `[2]`. The numbers follow document order.
 - [ ] Delete a footnote marker from the text → its entry is automatically removed from the footnotes list.
 - [ ] Press Enter inside a footnote entry → a line break (soft break) is inserted within the entry; the text is not lost or swallowed.

@@ -63,6 +63,10 @@ function editAndSave(source) {
   return win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
 }
 
+// These fixtures hold paragraph comments around a <ul>; Quill saves each as the list it holds.
+const PARAGRAPH_AROUND_LIST = new Set(['accordion-block.html', 'post-17780.html'])
+const savedAsList = (key, after) => /core\/paragraph#\d+$/.test(key) && key.replace(/core\/paragraph(#\d+)$/, 'core/list$1') in after
+
 describe('WordPress accepts every fixture after a Quill edit', () => {
   for (const name of fs.readdirSync(fixturesDir).filter(f => f.endsWith('.html')).sort()) {
     test(name, () => {
@@ -76,7 +80,11 @@ describe('WordPress accepts every fixture after a Quill edit', () => {
       const source = fs.readFileSync(path.join(fixturesDir, name), 'utf8')
       const before = commentAttributes(source)
       const after = commentAttributes(editAndSave(source))
-      for (const key of Object.keys(before).filter(k => k in after)) assert.deepEqual(after[key], before[key], key)
+      for (const key of Object.keys(before)) {
+        if (PARAGRAPH_AROUND_LIST.has(name) && savedAsList(key, after)) continue
+        assert.ok(key in after, `${key} is missing from the save, or no longer valid`)
+        assert.deepEqual(after[key], before[key], key)
+      }
     })
   }
 })

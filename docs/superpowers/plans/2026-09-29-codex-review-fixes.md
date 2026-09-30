@@ -53,35 +53,14 @@ the rest. Tick a box when its commit lands.
   applies through `AppState.replaceMedia` (by ID); `loadMoreMedia` drops a page whose
   `reloadKey` changed; the picker and gallery sheets request `media_type=image`; a
   library upload during a search clears the search instead of inserting.
+- [x] **9. Small fixes** — three commits (`c375306`, `7b8f1ec`, and the tests/docs
+  one). Security 1–4, bugs 12 and 16, `build.sh` copies the Resources directory (the
+  SPM `resources:` declaration is untouched), the three weak tests tightened, the
+  three docs corrected. The sheets now page by offset too, since the doc claim that
+  only the library mutates its list was wrong.
 
 ## To do
 
-- [ ] **9. Small fixes, one commit**
-  - Bug 12: `flushToDB` and `performAutosave` use `try?`; surface a failure (toast)
-    and keep the post dirty.
-  - Bug 16: `PreferencesView.saveAll` with an empty AI key returns early and keeps
-    the old saved key; `try? AISettingsStore.save` hides failures.
-  - Security 1: the `CredentialsStore` comment's keychain-equivalence claim is wrong;
-    `JSONFileStore.save` writes then `chmod`s, leaving the file readable by others for a
-    moment. Create it with 0600.
-  - Security 2: `ButtonBlock` in `editor.html` renders its `href` without the
-    `isCarryableAttr` script-URL check.
-  - Security 3: `EditorCoordinator` allows every `file:` navigation although its doc
-    says they are cancelled; allow only the editor's own file. Media "Open in
-    Browser" and preview URLs skip `isAllowedExternalURL`.
-  - Security 4: `Scripts/roundtrip-check.sh` passes the app password to curl as an
-    argument; use `--config -` on stdin.
-  - Dead code: `editorReady` in `Scripts/paste-harness/harness.swift`. The SPM
-    `resources: [.copy("Resources")]` bundle nobody reads: either drop it, or have
-    `build.sh` copy the whole directory (excluding `CLAUDE.md`), which also removes
-    the "one `cp` line per resource" gotcha in the root `CLAUDE.md`. Ask the user.
-  - Tests: `test-fixture-validity.js` "keeps every block's comment attributes" skips
-    blocks missing from the output; `FixtureCheck.checkNoScriptRan` treats a JS error
-    as zero handlers run; "every registry entry is covered" in
-    `test-editor-block-settings.js` only checks the name appears in the file.
-  - Docs: `docs/gotchas.md` says local drafts are written only on Save Draft;
-    `Views/Editor/CLAUDE.md` lists an Insert Footnote context-menu item that does not
-    exist; `Views/Media/CLAUDE.md` says only the library changes its paged list.
 - [ ] **10. Footnotes keep preserved source byte for byte** (Codex bug 13)
   - `inlineFootnotes` in `editor-transforms.js` rebuilds the whole post through
     `innerHTML` before `wrapUnsupportedBlocks` captures unsupported-block source.

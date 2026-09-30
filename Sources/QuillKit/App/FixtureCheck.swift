@@ -128,8 +128,12 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
     private func checkNoScriptRan(failures: Int) {
         // A missing image's error event arrives after the corpus returns.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            self.webView.evaluateJavaScript("window.__quillScriptRan || 0") { value, _ in
-                let ran = value as? Int ?? 0
+            self.webView.evaluateJavaScript("window.__quillScriptRan || 0") { value, error in
+                // An unreadable probe proves nothing, so it fails rather than reading as zero.
+                guard error == nil, let ran = value as? Int else {
+                    print("FAIL  couldn't read the script handler probe: \(error?.localizedDescription ?? "it returned no number")")
+                    exit(1)
+                }
                 print(ran > 0 ? "FAIL  a script handler in post content ran \(ran) time(s) inside the editor" : "  ok    no script handler ran")
                 exit(failures == 0 && ran == 0 ? 0 : 1)
             }

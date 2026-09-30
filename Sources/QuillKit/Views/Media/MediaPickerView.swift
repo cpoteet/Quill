@@ -11,7 +11,6 @@ public struct MediaPickerView: View {
     @State private var loadError: String?
     @State private var isUploading = false
     @State private var uploadError: String?
-    @State private var currentPage: Int = 1
     @State private var hasMore: Bool = false
     @State private var isLoadingMore = false
 
@@ -105,7 +104,6 @@ public struct MediaPickerView: View {
         guard let creds = appState.credentials else { return }
         isLoading = true
         loadError = nil
-        currentPage = 1
         defer { isLoading = false }
         do {
             let items = try await WordPressClient(credentials: creds).fetchMedia(page: 1, perPage: perPage, mediaType: "image")
@@ -124,12 +122,11 @@ public struct MediaPickerView: View {
         guard hasMore, !isLoadingMore, let creds = appState.credentials else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        let nextPage = currentPage + 1
         do {
+            // Offset, like the library: an upload inserted at the top would make a page cursor repeat an item.
             let items = try await WordPressClient(credentials: creds)
-                .fetchMedia(page: nextPage, perPage: perPage, mediaType: "image")
+                .fetchMedia(perPage: perPage, mediaType: "image", offset: mediaItems.count)
             mediaItems.append(contentsOf: items)
-            currentPage = nextPage
             hasMore = items.count == perPage
         } catch {
             loadError = error.localizedDescription

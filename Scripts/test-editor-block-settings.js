@@ -1532,13 +1532,17 @@ describe('every class-writing setting claims its class', () => {
 // runs before the editor exists.
 describe('every registry entry is covered', () => {
   const registry = require('../Sources/QuillKit/Resources/block-settings.js')
-  const suiteSource = fs.readFileSync(__filename, 'utf8') +
+  const suiteSource = fs.readFileSync(__filename, 'utf8').split("describe('every registry entry is covered'")[0] +
     fs.readFileSync(path.resolve(__dirname, 'test-editor-containers.js'), 'utf8')
+  // "className" appears in every file, so a block style is covered only by its option classes.
+  const evidence = (name, setting) => setting.control?.type === 'blockStyle'
+    ? setting.control.options.map(o => o.value).filter(Boolean)
+    : [name]
 
   for (const node of registry.settingsNodeNames()) {
-    for (const name of Object.keys(registry.settingsFor(node))) {
+    for (const [name, setting] of Object.entries(registry.settingsFor(node))) {
       test(`${node}.${name} is named by a test`, () => {
-        assert.ok(suiteSource.includes(name), `no test mentions ${name}`)
+        for (const text of evidence(name, setting)) assert.ok(suiteSource.includes(text), `no test mentions ${text}`)
       })
     }
   }
