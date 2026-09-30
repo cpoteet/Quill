@@ -181,6 +181,13 @@ import Testing
         )
     }
 
+    @Test func uploadNotInsertedMessageNamesTheMediaLibrary() {
+        #expect(PostEditorView.uploadNotInsertedMessage(count: 1)
+                == "Image uploaded to the Media Library but not inserted, because a different post is open")
+        #expect(PostEditorView.uploadNotInsertedMessage(count: 2)
+                == "2 images uploaded to the Media Library but not inserted, because a different post is open")
+    }
+
     @Test func uploadSuccessMessageForTwoFilesUsesThePluralForm() {
         #expect(PostEditorView.uploadSuccessMessage(inserted: 2, didConvert: false) == "2 images inserted")
     }

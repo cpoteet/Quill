@@ -112,9 +112,10 @@ public struct PostEditorView: View {
                         // Serialized: overlapping drops share `uploadStatus`, so a second
                         // batch must not clear the pill while the first is still uploading.
                         let previous = dropTask
+                        let postID = loadedItem?.id
                         dropTask = Task {
                             await previous?.value
-                            await handleDroppedImages(urls)
+                            await handleDroppedImages(urls, postID: postID)
                         }
                     },
                     onDropRejected: { message in
@@ -171,9 +172,10 @@ public struct PostEditorView: View {
                     },
                     onImagesPasted: { images in
                         let previous = dropTask
+                        let postID = loadedItem?.id
                         dropTask = Task {
                             await previous?.value
-                            await handlePastedImages(images)
+                            await handlePastedImages(images, postID: postID)
                         }
                     },
                     onGalleryUpdateDropped: {
@@ -1119,13 +1121,13 @@ public struct PostEditorView: View {
 
     // MARK: - Drag & Drop
 
-    private func handleDroppedImages(_ urls: [URL]) async {
+    private func handleDroppedImages(_ urls: [URL], postID: PostItem.ID?) async {
         let files = urls.filter { $0.isFileURL }
-        await uploadImages(files.map { ($0, Self.insertAtCursor) })
+        await uploadImages(files.map { ($0, insertAtCursor(ifStillOn: postID)) })
     }
 
     // A token marks an image already in the document, which only has its source swapped.
-    private func handlePastedImages(_ images: [PastedImage]) async {
+    private func handlePastedImages(_ images: [PastedImage], postID: PostItem.ID?) async {
         defer {
             if let script = PastedImage.forgetScript(images.compactMap(\.token)) {
                 editorWebView?.evaluateJavaScript(script, completionHandler: nil)
@@ -1140,27 +1142,35 @@ public struct PostEditorView: View {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
 
-        var uploads: [(URL, (WPMedia) -> Void)] = []
+        var uploads: [(URL, (WPMedia) -> Bool)] = []
         for (index, image) in images.enumerated() {
             let ext = Self.fileExtension(for: image.data, mimeType: image.mimeType)
             let file = folder.appendingPathComponent("pasted-image-\(index + 1).\(ext)")
             guard (try? image.data.write(to: file)) != nil else { continue }
             guard let token = image.token else {
-                uploads.append((file, Self.insertAtCursor))
+                uploads.append((file, insertAtCursor(ifStillOn: postID)))
                 continue
             }
             uploads.append((file, { [editorWebView] media in
+                guard isOpen(postID) else { return false }
                 let args = [token, media.sourceURL].compactMap { Self.jsonLiteral($0) }.joined(separator: ", ")
                 editorWebView?.evaluateJavaScript("window.resolvePastedImage?.(\(args), \(media.id))", completionHandler: nil)
+                return true
             }))
         }
         await uploadImages(uploads)
     }
 
-    private static func insertAtCursor(_ media: WPMedia) {
-        var info: [String: Any] = ["url": media.sourceURL, "mediaId": media.id]
-        if !media.altText.isEmpty { info["alt"] = media.altText }
-        NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
+    private func isOpen(_ postID: PostItem.ID?) -> Bool {
+        postID != nil && loadedItem?.id == postID && appState.selectedItem?.id == postID
+    }
+
+    private func insertAtCursor(ifStillOn postID: PostItem.ID?) -> (WPMedia) -> Bool {
+        { [editorHandle] media in
+            guard isOpen(postID) else { return false }
+            editorHandle.insertImage(url: media.sourceURL, mediaId: media.id, alt: media.altText)
+            return true
+        }
     }
 
     // The bytes decide: Word labels its JPEGs image/png, and WordPress refuses a mismatched extension.
@@ -1186,11 +1196,12 @@ public struct PostEditorView: View {
         return String(data: data, encoding: .utf8)
     }
 
-    private func uploadImages(_ files: [(URL, (WPMedia) -> Void)]) async {
+    private func uploadImages(_ files: [(URL, (WPMedia) -> Bool)]) async {
         guard let creds = appState.credentials, !files.isEmpty else { return }
         let client = WordPressClient(credentials: creds)
 
         var inserted = 0
+        var notInserted = 0
         var didConvert = false
         var firstError: String? = nil
 
@@ -1208,8 +1219,7 @@ public struct PostEditorView: View {
                     filename: prepared.filename,
                     mimeType: prepared.mimeType
                 )
-                place(media)
-                inserted += 1
+                if place(media) { inserted += 1 } else { notInserted += 1 }
                 if prepared.didConvert { didConvert = true }
             } catch {
                 if firstError == nil { firstError = error.localizedDescription }
@@ -1218,12 +1228,14 @@ public struct PostEditorView: View {
 
         // Clear the pill before any toast — both use the same bottom slot.
         uploadStatus = nil
-        let failed = files.count - inserted
+        let failed = files.count - inserted - notInserted
         if failed > 0, let firstError {
             presentToast(
                 Self.uploadFailureMessage(failed: failed, total: files.count, firstError: firstError),
                 isError: true
             )
+        } else if notInserted > 0 {
+            presentToast(Self.uploadNotInsertedMessage(count: notInserted), isError: true)
         } else {
             presentToast(Self.uploadSuccessMessage(inserted: inserted, didConvert: didConvert))
         }
@@ -1318,6 +1330,11 @@ public struct PostEditorView: View {
     nonisolated static func uploadSuccessMessage(inserted: Int, didConvert: Bool) -> String {
         guard inserted == 1 else { return "\(inserted) images inserted" }
         return didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
+    }
+
+    nonisolated static func uploadNotInsertedMessage(count: Int) -> String {
+        let subject = count == 1 ? "Image" : "\(count) images"
+        return "\(subject) uploaded to the Media Library but not inserted, because a different post is open"
     }
 
     nonisolated static func uploadFailureMessage(failed: Int, total: Int, firstError: String) -> String {

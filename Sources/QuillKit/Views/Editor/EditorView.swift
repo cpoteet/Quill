@@ -11,6 +11,10 @@ public final class EditorHandle {
     func flushPendingContent() async {
         await coordinator?.flushPendingContent()
     }
+
+    func insertImage(url: String, mediaId: Int, alt: String) {
+        coordinator?.insertImage(url: url, mediaId: mediaId, alt: alt)
+    }
 }
 
 public struct EditorView: NSViewRepresentable {

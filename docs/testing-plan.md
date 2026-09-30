@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 519 Swift tests + 1,486 JS tests (1,485 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 520 Swift tests + 1,486 JS tests (1,485 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (519 tests)
+1. **Swift tests** — `swift test` (520 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (519 tests, 33 suites)
+## Swift test suite (520 tests, 33 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -140,7 +140,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 16 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 41 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 42 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -813,7 +813,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (41 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (42 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -891,7 +891,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | `pastedImageFileExtensionFollowsTheBytesNotTheLabel` | JPEG, PNG, WebP, HEIC and GIF bytes pick their own extension whatever the label says; Word labels its JPEGs `image/png` and WordPress refuses a mismatched upload |
 | `pastedImageFileExtensionFallsBackToItsType` | Unrecognised bytes fall back to the MIME type, then to `png` |
 
-#### Dropped-image upload feedback (10 tests)
+#### Dropped-image upload feedback (11 tests)
 
 Static message builders behind the Finder-drop progress pill and its summary toast. The pill and toast themselves are SwiftUI view state and are covered manually (§7.4).
 
@@ -905,6 +905,7 @@ Static message builders behind the Finder-drop progress pill and its summary toa
 | `uploadSuccessMessageWithNothingInsertedFallsThroughToPlural` | `inserted: 0` → `"0 images inserted"`. Unreachable from `handleDroppedImages`; pinned deliberately so the branch can't drift into a crash or a singular string |
 | `uploadFailureMessageForSingleFileKeepsUnderlyingError` | One failed file → `"Upload failed: <error>"` with the underlying error text intact |
 | `uploadFailureMessageForMultipleFilesSummarizes` | Two of three failed → `"2 of 3 images failed to upload"` |
+| `uploadNotInsertedMessageNamesTheMediaLibrary` | An upload that finished after the user left the post → `"Image uploaded to the Media Library but not inserted, because a different post is open"`, plural for a batch |
 | `uploadFailureMessageWhenEveryFileInAMultiDropFails` | All three failed → `"3 of 3 images failed to upload"` |
 | `uploadFailureMessageForPartialMultiDropOmitsTheErrorText` | Partial batch failure summarizes as a count and deliberately drops the per-file error text |
 

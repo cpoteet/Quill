@@ -31,16 +31,14 @@ the rest. Tick a box when its commit lands.
 - [x] **3. Local publish keeps concurrent edits** — `1d80d8e`. Typing during the create
   is stashed as the new post's autosave; a failed draft delete is a warning, not a
   failure. Not exercised against a live site.
+- [x] **4. Dropped images go to the post they were dropped on** — drop and paste
+  capture `loadedItem?.id` before queueing; each upload inserts through
+  `EditorHandle.insertImage` only while that post is still open, otherwise the toast
+  says it went to the Media Library only. The picker sheet keeps `.insertMediaURL`.
+  Not exercised against a live site.
 
 ## To do
 
-- [ ] **4. Dropped images go to the post they were dropped on** (Codex bug 6, high)
-  - `PostEditorView.insertAtCursor` posts `.insertMediaURL` with no identity;
-    `EditorCoordinator.handleInsertMedia` inserts into whatever post is open.
-  - Fix: capture `loadedItem?.id` when the drop starts, and on upload finish insert
-    only if it is still the open post; otherwise toast that the image uploaded but was
-    not inserted. Consider calling the coordinator through `EditorHandle` instead of
-    `NotificationCenter` for drops (the media picker sheet can keep the notification).
 - [ ] **5. Switching WordPress sites** (Codex bug 5; the user does switch sites)
   - `QuillApp` Settings `onSave` sets `appState.credentials` but leaves
     `selectedItem`, `mediaItems` and `selectedMedia` from the old site.
