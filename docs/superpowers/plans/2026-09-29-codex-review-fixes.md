@@ -65,6 +65,9 @@ the rest. Tick a box when its commit lands.
   `bundle-marked.sh` run `npm ci` from committed exact-version `package.json` and
   lockfiles in `Scripts/tiptap-bundle/` and `Scripts/marked-bundle/`. Versions were
   resolved as of each bundle's last commit date and rebuild both bundles byte for byte.
+- [x] **One AI rewrite at a time** (the old known-unfixed reentrancy entry) —
+  `beginAIOperation` refuses a second operation with `{ busy: true }`; Swift shows a
+  toast and never replaces `aiTask` while a request is in flight.
 
 ## To do
 

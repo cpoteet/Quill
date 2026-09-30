@@ -467,6 +467,27 @@ describe('editing while Claude responds', () => {
     assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph. Typed later.'])
   })
 
+  test('a second operation is refused while one is pending, and the first still lands', () => {
+    beginOnMiddle()
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    assert.deepEqual({ ...win.beginAIOperation() }, { busy: true })
+    win.showAIResult('<p>Short.</p>')
+    win.acceptAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Short. Last sentence stays.', 'Second paragraph.'])
+  })
+
+  test('a second operation is refused while a result waits for Accept or Discard', () => {
+    beginOnMiddle()
+    win.showAIResult('<p>Short.</p>')
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    assert.deepEqual({ ...win.beginAIOperation() }, { busy: true })
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph.'])
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    assert.ok(win.beginAIOperation().text)
+    win.discardAIResult()
+  })
+
   test('discarding before a result arrives leaves the document alone', () => {
     beginOnMiddle()
     typeAtEndOf(1, ' Typed later.')

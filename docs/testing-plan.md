@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 534 Swift tests + 1,494 JS tests (1,493 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 534 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -32,7 +32,7 @@ This document is the authoritative reference for Quill's automated test suite an
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (50 tests — checked by WordPress's own block validator)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (52 tests — checked by WordPress's own block validator)
 18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the eighteen passed.
@@ -1228,7 +1228,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS AI output validity tests (50 tests)
+## JS AI output validity tests (52 tests)
 
 `Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
@@ -1249,7 +1249,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a selection with a leading space keeps the space` | Selecting ` Middle…` (with the space) still leaves `stays. Short.` with one space between |
 | ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
-| `editing while Claude responds` (6 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited |
+| `editing while Claude responds` (8 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
 
 ## JS fixture validity sweep (62 tests)
 

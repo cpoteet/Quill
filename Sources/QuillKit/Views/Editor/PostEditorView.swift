@@ -43,6 +43,7 @@ public struct PostEditorView: View {
     @State private var loadedItem: PostItem? = nil
     // The site loadedItem came from; its autosave stash is keyed to that site even after a switch.
     @State private var loadedSite = ""
+    @State private var aiRequestInFlight = false
     @State private var editorReady = false
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
@@ -144,6 +145,11 @@ public struct PostEditorView: View {
                         editorWebView = webView
                     },
                     onAIOperation: { operation in
+                        // Kept, not replaced: a post switch cancels the running request through aiTask.
+                        guard !aiRequestInFlight else {
+                            presentToast(Self.aiBusyMessage, isError: true)
+                            return
+                        }
                         aiTask = Task { await executeAIOperation(operation) }
                     },
                     onTriggerGenerate: {
@@ -1334,6 +1340,8 @@ public struct PostEditorView: View {
         return didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
     }
 
+    nonisolated static let aiBusyMessage = "Finish the current AI rewrite first: wait for it, then accept or discard it."
+
     nonisolated static func uploadNotInsertedMessage(count: Int) -> String {
         let subject = count == 1 ? "Image" : "\(count) images"
         return "\(subject) uploaded to the Media Library but not inserted, because a different post is open"
@@ -1503,10 +1511,12 @@ public struct PostEditorView: View {
     private func executeAIOperation(_ operation: AIWritingOperation) async {
         guard let settings = appState.aiSettings else { return }
         guard let webView = editorWebView else { return }
+        aiRequestInFlight = true
+        defer { aiRequestInFlight = false }
 
         // 1. Tell JS to capture the selection and show the loading placeholder.
         //    JS returns { text, context, containerText, containerFrom, containerTo }.
-        let opInfo: (text: String, context: String?, containerText: String?, containerFrom: Int?, containerTo: Int?) = await withCheckedContinuation { continuation in
+        let opInfo: (text: String, context: String?, containerText: String?, containerFrom: Int?, containerTo: Int?, busy: Bool) = await withCheckedContinuation { continuation in
             webView.evaluateJavaScript("beginAIOperation()") { result, _ in
                 if let dict = result as? [String: Any] {
                     continuation.resume(returning: (
@@ -1514,13 +1524,15 @@ public struct PostEditorView: View {
                         context: dict["context"] as? String,
                         containerText: dict["containerText"] as? String,
                         containerFrom: dict["containerFrom"] as? Int,
-                        containerTo: dict["containerTo"] as? Int
+                        containerTo: dict["containerTo"] as? Int,
+                        busy: dict["busy"] as? Bool == true
                     ))
                 } else {
-                    continuation.resume(returning: ("", nil, nil, nil, nil))
+                    continuation.resume(returning: ("", nil, nil, nil, nil, false))
                 }
             }
         }
+        if opInfo.busy { presentToast(Self.aiBusyMessage, isError: true) }
         guard !opInfo.text.isEmpty else { return }
 
         // 2. Determine if this operation needs to replace the whole container

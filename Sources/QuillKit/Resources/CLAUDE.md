@@ -104,7 +104,7 @@ onto it" — its children are still replayed.
 - `marked` is a second, separate IIFE bundle — kept out of `bundle-tiptap.sh` so updating it never touches the editor bundle
 - Tiptap is bundled locally as IIFE — `type="module"`/ES `import` silently fails under `file://` in WKWebView and `editorReady` never fires
 - Known unfixed edge case: the image link toggle only knows "linked to the file" or "not linked"
-- Known unfixed edge case: `AIResultPanel`/`beginAIOperation` reentrancy
+- One AI operation at a time: `beginAIOperation` refuses a second with `{ busy: true }`
 - Cmd+click opens links, and fragment-only `href`s must be skipped or footnote markers resolve to a blocked `file://` URL
 - `ResizableImage` must import `Image` as a named import, or the default export shadows the name
 - `ImageNodeView` is a plain JS class, not a React/Svelte component

@@ -6336,8 +6336,10 @@
     // Called by Swift when the user taps a pill button.
     // Marks the selection as pending (a decoration, not content) and returns the
     // selected plain text for use as prompt input.
-    // Returns null if there is no valid selection (≥10 chars).
+    // Returns null if there is no valid selection (≥10 chars), { busy: true } while another operation runs.
     window.beginAIOperation = () => {
+      // One at a time: a second would overwrite the first's range and orphan its Accept/Discard.
+      if (_aiOperation()) return { busy: true }
       const { from, to } = editor.state.selection
 
       // Detect parent structure (list or table) before checking selection size,
