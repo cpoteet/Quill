@@ -979,6 +979,7 @@ public struct PostEditorView: View {
             footnotes: savedFootnotes
         )
 
+        var cleanupWarning: String?
         do {
             switch item {
             case .remote(let post):
@@ -1033,17 +1034,28 @@ public struct PostEditorView: View {
                     draft.type == "page"
                     ? try await client.createPage(payload)
                     : try await client.createPost(payload)
-                try services.draftStore.delete(id: draft.id)
-                appState.localDrafts.removeAll { $0.id == draft.id }
+                // The post exists now, so a failed cleanup must not report failure and invite a duplicate.
+                let draftRemoved = (try? services.draftStore.delete(id: draft.id)) != nil
+                if draftRemoved { appState.localDrafts.removeAll { $0.id == draft.id } }
                 if draft.type == "page" {
                     appState.pages.insert(created, at: 0)
                 } else {
                     appState.posts.insert(created, at: 0)
                 }
+                if !draftRemoved {
+                    cleanupWarning = "\(Self.toastMessage(forStatus: status)). The local draft couldn't be removed; delete it so it isn't published twice."
+                }
                 guard stillOnPost() else {
-                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status))")
+                    presentToast("“\(savedTitle)”: \(cleanupWarning ?? Self.toastMessage(forStatus: status))", isError: cleanupWarning != nil)
                     return
                 }
+                // Typing during the request is newer than the created post; stash it so the remote load restores it.
+                await editorHandle.flushPendingContent()
+                if title != savedTitle || htmlContent != savedContent || footnotesMeta != savedFootnotes {
+                    try? services.autosaveStore.save(postID: created.id, title: title, content: htmlContent,
+                                                     footnotes: footnotesMeta, serverModified: created.modified)
+                }
+                guard stillOnPost() else { return }
                 lastSavedServerModified = created.modified
                 appState.selectedSection = draft.type == "page" ? .pages : .posts
                 appState.selectedItem = .remote(created)
@@ -1053,7 +1065,11 @@ public struct PostEditorView: View {
             if let alarm = blockRiskAlarm {
                 blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
             }
-            presentToast(Self.toastMessage(forStatus: status))
+            if let cleanupWarning {
+                presentToast(cleanupWarning, isError: true)
+            } else {
+                presentToast(Self.toastMessage(forStatus: status))
+            }
         } catch {
             report(error.localizedDescription)
         }
