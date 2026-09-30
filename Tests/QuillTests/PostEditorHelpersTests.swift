@@ -295,6 +295,37 @@ import Testing
         #expect(PostEditorView.effectiveStatus(.draft, settings: s, now: now) == .draft)
     }
 
+    // MARK: - Settings from a WordPress post
+
+    private func settingsPost(status: String, dateGmt: String = "2026-10-01T09:30:00") throws -> WPPost {
+        let json = """
+        {"id":7,"title":{"rendered":"T"},"content":{"rendered":""},"excerpt":{"raw":"Short &amp; sweet","rendered":"<p>Short &amp; sweet</p>"},
+         "status":"\(status)","date":"2026-10-01T04:30:00","date_gmt":"\(dateGmt)","modified":"2026-01-01T00:00:00",
+         "slug":"the-slug","link":"https://example.com/t","categories":[3,4],"tags":[9],"featured_media":12,
+         "comment_status":"closed","parent":2}
+        """
+        return try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
+    }
+
+    @Test func settingsFromAPostCarryEveryField() throws {
+        let s = PostSettings(post: try settingsPost(status: "publish"))
+        #expect(s.status == .publish)
+        #expect(s.categoryIDs == [3, 4])
+        #expect(s.tagIDs == [9])
+        #expect(s.featuredMediaID == 12)
+        #expect(s.slug == "the-slug")
+        #expect(s.commentStatus == "closed")
+        #expect(s.parentID == 2)
+        #expect(s.excerpt == "Short & sweet")
+        #expect(s.publishDate == nil)
+        #expect(s.newTagNames.isEmpty && s.newCategoryNames.isEmpty)
+    }
+
+    @Test func settingsFromAScheduledPostReadTheGMTDateAsUTC() throws {
+        let s = PostSettings(post: try settingsPost(status: "future"))
+        #expect(s.publishDate == Date(timeIntervalSince1970: 1_790_847_000))
+    }
+
     // MARK: - PostStats reading time
 
     @Test func readingTimeZeroWordsIsZero() {

@@ -23,6 +23,29 @@ public struct PostSettings: Equatable {
 
     public init() {}
 
+    public init(post: WPPost) {
+        let status = PostStatus(rawValue: post.status) ?? .draft
+        self.status = status
+        categoryIDs = Set(post.categories)
+        tagIDs = Set(post.tags)
+        featuredMediaID = post.featuredMedia
+        slug = post.slug
+        commentStatus = post.commentStatus
+        parentID = post.parent
+        excerpt = post.excerpt.excerptText
+        publishDate = status == .future ? Self.parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt) : nil
+    }
+
+    // date_gmt comes with or without a zone suffix depending on the WordPress version; either is UTC.
+    private static func parseWPDate(_ iso: String) -> Date? {
+        if let date = ISO8601DateFormatter().date(from: iso) { return date }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter.date(from: iso)
+    }
+
     // Manages the same publishDate/status invariant as statusDidChange(), but
     // driven by the Schedule toggle in the UI rather than the status picker.
     public mutating func setScheduled(_ enabled: Bool) {

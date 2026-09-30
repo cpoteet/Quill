@@ -39,6 +39,7 @@ public struct PostEditorView: View {
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var cleanFootnotes: String = ""
+    @State private var cleanSettings = PostSettings()
     @State private var loadedItem: PostItem? = nil
     // The site loadedItem came from; its autosave stash is keyed to that site even after a switch.
     @State private var loadedSite = ""
@@ -56,15 +57,6 @@ public struct PostEditorView: View {
     private static let calloutCapHeight = NSFont.preferredFont(forTextStyle: .callout).capHeight
     // Measured gap between the 13pt triangle's frame top and its apex.
     private static let triangleTopInset: CGFloat = 1.5
-
-    // Parses date_gmt values without a timezone suffix (some WP versions); treated as UTC.
-    private static let utcNoSuffixFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.timeZone = TimeZone(identifier: "UTC")
-        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return df
-    }()
 
     // AI state
     @State private var isAISheetOpen: Bool = false
@@ -625,6 +617,11 @@ public struct PostEditorView: View {
     }
 
     private var isDirty: Bool {
+        bodyIsDirty || settings != cleanSettings
+    }
+
+    // What the autosave stash holds; settings are not in it.
+    private var bodyIsDirty: Bool {
         title != cleanTitle || htmlContent != cleanContent || footnotesMeta != cleanFootnotes
     }
 
@@ -783,6 +780,7 @@ public struct PostEditorView: View {
             cleanTitle = title
             cleanContent = htmlContent
             cleanFootnotes = footnotesMeta
+            cleanSettings = settings
             contentLoaded = true
         }
     }
@@ -794,20 +792,11 @@ public struct PostEditorView: View {
         htmlContent = wpContent
         footnotesMeta = post.footnotes
         lastSavedServerModified = post.modified
-        settings.status = PostStatus(rawValue: post.status) ?? .draft
-        settings.categoryIDs = Set(post.categories)
-        settings.tagIDs = Set(post.tags)
-        settings.featuredMediaID = post.featuredMedia
-        settings.slug = post.slug
-        settings.commentStatus = post.commentStatus
-        settings.parentID = post.parent
-        settings.excerpt = post.excerpt.excerptText
-        settings.publishDate = PostStatus(rawValue: post.status) == .future
-            ? parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
-            : nil
+        settings = PostSettings(post: post)
         cleanTitle = wpTitle
         cleanContent = wpContent
         cleanFootnotes = post.footnotes
+        cleanSettings = settings
     }
 
     // nil discards the autosave; otherwise the server version it was edited from, so a save after a web edit hits the conflict alert.
@@ -834,6 +823,7 @@ public struct PostEditorView: View {
         if alarmBlocksSaving { return }
         switch oldItem {
         case .remote(let post):
+            guard bodyIsDirty else { return }
             try? services.autosaveStore.save(
                 site: loadedSite, postID: post.id, title: title, content: htmlContent,
                 footnotes: footnotesMeta, serverModified: lastSavedServerModified)
@@ -859,6 +849,7 @@ public struct PostEditorView: View {
         if alarmBlocksSaving { return }
         switch item {
         case .remote(let post):
+            guard bodyIsDirty else { return }
             try? services.autosaveStore.save(
                 site: loadedSite, postID: post.id, title: title, content: htmlContent,
                 footnotes: footnotesMeta, serverModified: lastSavedServerModified)
@@ -894,6 +885,7 @@ public struct PostEditorView: View {
             cleanTitle = title
             cleanContent = htmlContent
             cleanFootnotes = footnotesMeta
+            cleanSettings = settings
             presentToast("Saved locally")
         } catch {
             presentToast("Save failed: \(error.localizedDescription)", isError: true)
@@ -1068,6 +1060,9 @@ public struct PostEditorView: View {
             }
             settings.status = status
             if status != .future { settings.publishDate = nil }
+            saved.status = status
+            if status != .future { saved.publishDate = nil }
+            cleanSettings = saved
             if let alarm = blockRiskAlarm {
                 blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
             }
@@ -1107,18 +1102,15 @@ public struct PostEditorView: View {
             else { return }
             let requestedID = item.id
             let client = WordPressClient(credentials: creds)
-            let fetched =
-                current.type == "page"
-                ? try? await client.fetchPage(id: postID)
-                : try? await client.fetchPost(id: postID)
-            if let post = fetched, loadedItem?.id == requestedID {
-                title = post.title.decodedTitle
-                htmlContent = post.content.editorHTML
-                footnotesMeta = post.footnotes
-                lastSavedServerModified = post.modified
-                cleanTitle = title
-                cleanContent = htmlContent
-                cleanFootnotes = footnotesMeta
+            do {
+                let post = current.type == "page"
+                    ? try await client.fetchPage(id: postID)
+                    : try await client.fetchPost(id: postID)
+                guard loadedItem?.id == requestedID else { return }
+                applyRemotePost(post)
+            } catch {
+                guard loadedItem?.id == requestedID else { return }
+                presentToast("Couldn't load the server version: \(error.localizedDescription)", isError: true)
             }
         }
     }
@@ -1589,12 +1581,4 @@ public struct PostEditorView: View {
             presentToast("Claude couldn't complete that — please try again.", isError: true)
         }
     }
-
-    /// Parses a WordPress REST API date string. Tries ISO8601 with timezone first
-    /// (handles date_gmt "2026-05-30T14:00:00Z"), then falls back to the
-    /// no-timezone-suffix format some WP versions emit, treated as UTC.
-    private func parseWPDate(_ iso: String) -> Date? {
-        Self.iso8601Formatter.date(from: iso) ?? Self.utcNoSuffixFormatter.date(from: iso)
-    }
 }
-

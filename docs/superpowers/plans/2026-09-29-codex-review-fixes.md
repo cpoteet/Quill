@@ -44,19 +44,14 @@ the rest. Tick a box when its commit lands.
   plugin state, mapped through later edits; "✶ Rewriting…" is a widget decoration with
   the pending text dimmed; Discard inverts only the insertion step. Six jsdom tests.
   The decoration's look has not been checked in the running app.
+- [x] **7. Settings changes are tracked and reverted** — `cleanSettings` baseline in
+  `isDirty`; Revert applies the fetched post through `applyRemotePost` (settings
+  included) and toasts a failure; `PostSettings(post:)` is the one mapping. Open: a
+  settings-only change on a remote post is still dropped on leaving it, because the
+  stash holds only the body and there is no leave prompt. Asked the user.
 
 ## To do
 
-- [ ] **7. Settings changes are tracked and reverted** (Codex bugs 10, 11)
-  - `isDirty` compares title, body and footnotes only, so a settings-only change is
-    lost on navigation with no prompt or stash.
-  - `loadFromServer` (Revert / "Use Server") resets content but not settings, so the
-    next save sends the old local settings; its fetch failure is ignored.
-  - Fix: keep a clean `PostSettings` baseline set wherever clean title/content are set
-    and include it in `isDirty`; reuse `applyRemotePost` in `loadFromServer` and show a
-    failure. Decide with the user whether settings go in the autosave stash (needs a
-    column) or only mark the post dirty. Local drafts store only the excerpt of all
-    the settings; that limit is already disclosed.
 - [ ] **8. Media library fixes** (Codex bugs 7, 8, 14, and what is left of 9)
   - `MediaLibraryView` alt-text save holds an array index across the network call
     (can crash) and swallows errors; `MediaDetailView.commitAltText` shows "Saved"
