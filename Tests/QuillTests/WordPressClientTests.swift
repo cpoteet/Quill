@@ -287,6 +287,31 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.url?.path.contains("pages/55") == true)
     }
 
+    @Test func updateFootnotesSendsOnlyMetaToTheRightEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        var bodyData = Data()
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            if let stream = request.httpBodyStream {
+                stream.open()
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let n = stream.read(&buffer, maxLength: buffer.count)
+                    if n > 0 { bodyData.append(contentsOf: buffer[..<n]) }
+                }
+                stream.close()
+            }
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalPostJSON.data(using: .utf8)!)
+        }
+        try await client.updateFootnotes(postID: 55, type: "page", footnotes: "[{\"id\":\"a\"}]")
+        #expect(capturedRequest?.httpMethod == "PUT")
+        #expect(capturedRequest?.url?.path.hasSuffix("pages/55") == true)
+        let json = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+        #expect(json?.keys.sorted() == ["meta"])
+        #expect((json?["meta"] as? [String: String])?["footnotes"] == "[{\"id\":\"a\"}]")
+    }
+
     @Test func authorizationHeaderIncludedInRequests() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

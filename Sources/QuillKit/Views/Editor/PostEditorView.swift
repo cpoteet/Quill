@@ -603,6 +603,23 @@ public struct PostEditorView: View {
         blockRiskAlarm?.blocksSaving == true && htmlContent != cleanContent
     }
 
+    // Nil when the body may be written to WordPress or the draft store; otherwise why not.
+    private func writeBlockedReason(_ action: String) -> String? {
+        if contentLoadFailed {
+            return "Can't \(action) — this post never finished loading. Reopen it before making changes."
+        }
+        if alarmBlocksSaving {
+            return "Can't \(action) yet. Quill found content it can't preserve in this post, see the warning above."
+        }
+        return nil
+    }
+
+    nonisolated static func plainExcerpt(_ excerpt: String) -> String {
+        excerpt
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var isDirty: Bool {
         title != cleanTitle || htmlContent != cleanContent || footnotesMeta != cleanFootnotes
     }
@@ -749,18 +766,14 @@ public struct PostEditorView: View {
                 htmlContent = fresh.content
                 footnotesMeta = fresh.footnotes
                 settings = PostSettings()
-                settings.excerpt = fresh.excerpt
-                    .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                settings.excerpt = Self.plainExcerpt(fresh.excerpt)
                 if showToast { presentToast("Unsaved changes restored") }
             } else {
                 title = draft.title
                 htmlContent = draft.content
                 footnotesMeta = draft.footnotes
                 settings = PostSettings()
-                settings.excerpt = draft.excerpt
-                    .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                settings.excerpt = Self.plainExcerpt(draft.excerpt)
             }
             cleanTitle = title
             cleanContent = htmlContent
@@ -863,8 +876,8 @@ public struct PostEditorView: View {
         isSaving = true
         defer { isSaving = false }
         await editorHandle.flushPendingContent()
-        guard !alarmBlocksSaving else {
-            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
+        if let reason = writeBlockedReason("save") {
+            saveError = reason
             return
         }
         do {
@@ -893,15 +906,11 @@ public struct PostEditorView: View {
     private func save(status requestedStatus: PostStatus, force: Bool = false) async {
         let status = Self.effectiveStatus(requestedStatus, settings: settings)
         guard let creds = appState.credentials else { return }
-        guard !contentLoadFailed else {
-            saveError = "Can't save — this post never finished loading. Reopen it before making changes."
-            return
-        }
         isSaving = true
         defer { isSaving = false }
         await editorHandle.flushPendingContent()
-        guard !alarmBlocksSaving else {
-            saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
+        if let reason = writeBlockedReason("save") {
+            saveError = reason
             return
         }
         saveError = nil
@@ -955,13 +964,10 @@ public struct PostEditorView: View {
             return
         }
 
-        let cleanExcerpt = saved.excerpt
-            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = PostPayload(
             title: savedTitle,
             content: savedContent,
-            excerpt: cleanExcerpt,
+            excerpt: Self.plainExcerpt(saved.excerpt),
             status: status.rawValue,
             dateGmt: saved.publishDate.map { Self.iso8601Formatter.string(from: $0) },
             featuredMedia: saved.featuredMediaID > 0 ? saved.featuredMediaID : nil,
@@ -1348,11 +1354,14 @@ public struct PostEditorView: View {
     private func openPreview(force: Bool = false) async {
         guard let creds = appState.credentials, let post = remotePost else { return }
         await editorHandle.flushPendingContent()
+        if let reason = writeBlockedReason("preview") {
+            saveError = reason
+            return
+        }
         let client = WordPressClient(credentials: creds)
-        let cleanExcerpt = settings.excerpt
-            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let payload = PostPayload(title: title, content: htmlContent, excerpt: cleanExcerpt, status: post.status)
+        let payload = PostPayload(title: title, content: htmlContent, excerpt: Self.plainExcerpt(settings.excerpt),
+                                  status: post.status, footnotes: footnotesMeta)
+        let footnotesChanged = footnotesMeta != cleanFootnotes
         let overwritesPost = Self.previewOverwritesPost(status: post.status)
         let previewedItemID = item.id
         do {
@@ -1372,6 +1381,10 @@ public struct PostEditorView: View {
                 post.type == "page"
                 ? try await client.createPageAutosave(postID: post.id, payload: payload)
                 : try await client.createAutosave(postID: post.id, payload: payload)
+            // WordPress drops meta when a draft preview writes the post itself, leaving new markers with old notes.
+            if overwritesPost && footnotesChanged {
+                try await client.updateFootnotes(postID: post.id, type: post.type, footnotes: payload.footnotes ?? "")
+            }
             let linkBase = autosave.link ?? post.link
             guard let url = PostEditorView.previewURL(from: linkBase) else {
                 previewError = "WordPress returned an invalid preview URL: \(linkBase)"

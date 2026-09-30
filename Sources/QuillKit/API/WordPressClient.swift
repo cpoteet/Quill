@@ -96,6 +96,12 @@ public struct WordPressClient: Sendable {
         return try await put(url, body: payload)
     }
 
+    /// Writes only the footnote bodies; `type` is the post's REST type, "post" or "page".
+    public func updateFootnotes(postID: Int, type: String, footnotes: String) async throws {
+        let url = try endpoint("\(type == "page" ? "pages" : "posts")/\(postID)")
+        let _: WPPost = try await put(url, body: FootnotesPayload(meta: .init(footnotes: footnotes)))
+    }
+
     public func trashPost(id: Int) async throws {
         let url = try endpoint("posts/\(id)", query: ["force": "false"])
         let request = authorizedRequest(url: url, method: "DELETE")
@@ -341,6 +347,11 @@ public struct WordPressClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
         return try await perform(request)
+    }
+
+    private struct FootnotesPayload: Encodable {
+        struct Meta: Encodable { let footnotes: String }
+        let meta: Meta
     }
 
     private struct TaxonomyPayload: Encodable {

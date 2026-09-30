@@ -75,6 +75,14 @@ Both stash tables carry the JSON alongside the content, so a recovered draft
 keeps its footnote bodies: `local_drafts.footnotes` for local drafts,
 `autosaves.footnotes` for the unsaved-changes stash on remote posts.
 
-WordPress's own `/autosaves` endpoint takes title, content and excerpt only, so
-a remote autosave revision never carries meta. That is a WordPress limit, not a
-Quill one, and Quill's local stash is what the restore prompt actually reads.
+Quill's local stash is what the restore prompt reads, not WordPress's autosave.
+
+## Preview
+
+Preview posts to `/autosaves` with the footnotes in `meta`. Since WordPress 6.4
+that endpoint stores revisioned meta, which footnotes are, on the autosave
+revision, so a published post's preview shows the new notes. An author's draft
+is different: WordPress writes the preview straight into the post with
+`wp_update_post` and drops the meta. When the notes have changed, `openPreview()`
+therefore sends them with `WordPressClient.updateFootnotes` before it opens the
+browser; otherwise the draft would hold the new markers against its old notes.
