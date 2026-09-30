@@ -3,15 +3,15 @@ import SwiftUI
 
 struct MediaDetailView: View {
     let media: WPMedia
-    var onSaveAltText: ((String) async -> Void)? = nil
+    var onSaveAltText: ((String) async throws -> Void)? = nil
 
     @State private var altTextDraft = ""
     @State private var altSaveState: AltSaveState = .idle
     @FocusState private var altFieldFocused: Bool
 
-    private enum AltSaveState { case idle, saving, saved }
+    private enum AltSaveState: Equatable { case idle, saving, saved, failed(String) }
 
-    init(media: WPMedia, onSaveAltText: ((String) async -> Void)? = nil) {
+    init(media: WPMedia, onSaveAltText: ((String) async throws -> Void)? = nil) {
         self.media = media
         self.onSaveAltText = onSaveAltText
         self._altTextDraft = State(initialValue: media.altText)
@@ -115,6 +115,12 @@ struct MediaDetailView: View {
                         .font(.subheadline).foregroundStyle(.green)
                         .accessibilityHidden(true)
                     Text("Saved").font(.subheadline).foregroundStyle(.secondary)
+                case .failed(let message):
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.subheadline).foregroundStyle(.red)
+                        .accessibilityHidden(true)
+                    Text("Not saved: \(message)").font(.subheadline).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.tail).help(message)
                 case .idle:
                     EmptyView()
                 }
@@ -132,7 +138,12 @@ struct MediaDetailView: View {
         let text = altTextDraft
         altSaveState = .saving
         Task {
-            await save(text)
+            do {
+                try await save(text)
+            } catch {
+                await MainActor.run { altSaveState = .failed(error.localizedDescription) }
+                return
+            }
             await MainActor.run { altSaveState = .saved }
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             await MainActor.run { if altSaveState == .saved { altSaveState = .idle } }

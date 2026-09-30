@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 529 Swift tests + 1,492 JS tests (1,491 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 531 Swift tests + 1,492 JS tests (1,491 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (529 tests)
+1. **Swift tests** — `swift test` (531 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (529 tests, 34 suites)
+## Swift test suite (531 tests, 35 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -153,6 +153,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 2 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials keeps the open post |
+| 33 | `MediaReplaceTests` | `AppStateTests.swift` | 2 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, and does not add back one that left the list |
 
 ---
 
@@ -1085,6 +1086,15 @@ File: `Tests/QuillTests/AppStateTests.swift`
 |---|---|
 | `anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState` | The open post's persist hook runs while the old credentials are still set; afterwards selection, posts, pages and media are empty |
 | `theSameSiteWithNewCredentialsKeepsTheOpenPost` | A new password for the same site (trailing slash aside) runs no flush and keeps the selection |
+
+### 33. App — `MediaReplaceTests` (2 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still replaced in the list and as the selection |
+| `anItemNoLongerListedIsNotAddedBack` | A save for an item that left the list changes neither the list nor another item's selection |
 
 ## JS block parser tests (67 tests)
 

@@ -460,7 +460,7 @@ public struct GallerySheet: View {
         currentPage = 1
         defer { isLoading = false }
         do {
-            let items = try await WordPressClient(credentials: creds).fetchMedia(page: 1, perPage: perPage)
+            let items = try await WordPressClient(credentials: creds).fetchMedia(page: 1, perPage: perPage, mediaType: "image")
             mediaItems = items
             hasMore = items.count == perPage
         } catch {
@@ -472,24 +472,19 @@ public struct GallerySheet: View {
         mediaItems.filter { $0.mediaType == "image" }
     }
 
-    /// Keeps fetching until a page yields at least one image, so a run of PDFs or
-    /// audio can't strand the grid with an unchanged last cell and nothing to retrigger it.
     private func loadMoreMedia() async {
         guard hasMore, !isLoadingMore, let creds = appState.credentials else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
-        while hasMore {
-            let nextPage = currentPage + 1
-            do {
-                let items = try await WordPressClient(credentials: creds).fetchMedia(page: nextPage, perPage: perPage)
-                mediaItems.append(contentsOf: items)
-                currentPage = nextPage
-                hasMore = items.count == perPage
-                if items.contains(where: { $0.mediaType == "image" }) { return }
-            } catch {
-                loadError = error.localizedDescription
-                return
-            }
+        let nextPage = currentPage + 1
+        do {
+            let items = try await WordPressClient(credentials: creds)
+                .fetchMedia(page: nextPage, perPage: perPage, mediaType: "image")
+            mediaItems.append(contentsOf: items)
+            currentPage = nextPage
+            hasMore = items.count == perPage
+        } catch {
+            loadError = error.localizedDescription
         }
     }
 }

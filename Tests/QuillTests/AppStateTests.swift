@@ -315,3 +315,40 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
         #expect(state.credentials == newPassword)
     }
 }
+
+// MARK: - Replacing a media item after a save
+
+@Suite struct MediaReplaceTests {
+    private func media(id: Int, alt: String = "") throws -> WPMedia {
+        let json = """
+        {"id":\(id),"title":{"rendered":"p\(id)"},"source_url":"https://example.com/p\(id).jpg",\
+        "media_type":"image","mime_type":"image/jpeg","link":"https://example.com/p\(id)","alt_text":"\(alt)"}
+        """
+        return try JSONDecoder().decode(WPMedia.self, from: Data(json.utf8))
+    }
+
+    @Test func theItemIsFoundByIDWhereverItNowSits() throws {
+        let state = AppState()
+        state.mediaItems = [try media(id: 1), try media(id: 2), try media(id: 3)]
+        state.selectedMedia = try media(id: 2)
+        state.mediaItems.remove(at: 0)
+
+        state.replaceMedia(try media(id: 2, alt: "New"))
+
+        #expect(state.mediaItems.map(\.id) == [2, 3])
+        #expect(state.mediaItems[0].altText == "New")
+        #expect(state.selectedMedia?.altText == "New")
+    }
+
+    @Test func anItemNoLongerListedIsNotAddedBack() throws {
+        let state = AppState()
+        state.mediaItems = [try media(id: 1)]
+        state.selectedMedia = try media(id: 1)
+
+        state.replaceMedia(try media(id: 2, alt: "New"))
+
+        #expect(state.mediaItems.map(\.id) == [1])
+        #expect(state.selectedMedia?.id == 1)
+    }
+}
+

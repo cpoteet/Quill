@@ -6,6 +6,7 @@ public enum APIError: Error, LocalizedError {
     case decodingError(Error)
     case networkError(Error)
     case unexpectedHTML
+    case notConnected
 
     public var errorDescription: String? {
         switch self {
@@ -19,6 +20,7 @@ public enum APIError: Error, LocalizedError {
             }
             return msg
         case .unexpectedHTML: return "Your site returned a web page instead of data. Check that the Site URL is your WordPress home address, not a subfolder where WordPress is installed."
+        case .notConnected: return "Connect a WordPress site in Settings first."
         }
     }
 

@@ -45,18 +45,10 @@ struct MediaLibraryView: View {
             .inspector(isPresented: $appState.isMediaInspectorOpen) {
                 if let media = appState.selectedMedia {
                     MediaDetailView(media: media) { [media] altText in
-                        guard let creds = appState.credentials else { return }
-                        guard let idx = appState.mediaItems.firstIndex(where: { $0.id == media.id }) else { return }
-                        do {
-                            let updated = try await WordPressClient(credentials: creds)
-                                .updateMediaAltText(id: media.id, altText: altText)
-                            appState.mediaItems[idx] = updated
-                            if appState.selectedMedia?.id == updated.id {
-                                appState.selectedMedia = updated
-                            }
-                        } catch {
-                            // Save failed silently — field retains the edited value
-                        }
+                        guard let creds = appState.credentials else { throw APIError.notConnected }
+                        let updated = try await WordPressClient(credentials: creds)
+                            .updateMediaAltText(id: media.id, altText: altText)
+                        appState.replaceMedia(updated)
                     }
                     .id(media.id)
                     .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
@@ -226,12 +218,15 @@ extension MediaLibraryView {
         defer { isLoadingMore = false }
         // Offset, not a page: a local insert or delete makes a page cursor skip or repeat one.
         let offset = appState.mediaItems.count
+        let query = reloadKey
         do {
             let items = try await WordPressClient(credentials: creds)
                 .fetchMedia(perPage: perPage,
                             mediaType: appState.mediaFilter.mediaTypeParameter,
                             search: appState.mediaSearchText,
                             offset: offset)
+            // A filter, search or site change during the request makes this page part of another list.
+            guard reloadKey == query else { return }
             appState.mediaItems.append(contentsOf: items)
             hasMore = items.count == perPage
         } catch is CancellationError {
@@ -304,11 +299,12 @@ extension MediaLibraryView {
                         filename: prepared.filename,
                         mimeType: prepared.mimeType
                     )
-                // An item the filter excludes would also desync the count the offset paging uses.
-                if appState.mediaFilter.matches(uploaded) {
+                // An item the filter or search excludes would also desync the count the offset paging uses.
+                if appState.mediaFilter.matches(uploaded) && appState.mediaSearchText.isEmpty {
                     appState.mediaItems.insert(uploaded, at: 0)
                 } else {
-                    appState.mediaFilter = .all
+                    if !appState.mediaFilter.matches(uploaded) { appState.mediaFilter = .all }
+                    appState.mediaSearchText = ""
                 }
                 appState.selectedMedia = uploaded
             } catch {

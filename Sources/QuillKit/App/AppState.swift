@@ -141,6 +141,12 @@ public final class AppState: ObservableObject {
         credentials = newCredentials
     }
 
+    // Looked up by ID after the request, since the list can change while it runs.
+    public func replaceMedia(_ updated: WPMedia) {
+        if let index = mediaItems.firstIndex(where: { $0.id == updated.id }) { mediaItems[index] = updated }
+        if selectedMedia?.id == updated.id { selectedMedia = updated }
+    }
+
     public func createNewDraft(type: String, draftStore: DraftStore) {
         guard let id = try? draftStore.create(title: "Untitled", content: "", excerpt: "", type: type) else { return }
         guard let updated = try? draftStore.fetchAll(),

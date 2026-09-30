@@ -49,19 +49,13 @@ the rest. Tick a box when its commit lands.
   included) and toasts a failure; `PostSettings(post:)` is the one mapping. Open: a
   settings-only change on a remote post is still dropped on leaving it, because the
   stash holds only the body and there is no leave prompt. Asked the user.
+- [x] **8. Media library fixes** — alt-text save throws, shows "Not saved: …", and
+  applies through `AppState.replaceMedia` (by ID); `loadMoreMedia` drops a page whose
+  `reloadKey` changed; the picker and gallery sheets request `media_type=image`; a
+  library upload during a search clears the search instead of inserting.
 
 ## To do
 
-- [ ] **8. Media library fixes** (Codex bugs 7, 8, 14, and what is left of 9)
-  - `MediaLibraryView` alt-text save holds an array index across the network call
-    (can crash) and swallows errors; `MediaDetailView.commitAltText` shows "Saved"
-    regardless. Make the save throw, look the item up by ID afterwards, show failure.
-  - `loadMoreMedia` runs in an unstructured task that a filter or search change does
-    not cancel; a stale page can append to new results. Add a query generation.
-  - `MediaPickerView` and `GallerySheet` fetch all media types; a first page with no
-    images leaves nothing to trigger paging. Request `media_type=image`.
-  - Library upload is checked against the type filter but not the search text
-    (`MediaLibraryView.startUpload`). Low.
 - [ ] **9. Small fixes, one commit**
   - Bug 12: `flushToDB` and `performAutosave` use `try?`; surface a failure (toast)
     and keep the post dirty.
