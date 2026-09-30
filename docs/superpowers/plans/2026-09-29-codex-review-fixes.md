@@ -48,14 +48,13 @@ the rest. Tick a box when its commit lands.
   `isDirty`; Revert applies the fetched post through `applyRemotePost` (settings
   included) and toasts a failure; `PostSettings(post:)` is the one mapping. Open: a
   settings-only change on a remote post is still dropped on leaving it, because the
-  stash holds only the body and there is no leave prompt. Asked the user.
+  stash holds only the body and there is no leave prompt. The user chose to leave it.
 - [x] **8. Media library fixes** — alt-text save throws, shows "Not saved: …", and
   applies through `AppState.replaceMedia` (by ID); `loadMoreMedia` drops a page whose
   `reloadKey` changed; the picker and gallery sheets request `media_type=image`; a
   library upload during a search clears the search instead of inserting.
 - [x] **9. Small fixes** — three commits (`c375306`, `7b8f1ec`, and the tests/docs
-  one). Security 1–4, bugs 12 and 16, `build.sh` copies the Resources directory (the
-  SPM `resources:` declaration is untouched), the three weak tests tightened, the
+  one). Security 1–4, bugs 12 and 16, `build.sh` copies the Resources directory, the unused SPM `resources:` bundle removed, the three weak tests tightened, the
   three docs corrected. The sheets now page by offset too, since the doc claim that
   only the library mutates its list was wrong.
 - [x] **10. Footnotes keep preserved source byte for byte** — `inlineFootnotes`
@@ -65,7 +64,7 @@ the rest. Tick a box when its commit lands.
 
 ## To do
 
-Nothing, apart from the open question in group 7.
+Nothing.
 
 ## Deferred
 

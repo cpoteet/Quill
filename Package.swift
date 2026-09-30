@@ -23,7 +23,8 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/QuillKit",
-            resources: [.copy("Resources")]
+            // build.sh copies Resources into the app bundle.
+            exclude: ["Resources"]
         ),
         .testTarget(
             name: "QuillTests",
