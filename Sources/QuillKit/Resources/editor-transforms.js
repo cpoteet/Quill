@@ -1114,8 +1114,19 @@ function inlineFootnotes(html, footnotes, doc) {
     li.innerHTML = fn.content || ''
     ol.appendChild(li)
   })
-  comment.replaceWith(ol)
-  return div.innerHTML
+  // Spliced into the string, as extractFootnotes splices it out: re-serializing the post would
+  // rewrite the unsupported-block source that must be saved byte for byte.
+  const delimiters = Array.from(html.matchAll(/<!--\s*wp:footnotes \/\s*-->/g))
+  const comments = []
+  const SHOW_COMMENT = 128
+  const walker = doc.createTreeWalker(div, SHOW_COMMENT)
+  while (walker.nextNode()) if (walker.currentNode.textContent.trim() === 'wp:footnotes /') comments.push(walker.currentNode)
+  const at = delimiters.length === comments.length ? delimiters[comments.indexOf(comment)] : null
+  if (!at) {
+    comment.replaceWith(ol)
+    return div.innerHTML
+  }
+  return html.slice(0, at.index) + ol.outerHTML + html.slice(at.index + at[0].length)
 }
 
 // ── Paste cleanup (docs/paste.md) ─────────────────

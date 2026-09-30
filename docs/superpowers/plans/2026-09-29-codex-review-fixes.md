@@ -58,15 +58,14 @@ the rest. Tick a box when its commit lands.
   SPM `resources:` declaration is untouched), the three weak tests tightened, the
   three docs corrected. The sheets now page by offset too, since the doc claim that
   only the library mutates its list was wrong.
+- [x] **10. Footnotes keep preserved source byte for byte** — `inlineFootnotes`
+  splices the list in at the delimiter's string position. The regression test is in
+  `test-editor-footnotes.js`, not a fixture file: the fixture corpus has no way to
+  pass footnote meta, so a fixture would never reach this path.
 
 ## To do
 
-- [ ] **10. Footnotes keep preserved source byte for byte** (Codex bug 13)
-  - `inlineFootnotes` in `editor-transforms.js` rebuilds the whole post through
-    `innerHTML` before `wrapUnsupportedBlocks` captures unsupported-block source.
-  - Fix: splice the list in at the delimiter's string position, the way
-    `extractFootnotes` splices it out. Add a fixture with footnotes and an
-    unsupported block using single-quoted attributes.
+Nothing, apart from the open question in group 7.
 
 ## Deferred
 

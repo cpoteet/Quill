@@ -124,6 +124,15 @@ describe('saving', () => {
     assert.equal(win.getContent(), src)
   })
 
+  // inlineFootnotes rebuilt the whole post through innerHTML, re-quoting the source it was meant to keep.
+  test('an unsupported block beside footnotes is saved byte for byte after an edit', () => {
+    const custom = "<!-- wp:html -->\n<div class='promo' data-x='1'>Hi<br/><img src='a.png'/></div>\n<!-- /wp:html -->"
+    const src = `<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n${custom}\n\n<!-- wp:footnotes /-->`
+    win.setContent(src, META(ID))
+    editor.commands.insertContentAt(1, 'x')
+    assert.ok(win.getContent().includes(custom), win.getContent())
+  })
+
   test('load → edit → save is idempotent through a second cycle', () => {
     const src = `<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`
     win.setContent(src, META(ID))

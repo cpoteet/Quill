@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 534 Swift tests + 1,493 JS tests (1,492 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 534 Swift tests + 1,494 JS tests (1,493 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -26,7 +26,7 @@ This document is the authoritative reference for Quill's automated test suite an
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (276 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
-11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
+11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (41 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
 13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
@@ -2813,7 +2813,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (36 tests)
+## JS footnotes tests (41 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2824,7 +2824,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 |---|---|---|
 | `the transform helpers reach the editor as globals` | 1 | `extractFootnotes`/`inlineFootnotes` are callable in the page — the classic-script global-exposure boundary |
 | `loading a post with native footnotes` | 3 | A delimiter plus meta becomes an editable list; the block is not frozen into an unsupported card; a delimiter with **no** meta behind it falls through to a passthrough card instead |
-| `saving` | 8 | `post_content` carries the delimiter and never the list; `getFootnotes()` matches what core stores; an edited body reaches the meta; the marker keeps core's `<fnId>-link` anchor; no backref is written into `post_content`, because WordPress renders it; an unedited post saves back byte-identically; a second load/save cycle is idempotent; deleting the last marker clears the meta rather than stranding it |
+| `saving` | 9 | `post_content` carries the delimiter and never the list; `getFootnotes()` matches what core stores; an edited body reaches the meta; the marker keeps core's `<fnId>-link` anchor; no backref is written into `post_content`, because WordPress renders it; an unedited post saves back byte-identically; an unsupported block with single-quoted attributes beside the footnotes is saved byte for byte after an edit (the list is spliced in at the delimiter, not by re-serializing the post); a second load/save cycle is idempotent; deleting the last marker clears the meta rather than stranding it |
 | `migrating a legacy inline list` | 3 | A post written before the move is left exactly as it was until it is edited; the first edit moves the bodies into meta and the list out of the content; the legacy backref anchor does not survive into the meta |
 | `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
 | `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |

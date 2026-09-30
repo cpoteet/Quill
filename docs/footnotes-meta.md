@@ -48,7 +48,10 @@ the wire format never sees one.
   `wrapUnsupportedBlocks`. Order matters: a bare `<!-- wp:footnotes /-->` has no
   inner markup, so `blockNeedsWrapping` would otherwise freeze it into a
   passthrough card. A post whose meta *is* empty gets exactly that, which is the
-  right outcome — there is nothing to edit.
+  right outcome — there is nothing to edit. The list is spliced into the string at
+  the delimiter, the way `extractFootnotes` splices it out; building it through
+  `innerHTML` re-serialized the whole post first, so an unsupported block's source
+  (single-quoted attributes, `<br/>`) was no longer byte for byte.
 - **Save** — `getContent()` returns the content with the delimiter;
   `getFootnotes()` returns the meta JSON. `PostPayload.footnotes` sends it as
   `meta.footnotes`; `nil` omits the key so a payload that never touched
