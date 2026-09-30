@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 518 Swift tests + 1,481 JS tests (1,480 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 518 Swift tests + 1,486 JS tests (1,485 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -21,20 +21,21 @@ This document is the authoritative reference for Quill's automated test suite an
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (268 tests via Node's built-in runner + jsdom)
-6. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
-7. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-8. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
-9. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
-10. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
-11. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
-12. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
-13. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
-14. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-15. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-16. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
-17. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (5 tests — live Tiptap editor in jsdom; `window.flushContent`)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
+8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
+10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
+11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
+12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
+13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
+15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (44 tests — checked by WordPress's own block validator)
+18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the seventeen passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the eighteen passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -1858,6 +1859,21 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores two wrappers in document order` | Sentinels are substituted in order, not swapped |
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
+
+## JS bridge tests (5 tests)
+
+File: `Scripts/test-editor-bridge.js`
+Editor file: `Sources/QuillKit/Resources/editor.html`
+
+Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Swift calls before it saves, previews, switches posts or quits, so typing inside the 500ms `contentChanged` debounce is not lost.
+
+| Test | Asserts |
+|---|---|
+| `returns typing the debounce has not posted yet` | The snapshot holds the typed text and the footnotes JSON |
+| `cancels the pending post instead of sending it again` | No `contentChanged` follows a flush |
+| `returns null when nothing is waiting to be posted` | Swift's copy is already current, so there is nothing to return |
+| `returns null once setContent has replaced the document` | A replaced document's pending post is dropped |
+| `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned too |
 
 ## JS keyboard tests (87 tests)
 

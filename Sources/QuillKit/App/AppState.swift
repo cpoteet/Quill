@@ -116,6 +116,9 @@ public final class AppState: ObservableObject {
     @Published public var editorPublishTitle: String = "Publish"
     @Published public var updateAvailable: UpdateInfo?
 
+    // Registered by the open editor; the app delegate awaits it before Quill quits.
+    var beforeQuit: (owner: UUID, run: @MainActor () async -> Void)?
+
     public var aiEnabled: Bool {
         guard let settings = aiSettings, !settings.apiKey.isEmpty else { return false }
         return true

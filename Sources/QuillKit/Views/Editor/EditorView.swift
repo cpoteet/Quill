@@ -1,7 +1,20 @@
 import SwiftUI
 import WebKit
 
+/// Lets the view that owns an `EditorView` call into its coordinator.
+@MainActor
+public final class EditorHandle {
+    weak var coordinator: EditorCoordinator?
+
+    public init() {}
+
+    func flushPendingContent() async {
+        await coordinator?.flushPendingContent()
+    }
+}
+
 public struct EditorView: NSViewRepresentable {
+    var handle: EditorHandle?
     @Binding var html: String
     var footnotes: String
     @Binding var contentSyncPending: Bool
@@ -27,6 +40,7 @@ public struct EditorView: NSViewRepresentable {
     var hasTextSelection: Bool
 
     public init(
+        handle: EditorHandle? = nil,
         html: Binding<String>,
         footnotes: String = "",
         contentSyncPending: Binding<Bool> = .constant(false),
@@ -51,6 +65,7 @@ public struct EditorView: NSViewRepresentable {
         aiEnabled: Bool = false,
         hasTextSelection: Bool = false
     ) {
+        self.handle = handle
         self._html = html
         self.footnotes = footnotes
         self._contentSyncPending = contentSyncPending
@@ -107,6 +122,7 @@ public struct EditorView: NSViewRepresentable {
         webView.aiEnabled = aiEnabled
         webView.hasTextSelection = hasTextSelection
         context.coordinator.webView = webView
+        handle?.coordinator = context.coordinator
         let onCreate = onWebViewCreated
         Task { @MainActor in onCreate?(webView) }
         context.coordinator.onInsertImage = onInsertImage

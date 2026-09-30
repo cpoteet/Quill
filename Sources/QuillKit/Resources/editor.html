@@ -5335,18 +5335,41 @@
 
     // ── Content change → Swift ─────────────────────────
     let debounce
+    let _pendingPost = null
     function _postStats() {
       window.webkit?.messageHandlers?.statsChanged?.postMessage(countStats(editor.getText()))
+    }
+
+    function _schedulePost(post) {
+      clearTimeout(debounce)
+      _pendingPost = post
+      debounce = setTimeout(() => {
+        _pendingPost = null
+        post(true)
+      }, 500)
+    }
+
+    function _cancelPost() {
+      clearTimeout(debounce)
+      _pendingPost = null
+    }
+
+    // Swift calls this before it saves or switches posts, so the last 500ms of typing is not lost.
+    window.flushContent = () => {
+      if (!_pendingPost) return null
+      const post = _pendingPost
+      _cancelPost()
+      return post(false)
     }
 
     editor.on('update', () => {
       _rawHTML = null
       if (_findOpen) _refreshFind(false)
-      clearTimeout(debounce)
-      debounce = setTimeout(() => {
-        _postContent(toWordPressHTML(editor.getHTML()), true)
+      _schedulePost(send => {
+        const snapshot = _postContent(toWordPressHTML(editor.getHTML()), true, send)
         _postStats()
-      }, 500)
+        return snapshot
+      })
     })
 
     // ── Swift → JS bridge (globals) ───────────────────
@@ -5614,15 +5637,16 @@
     // left in the content stands in for the bodies sent alongside it. Only the
     // visual document is authoritative for those bodies; code view shows the
     // delimiter alone, so an edit there must not clear what it stands for.
-    function _postContent(html, footnotesAuthoritative) {
+    function _postContent(html, footnotesAuthoritative, send = true) {
       const split = extractFootnotes(html)
       if (footnotesAuthoritative) _footnotes = JSON.stringify(split.footnotes)
-      if (window.webkit?.messageHandlers?.contentChanged) {
+      if (send && window.webkit?.messageHandlers?.contentChanged) {
         window.webkit.messageHandlers.contentChanged.postMessage(split.content)
       }
-      if (window.webkit?.messageHandlers?.footnotesChanged) {
+      if (send && window.webkit?.messageHandlers?.footnotesChanged) {
         window.webkit.messageHandlers.footnotesChanged.postMessage(_footnotes)
       }
+      return { html: split.content, footnotes: _footnotes }
     }
 
     // ── Code view ─────────────────────────────────────
@@ -5642,10 +5666,7 @@
     let _codeViewOriginal = null
 
     function _codeViewChanged() {
-      clearTimeout(debounce)
-      debounce = setTimeout(() => {
-        _postContent(document.getElementById('code-editor').value, false)
-      }, 500)
+      _schedulePost(send => _postContent(document.getElementById('code-editor').value, false, send))
     }
 
     function _enterCodeView() {
@@ -5682,7 +5703,7 @@
       codeViewActive = false
       const html = document.getElementById('code-editor').value
       document.getElementById('code-editor').removeEventListener('input', _codeViewChanged)
-      clearTimeout(debounce)
+      _cancelPost()
       const userEdited = html !== _codeViewOriginal
       _codeViewOriginal = null
       if (userEdited) {
@@ -5831,7 +5852,7 @@
       editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
       document.getElementById('editor-wrap').scrollTop = 0
-      clearTimeout(debounce)  // cancel any contentChanged the setContent may have triggered
+      _cancelPost()  // cancel any contentChanged the setContent may have triggered
       _postStats()
       _toolbarIdle = true
       updateToolbar()
@@ -5870,7 +5891,7 @@
     window.syncContentToSwift = () => {
       _rawHTML = null
       _rawHTMLOnLoad = null
-      clearTimeout(debounce)
+      _cancelPost()
       _postContent(toWordPressHTML(editor.getHTML()), true)
     }
     window.setDarkMode = dark => document.body.classList.toggle('dark', dark)

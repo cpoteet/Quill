@@ -60,6 +60,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var pendingHTML: String?
     var pendingFootnotes: String?
     private var pushState = EditorPushState()
+    // Content messages that arrive while a setContent is unanswered were posted by the replaced document.
+    private var unansweredSetContents = 0
     var onContentChange: (String) -> Void
     var onReady: () -> Void
     weak var webView: WKWebView?
@@ -116,7 +118,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     ) {
         switch message.name {
         case "contentChanged":
-            if let html = message.body as? String {
+            if let html = message.body as? String, unansweredSetContents == 0 {
                 DispatchQueue.main.async {
                     self.pushState.recordHTML(html)
                     self.onContentChange(html)
@@ -175,7 +177,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 DispatchQueue.main.async { self.onStatsChanged?(words, characters) }
             }
         case "footnotesChanged":
-            if let json = message.body as? String {
+            if let json = message.body as? String, unansweredSetContents == 0 {
                 DispatchQueue.main.async {
                     self.pushState.recordFootnotes(json)
                     self.onFootnotesChange?(json)
@@ -431,13 +433,37 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 let jsonFN = try? JSONEncoder().encode(footnotes ?? ""),
                 let fnStr = String(data: jsonFN, encoding: .utf8)
             else { return }
-            wv.evaluateJavaScript("setContent(\(htmlStr), \(fnStr))", completionHandler: nil)
+            unansweredSetContents += 1
+            wv.evaluateJavaScript("setContent(\(htmlStr), \(fnStr))") { _, _ in
+                self.unansweredSetContents -= 1
+            }
             if needsSync {
                 wv.evaluateJavaScript("window.syncContentToSwift?.()", completionHandler: nil)
             }
         } else {
             pendingHTML = html
             pendingFootnotes = footnotes
+        }
+    }
+
+    /// Brings Swift's copy of the content up to date with typing the editor has not posted yet.
+    @MainActor func flushPendingContent() async {
+        guard isReady, let wv = webView else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            wv.evaluateJavaScript("window.flushContent?.() ?? null") { result, _ in
+                // Queued behind any content message already received, so an older one cannot land after this.
+                DispatchQueue.main.async {
+                    if let snapshot = result as? [String: Any],
+                       let html = snapshot["html"] as? String,
+                       let footnotes = snapshot["footnotes"] as? String {
+                        self.pushState.recordHTML(html)
+                        self.pushState.recordFootnotes(footnotes)
+                        self.onContentChange(html)
+                        self.onFootnotesChange?(footnotes)
+                    }
+                    continuation.resume()
+                }
+            }
         }
     }
 

@@ -1,6 +1,20 @@
 import SwiftUI
 
+final class QuillAppDelegate: NSObject, NSApplicationDelegate {
+    weak var appState: AppState?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let persist = appState?.beforeQuit?.run else { return .terminateNow }
+        Task { @MainActor in
+            await persist()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+}
+
 public struct QuillApp: App {
+    @NSApplicationDelegateAdaptor(QuillAppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var appServices = AppServices()
 
@@ -29,6 +43,7 @@ public struct QuillApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)
+                .onAppear { appDelegate.appState = appState }
                 .alert("Local Storage Unavailable", isPresented: $appServices.storageUnavailable) {
                     Button("OK", role: .cancel) {}
                 } message: {

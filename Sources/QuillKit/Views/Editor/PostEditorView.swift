@@ -47,6 +47,8 @@ public struct PostEditorView: View {
     @State private var contentSyncPending: Bool = false
     @State private var contentLoadFailed: Bool = false
     @State private var blockRiskAlarm: BlockRiskAlarm? = nil
+    @State private var editorHandle = EditorHandle()
+    @State private var quitToken = UUID()
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
     private static let calloutCapHeight = NSFont.preferredFont(forTextStyle: .callout).capHeight
@@ -89,6 +91,7 @@ public struct PostEditorView: View {
             if saveError != nil { errorBanner }
             ZStack {
                 EditorView(
+                    handle: editorHandle,
                     html: $htmlContent,
                     footnotes: footnotesMeta,
                     contentSyncPending: $contentSyncPending,
@@ -359,13 +362,15 @@ public struct PostEditorView: View {
             }
         }
         .task(id: item.id) { await loadItem() }
+        .onAppear {
+            appState.beforeQuit = (quitToken, { await persistOpenPost() })
+        }
         .onDisappear {
             autosaveTask?.cancel()
             evaluationTask?.cancel()
             aiTask?.cancel()
-            if let loadedItem, isDirty {
-                Task { await flushToDB(for: loadedItem) }
-            }
+            if appState.beforeQuit?.owner == quitToken { appState.beforeQuit = nil }
+            Task { await persistOpenPost() }
         }
         .onChange(of: appState.triggerFindBar) { _, newValue in
             guard newValue else { return }
@@ -653,13 +658,13 @@ public struct PostEditorView: View {
         aiTask = nil
         resultPanel.dismiss()
 
-        // Cancel any pending autosave for the old item — flushToDB handles persistence
-        autosaveTask?.cancel()
-
         // Flush dirty state for the previously-loaded item before overwriting editor state
-        if let prev = loadedItem, prev.id != item.id, isDirty {
-            await flushToDB(for: prev)
+        if let prev = loadedItem, prev.id != item.id {
+            await editorHandle.flushPendingContent()
+            if isDirty { await flushToDB(for: prev) }
         }
+        // After the flush, which reschedules it; flushToDB has already persisted the old item.
+        autosaveTask?.cancel()
         loadedItem = item
         // Every per-post banner and save guard resets here, for both branches.
         // A local draft opened after a remote post failed to load must not
@@ -801,6 +806,11 @@ public struct PostEditorView: View {
 
     // MARK: - Autosave
 
+    private func persistOpenPost() async {
+        await editorHandle.flushPendingContent()
+        if let loadedItem, isDirty { await flushToDB(for: loadedItem) }
+    }
+
     private func flushToDB(for oldItem: PostItem) async {
         // Same reason as performAutosave: the squashed content must not reach the store.
         if alarmBlocksSaving { return }
@@ -850,12 +860,13 @@ public struct PostEditorView: View {
 
     private func saveLocalOnly() async {
         guard case .local(let draft) = item else { return }
+        isSaving = true
+        defer { isSaving = false }
+        await editorHandle.flushPendingContent()
         guard !alarmBlocksSaving else {
             saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
             return
         }
-        isSaving = true
-        defer { isSaving = false }
         do {
             try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
             if let updated = try? services.draftStore.load(id: draft.id),
@@ -886,13 +897,14 @@ public struct PostEditorView: View {
             saveError = "Can't save — this post never finished loading. Reopen it before making changes."
             return
         }
+        isSaving = true
+        defer { isSaving = false }
+        await editorHandle.flushPendingContent()
         guard !alarmBlocksSaving else {
             saveError = "Can't save yet. Quill found content it can't preserve in this post, see the warning above."
             return
         }
-        isSaving = true
         saveError = nil
-        defer { isSaving = false }
 
         let client = WordPressClient(credentials: creds)
         // Captured up front so the save finishes for this post even if the user switches mid-save.
@@ -1335,6 +1347,7 @@ public struct PostEditorView: View {
 
     private func openPreview(force: Bool = false) async {
         guard let creds = appState.credentials, let post = remotePost else { return }
+        await editorHandle.flushPendingContent()
         let client = WordPressClient(credentials: creds)
         let cleanExcerpt = settings.excerpt
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
