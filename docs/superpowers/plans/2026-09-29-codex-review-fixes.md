@@ -40,20 +40,13 @@ the rest. Tick a box when its commit lands.
   under the old site, then clears selection, lists and media. Autosaves are keyed by
   `(site, post_id)` (table rebuilt; old rows adopted once by the first site to load).
   Local drafts stay site-independent (user's call). Media reloads on a site change.
+- [x] **6. AI results replace only the selection** — the operation is `aiOperation`
+  plugin state, mapped through later edits; "✶ Rewriting…" is a widget decoration with
+  the pending text dimmed; Discard inverts only the insertion step. Six jsdom tests.
+  The decoration's look has not been checked in the running app.
 
 ## To do
 
-- [ ] **6. AI results replace only the selection** (Codex bug 4, high)
-  - `editor.html` `beginAIOperation` saves the whole doc; `showAIResult` and
-    `discardAIResult` call `_restoreAIOriginal`, which puts the whole doc back, losing
-    edits made anywhere while Claude responds.
-  - The "✶ Rewriting…" placeholder is real content, so autosave or a post switch can
-    save it (the known-unfixed entry in `Views/Editor/CLAUDE.md`).
-  - Fix: show the placeholder as a decoration, keep the original slice and its range,
-    map the range through later transactions, and replace or restore only that range.
-    Read the AI entries in `docs/editor-gotchas.md` first (whitespace stripping,
-    `insertContentAt` plain-text handling, container replacement for lists/tables).
-    Add jsdom tests: edit elsewhere during an operation, then accept and discard.
 - [ ] **7. Settings changes are tracked and reverted** (Codex bugs 10, 11)
   - `isDirty` compares title, body and footnotes only, so a settings-only change is
     lost on navigation with no prompt or stash.

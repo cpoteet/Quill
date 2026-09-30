@@ -404,3 +404,75 @@ describe('a right-click AI result replaces only the selection', () => {
     assert.equal(sentToSwift.at(-1), typed)
   })
 })
+
+describe('editing while Claude responds', () => {
+  const two = '<!-- wp:paragraph -->\n<p>First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Second paragraph.</p>\n<!-- /wp:paragraph -->'
+
+  function beginOnMiddle() {
+    win.setContent(two)
+    let from = null
+    editor.state.doc.descendants((node, pos) => {
+      if (from === null && node.isText) from = pos + node.text.indexOf('Middle')
+    })
+    editor.commands.setTextSelection({ from, to: from + 'Middle sentence is rather long and wordy.'.length })
+    assert.ok(win.beginAIOperation())
+  }
+
+  function typeAtEndOf(index, text) {
+    let end = 0
+    editor.state.doc.forEach((node, offset, i) => { if (i === index) end = offset + node.nodeSize - 1 })
+    editor.view.dispatch(editor.state.tr.insertText(text, end))
+  }
+
+  test('the placeholder is never saved as content', () => {
+    win.setContent(two)
+    win.syncContentToSwift()
+    const before = sentToSwift.at(-1)
+    beginOnMiddle()
+    win.syncContentToSwift()
+    assert.equal(sentToSwift.at(-1), before)
+    assert.ok(!editor.getHTML().includes('Rewriting'))
+    win.discardAIResult()
+  })
+
+  test('an edit in another paragraph survives accepting the result', () => {
+    beginOnMiddle()
+    typeAtEndOf(1, ' Typed later.')
+    assert.equal(win.showAIResult('<p>Short.</p>'), true)
+    win.acceptAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Short. Last sentence stays.', 'Second paragraph. Typed later.'])
+  })
+
+  test('an edit before the selection moves the result with it', () => {
+    beginOnMiddle()
+    editor.view.dispatch(editor.state.tr.insertText('Added. ', 1))
+    win.showAIResult('<p>Short.</p>')
+    win.acceptAIResult()
+    assert.deepEqual(topLevelTexts(), ['Added. First sentence stays. Short. Last sentence stays.', 'Second paragraph.'])
+  })
+
+  test('an edit made while Claude responds survives discarding the result', () => {
+    beginOnMiddle()
+    typeAtEndOf(1, ' Typed later.')
+    win.showAIResult('<p>Short.</p>')
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph. Typed later.'])
+  })
+
+  test('an edit made while the result is shown survives discarding it', () => {
+    beginOnMiddle()
+    win.showAIResult('<p>One.</p><p>Two.</p>')
+    typeAtEndOf(4, ' Typed later.')
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph. Typed later.'])
+  })
+
+  test('discarding before a result arrives leaves the document alone', () => {
+    beginOnMiddle()
+    typeAtEndOf(1, ' Typed later.')
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph. Typed later.'])
+    assert.equal(win.showAIResult('<p>Short.</p>'), null)
+  })
+})
+
