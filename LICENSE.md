@@ -1,63 +1,55 @@
-# End User License Agreement (EULA)
+# Quill License
 
-Last Updated: September 20, 2026
+Last updated: September 29, 2026
 
-This End User License Agreement ("EULA") is a legal agreement between you (the "User" or "You") and Chris Poteet ("Licensor", "we", or "us") governing your use of Quill (the "Software"). By downloading, installing, accessing, or using the Software, you agree to be bound by the terms and conditions of this EULA. If you do not agree to these terms, do not download, install, access, or use the Software.
+Copyright © 2026 Chris Poteet. All rights reserved except as granted below.
 
-## 1. Grant of License
+This license covers Quill, the macOS app and its source code in this repository ("Quill"). It is between you and Chris Poteet ("I", "me"). By using, copying, or changing Quill, you accept this license.
 
-Subject to your compliance with this EULA, the Licensor grants you a limited, non-exclusive, non-transferable, revocable license to use the Software solely for your personal, non-commercial purposes. This license does not include the right to modify, adapt, translate, reverse engineer, decompile, disassemble, or create derivative works based on the Software.
+"A Quill derivative" means any changed version of Quill, and any software that includes Quill's code, in whole or in part.
 
-## 2. Restrictions
+## 1. What you may do
 
-You may NOT:
+- Download, install, and use Quill for any purpose, including paid work and running a business. Charging for work you do with Quill, such as writing or publishing posts, is allowed.
+- Read, change, and build Quill's source code, and use the resulting Quill derivative yourself.
+- If you use Quill for an organization, let people in that organization use a Quill derivative you built, as long as it is not made available to anyone outside it.
+- Fork this repository on GitHub, as GitHub's Terms of Service allow, for example to propose changes through a pull request.
 
-- Sell, resell, rent, lease, lend, or transfer the Software to any third party for any consideration, whether monetary or otherwise;
-- Distribute, share, or make the Software available to others through any means, including but not limited to file-sharing services, public repositories, or any online platform;
-- Modify, alter, adapt, translate, create derivative works, or make changes to the Software in any way;
-- Reverse engineer, decompile, disassemble, or attempt to discover the source code, algorithm, or proprietary techniques embedded in the Software;
-- Remove, obscure, or alter any proprietary notices, labels, trademarks, or copyright notices contained in or on the Software;
-- Use the Software for any commercial purpose, including but not limited to operating a business, providing services to others, or generating revenue;
-- Use the Software on a network or make it available to multiple users without explicit written permission from the Licensor.
+## 2. What you may not do
 
-Notwithstanding the foregoing, the Licensor publishes the Software's source code in a public repository for reference and transparency. Reading that published source code is permitted and does not violate this Section. That publication grants no license to the source code: you may not modify, adapt, redistribute, or create derivative works from it, and every other restriction in this Section continues to apply in full.
+- **Sell it.** You may not sell, rent, lease, or sublicense Quill or a Quill derivative, or charge for access to either, including charging to host it, install it, or support it.
+- **Distribute it.** Apart from GitHub forking as allowed in Section 1, you may not publish, share, or distribute Quill or a Quill derivative, in source or built form, whether for free or for payment. This includes posting builds in a fork's releases.
+- **Take credit for it.** You may not present Quill or a Quill derivative as your own work, or as made or endorsed by me, and you may not remove or change the copyright notices in it.
+- **Use its name or branding.** This license grants no rights to the Quill name, its icon, or my name. You may not use them to identify any other product or service.
 
-## 3. Ownership and Intellectual Property
+## 3. Third-party components
 
-The Software is licensed, not sold. The Licensor retains all right, title, interest, and ownership of the Software, including all intellectual property rights such as copyrights, trademarks, trade secrets, and patents. You acquire only a limited license as expressly stated in this EULA. No ownership of the Software or any of its intellectual property is transferred to you.
+Quill includes third-party software listed in [NOTICES.md](NOTICES.md). Each component stays under its own license, and nothing here limits the rights those licenses give you.
 
-## 4. Trademarks and Branding
+## 4. Ownership
 
-All trademarks, logos, brand names, and product names associated with the Software are the exclusive property of the Licensor. You may not use, reproduce, display, or modify any trademarks or branding elements associated with the Software without prior written consent from the Licensor. Use of such marks without permission is strictly prohibited.
+Quill is licensed, not sold. I keep all copyright and other rights in Quill that this license does not expressly grant to you.
 
-## 5. Updates and Modifications
+## 5. Ending this license
 
-The Licensor reserves the right to modify, update, enhance, or change the Software at any time, with or without notice. Updates may introduce new features, fix bugs, or modify functionality. You agree that the Licensor has no obligation to provide updates or support, and your license may be modified or terminated with updates unless agreed otherwise in writing.
+If you break this license, it ends automatically, and you must stop using Quill and delete every copy of Quill and of any Quill derivative you have. Sections 2, 4, 6, 7, and 8 still apply after it ends.
 
-## 6. Term and Termination
+## 6. No warranty
 
-This license is effective immediately and continues until terminated. The Licensor may terminate this EULA immediately, without notice, if you breach any provision of this agreement. Upon termination, you must immediately cease all use of the Software and delete all copies in your possession. Sections 3, 4, 7, 8, and 9 survive termination.
+QUILL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. I DO NOT WARRANT THAT QUILL WILL BE ERROR-FREE, UNINTERRUPTED, OR SECURE, OR THAT ANY DEFECT WILL BE CORRECTED.
 
-## 7. Disclaimer of Warranties
+## 7. Limitation of liability
 
-THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, UNINTERRUPTED, OR SECURE, OR THAT ALL DEFECTS WILL BE CORRECTED.
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, I AM NOT LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, OR FOR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES, WHATEVER THE CAUSE OF ACTION OR THEORY OF LIABILITY.
 
-## 8. Limitation of Liability
+## 8. Governing law
 
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, OR FOR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THIS LIMITATION APPLIES REGARDLESS OF THE CAUSE OF ACTION OR THEORY OF LIABILITY.
+This license is governed by the laws of Florida, without regard to its conflict-of-laws principles. The courts located in Florida have exclusive jurisdiction over any dispute arising from it. If any part of this license is found unenforceable, the rest still applies.
 
-## 9. Governing Law
+## 9. Changes to this license
 
-This EULA shall be governed by and construed in accordance with the laws of Florida, without regard to its conflict of laws principles. You irrevocably submit to the exclusive jurisdiction of the courts located in Florida for the resolution of any disputes arising from this agreement.
+I may publish new versions of this license. Each release of Quill is covered by the version of this license included with it.
 
-## 10. Entire Agreement
+## 10. Contact
 
-This EULA constitutes the entire agreement between you and the Licensor regarding the Software and supersedes all prior negotiations, representations, and agreements, whether written or oral. If any provision of this EULA is found to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.
-
-## 11. Contact Information
-
-For questions regarding this EULA or the Software, please contact the Licensor at cpoteet@siolon.com.
-
-## 12. Acknowledgment
-
-You acknowledge that you have read, understood, and agree to be bound by this EULA. Your use of the Software constitutes your acceptance of all terms and conditions contained herein.
+Questions about this license go to cpoteet@siolon.com.

@@ -82,6 +82,7 @@ code {
   padding: 1px 5px;
   border-radius: 4px;
   color: var(--color-ink);
+  overflow-wrap: anywhere;
 }
 
 kbd {

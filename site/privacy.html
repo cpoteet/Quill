@@ -29,7 +29,7 @@
     <div class="page-header__inner">
       <p class="eyebrow">Legal</p>
       <h1 class="page-header__title">Privacy Policy</h1>
-      <p class="page-header__sub">What Quill stores, what it sends, and what it never does.</p>
+      <p class="page-header__sub">What Quill stores, what it sends, and what it never does. · Last Updated: September 29, 2026</p>
     </div>
   </section>
 
@@ -40,21 +40,33 @@
         <h2 class="license-section__title">What stays on your Mac</h2>
         <p class="license-section__body">Quill stores the following data locally in <code>~/Library/Application Support/Quill/</code>:</p>
         <ul class="license-list">
-          <li><strong>credentials.json</strong> — your WordPress site URL and Application Password. Stored as a plain JSON file with restricted permissions (chmod 600). Quill deliberately does not use the macOS system keychain to avoid password prompts when the app relaunches.</li>
-          <li><strong>ai_settings.json</strong> — your Anthropic API key and AI preferences (if you use the AI writing feature), also chmod 600.</li>
-          <li><strong>A local SQLite database</strong> — drafts you've started but not yet published, and autosaved versions of posts and pages you're editing. This is local only; it is not synced anywhere.</li>
+          <li><strong>credentials.json</strong> — your WordPress site URL, username, and Application Password. Stored as a plain JSON file with restricted permissions (chmod 600). Quill deliberately does not use the macOS system keychain to avoid password prompts when the app relaunches.</li>
+          <li><strong>ai_settings.json</strong> — your Anthropic API key, the posts you chose as style samples, the style guide generated from them, and your AI preferences (if you use the AI writing features), also chmod 600.</li>
+          <li><strong>drafts.db</strong> — a SQLite database of drafts you've started but not yet saved to WordPress, and autosaved versions of posts and pages you're editing. It is not synced anywhere.</li>
         </ul>
+        <p class="license-section__body">macOS also keeps a few files for Quill in your Library folder: a preferences file with window sizes, your site's address, and any update you chose to skip; and caches of images and web content the editor has loaded. They are listed under <a href="#deleting-your-data">Deleting your data</a>.</p>
       </div>
 
       <div class="license-section">
         <h2 class="license-section__title">What Quill sends over the network</h2>
-        <p class="license-section__body">Quill makes two kinds of outbound connections:</p>
+        <p class="license-section__body">Quill connects to three places:</p>
 
         <p class="license-section__body"><strong>1. Your WordPress site</strong><br>
-        Every read and write operation (loading posts, saving drafts, publishing, uploading media) goes directly to your WordPress site's REST API using the credentials you provide. Quill is the client; your site is the server. No third party is involved in this traffic.</p>
+        Every read and write operation (loading posts, saving drafts, publishing, uploading media) goes directly to your WordPress site's REST API using the credentials you provide. Quill is the client; your site is the server. No third party is involved in this traffic. Images in a post load from wherever they are hosted, which is usually your own site.</p>
 
-        <p class="license-section__body"><strong>2. Anthropic's API (optional)</strong><br>
-        If you enable AI writing features and provide an Anthropic API key, the text you select or the topic you describe is sent to Anthropic's API to generate or improve content. This uses your own API key and is subject to <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">Anthropic's privacy policy</a>. AI features are entirely opt-in and require you to supply your own key — Quill has no built-in key and makes no AI calls without one.</p>
+        <p class="license-section__body"><strong>2. GitHub, to check for updates</strong><br>
+        When Quill opens, it asks GitHub for the version number of the latest Quill release, so it can tell you when an update is available. The request contains nothing about you, your site, or your posts. Like any web request, it shows GitHub your IP address, the app version, and your system version, and is covered by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>.</p>
+
+        <p class="license-section__body"><strong>3. Anthropic's API (optional)</strong><br>
+        AI features work only after you add your own Anthropic API key. Quill has no built-in key and makes no AI calls without one. When you use an AI feature, Quill sends Anthropic:</p>
+        <ul class="license-list">
+          <li>the text you selected, or the whole list or table it is in, when you ask Quill to rewrite it;</li>
+          <li>the description you type when you generate a post;</li>
+          <li>the post's title and full text when you run a Content Evaluation;</li>
+          <li>the full text of your style sample posts when you generate a style guide;</li>
+          <li>your style guide, with every request.</li>
+        </ul>
+        <p class="license-section__body">If you turn on Web Search, Anthropic may search the web for your topic while generating a post. Quill does not contact any search engine itself. Everything sent to Anthropic uses your own API key and is subject to <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">Anthropic's privacy policy</a>.</p>
       </div>
 
       <div class="license-section">
@@ -70,7 +82,7 @@
           </div>
           <div class="never-card">
             <p class="never-card__title">No cloud sync.</p>
-            <p class="never-card__body">Your local drafts and settings never leave your Mac unless you explicitly publish them to your own WordPress site.</p>
+            <p class="never-card__body">Your drafts and settings stay on your Mac. Your writing leaves it only when you save it to your WordPress site or send it to Anthropic with an AI feature.</p>
           </div>
           <div class="never-card">
             <p class="never-card__title">No advertising.</p>
@@ -79,20 +91,21 @@
         </div>
       </div>
 
-      <div class="license-section">
+      <div class="license-section" id="deleting-your-data">
         <h2 class="license-section__title">Deleting your data</h2>
         <p class="license-section__body">To remove everything Quill stores on your Mac:</p>
         <ul class="license-list">
           <li>Quit Quill.</li>
           <li>Delete <code>~/Library/Application Support/Quill/</code> — this removes credentials, AI settings, and the local draft database.</li>
+          <li>Delete <code>~/Library/Preferences/com.siolon.quill.plist</code>, <code>~/Library/Caches/com.siolon.quill</code>, <code>~/Library/WebKit/com.siolon.quill</code>, and <code>~/Library/HTTPStorages/com.siolon.quill</code>.</li>
           <li>Delete <code>Quill.app</code> from your Applications folder.</li>
         </ul>
-        <p class="license-section__body">Nothing else needs to be cleaned up. Quill leaves no other traces on your system.</p>
+        <p class="license-section__body">Deleting these files does not revoke Quill's access to your site. To do that, delete its Application Password in WordPress under Users → Profile.</p>
       </div>
 
       <div class="license-section">
         <h2 class="license-section__title">Contact</h2>
-        <p class="license-section__body">Questions or concerns? Open an issue at <a href="https://github.com/cpoteet/Quill/issues" target="_blank" rel="noopener">github.com/cpoteet/Quill</a>.</p>
+        <p class="license-section__body">Questions or concerns? Open an issue at <a href="https://github.com/cpoteet/Quill/issues" target="_blank" rel="noopener">github.com/cpoteet/Quill</a>, or email <a href="mailto:cpoteet@siolon.com">cpoteet@siolon.com</a> for anything you'd rather not post publicly.</p>
       </div>
 
     </div>

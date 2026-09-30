@@ -22,7 +22,7 @@ struct AboutView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                Link("End User Licensing Agreement", destination: URL(string: "https://quill.siolon.com/license.html")!)
+                Link("License", destination: URL(string: "https://quill.siolon.com/license.html")!)
                     .font(.subheadline)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 2)
