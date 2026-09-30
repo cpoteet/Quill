@@ -38,6 +38,7 @@
     <aside class="toc">
       <p class="toc__heading">Releases</p>
       <ul class="toc__list">
+        <li><a href="#v2.1.0" class="toc__link"><span>v2.1.0</span><span class="toc__date">Sep 30</span></a></li>
         <li><a href="#v2.0.0" class="toc__link"><span>v2.0.0</span><span class="toc__date">Sep 25</span></a></li>
         <li><a href="#v1.11.0" class="toc__link"><span>v1.11.0</span><span class="toc__date">Aug 20</span></a></li>
         <li><a href="#v1.10.0" class="toc__link"><span>v1.10.0</span><span class="toc__date">Jul 11</span></a></li>
@@ -56,11 +57,71 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.1.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.1.0</h2>
+          <span class="release__date">September 30, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(2)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Editable Galleries</h4>
+            <p class="release__body">You can now edit a gallery in place instead of deleting it and inserting a new one, including galleries made in the WordPress editor. The gallery picker opens with the gallery's images, captions and settings already filled in, and it keeps what it doesn't show, such as each image's link and size.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Cleaner Pasting</h4>
+            <p class="release__body">Content pasted from Word, Google Docs, web pages, code editors and chat apps is now reduced to clean WordPress blocks, so the block editor opens it without asking to repair anything. Lists, code, alignment, video players and images come through as real blocks, and pasted screenshots and image files upload to your media library. Copying and pasting within Quill keeps every block exactly as it was.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(4)</span></h3>
+          <ul class="release__list">
+            <li><strong>New icon</strong> — Quill has a new icon reflected in the app icon and through the app interface.</li>
+            <li><strong>Reducing content loss</strong> — App now saves content in more edge scenarios reducing lost content including quitting early, restoring autosaved posts, and conflict detections.</li>
+            <li><strong>Back to Media</strong> — While a media item is magnified, a Back to Media button in the toolbar returns you to the thumbnails, so Esc is no longer the only way out.</li>
+            <li><strong>Named empty filters</strong> — An empty media filter now says "No audio" (or images, documents, video) instead of saying the whole library is empty.</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(23)</span></summary>
+          <ul class="release__list">
+            <li>If you schedule a post for a time that has already passed, the date picker now warns you and an alert asks before WordPress publishes it, where before it published silently.</li>
+            <li>Resized and newly inserted images no longer save a fixed height, so they keep their proportions on screens narrower than the saved width.</li>
+            <li>The image toolbar closes when you click away after editing an image's alt text, size or link.</li>
+            <li>An image stays selected after you change its alignment, and the cursor no longer drops into its caption.</li>
+            <li>Editing a post no longer turns its galleries' attachment-page or custom links into media-file links or drops their image size.</li>
+            <li>An image you link to a web page now saves as a custom link instead of a link to the image file.</li>
+            <li>Custom HTML and other blocks Quill can't edit now save exactly as written in posts that have footnotes.</li>
+            <li>Bold, italic and links around inline code are kept when you save.</li>
+            <li>Centered and right-aligned text shows its alignment in the editor.</li>
+            <li>Script in a Custom HTML block no longer runs inside the editor.</li>
+            <li>Inserting a gallery while a block is selected adds it after that block instead of replacing the block.</li>
+            <li>Writing evaluation reads headings, paragraphs and table cells separately, so it no longer flags them as one run-on sentence.</li>
+            <li>Text you type elsewhere in the post while an AI rewrite runs is kept, and Discard removes only the rewrite.</li>
+            <li>Starting a second AI rewrite before you accept or discard the first now shows a message instead of putting the first result in the wrong place.</li>
+            <li>Changing only a post's settings now shows the unsaved-changes dot, and Revert to Saved… resets those settings or reports an error when it can't reach WordPress.</li>
+            <li>Preview in Browser no longer writes a draft after a failed load or while the missing-blocks banner is showing, and the preview now includes footnotes.</li>
+            <li>An image that finishes uploading after you switch posts now goes to the Media Library instead of into the post that's open.</li>
+            <li>Changing the site in Settings clears the previous site's posts and media, and one site's autosave can no longer restore into another site's post.</li>
+            <li>A failed autosave now shows a message instead of failing silently.</li>
+            <li>Clearing the Claude API key in Settings now removes it.</li>
+            <li>Switching media filters, searching or refreshing now closes the magnified preview, and the previous filter's thumbnails no longer flash.</li>
+            <li>Saving alt text in the media library now reports a failure instead of showing "Saved".</li>
+            <li>The image picker and the gallery picker no longer show an empty grid when your newest uploads aren't images, and they no longer repeat an image after an upload.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.0.0">
         <header class="release__header">
           <h2 class="release__version">v2.0.0</h2>
           <span class="release__date">September 25, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
         <p class="release__note">Quill now requires macOS 27.</p>
 
