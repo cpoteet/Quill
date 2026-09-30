@@ -270,6 +270,7 @@ public struct SidebarView: View {
             try? services.taxonomyCache.clearAll()
             UserDefaults.standard.set(currentSite, forKey: siteKey)
         }
+        try? services.autosaveStore.adoptUnsited(site: creds.siteKey)
         appState.categories = []
         appState.tags = []
         appState.localDrafts = (try? services.draftStore.fetchAll()) ?? []

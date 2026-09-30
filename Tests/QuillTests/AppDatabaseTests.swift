@@ -116,14 +116,48 @@ import Testing
         )
 
         let store = AutosaveStore(db: try AppDatabase(path: path))
-        let migrated = try #require(try store.load(postID: 11))
+        try store.adoptUnsited(site: "https://a.test")
+        let migrated = try #require(try store.load(site: "https://a.test", postID: 11))
         #expect(migrated.title == "Stashed")
         #expect(migrated.serverModified == "2024-01-01")
         #expect(migrated.footnotes == "")
 
-        try store.save(postID: 11, title: "Stashed", content: "<p>Hi</p>",
+        try store.save(site: "https://a.test", postID: 11, title: "Stashed", content: "<p>Hi</p>",
                        footnotes: "[]", serverModified: "2024-01-02")
-        #expect(try store.load(postID: 11)?.footnotes == "[]")
+        #expect(try store.load(site: "https://a.test", postID: 11)?.footnotes == "[]")
+    }
+
+    // The old table keyed on post_id alone, so the site key needs a rebuilt table, not an ALTER.
+    @Test func autosavesTableRebuiltWithASiteKey() throws {
+        let path = tempDBPath("autosave-site")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let setup = try AppDatabase(path: path)
+        try setup.db.run("DROP TABLE IF EXISTS autosaves")
+        try setup.db.run("""
+            CREATE TABLE autosaves (
+                post_id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                saved_at REAL NOT NULL,
+                server_modified TEXT NOT NULL,
+                footnotes TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        try setup.db.run(
+            "INSERT INTO autosaves (post_id, title, content, saved_at, server_modified, footnotes) VALUES (11, 'Stashed', '<p>Hi</p>', 0, '2024-01-01', '[1]')"
+        )
+
+        let db = try AppDatabase(path: path)
+        let store = AutosaveStore(db: db)
+        try store.adoptUnsited(site: "https://a.test")
+        #expect(try store.load(site: "https://a.test", postID: 11)?.footnotes == "[1]")
+        try store.save(site: "https://b.test", postID: 11, title: "Other", content: "", serverModified: "m")
+        #expect(try store.load(site: "https://a.test", postID: 11)?.title == "Stashed")
+        #expect(try store.load(site: "https://b.test", postID: 11)?.title == "Other")
+
+        _ = try AppDatabase(path: path)
+        #expect(try store.load(site: "https://a.test", postID: 11)?.title == "Stashed")
     }
 
     // Both tables name their column "footnotes"; the two Expressions must stay
@@ -133,8 +167,8 @@ import Testing
         let drafts = DraftStore(db: db)
         let autosaves = AutosaveStore(db: db)
         let id = try drafts.create(title: "D", content: "", excerpt: "", footnotes: #"["draft"]"#)
-        try autosaves.save(postID: 1, title: "A", content: "", footnotes: #"["autosave"]"#, serverModified: "m")
+        try autosaves.save(site: "s", postID: 1, title: "A", content: "", footnotes: #"["autosave"]"#, serverModified: "m")
         #expect(try drafts.load(id: id)?.footnotes == #"["draft"]"#)
-        #expect(try autosaves.load(postID: 1)?.footnotes == #"["autosave"]"#)
+        #expect(try autosaves.load(site: "s", postID: 1)?.footnotes == #"["autosave"]"#)
     }
 }

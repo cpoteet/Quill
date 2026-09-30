@@ -17,10 +17,11 @@ public final class AutosaveStore: @unchecked Sendable {
         self.db = db
     }
 
-    public func save(postID: Int, title: String, content: String, footnotes: String = "", serverModified: String) throws {
+    public func save(site: String, postID: Int, title: String, content: String, footnotes: String = "", serverModified: String) throws {
         try db.db.run(
             db.autosaves.insert(
                 or: .replace,
+                db.autosaveSite <- site,
                 db.autosavePostID <- postID,
                 db.autosaveTitle <- title,
                 db.autosaveContent <- content,
@@ -30,8 +31,8 @@ public final class AutosaveStore: @unchecked Sendable {
             ))
     }
 
-    public func load(postID: Int) throws -> AutosaveSnapshot? {
-        let query = db.autosaves.filter(db.autosavePostID == postID)
+    public func load(site: String, postID: Int) throws -> AutosaveSnapshot? {
+        let query = db.autosaves.filter(db.autosaveSite == site && db.autosavePostID == postID)
         guard let row = try db.db.pluck(query) else { return nil }
         return AutosaveSnapshot(
             postID: row[db.autosavePostID],
@@ -43,7 +44,15 @@ public final class AutosaveStore: @unchecked Sendable {
         )
     }
 
-    public func delete(postID: Int) throws {
-        try db.db.run(db.autosaves.filter(db.autosavePostID == postID).delete())
+    public func delete(site: String, postID: Int) throws {
+        try db.db.run(db.autosaves.filter(db.autosaveSite == site && db.autosavePostID == postID).delete())
+    }
+
+    // A stash already written for the site is newer than an unsited one, so it wins.
+    public func adoptUnsited(site: String) throws {
+        try db.db.transaction {
+            try db.db.run("UPDATE OR IGNORE autosaves SET site = ? WHERE site = ''", site)
+            try db.db.run("DELETE FROM autosaves WHERE site = ''")
+        }
     }
 }

@@ -15,4 +15,15 @@ public struct Credentials: Codable, Sendable, Equatable {
         let raw = "\(username):\(appPassword)"
         return "Basic " + Data(raw.utf8).base64EncodedString()
     }
+
+    // Keys per-site storage; a trailing slash or a capitalised host is the same site.
+    var siteKey: String {
+        var key = siteURL.absoluteString
+        if var components = URLComponents(url: siteURL, resolvingAgainstBaseURL: false) {
+            components.host = components.host?.lowercased()
+            key = components.string ?? key
+        }
+        while key.hasSuffix("/") { key.removeLast() }
+        return key
+    }
 }

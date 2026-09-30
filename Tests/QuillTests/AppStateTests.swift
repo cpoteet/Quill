@@ -274,3 +274,44 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
         #expect(sorted.map(\.name).last == "Zurich")
     }
 }
+
+// MARK: - Switching sites
+
+@MainActor @Suite struct SiteSwitchTests {
+    private let siteA = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
+    private let siteB = Credentials(siteURL: URL(string: "https://b.test")!, username: "u", appPassword: "p")
+
+    @Test func anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState() async throws {
+        let state = AppState()
+        state.credentials = siteA
+        state.selectedItem = .remote(try makePost(id: 7))
+        state.posts = [try makePost(id: 7)]
+        state.pages = [try makePost(id: 8, type: "page")]
+        var credentialsWhenFlushed: Credentials?
+        state.persistOpenPost = (UUID(), { credentialsWhenFlushed = state.credentials })
+
+        await state.connect(siteB)
+
+        #expect(credentialsWhenFlushed == siteA)
+        #expect(state.credentials == siteB)
+        #expect(state.selectedItem == nil)
+        #expect(state.posts.isEmpty && state.pages.isEmpty)
+        #expect(state.mediaItems.isEmpty && state.selectedMedia == nil)
+    }
+
+    @Test func theSameSiteWithNewCredentialsKeepsTheOpenPost() async throws {
+        let state = AppState()
+        state.credentials = siteA
+        let item = PostItem.remote(try makePost(id: 7))
+        state.selectedItem = item
+        var flushed = false
+        state.persistOpenPost = (UUID(), { flushed = true })
+        let newPassword = Credentials(siteURL: URL(string: "https://a.test/")!, username: "u", appPassword: "new")
+
+        await state.connect(newPassword)
+
+        #expect(!flushed)
+        #expect(state.selectedItem == item)
+        #expect(state.credentials == newPassword)
+    }
+}

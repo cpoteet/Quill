@@ -40,6 +40,8 @@ public struct PostEditorView: View {
     @State private var cleanContent: String = ""
     @State private var cleanFootnotes: String = ""
     @State private var loadedItem: PostItem? = nil
+    // The site loadedItem came from; its autosave stash is keyed to that site even after a switch.
+    @State private var loadedSite = ""
     @State private var editorReady = false
     @State private var contentLoaded = false
     @State private var showDiscardAlert: Bool = false
@@ -365,13 +367,13 @@ public struct PostEditorView: View {
         }
         .task(id: item.id) { await loadItem() }
         .onAppear {
-            appState.beforeQuit = (quitToken, { await persistOpenPost() })
+            appState.persistOpenPost = (quitToken, { await persistOpenPost() })
         }
         .onDisappear {
             autosaveTask?.cancel()
             evaluationTask?.cancel()
             aiTask?.cancel()
-            if appState.beforeQuit?.owner == quitToken { appState.beforeQuit = nil }
+            if appState.persistOpenPost?.owner == quitToken { appState.persistOpenPost = nil }
             Task { await persistOpenPost() }
         }
         .onChange(of: appState.triggerFindBar) { _, newValue in
@@ -685,6 +687,7 @@ public struct PostEditorView: View {
         // After the flush, which reschedules it; flushToDB has already persisted the old item.
         autosaveTask?.cancel()
         loadedItem = item
+        loadedSite = appState.credentials?.siteKey ?? ""
         // Every per-post banner and save guard resets here, for both branches.
         // A local draft opened after a remote post failed to load must not
         // inherit its blocked state. The editor re-posts blocksAtRisk after the
@@ -747,7 +750,7 @@ public struct PostEditorView: View {
             guard !Task.isCancelled, loadedItem == requestedItem else { return }
 
             // Restore from stash if one exists (stash content differs from WP → isDirty stays true)
-            if let snap = try? services.autosaveStore.load(postID: post.id) {
+            if let snap = try? services.autosaveStore.load(site: loadedSite, postID: post.id) {
                 if let baseline = Self.autosaveRestoreBaseline(snap, over: loadedPost) {
                     title = snap.title
                     htmlContent = snap.content
@@ -755,7 +758,7 @@ public struct PostEditorView: View {
                     lastSavedServerModified = baseline
                     presentToast("Unsaved changes restored")
                 } else {
-                    try? services.autosaveStore.delete(postID: post.id)
+                    try? services.autosaveStore.delete(site: loadedSite, postID: post.id)
                 }
             }
             contentLoaded = true
@@ -832,7 +835,7 @@ public struct PostEditorView: View {
         switch oldItem {
         case .remote(let post):
             try? services.autosaveStore.save(
-                postID: post.id, title: title, content: htmlContent,
+                site: loadedSite, postID: post.id, title: title, content: htmlContent,
                 footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
             try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
@@ -857,7 +860,7 @@ public struct PostEditorView: View {
         switch item {
         case .remote(let post):
             try? services.autosaveStore.save(
-                postID: post.id, title: title, content: htmlContent,
+                site: loadedSite, postID: post.id, title: title, content: htmlContent,
                 footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
             try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
@@ -919,6 +922,7 @@ public struct PostEditorView: View {
 
         let client = WordPressClient(credentials: creds)
         // Captured up front so the save finishes for this post even if the user switches mid-save.
+        let site = creds.siteKey
         let savedItemID = item.id
         let savedTitle = title
         let savedContent = htmlContent
@@ -1015,18 +1019,18 @@ public struct PostEditorView: View {
                     }
                 }
                 guard stillOnPost() else {
-                    let stash = try? services.autosaveStore.load(postID: post.id)
+                    let stash = try? services.autosaveStore.load(site: site, postID: post.id)
                     if let kept = Self.stashAfterSave(stash, title: savedTitle, content: savedContent,
                                                       footnotes: savedFootnotes, serverModified: updated.modified) {
-                        try? services.autosaveStore.save(postID: post.id, title: kept.title, content: kept.content,
+                        try? services.autosaveStore.save(site: site, postID: post.id, title: kept.title, content: kept.content,
                                                          footnotes: kept.footnotes, serverModified: kept.serverModified)
                     } else {
-                        try? services.autosaveStore.delete(postID: post.id)
+                        try? services.autosaveStore.delete(site: site, postID: post.id)
                     }
                     presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status))")
                     return
                 }
-                try? services.autosaveStore.delete(postID: post.id)
+                try? services.autosaveStore.delete(site: site, postID: post.id)
                 lastSavedServerModified = updated.modified
                 cleanTitle = savedTitle
                 cleanContent = savedContent
@@ -1054,7 +1058,7 @@ public struct PostEditorView: View {
                 // Typing during the request is newer than the created post; stash it so the remote load restores it.
                 await editorHandle.flushPendingContent()
                 if title != savedTitle || htmlContent != savedContent || footnotesMeta != savedFootnotes {
-                    try? services.autosaveStore.save(postID: created.id, title: title, content: htmlContent,
+                    try? services.autosaveStore.save(site: site, postID: created.id, title: title, content: htmlContent,
                                                      footnotes: footnotesMeta, serverModified: created.modified)
                 }
                 guard stillOnPost() else { return }
@@ -1092,7 +1096,7 @@ public struct PostEditorView: View {
 
     private func discardChanges() {
         guard case .remote(let post) = item else { return }
-        try? services.autosaveStore.delete(postID: post.id)
+        try? services.autosaveStore.delete(site: loadedSite, postID: post.id)
         loadFromServer(postID: post.id)
     }
 

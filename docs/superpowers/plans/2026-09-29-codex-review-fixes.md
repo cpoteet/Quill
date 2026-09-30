@@ -36,20 +36,13 @@ the rest. Tick a box when its commit lands.
   `EditorHandle.insertImage` only while that post is still open, otherwise the toast
   says it went to the Media Library only. The picker sheet keeps `.insertMediaURL`.
   Not exercised against a live site.
+- [x] **5. Switching WordPress sites** — `AppState.connect` flushes the open post
+  under the old site, then clears selection, lists and media. Autosaves are keyed by
+  `(site, post_id)` (table rebuilt; old rows adopted once by the first site to load).
+  Local drafts stay site-independent (user's call). Media reloads on a site change.
 
 ## To do
 
-- [ ] **5. Switching WordPress sites** (Codex bug 5; the user does switch sites)
-  - `QuillApp` Settings `onSave` sets `appState.credentials` but leaves
-    `selectedItem`, `mediaItems` and `selectedMedia` from the old site.
-  - `autosaves` is keyed by post ID only (`Database.swift`), so site A's stash can
-    restore into site B's post with the same ID.
-  - Fix: when the site URL changes, flush the open post (through `beforeQuit`'s
-    closure or `EditorHandle`), clear selection and media state, then set credentials.
-    Add a `site` column to `autosaves` (migration like the existing `ALTER TABLE`s),
-    key save/load/delete by site + post ID, and treat rows without a site as belonging
-    to the current one once. Local drafts are site-independent; decide with the user
-    whether they should stay that way.
 - [ ] **6. AI results replace only the selection** (Codex bug 4, high)
   - `editor.html` `beginAIOperation` saves the whole doc; `showAIResult` and
     `discardAIResult` call `_restoreAIOriginal`, which puts the whole doc back, losing

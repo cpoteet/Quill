@@ -32,4 +32,11 @@ import Testing
         let expected = "Basic " + Data("héros:pass".utf8).base64EncodedString()
         #expect(creds.basicAuthHeader == expected)
     }
+
+    @Test func siteKeyIgnoresATrailingSlashAndHostCase() {
+        let bare = Credentials(siteURL: URL(string: "https://Example.com/blog")!, username: "u", appPassword: "p")
+        let slashed = Credentials(siteURL: URL(string: "https://example.com/blog/")!, username: "v", appPassword: "q")
+        #expect(bare.siteKey == slashed.siteKey)
+        #expect(bare.siteKey == "https://example.com/blog")
+    }
 }

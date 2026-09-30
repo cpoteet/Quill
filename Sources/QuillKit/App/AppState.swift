@@ -116,8 +116,8 @@ public final class AppState: ObservableObject {
     @Published public var editorPublishTitle: String = "Publish"
     @Published public var updateAvailable: UpdateInfo?
 
-    // Registered by the open editor; the app delegate awaits it before Quill quits.
-    var beforeQuit: (owner: UUID, run: @MainActor () async -> Void)?
+    // Registered by the open editor; awaited before Quill quits and before the site changes.
+    var persistOpenPost: (owner: UUID, run: @MainActor () async -> Void)?
 
     public var aiEnabled: Bool {
         guard let settings = aiSettings, !settings.apiKey.isEmpty else { return false }
@@ -126,6 +126,19 @@ public final class AppState: ObservableObject {
 
     public init() {
         aiSettings = try? AISettingsStore.load()
+    }
+
+    // The open post is saved while the old site is still current, so its stash is keyed to that site.
+    @MainActor public func connect(_ newCredentials: Credentials) async {
+        if let current = credentials, current.siteKey != newCredentials.siteKey {
+            await persistOpenPost?.run()
+            selectedItem = nil
+            posts = []
+            pages = []
+            mediaItems = []
+            selectedMedia = nil
+        }
+        credentials = newCredentials
     }
 
     public func createNewDraft(type: String, draftStore: DraftStore) {

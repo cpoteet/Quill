@@ -16,6 +16,7 @@ public final class AppDatabase: @unchecked Sendable {
 
     // autosaves columns
     let autosaves = Table("autosaves")
+    let autosaveSite = Expression<String>("site")
     let autosavePostID = Expression<Int>("post_id")
     let autosaveTitle = Expression<String>("title")
     let autosaveContent = Expression<String>("content")
@@ -53,15 +54,18 @@ public final class AppDatabase: @unchecked Sendable {
         try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
         try? db.run("ALTER TABLE local_drafts ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
         try? db.run("ALTER TABLE autosaves ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
+        try addSiteKeyToAutosaves()
 
         try db.run(
             autosaves.create(ifNotExists: true) { t in
-                t.column(autosavePostID, primaryKey: true)
+                t.column(autosaveSite)
+                t.column(autosavePostID)
                 t.column(autosaveTitle)
                 t.column(autosaveContent)
                 t.column(autosaveSavedAt)
                 t.column(autosaveServerModified)
                 t.column(autosaveFootnotes, defaultValue: "")
+                t.primaryKey(autosaveSite, autosavePostID)
             })
 
         try db.run(
@@ -73,6 +77,32 @@ public final class AppDatabase: @unchecked Sendable {
                 t.column(taxFetchedAt)
                 t.primaryKey(taxType, taxID)
             })
+    }
+
+    // Rows from before the site key get site '' until AutosaveStore.adoptUnsited claims them.
+    private func addSiteKeyToAutosaves() throws {
+        let columns = try db.prepare("PRAGMA table_info(autosaves)").map { $0[1] as? String }
+        guard !columns.isEmpty, !columns.contains("site") else { return }
+        try db.transaction {
+            try db.run("ALTER TABLE autosaves RENAME TO autosaves_unsited")
+            try db.run("""
+                CREATE TABLE autosaves (
+                    site TEXT NOT NULL,
+                    post_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    saved_at REAL NOT NULL,
+                    server_modified TEXT NOT NULL,
+                    footnotes TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (site, post_id)
+                )
+            """)
+            try db.run("""
+                INSERT INTO autosaves (site, post_id, title, content, saved_at, server_modified, footnotes)
+                SELECT '', post_id, title, content, saved_at, server_modified, footnotes FROM autosaves_unsited
+            """)
+            try db.run("DROP TABLE autosaves_unsited")
+        }
     }
 
     public static func production() throws -> AppDatabase {

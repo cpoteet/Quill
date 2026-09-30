@@ -4,7 +4,7 @@ final class QuillAppDelegate: NSObject, NSApplicationDelegate {
     weak var appState: AppState?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let persist = appState?.beforeQuit?.run else { return .terminateNow }
+        guard let persist = appState?.persistOpenPost?.run else { return .terminateNow }
         Task { @MainActor in
             await persist()
             sender.reply(toApplicationShouldTerminate: true)
@@ -125,7 +125,7 @@ public struct QuillApp: App {
 
         Settings {
             PreferencesView(posts: appState.posts, credentials: appState.credentials, onSave: { creds in
-                appState.credentials = creds
+                Task { await appState.connect(creds) }
             }, onSaveAISettings: { settings in
                 appState.aiSettings = settings
             })

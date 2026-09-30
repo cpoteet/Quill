@@ -156,7 +156,7 @@ struct MediaLibraryView: View {
     }
 
     private var reloadKey: String {
-        "\(appState.mediaFilter.rawValue)|\(appState.mediaSearchText)|\(appState.mediaRefreshToken)"
+        "\(appState.credentials?.siteKey ?? "")|\(appState.mediaFilter.rawValue)|\(appState.mediaSearchText)|\(appState.mediaRefreshToken)"
     }
 
     @ViewBuilder
