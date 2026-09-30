@@ -61,6 +61,10 @@ the rest. Tick a box when its commit lands.
   splices the list in at the delimiter's string position. The regression test is in
   `test-editor-footnotes.js`, not a fixture file: the fixture corpus has no way to
   pass footnote meta, so a fixture would never reach this path.
+- [x] **Reproducible bundles** (from the deferred list) — `bundle-tiptap.sh` and
+  `bundle-marked.sh` run `npm ci` from committed exact-version `package.json` and
+  lockfiles in `Scripts/tiptap-bundle/` and `Scripts/marked-bundle/`. Versions were
+  resolved as of each bundle's last commit date and rebuild both bundles byte for byte.
 
 ## To do
 
@@ -72,7 +76,5 @@ Nothing.
 - `editor.html` (about 6,500 lines) holds CSS, JS and markup together, against the
   user's separate-files rule. Splitting it is large; the top-level `const` gotcha in
   the root `CLAUDE.md` applies.
-- `Scripts/bundle-tiptap.sh` installs `^2` ranges with no lockfile, so regenerating
-  the bundle is not reproducible. The committed bundle is what ships.
 - `InspectorTitlebarFix` depends on private AppKit class names; it already degrades
   to doing nothing.

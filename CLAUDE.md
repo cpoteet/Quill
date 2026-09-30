@@ -31,7 +31,7 @@ Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets
 ## Key decisions
 
 - **Stack:** Swift 6, SwiftUI (macOS 27 only — no availability gates), WKWebView, URLSession async/await
-- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`). To update Tiptap at any time, just tell Claude "check for new versions of Tiptap" — Claude will check the latest release, update the version in the script if needed, regenerate the bundle, update `editor.html` and `CLAUDE.md`, and rebuild.
+- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`). To update Tiptap at any time, just tell Claude "check for new versions of Tiptap" — Claude will check the latest release, update the versions in `Scripts/tiptap-bundle/package.json` and its lockfile if needed, regenerate the bundle, update `editor.html` and `CLAUDE.md`, and rebuild.
 - **API:** WordPress REST API with Application Passwords (no plugin required)
 - **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
 - **Accent:** Quill owns its accent (amber `#C77700` light / `#BF801E` dark) via `Assets.xcassets` + `NSAccentColorName`, *not* a SwiftUI `.tint()` — `List` selection reads the bundle's accent and ignores the view tree, so a `.tint()` recolours the buttons and leaves the sidebar blue. macOS honours this only while the user's system accent is "Multicolor".

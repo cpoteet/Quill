@@ -1,0 +1,9 @@
+{
+  "name": "marked-bundler",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "marked": "16.4.2",
+    "esbuild": "0.25.12"
+  }
+}

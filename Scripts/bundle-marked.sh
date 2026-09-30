@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Bundle the `marked` Markdown parser into a single local IIFE file (window.MarkedBundle).
 # Used by window.insertMarkdown() in editor.html for the "Paste as Markdown" command.
+# Installs from Scripts/marked-bundle/package-lock.json with `npm ci`, so the same
+# lockfile always produces the same bundle.
 #
-# Deliberately separate from bundle-tiptap.sh: re-running that script npm-installs
-# Tiptap fresh and can drift the editor onto a newer 2.x release, so a change that
-# only needs a Markdown parser should not force an editor upgrade.
+# Separate from bundle-tiptap.sh so that updating the Markdown parser never touches
+# the editor bundle.
 #
 # Usage: ./Scripts/bundle-marked.sh
+#
+# To update marked: change the version in Scripts/marked-bundle/package.json, run
+# `npm install --package-lock-only` in that directory, then run this script.
 
 set -e
 
@@ -16,24 +20,10 @@ OUT="$ROOT_DIR/Sources/QuillKit/Resources/marked-bundle.js"
 TMP_DIR="$(mktemp -d)"
 
 echo "▶ Installing marked..."
+cp "$SCRIPT_DIR/marked-bundle/package.json" "$SCRIPT_DIR/marked-bundle/package-lock.json" \
+  "$SCRIPT_DIR/marked-bundle/entry.js" "$TMP_DIR/"
 cd "$TMP_DIR"
-cat > package.json <<'EOF'
-{
-  "name": "marked-bundler",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "marked": "^16",
-    "esbuild": "^0.25"
-  }
-}
-EOF
-
-npm install --silent
-
-cat > entry.js <<'EOF'
-export { marked } from 'marked'
-EOF
+npm ci --silent
 
 echo "▶ Bundling..."
 ./node_modules/.bin/esbuild entry.js \
