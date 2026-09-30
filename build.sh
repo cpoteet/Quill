@@ -36,14 +36,8 @@ mkdir -p "$RESOURCES_DIR"
 cp "$BINARY" "$APP_DIR/MacOS/$APP_NAME"
 chmod +x "$APP_DIR/MacOS/$APP_NAME"
 
-# Resources
-cp "Sources/QuillKit/Resources/editor.html" "$RESOURCES_DIR/editor.html"
-cp "Sources/QuillKit/Resources/tiptap-bundle.js" "$RESOURCES_DIR/tiptap-bundle.js"
-cp "Sources/QuillKit/Resources/marked-bundle.js" "$RESOURCES_DIR/marked-bundle.js"
-cp "Sources/QuillKit/Resources/editor-transforms.js" "$RESOURCES_DIR/editor-transforms.js"
-cp "Sources/QuillKit/Resources/block-parser.js" "$RESOURCES_DIR/block-parser.js"
-cp "Sources/QuillKit/Resources/block-descriptors.js" "$RESOURCES_DIR/block-descriptors.js"
-cp "Sources/QuillKit/Resources/block-settings.js" "$RESOURCES_DIR/block-settings.js"
+# Resources: the whole directory, less its notes file and dotfiles
+rsync -a --exclude CLAUDE.md --exclude ".*" "Sources/QuillKit/Resources/" "$RESOURCES_DIR/"
 
 # Accent colour and app icon. Compiled, not copied — NSAccentColorName and
 # CFBundleIconName below only resolve out of Assets.car.

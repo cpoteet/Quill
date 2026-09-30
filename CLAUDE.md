@@ -101,9 +101,8 @@ See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output re
 
 ## Gotchas
 
-These three fail silently with the whole test suite green:
+These two fail silently with the whole test suite green:
 
-- **`build.sh` copies each `Resources/` file by name — a new resource needs its own `cp` line or it 404s at runtime** — the assemble step lists each file individually rather than copying the directory. Swift builds fine and the tests pass (jsdom loads from the source tree), so a missing line shows up only as a silently undefined global in the running app.
 - **A top-level `const` in a Resources JS file is NOT reachable as `window.x` from `editor.html`; only `function` declarations are** — classic scripts share one global lexical scope, so a top-level `const` is reachable by *bare identifier* from another classic script but never as a property of `window`/`globalThis`. Since `editor-transforms.js` resolves `block-descriptors.js` as `globalThis` in the browser and as a CommonJS `require` under Node, a `const` reads `undefined` in the app while working perfectly in every Node test. Anything crossing that boundary must be a `function` declaration (`modelsBlockName` is the pattern) or explicitly assigned to `window`. Only the real-`editor.html`-in-jsdom harness catches this class of bug.
 - **WKWebView rewrites pasted HTML before the page sees it, and jsdom cannot** — HTML from another app or site arrives with every element's computed style inline and its comments stripped, and a selection holding `<details>` is mis-serialized. A paste fix proven only in jsdom proves nothing about that; run the real-WebKit harness (`Scripts/fixtures/paste/README.md`), and keep new captures of what WebKit delivered in `Scripts/fixtures/paste/`.
 

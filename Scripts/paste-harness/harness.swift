@@ -16,7 +16,6 @@ final class Harness: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     var results: [[String: Any]] = []
     var index = 0
     var sourceLoaded: (() -> Void)?
-    var editorReady = false
 
     func start() {
         let config = WKWebViewConfiguration()
