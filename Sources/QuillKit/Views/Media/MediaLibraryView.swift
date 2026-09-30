@@ -255,7 +255,7 @@ extension MediaLibraryView {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(media.sourceURL, forType: .string)
         case .openInBrowser:
-            guard let url = URL(string: media.link) else { return }
+            guard let url = URL(string: media.link), EditorCoordinator.isAllowedExternalURL(url) else { return }
             NSWorkspace.shared.open(url)
         case .delete:
             mediaPendingDelete = media

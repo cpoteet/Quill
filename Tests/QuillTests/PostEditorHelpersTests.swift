@@ -6,6 +6,11 @@ import Testing
 
     // MARK: - previewURL (Issue 2)
 
+    @Test func previewURLRefusesANonWebScheme() {
+        #expect(PostEditorView.previewURL(from: "file:///etc/passwd") == nil)
+        #expect(PostEditorView.previewURL(from: "javascript:alert(1)") == nil)
+    }
+
     @Test func previewURLAppendsFreshQueryToCleanURL() {
         let url = PostEditorView.previewURL(from: "https://example.com/my-post/")
         #expect(url?.query == "preview=true")

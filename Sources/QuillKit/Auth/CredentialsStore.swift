@@ -1,8 +1,6 @@
 import Foundation
 
-/// Stores credentials as a JSON file in ~/Library/Application Support/Quill/.
-/// chmod 600 keeps it owner-read/write only — same effective security as the
-/// system keychain for a non-sandboxed app, without any password prompts.
+/// An owner-only (0600) JSON file: other users cannot read it, but unlike the keychain any process of this user can.
 public struct CredentialsStore {
     private static let store = JSONFileStore<Credentials>("credentials.json")
 

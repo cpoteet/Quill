@@ -2579,7 +2579,15 @@
       content: 'inline*',
       priority: 210,
       addAttributes() {
-        return { href: { default: null, parseHTML: el => el.querySelector('a')?.getAttribute('href') || null } }
+        return {
+          href: {
+            default: null,
+            parseHTML: el => {
+              const href = el.querySelector('a')?.getAttribute('href')
+              return href && isCarryableAttr('href', href) ? href : null
+            },
+          },
+        }
       },
       // contentElement consumes the anchor so the Link mark never claims it and
       // renderHTML stays the only thing that emits one.

@@ -4,6 +4,18 @@ import Testing
 
 @Suite struct EditorCoordinatorTests {
 
+    // MARK: - isEditorPage
+
+    @Test func onlyTheEditorsOwnFileMayLoad() {
+        let editor = URL(fileURLWithPath: "/App/Quill.app/Contents/Resources/editor.html")
+        #expect(EditorCoordinator.isEditorPage(editor, editorURL: editor))
+        #expect(EditorCoordinator.isEditorPage(URL(string: "file:///App/Quill.app/Contents/Resources/editor.html#top")!, editorURL: editor))
+        #expect(!EditorCoordinator.isEditorPage(URL(fileURLWithPath: "/App/Quill.app/Contents/Resources/tiptap-bundle.js"), editorURL: editor))
+        #expect(!EditorCoordinator.isEditorPage(URL(fileURLWithPath: "/Users/me/Documents/notes.html"), editorURL: editor))
+        #expect(!EditorCoordinator.isEditorPage(URL(fileURLWithPath: "/App/Quill.app/Contents/Resources/../../../../etc/passwd"), editorURL: editor))
+        #expect(!EditorCoordinator.isEditorPage(URL(string: "https://example.com/editor.html")!, editorURL: editor))
+    }
+
     // MARK: - isAllowedExternalURL (S2)
 
     @Test func httpURLIsAllowed() {

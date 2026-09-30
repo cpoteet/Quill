@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 531 Swift tests + 1,492 JS tests (1,491 pass, 1 skipped), no failures._
+_Last updated: 2026-09-29 — 534 Swift tests + 1,493 JS tests (1,492 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (531 tests)
+1. **Swift tests** — `swift test` (534 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (5 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (275 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (276 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (40 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (531 tests, 35 suites)
+## Swift test suite (534 tests, 35 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -126,7 +126,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
 | 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 62 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
-| 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 8 | Round-trip, chmod 600, atomic write, nil-on-absent |
+| 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 15 | Autosave CRUD, one-per-post, keyed by site, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
@@ -139,8 +139,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 16 | `isAllowedExternalURL` URL scheme allowlist; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 44 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 45 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -377,7 +377,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 ---
 
-### 6. Storage — `JSONFileStoreTests` (8 tests)
+### 6. Storage — `JSONFileStoreTests` (9 tests)
 
 File: `Tests/QuillTests/JSONFileStoreTests.swift`
 
@@ -391,6 +391,7 @@ Tests use an `in: baseDirectory` parameter pointing to a per-test temp dir — f
 | `deleteWhenAbsentDoesNotThrow` | `delete()` on missing file is a no-op |
 | `overwriteKeepsLatestValue` | Save twice → one file with the latest value |
 | `savedFileHasChmod600` | Posix permissions after save are `0o600` (security regression guard) |
+| `savingLeavesOnlyTheOwnerOnlyFileBehind` | Saving over a 0644 file leaves it 0600, readable, and no temporary file behind. The file is created 0600 before its contents are written; that ordering is not observable from a test |
 | `decodeFailureThrows` | Malformed JSON on disk → `load()` throws |
 | `distinctFilenamesDontCollide` | Two stores with different names are independent |
 
@@ -793,7 +794,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (16 tests)
+### 19. Security — `EditorCoordinatorTests` (17 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -801,6 +802,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 | Test | What it checks |
 |---|---|
+| `onlyTheEditorsOwnFileMayLoad` | The web view may load only `editor.html` itself (a fragment allowed): another bundle file, a local page, a `..` path out of the bundle, or a web URL of the same name is cancelled |
 | `httpURLIsAllowed` | `http://` → allowed |
 | `httpsURLIsAllowed` | `https://` → allowed |
 | `mailtoURLIsAllowed` | `mailto:` → allowed |
@@ -820,7 +822,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (44 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (45 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -830,6 +832,7 @@ Tests `PostEditorView` static helpers that are pure functions and can be exercis
 
 | Test | What it checks |
 |---|---|
+| `previewURLRefusesANonWebScheme` | A `file:` or `javascript:` link from the server gives no preview URL, so nothing is opened |
 | `previewURLAppendsFreshQueryToCleanURL` | Pretty permalink gets `?preview=true` appended |
 | `previewURLAppendsPreviewAlongsideExistingQuery` | Plain permalink `/?p=123` becomes `/?p=123&preview=true` (not double `?`) |
 | `previewURLReplacesExistingPreviewFalseParam` | Existing `preview=false` is replaced, not duplicated |
@@ -2226,7 +2229,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (275 tests)
+## JS container tests (276 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2259,7 +2262,7 @@ Five container blocks are covered end to end — **Columns**, **Details**, **But
 | `saves with wp:details delimiters` | The delimiter pair is emitted on save |
 | `summary text stays in the summary on save` | `<summary>Mine</summary>` survives as a summary rather than being hoisted into the body |
 
-### `buttons block` (21 tests)
+### `buttons block` (22 tests)
 
 The Link mark also matches `a[href]`, so without a `contentElement` it claimed the button's own anchor: the label saved twice over, and a button with no href lost its label out of the block entirely. Most of this group exists to pin that fix and the link-picker behavior built on it.
 
@@ -2268,6 +2271,7 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `inserts one button by default` | `insertButtons()` produces a `buttonsBlock` with one child |
 | `parses WordPress buttons markup` | Real `wp-block-buttons`/`wp-block-button` markup parses to `buttonsBlock` |
 | `preserves the button href on save` | A loaded button's `href` survives the save transform |
+| `a button link with a script URL loses the URL but keeps its label` | A `java\tscript:` href on a button is dropped on load (the `isCarryableAttr` check), so it reaches neither the live editor nor the save; the label stays |
 | `saves with wp:buttons and wp:button delimiters` | Both delimiter types are emitted |
 | `a button emits exactly one anchor` | Regression: exactly one `<a>` in the output, with the full core class list and href intact |
 | `a button with no href keeps its label inside the block` | Regression: the label stays inside `div.wp-block-button` and nothing leaks past the closing `wp:buttons` delimiter |

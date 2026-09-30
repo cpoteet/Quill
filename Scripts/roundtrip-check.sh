@@ -14,10 +14,11 @@ OUT="${TMPDIR:-/tmp}/quill-roundtrip-$POST_ID"
 mkdir -p "$OUT"
 
 SITE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["siteURL"].rstrip("/"))' "$CRED")
-AUTH=$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d["username"]+":"+d["appPassword"])' "$CRED")
+# A curl config line on stdin, so the password never appears in a process list.
+AUTH_CONFIG=$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print("user = "+json.dumps(d["username"]+":"+d["appPassword"],ensure_ascii=False))' "$CRED")
 
 for TYPE in posts pages; do
-  CODE=$(curl -sS -u "$AUTH" -o "$OUT/raw.json" -w '%{http_code}' \
+  CODE=$(printf '%s\n' "$AUTH_CONFIG" | curl -sS --config - -o "$OUT/raw.json" -w '%{http_code}' \
     "$SITE/wp-json/wp/v2/$TYPE/$POST_ID?context=edit&_fields=content,modified")
   [ "$CODE" = "200" ] && break
 done

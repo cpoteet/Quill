@@ -183,6 +183,16 @@ describe('buttons block', () => {
     assert.match(out, /href="https:\/\/x\.test"/)
   })
 
+  test('a button link with a script URL loses the URL but keeps its label', () => {
+    editor.commands.setContent(
+      '<div class="wp-block-buttons"><div class="wp-block-button">' +
+      '<a class="wp-block-button__link" href="java\tscript:alert(1)">Go</a></div></div>', false)
+    assert.doesNotMatch(win.document.querySelector('.ProseMirror').innerHTML, /script:/)
+    const out = win.toWordPressHTML(editor.getHTML(), win.document)
+    assert.doesNotMatch(out, /script:/)
+    assert.match(out, />Go<\/a>/)
+  })
+
   test('saves with wp:buttons and wp:button delimiters', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertButtons()

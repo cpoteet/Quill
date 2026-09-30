@@ -24,14 +24,22 @@ public struct JSONFileStore<T: Codable>: Sendable {
         }
     }
 
+    // Created 0600 before any byte is written, then renamed over the old file.
     public func save(_ value: T) throws {
         let url = try fileURL
         let data = try JSONEncoder().encode(value)
-        try data.write(to: url, options: [.atomic])
-        try FileManager.default.setAttributes(
-            [.posixPermissions: NSNumber(value: Int16(0o600))],
-            ofItemAtPath: url.path
-        )
+        let temp = url.deletingLastPathComponent().appendingPathComponent(".\(filename).\(UUID().uuidString)")
+        let fd = open(temp.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        do {
+            let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+            try handle.write(contentsOf: data)
+            try handle.close()
+            guard rename(temp.path, url.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        } catch {
+            unlink(temp.path)
+            throw error
+        }
     }
 
     public func load() throws -> T? {

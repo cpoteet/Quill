@@ -19,6 +19,18 @@ private struct Fixture: Codable, Equatable {
         return (JSONFileStore<Fixture>(filename, in: dir), dir)
     }
 
+    @Test func savingLeavesOnlyTheOwnerOnlyFileBehind() throws {
+        let (store, dir) = try makeStore("fixture.json")
+        let url = dir.appendingPathComponent("fixture.json")
+        try Data("{}".utf8).write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try store.save(Fixture(value: "a", count: 1))
+        let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        #expect(mode == 0o600)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path) == ["fixture.json"])
+        #expect(try store.load() == Fixture(value: "a", count: 1))
+    }
+
     @Test func roundTrip() throws {
         let (store, _) = try makeStore("fixture.json")
         let fixture = Fixture(value: "hello", count: 42)

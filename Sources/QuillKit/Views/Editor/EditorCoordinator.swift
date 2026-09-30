@@ -373,7 +373,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             decisionHandler(.allow)
             return
         }
-        if url.isFileURL {
+        if let editorURL = Bundle.main.url(forResource: "editor", withExtension: "html"),
+           Self.isEditorPage(url, editorURL: editorURL) {
             decisionHandler(.allow)
             return
         }
@@ -382,6 +383,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             NSWorkspace.shared.open(url)
         }
         decisionHandler(.cancel)
+    }
+
+    // Any other file: URL, a local page or a path out of the bundle, is cancelled.
+    nonisolated static func isEditorPage(_ url: URL, editorURL: URL) -> Bool {
+        url.isFileURL && url.standardizedFileURL.path == editorURL.standardizedFileURL.path
     }
 
     /// Returns true for URL schemes that are safe to open in the system browser.

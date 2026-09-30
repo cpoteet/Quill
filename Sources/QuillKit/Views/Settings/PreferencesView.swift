@@ -160,13 +160,6 @@ public struct PreferencesView: View {
             isSaving = false
         }
 
-        guard !aiAPIKey.isEmpty else {
-            saveSuccess = true
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            saveSuccess = false
-            return
-        }
-
         // Determine whether the style guide needs regeneration:
         // - Empty sample IDs                                  → clear guide, no regen
         // - IDs unchanged + site unchanged + existing guide   → keep guide, skip regen
@@ -183,7 +176,7 @@ public struct PreferencesView: View {
             existingGuide = nil
         }
 
-        let shouldRegen = !aiSamplePostIDs.isEmpty && existingGuide == nil
+        let shouldRegen = !aiAPIKey.isEmpty && !aiSamplePostIDs.isEmpty && existingGuide == nil
 
         // Persist immediately with whatever guide is valid right now
         var current = AISettings(
@@ -192,7 +185,12 @@ public struct PreferencesView: View {
             webSearchEnabled: aiWebSearchEnabled,
             styleGuide: existingGuide
         )
-        try? AISettingsStore.save(current)
+        do {
+            try AISettingsStore.save(current)
+        } catch {
+            saveError = "Couldn't save the Claude settings: \(error.localizedDescription)"
+            return
+        }
         onSaveAISettings?(current)
 
         // Optionally regenerate the style guide
@@ -225,7 +223,7 @@ public struct PreferencesView: View {
                         useWebSearch: false
                     ).text
                     current.styleGuide = guide
-                    try? AISettingsStore.save(current)
+                    try AISettingsStore.save(current)
                     onSaveAISettings?(current)
                 } catch {
                     saveError = "Style analysis failed: \(error.localizedDescription)"

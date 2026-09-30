@@ -821,18 +821,28 @@ public struct PostEditorView: View {
     private func flushToDB(for oldItem: PostItem) async {
         // Same reason as performAutosave: the squashed content must not reach the store.
         if alarmBlocksSaving { return }
-        switch oldItem {
+        do {
+            try writeLocalCopy(of: oldItem)
+        } catch {
+            presentToast("Unsaved changes to “\(title)” couldn't be kept: \(error.localizedDescription)", isError: true)
+            return
+        }
+        if case .local(let draft) = oldItem,
+           let updated = try? services.draftStore.load(id: draft.id),
+           let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
+            appState.localDrafts[idx] = updated
+        }
+    }
+
+    private func writeLocalCopy(of item: PostItem) throws {
+        switch item {
         case .remote(let post):
             guard bodyIsDirty else { return }
-            try? services.autosaveStore.save(
+            try services.autosaveStore.save(
                 site: loadedSite, postID: post.id, title: title, content: htmlContent,
                 footnotes: footnotesMeta, serverModified: lastSavedServerModified)
         case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
-            if let updated = try? services.draftStore.load(id: draft.id),
-               let idx = appState.localDrafts.firstIndex(where: { $0.id == draft.id }) {
-                appState.localDrafts[idx] = updated
-            }
+            try services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
         }
     }
 
@@ -847,14 +857,10 @@ public struct PostEditorView: View {
     private func performAutosave() async {
         // Or the squashed content silently becomes the local draft.
         if alarmBlocksSaving { return }
-        switch item {
-        case .remote(let post):
-            guard bodyIsDirty else { return }
-            try? services.autosaveStore.save(
-                site: loadedSite, postID: post.id, title: title, content: htmlContent,
-                footnotes: footnotesMeta, serverModified: lastSavedServerModified)
-        case .local(let draft):
-            try? services.draftStore.update(id: draft.id, title: title, content: htmlContent, excerpt: settings.excerpt, footnotes: footnotesMeta)
+        do {
+            try writeLocalCopy(of: item)
+        } catch {
+            presentToast("Autosave failed: \(error.localizedDescription)", isError: true)
         }
     }
 
@@ -1338,7 +1344,8 @@ public struct PostEditorView: View {
     }
 
     nonisolated static func previewURL(from link: String) -> URL? {
-        guard var components = URLComponents(string: link) else { return nil }
+        guard var components = URLComponents(string: link),
+              ["http", "https"].contains(components.scheme?.lowercased()) else { return nil }
         var items = components.queryItems ?? []
         items.removeAll { $0.name == "preview" }
         items.append(URLQueryItem(name: "preview", value: "true"))
