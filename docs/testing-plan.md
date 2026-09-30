@@ -3432,7 +3432,7 @@ window's licence link all point at `quill.siolon.com`, which is published from
 - [ ] Help → **User Guide** opens `quill.siolon.com/docs.html` in the default browser, and the page loads (not a 404).
 - [ ] Help → **Changelog** opens `quill.siolon.com/changelog.html`, and the newest release at the top matches the running build's version.
 - [ ] The Help menu contains only those two items — no leftover "Quill Help" wording, and no macOS-injected Search field behaviour that swallows them.
-- [ ] About Quill → the **License** link opens `quill.siolon.com/license.html`. The credit links (Tiptap, ProseMirror, SQLite.swift, Vecteezy) each open their own site.
+- [ ] About Quill → the **License** link opens `quill.siolon.com/license.html`. The credit links (Tiptap, ProseMirror, Marked, SQLite.swift) each open their own site.
 - [ ] The version shown in About matches the version the update checker compares against.
 
 **Menu commands**

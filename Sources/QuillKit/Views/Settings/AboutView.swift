@@ -70,13 +70,6 @@ struct AboutView: View {
                         copyright: "Copyright © 2014–2015 Stephen Celis",
                         license: "MIT License"
                     )
-
-                    NoticeEntry(
-                        name: "Quill Icon",
-                        url: "https://www.vecteezy.com/free-vector/quill",
-                        copyright: "Quill Vectors by Vecteezy",
-                        license: "Vecteezy Free License"
-                    )
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)

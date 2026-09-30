@@ -1,19 +1,15 @@
 # Brand assets
 
 Source art for the Quill logo. Nothing here is consumed by `build.sh` or the
-Swift build — these are the masters kept for reuse (README graphics, the
+Swift build — this is the master kept for reuse (README graphics, the
 website, press, future icon work).
 
 | File | What it is |
 | --- | --- |
-| `quill-logo.svg` | Vector master, 2964 × 2964, feather on an off-white background |
-| `quill-logo.eps` | Same artwork as EPS (Cairo-generated), for print and Illustrator |
-| `quill-logo-1920.jpg` | Flattened 1920 × 1920 raster, for anywhere vector isn't accepted |
+| `quill-logo.svg` | Vector master, 256 × 256, black feather on a transparent background |
 
-The feather path in `AppIcon.icon/Assets/feather.svg` is this same outline,
-scaled and recoloured white for the app icon. If the logo ever changes, that
-file has to be regenerated from the new master.
+Three copies are derived from this file. If the logo changes, regenerate all three:
 
-Note: the SVG and EPS both include the off-white background as a drawn
-rectangle, so neither is transparent. Delete the two background paths if you
-need the mark on its own.
+- `AppIcon.icon/Assets/feather.svg`: the same paths, scaled onto a 1024 canvas and recoloured white for the app icon
+- `site/images/quill-icon.svg`: the same paths and scale, black on an `#F4F4F4` square, for the website's favicon, nav and footer
+- `Sources/QuillKit/QuillMark.swift`: the same paths as a SwiftUI `Shape`, drawn in the empty states
