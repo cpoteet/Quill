@@ -358,29 +358,29 @@ Compare each view against the mockups file in a browser while building it. Layou
 - Consumes: `OnboardingModel` (Task 6), `QuillMark.view(_:size:)`, `Color.wpContentSurface`, and the app accent (`Color.accentColor`).
 - Produces: `struct OnboardingView: View { @ObservedObject var model: OnboardingModel }`
 
-- [ ] **Step 1: `OnboardingView`.**
+- [x] **Step 1: `OnboardingView`.**
   - Fills the window on `Color.wpContentSurface`. Holds a centered column 330pt wide that switches on `model.state`. Shows nothing for `.finished`.
   - `errorMessage` renders as `.callout` secondary text, under the field on Welcome and AI, and above Connect on Manual.
   - Each view runs its async action in a `Task`.
-- [ ] **Step 2: `OnboardingWelcomeView`.**
+- [x] **Step 2: `OnboardingWelcomeView`.**
   - Quill mark in the accent color at height 61, then the title "Welcome to Quill", the intro, and the "Site address" field bound to `address`.
   - A row with the link "Use an application password instead" (calls `useManualEntry`) on the left and Continue on the right.
   - Continue is disabled while `address` is empty or `isBusy`. While busy it shows a small `ProgressView` in place of its label.
-- [ ] **Step 3: `OnboardingWaitingView`.**
+- [x] **Step 3: `OnboardingWaitingView`.**
   - Two 52pt rounded tiles with the dots between them. The left tile is the Quill mark. The right tile is `siteIcon`, or the site name's first letter (white, semibold) on the accent color.
   - The middle dot pulses with an opacity animation that is off when `accessibilityReduceMotion` is on.
   - The tiles are `accessibilityHidden(true)`; the sentence carries the site name.
   - Then the Cancel button, and "Browser didn't open?" with the link "Open it again".
-- [ ] **Step 4: `OnboardingManualView`.**
+- [x] **Step 4: `OnboardingManualView`.**
   - Title and intro. The amber note only when `.manual(automatic: true)`: accent at 12% opacity behind text in the primary color, 8pt corner radius.
   - Three fields (`SecureField` for the password), the help line with the "Open Profile Page" link, which is disabled while `model.profileURL` is nil (an empty or unusable address).
   - Back and Connect.
-- [ ] **Step 5: `OnboardingAIView`.**
+- [x] **Step 5: `OnboardingAIView`.**
   - The "Connected to" line with `checkmark.circle.fill` in green (`Color.statusColor("publish")`).
   - Title, intro, and the key field (`SecureField`, prompt `sk-ant-…`).
   - The help line with the "Anthropic Console" link.
   - "Skip for Now" (bordered) and "Save" (prominent, default), aligned right. Save is disabled while the key is empty or `isBusy`.
-- [ ] **Step 6: Build.** Expected: compiles. The views aren't reachable yet; Task 8 wires them in.
+- [x] **Step 6: Build.** Expected: compiles. The views aren't reachable yet; Task 8 wires them in.
 
 ### Task 8: Wire it in and run it end to end
 
@@ -390,13 +390,13 @@ Compare each view against the mockups file in a browser while building it. Layou
 **Interfaces:**
 - Consumes: `OnboardingView`, `OnboardingModel.showsPanel`, and `handleCallback` (Tasks 6 and 7). The routing modifiers come from Task 1.
 
-- [ ] **Step 1: Wire `ContentView`.**
+- [x] **Step 1: Wire `ContentView`.**
   - Add `@StateObject private var onboarding = OnboardingModel()`.
   - In `body`, show `OnboardingView(model: onboarding)` when `onboarding.showsPanel`, and the existing `NavigationSplitView` otherwise. Keep `.toolbar(removing:)`, `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` and the frame on the outer view; they're load-bearing (see `Views/CLAUDE.md`).
   - In `.onAppear`, set `onboarding.appState = appState` before `loadCredentialsAtLaunch()`.
   - `.onOpenURL { url in Task { await onboarding.handleCallback(url) } }`
-- [ ] **Step 2: Remove the automatic `openSettings()`** from `loadCredentialsAtLaunch`, and remove the `openSettings` environment property if nothing else uses it. Keep the loading flags.
-- [ ] **Step 3: Build, launch, and run the first-run manual checks.**
+- [x] **Step 2: Remove the automatic `openSettings()`** from `loadCredentialsAtLaunch`, and remove the `openSettings` environment property if nothing else uses it. Keep the loading flags.
+- [x] **Step 3: Build, launch, and run the first-run manual checks.** *Done 2026-10-02.* Passed: Welcome with no Settings window; insecure and not-WordPress errors; manual entry from the link, Back keeping the address; waiting state on siolon.com (letter tile, since it sends an empty `site_icon_url`); Cancel; a decline callback and a real approval both reaching the same window; the AI step showing "Connected to Siolon"; Skip saving no AI settings and posts loading; Settings showing no key and its Save still working; a stale approval with no onboarding in progress ignored; dark mode (dev build forced dark); relaunch with credentials going straight to the app.
   - Move `~/Library/Application Support/Quill/credentials.json` and `ai_settings.json` to the scratchpad. Never delete them.
   - Relaunch, and connect a real site through browser approval, then work through every case below.
   - Restore both files when finished, and revoke the test "Quill on {Mac}" passwords on the site's profile.
@@ -409,7 +409,7 @@ Compare each view against the mockups file in a browser while building it. Layou
     - The Settings save still works.
     - Dark mode looks right.
     - Relaunching with credentials saved goes straight to the app.
-- [ ] **Step 4: Run `./test.sh`**, then the fixture check from the root `CLAUDE.md`. Expected: all pass. Stop and summarize.
+- [x] **Step 4: Run `./test.sh`**, then the fixture check from the root `CLAUDE.md`. Expected: all pass. Stop and summarize.
 
 ---
 

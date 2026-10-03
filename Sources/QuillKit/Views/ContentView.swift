@@ -2,25 +2,35 @@ import SwiftUI
 
 public struct ContentView: View {
     @EnvironmentObject private var appState: AppState
-    @Environment(\.openSettings) private var openSettings
+    @StateObject private var onboarding = OnboardingModel()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init() {}
 
     public var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(columnVisibility: $columnVisibility)
-                .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
-        } detail: {
-            detailContent
-                .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.wpContentSurface.ignoresSafeArea())
+        ZStack {
+            if onboarding.showsPanel {
+                OnboardingView(model: onboarding)
+            } else {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    SidebarView(columnVisibility: $columnVisibility)
+                        .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
+                } detail: {
+                    detailContent
+                        .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.wpContentSurface.ignoresSafeArea())
+                }
+            }
         }
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .frame(minWidth: 900, minHeight: 600)
-        .onAppear(perform: loadCredentialsAtLaunch)
+        .onAppear {
+            onboarding.appState = appState
+            loadCredentialsAtLaunch()
+        }
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+        .onOpenURL { url in Task { await onboarding.handleCallback(url) } }
     }
 
     private func loadCredentialsAtLaunch() {
@@ -31,7 +41,6 @@ public struct ContentView: View {
         appState.hasLoadedList = true
         appState.isLoadingMedia = false
         appState.hasLoadedMedia = true
-        openSettings()
     }
 
     @ViewBuilder
