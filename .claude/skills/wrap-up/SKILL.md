@@ -134,6 +134,8 @@ Dispatch **two subagents** in parallel. The user guide gets its own, because sha
 >
 > Report back only a list of the edits you made.
 
+If 8a's report doesn't cover all three parts of `testing-plan.md`, send it back.
+
 For substantial architectural change, run `claude-md-management:revise-claude-md` instead of the `CLAUDE.md` portion above.
 
 **8b — User guide (`site/docs.html`).** Dispatch it on every lane B or C run; the subagent decides whether anything user-visible changed, not the main thread. Brief: the value of `$BASE`, the change summary from Step 2, and this instruction:
