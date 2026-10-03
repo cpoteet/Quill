@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First-run onboarding mockups</title>
+<style>
+  :root { --accent:#C77700; --ink:#1d1d1f; --muted:#6e6e73; --line:#c9c9cc; --page:#e9e7e4; }
+  body { margin:0; padding:32px 16px 64px; background:var(--page); font-family:-apple-system, BlinkMacSystemFont, sans-serif; color:var(--ink); }
+  main { max-width:760px; margin:0 auto; }
+  header p, .caption { font-size:14px; line-height:1.5; color:#48484a; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:40px 0 6px; }
+  .win { background:#fff; border-radius:12px; box-shadow:0 0 0 0.5px rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.18); height:470px; position:relative; overflow:hidden; margin-top:14px; }
+  .lights { position:absolute; top:14px; left:16px; display:flex; gap:8px; }
+  .lights i { width:12px; height:12px; border-radius:50%; display:block; }
+  .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+  .panel { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .stack { width:330px; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .mark { width:30px; height:61px; margin-bottom:22px; }
+  .title-lg { font-size:26px; font-weight:600; letter-spacing:-0.02em; margin:0 0 8px; }
+  .title { font-size:22px; font-weight:600; letter-spacing:-0.02em; margin:0 0 8px; }
+  .lede { font-size:13px; line-height:1.45; color:var(--muted); margin:0 0 22px; }
+  .lede b { color:var(--ink); font-weight:500; }
+  .small { font-size:12px; color:var(--muted); }
+  .link { font-size:12px; color:var(--accent); }
+  .btn { background:var(--accent); color:#fff; font-size:13px; font-weight:500; padding:5px 14px; border-radius:7px; box-shadow:0 0.5px 1px rgba(0,0,0,.25); }
+  .btn2 { background:#fff; color:var(--ink); font-size:13px; padding:5px 14px; border-radius:7px; box-shadow:0 0 0 0.5px rgba(0,0,0,.2), 0 0.5px 1px rgba(0,0,0,.15); }
+  .field { width:100%; text-align:left; margin-bottom:12px; }
+  .field label { display:block; font-size:12px; font-weight:500; color:#3a3a3c; margin-bottom:5px; }
+  .input { height:26px; border:1px solid var(--line); border-radius:6px; padding:0 8px; display:flex; align-items:center; font-size:13px; }
+  .input.ph { color:#9a9aa0; }
+  .help { font-size:12px; color:var(--muted); line-height:1.4; text-align:left; width:100%; margin:-2px 0 4px; }
+  .row { width:100%; display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+  .row.end { justify-content:flex-end; gap:10px; }
+  .handoff { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+  .tile { width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 0.5px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08); background:#fff; }
+  .site { background:#2f5d50; color:#fff; font:600 22px -apple-system, sans-serif; }
+  .dots { display:flex; gap:5px; } .dots i { width:5px; height:5px; border-radius:50%; background:#d1d1d6; display:block; } .dots i:nth-child(2){ background:var(--accent); }
+  .note { background:#fbf4e8; border-radius:8px; padding:9px 11px; font-size:12px; line-height:1.4; color:#5c4517; text-align:left; width:100%; box-sizing:border-box; margin-bottom:14px; }
+  .done { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-bottom:18px; }
+  .done svg { flex:none; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>First-run onboarding</h1>
+  <p>Approved layouts for <code>2026-10-02-first-run-onboarding-design.md</code>. These are web approximations: in SwiftUI the fields are system <code>.roundedBorder</code> text fields and the buttons are standard macOS buttons, so take layout, hierarchy and copy from here, not pixel values. Everything is San Francisco. "Lantern &amp; Ink" stands in for the user's site. Styles are inline because this is a single reference file, not app code.</p>
+</header>
+
+<h2>1. Welcome</h2>
+<p class="caption">Replaces the sidebar and editor while no credentials are saved.</p>
+<div class="win"><div class="lights"><i></i><i></i><i></i></div>
+  <div class="panel"><div class="stack">
+    <svg class="mark" viewBox="72 22 106 215" aria-hidden="true"><path fill="#C77700" fill-rule="evenodd" d="M178 22C174 47 163 70 147 91C160 84 166 75 169 68C168 89 154 113 135 130C151 123 159 111 163 104C157 128 142 149 120 162C137 154 146 145 150 138C140 165 120 184 92 190C79 173 77 157 82 137C81 151 84 160 88 165C82 141 89 122 101 106C96 120 94 133 97 141C92 121 102 100 113 90C105 106 104 119 106 126C103 104 119 86 129 74C119 91 118 104 119 109C121 79 144 40 178 22ZM170 37C144 79 111 138 91 188L94 188C114 138 146 78 170 37Z"/><path fill="#C77700" d="M92 181C85 200 79 218 72 237L81 230C85 214 91 198 97 183Z"/></svg>
+    <p class="title-lg">Welcome to Quill</p>
+    <p class="lede" style="margin-bottom:26px">Write and edit your WordPress posts and pages on your Mac. Connect your site to get started.</p>
+    <div class="field"><label>Site address</label><div class="input ph">example.com</div></div>
+    <div class="row" style="margin-top:4px"><span class="link">Use an application password instead</span><span class="btn">Continue</span></div>
+  </div></div>
+</div>
+
+<h2>2. Waiting for approval</h2>
+<p class="caption">The middle dot pulses. With no site icon, the right tile shows the first letter of the site name on the accent colour.</p>
+<div class="win"><div class="lights"><i></i><i></i><i></i></div>
+  <div class="panel"><div class="stack">
+    <div class="handoff">
+      <div class="tile"><svg width="20" height="40" viewBox="72 22 106 215" aria-hidden="true"><path fill="#C77700" fill-rule="evenodd" d="M178 22C174 47 163 70 147 91C160 84 166 75 169 68C168 89 154 113 135 130C151 123 159 111 163 104C157 128 142 149 120 162C137 154 146 145 150 138C140 165 120 184 92 190C79 173 77 157 82 137C81 151 84 160 88 165C82 141 89 122 101 106C96 120 94 133 97 141C92 121 102 100 113 90C105 106 104 119 106 126C103 104 119 86 129 74C119 91 118 104 119 109C121 79 144 40 178 22ZM170 37C144 79 111 138 91 188L94 188C114 138 146 78 170 37Z"/><path fill="#C77700" d="M92 181C85 200 79 218 72 237L81 230C85 214 91 198 97 183Z"/></svg></div>
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="tile site">L</div>
+    </div>
+    <p class="title">Approve Quill in your browser</p>
+    <p class="lede">Log in to <b>Lantern &amp; Ink</b> if asked, then approve the connection. Quill continues on its own.</p>
+    <span class="btn2">Cancel</span>
+    <p class="small" style="margin-top:18px">Browser didn't open? <span class="link">Open it again</span></p>
+  </div></div>
+</div>
+
+<h2>3. Manual fallback</h2>
+<p class="caption">From the Welcome link, or automatically when the site has browser approval turned off. The amber note shows only in the automatic case.</p>
+<div class="win"><div class="lights"><i></i><i></i><i></i></div>
+  <div class="panel"><div class="stack">
+    <p class="title">Connect with an application password</p>
+    <p class="lede" style="margin-bottom:16px">Create one in WordPress, then paste it here.</p>
+    <div class="note">This site doesn't allow approving apps from the browser, so Quill needs a password you create yourself.</div>
+    <div class="field"><label>Site address</label><div class="input">lanternandink.com</div></div>
+    <div class="field"><label>Username</label><div class="input ph">Your WordPress username</div></div>
+    <div class="field" style="margin-bottom:6px"><label>Application password</label><div class="input ph">xxxx xxxx xxxx xxxx xxxx xxxx</div></div>
+    <p class="help"><span class="link">Open Profile Page</span> to create one under Application Passwords.</p>
+    <div class="row"><span class="link">Back</span><span class="btn">Connect</span></div>
+  </div></div>
+</div>
+
+<h2>4. AI writing (optional)</h2>
+<p class="caption">Shown once, right after the site connects, and only when no Anthropic key is saved. Skip and Save both go straight to the app, where posts start loading.</p>
+<div class="win"><div class="lights"><i></i><i></i><i></i></div>
+  <div class="panel"><div class="stack">
+    <p class="done"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="#3E9E63"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Connected to <b style="color:#1d1d1f;font-weight:500">&nbsp;Lantern &amp; Ink</b></p>
+    <p class="title">Add AI writing help</p>
+    <p class="lede">Quill can draft posts, review your writing and rewrite selections with Claude. It uses your own Anthropic API key, and Anthropic bills you for what you use.</p>
+    <div class="field" style="margin-bottom:6px"><label>Anthropic API key</label><div class="input ph">sk-ant-…</div></div>
+    <p class="help">Get a key from the <span class="link">Anthropic Console</span>. You can change it later in Settings.</p>
+    <div class="row end"><span class="btn2">Skip for Now</span><span class="btn">Save</span></div>
+  </div></div>
+</div>
+</main>
+</body>
+</html>
