@@ -19,26 +19,20 @@ struct OnboardingManualView: View {
                 .padding(.bottom, 16)
 
             if automatic {
-                Text("This site doesn't allow approving apps from the browser, so Quill needs a password you create yourself.")
-                    .font(.callout)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 9)
-                    .padding(.horizontal, 11)
-                    .background(Color.accentColor.opacity(0.12), in: .rect(cornerRadius: 8))
+                OnboardingNote(message: "This site doesn't allow approving apps from the browser, so Quill needs a password you create yourself.")
                     .padding(.bottom, 14)
             }
 
             VStack(spacing: 12) {
                 OnboardingField(label: "Site address") {
-                    TextField("Site address", text: $model.address, prompt: Text("example.com"))
+                    TextField("Site address", text: $model.address, prompt: Text(""))
                 }
                 OnboardingField(label: "Username") {
-                    TextField("Username", text: $model.username, prompt: Text("Your WordPress username"))
+                    TextField("Username", text: $model.username, prompt: Text(""))
                 }
                 VStack(spacing: 6) {
                     OnboardingField(label: "Application password") {
-                        SecureField("Application password", text: $model.appPassword, prompt: Text("xxxx xxxx xxxx xxxx xxxx xxxx"))
+                        SecureField("Application password", text: $model.appPassword, prompt: Text(""))
                     }
                     profileHelp
                 }

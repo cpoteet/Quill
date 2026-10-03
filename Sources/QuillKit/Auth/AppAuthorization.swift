@@ -26,7 +26,7 @@ public enum AppAuthorization {
             ("app_name", "Quill on \(deviceName)"),
             ("app_id", appID),
             ("success_url", callback),
-            ("reject_url", callback),
+            ("reject_url", "\(callback)&success=false"),
         ]
         var components = URLComponents(url: base, resolvingAgainstBaseURL: false)!
         components.percentEncodedQueryItems = (components.percentEncodedQueryItems ?? []) + parameters.map {

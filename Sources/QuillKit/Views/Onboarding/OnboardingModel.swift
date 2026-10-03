@@ -10,6 +10,11 @@ import Foundation
         case finished
     }
 
+    public struct Notice: Equatable {
+        public let title: String
+        public let detail: String
+    }
+
     public struct Dependencies {
         var discover: @MainActor (URL) async throws -> DiscoveredSite
         var loadIcon: @MainActor (URL) async -> NSImage?
@@ -34,12 +39,12 @@ import Foundation
         }
     }
 
-    private static let declinedMessage = "Quill wasn't approved. Try again, or use an application password."
+    private static let declinedNotice = Notice(title: "Quill wasn't approved.", detail: "Continue to try again, or use an application password.")
     private static let anthropicUnreachableMessage = "Couldn't reach Anthropic. Check your connection, or skip and add the key later in Settings."
-    private static let anthropicConsoleURL = URL(string: "https://console.anthropic.com/settings/keys")!
+    private static let apiKeysURL = URL(string: "https://platform.claude.com/settings/keys")!
 
     @Published public private(set) var state: State = .welcome {
-        didSet { if state != oldValue { errorMessage = nil } }
+        didSet { if state != oldValue { errorMessage = nil; notice = nil } }
     }
     @Published public var address = ""
     @Published public var username = ""
@@ -48,6 +53,7 @@ import Foundation
     @Published public private(set) var siteIcon: NSImage?
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
+    @Published public private(set) var notice: Notice?
     public weak var appState: AppState?
 
     private let dependencies: Dependencies
@@ -64,7 +70,7 @@ import Foundation
 
     public var profileURL: URL? {
         if let site = discoveredSiteForAddress {
-            return SiteDiscovery.profileURL(site: site.siteURL, authorizationURL: site.authorizationURL)
+            return SiteDiscovery.profileURL(site: site.installURL ?? site.siteURL, authorizationURL: site.authorizationURL)
         }
         guard let site = try? SiteDiscovery.normalize(address) else { return nil }
         return SiteDiscovery.profileURL(site: site, authorizationURL: nil)
@@ -81,6 +87,7 @@ import Foundation
         guard state == .welcome, !isBusy else { return }
         isBusy = true
         errorMessage = nil
+        notice = nil
         let site: DiscoveredSite
         do {
             let url = try SiteDiscovery.normalize(address)
@@ -131,14 +138,14 @@ import Foundation
             return
         case .rejected:
             state = .welcome
-            errorMessage = Self.declinedMessage
+            notice = Self.declinedNotice
         case .approved(let username, let password):
             let credentials = Credentials(siteURL: site.siteURL, username: username, appPassword: password)
             do {
                 try await connect(credentials, siteName: site.name)
             } catch {
                 state = .welcome
-                errorMessage = error.localizedDescription
+                notice = Notice(title: "Quill was approved, but couldn't connect.", detail: error.localizedDescription)
             }
         }
     }
@@ -202,7 +209,7 @@ import Foundation
         state = .finished
     }
 
-    public func openAnthropicConsole() {
-        dependencies.openURL(Self.anthropicConsoleURL)
+    public func openAPIKeysPage() {
+        dependencies.openURL(Self.apiKeysURL)
     }
 }

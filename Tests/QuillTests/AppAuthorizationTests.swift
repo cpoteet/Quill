@@ -34,7 +34,7 @@ struct AppAuthorizationTests {
         #expect(queryValue("app_name", in: url) == "Quill on Chris's MacBook")
         #expect(queryValue("app_id", in: url) == AppAuthorization.appID)
         #expect(queryValue("success_url", in: url) == "quill://authorize?nonce=abc")
-        #expect(queryValue("reject_url", in: url) == "quill://authorize?nonce=abc")
+        #expect(queryValue("reject_url", in: url) == "quill://authorize?nonce=abc&success=false")
     }
 
     @Test func approvalURLEncodesReservedCharactersInValues() {

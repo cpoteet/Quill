@@ -46,6 +46,30 @@ struct OnboardingField<Field: View>: View {
     }
 }
 
+struct OnboardingNote: View {
+    var title: String?
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
+            if let title {
+                Text("\(Text(title).fontWeight(.semibold)) \(message)")
+            } else {
+                Text(message)
+            }
+        }
+        .font(.callout)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 11)
+        .background(Color.accentColor.opacity(0.12), in: .rect(cornerRadius: 8))
+    }
+}
+
 struct OnboardingError: View {
     let message: String?
 

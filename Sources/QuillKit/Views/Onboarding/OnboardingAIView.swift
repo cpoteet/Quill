@@ -29,17 +29,17 @@ struct OnboardingAIView: View {
 
             VStack(spacing: 6) {
                 OnboardingField(label: "Anthropic API key") {
-                    SecureField("Anthropic API key", text: $model.apiKey, prompt: Text("sk-ant-…"))
+                    SecureField("Anthropic API key", text: $model.apiKey, prompt: Text(""))
                 }
                 OnboardingError(message: model.errorMessage)
-                Text("Get a key from the [Anthropic Console](https://console.anthropic.com/settings/keys). You can change it later in Settings.")
+                Text("Get a key from the [Claude Platform](https://platform.claude.com/settings/keys). You can change it later in Settings.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .tint(Color.accentColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .environment(\.openURL, OpenURLAction { _ in
-                        model.openAnthropicConsole()
+                        model.openAPIKeysPage()
                         return .handled
                     })
             }

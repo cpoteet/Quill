@@ -131,7 +131,7 @@ public struct PreferencesView: View {
             let host = url.host?.lowercased() ?? ""
             let isLocalHost = host == "localhost" || host == "127.0.0.1" || host == "::1"
             guard scheme == "https" || (scheme == "http" && isLocalHost) else {
-                saveError = "Site URL must use https:// (http is allowed only for localhost)."
+                saveError = "Site URL must use HTTPS (HTTP is allowed only for localhost)."
                 return
             }
             isSaving = true

@@ -14,7 +14,7 @@ import Testing
     }
 
     private static let fullIndex = """
-    {"name":"Lantern & Ink","namespaces":["wp/v2"],"site_icon_url":"https://example.com/icon.png",
+    {"name":"Lantern & Ink","url":"https://www.example.com","namespaces":["wp/v2"],"site_icon_url":"https://example.com/icon.png",
      "authentication":{"application-passwords":{"endpoints":{"authorization":"https://example.com/wp-admin/authorize-application.php"}}}}
     """
 
@@ -93,7 +93,8 @@ import Testing
             siteURL: site,
             name: "Lantern & Ink",
             iconURL: URL(string: "https://example.com/icon.png"),
-            authorizationURL: URL(string: "https://example.com/wp-admin/authorize-application.php")
+            authorizationURL: URL(string: "https://example.com/wp-admin/authorize-application.php"),
+            installURL: URL(string: "https://www.example.com")
         ))
     }
 
@@ -117,6 +118,12 @@ import Testing
         serve(#"{"namespaces":["wp/v2"],"authentication":{"application-passwords":{"endpoints":{"authorization":"http://example.com/wp-admin/authorize-application.php"}}}}"#)
         let found = try await discovery.discover(site)
         #expect(found.authorizationURL == nil)
+    }
+
+    @Test func discoverDropsInsecureInstallURL() async throws {
+        serve(#"{"url":"http://internal.example","namespaces":["wp/v2"]}"#)
+        let found = try await discovery.discover(site)
+        #expect(found.installURL == nil)
     }
 
     @Test func discoverTreatsEmptyStringsAsNil() async throws {
@@ -151,6 +158,25 @@ import Testing
         serve(Self.fullIndex, url: URL(string: "https://www.example.com/wp-json/"))
         let found = try await discovery.discover(site)
         #expect(found.siteURL == URL(string: "https://www.example.com"))
+    }
+
+    @Test func discoverAdoptsWWWHomeForBareAddress() async throws {
+        serve(#"{"home":"https://www.example.com","namespaces":["wp/v2"]}"#)
+        let found = try await discovery.discover(site)
+        #expect(found.siteURL == URL(string: "https://www.example.com"))
+    }
+
+    @Test func discoverAdoptsBareHomeForWWWAddress() async throws {
+        serve(#"{"home":"https://example.com/","namespaces":["wp/v2"]}"#)
+        let found = try await discovery.discover(URL(string: "https://www.example.com")!)
+        #expect(found.siteURL == URL(string: "https://example.com"))
+    }
+
+    @Test(arguments: ["https://staging.example.com", "https://www.example.com/blog", "http://www.example.com", "https://www.example.org"])
+    func discoverKeepsAddressWhenHomeDiffersBeyondWWW(_ home: String) async throws {
+        serve(#"{"home":"\#(home)","namespaces":["wp/v2"]}"#)
+        let found = try await discovery.discover(site)
+        #expect(found.siteURL == site)
     }
 
     @Test func discoverSendsNoAuthorizationHeader() async throws {

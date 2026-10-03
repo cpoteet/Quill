@@ -24,7 +24,7 @@ Non-goals: picking writing-style sample posts during onboarding (it stays in Set
 
 `ContentView` shows `OnboardingView` in place of the `NavigationSplitView` while `appState.credentials` is nil, and also while the onboarding model is in the AI writing state. Credentials are saved and `appState.connect` runs as soon as the site is verified. Posts start loading when the app appears after the AI step, because `SidebarView` owns the initial load and is not mounted while the panel shows. Once the AI step is finished, or skipped because a key is already saved, the normal app replaces the panel. The automatic `openSettings()` call at launch is removed. The sidebar's "Open Blog Settings…" error row stays for failures after onboarding.
 
-Typography is San Francisco throughout, matching the rest of the app. The Quill mark is drawn in the accent colour.
+Typography is San Francisco throughout, matching the rest of the app. Fields carry no placeholder text; the label above each field is the only hint. The Quill mark is drawn in the accent colour.
 
 ## States
 
@@ -38,7 +38,7 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
   get started.
 
   Site address
-  [ example.com                        ]
+  [                                    ]
 
   Use an application password instead     [ Continue ]
 ```
@@ -53,9 +53,9 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
 ```
      [Quill tile] · · · [site icon tile]
     Approve Quill in your browser
-  Log in to Lantern & Ink if asked, then
-  approve the connection. Quill continues
-  on its own.
+  Log in to Lantern & Ink if asked,
+  approve the connection, then let your
+  browser open Quill.
 
               [ Cancel ]
 
@@ -79,16 +79,16 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
   Site address
   [ lanternandink.com                  ]
   Username
-  [ Your WordPress username            ]
+  [                                    ]
   Application password
-  [ xxxx xxxx xxxx xxxx xxxx xxxx      ]
+  [                                    ]
   Open Profile Page to create one under Application Passwords.
 
   Back                                     [ Connect ]
 ```
 
 - Reached from the Welcome link, or automatically when discovery finds no approval URL. In the automatic case the note reads: "This site doesn't allow approving apps from the browser, so Quill needs a password you create yourself."
-- "Open Profile Page" is enabled once the address is filled in. When discovery found an approval URL, the profile URL is built from the same admin path (so a WordPress install in a subdirectory works). Otherwise it is `{site}/wp-admin/profile.php`. Either way it ends in `#application-passwords-section`.
+- "Open Profile Page" is enabled once the address is filled in. When discovery found an approval URL, the profile URL is built from the same admin path (so a WordPress install in a subdirectory works). Otherwise it is `{install}/wp-admin/profile.php`, where `{install}` is the index's `url` (falling back to the site address). A site that answers on its bare domain but is configured as `www` would otherwise send the user through login to `siolon.com/wp-admin/…`, which `wp_safe_redirect` rejects in favour of the dashboard. Either way it ends in `#application-passwords-section`.
 - Back returns to Welcome, keeping the address.
 - Validation matches Settings today (https, or http for localhost only). Errors appear above Connect.
 
@@ -103,8 +103,8 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
   bills you for what you use.
 
   Anthropic API key
-  [ sk-ant-…                           ]
-  Get a key from the Anthropic Console. You
+  [                                    ]
+  Get a key from the Claude Platform. You
   can change it later in Settings.
 
                    [ Skip for Now ] [ Save ]
@@ -112,7 +112,7 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
 
 - Shown once, right after the site connects, and only when `AISettingsStore.load()` returns nothing or an empty `apiKey`. A reinstall with a key still on disk goes straight to the app.
 - The confirmation line uses a green checkmark; the site name is bold, or reads "your site" with no name.
-- "Anthropic Console" opens `https://console.anthropic.com/settings/keys` in the default browser.
+- "Claude Platform" opens `https://platform.claude.com/settings/keys` in the default browser (`console.anthropic.com` now redirects there).
 - Save is the default button and is disabled while the field is empty. Saving first checks the key with `GET /v1/models` (free, no tokens), then saves `AISettings` with only `apiKey` set and every other field at its default, and updates `appState.aiSettings`. A rejected key shows "Anthropic didn't accept this key." under the field. A network failure shows "Couldn't reach Anthropic. Check your connection, or skip and add the key later in Settings."
 - Skip for Now saves nothing. Both buttons are full buttons, not links, so skipping is as visible as saving.
 - Writing-style samples, the model and reasoning level stay in Settings.
@@ -122,8 +122,8 @@ Typography is San Francisco throughout, matching the rest of the app. The Quill 
 ### `SiteDiscovery` (`API/`)
 
 - `normalize(_ input: String) throws -> URL`: trims whitespace, adds `https://` when there is no scheme, lowercases the host, drops a trailing slash, keeps a subdirectory path. Refuses `http` except for `localhost`, `127.0.0.1` and `::1`, and refuses input that isn't a host.
-- `discover(_ site: URL) async throws -> DiscoveredSite`: one unauthenticated `GET {site}/wp-json/` on an ephemeral `URLSession`. If the request was redirected, the site URL is the final response URL with `/wp-json/` removed.
-- `DiscoveredSite`: `siteURL`, `name: String?`, `iconURL: URL?` (from `site_icon_url`), `authorizationURL: URL?` (from `authentication["application-passwords"].endpoints.authorization`).
+- `discover(_ site: URL) async throws -> DiscoveredSite`: one unauthenticated `GET {site}/wp-json/` on an ephemeral `URLSession`. If the request was redirected, the site URL is the final response URL with `/wp-json/` removed. If the index's `home` then differs from that address only by a leading `www.` (same scheme, port and path), the site URL is `home`, so per-site local data is keyed the same whether the user typed `www` or not.
+- `DiscoveredSite`: `siteURL`, `name: String?`, `iconURL: URL?` (from `site_icon_url`), `authorizationURL: URL?` (from `authentication["application-passwords"].endpoints.authorization`), `installURL: URL?` (from `url`, WordPress's `site_url()`). Both are dropped when they are `http` on a non-local host.
 - Errors: `unreachable` (transport failure or timeout), `notWordPress` (non-JSON, 404, 401, 403, or JSON without a `namespaces` array).
 
 Discovery uses `/wp-json/` because `WordPressClient` does. Sites that answer only at `?rest_route=` are unsupported here, as they are everywhere else in Quill.
@@ -136,8 +136,8 @@ Pure functions, no networking or UI.
   - `app_name` = "Quill on {deviceName}", where the caller passes `Host.current().localizedName`, so the user can tell their Macs apart on their WordPress profile.
   - `app_id` = one fixed Quill UUID, defined once as a constant.
   - `success_url` = `quill://authorize?nonce={nonce}`
-  - `reject_url` = `quill://authorize?nonce={nonce}`
-- `parseCallback(_ url: URL, expectedNonce: String) -> Result` where the result is `.approved(username:password:)`, `.rejected`, or `.ignored`. WordPress adds `user_login` and `password` on approval and `success=false` on rejection. Wrong scheme or host, a missing or mismatched nonce, or an approval missing either field all give `.ignored`.
+  - `reject_url` = `quill://authorize?nonce={nonce}&success=false`. WordPress adds `success=false` itself only when no `reject_url` is sent, and uses an explicit one verbatim.
+- `parseCallback(_ url: URL, expectedNonce: String) -> Result` where the result is `.approved(username:password:)`, `.rejected`, or `.ignored`. WordPress adds `user_login` and `password` on approval; a rejection arrives as the `reject_url` above. Wrong scheme or host, a missing or mismatched nonce, or an approval missing either field all give `.ignored`.
 
 The nonce is 32 random bytes, hex-encoded, made fresh each time Quill enters the waiting state.
 
@@ -165,12 +165,12 @@ The site icon loads through `SiteDiscovery`'s ephemeral session, not `AsyncImage
 
 | Where | Situation | What the user sees |
 |---|---|---|
-| Welcome | `http://` on a non-local host | "Quill needs an https:// address." |
+| Welcome | `http://` on a non-local host | "Quill needs an HTTPS address." |
 | Welcome | Unreachable | "Couldn't reach {host}. Check the address and your connection." |
 | Welcome | Not WordPress, or REST API blocked | "This doesn't look like a WordPress site, or its REST API is turned off." |
 | Welcome | WordPress, no approval URL | Manual state with the amber note |
-| Waiting | User declines | Welcome, with "Quill wasn't approved. Try again, or use an application password." |
-| Waiting | Approved, but the check call fails | Welcome, with the server's error message. Nothing is saved. Usually the host strips the `Authorization` header, which manual entry would hit too. |
+| Waiting | User declines | Welcome, with a tinted note above the field: "**Quill wasn't approved.** Continue to try again, or use an application password." |
+| Waiting | Approved, but the check call fails | Welcome, with a tinted note above the field: "**Quill was approved, but couldn't connect.**" and the server's error message. Nothing is saved. Usually the host strips the `Authorization` header, which manual entry would hit too. |
 | Waiting | Late or stale callback (after Cancel or relaunch, or wrong nonce) | Nothing. WordPress has already created that password, and the user can revoke it on their profile. |
 | Manual | Validation or check failure | The same messages as Settings today, above Connect |
 | AI writing | Key rejected (401) | "Anthropic didn't accept this key." under the field |

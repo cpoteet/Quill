@@ -21,7 +21,7 @@ struct OnboardingWaitingView: View {
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 8)
-            Text("Log in to \(Text.siteName(site.name)) if asked, then approve the connection. Quill continues on its own.")
+            Text("Log in to \(Text.siteName(site.name)) if asked, approve the connection, then let your browser open Quill.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

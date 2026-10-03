@@ -9,7 +9,8 @@ private let lantern = DiscoveredSite(
     siteURL: URL(string: "https://example.com")!,
     name: "Lantern & Ink",
     iconURL: nil,
-    authorizationURL: URL(string: "https://example.com/wp-admin/authorize-application.php")!
+    authorizationURL: URL(string: "https://example.com/wp-admin/authorize-application.php")!,
+    installURL: nil
 )
 
 private let approvedCallback = URL(string: "quill://authorize?nonce=n1&user_login=chris&password=abcd+efgh+ijkl")!
@@ -83,7 +84,7 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
 
     @Test func continueWithoutAuthorizationGoesManual() async {
         let effects = FakeEffects()
-        effects.discoverResult = .success(DiscoveredSite(siteURL: lantern.siteURL, name: "Lantern & Ink", iconURL: nil, authorizationURL: nil))
+        effects.discoverResult = .success(DiscoveredSite(siteURL: lantern.siteURL, name: "Lantern & Ink", iconURL: nil, authorizationURL: nil, installURL: nil))
         let (model, _) = makeModel(effects)
         await model.continueTapped()
         #expect(model.state == .manual(automatic: true))
@@ -124,7 +125,17 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
         await model.continueTapped()
         await model.handleCallback(URL(string: "quill://authorize?nonce=n1&success=false")!)
         #expect(model.state == .welcome)
-        #expect(model.errorMessage == "Quill wasn't approved. Try again, or use an application password.")
+        #expect(model.notice == OnboardingModel.Notice(title: "Quill wasn't approved.", detail: "Continue to try again, or use an application password."))
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test func continueClearsNotice() async {
+        let effects = FakeEffects()
+        let (model, _) = makeModel(effects)
+        await model.continueTapped()
+        await model.handleCallback(URL(string: "quill://authorize?nonce=n1&success=false")!)
+        await model.continueTapped()
+        #expect(model.notice == nil)
     }
 
     @Test func staleNonceIgnored() async {
@@ -162,7 +173,8 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
         await model.continueTapped()
         await model.handleCallback(approvedCallback)
         #expect(model.state == .welcome)
-        #expect(model.errorMessage == "Sorry, you are not allowed to do that.")
+        #expect(model.notice == OnboardingModel.Notice(title: "Quill was approved, but couldn't connect.", detail: "Sorry, you are not allowed to do that."))
+        #expect(model.errorMessage == nil)
         #expect(appState.credentials == nil)
     }
 
@@ -191,11 +203,19 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
 
     @Test func profileURLFromDiscovery() async {
         let effects = FakeEffects()
-        effects.discoverResult = .success(DiscoveredSite(siteURL: URL(string: "https://example.com/blog")!, name: nil, iconURL: nil, authorizationURL: nil))
+        effects.discoverResult = .success(DiscoveredSite(siteURL: URL(string: "https://example.com/blog")!, name: nil, iconURL: nil, authorizationURL: nil, installURL: nil))
         let (model, _) = makeModel(effects)
         await model.continueTapped()
         #expect(model.state == .manual(automatic: true))
         #expect(model.profileURL == URL(string: "https://example.com/blog/wp-admin/profile.php#application-passwords-section")!)
+    }
+
+    @Test func profileURLUsesInstallAddress() async {
+        let effects = FakeEffects()
+        effects.discoverResult = .success(DiscoveredSite(siteURL: URL(string: "https://example.com")!, name: nil, iconURL: nil, authorizationURL: nil, installURL: URL(string: "https://www.example.com")!))
+        let (model, _) = makeModel(effects)
+        await model.continueTapped()
+        #expect(model.profileURL == URL(string: "https://www.example.com/wp-admin/profile.php#application-passwords-section")!)
     }
 
     @Test func skipSavesNothing() async {

@@ -19,9 +19,14 @@ struct OnboardingWelcomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 26)
 
+            if let notice = model.notice {
+                OnboardingNote(title: notice.title, message: notice.detail)
+                    .padding(.bottom, 14)
+            }
+
             VStack(spacing: 6) {
                 OnboardingField(label: "Site address") {
-                    TextField("Site address", text: $model.address, prompt: Text("example.com"))
+                    TextField("Site address", text: $model.address, prompt: Text(""))
                 }
                 OnboardingError(message: model.errorMessage)
             }

@@ -10,7 +10,7 @@ public enum APIError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidURL: return "That doesn't look like a valid site URL. Make sure it starts with https://."
+        case .invalidURL: return "That doesn't look like a valid site URL. Make sure it uses HTTPS."
         case .httpError(let code, let body): return Self.friendlyHTTPMessage(code: code, rawBody: body)
         case .decodingError: return "WordPress sent a reply Quill couldn't read. A plugin or theme may be adding text to it."
         case .networkError(let e):

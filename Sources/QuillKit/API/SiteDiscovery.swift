@@ -6,6 +6,7 @@ public struct DiscoveredSite: Equatable, Sendable {
     public let name: String?
     public let iconURL: URL?
     public let authorizationURL: URL?
+    public let installURL: URL?
 }
 
 public enum SiteDiscoveryError: Error, Equatable, LocalizedError {
@@ -13,7 +14,7 @@ public enum SiteDiscoveryError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .insecure: return "Quill needs an https:// address."
+        case .insecure: return "Quill needs an HTTPS address."
         case .invalidAddress: return "Enter your site's address, like example.com."
         case .unreachable(let host): return "Couldn't reach \(host). Check the address and your connection."
         case .notWordPress: return "This doesn't look like a WordPress site, or its REST API is turned off."
@@ -82,13 +83,13 @@ public struct SiteDiscovery: Sendable {
               let index = try? JSONDecoder().decode(RESTIndex.self, from: data) else {
             throw .notWordPress
         }
+        let address = Self.siteURL(fromIndex: http.url) ?? site
         return DiscoveredSite(
-            siteURL: Self.siteURL(fromIndex: http.url) ?? site,
+            siteURL: index.home.flatMap(URL.init(string:)).flatMap { Self.wwwVariant(of: address, home: $0) } ?? address,
             name: index.name.flatMap { $0.isEmpty ? nil : $0 },
             iconURL: index.siteIconURL.flatMap { $0.isEmpty ? nil : URL(string: $0) },
-            authorizationURL: index.authorizationURL.flatMap(URL.init(string:)).flatMap {
-                Self.isSecure(scheme: $0.scheme?.lowercased() ?? "", host: $0.host() ?? "") ? $0 : nil
-            }
+            authorizationURL: index.authorizationURL.flatMap(URL.init(string:)).flatMap(Self.secureOrNil),
+            installURL: index.url.flatMap(URL.init(string:)).flatMap(Self.secureOrNil)
         )
     }
 
@@ -98,8 +99,29 @@ public struct SiteDiscovery: Sendable {
         return NSImage(data: data)
     }
 
+    private static func secureOrNil(_ url: URL) -> URL? {
+        isSecure(scheme: url.scheme?.lowercased() ?? "", host: url.host() ?? "") ? url : nil
+    }
+
     private static func isSecure(scheme: String, host: String) -> Bool {
         scheme == "https" || (scheme == "http" && localHosts.contains(host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))))
+    }
+
+    private static func wwwVariant(of address: URL, home: URL) -> URL? {
+        guard let typed = URLComponents(url: address, resolvingAgainstBaseURL: false),
+              var canonical = URLComponents(url: home, resolvingAgainstBaseURL: false),
+              let typedHost = typed.host?.lowercased(), let homeHost = canonical.host?.lowercased(),
+              typedHost != homeHost,
+              "www." + typedHost == homeHost || typedHost == "www." + homeHost,
+              typed.scheme?.lowercased() == canonical.scheme?.lowercased(), typed.port == canonical.port else { return nil }
+        var path = canonical.path
+        while path.hasSuffix("/") { path.removeLast() }
+        guard path == typed.path else { return nil }
+        canonical.host = homeHost
+        canonical.path = path
+        canonical.query = nil
+        canonical.fragment = nil
+        return canonical.url
     }
 
     private static func siteURL(fromIndex indexURL: URL?) -> URL? {
@@ -117,12 +139,14 @@ public struct SiteDiscovery: Sendable {
 
 private struct RESTIndex: Decodable {
     let name: String?
+    let url: String?
+    let home: String?
     let namespaces: [String]
     let siteIconURL: String?
     let authorizationURL: String?
 
     private enum CodingKeys: String, CodingKey {
-        case name, namespaces, authentication
+        case name, url, home, namespaces, authentication
         case siteIconURL = "site_icon_url"
     }
 
@@ -141,6 +165,8 @@ private struct RESTIndex: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try? container.decodeIfPresent(String.self, forKey: .name)
+        url = try? container.decodeIfPresent(String.self, forKey: .url)
+        home = try? container.decodeIfPresent(String.self, forKey: .home)
         namespaces = try container.decode([String].self, forKey: .namespaces)
         siteIconURL = try? container.decodeIfPresent(String.self, forKey: .siteIconURL)
         let authentication = try? container.decodeIfPresent(Authentication.self, forKey: .authentication)

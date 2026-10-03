@@ -33,12 +33,12 @@ Every chunk ends the same way: run `./test.sh`, summarize what changed, and **st
 - The approval request uses the fixed `app_id` `9c21c21a-4ed4-4f29-8b5d-99fe76d9e9ab`, and `app_name` "Quill on {device name}".
 - Copy, verbatim:
   - Welcome intro: "Write and edit your WordPress posts and pages on your Mac. Connect your site to get started."
-  - Waiting: "Approve Quill in your browser" / "Log in to **{site name}** if asked, then approve the connection. Quill continues on its own." / "Browser didn't open?" + "Open it again"
+  - Waiting: "Approve Quill in your browser" / "Log in to **{site name}** if asked, approve the connection, then let your browser open Quill." / "Browser didn't open?" + "Open it again"
   - Manual: "Connect with an application password" / "Create one in WordPress, then paste it here." / note: "This site doesn't allow approving apps from the browser, so Quill needs a password you create yourself." / "Open Profile Page" + " to create one under Application Passwords."
-  - AI: "Connected to **{site name}**" / "Add AI writing help" / "Quill can draft posts, review your writing and rewrite selections with Claude. It uses your own Anthropic API key, and Anthropic bills you for what you use." / "Get a key from the " + "Anthropic Console" + ". You can change it later in Settings." / buttons "Skip for Now", "Save"
+  - AI: "Connected to **{site name}**" / "Add AI writing help" / "Quill can draft posts, review your writing and rewrite selections with Claude. It uses your own Anthropic API key, and Anthropic bills you for what you use." / "Get a key from the " + "Claude Platform" + ". You can change it later in Settings." / buttons "Skip for Now", "Save"
   - With no site name, "{site name}" reads "your site".
 - Error copy, verbatim:
-  - Insecure address: "Quill needs an https:// address."
+  - Insecure address: "Quill needs an HTTPS address."
   - Unusable address (decided in this plan; the spec doesn't name it): "Enter your site's address, like example.com."
   - Unreachable: "Couldn't reach {host}. Check the address and your connection."
   - Not WordPress: "This doesn't look like a WordPress site, or its REST API is turned off."
@@ -182,7 +182,7 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   - `approvalURL(base: https://example.com/wp-admin/authorize-application.php, nonce: "abc", deviceName: "Chris's MacBook", scheme: "quill")`:
     - `app_name` decodes to `Quill on Chris's MacBook`.
     - `app_id` equals `appID`.
-    - `success_url` and `reject_url` both decode to `quill://authorize?nonce=abc`.
+    - `success_url` decodes to `quill://authorize?nonce=abc` and `reject_url` to `quill://authorize?nonce=abc&success=false`.
     - The raw `percentEncodedQuery` contains `success_url=quill%3A%2F%2Fauthorize%3Fnonce%3Dabc`. Values are encoded to the RFC 3986 unreserved set, so `?`, `=` and `&` can't leak into WordPress's own query.
   - `parseCallback`, with `expectedNonce: "abc"` and `scheme: "quill"`:
     - `quill://authorize?nonce=abc&site_url=x&user_login=John+Doe&password=p1` gives `.approved(username: "John Doe", password: "p1")`.
@@ -296,12 +296,12 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
       public func saveAIKey() async
       public func skipAI()
       public func openProfilePage()
-      public func openAnthropicConsole()
+      public func openAPIKeysPage()
   }
   ```
   - `showsPanel` is true when `appState?.credentials == nil` or the state is `.aiSetup`.
   - `live` wires `SiteDiscovery().discover`, `SiteDiscovery().loadIcon`, `NSWorkspace.shared.open`, `ConnectSite.verifyAndSave`, `AnthropicClient(apiKey:).verifyKey()`, `AISettingsStore.save`, `Host.current().localizedName ?? "Mac"` and `AppAuthorization.makeNonce`.
-  - `openAnthropicConsole` opens `https://console.anthropic.com/settings/keys`.
+  - `openAPIKeysPage` opens `https://platform.claude.com/settings/keys`.
 
 Rules the tests pin:
 - **Continue.**
@@ -377,8 +377,8 @@ Compare each view against the mockups file in a browser while building it. Layou
   - Back and Connect.
 - [x] **Step 5: `OnboardingAIView`.**
   - The "Connected to" line with `checkmark.circle.fill` in green (`Color.statusColor("publish")`).
-  - Title, intro, and the key field (`SecureField`, prompt `sk-ant-…`).
-  - The help line with the "Anthropic Console" link.
+  - Title, intro, and the key field (`SecureField`, empty prompt so no placeholder shows).
+  - The help line with the "Claude Platform" link.
   - "Skip for Now" (bordered) and "Save" (prominent, default), aligned right. Save is disabled while the key is empty or `isBusy`.
 - [x] **Step 6: Build.** Expected: compiles. The views aren't reachable yet; Task 8 wires them in.
 

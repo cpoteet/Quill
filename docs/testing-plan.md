@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-02 — 592 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
+_Last updated: 2026-10-03 — 598 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (592 tests)
+1. **Swift tests** — `swift test` (598 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (592 tests, 39 suites)
+## Swift test suite (598 tests, 39 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -154,10 +154,10 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 2 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials keeps the open post |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 2 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, and does not add back one that left the list |
-| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 24 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, an insecure approval URL dropped, not-WordPress and unreachable errors, redirects |
+| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 28 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects, adopting the `www` or bare form of `home` |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 9 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
-| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 17 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry, and the optional AI key step |
+| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 19 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry, and the optional AI key step |
 
 ---
 
@@ -1109,7 +1109,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still replaced in the list and as the selection |
 | `anItemNoLongerListedIsNotAddedBack` | A save for an item that left the list changes neither the list nor another item's selection |
 
-### 34. API — `SiteDiscoveryTests` (24 tests)
+### 34. API — `SiteDiscoveryTests` (28 tests)
 
 File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockURLProtocol`. Spec: `docs/superpowers/specs/2026-10-02-first-run-onboarding-design.md`.
 
@@ -1128,16 +1128,20 @@ File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockUR
 | `normalizeRefusesGarbage` | `not a site` throws `invalidAddress` |
 | `profileURLFollowsAuthorizationURLAdminPath` | The profile link uses the admin path WordPress reported, so a subdirectory install works |
 | `profileURLFallsBackToSiteAdmin` | With no authorization URL, the link is `{site}/wp-admin/profile.php#application-passwords-section` |
-| `discoverMapsEveryField` | Name, icon and authorization URL come from the REST index |
+| `discoverMapsEveryField` | Name, icon, authorization URL and install URL (`url`) come from the REST index |
 | `discoverRequestsRESTIndex` | The request goes to `{site}/wp-json/` |
 | `discoverTreatsEmptyAuthenticationArrayAsNoApproval` | WordPress's `"authentication": []` gives no authorization URL |
 | `discoverDropsInsecureAuthorizationURL` | An `http://` approval page on a non-local host is dropped, so the user goes to manual entry instead of logging in over plain HTTP |
+| `discoverDropsInsecureInstallURL` | An `http://` install URL on a non-local host (often a proxy's internal address) is dropped |
 | `discoverTreatsEmptyStringsAsNil` | `"name": ""` and `"site_icon_url": ""` become nil |
 | `discoverRejectsHTML` | An HTML body throws `notWordPress` |
 | `discoverRejectsErrorStatus` | 404, 401 and 403 throw `notWordPress` |
 | `discoverRejectsJSONWithoutNamespaces` | JSON without `namespaces` throws `notWordPress` |
 | `discoverReportsTransportFailureAsUnreachable` | A transport error throws `unreachable(host:)` |
 | `discoverKeepsRedirectedAddress` | A redirect to `www.` gives the final address as the site URL |
+| `discoverAdoptsWWWHomeForBareAddress` | A bare address whose `home` is the `www` form saves the `www` form, so per-site local data (autosaves, taxonomy cache) matches a connection made with `www` |
+| `discoverAdoptsBareHomeForWWWAddress` | The reverse: a `www` address whose `home` is the bare form saves the bare form |
+| `discoverKeepsAddressWhenHomeDiffersBeyondWWW` | A `home` on another subdomain, another path, `http`, or another domain leaves the typed address alone, so a staging copy or a proxy's internal address never redirects Quill's API calls |
 | `discoverSendsNoAuthorizationHeader` | Discovery is unauthenticated |
 
 ### 35. Auth — `AppAuthorizationTests` (9 tests)
@@ -1165,7 +1169,7 @@ File: `Tests/QuillTests/ConnectSiteTests.swift`, with its own `ConnectSiteMockUR
 | `savesCredentialsAfterASuccessfulCheck` | One request to `/wp-json/wp/v2/posts`, then the same credentials are saved |
 | `savesNothingWhenTheCheckFails` | A 401 throws and nothing is saved |
 
-### 37. Onboarding — `OnboardingModelTests` (17 tests)
+### 37. Onboarding — `OnboardingModelTests` (19 tests)
 
 File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through recording fake `Dependencies`, so the suite makes no requests and writes nothing. It uses a real `AppState()` and sets `aiSettings` explicitly after creating it.
 
@@ -1176,14 +1180,16 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `continueShowsDiscoveryError` | `.notWordPress` stays on Welcome with the not-WordPress copy |
 | `continueIgnoredWhenNotWelcome` | A second Continue while waiting runs no second discovery and opens no second browser |
 | `continueIgnoredWhileBusy` | Two overlapping Continues run one discovery |
-| `declineReturnsToWelcome` | `success=false` returns to Welcome with the declined copy |
+| `declineReturnsToWelcome` | `success=false` returns to Welcome with the declined notice, not a field error |
+| `continueClearsNotice` | Continue clears a notice left by an earlier decline |
 | `staleNonceIgnored` | After Cancel, an approval for the old nonce changes nothing and saves nothing |
 | `approvalWithoutKeyGoesToAISetup` | Approval verifies the callback's credentials, connects `AppState` and shows the AI step with the site name |
 | `approvalWithKeySkipsAI` | With an API key already saved, approval goes straight to `.finished` |
-| `approvalCheckFails` | A failed check returns to Welcome with the error and leaves `AppState` without credentials |
+| `approvalCheckFails` | A failed check returns to Welcome with a notice carrying the error and leaves `AppState` without credentials |
 | `replayedCallbackIgnored` | The same approval URL a second time does not verify again |
 | `manualConnectGoesToAISetupWithoutName` | Manual entry without discovery connects and shows the AI step with no name |
 | `profileURLFromDiscovery` | In the automatic manual state, the profile URL is built from the discovered (redirected) site |
+| `profileURLUsesInstallAddress` | With no approval URL, the profile URL uses WordPress's own install address, so a bare domain that serves the REST API without redirecting to `www` still reaches the profile after login |
 | `skipSavesNothing` | Skip goes to `.finished` without saving AI settings |
 | `saveRejectedKey` | `invalidKey` stays on the AI step with "Anthropic didn't accept this key." and saves nothing |
 | `saveUnreachable` | A network error stays on the AI step with the "Couldn't reach Anthropic…" copy |
@@ -2998,7 +3004,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 - [ ] **Fresh install.** Launch with neither file → the Welcome panel fills the window and no Settings window opens. Enter the site address and click Continue → the browser opens the site's Authorize Application page, and Quill shows "Approve Quill in your browser" with the site name in bold. Approve → Quill shows "Connected to {site name}" and the AI step.
 - [ ] **Callback routing.** After the approval, Quill has exactly one window (Window menu), and the approval landed in it.
-- [ ] **Decline, manual entry, dark mode.** Decline in WordPress → Welcome returns with "Quill wasn't approved. Try again, or use an application password." Click "Use an application password instead" → the manual panel opens with the address carried over, and Back keeps it. On a site with application passwords turned off (`add_filter( 'wp_is_application_passwords_available', '__return_false' );`), Continue → the manual panel opens on its own with the amber note. Switch System Settings to Dark → every state is readable, and the Quill tile and the fields keep visible edges.
+- [ ] **Decline, manual entry, dark mode.** Decline in WordPress → Welcome returns with a tinted note above the field: "**Quill wasn't approved.** Continue to try again, or use an application password." Click "Use an application password instead" → the manual panel opens with the address carried over, and Back keeps it. On a site with application passwords turned off (`add_filter( 'wp_is_application_passwords_available', '__return_false' );`), Continue → the manual panel opens on its own with the amber note. Switch System Settings to Dark → every state is readable, and the Quill tile and the fields keep visible edges.
 - [ ] **AI step.** Skip for Now → the app appears, posts load, and Settings shows no Anthropic key. Repeat with a real key and Save → the app appears and Evaluate works. Move only `credentials.json` aside and connect again → the app appears straight after approval, with no AI step.
 - [ ] In the manual panel or Settings, enter a valid site URL, username, and app password → app connects and post/page lists appear.
 - [ ] Enter a site URL without `https://` (e.g. `example.com`) → app either adds the scheme automatically or shows a clear error.
