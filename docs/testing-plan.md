@@ -2994,11 +2994,16 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 ### 7.1 Authentication & onboarding
 
-- [ ] Launch with no saved credentials → login/preferences screen appears.
-- [ ] Enter a valid site URL, username, and app password → app connects and post/page lists appear.
+**First run.** Move `~/Library/Application Support/Quill/credentials.json` and `ai_settings.json` aside before these checks (never delete them), and put them back afterwards. Dev and release builds both register `quill://`. Chunk 1 of the onboarding plan checked this on 2026-10-02: with an installed copy also declaring the scheme and launched first, every callback still reached the dev build, and each running copy kept one window. After a pass, revoke the "Quill on {Mac}" application passwords it created on the site's profile.
+
+- [ ] **Fresh install.** Launch with neither file → the Welcome panel fills the window and no Settings window opens. Enter the site address and click Continue → the browser opens the site's Authorize Application page, and Quill shows "Approve Quill in your browser" with the site name in bold. Approve → Quill shows "Connected to {site name}" and the AI step.
+- [ ] **Callback routing.** After the approval, Quill has exactly one window (Window menu), and the approval landed in it.
+- [ ] **Decline, manual entry, dark mode.** Decline in WordPress → Welcome returns with "Quill wasn't approved. Try again, or use an application password." Click "Use an application password instead" → the manual panel opens with the address carried over, and Back keeps it. On a site with application passwords turned off (`add_filter( 'wp_is_application_passwords_available', '__return_false' );`), Continue → the manual panel opens on its own with the amber note. Switch System Settings to Dark → every state is readable, and the Quill tile and the fields keep visible edges.
+- [ ] **AI step.** Skip for Now → the app appears, posts load, and Settings shows no Anthropic key. Repeat with a real key and Save → the app appears and Evaluate works. Move only `credentials.json` aside and connect again → the app appears straight after approval, with no AI step.
+- [ ] In the manual panel or Settings, enter a valid site URL, username, and app password → app connects and post/page lists appear.
 - [ ] Enter a site URL without `https://` (e.g. `example.com`) → app either adds the scheme automatically or shows a clear error.
 - [ ] Try a site URL with a trailing slash, a subdirectory install (`example.com/blog`), and a non-standard port → all connect successfully.
-- [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash). Quit and relaunch → the app still shows the login screen (bad credentials were never written to disk, since validation now happens before the save).
+- [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash). Quit and relaunch → the app still shows the Welcome panel (bad credentials were never written to disk, since validation now happens before the save).
 - [ ] Enter a URL for a non-WordPress site or one with the REST API disabled → a clear error appears.
 - [ ] Paste an app password that contains spaces → authentication succeeds (WordPress app passwords normally have spaces).
 - [ ] No macOS Keychain password prompt appears during normal use.

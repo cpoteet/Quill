@@ -422,12 +422,12 @@ Compare each view against the mockups file in a browser while building it. Layou
 - Modify: `docs/testing-plan.md` (manual release checklists)
 - Modify: `CLAUDE.md` (root: the architecture tree, Key decisions)
 
-- [ ] **Step 1: `site/docs.html`.**
+- [ ] **Step 1: `site/docs.html`.** *Deferred to the release, so the guide isn't published early. Drafted and kept in `git stash` as "onboarding user-guide draft (site/docs.html) — apply at release".*
   - Rewrite "Connecting to WordPress" to lead with the browser approval steps (enter the address, approve in the browser, done). Keep the existing three-step application password instructions under a heading for sites that turn browser approval off.
   - In AI Writing, add one sentence: first-run setup offers to add the key.
-- [ ] **Step 2: `docs/testing-plan.md`.** Add the spec's four manual checks to the release checklist, worded as steps with pass conditions. Include the Chunk 1 outcome on which scheme dev builds use.
-- [ ] **Step 3: Root `CLAUDE.md`.**
+- [x] **Step 2: `docs/testing-plan.md`.** Add the spec's four manual checks to the release checklist, worded as steps with pass conditions. Include the Chunk 1 outcome on which scheme dev builds use.
+- [x] **Step 3: Root `CLAUDE.md`.**
   - Add `Onboarding/  OnboardingModel, OnboardingView (+ Welcome, Waiting, Manual, AI)` under `Views/`.
   - Add to Key decisions: "**Login:** first run connects through WordPress's browser approval (`authorize-application.php`), which calls back on `quill://authorize`; manual application-password entry is the fallback."
   - Use the `quill-dev` wording instead if Chunk 1 chose it.
-- [ ] **Step 4:** Proofread `site/docs.html` in the browser pane. Stop and summarize.
+- [ ] **Step 4:** *Deferred with Step 1.* Proofread `site/docs.html` in the browser pane. Stop and summarize.
