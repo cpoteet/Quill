@@ -20,6 +20,7 @@ public struct ContentView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .frame(minWidth: 900, minHeight: 600)
         .onAppear(perform: loadCredentialsAtLaunch)
+        .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
     }
 
     private func loadCredentialsAtLaunch() {

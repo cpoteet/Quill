@@ -77,16 +77,16 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
 **Interfaces:**
 - Produces: the Info.plist's `CFBundleURLTypes[0].CFBundleURLSchemes[0]` is the callback scheme. Task 3 reads it at runtime, so later code never hard-codes it.
 
-- [ ] **Step 1: Register `quill` in `build.sh`.** Add `URL_SCHEME="quill"` beside `BUNDLE_ID`. Add a `CFBundleURLTypes` array to the heredoc with one dict: `CFBundleURLName` = `$BUNDLE_ID`, `CFBundleURLSchemes` = [`$URL_SCHEME`].
-- [ ] **Step 2: Route external events to the existing window.** On the `WindowGroup`, add `.handlesExternalEvents(matching: ["*"])`. In `ContentView.body`, add `.handlesExternalEvents(preferring: ["*"], allowing: ["*"])` and a temporary `.onOpenURL { NSLog("QuillCallback %@", $0.absoluteString) }`.
-- [ ] **Step 3: Build and launch** with the root `CLAUDE.md` command. Expected: the build succeeds and `plutil -extract CFBundleURLTypes xml1 -o - Quill.app/Contents/Info.plist` shows `quill`.
-- [ ] **Step 4: Check routing with the `/Applications` copy not running.** Run `open "quill://authorize?nonce=check1"`, then `log show --last 2m --style json --predicate 'eventMessage CONTAINS "QuillCallback"' | grep -E 'processImagePath|eventMessage'`. Pass: the path is this repo's `Quill.app`, and the dev window shows no second window (take a screenshot with computer use).
-- [ ] **Step 5: Check routing with both copies running.** Open `/Applications/Quill.app` too, run `open "quill://authorize?nonce=check2"`, and read the log the same way. Pass: the log line comes from the dev build.
-- [ ] **Step 6: Decide.**
+- [x] **Step 1: Register `quill` in `build.sh`.** Add `URL_SCHEME="quill"` beside `BUNDLE_ID`. Add a `CFBundleURLTypes` array to the heredoc with one dict: `CFBundleURLName` = `$BUNDLE_ID`, `CFBundleURLSchemes` = [`$URL_SCHEME`].
+- [x] **Step 2: Route external events to the existing window.** On the `WindowGroup`, add `.handlesExternalEvents(matching: ["*"])`. In `ContentView.body`, add `.handlesExternalEvents(preferring: ["*"], allowing: ["*"])` and a temporary `.onOpenURL { NSLog("QuillCallback %@", $0.absoluteString) }`.
+- [x] **Step 3: Build and launch** with the root `CLAUDE.md` command. Expected: the build succeeds and `plutil -extract CFBundleURLTypes xml1 -o - Quill.app/Contents/Info.plist` shows `quill`.
+- [x] **Step 4: Check routing with the `/Applications` copy not running.** Run `open "quill://authorize?nonce=check1"`, then `log show --last 2m --style json --predicate 'eventMessage CONTAINS "QuillCallback"' | grep -E 'processImagePath|eventMessage'`. Pass: the path is this repo's `Quill.app`, and the dev window shows no second window (take a screenshot with computer use).
+- [x] **Step 5: Check routing with both copies running.** Open `/Applications/Quill.app` too, run `open "quill://authorize?nonce=check2"`, and read the log the same way. Pass: the log line comes from the dev build.
+- [x] **Step 6: Decide.** **Decision (2026-10-02): keep `quill`.** Steps 4 and 5 passed: every callback reached the dev build, and each running copy kept one window. The installed 2.1.0 copy does not declare `quill`, so a scratch copy of the dev build that does (also at version 9.9.9, and launched before the dev build) was run too; the dev build still received every callback. macOS 27 redacts `NSLog` text as `<private>`, so the Step 4 grep only matches with `Logger().notice("QuillCallback \(url, privacy: .public)")`.
   - If Steps 4 and 5 both pass, keep `quill`.
   - If either fails, set `URL_SCHEME="quill"` only when `$RELEASE` is true and `quill-dev` otherwise. Rebuild, repeat Steps 4 and 5 with `quill-dev://`, and record the outcome in the spec's "Risk to settle first" paragraph.
   - Either way, also record it in this step's checkbox line.
-- [ ] **Step 7: Remove the temporary `NSLog` `.onOpenURL`.** Keep both `handlesExternalEvents` modifiers. Rebuild, then run `./test.sh`. Expected: all pass. Stop and summarize.
+- [x] **Step 7: Remove the temporary `NSLog` `.onOpenURL`.** Keep both `handlesExternalEvents` modifiers. Rebuild, then run `./test.sh`. Expected: all pass. Stop and summarize.
 
 ---
 

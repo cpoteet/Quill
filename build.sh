@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_NAME="Quill"
 BUNDLE_ID="com.siolon.quill"
+URL_SCHEME="quill"
 MIN_MACOS="27.0"
 SIGN_IDENTITY="Developer ID Application: CHRISTOPHER LEE POTEET (NRCW9A2622)"
 
@@ -71,6 +72,13 @@ cat > "$APP_DIR/Info.plist" <<EOF
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIconName</key><string>AppIcon</string>
   <key>NSAccentColorName</key><string>AccentColor</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>$BUNDLE_ID</string>
+      <key>CFBundleURLSchemes</key><array><string>$URL_SCHEME</string></array>
+    </dict>
+  </array>
   <key>LSMinimumSystemVersion</key><string>$MIN_MACOS</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSHighResolutionCapable</key><true/>
