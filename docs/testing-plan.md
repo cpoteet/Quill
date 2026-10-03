@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-02 — 575 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
+_Last updated: 2026-10-02 — 592 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (575 tests)
+1. **Swift tests** — `swift test` (592 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (575 tests, 38 suites)
+## Swift test suite (592 tests, 39 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -157,6 +157,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 24 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, an insecure approval URL dropped, not-WordPress and unreachable errors, redirects |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 9 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
+| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 17 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry, and the optional AI key step |
 
 ---
 
@@ -1163,6 +1164,30 @@ File: `Tests/QuillTests/ConnectSiteTests.swift`, with its own `ConnectSiteMockUR
 |---|---|
 | `savesCredentialsAfterASuccessfulCheck` | One request to `/wp-json/wp/v2/posts`, then the same credentials are saved |
 | `savesNothingWhenTheCheckFails` | A 401 throws and nothing is saved |
+
+### 37. Onboarding — `OnboardingModelTests` (17 tests)
+
+File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through recording fake `Dependencies`, so the suite makes no requests and writes nothing. It uses a real `AppState()` and sets `aiSettings` explicitly after creating it.
+
+| Test | What it checks |
+|---|---|
+| `continueOpensApproval` | Continue goes to `.waiting` and opens one approval URL whose `success_url` carries the nonce |
+| `continueWithoutAuthorizationGoesManual` | A site with no approval URL goes to `.manual(automatic: true)` and opens nothing |
+| `continueShowsDiscoveryError` | `.notWordPress` stays on Welcome with the not-WordPress copy |
+| `continueIgnoredWhenNotWelcome` | A second Continue while waiting runs no second discovery and opens no second browser |
+| `continueIgnoredWhileBusy` | Two overlapping Continues run one discovery |
+| `declineReturnsToWelcome` | `success=false` returns to Welcome with the declined copy |
+| `staleNonceIgnored` | After Cancel, an approval for the old nonce changes nothing and saves nothing |
+| `approvalWithoutKeyGoesToAISetup` | Approval verifies the callback's credentials, connects `AppState` and shows the AI step with the site name |
+| `approvalWithKeySkipsAI` | With an API key already saved, approval goes straight to `.finished` |
+| `approvalCheckFails` | A failed check returns to Welcome with the error and leaves `AppState` without credentials |
+| `replayedCallbackIgnored` | The same approval URL a second time does not verify again |
+| `manualConnectGoesToAISetupWithoutName` | Manual entry without discovery connects and shows the AI step with no name |
+| `profileURLFromDiscovery` | In the automatic manual state, the profile URL is built from the discovered (redirected) site |
+| `skipSavesNothing` | Skip goes to `.finished` without saving AI settings |
+| `saveRejectedKey` | `invalidKey` stays on the AI step with "Anthropic didn't accept this key." and saves nothing |
+| `saveUnreachable` | A network error stays on the AI step with the "Couldn't reach Anthropic…" copy |
+| `saveGoodKey` | A good key is checked, saved, and turns on `AppState.aiEnabled` |
 
 ## JS block parser tests (67 tests)
 

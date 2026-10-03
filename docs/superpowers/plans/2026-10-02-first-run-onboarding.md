@@ -323,7 +323,7 @@ Rules the tests pin:
   - Any other error stays with its `localizedDescription`.
 - **Skip.** `skipAI` goes to `.finished` and saves nothing.
 
-- [ ] **Step 1: Write the failing tests.** Use fake `Dependencies` that record calls, and a real `AppState()` with `model.appState` set and `appState.aiSettings = nil` (its init reads the real `ai_settings.json`). Fix the nonce at `"n1"`, set the address to `example.com`, and make discovery return a site with an authorization URL unless the test says otherwise.
+- [x] **Step 1: Write the failing tests.** Use fake `Dependencies` that record calls, and a real `AppState()` with `model.appState` set and `appState.aiSettings = nil` (its init reads the real `ai_settings.json`). Fix the nonce at `"n1"`, set the address to `example.com`, and make discovery return a site with an authorization URL unless the test says otherwise.
   - `continueOpensApproval`: the state is `.waiting(site:, nonce: "n1")`, and `openURL` was called once with a URL whose `success_url` holds `n1`.
   - `continueWithoutAuthorizationGoesManual`: `.manual(automatic: true)`.
   - `continueShowsDiscoveryError`: discovery throws `.notWordPress`, so the state stays `.welcome` and `errorMessage` is the not-WordPress copy.
@@ -339,9 +339,9 @@ Rules the tests pin:
   - `skipSavesNothing`: `skipAI()` gives `.finished`, and `saveAISettings` was never called.
   - `saveRejectedKey`: `verifyKey` throws `.invalidKey`, so the state stays `.aiSetup` with "Anthropic didn't accept this key."
   - `saveGoodKey`: the state is `.finished`, `saveAISettings` received `apiKey == "sk-ant-x"`, and `appState.aiEnabled` is true.
-- [ ] **Step 2: Run** `swift test --filter OnboardingModelTests`. Expected: FAIL.
-- [ ] **Step 3: Implement `OnboardingModel.swift`** to the rules above.
-- [ ] **Step 4: Run** `swift test --filter OnboardingModelTests`. Expected: PASS. Update the counts, run `./test.sh`, then stop and summarize.
+- [x] **Step 2: Run** `swift test --filter OnboardingModelTests`. Expected: FAIL.
+- [x] **Step 3: Implement `OnboardingModel.swift`** to the rules above.
+- [x] **Step 4: Run** `swift test --filter OnboardingModelTests`. Expected: PASS. Update the counts, run `./test.sh`, then stop and summarize.
 
 ---
 
