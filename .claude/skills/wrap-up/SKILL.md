@@ -49,7 +49,13 @@ When in doubt between B and C, pick C. When in doubt between A and B, pick B.
 
 ### Step 1 — Commit & push pending work
 
-Stage and commit any uncommitted changes from `git status --short` above, then push if there are unpushed commits. Review what you're staging before you stage it.
+If `git status --short` above shows uncommitted changes, get a Codex review of them before committing:
+
+```bash
+codex review --uncommitted -c model="gpt-6.1-sol" -c model_reasoning_effort="high"
+```
+
+Show the user the findings. Verify each one against the code, fix the ones that hold up, and say which you rejected and why. Then stage and commit, reviewing what you stage. Push if there are unpushed commits.
 
 ### Step 2 — Summarize the commits since `BASE`
 
@@ -145,7 +151,7 @@ If 8b reports a section as checked but your Step 2 summary names a change that b
 
 ### Step 9 — Commit, push, and mark the wrap-up
 
-If steps 3–8 produced changes, stage them, commit, and push. Review what you're staging.
+If steps 3–8 produced changes, run the Codex review from Step 1 over them and handle its findings the same way. Then stage, commit, and push, reviewing what you stage.
 
 Then move the marker so the next run starts here. It is a local tag; don't push it.
 
@@ -172,7 +178,7 @@ Confirm the build succeeds. If it fails, report the error and stop.
 | Step | Action | Lanes | Stop if… |
 |------|--------|-------|----------|
 | 0 | Set `BASE` from `wrap-up-last`, scope the diff, pick a lane, announce it | all | — |
-| 1 | Commit & push pending | all | — |
+| 1 | Codex review of uncommitted changes, then commit & push | all | — |
 | 2 | Summarize the commits since `BASE` | all | — |
 | 3 | Test-coverage audit (**subagent**) | B, C | — |
 | 4 | Run `./test.sh` | B, C | — |
@@ -180,5 +186,5 @@ Confirm the build succeeds. If it fails, report the error and stop.
 | 6 | Review subagent(s) over `BASE..HEAD` — one, or three by area above ~1,500 lines; gotcha check, scenario walkthrough, security section when sensitive paths changed | B, C | — |
 | 7 | Fix issues, re-run `./test.sh` | B, C | — |
 | 8 | Doc pass (**two subagents**): 8a testing-plan + CLAUDE.md; 8b whole-guide review of site/docs.html | B, C | — |
-| 9 | Commit & push, then `git tag -f wrap-up-last HEAD` | all | Run stopped early (skip the tag) |
+| 9 | Codex review, commit & push, then `git tag -f wrap-up-last HEAD` | all | Run stopped early (skip the tag) |
 | 10 | Quit Quill, `./build.sh`, reopen | all | Build fails |

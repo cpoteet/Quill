@@ -14,7 +14,7 @@ Takes Quill from committed code to a notarized draft release on GitHub, then upd
 /release          # no version: ask for one (Step 0)
 ```
 
-Invoking this skill is the user's request to commit and push the version bump and the site changes it describes, and to deploy the site. Everything else follows the normal git rules.
+Invoking this skill is the user's request to commit and push the version bump and the site changes it describes, and to deploy the site. These commits skip the Codex review. Everything else follows the normal git rules.
 
 **Working directory:** `/Users/Chris/Documents/Claude/WP Mac App`
 
