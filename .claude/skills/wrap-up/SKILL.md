@@ -124,7 +124,7 @@ Dispatch **two subagents** in parallel. The user guide gets its own, because sha
 >
 > **`docs/testing-plan.md`** — three things, all of them: (a) add a row per new test to the relevant suite section and update that section's header count; (b) add a row to the regression matrix at the bottom linking each new behavioral guard to the scenario it guards; (c) add manual-checklist items under the relevant §7.x for any new feature or behavior change.
 >
-> **`CLAUDE.md`** — new gotchas or constraints discovered, architecture changes, new key files or patterns, and the test-count line in the test suite status section.
+> **`CLAUDE.md`** — new gotchas or constraints discovered, architecture changes, new key files or patterns, and the test-count line under "Build & run".
 >
 > Report back only a list of the edits you made.
 
@@ -182,16 +182,3 @@ Confirm the build succeeds. If it fails, report the error and stop.
 | 8 | Doc pass (**two subagents**): 8a testing-plan + CLAUDE.md; 8b whole-guide review of site/docs.html | B, C | — |
 | 9 | Commit & push, then `git tag -f wrap-up-last HEAD` | all | Run stopped early (skip the tag) |
 | 10 | Quit Quill, `./build.sh`, reopen | all | Build fails |
-
-## Red Flags
-
-- **Never** read `testing-plan.md`, `site/docs.html`, a `test-*.js` suite, or `editor.html` whole in the main conversation — `grep -n` for the section, then `Read` with `offset`/`limit`
-- **Never** run the test-coverage audit or the doc pass in the main thread — both are subagent work
-- **Never** re-open source files after Step 6 to re-verify the review's findings — one analysis pass is the budget
-- **Never** skip Step 5 and continue when tests are failing
-- **Never** conclude "no regressions" from structural analysis alone — the scenario walkthrough is part of the Step 6 brief and must be in it
-- **Never** use `/code-review` or `/security-review` for Step 6 — they don't reliably see the committed `BASE..HEAD` range
-- **Never** commit without reviewing what's being staged
-- **Never** leave Step 8 until all three of `testing-plan.md`'s parts are updated — test tables, regression matrix, *and* manual checklists
-- **Never** skip Step 8b on lane B or C because the session looks internal — the subagent reads the diff and makes that call
-- **Never** run lane A on a diff that touched source, or lane B on a diff that added a new function or node — when torn, pick the heavier lane

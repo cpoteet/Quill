@@ -1,6 +1,6 @@
 # Top-level views (ContentView)
 
-Implementation gotchas specific to this directory, split out from the project root `CLAUDE.md` (2026-07-11) to keep the root file lazy-loaded. See the root `CLAUDE.md` for architecture, build/test commands, and cross-cutting conventions.
+Implementation gotchas specific to this directory. See the root `CLAUDE.md` for architecture, build/test commands, and cross-cutting conventions.
 
 ## Known gotchas
 

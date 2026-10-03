@@ -1,6 +1,6 @@
 # Quill
 
-Native macOS app for writing and managing WordPress content. Built with Swift Package Manager (no Xcode needed). Implementation complete and running; active polish/iteration phase.
+Native macOS app for writing and managing WordPress content. Built with Swift Package Manager; `build.sh` also needs full Xcode for `actool` (see Requirements). Implementation complete and running; active polish/iteration phase.
 
 ## Build & run
 
@@ -93,9 +93,9 @@ Concepts that have their own doc:
 
 All WordPress/Gutenberg HTML compatibility lives in three files:
 
-1. **`toWordPressHTML(html)`** in `editor-transforms.js` (line 16) — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
+1. **`toWordPressHTML(html)`** in `editor-transforms.js` — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
 
-2. **`ResizableImage.parseHTML()`** (~line 1079 in `editor.html`) — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
+2. **`ResizableImage.parseHTML()`** in `editor.html` — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
 
 3. **`block-descriptors.js`** — maps each Tiptap node name to its Gutenberg block name, shape, `attrsFrom`, and `ownedAttrs`. `wrapInDelimiters` in `editor-transforms.js` emits `<!-- wp:name -->` delimiters for every descriptor, so teaching Quill a new modeled block is a descriptor entry, not another `toWordPressHTML` pass.
 
