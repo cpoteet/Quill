@@ -14,7 +14,7 @@ Takes Quill from committed code to a notarized draft release on GitHub, then upd
 /release          # no version: ask for one (Step 0)
 ```
 
-Invoking this skill is the user's request to commit and push the version bump and the site changes it describes. Everything else follows the normal git rules.
+Invoking this skill is the user's request to commit and push the version bump and the site changes it describes, and to deploy the site. Everything else follows the normal git rules.
 
 **Working directory:** `/Users/Chris/Documents/Claude/WP Mac App`
 
@@ -183,17 +183,17 @@ Check every page in `site/` against the new release:
 
 List every change you made, and anything that looks wrong but isn't clearly stale, as a question for the user.
 
-### Step 8 — Commit, then push only after publishing
+### Step 8 — Commit and push, then deploy only after publishing
 
 ```bash
-git add site/ && git commit -m "docs: changelog and site for <version>"
+git add site/ && git commit -m "docs: changelog and site for <version>" && git push
 gh release view "v<version>" --repo cpoteet/Quill --json isDraft -q .isDraft
 ```
 
-Pushing `site/` deploys the site immediately (`.github/workflows/pages.yml`). Push only when `isDraft` is `false`. While it's still a draft, tell the user the commit is waiting and push after they confirm the release is published. Then verify:
+Pushing does not deploy the site; only running `.github/workflows/pages.yml` does. Deploy only when `isDraft` is `false`. While it's still a draft, tell the user the site is waiting and deploy after they confirm the release is published. Then verify:
 
 ```bash
-git push && git fetch --tags
+gh workflow run pages.yml --repo cpoteet/Quill && git fetch --tags
 curl -sIL -o /dev/null -w '%{http_code}\n' https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip
 gh api repos/cpoteet/Quill/releases/latest -q .tag_name
 ```
@@ -214,7 +214,7 @@ Expected: `200` and `v<version>`.
 | 5 | `gh release create --draft --target $SHA … Quill.zip`, then **wait for the user** | — |
 | 6 | Final notes from GitHub → new article in `changelog.html` | — |
 | 7 | Badge, download links, stale statements, anchors | — |
-| 8 | Commit; push only once the release is published; check the download 200s and latest is `v<version>` | Release still a draft |
+| 8 | Commit and push; run the site deploy only once the release is published; check the download 200s and latest is `v<version>` | Release still a draft |
 
 ## Red flags
 
@@ -222,6 +222,6 @@ Expected: `200` and `v<version>`.
 - Uploading the asset under any name other than `Quill.zip`.
 - Creating the draft before the log shows `✓ Notarized`.
 - Targeting `main` instead of `$SHA`: commits pushed after Step 2 would end up in a tag they weren't built from.
-- Pushing `site/` while the release is still a draft: the site would announce a version the Download button doesn't serve.
+- Deploying the site while the release is still a draft: the site would announce a version the Download button doesn't serve.
 - Writing the changelog from your draft instead of the notes read back from GitHub.
 - Running `store-credentials` or handling the Apple ID password yourself.
