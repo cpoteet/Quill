@@ -29,7 +29,7 @@
     <div class="page-header__inner">
       <p class="eyebrow">Legal</p>
       <h1 class="page-header__title">Privacy Policy</h1>
-      <p class="page-header__sub">Last Updated: September 29, 2026</p>
+      <p class="page-header__sub">Last Updated: October 3, 2026</p>
     </div>
   </section>
 
@@ -53,12 +53,13 @@
 
         <p class="license-section__body"><strong>1. Your WordPress site</strong><br>
         Every read and write operation (loading posts, saving drafts, publishing, uploading media) goes directly to your WordPress site's REST API using the credentials you provide. Quill is the client; your site is the server. No third party is involved in this traffic. Images in a post load from wherever they are hosted, which is usually your own site.</p>
+        <p class="license-section__body">When you connect, Quill reads your site's public REST API index and loads its site icon, which may be hosted elsewhere, such as on a CDN. It then opens your browser to your site's approval page. WordPress names the Application Password it creates after your Mac, so your Mac's name appears on your WordPress profile.</p>
 
         <p class="license-section__body"><strong>2. GitHub, to check for updates</strong><br>
         When Quill opens, it asks GitHub for the version number of the latest Quill release, so it can tell you when an update is available. The request contains nothing about you, your site, or your posts. Like any web request, it shows GitHub your IP address, the app version, and your system version, and is covered by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>.</p>
 
         <p class="license-section__body"><strong>3. Anthropic's API (optional)</strong><br>
-        AI features work only after you add your own Anthropic API key. Quill has no built-in key and makes no AI calls without one. When you use an AI feature, Quill sends Anthropic:</p>
+        AI features work only after you add your own Anthropic API key. Quill has no built-in key and makes no AI calls without one. When you add a key during setup, Quill checks it by asking Anthropic for its list of models; that request contains only the key. When you use an AI feature, Quill sends Anthropic:</p>
         <ul class="license-list">
           <li>the text you selected, or the whole list or table it is in, when you ask Quill to rewrite it;</li>
           <li>the description you type when you generate a post;</li>
@@ -100,7 +101,7 @@
           <li>Delete <code>~/Library/Preferences/com.siolon.quill.plist</code>, <code>~/Library/Caches/com.siolon.quill</code>, <code>~/Library/WebKit/com.siolon.quill</code>, and <code>~/Library/HTTPStorages/com.siolon.quill</code>.</li>
           <li>Delete <code>Quill.app</code> from your Applications folder.</li>
         </ul>
-        <p class="license-section__body">Deleting these files does not revoke Quill's access to your site. To do that, delete its Application Password in WordPress under Users → Profile.</p>
+        <p class="license-section__body">Deleting these files does not revoke Quill's access to your site. To do that, delete its Application Passwords in WordPress under Users → Profile. Each browser connection creates one named "Quill on" followed by your Mac's name, so there may be more than one.</p>
       </div>
 
       <div class="license-section">

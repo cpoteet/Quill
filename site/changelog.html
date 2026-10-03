@@ -38,6 +38,7 @@
     <aside class="toc">
       <p class="toc__heading">Releases</p>
       <ul class="toc__list">
+        <li><a href="#v2.2.0" class="toc__link"><span>v2.2.0</span><span class="toc__date">Oct 3</span></a></li>
         <li><a href="#v2.1.0" class="toc__link"><span>v2.1.0</span><span class="toc__date">Sep 30</span></a></li>
         <li><a href="#v2.0.0" class="toc__link"><span>v2.0.0</span><span class="toc__date">Sep 25</span></a></li>
         <li><a href="#v1.11.0" class="toc__link"><span>v1.11.0</span><span class="toc__date">Aug 20</span></a></li>
@@ -57,11 +58,37 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.2.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.2.0</h2>
+          <span class="release__date">October 3, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(1)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Add Onboarding Flow</h4>
+            <p class="release__body">When no site is connected, Quill now opens to a setup screen that signs you in through WordPress's own approval page in your browser. You no longer have to create an application password and paste it into Settings, though sites that turn browser approval off can still connect that way. Setup also offers to add an Anthropic API key for the AI features and checks the key before saving it.</p>
+          </div>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(4)</span></summary>
+          <ul class="release__list">
+            <li>If you delete an AI rewrite before clicking Discard, Discard no longer puts the original text back.</li>
+            <li>Discarding an AI rewrite that ended the post with a table or separator no longer leaves an empty paragraph behind.</li>
+            <li>Previewing a draft always sends its current footnotes, so a draft you previewed earlier with different notes no longer keeps the old ones on WordPress.</li>
+            <li>Saving a post with footnotes no longer alters a Custom HTML or other unsupported block that contains the text of a WordPress footnotes marker.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.1.0">
         <header class="release__header">
           <h2 class="release__version">v2.1.0</h2>
           <span class="release__date">September 30, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
