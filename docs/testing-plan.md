@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-02 — 567 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
+_Last updated: 2026-10-02 — 575 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (567 tests)
+1. **Swift tests** — `swift test` (575 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (567 tests, 37 suites)
+## Swift test suite (575 tests, 38 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -133,7 +133,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 6 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, autosaves rebuilt with a site key, drafts and autosaves independent |
 | 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 88 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, table cells, `<summary>` and `<dt>`/`<dd>` read as block breaks in the evaluation text, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
-| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 21 | Request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 27 | `verifyKey` (Models API request, 401 as `invalidKey`), request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
@@ -156,6 +156,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 2 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, and does not add back one that left the list |
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 24 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, an insecure approval URL dropped, not-WordPress and unreachable errors, redirects |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 9 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
+| 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 
 ---
 
@@ -662,7 +663,7 @@ The tag match ends at a word boundary that excludes `-` and word characters (`(?
 
 ---
 
-### 13. AI — `AnthropicClientTests` (21 tests)
+### 13. AI — `AnthropicClientTests` (27 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
 Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
@@ -714,6 +715,12 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 | `networkFailureWrapsAsAnthropicNetworkError` | Any transport error from `session.data(for:)` is wrapped as `AnthropicError.networkError`, not left as a raw `URLError` |
 | `networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` | `errorDescription` returns the friendly "Couldn't reach the Anthropic API…" message when the underlying error's description mentions being offline/unable to connect (tested via a controlled fake error, since `URLError.localizedDescription` under `swift test` is a generic fallback string rather than CFNetwork's real text) |
 | `networkErrorPassesThroughUnrecognizedMessage` | `errorDescription` passes through the underlying error's message verbatim when it doesn't match the offline/connectivity heuristic |
+| `verifyKeyRequestsModelsWithKeyAndVersion` | `verifyKey` sends `GET /v1/models?limit=1` with the key and version headers |
+| `verifyKeySucceedsOn200` | A 200 means the key works |
+| `verifyKeyThrowsInvalidKeyOn401` | A 401 throws `invalidKey` |
+| `verifyKeyThrowsHTTPErrorOn500` | Any other failure status throws `httpError` with the body |
+| `verifyKeyWrapsTransportFailureAsNetworkError` | A transport failure throws `networkError` |
+| `invalidKeyMessage` | `invalidKey` reads "Anthropic didn't accept this key." |
 
 ---
 
@@ -1147,6 +1154,15 @@ File: `Tests/QuillTests/AppAuthorizationTests.swift`
 | `approvedCallbackKeepsEncodedPlus` | `user_login=a%2Bb` gives `a+b` |
 | `declinedCallbackIsRejected` | `success=false` with the right nonce gives `.rejected` |
 | `unmatchedCallbackIsIgnored` | Wrong or missing nonce, missing password, empty username, wrong scheme and wrong host each give `.ignored` |
+
+### 36. Auth — `ConnectSiteTests` (2 tests)
+
+File: `Tests/QuillTests/ConnectSiteTests.swift`, with its own `ConnectSiteMockURLProtocol` and a recording `save` closure, so it never touches the real credentials file.
+
+| Test | What it checks |
+|---|---|
+| `savesCredentialsAfterASuccessfulCheck` | One request to `/wp-json/wp/v2/posts`, then the same credentials are saved |
+| `savesNothingWhenTheCheckFails` | A 401 throws and nothing is saved |
 
 ## JS block parser tests (67 tests)
 

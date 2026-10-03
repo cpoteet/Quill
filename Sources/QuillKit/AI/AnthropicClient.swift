@@ -64,6 +64,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
     case noTextContent
     case invalidResponse
     case networkError(Error)
+    case invalidKey
 
     public static func == (lhs: AnthropicError, rhs: AnthropicError) -> Bool {
         switch (lhs, rhs) {
@@ -71,6 +72,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
             return lCode == rCode && lMsg == rMsg
         case (.noTextContent, .noTextContent): return true
         case (.invalidResponse, .invalidResponse): return true
+        case (.invalidKey, .invalidKey): return true
         case (.networkError(let lError), .networkError(let rError)):
             return String(describing: lError) == String(describing: rError)
         default: return false
@@ -82,6 +84,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
         case .httpError(let code, let msg): return "API error \(code): \(msg)"
         case .noTextContent: return "Claude returned no text content."
         case .invalidResponse: return "Unexpected response from API."
+        case .invalidKey: return "Anthropic didn't accept this key."
         case .networkError(let error):
             let msg = error.localizedDescription
             if NetworkErrorHeuristics.isConnectivityFailure(msg) {
@@ -146,18 +149,7 @@ public struct AnthropicClient {
 
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, urlResponse): (Data, URLResponse)
-        do {
-            (data, urlResponse) = try await session.data(for: request)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            throw CancellationError()
-        } catch {
-            throw AnthropicError.networkError(error)
-        }
-
-        guard let http = urlResponse as? HTTPURLResponse else { throw AnthropicError.invalidResponse }
+        let (data, http) = try await send(request)
         guard http.statusCode == 200 else {
             let msg = String(data: data, encoding: .utf8) ?? "unknown"
             throw AnthropicError.httpError(http.statusCode, msg)
@@ -175,5 +167,32 @@ public struct AnthropicClient {
             throw AnthropicError.noTextContent
         }
         return Result(text: text, truncated: response.stopReason == "max_tokens")
+    }
+
+    public func verifyKey() async throws {
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/models?limit=1")!)
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+
+        let (data, http) = try await send(request)
+        if http.statusCode == 401 { throw AnthropicError.invalidKey }
+        guard http.statusCode == 200 else {
+            throw AnthropicError.httpError(http.statusCode, String(data: data, encoding: .utf8) ?? "unknown")
+        }
+    }
+
+    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let (data, urlResponse): (Data, URLResponse)
+        do {
+            (data, urlResponse) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw AnthropicError.networkError(error)
+        }
+        guard let http = urlResponse as? HTTPURLResponse else { throw AnthropicError.invalidResponse }
+        return (data, http)
     }
 }

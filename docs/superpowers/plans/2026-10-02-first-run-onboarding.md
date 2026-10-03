@@ -211,13 +211,13 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
 **Interfaces:**
 - Produces: `public enum ConnectSite { public static func verifyAndSave(_ credentials: Credentials, session: URLSession? = nil, save: (Credentials) throws -> Void = CredentialsStore.save) async throws }`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - When the mock returns `[]` with status 200 for `/wp-json/wp/v2/posts`, the `save` closure received exactly those credentials.
   - When the mock returns 401, the call throws and `save` was never called.
-- [ ] **Step 2: Run** `swift test --filter ConnectSiteTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Call `WordPressClient(credentials:session:).fetchPosts(page: 1, perPage: 1)`, then `save`. Errors propagate unchanged.
-- [ ] **Step 4: Replace the inline block in `PreferencesView.saveAll`** with `try await ConnectSite.verifyAndSave(creds)` inside the existing `do`/`catch`. Keep the existing `saveError` and `isSaving` handling.
-- [ ] **Step 5: Run** `swift test --filter ConnectSiteTests`, then build and launch. Expected: PASS. Saving valid credentials in Settings still reloads the sidebar.
+- [x] **Step 2: Run** `swift test --filter ConnectSiteTests`. Expected: FAIL.
+- [x] **Step 3: Implement.** Call `WordPressClient(credentials:session:).fetchPosts(page: 1, perPage: 1)`, then `save`. Errors propagate unchanged.
+- [x] **Step 4: Replace the inline block in `PreferencesView.saveAll`** with `try await ConnectSite.verifyAndSave(creds)` inside the existing `do`/`catch`. Keep the existing `saveError` and `isSaving` handling.
+- [x] **Step 5: Run** `swift test --filter ConnectSiteTests`, then build and launch. Expected: PASS. Saving valid credentials in Settings still reloads the sidebar.
 
 ### Task 5: `AnthropicClient.verifyKey`
 
@@ -231,15 +231,15 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   - `AnthropicError.invalidKey`, with `errorDescription` "Anthropic didn't accept this key."
 - If `2026-10-02-ai-model-selection-design.md` is already implemented, call its Models API request instead of adding a second one, and keep the same public signature.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - The request is `GET https://api.anthropic.com/v1/models?limit=1`, with `x-api-key: test-key` and `anthropic-version: 2023-06-01`.
   - Status 200 succeeds.
   - Status 401 throws `.invalidKey`.
   - Status 500 throws `.httpError(500, …)`.
   - A thrown `URLError` gives `.networkError`.
-- [ ] **Step 2: Run** `swift test --filter AnthropicClientTests`. Expected: the new tests FAIL.
-- [ ] **Step 3: Implement.** Add the `invalidKey` case, including its branch in the `==` switch.
-- [ ] **Step 4: Run** `swift test --filter AnthropicClientTests`. Expected: PASS. Update the counts, run `./test.sh`, then stop and summarize.
+- [x] **Step 2: Run** `swift test --filter AnthropicClientTests`. Expected: the new tests FAIL.
+- [x] **Step 3: Implement.** Add the `invalidKey` case, including its branch in the `==` switch.
+- [x] **Step 4: Run** `swift test --filter AnthropicClientTests`. Expected: PASS. Update the counts, run `./test.sh`, then stop and summarize.
 
 ---
 

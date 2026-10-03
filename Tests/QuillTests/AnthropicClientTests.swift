@@ -300,4 +300,50 @@ import Testing
         let err = AnthropicError.networkError(FakeError(description: "Something else went wrong."))
         #expect(err.errorDescription == "Something else went wrong.")
     }
+
+    // MARK: - verifyKey
+
+    @Test func verifyKeyRequestsModelsWithKeyAndVersion() async throws {
+        var captured: URLRequest?
+        AnthropicMockURLProtocol.requestHandler = { req in
+            captured = req
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(#"{"data":[]}"#.utf8))
+        }
+        try await client.verifyKey()
+        #expect(captured?.httpMethod == "GET")
+        #expect(captured?.url?.absoluteString == "https://api.anthropic.com/v1/models?limit=1")
+        #expect(captured?.value(forHTTPHeaderField: "x-api-key") == "test-key")
+        #expect(captured?.value(forHTTPHeaderField: "anthropic-version") == "2023-06-01")
+    }
+
+    @Test func verifyKeySucceedsOn200() async throws {
+        AnthropicMockURLProtocol.requestHandler = makeHandler(body: Data(#"{"data":[]}"#.utf8))
+        try await client.verifyKey()
+    }
+
+    @Test func verifyKeyThrowsInvalidKeyOn401() async {
+        AnthropicMockURLProtocol.requestHandler = makeHandler(status: 401, body: Data(#"{"type":"error"}"#.utf8))
+        await #expect(throws: AnthropicError.invalidKey) { try await client.verifyKey() }
+    }
+
+    @Test func verifyKeyThrowsHTTPErrorOn500() async {
+        AnthropicMockURLProtocol.requestHandler = makeHandler(status: 500, body: Data("boom".utf8))
+        await #expect(throws: AnthropicError.httpError(500, "boom")) { try await client.verifyKey() }
+    }
+
+    @Test func verifyKeyWrapsTransportFailureAsNetworkError() async {
+        AnthropicMockURLProtocol.requestHandler = { _ in throw URLError(.notConnectedToInternet) }
+        do {
+            try await client.verifyKey()
+            Issue.record("Expected throw")
+        } catch let err as AnthropicError {
+            if case .networkError = err {} else { Issue.record("Wrong error case: \(err)") }
+        } catch {
+            Issue.record("Wrong error type: \(error)")
+        }
+    }
+
+    @Test func invalidKeyMessage() {
+        #expect(AnthropicError.invalidKey.errorDescription == "Anthropic didn't accept this key.")
+    }
 }
