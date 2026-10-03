@@ -120,7 +120,7 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   }
   ```
 
-- [ ] **Step 1: Write the failing `normalize` tests.**
+- [x] **Step 1: Write the failing `normalize` tests.**
   ```swift
   #expect(try SiteDiscovery.normalize("lanternandink.com") == URL(string: "https://lanternandink.com"))
   #expect(try SiteDiscovery.normalize("  https://Example.COM/ \n") == URL(string: "https://example.com"))
@@ -132,10 +132,10 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   #expect(throws: SiteDiscoveryError.invalidAddress) { try SiteDiscovery.normalize("") }
   #expect(throws: SiteDiscoveryError.invalidAddress) { try SiteDiscovery.normalize("not a site") }
   ```
-- [ ] **Step 2: Write the failing `profileURL` tests.**
+- [x] **Step 2: Write the failing `profileURL` tests.**
   - With an authorization URL of `https://example.com/wp/wp-admin/authorize-application.php`, the result is `https://example.com/wp/wp-admin/profile.php#application-passwords-section`.
   - With nil and site `https://example.com/blog`, the result is `https://example.com/blog/wp-admin/profile.php#application-passwords-section`.
-- [ ] **Step 3: Write the failing `discover` tests.** The mock handler serves `GET https://example.com/wp-json/`. Fixture JSON:
+- [x] **Step 3: Write the failing `discover` tests.** The mock handler serves `GET https://example.com/wp-json/`. Fixture JSON:
   ```json
   {"name":"Lantern & Ink","namespaces":["wp/v2"],"site_icon_url":"https://example.com/icon.png",
    "authentication":{"application-passwords":{"endpoints":{"authorization":"https://example.com/wp-admin/authorize-application.php"}}}}
@@ -149,13 +149,13 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   - The handler throws `URLError(.cannotFindHost)`: `.unreachable(host: "example.com")`.
   - A response whose `url` is `https://www.example.com/wp-json/`: `siteURL == https://www.example.com`.
   - The request carries no `Authorization` header.
-- [ ] **Step 4: Run** `swift test --filter SiteDiscoveryTests`. Expected: FAIL, because the types are undefined.
-- [ ] **Step 5: Implement `SiteDiscovery.swift`.**
+- [x] **Step 4: Run** `swift test --filter SiteDiscoveryTests`. Expected: FAIL, because the types are undefined.
+- [x] **Step 5: Implement `SiteDiscovery.swift`.**
   - Normalize with `URLComponents`. Add `https://` when there's no scheme. Lowercase the host. Cut the path at `/wp-admin` or `/wp-login.php`, then trim trailing slashes. Drop the query and fragment. Allow `http` only for `localhost`, `127.0.0.1` and `::1`.
   - Decode the index with a private `Decodable` that tolerates `authentication` being an array (`try?` on the nested decode).
   - The session defaults to a static ephemeral session, as `AnthropicClient` does.
   - `errorDescription` returns the Global Constraints copy.
-- [ ] **Step 6: Run** `swift test --filter SiteDiscoveryTests`. Expected: PASS.
+- [x] **Step 6: Run** `swift test --filter SiteDiscoveryTests`. Expected: PASS.
 
 ### Task 3: `AppAuthorization`
 
@@ -177,7 +177,7 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
   ```
   `callbackScheme` reads the first `CFBundleURLSchemes` entry from `Bundle.main`, and falls back to `"quill"` when there is none (as under `swift test`).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `makeNonce()` is 64 lowercase hex characters, and two calls differ.
   - `approvalURL(base: https://example.com/wp-admin/authorize-application.php, nonce: "abc", deviceName: "Chris's MacBook", scheme: "quill")`:
     - `app_name` decodes to `Quill on Chris's MacBook`.
@@ -189,12 +189,12 @@ Settles the spec's open risk: the dev build and `/Applications/Quill.app` share 
     - `user_login=a%2Bb` gives username `a+b`.
     - `quill://authorize?nonce=abc&success=false` gives `.rejected`.
     - Wrong nonce, missing nonce, missing `password`, an empty `user_login`, `quill-dev://authorize…` with scheme `quill`, and host `other` each give `.ignored`.
-- [ ] **Step 2: Run** `swift test --filter AppAuthorizationTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `swift test --filter AppAuthorizationTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
   - The nonce is 32 bytes from `SecRandomCopyBytes`, hex-encoded.
   - Build the query with `percentEncodedQueryItems`, each value encoded with `.alphanumerics` plus `-._~`.
   - When parsing, split `percentEncodedQuery` on `&` and `=`, replace `+` with a space, then `removingPercentEncoding`. `URLComponents.queryItems` doesn't decode `+`.
-- [ ] **Step 4: Run** `swift test --filter AppAuthorizationTests`. Expected: PASS. Update the test counts, run `./test.sh`, then stop and summarize.
+- [x] **Step 4: Run** `swift test --filter AppAuthorizationTests`. Expected: PASS. Update the test counts, run `./test.sh`, then stop and summarize.
 
 ---
 

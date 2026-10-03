@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-09-29 — 534 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
+_Last updated: 2026-10-02 — 567 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (534 tests)
+1. **Swift tests** — `swift test` (567 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (534 tests, 35 suites)
+## Swift test suite (567 tests, 37 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
 
@@ -154,6 +154,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 2 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials keeps the open post |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 2 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, and does not add back one that left the list |
+| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 24 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, an insecure approval URL dropped, not-WordPress and unreachable errors, redirects |
+| 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 9 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 
 ---
 
@@ -1098,6 +1100,53 @@ File: `Tests/QuillTests/AppStateTests.swift`
 |---|---|
 | `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still replaced in the list and as the selection |
 | `anItemNoLongerListedIsNotAddedBack` | A save for an item that left the list changes neither the list nor another item's selection |
+
+### 34. API — `SiteDiscoveryTests` (24 tests)
+
+File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockURLProtocol`. Spec: `docs/superpowers/specs/2026-10-02-first-run-onboarding-design.md`.
+
+| Test | What it checks |
+|---|---|
+| `normalizeAddsHTTPSToBareHost` | `lanternandink.com` becomes `https://lanternandink.com` |
+| `normalizeTrimsLowercasesAndDropsTrailingSlash` | Whitespace, host case and a trailing slash are cleaned up |
+| `normalizeKeepsSubdirectory` | A WordPress install under `/blog` keeps its path |
+| `normalizeStripsWPAdmin` | A pasted `/wp-admin/` URL becomes the site address |
+| `normalizeStripsWPLoginAndQuery` | A pasted `wp-login.php?redirect_to=…` URL becomes the site address, subdirectory kept |
+| `normalizeAddsHTTPSWhenQueryHoldsAURL` | A bare login URL whose query holds `https://…` still gets `https://` added and is cut back to the site |
+| `normalizeAllowsHTTPOnLocalhost` | `http://localhost:8080` is accepted |
+| `normalizeAllowsHTTPOnIPv6Loopback` | `http://[::1]:8080` is accepted |
+| `normalizeRefusesHTTPElsewhere` | `http://example.com` throws `insecure` |
+| `normalizeRefusesEmptyInput` | An empty field throws `invalidAddress` |
+| `normalizeRefusesGarbage` | `not a site` throws `invalidAddress` |
+| `profileURLFollowsAuthorizationURLAdminPath` | The profile link uses the admin path WordPress reported, so a subdirectory install works |
+| `profileURLFallsBackToSiteAdmin` | With no authorization URL, the link is `{site}/wp-admin/profile.php#application-passwords-section` |
+| `discoverMapsEveryField` | Name, icon and authorization URL come from the REST index |
+| `discoverRequestsRESTIndex` | The request goes to `{site}/wp-json/` |
+| `discoverTreatsEmptyAuthenticationArrayAsNoApproval` | WordPress's `"authentication": []` gives no authorization URL |
+| `discoverDropsInsecureAuthorizationURL` | An `http://` approval page on a non-local host is dropped, so the user goes to manual entry instead of logging in over plain HTTP |
+| `discoverTreatsEmptyStringsAsNil` | `"name": ""` and `"site_icon_url": ""` become nil |
+| `discoverRejectsHTML` | An HTML body throws `notWordPress` |
+| `discoverRejectsErrorStatus` | 404, 401 and 403 throw `notWordPress` |
+| `discoverRejectsJSONWithoutNamespaces` | JSON without `namespaces` throws `notWordPress` |
+| `discoverReportsTransportFailureAsUnreachable` | A transport error throws `unreachable(host:)` |
+| `discoverKeepsRedirectedAddress` | A redirect to `www.` gives the final address as the site URL |
+| `discoverSendsNoAuthorizationHeader` | Discovery is unauthenticated |
+
+### 35. Auth — `AppAuthorizationTests` (9 tests)
+
+File: `Tests/QuillTests/AppAuthorizationTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `nonceIs64LowercaseHexCharacters` | 32 random bytes, hex-encoded |
+| `noncesDiffer` | Two nonces are not equal |
+| `approvalURLCarriesEveryParameter` | `app_name`, `app_id`, `success_url` and `reject_url` decode to the expected values |
+| `approvalURLEncodesReservedCharactersInValues` | `:`, `/`, `?` and `=` in the callback URL are percent-encoded, so they can't leak into WordPress's query |
+| `approvalURLEncodesNonASCIIDeviceName` | An accented name with a curly apostrophe survives the round trip |
+| `approvedCallbackDecodesPlusAsSpace` | `user_login=John+Doe` gives `John Doe` (PHP `urlencode`) |
+| `approvedCallbackKeepsEncodedPlus` | `user_login=a%2Bb` gives `a+b` |
+| `declinedCallbackIsRejected` | `success=false` with the right nonce gives `.rejected` |
+| `unmatchedCallbackIsIgnored` | Wrong or missing nonce, missing password, empty username, wrong scheme and wrong host each give `.ignored` |
 
 ## JS block parser tests (67 tests)
 
