@@ -32,7 +32,7 @@ struct OnboardingAIView: View {
                     SecureField("Anthropic API key", text: $model.apiKey, prompt: Text(""))
                 }
                 OnboardingError(message: model.errorMessage)
-                Text("Get a key from the [Claude Platform](https://platform.claude.com/settings/keys). You can change it later in Settings.")
+                Text("Get a key from the [Claude Platform](https://platform.claude.com/settings/keys). After setup, teach Quill your writing style in Settings.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .tint(Color.accentColor)
