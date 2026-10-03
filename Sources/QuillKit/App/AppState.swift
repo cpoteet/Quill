@@ -142,7 +142,8 @@ public final class AppState: ObservableObject {
     }
 
     // Looked up by ID after the request, since the list can change while it runs.
-    public func replaceMedia(_ updated: WPMedia) {
+    public func replaceMedia(_ updated: WPMedia, fromSite site: String) {
+        guard credentials?.siteKey == site else { return }
         if let index = mediaItems.firstIndex(where: { $0.id == updated.id }) { mediaItems[index] = updated }
         if selectedMedia?.id == updated.id { selectedMedia = updated }
     }

@@ -48,7 +48,7 @@ struct MediaLibraryView: View {
                         guard let creds = appState.credentials else { throw APIError.notConnected }
                         let updated = try await WordPressClient(credentials: creds)
                             .updateMediaAltText(id: media.id, altText: altText)
-                        appState.replaceMedia(updated)
+                        appState.replaceMedia(updated, fromSite: creds.siteKey)
                     }
                     .id(media.id)
                     .inspectorColumnWidth(min: 260, ideal: 300, max: 400)

@@ -331,6 +331,21 @@ import Testing
         #expect(s.publishDate == Date(timeIntervalSince1970: 1_790_847_000))
     }
 
+    @Test func settingsFromAScheduledPostWithoutAGMTDateReadTheLocalDateAsUTC() throws {
+        let s = PostSettings(post: try settingsPost(status: "future", dateGmt: ""))
+        #expect(s.publishDate == Date(timeIntervalSince1970: 1_790_829_000))
+    }
+
+    @Test func settingsFromAScheduledPostAcceptAZoneSuffix() throws {
+        let s = PostSettings(post: try settingsPost(status: "future", dateGmt: "2026-10-01T09:30:00Z"))
+        #expect(s.publishDate == Date(timeIntervalSince1970: 1_790_847_000))
+    }
+
+    @Test func plainExcerptStripsTagsAndOuterWhitespace() {
+        #expect(PostEditorView.plainExcerpt("\n <p>Short <em>and</em> sweet</p>\n") == "Short and sweet")
+        #expect(PostEditorView.plainExcerpt("No markup") == "No markup")
+    }
+
     // MARK: - PostStats reading time
 
     @Test func readingTimeZeroWordsIsZero() {

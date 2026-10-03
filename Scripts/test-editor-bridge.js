@@ -89,16 +89,45 @@ describe('flushContent', () => {
     assert.equal(win.flushContent(), null)
   })
 
+  test('returns null once syncContentToSwift has posted the typing', () => {
+    win.setContent('<p>Start</p>', '')
+    typeAtEnd(' synced')
+    win.syncContentToSwift()
+    assert.equal(win.flushContent(), null)
+  })
+
+  test('the snapshot is exactly what the debounce would have posted', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->', '')
+    typeAtEnd(' typed')
+    const snapshot = win.flushContent()
+    win.syncContentToSwift()
+    assert.equal(snapshot.html, sentToSwift.at(-1))
+  })
+
+  test('the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta', () => {
+    const id = 'fn-11111111-2222-4333-8444-555555555555'
+    const marker = `<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup>`
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body${marker}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    editor.commands.insertContentAt(1, 'x')
+    const snapshot = win.flushContent()
+    assert.match(snapshot.html, /^<!-- wp:paragraph -->\n<p>xBody<sup/)
+    assert.ok(snapshot.html.endsWith('\n\n<!-- wp:footnotes /-->'), snapshot.html)
+    assert.doesNotMatch(snapshot.html, /wp-block-footnotes/)
+    assert.deepEqual(JSON.parse(snapshot.footnotes), [{ id, content: 'A note.' }])
+  })
+
   test('returns a code-view edit the debounce has not posted yet', () => {
     win.setContent('<p>Start</p>', '')
     const button = win.document.getElementById('btn-code-view')
     button.click()
     const area = win.document.getElementById('code-editor')
-    area.value = '<!-- wp:paragraph -->\n<p>From code view</p>\n<!-- /wp:paragraph -->'
+    const typed = '<!-- wp:paragraph -->\n<p>From code view</p>\n<!-- /wp:paragraph -->'
+    area.value = typed
     area.dispatchEvent(new win.Event('input'))
     const snapshot = win.flushContent()
     button.click()
     assert.ok(snapshot, 'expected a snapshot')
-    assert.match(snapshot.html, /From code view/)
+    assert.equal(snapshot.html, typed)
   })
 })

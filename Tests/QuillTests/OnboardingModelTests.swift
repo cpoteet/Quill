@@ -29,6 +29,8 @@ private final class FakeEffects {
     var keysChecked: [String] = []
     var keyError: Error?
     var savedSettings: [AISettings] = []
+    var icon: NSImage?
+    var whileLoadingIcon: (() -> Void)?
     var appState: AppState?
 
     var dependencies: OnboardingModel.Dependencies {
@@ -38,7 +40,10 @@ private final class FakeEffects {
                 await Task.yield()
                 return try self.discoverResult.get()
             },
-            loadIcon: { _ in nil },
+            loadIcon: { _ in
+                self.whileLoadingIcon?()
+                return self.icon
+            },
             openURL: { self.opened.append($0) },
             verifyAndSave: { credentials in
                 self.verified.append(credentials)
@@ -265,5 +270,111 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
         #expect(effects.keysChecked == ["sk-ant-x"])
         #expect(effects.savedSettings.map(\.apiKey) == ["sk-ant-x"])
         #expect(appState.aiEnabled)
+    }
+
+    // MARK: - Panel, address and icon
+
+    @Test func thePanelStaysUpThroughAISetupAfterTheSiteConnects() async {
+        let effects = FakeEffects()
+        let (model, appState) = makeModel(effects)
+        #expect(model.showsPanel)
+        await model.continueTapped()
+        await model.handleCallback(approvedCallback)
+        #expect(appState.credentials != nil)
+        #expect(model.showsPanel)
+        model.skipAI()
+        #expect(!model.showsPanel)
+    }
+
+    @Test func thePanelIsHiddenWhenASiteIsAlreadyConnected() {
+        let effects = FakeEffects()
+        let (model, appState) = makeModel(effects)
+        appState.credentials = Credentials(siteURL: lantern.siteURL, username: "chris", appPassword: "p")
+        #expect(!model.showsPanel)
+    }
+
+    @Test func theKeyIsTrimmedBeforeItIsCheckedAndSaved() async {
+        let effects = FakeEffects()
+        let (model, appState) = makeModel(effects)
+        await model.continueTapped()
+        await model.handleCallback(approvedCallback)
+        model.apiKey = "  sk-ant-x\n"
+        await model.saveAIKey()
+        #expect(effects.keysChecked == ["sk-ant-x"])
+        #expect(effects.savedSettings.map(\.apiKey) == ["sk-ant-x"])
+        #expect(appState.aiSettings?.apiKey == "sk-ant-x")
+    }
+
+    @Test func manualConnectAfterDiscoveryUsesTheDiscoveredAddressAndName() async {
+        let effects = FakeEffects()
+        effects.discoverResult = .success(DiscoveredSite(siteURL: URL(string: "https://www.example.com")!, name: "Lantern & Ink", iconURL: nil, authorizationURL: nil, installURL: nil))
+        let (model, appState) = makeModel(effects)
+        await model.continueTapped()
+        model.username = "chris"
+        model.appPassword = "abcd efgh"
+        await model.connectManually()
+        #expect(effects.verified == [Credentials(siteURL: URL(string: "https://www.example.com")!, username: "chris", appPassword: "abcd efgh")])
+        #expect(model.state == .aiSetup(siteName: "Lantern & Ink"))
+        #expect(appState.credentials?.siteURL == URL(string: "https://www.example.com")!)
+    }
+
+    @Test func manualConnectWithAnEditedAddressIgnoresTheEarlierDiscovery() async {
+        let effects = FakeEffects()
+        effects.discoverResult = .success(DiscoveredSite(siteURL: URL(string: "https://www.example.com")!, name: "Lantern & Ink", iconURL: nil, authorizationURL: nil, installURL: nil))
+        let (model, _) = makeModel(effects)
+        await model.continueTapped()
+        model.address = "other.example"
+        model.username = "chris"
+        model.appPassword = "abcd efgh"
+        await model.connectManually()
+        #expect(effects.verified.map(\.siteURL) == [URL(string: "https://other.example")!])
+        #expect(model.state == .aiSetup(siteName: nil))
+        #expect(model.profileURL == URL(string: "https://other.example/wp-admin/profile.php#application-passwords-section")!)
+    }
+
+    @Test func aFailedManualConnectStaysOnTheFormWithTheReason() async {
+        let effects = FakeEffects()
+        effects.verifyError = CheckFailed()
+        let (model, appState) = makeModel(effects)
+        model.useManualEntry()
+        await model.connectManually()
+        #expect(model.state == .manual(automatic: false))
+        #expect(model.errorMessage == "Sorry, you are not allowed to do that.")
+        #expect(!model.isBusy)
+        #expect(appState.credentials == nil)
+    }
+
+    @Test func aManualConnectToAnUnusableAddressChecksNothing() async {
+        let effects = FakeEffects()
+        let (model, _) = makeModel(effects)
+        model.useManualEntry()
+        model.address = "http://example.com"
+        await model.connectManually()
+        #expect(effects.verified.isEmpty)
+        #expect(model.errorMessage == "Quill needs an HTTPS address.")
+        model.address = "not a site"
+        #expect(model.profileURL == nil)
+        model.openProfilePage()
+        #expect(effects.opened.isEmpty)
+    }
+
+    @Test func theSiteIconShowsWhileWaiting() async {
+        let effects = FakeEffects()
+        effects.discoverResult = .success(DiscoveredSite(siteURL: lantern.siteURL, name: nil, iconURL: URL(string: "https://example.com/icon.png")!, authorizationURL: lantern.authorizationURL, installURL: nil))
+        effects.icon = NSImage(size: NSSize(width: 1, height: 1))
+        let (model, _) = makeModel(effects)
+        await model.continueTapped()
+        #expect(model.siteIcon === effects.icon)
+    }
+
+    @Test func anIconThatArrivesAfterCancellingIsDropped() async {
+        let effects = FakeEffects()
+        effects.discoverResult = .success(DiscoveredSite(siteURL: lantern.siteURL, name: nil, iconURL: URL(string: "https://example.com/icon.png")!, authorizationURL: lantern.authorizationURL, installURL: nil))
+        effects.icon = NSImage(size: NSSize(width: 1, height: 1))
+        let (model, _) = makeModel(effects)
+        effects.whileLoadingIcon = { model.cancelWaiting() }
+        await model.continueTapped()
+        #expect(model.state == .welcome)
+        #expect(model.siteIcon == nil)
     }
 }

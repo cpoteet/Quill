@@ -1160,7 +1160,7 @@ public struct PostEditorView: View {
                 continue
             }
             uploads.append((file, { [editorWebView] media in
-                guard isOpen(postID) else { return false }
+                guard isOpen(postID), editorWebView?.window != nil else { return false }
                 let args = [token, media.sourceURL].compactMap { Self.jsonLiteral($0) }.joined(separator: ", ")
                 editorWebView?.evaluateJavaScript("window.resolvePastedImage?.(\(args), \(media.id))", completionHandler: nil)
                 return true
@@ -1174,8 +1174,8 @@ public struct PostEditorView: View {
     }
 
     private func insertAtCursor(ifStillOn postID: PostItem.ID?) -> (WPMedia) -> Bool {
-        { [editorHandle] media in
-            guard isOpen(postID) else { return false }
+        { [editorHandle, editorWebView] media in
+            guard isOpen(postID), editorWebView?.window != nil else { return false }
             editorHandle.insertImage(url: media.sourceURL, mediaId: media.id, alt: media.altText)
             return true
         }
@@ -1405,7 +1405,6 @@ public struct PostEditorView: View {
         let client = WordPressClient(credentials: creds)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: Self.plainExcerpt(settings.excerpt),
                                   status: post.status, footnotes: footnotesMeta)
-        let footnotesChanged = footnotesMeta != cleanFootnotes
         let overwritesPost = Self.previewOverwritesPost(status: post.status)
         let previewedItemID = item.id
         do {
@@ -1426,7 +1425,7 @@ public struct PostEditorView: View {
                 ? try await client.createPageAutosave(postID: post.id, payload: payload)
                 : try await client.createAutosave(postID: post.id, payload: payload)
             // WordPress drops meta when a draft preview writes the post itself, leaving new markers with old notes.
-            if overwritesPost && footnotesChanged {
+            if overwritesPost {
                 try await client.updateFootnotes(postID: post.id, type: post.type, footnotes: payload.footnotes ?? "")
             }
             let linkBase = autosave.link ?? post.link

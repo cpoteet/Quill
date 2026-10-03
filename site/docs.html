@@ -86,7 +86,8 @@
           <li>Your browser opens your site's <strong>Authorize Application</strong> page. Log in if WordPress asks, then click <strong>Yes, I approve of this connection</strong>.</li>
           <li>When your browser asks whether to open Quill, allow it. Quill finishes connecting.</li>
         </ol>
-        <p class="docs-body">WordPress names the password "Quill on" followed by your Mac's name, so on your profile you can tell your Macs apart and revoke one without affecting the others. If you click <strong>No, I do not approve of this connection</strong>, Quill returns to the first screen with a note saying it wasn't approved. While Quill waits, <strong>Open it again</strong> reopens the approval page and <strong>Cancel</strong> starts over.</p>
+        <p class="docs-body">WordPress names the password "Quill on" followed by your Mac's name and the date and time you connected, for example "Quill on Studio Mac (Oct 3, 2:15:07 PM)". On your profile you can tell your Macs and connections apart, and revoke one without affecting the others. If you click <strong>No, I do not approve of this connection</strong>, Quill returns to the first screen with a note saying it wasn't approved. If you approve but Quill then can't connect, the first screen says so and gives the reason. While Quill waits, <strong>Open it again</strong> reopens the approval page and <strong>Cancel</strong> starts over.</p>
+        <p class="docs-body">Once connected, Quill offers to add an Anthropic API key for the <a href="#ai-writing-features" class="content-link">AI writing features</a>. Paste a key and click <strong>Save</strong>, or click <strong>Skip for Now</strong> to add one later in Settings. Quill skips this step if a key is already set.</p>
         <h3 class="docs-h3">Connecting With an Application Password</h3>
         <p class="docs-body">Some sites turn browser approval off. When yours does, Quill asks for an application password instead. You can also choose <strong>Use an application password instead</strong> on the first screen. On that screen, <strong>Open Profile Page</strong> opens the Application Passwords section of your WordPress profile in the browser (log in first if WordPress asks), which covers steps 1 to 3 below.</p>
         <h4 class="docs-h4">Step 1: Create an Application Password</h4>
@@ -114,6 +115,7 @@
         <p class="docs-body">Credentials are stored in a file on your Mac that only your user account can read, not in the system keychain, so Quill never asks for your Mac password.</p>
         <h3 class="docs-h3">If Quill Can't Load Your Site</h3>
         <p class="docs-body">When a section fails to load, the sidebar shows the error with an <strong>Open Blog Settings…</strong> button, and the editor area reads "Couldn't load posts" (or pages, or media). Check your credentials in Settings, then press <strong>⌘R</strong> to try again. Local drafts are stored on your Mac, so the Drafts section keeps working while your site is unreachable.</p>
+        <p class="docs-body">If a post fails to load when you open it, Quill won't save or preview it, so the empty editor can't overwrite the real post. Open the post again once your site is reachable.</p>
         <p class="docs-body">If the error says WordPress sent a reply Quill couldn't read, something on your site is adding text to its API responses, usually a PHP warning or notice from a plugin or theme. Fix or disable whichever one is producing it.</p>
       </section>
 
@@ -338,18 +340,19 @@
         <h4 class="docs-h4">Local Drafts</h4>
         <p class="docs-body">Click <strong>Save Draft</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
         <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Publish Draft</strong> and creates a draft on WordPress. Set the status to Published first if you want it to go live straight away.</p>
-        <p class="docs-body">Once the draft is on WordPress, it moves from Drafts to Posts or Pages.</p>
+        <p class="docs-body">Once the draft is on WordPress, it moves from Drafts to Posts or Pages. Anything you type while it's being sent is kept and comes back as unsaved changes on the new post. If the post is created but Quill can't remove the local draft, a message says so; delete the draft yourself so it isn't published twice.</p>
         <h4 class="docs-h4">Posts and Pages on WordPress</h4>
         <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>.</p>
-        <p class="docs-body"><strong>Revert</strong> throws away your unsaved changes and reloads the post from WordPress. Quill asks you to confirm first.</p>
+        <p class="docs-body"><strong>Revert</strong> throws away your unsaved changes, including changes in Post Settings, and reloads the post from WordPress. Quill asks you to confirm first. If WordPress can't be reached, an error message says so and the editor is left as it was.</p>
         <p class="docs-body">Before saving, Quill checks whether the post has been changed on WordPress since you opened it, for example in the WordPress editor. If it has, a <strong>Conflict Detected</strong> alert gives you three choices: <strong>Keep Local</strong> saves your version over the one on WordPress, <strong>Use Server</strong> throws away your changes for good, including the autosave on your Mac, and loads the WordPress version, and <strong>Cancel</strong> does nothing.</p>
         <p class="docs-body">If you switch to another post while a save is running, the save still finishes for the post you saved, and a message names it: "<em>Title</em>: Published", for example. If the save fails, the message says which post wasn't saved and why. If that post was changed on WordPress in the meantime, the message says so, and you choose which version to keep the next time you open it.</p>
         <h4 class="docs-h4">Autosave</h4>
-        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item or quit. For a local draft, this updates the draft. For a post on WordPress, the autosave stays on your Mac and nothing is sent to your site. If you reopen the post before saving it to WordPress, even after quitting Quill, your changes come back and Quill shows "Unsaved changes restored". If the post was edited on WordPress in the meantime, the restored changes don't overwrite that edit: when you save, the Conflict Detected alert asks which version to keep.</p>
+        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item, switch sites or quit. For a local draft, this updates the draft. For a post on WordPress, the autosave stays on your Mac and nothing is sent to your site. If you reopen the post before saving it to WordPress, even after quitting Quill, your changes come back and Quill shows "Unsaved changes restored". If the post was edited on WordPress in the meantime, the restored changes don't overwrite that edit: when you save, the Conflict Detected alert asks which version to keep.</p>
+        <p class="docs-body">Autosave keeps the title, the body and the footnotes. It doesn't keep <a href="#post--page-settings" class="content-link">Post Settings</a> (apart from a local draft's excerpt), so setting changes you haven't saved to WordPress are lost when you leave the post. If Quill can't write an autosave, an error message says so.</p>
         <h3 class="docs-h3">Preview</h3>
         <p class="docs-body">Click <strong>Preview</strong> to see the post in your browser the way it looks on your site. Preview works only for posts and pages already on WordPress, not for local drafts.</p>
         <p class="docs-body">For a <strong>published</strong> post, and any other status except draft, Quill sends your unsaved changes to WordPress as a temporary revision. Only the preview shows them; the live post doesn't change.</p>
-        <p class="docs-body">For a <strong>draft</strong>, WordPress saves your changes into the draft itself, because drafts don't keep a separate preview copy. Previewing a draft is the same as saving it to WordPress. Because of that, if the draft was changed on WordPress since you opened it, Preview shows the Conflict Detected alert first. <strong>Keep Local</strong> previews and saves your version, and <strong>Use Server</strong> discards your changes.</p>
+        <p class="docs-body">For a <strong>draft</strong>, WordPress saves your changes into the draft itself, footnotes included, because drafts don't keep a separate preview copy. Previewing a draft is the same as saving it to WordPress. Because of that, if the draft was changed on WordPress since you opened it, Preview shows the Conflict Detected alert first. <strong>Keep Local</strong> previews and saves your version, and <strong>Use Server</strong> discards your changes.</p>
         <h3 class="docs-h3">Find and Replace</h3>
         <p class="docs-body">Press ⌘F (or choose <strong>Edit → Find…</strong>) to open the find bar. Type in <strong>Find</strong> to highlight every match. Press Return for the next match and ⇧Return for the previous one, or use the arrow buttons. Turn on <strong>Aa</strong> to match upper and lower case exactly.</p>
         <p class="docs-body">To replace text, type the new text in <strong>Replace</strong>, then click <strong>Replace</strong> for the current match or <strong>All</strong> for every match. Press Esc or click <strong>✕</strong> to close the bar.</p>
@@ -379,6 +382,7 @@
         <h3 class="docs-h3" id="images">Images</h3>
         <p class="docs-body">Click <strong>Image</strong> in the toolbar to open your media library, then click an image to insert it at the cursor. <strong>Upload…</strong> in the same window adds an image from your Mac to the library first.</p>
         <p class="docs-body">You can also drag image files from the Finder onto the editor. Quill uploads them to your media library and inserts them. A progress indicator at the bottom of the window counts through a batch ("Uploading image 2 of 3…") and finishes with one message, such as "3 images inserted". If something goes wrong, the message names the problem, or says how many files in the batch failed. You can drop another batch before the first one finishes; Quill uploads them in turn.</p>
+        <p class="docs-body">A dropped or pasted image goes only into the post you dropped it on. If you open a different post before its upload finishes, the image stays in your media library, isn't inserted anywhere, and a message says so.</p>
         <p class="docs-body">HEIC photos, the format iPhones use by default, are converted to JPEG before upload so WordPress can make its usual smaller sizes (see <a href="#uploading" class="content-link">Uploading</a>).</p>
         <p class="docs-body">After an image goes in, the cursor moves to a new empty paragraph below it so you can keep typing. Click the image to select it. An image toolbar appears over it, and the alignment and Style controls appear in the second toolbar row.</p>
         <h4 class="docs-h4">Size</h4>
@@ -512,8 +516,8 @@
       <section class="docs-section" id="post--page-settings">
         <h2 class="docs-h2">Post and Page Settings</h2>
         <p class="docs-body">Click <strong>Post Settings</strong> at the right end of the window toolbar to open the settings inspector for the current post or page. The AI evaluation uses the same space, so opening one replaces the other.</p>
-        <p class="docs-body">Changes here are sent to WordPress the next time you save or publish, not as you make them.</p>
-        <div class="docs-note">Settings for a local draft are sent to WordPress when you publish it, but they aren't saved with the draft. If you switch to another item or quit Quill before publishing, you'll need to set them again. The excerpt is the exception: it's saved with the draft.</div>
+        <p class="docs-body">Changes here are sent to WordPress the next time you save or publish, not as you make them. Until then they count as unsaved changes: the window's close button shows a dot, and <strong>Revert</strong> puts the settings back along with the rest of the post.</p>
+        <div class="docs-note">Settings aren't autosaved. For a post on WordPress, setting changes you haven't saved are lost when you switch to another item or quit. For a local draft, settings are sent to WordPress when you publish it, but they aren't saved with the draft, so if you switch to another item or quit Quill before publishing, you'll need to set them again. The excerpt is the exception: it's saved with the draft.</div>
         <h3 class="docs-h3" id="status">Status</h3>
         <p class="docs-body">Status controls whether and when the post is visible on your site:</p>
         <div class="docs-table-wrap">
@@ -593,10 +597,10 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">To change an image's alt text, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away.</p>
+        <p class="docs-body">To change an image's alt text, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> under the field. If the save fails, it shows <strong>Not saved</strong> with the reason, and your text stays in the field so you can try again.</p>
         <h3 class="docs-h3" id="uploading">Uploading</h3>
         <p class="docs-body">Choose <strong>Upload Media</strong> from the <strong>+</strong> menu, or <strong>File → New Media</strong> (⌥⌘N) from anywhere in Quill. Pick a file in the window that opens. You can upload any file type your WordPress site allows.</p>
-        <p class="docs-body">The new item appears at the top of the grid, already selected. If the current filter wouldn't show it, for example a PDF uploaded while <strong>Images</strong> is selected, Quill switches to <strong>All Media</strong> so it's still in view.</p>
+        <p class="docs-body">The new item appears at the top of the grid, already selected. If the current filter wouldn't show it, for example a PDF uploaded while <strong>Images</strong> is selected, Quill switches to <strong>All Media</strong> so it's still in view. If a search is active, Quill clears it for the same reason.</p>
         <p class="docs-body">HEIC photos are converted to JPEG before they're uploaded. WordPress accepts HEIC files but can't make thumbnails or other sizes from them, so an unconverted HEIC would sit in your library with no dimensions and no smaller versions. The conversion happens on your Mac, keeps the photo's full resolution and orientation, and leaves your original file alone. It applies to every way of uploading: the Media section, the image picker, the gallery picker and dragging onto the editor. Other formats, such as JPEG, PNG, GIF, WebP and PDF, are uploaded as they are.</p>
         <h3 class="docs-h3" id="deleting-media">Deleting Media</h3>
         <p class="docs-body">Right-click an item and choose <strong>Delete…</strong>. Quill asks you to confirm first.</p>
@@ -608,12 +612,12 @@
         <p class="docs-body">Quill can use Anthropic's Claude API, with the Claude Haiku model, to write posts, rewrite selected text and review your writing. These features are off until you add your own Anthropic API key, and Anthropic bills you directly for what you use.</p>
         <h3 class="docs-h3">Setting Up</h3>
         <ol class="docs-ol">
-          <li>Create an API key at <a href="https://platform.claude.com/dashboard" class="content-link" target="_blank" rel="noopener">platform.claude.com/dashboard</a>.</li>
+          <li>Create an API key at <a href="https://platform.claude.com/settings/keys" class="content-link" target="_blank" rel="noopener">platform.claude.com/settings/keys</a>.</li>
           <li>Choose <strong>Quill → Settings</strong> (⌘,) and find the <strong>AI Writing</strong> section.</li>
           <li>Paste the key into <strong>Anthropic API Key</strong> and click <strong>Save</strong>.</li>
         </ol>
-        <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can skip that step and add a key here later.</p>
-        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature.</p>
+        <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can click <strong>Skip for Now</strong> and add a key here later.</p>
+        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
         <h3 class="docs-h3" id="writing-style">Writing Style</h3>
         <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude, which writes a short style guide. Quill uses that guide whenever it writes or reviews for you.</p>
         <p class="docs-body">The guide is rewritten whenever you change which posts you picked. If you connect Quill to a different WordPress site, your picks are cleared and you'll need to choose again.</p>
@@ -649,7 +653,9 @@
         </div>
         <p class="docs-body">Make Longer and Make Shorter keep the same number of paragraphs. They don't add headings or lists, and they don't merge paragraphs. When the selection is in a list or table, they lengthen or shorten each item or cell and keep the list or table intact.</p>
         <p class="docs-body">These commands change only the selected text and never use web search. They don't appear inside footnotes.</p>
-        <p class="docs-body">The new text replaces your selection, highlighted, and an <strong>Accept</strong> / <strong>Discard</strong> bar appears at the bottom of the editor. Click Accept or press Return to keep it. Click Discard, press Esc or click anywhere else to put your original text back. If Claude sends back nothing usable, your text stays as it was and an error message appears.</p>
+        <p class="docs-body">While Claude works, your selection is dimmed with a <strong>✶ Rewriting…</strong> label in front of it. You can keep writing elsewhere in the post in the meantime; the result goes where the selected text is, even if your edits have moved it.</p>
+        <p class="docs-body">The new text replaces your selection, highlighted, and an <strong>Accept</strong> / <strong>Discard</strong> bar appears at the bottom of the editor. Click Accept or press Return to keep it. Click Discard, press Esc or click anywhere else to put your original text back. Discarding restores only the rewritten passage, so edits you made elsewhere while Claude worked stay. If Claude sends back nothing usable, your text stays as it was and an error message appears.</p>
+        <p class="docs-body">Only one rewrite runs at a time. If you choose another command before the current one is accepted or discarded, Quill asks you to finish the current rewrite first.</p>
       </section>
 
       <section class="docs-section" id="keyboard-reference">
@@ -722,9 +728,10 @@
         <h3 class="docs-h3">WordPress.com</h3>
         <p class="docs-body">Quill works only with self-hosted WordPress. WordPress.com sites aren't supported.</p>
         <h3 class="docs-h3">One Site at a Time</h3>
-        <p class="docs-body">Quill connects to one WordPress site. To switch to another, change the credentials in Settings.</p>
+        <p class="docs-body">Quill connects to one WordPress site. To switch to another, change the credentials in Settings. Quill keeps the open post's unsaved changes before it switches.</p>
+        <p class="docs-body">Autosaved changes belong to the site they were made on, and come back only when you connect to that site again. Local drafts aren't tied to a site: the Drafts section shows the same drafts for every site, and a draft is published to whichever site is connected.</p>
         <h3 class="docs-h3">When Quill Can't Keep Something</h3>
-        <p class="docs-body">Each time Quill opens a post, and each time you leave code view, it checks that every block in the post is still there in the editor. If any are missing, a red banner at the top of the editor names them, and <strong>saving is blocked</strong> until you respond. Saving at that point would write the shortened post over the real one.</p>
+        <p class="docs-body">Each time Quill opens a post, and each time you leave code view, it checks that every block in the post is still there in the editor. If any are missing, a red banner at the top of the editor names them, and <strong>saving and previewing are blocked</strong> until you respond. Saving at that point would write the shortened post over the real one, and so would previewing a draft.</p>
         <p class="docs-body">When you see the banner:</p>
         <ol class="docs-ol">
           <li><strong>Check which blocks it names.</strong></li>
@@ -732,7 +739,7 @@
           <li><strong>To fix it in Quill,</strong> open code view (<code>&lt;/&gt;</code>) and paste the missing block's markup back in. When you leave code view, the banner goes away and you can save again.</li>
           <li><strong>If you don't mind losing them,</strong> click <strong>Save anyway, I understand</strong> and save. Afterwards, the banner tells you what was removed and reminds you that WordPress's revision history still has the earlier version.</li>
         </ol>
-        <p class="docs-body">If you open a post like this and don't edit it, saving is never blocked. Quill sends the original content back unchanged, so nothing can be lost. Once you've saved a post with missing blocks, reopening it shows no banner, because the blocks are no longer in the saved post.</p>
+        <p class="docs-body">If you open a post like this and don't edit it, saving and previewing are never blocked. Quill sends the original content back unchanged, so nothing can be lost. Once you've saved a post with missing blocks, reopening it shows no banner, because the blocks are no longer in the saved post.</p>
         <p class="docs-body">You should rarely see this banner. Quill normally keeps blocks it can't edit exactly as they were (see below).</p>
         <h3 class="docs-h3">Block Editor Compatibility</h3>
         <p class="docs-body">Quill saves posts in the same block format as the WordPress editor for everything it can edit: paragraphs, headings, lists, quotes, code blocks, separators, images, galleries, tables, embeds, footnotes, links, and the container blocks (Columns, Details, Buttons, Accordion, Tabs, Pullquote and Preformatted). A post written in Quill opens in the WordPress editor as separate blocks, and you can go back and forth between the two.</p>

@@ -277,6 +277,14 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
 
 // MARK: - Switching sites
 
+private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
+    let json = """
+    {"id":\(id),"title":{"rendered":"p\(id)"},"source_url":"https://example.com/p\(id).jpg",\
+    "media_type":"image","mime_type":"image/jpeg","link":"https://example.com/p\(id)","alt_text":"\(alt)"}
+    """
+    return try JSONDecoder().decode(WPMedia.self, from: Data(json.utf8))
+}
+
 @MainActor @Suite struct SiteSwitchTests {
     private let siteA = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
     private let siteB = Credentials(siteURL: URL(string: "https://b.test")!, username: "u", appPassword: "p")
@@ -284,19 +292,37 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
     @Test func anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState() async throws {
         let state = AppState()
         state.credentials = siteA
-        state.selectedItem = .remote(try makePost(id: 7))
+        let open = PostItem.remote(try makePost(id: 7))
+        state.selectedItem = open
         state.posts = [try makePost(id: 7)]
         state.pages = [try makePost(id: 8, type: "page")]
-        var credentialsWhenFlushed: Credentials?
-        state.persistOpenPost = (UUID(), { credentialsWhenFlushed = state.credentials })
+        state.mediaItems = [try makeMedia(id: 3)]
+        state.selectedMedia = try makeMedia(id: 3)
+        var seenWhenFlushed: (Credentials?, PostItem?)
+        state.persistOpenPost = (UUID(), { seenWhenFlushed = (state.credentials, state.selectedItem) })
 
         await state.connect(siteB)
 
-        #expect(credentialsWhenFlushed == siteA)
+        #expect(seenWhenFlushed.0 == siteA)
+        #expect(seenWhenFlushed.1 == open)
         #expect(state.credentials == siteB)
         #expect(state.selectedItem == nil)
         #expect(state.posts.isEmpty && state.pages.isEmpty)
         #expect(state.mediaItems.isEmpty && state.selectedMedia == nil)
+    }
+
+    @Test func theFirstSiteConnectsWithoutFlushingAnything() async throws {
+        let state = AppState()
+        let draft = PostItem.local(makeDraft(id: 4))
+        state.selectedItem = draft
+        var flushed = false
+        state.persistOpenPost = (UUID(), { flushed = true })
+
+        await state.connect(siteA)
+
+        #expect(!flushed)
+        #expect(state.selectedItem == draft)
+        #expect(state.credentials == siteA)
     }
 
     @Test func theSameSiteWithNewCredentialsKeepsTheOpenPost() async throws {
@@ -319,21 +345,17 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
 // MARK: - Replacing a media item after a save
 
 @Suite struct MediaReplaceTests {
-    private func media(id: Int, alt: String = "") throws -> WPMedia {
-        let json = """
-        {"id":\(id),"title":{"rendered":"p\(id)"},"source_url":"https://example.com/p\(id).jpg",\
-        "media_type":"image","mime_type":"image/jpeg","link":"https://example.com/p\(id)","alt_text":"\(alt)"}
-        """
-        return try JSONDecoder().decode(WPMedia.self, from: Data(json.utf8))
-    }
+    private let site = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
+    private func media(id: Int, alt: String = "") throws -> WPMedia { try makeMedia(id: id, alt: alt) }
 
     @Test func theItemIsFoundByIDWhereverItNowSits() throws {
         let state = AppState()
+        state.credentials = site
         state.mediaItems = [try media(id: 1), try media(id: 2), try media(id: 3)]
         state.selectedMedia = try media(id: 2)
         state.mediaItems.remove(at: 0)
 
-        state.replaceMedia(try media(id: 2, alt: "New"))
+        state.replaceMedia(try media(id: 2, alt: "New"), fromSite: site.siteKey)
 
         #expect(state.mediaItems.map(\.id) == [2, 3])
         #expect(state.mediaItems[0].altText == "New")
@@ -342,13 +364,26 @@ private func makeTag(_ id: Int, _ name: String) -> WPTag {
 
     @Test func anItemNoLongerListedIsNotAddedBack() throws {
         let state = AppState()
+        state.credentials = site
         state.mediaItems = [try media(id: 1)]
         state.selectedMedia = try media(id: 1)
 
-        state.replaceMedia(try media(id: 2, alt: "New"))
+        state.replaceMedia(try media(id: 2, alt: "New"), fromSite: site.siteKey)
 
         #expect(state.mediaItems.map(\.id) == [1])
         #expect(state.selectedMedia?.id == 1)
+    }
+
+    @Test func aSaveThatReturnsAfterASiteSwitchLeavesTheNewSiteAlone() throws {
+        let state = AppState()
+        state.credentials = Credentials(siteURL: URL(string: "https://b.test")!, username: "u", appPassword: "p")
+        state.mediaItems = [try media(id: 2, alt: "B's image")]
+        state.selectedMedia = try media(id: 2, alt: "B's image")
+
+        state.replaceMedia(try media(id: 2, alt: "A's alt"), fromSite: site.siteKey)
+
+        #expect(state.mediaItems[0].altText == "B's image")
+        #expect(state.selectedMedia?.altText == "B's image")
     }
 }
 

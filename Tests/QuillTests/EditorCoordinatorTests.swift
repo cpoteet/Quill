@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WebKit
 @testable import QuillKit
 
 @Suite struct EditorCoordinatorTests {
@@ -221,5 +222,109 @@ struct EditorPushDecisionTests {
     func pastedImageForgetScript() {
         #expect(PastedImage.forgetScript([]) == nil)
         #expect(PastedImage.forgetScript(["paste-1", "a\"b"]) == #"["paste-1","a\"b"].forEach(t => window.forgetPastedImage?.(t))"#)
+    }
+}
+
+// MARK: - Content bridge
+
+@MainActor private final class ScriptedWebView: WKWebView {
+    var scripts: [String] = []
+    var replies: [String: Any] = [:]
+    var held: [(Any?, (any Error)?) -> Void] = []
+    var holdSetContent = false
+
+    override func evaluateJavaScript(_ javaScriptString: String, completionHandler: (@MainActor @Sendable (Any?, (any Error)?) -> Void)? = nil) {
+        scripts.append(javaScriptString)
+        guard let completionHandler else { return }
+        if holdSetContent, javaScriptString.hasPrefix("setContent(") {
+            held.append(completionHandler)
+            return
+        }
+        let reply = replies.first { javaScriptString.hasPrefix($0.key) }?.value
+        completionHandler(reply, nil)
+    }
+}
+
+@MainActor private final class Message: WKScriptMessage {
+    private let messageName: String
+    private let messageBody: Any
+    init(_ name: String, _ body: Any) {
+        messageName = name
+        messageBody = body
+        super.init()
+    }
+    override var name: String { messageName }
+    override var body: Any { messageBody }
+}
+
+@MainActor @Suite struct EditorCoordinatorBridgeTests {
+    private let webView = ScriptedWebView()
+    private let coordinator: EditorCoordinator
+    private let log = Log()
+
+    private final class Log {
+        var html: [String] = []
+        var footnotes: [String] = []
+    }
+
+    init() {
+        let log = self.log
+        coordinator = EditorCoordinator(onContentChange: { log.html.append($0) }, onReady: {})
+        coordinator.onFootnotesChange = { log.footnotes.append($0) }
+        coordinator.webView = webView
+        coordinator.isReady = true
+    }
+
+    private func deliver(_ name: String, _ body: Any) {
+        coordinator.userContentController(WKUserContentController(), didReceive: Message(name, body))
+    }
+
+    private func drainMainQueue() async {
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+    }
+
+    @Test func flushHandsTheUnpostedTypingToSwiftAndRecordsIt() async {
+        webView.replies["window.flushContent"] = ["html": "<p>typed</p>", "footnotes": #"[{"id":"fn-a"}]"#]
+        await coordinator.flushPendingContent()
+        #expect(log.html == ["<p>typed</p>"])
+        #expect(log.footnotes == [#"[{"id":"fn-a"}]"#])
+        let evaluated = webView.scripts.count
+        coordinator.setContent("<p>typed</p>", footnotes: #"[{"id":"fn-a"}]"#)
+        #expect(webView.scripts.count == evaluated, "the flushed content was pushed back into the editor")
+    }
+
+    @Test func flushWithNothingPendingChangesNothing() async {
+        webView.replies["window.flushContent"] = NSNull()
+        await coordinator.flushPendingContent()
+        #expect(log.html.isEmpty && log.footnotes.isEmpty)
+    }
+
+    @Test func flushBeforeTheEditorIsReadyAsksNothing() async {
+        coordinator.isReady = false
+        await coordinator.flushPendingContent()
+        #expect(webView.scripts.isEmpty)
+    }
+
+    @Test func aContentMessageAlreadyReceivedLandsBeforeTheFlush() async {
+        webView.replies["window.flushContent"] = ["html": "<p>newest</p>", "footnotes": "[]"]
+        deliver("contentChanged", "<p>older</p>")
+        await coordinator.flushPendingContent()
+        #expect(log.html == ["<p>older</p>", "<p>newest</p>"])
+    }
+
+    @Test func messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers() async {
+        webView.holdSetContent = true
+        coordinator.setContent("<p>next post</p>", footnotes: "[]")
+        deliver("contentChanged", "<p>previous post</p>")
+        deliver("footnotesChanged", #"[{"id":"old"}]"#)
+        await drainMainQueue()
+        #expect(log.html.isEmpty && log.footnotes.isEmpty)
+
+        for reply in webView.held { reply(nil, nil) }
+        deliver("contentChanged", "<p>next post, edited</p>")
+        deliver("footnotesChanged", "[]")
+        await drainMainQueue()
+        #expect(log.html == ["<p>next post, edited</p>"])
+        #expect(log.footnotes == ["[]"])
     }
 }

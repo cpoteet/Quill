@@ -1,6 +1,6 @@
 import Foundation
 
-/// Generic file-backed JSON store. Writes atomically; chmod 600 after every save.
+/// Generic file-backed JSON store. Writes a 0600 temp file and renames it into place.
 public struct JSONFileStore<T: Codable>: Sendable {
     private let filename: String
     private let baseDirectory: URL?

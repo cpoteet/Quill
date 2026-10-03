@@ -71,6 +71,14 @@ import Testing
         #expect(throws: SiteDiscoveryError.invalidAddress) { try SiteDiscovery.normalize("not a site") }
     }
 
+    @Test func normalizeDropsCredentialsAndFragment() throws {
+        #expect(try SiteDiscovery.normalize("https://user:secret@example.com/blog/#top") == URL(string: "https://example.com/blog"))
+    }
+
+    @Test func normalizeRefusesANonWebScheme() {
+        #expect(throws: SiteDiscoveryError.invalidAddress) { try SiteDiscovery.normalize("ftp://example.com") }
+    }
+
     // MARK: - profileURL
 
     @Test func profileURLFollowsAuthorizationURLAdminPath() {
@@ -160,6 +168,31 @@ import Testing
         #expect(found.siteURL == URL(string: "https://www.example.com"))
     }
 
+    @Test func discoverKeepsTheSubdirectoryOfARedirectedIndex() async throws {
+        serve(#"{"namespaces":["wp/v2"]}"#, url: URL(string: "https://example.com/blog/wp-json/"))
+        let found = try await discovery.discover(site)
+        #expect(found.siteURL == URL(string: "https://example.com/blog"))
+    }
+
+    @Test(arguments: ["http://example.com/wp-json/", "https://other.example/wp-json/", "https://example.com:8443/wp-json/", "http://wp.local/wp-json/"])
+    func discoverKeepsTheTypedAddressWhenTheIndexRedirectsOffSite(_ redirected: String) async throws {
+        serve(#"{"namespaces":["wp/v2"]}"#, url: URL(string: redirected))
+        let found = try await discovery.discover(site)
+        #expect(found.siteURL == site)
+    }
+
+    @Test func discoverDecodesEntitiesInTheSiteName() async throws {
+        serve(#"{"name":"Chris&#039;s Blog &amp; Notes","namespaces":["wp/v2"]}"#)
+        let found = try await discovery.discover(site)
+        #expect(found.name == "Chris's Blog & Notes")
+    }
+
+    @Test func discoverKeepsTheTypedAddressWhenTheIndexMovedOffWPJSON() async throws {
+        serve(#"{"namespaces":["wp/v2"]}"#, url: URL(string: "https://example.com/?rest_route=/"))
+        let found = try await discovery.discover(site)
+        #expect(found.siteURL == site)
+    }
+
     @Test func discoverAdoptsWWWHomeForBareAddress() async throws {
         serve(#"{"home":"https://www.example.com","namespaces":["wp/v2"]}"#)
         let found = try await discovery.discover(site)
@@ -172,7 +205,7 @@ import Testing
         #expect(found.siteURL == URL(string: "https://example.com"))
     }
 
-    @Test(arguments: ["https://staging.example.com", "https://www.example.com/blog", "http://www.example.com", "https://www.example.org"])
+    @Test(arguments: ["https://staging.example.com", "https://www.example.com/blog", "http://www.example.com", "https://www.example.org", "https://www.example.com:8443"])
     func discoverKeepsAddressWhenHomeDiffersBeyondWWW(_ home: String) async throws {
         serve(#"{"home":"\#(home)","namespaces":["wp/v2"]}"#)
         let found = try await discovery.discover(site)
@@ -188,5 +221,15 @@ import Testing
         _ = try await discovery.discover(site)
         #expect(captured != nil)
         #expect(captured?.value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
+    @Test func discoverAsksForJSONSoWordPressHidesPHPWarnings() async throws {
+        var captured: URLRequest?
+        DiscoveryMockURLProtocol.requestHandler = { request in
+            captured = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(Self.fullIndex.utf8))
+        }
+        _ = try await discovery.discover(site)
+        #expect(captured?.value(forHTTPHeaderField: "Accept") == "application/json")
     }
 }

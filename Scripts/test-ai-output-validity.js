@@ -495,5 +495,110 @@ describe('editing while Claude responds', () => {
     assert.deepEqual(topLevelTexts(), ['First sentence stays. Middle sentence is rather long and wordy. Last sentence stays.', 'Second paragraph. Typed later.'])
     assert.equal(win.showAIResult('<p>Short.</p>'), null)
   })
+
+  test('the pending text is dimmed and labelled in the view, and both go once the result is accepted', () => {
+    beginOnMiddle()
+    const view = win.document.querySelector('.ProseMirror')
+    const label = view.querySelector('.ai-loading')
+    const pending = view.querySelectorAll('.ai-pending')
+    assert.ok(label, 'no Rewriting label')
+    assert.equal(Array.from(pending, el => el.textContent).join(''), 'Middle sentence is rather long and wordy.')
+    assert.equal(label.nextSibling, pending[0], 'the label does not sit right before the pending text')
+    win.showAIResult('<p>Short.</p>')
+    win.acceptAIResult()
+    assert.equal(view.querySelector('.ai-loading, .ai-pending'), null)
+  })
+
+  test('typing at the caret while Claude responds lands after the result, not inside the replaced text', () => {
+    beginOnMiddle()
+    const caret = editor.state.selection
+    assert.ok(caret.empty, 'the selection should collapse so typing cannot overwrite it')
+    editor.view.dispatch(editor.state.tr.insertText(' Typed', caret.from))
+    win.showAIResult('<p>Short.</p>')
+    win.acceptAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Short. Typed Last sentence stays.', 'Second paragraph.'])
+  })
+
+  test('a result for text deleted while Claude responds is not inserted', () => {
+    beginOnMiddle()
+    let from = null
+    editor.state.doc.descendants((node, pos) => {
+      if (from === null && node.isText) from = pos + node.text.indexOf('Middle')
+    })
+    editor.view.dispatch(editor.state.tr.delete(from, from + 'Middle sentence is rather long and wordy. '.length))
+    const before = editor.state.doc.toJSON()
+    assert.equal(win.showAIResult('<p>Short.</p>'), null)
+    assert.deepEqual(editor.state.doc.toJSON(), before)
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['First sentence stays. Last sentence stays.', 'Second paragraph.'])
+    editor.commands.setTextSelection({ from: 1, to: 22 })
+    assert.ok(win.beginAIOperation().text, 'the discarded operation still blocks a new one')
+    win.discardAIResult()
+  })
+
+  function selectText(text) {
+    let from = null
+    editor.state.doc.descendants((node, pos) => {
+      if (from === null && node.isText && node.text.includes(text)) from = pos + node.text.indexOf(text)
+    })
+    editor.commands.setTextSelection({ from, to: from + text.length })
+  }
+
+  test('discarding a table result that ends the post leaves no empty paragraph behind', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Intro text here.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Alpha beta gamma delta epsilon.</p>\n<!-- /wp:paragraph -->')
+    const original = editor.state.doc.toJSON()
+    selectText('Alpha beta gamma delta epsilon.')
+    assert.ok(win.beginAIOperation())
+    assert.equal(win.showAIResult('<table><tbody><tr><td>a</td><td>b</td></tr></tbody></table>'), true)
+    assert.deepEqual(Array.from({ length: editor.state.doc.childCount }, (_, i) => editor.state.doc.child(i).type.name), ['paragraph', 'table', 'paragraph'])
+    win.discardAIResult()
+    assert.deepEqual(editor.state.doc.toJSON(), original)
+  })
+
+  test('discarding after the paragraph holding the result was deleted brings none of it back', () => {
+    win.setContent('<p>Keep this.</p><p>Alpha beta gamma delta epsilon.</p><p>Tail para.</p>')
+    selectText('beta gamma delta')
+    assert.ok(win.beginAIOperation())
+    assert.equal(win.showAIResult('<p>Short.</p>'), true)
+    const start = editor.state.doc.child(0).nodeSize
+    editor.view.dispatch(editor.state.tr.delete(start, start + editor.state.doc.child(1).nodeSize))
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['Keep this.', 'Tail para.'])
+    selectText('Tail para.')
+    assert.ok(win.beginAIOperation().text, 'the discard did not clear the operation')
+    win.discardAIResult()
+  })
+
+  test('discarding after the whole document was deleted leaves it empty', () => {
+    win.setContent('<p>Keep this.</p><p>Alpha beta gamma delta epsilon.</p><p>Tail para.</p>')
+    selectText('beta gamma delta')
+    assert.ok(win.beginAIOperation())
+    win.showAIResult('<p>Short.</p>')
+    editor.commands.selectAll()
+    editor.commands.deleteSelection()
+    win.discardAIResult()
+    assert.equal(editor.state.doc.textContent, '')
+  })
+
+  test('a list rewrite replaces its own list after text is typed above it', () => {
+    const start = '<!-- wp:paragraph -->\n<p>Intro.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:list -->\n<ul class="wp-block-list"><!-- wp:list-item -->\n<li>feed pets</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->\n\n<!-- wp:paragraph -->\n<p>Outro.</p>\n<!-- /wp:paragraph -->'
+    win.setContent(start)
+    let from = null
+    editor.state.doc.descendants((node, pos) => {
+      if (from === null && node.isText && node.text === 'feed pets') from = pos
+    })
+    editor.commands.setTextSelection({ from, to: from + 'feed pets'.length })
+    const op = win.beginAIOperation()
+    assert.equal(op.context, 'bulletList')
+    typeAtEndOf(0, ' More intro.')
+    assert.equal(win.showAIResult(fixture('operation-list'), op.containerFrom, op.containerTo), true)
+    win.acceptAIResult()
+    const doc = editor.state.doc
+    assert.deepEqual(Array.from({ length: doc.childCount }, (_, i) => doc.child(i).type.name), ['paragraph', 'bulletList', 'paragraph'])
+    assert.equal(doc.child(0).textContent, 'Intro. More intro.')
+    assert.deepEqual(Array.from({ length: doc.child(1).childCount }, (_, i) => doc.child(1).child(i).textContent),
+      ['Feed twice a day', 'Walk every morning', 'Book an annual checkup'])
+    assert.equal(doc.child(2).textContent, 'Outro.')
+  })
 })
 

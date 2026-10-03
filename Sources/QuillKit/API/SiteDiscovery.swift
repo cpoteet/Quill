@@ -71,7 +71,8 @@ public struct SiteDiscovery: Sendable {
     }
 
     public func discover(_ site: URL) async throws(SiteDiscoveryError) -> DiscoveredSite {
-        let request = URLRequest(url: site.appending(path: "wp-json", directoryHint: .isDirectory))
+        var request = URLRequest(url: site.appending(path: "wp-json", directoryHint: .isDirectory))
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         let data: Data
         let response: URLResponse
         do {
@@ -83,10 +84,10 @@ public struct SiteDiscovery: Sendable {
               let index = try? JSONDecoder().decode(RESTIndex.self, from: data) else {
             throw .notWordPress
         }
-        let address = Self.siteURL(fromIndex: http.url) ?? site
+        let address = Self.siteURL(fromIndex: http.url).flatMap { Self.sameSite($0, as: site) } ?? site
         return DiscoveredSite(
             siteURL: index.home.flatMap(URL.init(string:)).flatMap { Self.wwwVariant(of: address, home: $0) } ?? address,
-            name: index.name.flatMap { $0.isEmpty ? nil : $0 },
+            name: index.name.flatMap { $0.isEmpty ? nil : $0.decodingHTMLEntities() },
             iconURL: index.siteIconURL.flatMap { $0.isEmpty ? nil : URL(string: $0) },
             authorizationURL: index.authorizationURL.flatMap(URL.init(string:)).flatMap(Self.secureOrNil),
             installURL: index.url.flatMap(URL.init(string:)).flatMap(Self.secureOrNil)
@@ -105,6 +106,14 @@ public struct SiteDiscovery: Sendable {
 
     private static func isSecure(scheme: String, host: String) -> Bool {
         scheme == "https" || (scheme == "http" && localHosts.contains(host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))))
+    }
+
+    private static func sameSite(_ candidate: URL, as site: URL) -> URL? {
+        guard let candidate = secureOrNil(candidate),
+              candidate.scheme?.lowercased() == site.scheme?.lowercased(), candidate.port == site.port,
+              let host = candidate.host()?.lowercased(), let siteHost = site.host()?.lowercased(),
+              host == siteHost || host == "www." + siteHost || "www." + host == siteHost else { return nil }
+        return candidate
     }
 
     private static func wwwVariant(of address: URL, home: URL) -> URL? {

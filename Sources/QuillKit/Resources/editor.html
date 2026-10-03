@@ -3791,11 +3791,29 @@
 
     function _mapAIOperation(op, tr) {
       if (!op || !tr.docChanged) return op
-      const from = tr.mapping.map(op.from, 1)
-      const to = Math.max(from, tr.mapping.map(op.to, -1))
-      return op.phase === 'result'
-        ? { ...op, from, to, caret: Math.min(Math.max(tr.mapping.map(op.caret, -1), from), to) }
-        : { ...op, from, to }
+      if (op.phase !== 'result') {
+        const from = tr.mapping.map(op.from, 1)
+        return { ...op, from, to: Math.max(from, tr.mapping.map(op.to, -1)) }
+      }
+      // Deleted across both ends is ReplaceStep.map's test for an inverse step with nothing left to restore.
+      const start = tr.mapping.mapResult(op.from, 1)
+      const end = tr.mapping.mapResult(op.to, -1)
+      const from = start.pos
+      const to = Math.max(from, end.pos)
+      return {
+        ...op, from, to,
+        caret: Math.min(Math.max(tr.mapping.map(op.caret, -1), from), to),
+        deleted: op.deleted || (start.deletedAcross && end.deletedAcross),
+        trailing: _trailingAfterResult(tr) ?? (op.trailing == null ? null : tr.mapping.map(op.trailing, 1)),
+      }
+    }
+
+    // Where TrailingParagraph appended its empty paragraph right after a result that ends the document.
+    function _trailingAfterResult(tr) {
+      const last = tr.doc.lastChild
+      if (tr.getMeta('appendedTransaction')?.getMeta(aiOperationKey)?.phase !== 'result') return null
+      if (tr.doc.childCount !== tr.docs[0].childCount + 1 || last.type.name !== 'paragraph' || last.content.size) return null
+      return tr.doc.content.size - last.nodeSize
     }
 
     const AIOperation = Extension.create({
@@ -6501,7 +6519,13 @@
       const op = _aiOperation()
       if (!op) return
       const tr = editor.state.tr.setMeta(aiOperationKey, null)
-      if (op.phase === 'result') tr.replace(op.from, op.to, op.original)
+      if (op.phase === 'result' && !op.deleted) {
+        const trailing = op.trailing == null ? null : tr.doc.nodeAt(op.trailing)
+        if (trailing?.type.name === 'paragraph' && !trailing.content.size && op.trailing + trailing.nodeSize === tr.doc.content.size) {
+          tr.delete(op.trailing, tr.doc.content.size)
+        }
+        tr.replace(op.from, op.to, op.original)
+      }
       editor.view.dispatch(tr)
     }
 

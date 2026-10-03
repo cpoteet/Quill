@@ -130,7 +130,7 @@ describe('saving', () => {
     const src = `<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n${custom}\n\n<!-- wp:footnotes /-->`
     win.setContent(src, META(ID))
     editor.commands.insertContentAt(1, 'x')
-    assert.ok(win.getContent().includes(custom), win.getContent())
+    assert.equal(win.getContent(), src.replace('<p>Body', '<p>xBody'))
   })
 
   test('load → edit → save is idempotent through a second cycle', () => {

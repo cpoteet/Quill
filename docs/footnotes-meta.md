@@ -51,7 +51,10 @@ the wire format never sees one.
   right outcome — there is nothing to edit. The list is spliced into the string at
   the delimiter, the way `extractFootnotes` splices it out; building it through
   `innerHTML` re-serialized the whole post first, so an unsupported block's source
-  (single-quoted attributes, `<br/>`) was no longer byte for byte.
+  (single-quoted attributes, `<br/>`) was no longer byte for byte. A string match
+  counts only when `liesOutsideTags` says it is not inside a tag (an attribute
+  value), another comment, or a raw-text element such as `<script>`, so delimiter text in an attribute can never stand in
+  for a real delimiter that the pattern does not match (`/--!>`).
 - **Save** — `getContent()` returns the content with the delimiter;
   `getFootnotes()` returns the meta JSON. `PostPayload.footnotes` sends it as
   `meta.footnotes`; `nil` omits the key so a payload that never touched
@@ -86,6 +89,10 @@ Preview posts to `/autosaves` with the footnotes in `meta`. Since WordPress 6.4
 that endpoint stores revisioned meta, which footnotes are, on the autosave
 revision, so a published post's preview shows the new notes. An author's draft
 is different: WordPress writes the preview straight into the post with
-`wp_update_post` and drops the meta. When the notes have changed, `openPreview()`
-therefore sends them with `WordPressClient.updateFootnotes` before it opens the
-browser; otherwise the draft would hold the new markers against its old notes.
+`wp_update_post` and drops the meta. Whenever a preview writes the post itself,
+`openPreview()` therefore sends the notes with `WordPressClient.updateFootnotes`
+before it opens the browser; otherwise the draft would hold the new markers
+against its old notes. It sends them every time, not only when they differ from
+the last save: comparing with the clean state missed an earlier preview that had
+already written other notes, so undoing back to the saved notes left the stale
+ones on the server.

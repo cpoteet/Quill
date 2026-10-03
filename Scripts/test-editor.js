@@ -1479,6 +1479,44 @@ describe('inlineFootnotes', () => {
     const html = '<p>x</p>'
     assert.equal(inline(html, [{ id: 'fn-a', content: 'N' }]), html)
   })
+
+  test('only the delimiter is replaced; the markup around it keeps its exact bytes', () => {
+    const custom = "<div class='promo' data-x='1'>Hi<br/><img src='a.png'/></div>"
+    assert.equal(
+      inline(`${custom}\n\n<!-- wp:footnotes /-->\n\n<hr/>`, [{ id: 'fn-a', content: 'N' }]),
+      `${custom}\n\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>\n\n<hr/>`)
+  })
+
+  test('a delimiter nested inside a block is left alone; the top-level one becomes the list', () => {
+    const nested = "<div class='raw'><!-- wp:footnotes /--></div>"
+    assert.equal(
+      inline(`${nested}\n<!-- wp:footnotes /-->`, [{ id: 'fn-a', content: 'N' }]),
+      `${nested}\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>`)
+  })
+
+  test('delimiter text in an attribute cannot stand in for a delimiter the pattern misses', () => {
+    const out = inline('<p title="<!-- wp:footnotes /-->">x</p>\n<!-- wp:footnotes /--!>', [{ id: 'fn-a', content: 'N' }])
+    const d = new JSDOM('<!doctype html><body>').window.document.createElement('div')
+    d.innerHTML = out
+    assert.equal(d.querySelector('p').getAttribute('title'), '<!-- wp:footnotes /-->')
+    assert.deepEqual(Array.from(d.querySelectorAll('ol.wp-block-footnotes > li'), li => li.id), ['fn-a'])
+  })
+
+  test('a tag-like string inside a script does not hide the delimiter after it', () => {
+    const custom = `<div class='promo'><script>const t = '<div title="';</script><br/></div>`
+    assert.equal(
+      inline(`${custom}\n\n<!-- wp:footnotes /-->\n\n<p class="x">"</p>`, [{ id: 'fn-a', content: 'N' }]),
+      `${custom}\n\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>\n\n<p class="x">"</p>`)
+  })
+
+  test('delimiter text inside an attribute is not mistaken for the delimiter', () => {
+    const out = inline('<div data-x="<!-- wp:footnotes /-->"></div><!-- wp:footnotes /-->', [{ id: 'fn-a', content: 'N' }])
+    const d = new JSDOM('<!doctype html><body>').window.document.createElement('div')
+    d.innerHTML = out
+    assert.deepEqual(Array.from(d.childNodes, n => n.nodeName), ['DIV', 'OL'])
+    assert.equal(d.firstChild.getAttribute('data-x'), '<!-- wp:footnotes /-->')
+    assert.equal(d.lastChild.outerHTML, '<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>')
+  })
 })
 
 

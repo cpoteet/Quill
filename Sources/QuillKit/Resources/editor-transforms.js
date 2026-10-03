@@ -1116,7 +1116,7 @@ function inlineFootnotes(html, footnotes, doc) {
   })
   // Spliced into the string, as extractFootnotes splices it out: re-serializing the post would
   // rewrite the unsupported-block source that must be saved byte for byte.
-  const delimiters = Array.from(html.matchAll(/<!--\s*wp:footnotes \/\s*-->/g))
+  const delimiters = Array.from(html.matchAll(/<!--\s*wp:footnotes \/\s*-->/g)).filter(m => liesOutsideTags(html, m.index))
   const comments = []
   const SHOW_COMMENT = 128
   const walker = doc.createTreeWalker(div, SHOW_COMMENT)
@@ -1127,6 +1127,16 @@ function inlineFootnotes(html, footnotes, doc) {
     return div.innerHTML
   }
   return html.slice(0, at.index) + ol.outerHTML + html.slice(at.index + at[0].length)
+}
+
+// False when index falls inside a tag (an attribute value), a comment, or a raw-text element's contents.
+function liesOutsideTags(html, index) {
+  const token = /<!--[\s\S]*?(?:--!?>|$)|<(script|style|textarea|title|xmp|iframe|noembed|noframes)\b(?:"[^"]*"|'[^']*'|[^'">])*>[\s\S]*?(?:<\/\1\s*>|$)|<[A-Za-z\/!?](?:"[^"]*"|'[^']*'|[^'">])*>?/gi
+  let m
+  while ((m = token.exec(html)) && m.index < index) {
+    if (m.index + m[0].length > index) return false
+  }
+  return true
 }
 
 // ── Paste cleanup (docs/paste.md) ─────────────────

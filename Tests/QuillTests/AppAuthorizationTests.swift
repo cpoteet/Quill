@@ -28,10 +28,12 @@ struct AppAuthorizationTests {
     // MARK: - approvalURL
 
     @Test func approvalURLCarriesEveryParameter() {
-        let url = AppAuthorization.approvalURL(base: base, nonce: "abc", deviceName: "Chris's MacBook", scheme: "quill")
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+        let url = AppAuthorization.approvalURL(base: base, nonce: "abc", deviceName: "Chris's MacBook", date: date, scheme: "quill")
+        let stamp = date.formatted(.dateTime.month(.abbreviated).day().hour().minute().second())
         #expect(url.host() == "example.com")
         #expect(url.path() == "/wp-admin/authorize-application.php")
-        #expect(queryValue("app_name", in: url) == "Quill on Chris's MacBook")
+        #expect(queryValue("app_name", in: url) == "Quill on Chris's MacBook (\(stamp))")
         #expect(queryValue("app_id", in: url) == AppAuthorization.appID)
         #expect(queryValue("success_url", in: url) == "quill://authorize?nonce=abc")
         #expect(queryValue("reject_url", in: url) == "quill://authorize?nonce=abc&success=false")
@@ -45,7 +47,13 @@ struct AppAuthorizationTests {
 
     @Test func approvalURLEncodesNonASCIIDeviceName() {
         let url = AppAuthorization.approvalURL(base: base, nonce: "abc", deviceName: "José\u{2019}s Mac", scheme: "quill")
-        #expect(queryValue("app_name", in: url) == "Quill on José\u{2019}s Mac")
+        #expect(queryValue("app_name", in: url)?.hasPrefix("Quill on José\u{2019}s Mac (") == true)
+    }
+
+    @Test func approvalURLNamesEachAttemptUniquelyForWordPress() {
+        let first = AppAuthorization.approvalURL(base: base, nonce: "abc", deviceName: "Studio", date: Date(timeIntervalSince1970: 1_790_000_000), scheme: "quill")
+        let retry = AppAuthorization.approvalURL(base: base, nonce: "abc", deviceName: "Studio", date: Date(timeIntervalSince1970: 1_790_000_001), scheme: "quill")
+        #expect(queryValue("app_name", in: first) != queryValue("app_name", in: retry))
     }
 
     // MARK: - parseCallback

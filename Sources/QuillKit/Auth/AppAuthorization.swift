@@ -20,10 +20,11 @@ public enum AppAuthorization {
         return bytes.map { String(format: "%02x", $0) }.joined()
     }
 
-    public static func approvalURL(base: URL, nonce: String, deviceName: String, scheme: String = callbackScheme) -> URL {
+    public static func approvalURL(base: URL, nonce: String, deviceName: String, date: Date = .now, scheme: String = callbackScheme) -> URL {
         let callback = "\(scheme)://\(callbackHost)?nonce=\(nonce)"
+        let stamp = date.formatted(.dateTime.month(.abbreviated).day().hour().minute().second())
         let parameters = [
-            ("app_name", "Quill on \(deviceName)"),
+            ("app_name", "Quill on \(deviceName) (\(stamp))"),
             ("app_id", appID),
             ("success_url", callback),
             ("reject_url", "\(callback)&success=false"),

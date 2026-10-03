@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-03 — 598 Swift tests + 1,496 JS tests (1,495 pass, 1 skipped), no failures._
+_Last updated: 2026-10-03 — 625 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,12 +16,12 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (598 tests)
+1. **Swift tests** — `swift test` (625 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (268 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (5 tests — live Tiptap editor in jsdom; `window.flushContent`)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (273 tests via Node's built-in runner + jsdom)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (276 tests — live Tiptap editor in jsdom)
@@ -32,7 +32,7 @@ This document is the authoritative reference for Quill's automated test suite an
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (52 tests — checked by WordPress's own block validator)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (59 tests — checked by WordPress's own block validator)
 18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the eighteen passed.
@@ -111,9 +111,9 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (598 tests, 39 suites)
+## Swift test suite (625 tests, 40 suites)
 
-Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds two (`EditorCoordinatorTests`, `EditorPushDecisionTests`), which get a row each.
+Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -140,7 +140,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 45 | `previewURL` query/fragment handling; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 48 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -152,12 +152,13 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
-| 32 | `SiteSwitchTests` | `AppStateTests.swift` | 2 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials keeps the open post |
-| 33 | `MediaReplaceTests` | `AppStateTests.swift` | 2 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, and does not add back one that left the list |
-| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 28 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback), `profileURL`, and `discover` against the REST index: field mapping, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects, adopting the `www` or bare form of `home` |
-| 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 9 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
+| 32 | `SiteSwitchTests` | `AppStateTests.swift` | 3 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
+| 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
+| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
+| 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
-| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 19 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry, and the optional AI key step |
+| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 
 ---
 
@@ -318,7 +319,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `fetchMediaByIdsSendsIncludeAndPerPage` | `fetchMedia(ids:)` sends `include` in the given order, `per_page` equal to the count, `context=edit` — the request `GallerySheet` makes to reopen a gallery |
 | `fetchMediaByIdsSendsNothingForNoIds` | No ids, no request (an empty `include` would return the whole library) |
 | `fetchMediaByIdsBatchesPastOneHundred` | 150 ids → requests of 100 and 50, WordPress's `per_page` cap; the two `include` lists are exactly ids 1–100 and 101–150 |
-| `fetchMediaSendsTheRequestedPageAndPageSize` | `page`, `per_page` and `media_type` parsed back out of the query with `URLComponents` — `GallerySheet.loadMoreMedia` loops until a page holds an image, so a dropped page parameter never terminates |
+| `fetchMediaSendsTheRequestedPageAndPageSize` | `page`, `per_page` and `media_type` parsed back out of the query with `URLComponents` |
 | `fetchMediaOmitsOffsetUnlessAsked` | no `offset` key unless one is passed; a passed offset reaches the query beside `per_page` — the paging mode `MediaLibraryView` depends on |
 | `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
 | `updateMediaAltTextBodyContainsAltText` | Request body has `{"alt_text":"…"}` |
@@ -832,7 +833,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (45 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (48 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -911,12 +912,15 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | `pastedImageFileExtensionFollowsTheBytesNotTheLabel` | JPEG, PNG, WebP, HEIC and GIF bytes pick their own extension whatever the label says; Word labels its JPEGs `image/png` and WordPress refuses a mismatched upload |
 | `pastedImageFileExtensionFallsBackToItsType` | Unrecognised bytes fall back to the MIME type, then to `png` |
 
-#### Settings from a WordPress post (2 tests)
+#### Settings from a WordPress post (5 tests)
 
 | Test | What it checks |
 |---|---|
 | `settingsFromAPostCarryEveryField` | `PostSettings(post:)` maps status, categories, tags, featured image, slug, comment status, parent and the raw excerpt, and starts with no pending term names — Revert and load both go through it |
 | `settingsFromAScheduledPostReadTheGMTDateAsUTC` | A `future` post's `date_gmt` without a zone suffix is read as UTC |
+| `settingsFromAScheduledPostWithoutAGMTDateReadTheLocalDateAsUTC` | An empty `date_gmt` falls back to `date`, also read as UTC |
+| `settingsFromAScheduledPostAcceptAZoneSuffix` | A `date_gmt` ending in `Z` gives the same instant |
+| `plainExcerptStripsTagsAndOuterWhitespace` | `plainExcerpt` drops tags and surrounding whitespace, and leaves plain text alone |
 
 #### Dropped-image upload feedback (11 tests)
 
@@ -1091,16 +1095,17 @@ File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift
 | `galleryPayloadImageWithoutMediaKeepsItsURL` | An image the library did not return keeps its URL and size, and sends no id |
 | `galleryPayloadInsertKeepsTheInsertShape` | With no edit, the payload is exactly the insert keys it always was |
 
-### 32. App — `SiteSwitchTests` (2 tests)
+### 32. App — `SiteSwitchTests` (3 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
 | Test | What it checks |
 |---|---|
-| `anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState` | The open post's persist hook runs while the old credentials are still set; afterwards selection, posts, pages and media are empty |
+| `anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState` | The open post's persist hook runs while the old credentials and the open post are still set; afterwards selection, posts, pages, media and the selected media are empty |
+| `theFirstSiteConnectsWithoutFlushingAnything` | With no site connected yet, `connect` runs no flush and keeps the open local draft |
 | `theSameSiteWithNewCredentialsKeepsTheOpenPost` | A new password for the same site (trailing slash aside) runs no flush and keeps the selection |
 
-### 33. App — `MediaReplaceTests` (2 tests)
+### 33. App — `MediaReplaceTests` (3 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -1108,8 +1113,9 @@ File: `Tests/QuillTests/AppStateTests.swift`
 |---|---|
 | `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still replaced in the list and as the selection |
 | `anItemNoLongerListedIsNotAddedBack` | A save for an item that left the list changes neither the list nor another item's selection |
+| `aSaveThatReturnsAfterASiteSwitchLeavesTheNewSiteAlone` | An alt-text save from the old site that returns after a switch changes neither the new site's list nor its selection, even when the IDs match |
 
-### 34. API — `SiteDiscoveryTests` (28 tests)
+### 34. API — `SiteDiscoveryTests` (35 tests)
 
 File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockURLProtocol`. Spec: `docs/superpowers/specs/2026-10-02-first-run-onboarding-design.md`.
 
@@ -1126,6 +1132,8 @@ File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockUR
 | `normalizeRefusesHTTPElsewhere` | `http://example.com` throws `insecure` |
 | `normalizeRefusesEmptyInput` | An empty field throws `invalidAddress` |
 | `normalizeRefusesGarbage` | `not a site` throws `invalidAddress` |
+| `normalizeDropsCredentialsAndFragment` | `user:secret@` and `#top` are removed from a pasted address |
+| `normalizeRefusesANonWebScheme` | `ftp://example.com` throws `invalidAddress` |
 | `profileURLFollowsAuthorizationURLAdminPath` | The profile link uses the admin path WordPress reported, so a subdirectory install works |
 | `profileURLFallsBackToSiteAdmin` | With no authorization URL, the link is `{site}/wp-admin/profile.php#application-passwords-section` |
 | `discoverMapsEveryField` | Name, icon, authorization URL and install URL (`url`) come from the REST index |
@@ -1139,12 +1147,17 @@ File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockUR
 | `discoverRejectsJSONWithoutNamespaces` | JSON without `namespaces` throws `notWordPress` |
 | `discoverReportsTransportFailureAsUnreachable` | A transport error throws `unreachable(host:)` |
 | `discoverKeepsRedirectedAddress` | A redirect to `www.` gives the final address as the site URL |
+| `discoverKeepsTheSubdirectoryOfARedirectedIndex` | An index answered at `/blog/wp-json/` gives `https://example.com/blog` |
+| `discoverKeepsTheTypedAddressWhenTheIndexRedirectsOffSite` | Parameterized over four redirects: a downgrade to `http`, another host, another port, and `http` on a `.local` host. Each leaves the typed address alone; only an HTTPS (or local http) address on the same port, on the typed host or its `www`/bare twin, is adopted |
+| `discoverDecodesEntitiesInTheSiteName` | `Chris&#039;s Blog &amp; Notes` is shown as `Chris's Blog & Notes` |
+| `discoverKeepsTheTypedAddressWhenTheIndexMovedOffWPJSON` | An index answered at `/?rest_route=/` leaves the typed address alone |
 | `discoverAdoptsWWWHomeForBareAddress` | A bare address whose `home` is the `www` form saves the `www` form, so per-site local data (autosaves, taxonomy cache) matches a connection made with `www` |
 | `discoverAdoptsBareHomeForWWWAddress` | The reverse: a `www` address whose `home` is the bare form saves the bare form |
-| `discoverKeepsAddressWhenHomeDiffersBeyondWWW` | A `home` on another subdomain, another path, `http`, or another domain leaves the typed address alone, so a staging copy or a proxy's internal address never redirects Quill's API calls |
+| `discoverKeepsAddressWhenHomeDiffersBeyondWWW` | A `home` on another subdomain, another path, `http`, another domain, or another port leaves the typed address alone, so a staging copy or a proxy's internal address never redirects Quill's API calls |
 | `discoverSendsNoAuthorizationHeader` | Discovery is unauthenticated |
+| `discoverAsksForJSONSoWordPressHidesPHPWarnings` | The request sends `Accept: application/json`, so WordPress hides PHP warnings that would otherwise come ahead of the JSON (QA #151, same as `WordPressClient`) |
 
-### 35. Auth — `AppAuthorizationTests` (9 tests)
+### 35. Auth — `AppAuthorizationTests` (10 tests)
 
 File: `Tests/QuillTests/AppAuthorizationTests.swift`
 
@@ -1152,9 +1165,10 @@ File: `Tests/QuillTests/AppAuthorizationTests.swift`
 |---|---|
 | `nonceIs64LowercaseHexCharacters` | 32 random bytes, hex-encoded |
 | `noncesDiffer` | Two nonces are not equal |
-| `approvalURLCarriesEveryParameter` | `app_name`, `app_id`, `success_url` and `reject_url` decode to the expected values |
+| `approvalURLCarriesEveryParameter` | `app_name` ("Quill on <device> (<date and time to the second>)"), `app_id`, `success_url` and `reject_url` decode to the expected values |
 | `approvalURLEncodesReservedCharactersInValues` | `:`, `/`, `?` and `=` in the callback URL are percent-encoded, so they can't leak into WordPress's query |
-| `approvalURLEncodesNonASCIIDeviceName` | An accented name with a curly apostrophe survives the round trip |
+| `approvalURLEncodesNonASCIIDeviceName` | An accented name with a curly apostrophe survives the round trip as the `app_name` prefix |
+| `approvalURLNamesEachAttemptUniquelyForWordPress` | Two attempts a second apart get different `app_name`s, because WordPress rejects a duplicate application-password name and a retry after a failed check would otherwise dead-end |
 | `approvedCallbackDecodesPlusAsSpace` | `user_login=John+Doe` gives `John Doe` (PHP `urlencode`) |
 | `approvedCallbackKeepsEncodedPlus` | `user_login=a%2Bb` gives `a+b` |
 | `declinedCallbackIsRejected` | `success=false` with the right nonce gives `.rejected` |
@@ -1169,7 +1183,7 @@ File: `Tests/QuillTests/ConnectSiteTests.swift`, with its own `ConnectSiteMockUR
 | `savesCredentialsAfterASuccessfulCheck` | One request to `/wp-json/wp/v2/posts`, then the same credentials are saved |
 | `savesNothingWhenTheCheckFails` | A 401 throws and nothing is saved |
 
-### 37. Onboarding — `OnboardingModelTests` (19 tests)
+### 37. Onboarding — `OnboardingModelTests` (28 tests)
 
 File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through recording fake `Dependencies`, so the suite makes no requests and writes nothing. It uses a real `AppState()` and sets `aiSettings` explicitly after creating it.
 
@@ -1194,6 +1208,27 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `saveRejectedKey` | `invalidKey` stays on the AI step with "Anthropic didn't accept this key." and saves nothing |
 | `saveUnreachable` | A network error stays on the AI step with the "Couldn't reach Anthropic…" copy |
 | `saveGoodKey` | A good key is checked, saved, and turns on `AppState.aiEnabled` |
+| `thePanelStaysUpThroughAISetupAfterTheSiteConnects` | `showsPanel` stays true on the AI step although `AppState` now has credentials, and turns false on Skip |
+| `thePanelIsHiddenWhenASiteIsAlreadyConnected` | A connected `AppState` hides the panel |
+| `theKeyIsTrimmedBeforeItIsCheckedAndSaved` | Whitespace around a pasted key is removed before the check, the save and `AppState.aiSettings` |
+| `manualConnectAfterDiscoveryUsesTheDiscoveredAddressAndName` | Manual entry after discovery verifies the discovered (`www`) address and shows the AI step with the site name |
+| `manualConnectWithAnEditedAddressIgnoresTheEarlierDiscovery` | Once the address field changes, the typed address is verified, no name is shown, and the profile link follows the new address |
+| `aFailedManualConnectStaysOnTheFormWithTheReason` | A failed check stays on the manual form with the error, not busy, and leaves `AppState` without credentials |
+| `aManualConnectToAnUnusableAddressChecksNothing` | An `http://` address shows the HTTPS error without a check; an invalid address has no profile link and opens nothing |
+| `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
+| `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
+
+### 38. Editor — `EditorCoordinatorBridgeTests` (5 tests)
+
+File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
+
+| Test | What it checks |
+|---|---|
+| `flushHandsTheUnpostedTypingToSwiftAndRecordsIt` | The `flushContent` snapshot reaches `onContentChange` and `onFootnotesChange`, and is recorded, so pushing the same content back is not re-sent to the editor |
+| `flushWithNothingPendingChangesNothing` | A `null` reply calls neither handler |
+| `flushBeforeTheEditorIsReadyAsksNothing` | Before `editorReady`, no script is run |
+| `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
+| `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
 
 ## JS block parser tests (67 tests)
 
@@ -1324,7 +1359,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS AI output validity tests (52 tests)
+## JS AI output validity tests (59 tests)
 
 `Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
@@ -1345,7 +1380,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a selection with a leading space keeps the space` | Selecting ` Middle…` (with the space) still leaves `stays. Short.` with one space between |
 | ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
-| `editing while Claude responds` (8 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
+| `editing while Claude responds` (15 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text, and the view shows the label right before the dimmed (`.ai-pending`) text until Accept; typing at the collapsed caret lands after the result; a result for text deleted meanwhile is not inserted, and Discard then frees the next operation; Discard after the paragraph holding the result, or the whole document, was deleted brings none of it back; Discard after a table result that ends the post leaves no empty trailing paragraph; a list rewrite still replaces its own list, and only it, after text is typed above; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
 
 ## JS fixture validity sweep (62 tests)
 
@@ -1475,7 +1510,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (268 tests)
+## JS editor tests (273 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1772,7 +1807,7 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `content with no footnotes is returned untouched` | |
 | `leaves the rest of the block comments intact` | |
 
-### `inlineFootnotes` (5 tests)
+### `inlineFootnotes` (11 tests)
 
 The inverse, run on load so the notes are editable in the editor.
 
@@ -1784,6 +1819,11 @@ The inverse, run on load so the notes are editable in the editor.
 | `extractFootnotes leaves the rest of the saved markup byte for byte` | The list is spliced out of the string; re-serializing the DOM undid the save's self-closed `<hr/>` and `<img/>` |
 | `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta behind it is shown as a non-editable card rather than an empty list |
 | `meta without a delimiter in the content changes nothing` | |
+| `only the delimiter is replaced; the markup around it keeps its exact bytes` | The whole output is compared: single-quoted attributes, `<br/>` and `<img/>` around the delimiter are not re-serialized |
+| `a delimiter nested inside a block is left alone; the top-level one becomes the list` | The splice picks the top-level comment's own occurrence in the string, not the first match |
+| `delimiter text in an attribute cannot stand in for a delimiter the pattern misses` | When the real delimiter is one the string pattern does not match (`/--!>`), a match inside an attribute is not used: `liesOutsideTags` skips matches inside a tag or another comment, so the attribute keeps its text and the list replaces the real comment |
+| `a tag-like string inside a script does not hide the delimiter after it` | `liesOutsideTags` skips a raw-text element's contents (`script`, `style`, `textarea`…), so `'<div title="'` in a script cannot open a pretend tag that swallows the real delimiter and drops the save to the re-serializing fallback; the markup around it keeps its exact bytes |
+| `delimiter text inside an attribute is not mistaken for the delimiter` | When the string matches outnumber the real comments, the DOM fallback runs: the attribute keeps its text and the list follows the `<div>` |
 
 ### `toWordPressHTML` — gallery (17 tests)
 
@@ -1994,7 +2034,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (5 tests)
+## JS bridge tests (8 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2007,7 +2047,10 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `cancels the pending post instead of sending it again` | No `contentChanged` follows a flush |
 | `returns null when nothing is waiting to be posted` | Swift's copy is already current, so there is nothing to return |
 | `returns null once setContent has replaced the document` | A replaced document's pending post is dropped |
-| `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned too |
+| `returns null once syncContentToSwift has posted the typing` | `syncContentToSwift` cancels the pending post |
+| `the snapshot is exactly what the debounce would have posted` | The flushed HTML equals what `syncContentToSwift` posts for the same document |
+| `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
+| `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
 ## JS keyboard tests (87 tests)
 
@@ -3000,10 +3043,13 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 ### 7.1 Authentication & onboarding
 
-**First run.** Move `~/Library/Application Support/Quill/credentials.json` and `ai_settings.json` aside before these checks (never delete them), and put them back afterwards. Dev and release builds both register `quill://`. Chunk 1 of the onboarding plan checked this on 2026-10-02: with an installed copy also declaring the scheme and launched first, every callback still reached the dev build, and each running copy kept one window. After a pass, revoke the "Quill on {Mac}" application passwords it created on the site's profile.
+**First run.** Move `~/Library/Application Support/Quill/credentials.json` and `ai_settings.json` aside before these checks (never delete them), and put them back afterwards. Dev and release builds both register `quill://`. Chunk 1 of the onboarding plan checked this on 2026-10-02: with an installed copy also declaring the scheme and launched first, every callback still reached the dev build, and each running copy kept one window. After a pass, revoke the "Quill on {Mac} ({date and time})" application passwords it created on the site's profile.
 
 - [ ] **Fresh install.** Launch with neither file → the Welcome panel fills the window and no Settings window opens. Enter the site address and click Continue → the browser opens the site's Authorize Application page, and Quill shows "Approve Quill in your browser" with the site name in bold. Approve → Quill shows "Connected to {site name}" and the AI step.
 - [ ] **Callback routing.** After the approval, Quill has exactly one window (Window menu), and the approval landed in it.
+- [ ] **A second attempt is accepted.** Connect through the browser, then quit, move `credentials.json` aside and connect again within the same minute → WordPress's Authorize page creates the second password without a "name already in use" error, and the profile lists two passwords, each "Quill on {Mac} ({date and time to the second})".
+- [ ] **Site name with entities.** On a site titled with an apostrophe and an ampersand (e.g. `Chris's Blog & Notes`), Continue → the waiting screen and the AI step show `'` and `&`, not `&#039;` or `&amp;`.
+- [ ] **PHP warnings.** On a site with `WP_DEBUG_DISPLAY` on and a plugin that prints a PHP warning, Continue still reaches the Authorize page instead of "not a WordPress site" (discovery asks for JSON, so WordPress hides the warning).
 - [ ] **Decline, manual entry, dark mode.** Decline in WordPress → Welcome returns with a tinted note above the field: "**Quill wasn't approved.** Continue to try again, or use an application password." Click "Use an application password instead" → the manual panel opens with the address carried over, and Back keeps it. On a site with application passwords turned off (`add_filter( 'wp_is_application_passwords_available', '__return_false' );`), Continue → the manual panel opens on its own with the amber note. Switch System Settings to Dark → every state is readable, and the Quill tile and the fields keep visible edges.
 - [ ] **AI step.** Skip for Now → the app appears, posts load, and Settings shows no Anthropic key. Repeat with a real key and Save → the app appears and Evaluate works. Move only `credentials.json` aside and connect again → the app appears straight after approval, with no AI step.
 - [ ] In the manual panel or Settings, enter a valid site URL, username, and app password → app connects and post/page lists appear.
@@ -3015,6 +3061,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] No macOS Keychain password prompt appears during normal use.
 - [ ] Quit and relaunch → credentials are remembered and lists reload without re-entering them. A spinner appears during loading — the empty-state placeholder does NOT flash before posts arrive.
 - [ ] Change the site URL in settings → lists update to the new site; any saved AI sample posts are cleared.
+- [ ] **Switching sites flushes the open post first.** Edit a post on site A without saving, then connect site B in Settings → reconnect to A and reopen the post: "Unsaved changes restored" shows the edit. While on B: nothing is selected, the lists and Media show only B's items, and opening a B post with the same ID as an A post that has a stash shows no restore toast.
+- [ ] **A late alt-text save stays on its own site.** Throttle the network, edit an image's alt text on site A and click away, then switch to site B before the save returns → B's Media item with the same ID (if any) keeps its own alt text.
 
 ### 7.2 Sidebar, lists, navigation
 
@@ -3087,6 +3135,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Drop a `.heic` alongside two ordinary images → the batch still ends in a single "3 images inserted" toast (the "Converted to JPEG" note only appears on a single-file drop).
 - [ ] Disconnect the network and drop one image → the toast reads "Upload failed: …" with the underlying error. Reconnect, then drop three images with one deliberately unusable → the toast summarizes as "1 of 3 images failed to upload".
 - [ ] Drop a batch of images, and while the pill is still counting, drop a second batch → the two batches run one after the other: the pill never disappears early, and a toast and the pill are never visible on top of each other in the bottom slot.
+- [ ] **A slow drop goes only to its own post.** Throttle the network, drop a large image on post A and click post B before the upload finishes → B is unchanged, A is unchanged when reopened, and the toast says the image reached the Media Library but was not inserted. Repeat with a pasted image.
+- [ ] **A section round-trip does not insert into a dead editor.** Drop a large image on post A, click Media and then back to A before the upload finishes → the image is not in A, and it is in the Media Library. Known limit: the "not inserted" toast is drawn on the editor the section switch tore down, so no message shows.
 - [ ] After any image insert (toolbar button, media picker, or Finder drop), start typing immediately → the text goes into a new paragraph **below** the image, not into the caption. Click the caption area under the image → the caret moves there and a caption can be typed.
 - [ ] Insert two images back to back → only one empty paragraph sits between/after them (blank paragraphs don't stack).
 - [ ] Save a post with an inserted image and check code view → an empty `<p></p>` follows the `<!-- /wp:image -->` block. This is expected, not a bug.
@@ -3205,6 +3255,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] **Save, then switch posts while it runs.** Edit post A, press ⌘S, and click post B in the sidebar before the save returns (throttle the network to make the window wide enough). B stays selected and shows its own title and content. A toast names A: “A”: Published, or “A” wasn't saved: with the reason. Reopen A → it has the saved content and no "Unsaved changes restored" toast. Edit B and save → no conflict alert.
 - [ ] Repeat with the switch going to another section (Media, Pages) instead of another post → the section you switched to stays selected. The post still saves. The off-post toast is drawn on the editor that the section switch removed, so it does not show; that is known.
 - [ ] Publish a **local draft**, then click another section while the request runs → the selection is not pulled back to the newly published post.
+- [ ] Publish a **local draft** and keep typing while the request runs → when the new remote post opens, "Unsaved changes restored" shows the text typed during the request, and the Drafts list no longer has the draft.
 - [ ] Type a new category name in the settings panel, press Publish, and switch to another post during the request → the category is created and appears in the category list, but is not ticked on the post you switched to. Switch away from a post with a typed but unsaved new category or tag name → the name is not carried into the next post you open.
 
 ### 7.8 Conflict detection
@@ -3217,6 +3268,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Preview a draft post, then save → no spurious conflict alert appears.
 - [ ] On a site using plain permalinks (`?p=123` URLs), click Preview → the browser opens the correct URL with `&preview=true` appended (not a malformed double `?`).
 - [ ] On a site using pretty permalinks (`/my-post/` URLs), click Preview → the browser opens `…/?preview=true`.
+- [ ] **Preview is guarded like Save.** Open a post while offline (so its load fails), reconnect, and click Preview → an error ("Can't preview — this post never finished loading…"), and no browser opens. On a post that raises the block-risk banner, edit it and click Preview before acknowledging the banner → refused the same way.
+- [ ] Type a word and click Preview within half a second → the preview shows that word (the pending typing is flushed first).
 
 ### 7.9 Autosave / unsaved changes / navigation
 
@@ -3234,6 +3287,9 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Edit a post, then click the Media section without saving → the dot clears as the editor closes. SwiftUI can detach the marker view before it is dismantled, so a teardown that reads `nsView.window` finds nothing and leaves the dot lit with no editor open.
 - [ ] Rapidly switch between several posts → no autosave data from one post appears in another; no crashes.
 - [ ] Quit the app with unsaved local-draft edits → relaunch → the edits are recovered.
+- [ ] **Quit saves the open post.** Type into a remote post and press ⌘Q within half a second → relaunch and reopen it: "Unsaved changes restored" shows everything typed, the last characters included. Repeat on a local draft → the draft has every character.
+- [ ] Type a word and switch posts (or press ⌘S) within half a second → the word is in the stash (or the save). The editor's 500ms debounce is flushed before any save, preview, switch or quit.
+- [ ] **Settings count as unsaved.** On a clean remote post, change only a setting (tick a category, edit the excerpt) → the edited dot and the Revert button appear. Revert → the setting goes back to the server's value. Change a setting, switch away and back → no "Unsaved changes restored" toast (only the body is stashed).
 - [ ] Open a remote post, make edits → a "Revert" button appears in the editor header. Click it → a "Revert to Server Version?" dialog appears.
   - [ ] Click "Revert" (⌘↩) → local edits are discarded and the server content reloads.
   - [ ] Click "Cancel" → editing continues; no data is lost.
@@ -3280,11 +3336,15 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] If the AI returns tables, lists, or headings, save and fetch the raw HTML → it has proper WordPress classes (`wp-block-table`, `wp-block-list`, `wp-block-heading`, etc.).
 - [ ] If Claude errors or times out → the original text is restored, an error toast appears, and the editor is not corrupted.
 - [ ] Disconnect from the internet and trigger an AI operation → the error message reads as a clear "couldn't reach the Anthropic API" message, not a raw NSURLError string.
-- [ ] Trigger an AI operation via the right-click menu on one selection, then — while the result bar is still showing — right-click a different selection and trigger another AI operation. Only one Accept/Discard bar should be interactive; pressing Return or Escape does not double-fire.
+- [ ] Trigger an AI operation via the right-click menu on one selection, then — while "✶ Rewriting…" or the result bar is still showing — right-click a different selection and trigger another AI operation → it is refused with the toast "Finish the current AI rewrite first…", and the first result still lands in its own range. Only one Accept/Discard bar is interactive; pressing Return or Escape does not double-fire.
 - [ ] Select a sentence and ask for a rewrite that will contain `&` (e.g. select "Research and development costs are high." and Make Shorter, which usually returns "R&D") → the editor shows `R&D`, not `R&amp;D`. Save and check the raw HTML → `R&amp;D`, never `R&amp;amp;D`.
 - [ ] Select a sentence together with the space after it (drag one character past the full stop) and Make Shorter → the result keeps one space before the next sentence. Repeat with the space before the sentence.
-- [ ] Start an AI operation, and while "✶ Rewriting…" is showing, click a different post → the new post opens unchanged, no Accept/Discard bar appears, and the reply never lands in it. Go back to the first post and check its content (known gap: the placeholder can be saved there; see `Views/Editor/CLAUDE.md`).
+- [ ] Start an AI operation, and while "✶ Rewriting…" is showing, click a different post → the new post opens unchanged, no Accept/Discard bar appears, and the reply never lands in it. Go back to the first post and check its content → no "✶ Rewriting…" text was saved (the placeholder is a decoration, never content).
 - [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and an error toast appears; no Accept/Discard bar is shown over the placeholder.
+- [ ] **Edits made while Claude responds are kept.** Start Make Longer on one paragraph and, while "✶ Rewriting…" shows, type in another paragraph → the typing stays after the result arrives, after Accept and after Discard.
+- [ ] **Typing next to the pending text in real WebKit.** While "✶ Rewriting…" shows, click at the very start of the dimmed text and type a few words → every keystroke appears (WebKit drops keystrokes next to a widget decoration in some positions; jsdom cannot show this, see the "widget decoration next to the caret" entry in `docs/editor-gotchas.md`).
+- [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty.
+- [ ] **Discard a table at the end of the post.** Select the last paragraph of a post, run To Table, then Discard → the post ends with the original paragraph and no extra empty paragraph below it, and the edited dot is not lit if the post was clean before.
 
 **AI result bar**
 - [ ] The Accept/Discard bar floats above the Quill window but does not float above other apps when you switch away from Quill.
@@ -3402,6 +3462,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
 - [ ] Save the post → fetch the raw HTML (`?context=edit`). The content ends with `<!-- wp:footnotes /-->` and **no** list; the bodies are in `meta.footnotes`. Markers are `<sup>` elements carrying core's `<fnId>-link` id, and there is no `↩` back-link anywhere in the content — WordPress renders that itself.
 - [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry in the editor.
+- [ ] **Preview sends the notes.** On a draft with footnotes, edit a note and click Preview → the preview shows the edited note. Undo the edit back to the saved text and Preview again → the preview, and the draft on the server (`?context=edit`), show the saved note, not the edited one.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
 - [ ] **Edit only a footnote body** — change nothing else in the post. The window's unsaved-changes dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
 - [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone.
@@ -3500,7 +3561,7 @@ human is required.
 - [ ] Pressing the button again reopens it, showing the current selection.
 - [ ] Right-clicking offers Show Details above the other items.
 - [ ] Show Details opens the panel on the right-clicked image, with the panel closed beforehand.
-- [ ] Editing alt text and clicking away saves, and shows "Saved".
+- [ ] Editing alt text and clicking away saves, and shows "Saved". With the network off, the field shows "Not saved: …" with the reason instead.
 - [ ] Space opens the large preview. Space closes it. Escape closes it.
 - [ ] Double-clicking a thumbnail opens the large preview.
 - [ ] Typing a space in the search field does NOT open the preview.
@@ -3518,6 +3579,9 @@ human is required.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
 - [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
 - [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
+- [ ] Change the filter or the search while a page is loading (throttle the network) → the grid shows only the new filter's items; the old page never lands in it.
+- [ ] Upload a file while a search is active → the search clears and the new item is shown and selected.
+- [ ] Open the media picker (Insert Image) and the gallery sheet on a site whose newest uploads are PDFs or audio → both show images only, with no empty first page. Upload an image from the picker, then scroll to the bottom → no image appears twice (the sheets page by offset).
 - [ ] **A failed load does not loop.** Turn off Wi-Fi and open Media → one failed request (watch the network in Console or a proxy), not a stream of about 20 a second, and exactly one Media Info button in the toolbar.
 - [ ] On a site with `WP_DEBUG_DISPLAY` on and a plugin that prints a PHP warning, Media still loads. If a warning still reaches the reply, the error says a plugin or theme may be adding text to it.
 - [ ] No bottom button strip remains, and there is exactly one Refresh button and one + menu.
@@ -3775,7 +3839,28 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 180 | The image toolbar's H field must show the height a width-only image implies, and a typed H must keep its ratio (or scale from natural size when the image has no dimensions) | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` height-field tests (3) |
 | 181 | A link to a rotated copy of the same upload, even with `?ver=`, must record `linkDestination` `media` (a different upload records `custom`), and `align` follows `linkDestination` in the `wp:image` comment as in core | ✅ `test-editor.js` `'standalone image block comments'` (rotated copy, different upload, key order) |
 | 182 | An event-handler attribute on a gallery image, its link or its figure must never run in the editor, through load, save, code view, copy, a gallery rebuild or paste | ✅ `--check-fixtures` script handler probe `Scripts/fixtures/script-sinks/gallery-img-handler.html` (real WebKit) |
-| 183 | An AI operation kept the whole document and put it back on Discard (and silently before inserting the result), so every edit made while Claude responded was lost, and the "✶ Rewriting…" placeholder was real content an autosave or post switch could save. The pending range is now plugin state mapped through later edits, the placeholder a decoration, and Discard inverts only the insertion step | ✅ `test-ai-output-validity.js` `'editing while Claude responds'` (6 tests) |
+| 183 | An AI operation kept the whole document and put it back on Discard (and silently before inserting the result), so every edit made while Claude responded was lost, and the "✶ Rewriting…" placeholder was real content an autosave or post switch could save. The pending range is now plugin state mapped through later edits, the placeholder a decoration, and Discard inverts only the insertion step | ✅ `test-ai-output-validity.js` `'editing while Claude responds'` (15 tests) |
+| 184 | Typing inside the editor's 500ms `contentChanged` debounce was lost on a save, preview, post switch or quit, and quitting lost everything since the last autosave. Swift now awaits `flushPendingContent()` (→ `window.flushContent()`) before each of them, quit waits on `persistOpenPost`, and `contentChanged`/`footnotesChanged` from a document `setContent` has replaced are dropped until it answers | ✅ `test-editor-bridge.js` (8 tests) + `EditorCoordinatorBridgeTests` (5 tests) + 👁 §7.8, §7.9 (the quit and the call sites are SwiftUI) |
+| 185 | Preview skipped Save's guards, so a draft preview (which WordPress writes into the post) could publish a failed load's empty content or a post the block-risk banner was holding back. `openPreview()` checks `writeBlockedReason` like Save | 👁 §7.8 — `PostEditorView` is private view state |
+| 186 | A draft preview writes the post and WordPress drops its meta, so the post held new markers against old notes. `openPreview()` sends the notes with `updateFootnotes` on every preview that overwrites the post; it sent them only when they differed from the clean state, which left the notes of an earlier preview on the server after an undo | ✅ `WordPressClientTests.updateFootnotesSendsOnlyMetaToTheRightEndpoint` (the request) + 👁 §7.20 (the call) |
+| 187 | Typing while a local draft published was written to the draft row the publish deletes. It is stashed as the new post's autosave and restored on open; a failed draft delete after a successful create is a warning, so a retry cannot publish twice | 👁 §7.7 |
+| 188 | A slow drop or paste landed in whichever post was open when the upload finished. The placement closures insert only while `loadedItem` and `appState.selectedItem` still hold the dropped-on post and the editor web view is still in a window (a section round-trip keeps the selection but tears the view down). Otherwise the toast says it was not inserted; after a section switch that toast draws on the dead view and does not show | ✅ `PostEditorHelpersTests.uploadNotInsertedMessageNamesTheMediaLibrary` (the message) + 👁 §7.4 (the closures) |
+| 189 | Changing the site kept the old site's open post, lists and media, and site A's autosave could restore into site B's post with the same ID. `AppState.connect` flushes the open post under the old credentials and then clears the old site's state; autosaves are keyed by site, and unsited rows are adopted once | ✅ `SiteSwitchTests` (3 tests), `AutosaveStoreTests.samePostIDOnTwoSitesIsTwoStashes`, `unsitedStashesBelongToTheFirstSiteThatAdoptsThem`, `adoptionKeepsTheSitedStashWhenBothExist`, `AppDatabaseTests.autosavesTableRebuiltWithASiteKey` + 👁 §7.1 |
+| 190 | An alt-text save that returned after a site switch could overwrite the new site's item with the same media ID. `AppState.replaceMedia(_:fromSite:)` ignores a result from a site other than the connected one; the save also reports failure, and finds the item by ID rather than an index held across the request | ✅ `MediaReplaceTests` (3 tests) + 👁 §7.1, §7.26 |
+| 191 | A second right-click AI operation overwrote the first's range, so the first reply landed in the wrong place and its Accept/Discard was orphaned. `beginAIOperation` returns `{ busy: true }` while one is held, and Swift shows `aiBusyMessage` | ✅ `test-ai-output-validity.js` `'a second operation is refused …'` (2 tests) + 👁 §7.11 (the toast) |
+| 192 | Discard after the author deleted across the AI result put the original back as a fragment where the paragraph had been. `_mapAIOperation` marks the record `deleted` when both ends are `deletedAcross`, and `discardAIResult` then restores nothing | ✅ `test-ai-output-validity.js` `'discarding after the paragraph holding the result was deleted brings none of it back'` and `'discarding after the whole document was deleted leaves it empty'` |
+| 193 | Discarding a table or rule result that ends the post left `TrailingParagraph`'s empty `<p>` behind and marked the post dirty. `_trailingAfterResult` records that appended paragraph, and Discard deletes it while it is still empty and last | ✅ `test-ai-output-validity.js` `'discarding a table result that ends the post leaves no empty paragraph behind'` + 👁 §7.11 |
+| 194 | WebKit can drop keystrokes next to a widget decoration, and the AI operation's "✶ Rewriting…" label is one beside the caret's likely position; jsdom and Chromium never show it | 👁 §7.11 (typing at the start of the dimmed text) |
+| 195 | Settings-only changes did not read as unsaved, so they showed no dot or Revert, and Revert left changed settings in place. `cleanSettings` sits beside `cleanTitle`/`cleanContent`, `isDirty` compares it, and Revert applies the fetched post through `applyRemotePost` | ✅ `PostEditorHelpersTests` `Settings from a WordPress post` (5 tests: the `PostSettings(post:)` that the settings baseline and Revert are built from) + 👁 §7.9 (the dot, Revert and the stash are view state) |
+| 196 | A media page that returned after the filter, search or site changed was added to the new view; the picker and gallery sheets asked for every type and could show an empty first page, and paged by page number so a page after an upload repeated an image | 👁 §7.26 — the media views have no harness |
+| 197 | `inlineFootnotes` rebuilt the whole post through `innerHTML`, so an unsupported block in a post with footnotes was no longer saved byte for byte. The list is spliced in at the delimiter's place in the string | ✅ `test-editor-footnotes.js` `'an unsupported block beside footnotes is saved byte for byte after an edit'` (whole output compared) + `test-editor.js` `'only the delimiter is replaced; …'` and `'a delimiter nested inside a block is left alone; …'` |
+| 198 | Delimiter text inside an attribute could stand in for a real delimiter the string pattern misses (`/--!>`), so the list replaced attribute text. `liesOutsideTags` drops matches inside a tag, another comment, or a raw-text element (a tag-like string in a script otherwise hid the real delimiter and re-serialized the post) | ✅ `test-editor.js` `'delimiter text in an attribute cannot stand in for a delimiter the pattern misses'`, `'delimiter text inside an attribute is not mistaken for the delimiter'` and `'a tag-like string inside a script does not hide the delimiter after it'` |
+| 199 | A plugin's PHP warning ahead of the REST index made discovery report "not WordPress". `SiteDiscovery` sends `Accept: application/json`, as `WordPressClient` does (QA #151), so WordPress hides the warning | ✅ `SiteDiscoveryTests.discoverAsksForJSONSoWordPressHidesPHPWarnings` + 👁 §7.1 |
+| 200 | The REST index's site name holds HTML entities, which the onboarding panels showed raw | ✅ `SiteDiscoveryTests.discoverDecodesEntitiesInTheSiteName` + 👁 §7.1 |
+| 201 | Discovery adopted any address the index redirected to, so an http downgrade or another host or port became the address Quill sends credentials to. `sameSite` adopts only HTTPS (or loopback http) on the same scheme and port, on the typed host or its `www`/bare twin | ✅ `SiteDiscoveryTests.discoverKeepsTheTypedAddressWhenTheIndexRedirectsOffSite` (4 cases) |
+| 202 | WordPress refuses a duplicate application-password name, so a retry after a failed check dead-ended on the Authorize page. `approvalURL` names each attempt with the date and time to the second | ✅ `AppAuthorizationTests.approvalURLNamesEachAttemptUniquelyForWordPress` + 👁 §7.1 |
+| 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (28 tests) + 👁 §7.1 |
+| 204 | A button's `href`, the editor web view's `file:` loads and Preview/Open in Browser accepted script or local URLs; the credentials file was written before it was made owner-only | ✅ `test-editor-containers.js` `'a button link with a script URL loses the URL but keeps its label'`, `EditorCoordinatorTests.onlyTheEditorsOwnFileMayLoad`, `PostEditorHelpersTests.previewURLRefusesANonWebScheme`, `JSONFileStoreTests.savingLeavesOnlyTheOwnerOnlyFileBehind` |
 
 ---
 
@@ -3792,6 +3877,7 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
 - **Menu commands and the Help links (§7.27):** `CommandGroup` items in `QuillApp.swift` only exist once AppKit builds the menu bar, and the Help/About links leave the app entirely. Nothing here has a harness — the destinations must be clicked.
 - **Saves that finish off-post (§7.7):** `save()`'s `stillOnPost()` check, the toast naming the post and the `appState`-only category and tag writes are SwiftUI view state. `stashAfterSave`, the stash decision, is unit-tested; the switching is manual.
+- **Flushes, Preview and upload placement in `PostEditorView` (§7.4, §7.8, §7.9, §7.20):** the quit wait, the `flushPendingContent` call sites, Preview's `writeBlockedReason` check and its `updateFootnotes` call, and the upload placement closures' post and window checks are private view state. `window.flushContent`, `EditorCoordinator.flushPendingContent`, `updateFootnotes`'s request and the not-inserted message are tested; the wiring is manual.
 - **A pasted image's real upload (§7.28):** the editor's `uploadPastedImages` message is checked in jsdom and in real WebKit (the harness answers each token itself), `PastedImage.decode`, `PastedImage.forgetScript` and the extension sniffing are unit-tested, the undo and redo of the source swap are checked in jsdom, and the upload loop is the one drops use. The round trip to a live media library, the pill and the source swap after it are manual, and need a test site: pasting an image uploads it.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.
 

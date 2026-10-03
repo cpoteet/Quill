@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 598 Swift + 1,496 JS tests, all passing as of 2026-10-03 (1,495 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 625 Swift + 1,511 JS tests, all passing as of 2026-10-03 (1,510 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -47,8 +47,8 @@ Deferred design decisions are tracked as GitHub issues on `cpoteet/Quill`, not i
 ```
 Sources/QuillKit/
   App/              AppState, AppServices, QuillApp, AppSupportDirectory, UpdateChecker
-  Auth/             CredentialsStore (file-based, not system keychain)
-  API/              WordPressClient, Models (WPPost, WPMedia, WPTaxonomy), MimeType, ImageConversion
+  Auth/             CredentialsStore (file-based, not system keychain), AppAuthorization, ConnectSite
+  API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy), MimeType, ImageConversion
   AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
@@ -124,6 +124,7 @@ These two fail silently with the whole test suite green:
 - **A section switch rebuilds `PostEditorView`, so async work checks `appState.selectedItem` as well as `loadedItem`**
 - **WordPress's REST `media_type` takes one value, so the Documents filter cannot also cover text files**
 - **Media paging sends an offset, not a page number — the local item count is the window into the server's filtered list**
+- **Each browser-approval attempt needs its own application-password name**
 - **Ad-hoc signing for dev, Developer ID only for release**
 - **Editor link colour is one CSS variable per theme**
 - **Color tokens & surface components**
