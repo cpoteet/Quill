@@ -79,8 +79,17 @@
 
       <section class="docs-section" id="connecting-to-wordpress">
         <h2 class="docs-h2">Connecting to WordPress</h2>
-        <p class="docs-body">Quill signs in to WordPress with an <strong>application password</strong>: a password WordPress generates for a single app, which you can revoke at any time without changing your account password. You need three things: your site's address, your WordPress username, and an application password.</p>
-        <h3 class="docs-h3">Step 1: Create an Application Password</h3>
+        <p class="docs-body">Quill signs in to WordPress with an <strong>application password</strong>: a password WordPress generates for a single app, which you can revoke at any time without changing your account password. You usually don't create it yourself. The first time you open Quill, it asks your site for one and WordPress hands it over once you approve.</p>
+        <h3 class="docs-h3">Connecting on First Launch</h3>
+        <ol class="docs-ol">
+          <li>Open Quill. Under <strong>Site address</strong>, type your site's address, such as <code>example.com</code>, and click <strong>Continue</strong>. Quill adds <code>https://</code> for you, and it works with or without <code>www</code>.</li>
+          <li>Your browser opens your site's <strong>Authorize Application</strong> page. Log in if WordPress asks, then click <strong>Yes, I approve of this connection</strong>.</li>
+          <li>When your browser asks whether to open Quill, allow it. Quill finishes connecting.</li>
+        </ol>
+        <p class="docs-body">WordPress names the password "Quill on" followed by your Mac's name, so on your profile you can tell your Macs apart and revoke one without affecting the others. If you click <strong>No, I do not approve of this connection</strong>, Quill returns to the first screen with a note saying it wasn't approved. While Quill waits, <strong>Open it again</strong> reopens the approval page and <strong>Cancel</strong> starts over.</p>
+        <h3 class="docs-h3">Connecting With an Application Password</h3>
+        <p class="docs-body">Some sites turn browser approval off. When yours does, Quill asks for an application password instead. You can also choose <strong>Use an application password instead</strong> on the first screen. On that screen, <strong>Open Profile Page</strong> opens the Application Passwords section of your WordPress profile in the browser (log in first if WordPress asks), which covers steps 1 to 3 below.</p>
+        <h4 class="docs-h4">Step 1: Create an Application Password</h4>
         <ol class="docs-ol">
           <li>Log in to your WordPress admin.</li>
           <li>Go to <strong>Users → Profile</strong>.</li>
@@ -89,19 +98,19 @@
           <li>Click <strong>Add New Application Password</strong>.</li>
           <li>Copy the password WordPress shows you. WordPress won't show it again.</li>
         </ol>
-        <h3 class="docs-h3">Step 2: Add It to Quill</h3>
+        <h4 class="docs-h4">Step 2: Add It to Quill</h4>
         <ol class="docs-ol">
-          <li>Choose <strong>Quill → Settings</strong> (⌘,).</li>
-          <li>Under <strong>WordPress Credentials</strong>, fill in:
+          <li>Fill in:
             <ul class="docs-list docs-list--nested">
-              <li><strong>Site URL:</strong> your site's full address, starting with <code>https://</code> (for example, <code>https://example.com</code>). Plain <code>http://</code> is accepted only for a site running on <code>localhost</code>.</li>
+              <li><strong>Site address:</strong> your site's address. Quill uses <code>https://</code>; plain <code>http://</code> is accepted only for a site running on <code>localhost</code>.</li>
               <li><strong>Username:</strong> your WordPress username.</li>
-              <li><strong>Application Password:</strong> the password from step 1.</li>
+              <li><strong>Application password:</strong> the password from step 1.</li>
             </ul>
           </li>
-          <li>Click <strong>Save</strong>.</li>
+          <li>Click <strong>Connect</strong>.</li>
         </ol>
-        <p class="docs-body">Quill tries the credentials against your site before it saves them. If the test fails, the error appears in the Settings window and nothing is saved. Once they're accepted, your posts and pages load in the sidebar.</p>
+        <p class="docs-body">Quill tries the credentials against your site before it saves them. If the test fails, the error appears above Connect and nothing is saved. Once they're accepted, your posts and pages load in the sidebar.</p>
+        <p class="docs-body">To change your site or credentials later, choose <strong>Quill → Settings</strong> (⌘,), edit the fields under <strong>WordPress Credentials</strong> and click <strong>Save</strong>. Settings tests them the same way.</p>
         <p class="docs-body">Credentials are stored in a file on your Mac that only your user account can read, not in the system keychain, so Quill never asks for your Mac password.</p>
         <h3 class="docs-h3">If Quill Can't Load Your Site</h3>
         <p class="docs-body">When a section fails to load, the sidebar shows the error with an <strong>Open Blog Settings…</strong> button, and the editor area reads "Couldn't load posts" (or pages, or media). Check your credentials in Settings, then press <strong>⌘R</strong> to try again. Local drafts are stored on your Mac, so the Drafts section keeps working while your site is unreachable.</p>
@@ -603,7 +612,8 @@
           <li>Choose <strong>Quill → Settings</strong> (⌘,) and find the <strong>AI Writing</strong> section.</li>
           <li>Paste the key into <strong>Anthropic API Key</strong> and click <strong>Save</strong>.</li>
         </ol>
-        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Quill doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature.</p>
+        <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can skip that step and add a key here later.</p>
+        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature.</p>
         <h3 class="docs-h3" id="writing-style">Writing Style</h3>
         <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude, which writes a short style guide. Quill uses that guide whenever it writes or reviews for you.</p>
         <p class="docs-body">The guide is rewritten whenever you change which posts you picked. If you connect Quill to a different WordPress site, your picks are cleared and you'll need to choose again.</p>
