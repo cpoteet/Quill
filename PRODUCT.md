@@ -27,7 +27,7 @@ Clean, efficient, professional. The tool is confident without being loud. Warm e
 
 1. **Writing surface first.** The editor is the product. All chrome is subordinate — visible only when needed.
 2. **Native, not web-ported.** Feel like Apple built it. Match macOS conventions for menus, popovers, and system typography where possible.
-3. **Warm amber accent, not system blue.** The amber (`#b45309`) is the one distinctive color. It should be consistent across every interactive state: focus rings, active buttons, primary actions.
+3. **Warm amber accent, not system blue.** Amber is the one distinctive color, used for every interactive state: focus rings, selection, active buttons, primary actions. The window chrome takes it from `AccentColor` in `Assets.xcassets` (`#C77700` light, `#BF801E` dark). The editor page uses ambers sampled from the app icon, set as CSS variables at the top of `editor.html`: `--accent` for selection and resize handles, `--caret`, and `--link`, a darker ochre because the icon amber is too light for text on white. Those two files are the source of truth; change the colors there, not here.
 4. **Quiet until you need it.** UI surfaces (find bar, embed picker, link popover) slide in and out without disrupting the reading line.
 5. **Every UI panel speaks the same language.** Consistent input style, button style, and spacing across the in-editor panels — they're all part of the same tool.
 

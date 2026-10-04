@@ -146,7 +146,6 @@ These two fail silently with the whole test suite green:
 - `docs/editor-gotchas.md` — the 77 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
-- `docs/editor-preview-gaps.md`
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` — one spec + plan pair per feature, named by date
 - `Sources/QuillKit/Resources/CLAUDE.md` — per-element Gutenberg output reference table
 

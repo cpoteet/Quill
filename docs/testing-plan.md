@@ -3530,6 +3530,25 @@ Run this on a **new local draft**, never a published post.
 - [ ] **Default tab:** with two or more tabs, one is marked as the default and the mark follows the control, not the caret. With a single tab there is no mark. The mark never reaches the saved markup.
 - [ ] **Settings a block has that Quill has no control for** — a column's width, a details `name`, `is-not-stacked-on-mobile` — survive an edit untouched.
 - [ ] Turning a setting **off** actually removes it; it must not come back on the next load.
+- [ ] **Every setting that writes a class has an editor preview.** A class with no rule in `editor.html` saves correctly but looks dead on the canvas. Any `0` in this output is a missing preview:
+
+  ```bash
+  cd Sources/QuillKit/Resources && grep -oE "is-style-[a-z-]+|has-[a-z-]+|is-[a-z-]+" block-settings.js | sort -u | while read t; do echo "$t: $(grep -c "\.$t" editor.html)"; done
+  ```
+
+- [ ] **Every `#toolbar-row2` group carries `tb-group`** (and icon-only groups `tb-group-icons`). A group without it falls back to the 26px icon metrics and reads tighter than its neighbours. Any `NO CLASS` in this output is a bug:
+
+  ```bash
+  python3 - <<'PY'
+  import io, re
+  s = io.open('Sources/QuillKit/Resources/editor.html', encoding='utf-8').read()
+  row2 = s[s.index('<div id="toolbar-row2"'):]
+  row2 = row2[:row2.index('\n    </div>')]
+  for m in re.finditer(r'<span id="([a-z0-9-]+)"([^>]*)>', row2):
+      cls = re.search(r'class="([^"]*)"', m.group(2))
+      print(f'{m.group(1):24}{cls.group(1) if cls else "NO CLASS"}')
+  PY
+  ```
 
 ### 7.25 Tables
 
