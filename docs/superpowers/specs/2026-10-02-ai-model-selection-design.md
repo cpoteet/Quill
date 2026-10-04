@@ -11,7 +11,8 @@ Every AI feature in Quill (style-guide generation, Generate Post, Evaluate, sele
 1. The author picks any model their API key can use, and a reasoning level, in Settings → AI Writing. All four AI features use that choice.
 2. Quill does not keep a list of models. The list and what each model supports come from the Models API (`GET /v1/models`), so a newly released model appears without an app update.
 3. Web search uses the newest tool version the selected model accepts, without a table of which model takes which version.
-4. With the defaults (Claude Haiku 4.5, reasoning Off), every request Quill sends is the same as today's, apart from the web search tool version.
+4. With the defaults (Claude Haiku 4.5, reasoning Off), every request Quill sends is the same as today's, apart from the web search tool version and the style-guide request.
+5. The style guide describes the author's writing more accurately, and the author can regenerate it at any time, for example after switching models (see Style-guide generation).
 
 Non-goals: streaming responses, a different model per feature, showing prices, and the server-side refusal fallback (see Out of scope).
 
@@ -29,12 +30,14 @@ AI Writing
                       Higher levels think longer before answering.
                       Responses take more time and cost more.
   Writing Style       Choose Posts   3 posts selected
+                      Regenerate
   Web Search          [✓]
 ```
 
 - **Model** lists every model returned by the Models API, newest first (by `created_at`), labelled with `display_name`. With no API key it is disabled, with the caption "Enter an API key to load models." No models are hidden; retired models drop out of the API's list on their own.
 - **Reasoning** lists only the options the selected model supports (below). Its caption is the same for every model.
 - Both are standard macOS pop-up `Picker`s, matching the system `.roundedBorder` style of the other inputs.
+- **Regenerate** rebuilds the style guide from the selected posts with the current model. Today the guide is rebuilt only when the selected post IDs or the site change, so there is no way to refresh it after switching models or after the prompt below ships. The button is disabled with no API key or no samples, and shows the existing analyzing state while it runs. Changing the model does not regenerate the guide on its own.
 
 ### Reasoning options
 
@@ -136,6 +139,84 @@ All four read the model and reasoning from `AISettings`:
 - `PostEditorView` Evaluate
 - `PostEditorView` selection rewrites
 
+## Style-guide generation
+
+The style guide uses the selected model and reasoning level like every other feature; it has no model of its own. The prompt and sample format below were tested on 2026-10-03 with `Scripts/style-guide-probe.py` (see Findings).
+
+### Samples
+
+`PreferencesView.saveAll` currently replaces every tag with a space. Claude never sees headings, lists, captions or post titles, and entities such as `&#8217;` are left in the text. Each sample becomes:
+
+```
+--- Sample 1: Building a WordPress Editor for the Mac (1,093 words) ---
+<p>I've used a lot of WordPress editors…</p>
+<h2>Why native</h2>
+<ul><li>…</li></ul>
+[image]
+<figcaption>The editor in dark mode</figcaption>
+```
+
+- The title is `title.rendered` with entities decoded.
+- The word count is the number of words in the reduced body with its tags removed, written with a thousands separator.
+- `h1`–`h6`, `p`, `ul`, `ol`, `li`, `blockquote`, `a`, `em`, `strong`, `i`, `b`, `sup` and `figcaption` are kept with every attribute removed, link URLs included. Each `<img>` becomes `[image]` on its own line. Every other tag is removed and its text kept. `<br>` and removed block tags (`div`, `figure`, `td`, `pre` and the like) become a line break, so the words on either side are not joined. Elements left empty are dropped, and each block element starts a new line.
+- Entities are decoded with the table `stripHTML` already uses, moved into a helper both functions share, except `&lt;`, `&gt;` and `&amp;`, which stay encoded. A post that writes about `<em>` as text must not gain a real `<em>` tag. The word count strips tags first, then decodes those three.
+
+The reduction is a pure function in `AIPromptBuilder`, so it is tested without a network call. `styleGuideGenerationPrompt` takes the reduced samples with their titles and word counts.
+
+### Prompt
+
+The system prompt stays "Return only the requested style guide with no preamble." The user message is this text followed by the samples:
+
+```text
+Analyze these blog post samples and write a style guide that another writer can follow to write new posts in this author's style. The guide will be used both to write new posts and to judge whether a draft sounds like this author.
+
+Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
+
+Rules:
+- Write each point as an instruction to the writer ("Open with…", "Use…"), not as a description of the author.
+- Describe how the author writes, not what they write about. Leave out topics, products, hobbies and projects from the samples unless they show a habit that would carry over to any subject.
+- State a pattern only if it appears in at least two samples. Leave out generic writing advice.
+- Describe habits as tendencies ("often", "now and then"), not as rules to apply every time.
+- You may illustrate a habit with a word or short phrase in quotation marks, copied exactly from the samples. Never quote a whole sentence, and don't name products or technologies.
+
+Use exactly these labels, in this order, with nothing added to them. Under each label, write a short paragraph or a few bullets:
+
+Voice and tone:
+Sentence rhythm:
+Vocabulary:
+Humor and personality:
+Openings and closings:
+Structure and length:
+Formatting:
+Avoid:
+
+Formatting covers headings, lists, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
+
+Aim for about 500 words. Start your response with "Voice and tone:" and end it after the Avoid section.
+```
+
+The base `max_tokens` of 4,096 holds a 500–600-word guide (about 1,400 output tokens).
+
+### Using the guide
+
+`systemPrompt(styleGuide:)` introduces the guide with this text instead of "Write in this author's style:":
+
+> Write in this author's style, following the guide below. Quoted words and phrases are examples of the author's habits, not phrases to reuse; use them sparingly.
+
+The guide names real words from the author's posts, and the models did not reliably limit them to words used in several posts, so this line is what keeps a single post's phrase from turning into a tic in generated text. `evaluatePostPrompt` is unchanged; there, the quotes help the evaluator recognise the author's voice as intentional.
+
+### Findings
+
+Four prompt versions were run once each against the five sample posts. Outputs vary between runs, so these are strong signals, not measurements.
+
+- **Fixing the input helped more than any wording.** Titles and real word counts ended invented length claims ("1,500 to 4,000+ words" for posts of 1,093–2,557). Structural markup is what made the Formatting and Openings sections possible.
+- **The models follow instructions about what to do:** the fixed labels, the first line, writing instructions instead of descriptions, describing tendencies, copying quotes exactly (made-up quotes fell from 4 to 0).
+- **They don't reliably follow instructions that need counting or holding back:** word limits (overshot by 10–80%), "at least two samples" (26 of 42 quotes came from a single post), "never quote a whole sentence", "don't name products". Rewording one of these brought back a different failure, so the remaining risk is handled where the guide is used (Using the guide), not in more prompt wording.
+- **Claude Sonnet 5.5 was much more accurate than Claude Haiku 4.5.** Haiku claimed frequent sentence fragments (5 in 382 sentences), a favourite verb that never appears, and italics used for one word only. Haiku 4.5 is a year older than Sonnet 5.5, so rerun the probe when a newer Haiku ships before drawing conclusions about the default.
+- **The samples limit what the guide can learn.** When most samples share a topic, the guide treats it as style ("stress that human expertise matters when using AI"). Picking samples on varied topics improves the guide more than prompt changes.
+
+`Scripts/style-guide-probe.py <model-id>` reruns the test with the author's saved samples, API key and site credentials from Quill's Application Support folder. It prints the guide, then its word count, token usage and how many quotes appear in two or more samples, one, or none. Its prompt and sample reduction must match `AIPromptBuilder`.
+
 ## Tests
 
 In `Tests/QuillTests/AnthropicClientTests.swift`:
@@ -148,12 +229,20 @@ In `Tests/QuillTests/AnthropicClientTests.swift`:
 - `AISettings` decodes a settings file written before this change.
 - Model list decoding from a Models API response, sorted newest first.
 
+In `Tests/QuillTests/AIPromptBuilderTests.swift`:
+
+- Sample reduction: kept tags lose their attributes, `<img>` becomes `[image]`, other tags are removed with their text kept, `<br>` and removed block tags keep words apart, empty elements are dropped, entities are decoded, and `&lt;em&gt;` in prose stays encoded rather than becoming a tag.
+- The sample header carries the title and a formatted word count.
+- `styleGuideGenerationPrompt` contains the eight labels in order and numbers the samples.
+- `systemPrompt(styleGuide:)` includes the line about quoted words; the existing tests for a nil or empty guide still pass.
+
 Update the Swift test count in `CLAUDE.md` and `docs/testing-plan.md`.
 
 ## Documentation
 
-- `Sources/QuillKit/AI/CLAUDE.md`: a gotcha for the request table (never send disabled thinking; Haiku's levels are budgets) and one for the web search version fallback.
-- `site/docs.html`: describe the Model and Reasoning settings.
+- `Sources/QuillKit/AI/CLAUDE.md`: a gotcha for the request table (never send disabled thinking; Haiku's levels are budgets) and one for the web search version fallback. Update the style-guide gotcha: about 500 words instead of 150, built with the selected model, and `Scripts/style-guide-probe.py` must be kept in step with the prompt and sample reduction.
+- `site/docs.html`: describe the Model and Reasoning settings and the Regenerate button, and suggest picking sample posts on varied topics.
+- `docs/testing-plan.md`: list `Scripts/style-guide-probe.py` as a manual check that costs a few cents per run.
 
 ## Out of scope
 
