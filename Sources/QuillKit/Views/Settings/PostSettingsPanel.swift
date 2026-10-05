@@ -101,6 +101,8 @@ public struct PostSettingsPanel: View {
     let tags: [WPTag]
     let pages: [WPPost]
     let stats: PostStats
+    let featuredImageUploading: Bool
+    let onFeaturedImageDrop: (NSItemProvider) -> Void
 
     @State private var categorySearch = ""
     @State private var tagSearch = ""
@@ -112,7 +114,9 @@ public struct PostSettingsPanel: View {
         categories: [WPCategory],
         tags: [WPTag],
         pages: [WPPost] = [],
-        stats: PostStats = PostStats()
+        stats: PostStats = PostStats(),
+        featuredImageUploading: Bool = false,
+        onFeaturedImageDrop: @escaping (NSItemProvider) -> Void = { _ in }
     ) {
         self._settings = settings
         self.postType = postType
@@ -121,6 +125,8 @@ public struct PostSettingsPanel: View {
         self.tags = tags
         self.pages = pages
         self.stats = stats
+        self.featuredImageUploading = featuredImageUploading
+        self.onFeaturedImageDrop = onFeaturedImageDrop
     }
 
     private var isPage: Bool { postType == "page" }
@@ -134,6 +140,11 @@ public struct PostSettingsPanel: View {
                 if isPage { parentSection }
                 if !isPage { categoriesSection }
                 if !isPage { tagsSection }
+                FeaturedImageSection(
+                    mediaID: $settings.featuredMediaID,
+                    isUploading: featuredImageUploading,
+                    onDropImage: onFeaturedImageDrop
+                )
                 slugSection
                 if !isPage { excerptSection }
                 discussionSection

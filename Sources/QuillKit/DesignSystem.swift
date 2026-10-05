@@ -63,12 +63,29 @@ struct SectionLabel: View {
 
 // MARK: - Toast
 
+enum ToastStyle {
+    case success, info, error
+}
+
 struct ToastView: View {
     let message: String
-    var isError: Bool = false
+    var style: ToastStyle = .success
 
-    private var systemImage: String { isError ? "xmark.circle.fill" : "checkmark.circle.fill" }
-    private var iconColor: Color { isError ? .red : .green }
+    private var systemImage: String {
+        switch style {
+        case .success: "checkmark.circle.fill"
+        case .info: "info.circle.fill"
+        case .error: "xmark.circle.fill"
+        }
+    }
+
+    private var iconColor: Color {
+        switch style {
+        case .success: .green
+        case .info: .blue
+        case .error: .red
+        }
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -108,7 +125,7 @@ struct UploadStatusPill: View {
 }
 
 extension View {
-    /// Bottom-center progress pill. Uses the same slot as `toast(message:isError:token:)`;
+    /// Bottom-center progress pill. Uses the same slot as `toast(message:style:token:)`;
     /// callers must clear the status before presenting a toast so the two never overlap.
     func uploadStatus(_ message: Binding<String?>) -> some View {
         ZStack(alignment: .bottom) {
@@ -135,11 +152,11 @@ extension View {
     /// message string alone can't distinguish "still showing the first toast" from "a second,
     /// textually-identical toast just replaced it", so an unchanged string would inherit
     /// whatever time was left on the first toast's timer instead of a fresh 2 seconds.
-    func toast(message: Binding<String?>, isError: Binding<Bool> = .constant(false), token: Int = 0) -> some View {
+    func toast(message: Binding<String?>, style: Binding<ToastStyle> = .constant(.success), token: Int = 0) -> some View {
         ZStack(alignment: .bottom) {
             self
             if let msg = message.wrappedValue {
-                ToastView(message: msg, isError: isError.wrappedValue)
+                ToastView(message: msg, style: style.wrappedValue)
                     .padding(.bottom, 20)
                     .transition(
                         .asymmetric(
@@ -152,7 +169,7 @@ extension View {
                         try? await Task.sleep(for: .seconds(2))
                         guard !Task.isCancelled else { return }
                         message.wrappedValue = nil
-                        isError.wrappedValue = false
+                        style.wrappedValue = .success
                     }
             }
         }

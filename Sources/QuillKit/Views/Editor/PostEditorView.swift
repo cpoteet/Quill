@@ -27,7 +27,7 @@ public struct PostEditorView: View {
     @State private var showImagePicker = false
     @State private var gallerySheet: GallerySheetRequest?
     @State private var toastMessage: String? = nil
-    @State private var toastIsError: Bool = false
+    @State private var toastStyle: ToastStyle = .success
     // Bumped on every presentToast() call so the toast's dismiss timer restarts even when
     // two consecutive toasts share identical text (e.g. two "Image inserted" toasts from a
     // multi-file drop) — keying the timer on the message string alone wouldn't detect that.
@@ -36,6 +36,7 @@ public struct PostEditorView: View {
     @State private var uploadStatus: String? = nil
     // Tail of the drop queue. Each new drop awaits it, so batches never interleave.
     @State private var dropTask: Task<Void, Never>? = nil
+    @State private var featuredUploadItemIDs: Set<String> = []
     @State private var cleanTitle: String = ""
     @State private var cleanContent: String = ""
     @State private var cleanFootnotes: String = ""
@@ -229,7 +230,7 @@ public struct PostEditorView: View {
             }
         }
         .uploadStatus($uploadStatus)
-        .toast(message: $toastMessage, isError: $toastIsError, token: toastToken)
+        .toast(message: $toastMessage, style: $toastStyle, token: toastToken)
         .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Revert", role: .destructive) { discardChanges() }
@@ -435,7 +436,9 @@ public struct PostEditorView: View {
                 categories: appState.categories,
                 tags: appState.tags,
                 pages: availableParentPages,
-                stats: stats
+                stats: stats,
+                featuredImageUploading: loadedItem.map { featuredUploadItemIDs.contains($0.id) } ?? false,
+                onFeaturedImageDrop: uploadFeaturedImage
             )
         }
     }
@@ -639,9 +642,38 @@ public struct PostEditorView: View {
         return BlockRiskAlarm(names: names, stage: .unacknowledged)
     }
 
+    private func uploadFeaturedImage(_ provider: NSItemProvider) {
+        guard let creds = appState.credentials, let itemID = loadedItem?.id else { return }
+        featuredUploadItemIDs.insert(itemID)
+        Task {
+            defer { featuredUploadItemIDs.remove(itemID) }
+            guard let url = await FeaturedImageSection.copyDroppedImage(from: provider) else {
+                presentToast("Couldn't read the dropped image.", isError: true)
+                return
+            }
+            defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+            do {
+                let media = try await Task.detached(priority: .userInitiated) {
+                    try await uploadPickedImage(url, credentials: creds)
+                }.value
+                if loadedItem?.id == itemID && appState.selectedItem?.id == itemID {
+                    settings.featuredMediaID = media.id
+                } else {
+                    presentToast("The image is in the Media Library but wasn't set as the featured image.", style: .info)
+                }
+            } catch {
+                presentToast("Couldn't upload the featured image: \(error.localizedDescription)", isError: true)
+            }
+        }
+    }
+
     private func presentToast(_ text: String, isError: Bool = false) {
+        presentToast(text, style: isError ? .error : .success)
+    }
+
+    private func presentToast(_ text: String, style: ToastStyle) {
         toastMessage = text
-        toastIsError = isError
+        toastStyle = style
         toastToken += 1
     }
 
@@ -922,6 +954,10 @@ public struct PostEditorView: View {
             saveError = reason
             return
         }
+        if let loadedID = loadedItem?.id, featuredUploadItemIDs.contains(loadedID) {
+            presentToast("The featured image is still uploading. Save again when it's done.", style: .info)
+            return
+        }
         saveError = nil
 
         let client = WordPressClient(credentials: creds)
@@ -980,7 +1016,7 @@ public struct PostEditorView: View {
             excerpt: Self.plainExcerpt(saved.excerpt),
             status: status.rawValue,
             dateGmt: saved.publishDate.map { Self.iso8601Formatter.string(from: $0) },
-            featuredMedia: saved.featuredMediaID > 0 ? saved.featuredMediaID : nil,
+            featuredMedia: saved.featuredMediaID,
             categories: Array(saved.categoryIDs),
             tags: Array(saved.tagIDs),
             slug: saved.slug.isEmpty ? nil : saved.slug,

@@ -49,6 +49,12 @@ import Testing
         #expect(dict["featured_media"] as? Int == 99)
     }
 
+    @Test func zeroFeaturedMediaIsSentToRemoveTheImage() throws {
+        let payload = PostPayload(title: "T", content: "C", status: "draft", featuredMedia: 0)
+        let dict = try encodeToDict(payload)
+        #expect(dict["featured_media"] as? Int == 0)
+    }
+
     @Test func nilParentOmitsKey() throws {
         let payload = PostPayload(title: "T", content: "C", status: "draft", parent: nil)
         let dict = try encodeToDict(payload)

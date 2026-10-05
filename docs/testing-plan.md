@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-03 — 625 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-04 — 626 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (625 tests)
+1. **Swift tests** — `swift test` (626 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (625 tests, 40 suites)
+## Swift test suite (626 tests, 40 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -123,7 +123,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
-| 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 15 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
+| 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
 | 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 62 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
@@ -244,7 +244,7 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 
 ---
 
-### 3. Model encoding — `PostPayloadTests` (15 tests)
+### 3. Model encoding — `PostPayloadTests` (16 tests)
 
 File: `Tests/QuillTests/PostPayloadTests.swift`
 
@@ -258,6 +258,7 @@ Guards `PostPayload` encoding — encoding bugs corrupt published content silent
 | `nonEmptySlugIncludedInJSON` | Non-nil slug → key present |
 | `nilFeaturedMediaOmitsKey` | `featuredMedia: nil` → `featured_media` absent |
 | `featuredMediaIncludedWhenSet` | Non-nil `featuredMedia` → key present |
+| `zeroFeaturedMediaIsSentToRemoveTheImage` | `featuredMedia: 0` → key present with `0`, which is how a removed featured image reaches the server |
 | `nilParentOmitsKey` | `parent: nil` → key absent (posts have no parent) |
 | `parentIncludedForPages` | `parent: 5` → key present (pages can have parent) |
 | `emptyCategoriesAndTagsEncodeAsEmptyArrays` | `[]` → still encodes as `[]`, not omitted |
@@ -3248,7 +3249,10 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
 - [ ] Open a post while offline (or force the full-post fetch to fail) → an error toast explains the post may be missing content; attempting to save shows "Can't save — this post never finished loading" instead of silently publishing empty content over the real post.
 - [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
-- [ ] Set a featured image → it appears on the post. Clear the featured image → it is removed on the server.
+- [ ] **Featured image, on a post, a page and a local draft.** Click Choose… and pick an image → the thumbnail shows with its alt text (or "No alt text"), and Replace… and Remove. Save (publish, for the local draft) and reopen → the image is still set. Replace… with another image, save and reopen → the new one is set. Remove, save and reopen → the slot is empty, so `featured_media: 0` reached the server.
+- [ ] Drop an image file from Finder on the Featured Image box → the outline turns the accent colour while hovering, "Uploading…" shows, then the uploaded image is set. Drop a HEIC → it uploads as JPEG. Drag a PDF or other non-image file over the box → no outline appears and it can't be dropped, the same as the editor body.
+- [ ] Drop a large image on the Featured Image box of a local draft and press Publish while "Uploading…" shows → a toast says the featured image is still uploading and nothing is published. Publish again once it finishes → the post is created with the image.
+- [ ] Drop an image on the Featured Image box and switch to another post before the upload finishes → the other post's featured image does not change, and a toast says the image is in the Media Library but wasn't set.
 - [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
 - [ ] In the page parent picker, the current page does not appear in the list. Save with a parent selected → the parent is set on the server.
 - [ ] The Publish button shows an outline paper plane on a draft (and for other status changes) and an outline up-arrow circle on a published post. Publish a remote draft → the button switches to Update, with the up-arrow icon, straight away, without reselecting the post.
