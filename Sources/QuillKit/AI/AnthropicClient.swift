@@ -87,7 +87,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
         case .invalidKey: return "Anthropic didn't accept this key."
         case .networkError(let error):
             let msg = error.localizedDescription
-            if NetworkErrorHeuristics.isConnectivityFailure(msg) {
+            if NetworkFailure.isConnectivity(error) {
                 return "Couldn't reach the Anthropic API. Check your internet connection and try again."
             }
             return msg

@@ -282,18 +282,9 @@ import Testing
         }
     }
 
-    // errorDescription's offline-detection substring match depends on the underlying error's
-    // localizedDescription text, which varies by platform/runtime (URLError's message under
-    // `swift test` is a generic NSError fallback, not CFNetwork's real string). Test the
-    // computed property directly against a controlled error rather than a live URLError.
     private struct FakeError: Error, LocalizedError {
         let description: String
         var errorDescription: String? { description }
-    }
-
-    @Test func networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline() {
-        let err = AnthropicError.networkError(FakeError(description: "The Internet connection appears to be offline."))
-        #expect(err.errorDescription == "Couldn't reach the Anthropic API. Check your internet connection and try again.")
     }
 
     @Test func networkErrorPassesThroughUnrecognizedMessage() {

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-04 — 627 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-04 — 633 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (627 tests)
+1. **Swift tests** — `swift test` (633 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (627 tests, 40 suites)
+## Swift test suite (633 tests, 41 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -133,7 +133,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 6 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, autosaves rebuilt with a site key, drafts and autosaves independent |
 | 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 88 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, table cells, `<summary>` and `<dt>`/`<dd>` read as block breaks in the evaluation text, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
-| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 27 | `verifyKey` (Models API request, 401 as `invalidKey`), request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping with friendly offline messaging) |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 26 | `verifyKey` (Models API request, 401 as `invalidKey`), request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping) |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
@@ -159,6 +159,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 7 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives |
 
 ---
 
@@ -666,7 +667,7 @@ The tag match ends at a word boundary that excludes `-` and word characters (`(?
 
 ---
 
-### 13. AI — `AnthropicClientTests` (27 tests)
+### 13. AI — `AnthropicClientTests` (26 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
 Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
@@ -716,8 +717,7 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
 | `malformedJsonThrows` | Garbage JSON → decoding throws |
 | `networkFailureThrows` | `URLError` from mock → error surfaced |
 | `networkFailureWrapsAsAnthropicNetworkError` | Any transport error from `session.data(for:)` is wrapped as `AnthropicError.networkError`, not left as a raw `URLError` |
-| `networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` | `errorDescription` returns the friendly "Couldn't reach the Anthropic API…" message when the underlying error's description mentions being offline/unable to connect (tested via a controlled fake error, since `URLError.localizedDescription` under `swift test` is a generic fallback string rather than CFNetwork's real text) |
-| `networkErrorPassesThroughUnrecognizedMessage` | `errorDescription` passes through the underlying error's message verbatim when it doesn't match the offline/connectivity heuristic |
+| `networkErrorPassesThroughUnrecognizedMessage` | `errorDescription` passes through the underlying error's message verbatim when it isn't a connectivity `URLError` |
 | `verifyKeyRequestsModelsWithKeyAndVersion` | `verifyKey` sends `GET /v1/models?limit=1` with the key and version headers |
 | `verifyKeySucceedsOn200` | A 200 means the key works |
 | `verifyKeyThrowsInvalidKeyOn401` | A 401 throws `invalidKey` |
@@ -1231,6 +1231,20 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `flushBeforeTheEditorIsReadyAsksNothing` | Before `editorReady`, no script is run |
 | `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
 | `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
+
+### 39. API — `NetworkFailureTests` (7 tests)
+
+File: `Tests/QuillTests/NetworkFailureTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `connectivityCodesAreConnectivityFailures` | Each of `.notConnectedToInternet`, `.networkConnectionLost`, `.cannotConnectToHost`, `.cannotFindHost`, `.timedOut`, `.dnsLookupFailed` is a connectivity failure |
+| `otherURLErrorCodesAreNot` | `.badURL` and `.secureConnectionFailed` are not |
+| `englishOfflineTextWithoutAURLErrorIsNot` | A non-`URLError` whose description says "offline" or "not found" is not, so the check never reads description text |
+| `urlErrorBridgedThroughNSErrorIsRecognised` | An `NSError` in `NSURLErrorDomain` is recognised the same as a `URLError` |
+| `apiErrorShowsFriendlyMessageForConnectivityFailure` | `APIError.networkError(URLError(.cannotFindHost))` reads "Couldn't reach your site…" |
+| `apiErrorPassesThroughOtherNetworkErrors` | Any other error's own message is shown unchanged |
+| `anthropicErrorShowsFriendlyMessageForConnectivityFailure` | `AnthropicError.networkError(URLError(.notConnectedToInternet))` reads "Couldn't reach the Anthropic API…" |
 
 ## JS block parser tests (67 tests)
 
@@ -3768,7 +3782,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 85 | `PostEditorView.loadItem()` bails out of its catch block on a stale/cancelled load instead of writing `contentLoadFailed`/`saveError` for whichever post is now displayed | 👁 §7.7 (switch away from a post before its full-content fetch fails) |
 | 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
-| 88 | `APIError`/`AnthropicError` share one `NetworkErrorHeuristics.isConnectivityFailure` substring check instead of two independently-maintained copies | ✅ `AnthropicClientTests.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
+| 88 | `APIError`/`AnthropicError` share one `NetworkFailure.isConnectivity` check instead of two independently-maintained copies | ✅ `NetworkFailureTests` + `AnthropicClientTests.networkErrorPassesThroughUnrecognizedMessage` |
 | 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (16 tests) + `galleryBlock` load/round-trip tests (13 tests) + 👁 §7.4 |
 | 90 | `galleryBlock.parseHTML` never returns `false`/degrades to standalone images for a gallery it can partially handle (e.g. captions) — only for zero-image-figure input | ✅ `galleryBlock` — verbatim re-render tests (2 tests, caption preserved via `sourceHTML`) |
 | 91 | `toWordPressHTML`'s upfront strip of pre-existing `wp:embed`/`wp:gallery`/`wp:image` comments uses a non-greedy attrs match (`[\s\S]*?-->`) so it can't span past the first comment's close and delete image figures between two adjacent comments with no newline separator (a loaded gallery's `sourceHTML` has no such guarantee, unlike this function's own freshly-wrapped output), and stays immune to a stray `\r` before a comment's own `-->` (JS `.` excludes all line terminators, not just `\n`, so a `.*?` group — unlike `[\s\S]*?` — would fail to match at all in that case) | ✅ `toWordPressHTML — gallery.'stripping pre-existing wp:image comments does not consume the images between them'` + `.'stripping a pre-existing wp:gallery comment works even with a CR before its closing -->'` |
@@ -3885,6 +3899,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 202 | WordPress refuses a duplicate application-password name, so a retry after a failed check dead-ended on the Authorize page. `approvalURL` names each attempt with the date and time to the second | ✅ `AppAuthorizationTests.approvalURLNamesEachAttemptUniquelyForWordPress` + 👁 §7.1 |
 | 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (28 tests) + 👁 §7.1 |
 | 204 | A button's `href`, the editor web view's `file:` loads and Preview/Open in Browser accepted script or local URLs; the credentials file was written before it was made owner-only | ✅ `test-editor-containers.js` `'a button link with a script URL loses the URL but keeps its label'`, `EditorCoordinatorTests.onlyTheEditorsOwnFileMayLoad`, `PostEditorHelpersTests.previewURLRefusesANonWebScheme`, `JSONFileStoreTests.savingLeavesOnlyTheOwnerOnlyFileBehind` |
+| 205 | Connectivity errors were recognised by English phrases in `localizedDescription`, so they were missed on every non-English system and "not found" matched unrelated errors. `NetworkFailure.isConnectivity` checks `URLError` codes | ✅ `NetworkFailureTests` (7 tests) |
 
 ---
 
