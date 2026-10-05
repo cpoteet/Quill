@@ -67,7 +67,7 @@ public struct PostListRow: View {
         }
     }
 
-    private static let dateFormatters: [DateFormatter] = {
+    nonisolated private static let dateFormatters: [DateFormatter] = {
         ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssZZZZZ"].map { fmt in
             let df = DateFormatter()
             df.locale = Locale(identifier: "en_US_POSIX")

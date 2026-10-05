@@ -147,7 +147,7 @@ public struct MediaPickerView: View {
 
 /// Opens an `NSOpenPanel` restricted to images and returns the user's selection,
 /// or `nil` if the panel was cancelled. Shared by `MediaPickerView` and `GallerySheet`.
-func pickImageFromDisk() -> URL? {
+@MainActor func pickImageFromDisk() -> URL? {
     let panel = NSOpenPanel()
     panel.allowedContentTypes = [UTType.image]
     panel.allowsMultipleSelection = false

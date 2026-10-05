@@ -205,7 +205,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         case "triggerEvaluate":
             DispatchQueue.main.async { self.onTriggerEvaluate?() }
         case "uploadPastedImages":
-            guard let entries = (message.body as? [String: Any])?["images"] as? [[String: Any]] else { return }
+            guard let bodies = (message.body as? [String: Any])?["images"] as? [[String: Any]] else { return }
+            let entries = bodies.map { $0.compactMapValues { $0 as? String } }
             // Base64 decoding a screenshot is real work; keep it off the main thread.
             DispatchQueue.global(qos: .userInitiated).async {
                 var images: [PastedImage] = []
@@ -213,7 +214,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 for entry in entries {
                     if let image = PastedImage.decode(entry) {
                         images.append(image)
-                    } else if let token = entry["token"] as? String {
+                    } else if let token = entry["token"] {
                         rejected.append(token)
                     }
                 }

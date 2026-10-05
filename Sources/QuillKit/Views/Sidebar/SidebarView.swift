@@ -401,9 +401,9 @@ struct SidebarErrorRow: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.openSettings) private var openSettings
 
-    private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
+    nonisolated private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
     // Measured gap between the large-scale symbol's frame top and the triangle's apex.
-    private static let triangleTopInset: CGFloat = 1.5
+    nonisolated private static let triangleTopInset: CGFloat = 1.5
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {

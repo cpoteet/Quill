@@ -51,9 +51,9 @@ public final class AppDatabase: @unchecked Sendable {
                 t.column(draftFootnotes, defaultValue: "")
             })
         // Migration for existing databases: silently ignored if column already exists
-        try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
-        try? db.run("ALTER TABLE local_drafts ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
-        try? db.run("ALTER TABLE autosaves ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
+        _ = try? db.run("ALTER TABLE local_drafts ADD COLUMN type TEXT NOT NULL DEFAULT 'post'")
+        _ = try? db.run("ALTER TABLE local_drafts ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
+        _ = try? db.run("ALTER TABLE autosaves ADD COLUMN footnotes TEXT NOT NULL DEFAULT ''")
         try addSiteKeyToAutosaves()
 
         try db.run(

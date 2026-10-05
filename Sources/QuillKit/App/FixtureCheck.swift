@@ -4,7 +4,7 @@ import WebKit
 /// Runs the jsdom fixture corpus inside the real WKWebView, so a WebKit/jsdom
 /// divergence fails somewhere other than a user's post. See docs/testing-plan.md.
 public enum FixtureCheck {
-    public static func run(directory: String) {
+    @MainActor public static func run(directory: String) {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         let runner = Runner(directory: directory)

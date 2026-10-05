@@ -240,7 +240,7 @@ struct MediaGalleryView: NSViewRepresentable {
         context.coordinator.apply(items: items, selection: selection)
     }
 
-    final class Coordinator: NSObject, NSCollectionViewDataSource, NSCollectionViewDelegate {
+    @MainActor final class Coordinator: NSObject, NSCollectionViewDataSource, NSCollectionViewDelegate {
         var parent: MediaGalleryView
         var items: [WPMedia] = []
         let menuTarget = MediaMenuTarget()

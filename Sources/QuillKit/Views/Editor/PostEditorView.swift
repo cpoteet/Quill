@@ -56,9 +56,9 @@ public struct PostEditorView: View {
     @State private var quitToken = UUID()
 
     private static let iso8601Formatter: ISO8601DateFormatter = ISO8601DateFormatter()
-    private static let calloutCapHeight = NSFont.preferredFont(forTextStyle: .callout).capHeight
+    nonisolated private static let calloutCapHeight = NSFont.preferredFont(forTextStyle: .callout).capHeight
     // Measured gap between the 13pt triangle's frame top and its apex.
-    private static let triangleTopInset: CGFloat = 1.5
+    nonisolated private static let triangleTopInset: CGFloat = 1.5
 
     // AI state
     @State private var isAISheetOpen: Bool = false

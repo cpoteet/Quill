@@ -52,7 +52,7 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         commentStatus = try c.decodeIfPresent(String.self, forKey: .commentStatus) ?? "open"
         let outer = try decoder.container(keyedBy: MetaContainerKeys.self)
         let meta = try? outer.nestedContainer(keyedBy: MetaKeys.self, forKey: .meta)
-        footnotes = (try? meta?.decodeIfPresent(String.self, forKey: .footnotes)) as? String ?? ""
+        footnotes = (try? meta?.decodeIfPresent(String.self, forKey: .footnotes)) ?? ""
     }
 }
 
