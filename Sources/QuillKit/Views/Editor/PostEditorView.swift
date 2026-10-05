@@ -41,6 +41,7 @@ public struct PostEditorView: View {
     @State private var cleanFootnotes: String = ""
     @State private var cleanSettings = PostSettings()
     @State private var loadedItem: PostItem? = nil
+    @State private var serverPost: WPPost? = nil
     // The site loadedItem came from; its autosave stash is keyed to that site even after a switch.
     @State private var loadedSite = ""
     @State private var aiRequestInFlight = false
@@ -328,6 +329,13 @@ public struct PostEditorView: View {
                     .accessibilityLabel("Preview")
                     .disabled(isSaving)
                 }
+                if let url = shareURL {
+                    ShareLink(item: url, preview: SharePreview(title.isEmpty ? "Untitled" : title)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .help("Share")
+                    .accessibilityLabel("Share")
+                }
                 // Guarded rather than .disabled(isSaving): the disabled style washes the
                 // button out for the whole round-trip, which reads as broken.
                 Button {
@@ -567,6 +575,13 @@ public struct PostEditorView: View {
 
     private var isPublishedRemote: Bool {
         remotePost?.status == PostStatus.publish.rawValue
+    }
+
+    // Unpublished posts' links are `?p=` URLs that only their editors can open.
+    private var shareURL: URL? {
+        guard case .remote(let post) = item, let server = serverPost, server.id == post.id,
+              [PostStatus.publish.rawValue, PostStatus.private.rawValue].contains(server.status) else { return nil }
+        return URL(string: server.link)
     }
 
     private var publishButtonTitle: String {
@@ -832,6 +847,7 @@ public struct PostEditorView: View {
         htmlContent = wpContent
         footnotesMeta = post.footnotes
         lastSavedServerModified = post.modified
+        serverPost = post
         settings = PostSettings(post: post)
         cleanTitle = wpTitle
         cleanContent = wpContent
@@ -1075,6 +1091,7 @@ public struct PostEditorView: View {
                     return
                 }
                 try? services.autosaveStore.delete(site: site, postID: post.id)
+                serverPost = updated
                 lastSavedServerModified = updated.modified
                 cleanTitle = savedTitle
                 cleanContent = savedContent
