@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-04 — 626 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-04 — 627 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (626 tests)
+1. **Swift tests** — `swift test` (627 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (626 tests, 40 suites)
+## Swift test suite (627 tests, 40 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -140,7 +140,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 48 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 49 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -834,7 +834,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (48 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (49 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -888,11 +888,12 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | `readingTimeShortTextIsOneMinute` | Word count ≤ 238 → `readingMinutes == 1` |
 | `readingTimeRoundsUp` | Word count that doesn't divide evenly → reading time rounds up (e.g. 239 words → 2 min) |
 
-#### Status helpers (6 tests)
+#### Status helpers (7 tests)
 
 | Test | What it checks |
 |---|---|
-| `publishButtonTitlePerStatus` | Each status value maps to the correct button label (`"Publish Draft"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"`, etc.) |
+| `publishButtonTitlePerStatus` | The button label names what the click does: a local draft reads `"Save to WordPress"`, a server draft `"Save Draft"`, a live post set back to Draft `"Switch to Draft"`, then `"Publish"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"` |
+| `publishButtonIconPerStatus` | Drafts get the upload icon, a live post's Update gets `arrow.up.circle`, and only statuses that publish or queue the post get the paperplane |
 | `toastMessagePerStatus` | Each status transition maps to the correct toast string |
 | `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
 | `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
@@ -3237,7 +3238,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 ### 7.7 Save / publish / draft / schedule
 
-- [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally".
+- [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally". The toolbar button is **Save Locally** and the primary button reads **Save to WordPress** with the upload icon, not the paperplane.
 - [ ] If the local draft save fails (e.g. disk full) → a red error toast appears with the failure reason.
 - [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
 - [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.

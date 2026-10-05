@@ -317,8 +317,8 @@ public struct PostEditorView: View {
                     Button { Task { await saveDraft() } } label: {
                         Image(systemName: "tray.and.arrow.down")
                     }
-                    .help("Save Draft")
-                    .accessibilityLabel("Save Draft")
+                    .help("Save Locally")
+                    .accessibilityLabel("Save Locally")
                     .disabled(isSaving)
                 }
                 if isRemote && isDirty {
@@ -345,7 +345,7 @@ public struct PostEditorView: View {
                     if isSaving {
                         ProgressView().controlSize(.small)
                     } else {
-                        Image(systemName: isUpdatingPublishedPost ? "arrow.up.circle" : "paperplane")
+                        Image(systemName: publishButtonIcon)
                     }
                 }
                 .help(isSaving ? "Saving…" : publishButtonTitle)
@@ -577,12 +577,12 @@ public struct PostEditorView: View {
         remotePost?.status == PostStatus.publish.rawValue
     }
 
-    private var isUpdatingPublishedPost: Bool {
-        settings.status == .publish && isPublishedRemote
+    private var publishButtonTitle: String {
+        Self.publishButtonTitle(status: settings.status, isLocal: !isRemote, isPublishedRemote: isPublishedRemote)
     }
 
-    private var publishButtonTitle: String {
-        Self.publishButtonTitle(status: settings.status, isPublishedRemote: isPublishedRemote)
+    private var publishButtonIcon: String {
+        Self.publishButtonIcon(status: settings.status, isPublishedRemote: isPublishedRemote)
     }
 
     private var isRemote: Bool {
@@ -1397,13 +1397,24 @@ public struct PostEditorView: View {
         return components.url
     }
 
-    nonisolated static func publishButtonTitle(status: PostStatus, isPublishedRemote: Bool) -> String {
+    nonisolated static func publishButtonTitle(status: PostStatus, isLocal: Bool, isPublishedRemote: Bool) -> String {
         switch status {
-        case .draft: return "Publish Draft"
+        case .draft:
+            if isLocal { return "Save to WordPress" }
+            return isPublishedRemote ? "Switch to Draft" : "Save Draft"
         case .future: return "Schedule"
         case .pending: return "Submit for Review"
         case .private: return "Publish Privately"
         case .publish: return isPublishedRemote ? "Update" : "Publish"
+        }
+    }
+
+    // The paperplane is reserved for actions that publish or queue the post.
+    nonisolated static func publishButtonIcon(status: PostStatus, isPublishedRemote: Bool) -> String {
+        switch status {
+        case .draft: return "icloud.and.arrow.up"
+        case .publish where isPublishedRemote: return "arrow.up.circle"
+        default: return "paperplane"
         }
     }
 

@@ -148,10 +148,10 @@
               <tr><td>Refresh</td><td>Left</td><td>Reloads the current section from WordPress (⌘R). Hidden while the sidebar is hidden</td></tr>
               <tr><td>+</td><td>Left</td><td>A menu with New Post, New Page and Upload Media. Hidden while the sidebar is hidden</td></tr>
               <tr><td>Back to Media</td><td>Left</td><td>Closes the large preview in the media library. Shown only while a preview is open</td></tr>
-              <tr><td>Save Draft</td><td>Right</td><td>Saves a local draft on your Mac. Shown only for local drafts</td></tr>
+              <tr><td>Save Locally</td><td>Right</td><td>Saves a local draft on your Mac. Nothing is sent to WordPress. Shown only for local drafts</td></tr>
               <tr><td>Revert</td><td>Right</td><td>Throws away unsaved changes and reloads the post from WordPress. Shown only when a post that's already on WordPress has unsaved changes</td></tr>
               <tr><td>Preview</td><td>Right</td><td>Opens a preview of the post in your browser. Shown only for posts already on WordPress</td></tr>
-              <tr><td>Publish</td><td>Right</td><td>Sends the post to WordPress. Its name follows the <a href="#status" class="content-link">Status</a> setting: Publish Draft, Submit for Review, Publish, Schedule or Publish Privately. Once a post is live it becomes <strong>Update</strong> and changes icon</td></tr>
+              <tr><td>Save or Publish</td><td>Right</td><td>Sends the post to WordPress. Its name says what will happen, based on the <a href="#status" class="content-link">Status</a> setting. With Draft it reads <strong>Save to WordPress</strong> for a local draft and <strong>Save Draft</strong> for a draft already on WordPress, and shows an upload icon; nothing goes live. Otherwise it reads Publish, Schedule, Publish Privately or Submit for Review and shows a paper plane. A live post shows <strong>Update</strong>, or <strong>Switch to Draft</strong> if you set its status back to Draft</td></tr>
               <tr><td>Post Settings</td><td>Right</td><td>Opens or closes the post settings inspector</td></tr>
               <tr><td>Media Info</td><td>Right</td><td>Takes the place of Post Settings in the media library, and opens or closes the file details inspector</td></tr>
             </tbody>
@@ -338,8 +338,8 @@
         </ul>
         <h3 class="docs-h3">Saving and Publishing</h3>
         <h4 class="docs-h4">Local Drafts</h4>
-        <p class="docs-body">Click <strong>Save Draft</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
-        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Publish Draft</strong> and creates a draft on WordPress. Set the status to Published first if you want it to go live straight away.</p>
+        <p class="docs-body">Click <strong>Save Locally</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
+        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Save to WordPress</strong> and creates a draft on WordPress that readers can't see. Set the status to Published first if you want it to go live straight away.</p>
         <p class="docs-body">Once the draft is on WordPress, it moves from Drafts to Posts or Pages. Anything you type while it's being sent is kept and comes back as unsaved changes on the new post. If the post is created but Quill can't remove the local draft, a message says so; delete the draft yourself so it isn't published twice.</p>
         <h4 class="docs-h4">Posts and Pages on WordPress</h4>
         <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>.</p>

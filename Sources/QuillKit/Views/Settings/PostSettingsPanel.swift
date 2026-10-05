@@ -157,7 +157,7 @@ public struct PostSettingsPanel: View {
     // MARK: - Local draft note
 
     private var localDraftNote: some View {
-        Label("Settings aren't saved for local drafts. Publish to WordPress to save them.", systemImage: "info.circle")
+        Label("Settings aren't saved for local drafts. Save to WordPress to keep them.", systemImage: "info.circle")
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

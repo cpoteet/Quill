@@ -115,12 +115,23 @@ import Testing
     // MARK: - Status helpers
 
     @Test func publishButtonTitlePerStatus() {
-        #expect(PostEditorView.publishButtonTitle(status: .draft, isPublishedRemote: false) == "Publish Draft")
-        #expect(PostEditorView.publishButtonTitle(status: .future, isPublishedRemote: false) == "Schedule")
-        #expect(PostEditorView.publishButtonTitle(status: .pending, isPublishedRemote: false) == "Submit for Review")
-        #expect(PostEditorView.publishButtonTitle(status: .private, isPublishedRemote: false) == "Publish Privately")
-        #expect(PostEditorView.publishButtonTitle(status: .publish, isPublishedRemote: false) == "Publish")
-        #expect(PostEditorView.publishButtonTitle(status: .publish, isPublishedRemote: true) == "Update")
+        #expect(PostEditorView.publishButtonTitle(status: .draft, isLocal: true, isPublishedRemote: false) == "Save to WordPress")
+        #expect(PostEditorView.publishButtonTitle(status: .draft, isLocal: false, isPublishedRemote: false) == "Save Draft")
+        #expect(PostEditorView.publishButtonTitle(status: .draft, isLocal: false, isPublishedRemote: true) == "Switch to Draft")
+        #expect(PostEditorView.publishButtonTitle(status: .future, isLocal: false, isPublishedRemote: false) == "Schedule")
+        #expect(PostEditorView.publishButtonTitle(status: .pending, isLocal: false, isPublishedRemote: false) == "Submit for Review")
+        #expect(PostEditorView.publishButtonTitle(status: .private, isLocal: false, isPublishedRemote: false) == "Publish Privately")
+        #expect(PostEditorView.publishButtonTitle(status: .publish, isLocal: true, isPublishedRemote: false) == "Publish")
+        #expect(PostEditorView.publishButtonTitle(status: .publish, isLocal: false, isPublishedRemote: true) == "Update")
+    }
+
+    @Test func publishButtonIconPerStatus() {
+        #expect(PostEditorView.publishButtonIcon(status: .draft, isPublishedRemote: false) == "icloud.and.arrow.up")
+        #expect(PostEditorView.publishButtonIcon(status: .draft, isPublishedRemote: true) == "icloud.and.arrow.up")
+        #expect(PostEditorView.publishButtonIcon(status: .publish, isPublishedRemote: true) == "arrow.up.circle")
+        for status in [PostStatus.publish, .future, .pending, .private] {
+            #expect(PostEditorView.publishButtonIcon(status: status, isPublishedRemote: false) == "paperplane")
+        }
     }
 
     @Test func toastMessagePerStatus() {
