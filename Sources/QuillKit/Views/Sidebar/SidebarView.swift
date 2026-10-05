@@ -82,8 +82,13 @@ public struct SidebarView: View {
             VStack(spacing: 16) {
                 SidebarSectionPicker(selection: sectionSelection)
 
-                SidebarSearchField(text: searchBinding, prompt: searchPrompt)
-                    .frame(height: 24)
+                HStack(spacing: 6) {
+                    SidebarSearchField(text: searchBinding, prompt: searchPrompt)
+                        .frame(height: 24)
+                    if appState.selectedSection == .posts || appState.selectedSection == .pages {
+                        SidebarStatusFilterButton()
+                    }
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 10)
@@ -221,6 +226,7 @@ public struct SidebarView: View {
             if appState.filteredItems.isEmpty && appState.hasLoadedList && !appState.isLoadingList
                 && appState.sectionListError == nil {
                 SectionEmptyState(section: appState.selectedSection,
+                                  statusFilter: appState.statusFilter,
                                   isSearching: !appState.searchText.isEmpty)
             } else if !appState.hasLoadedList || appState.isLoadingList {
                 ProgressView().controlSize(.small)
@@ -418,11 +424,15 @@ struct SidebarErrorRow: View {
 struct SectionEmptyState: View {
     let section: SidebarSection
     var mediaFilter: MediaFilter = .all
+    var statusFilter: PostStatusFilter = .all
     let isSearching: Bool
 
     private var message: String {
         if section == .media, mediaFilter != .all {
             return "No \(mediaFilter.title.lowercased())"
+        }
+        if statusFilter != .all {
+            return "No \(statusFilter.title(in: section).lowercased()) \(section.shortTitle.lowercased())"
         }
         switch section {
         case .posts: return "No posts yet"
@@ -435,6 +445,9 @@ struct SectionEmptyState: View {
     private var hint: String {
         if section == .media, mediaFilter != .all {
             return "Choose All Media to see everything in your library"
+        }
+        if statusFilter != .all {
+            return "Choose \(PostStatusFilter.all.title(in: section)) to see everything"
         }
         switch section {
         case .posts: return "Create one from the + menu in the toolbar"

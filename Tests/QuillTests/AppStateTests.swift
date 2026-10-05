@@ -4,12 +4,14 @@ import Testing
 
 // MARK: - Fixtures
 
-private func makePost(id: Int = 1, title: String = "Post Title", status: String = "publish", type: String = "post") throws -> WPPost {
+private func makePost(id: Int = 1, title: String = "Post Title", status: String = "publish", type: String = "post",
+                      date: String = "2024-01-01T00:00:00", dateGmt: String? = nil) throws -> WPPost {
+    let gmtField = dateGmt.map { #""date_gmt":"\#($0)","# } ?? ""
     let json = """
     {"id":\(id),"type":"\(type)",
      "title":{"rendered":"\(title)"},"content":{"rendered":"<p>x</p>"},
      "excerpt":{"rendered":""},
-     "status":"\(status)","date":"2024-01-01T00:00:00",
+     "status":"\(status)","date":"\(date)",\(gmtField)
      "modified":"2024-01-01T00:00:00","slug":"slug","link":"https://example.com"}
     """
     return try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
@@ -193,6 +195,130 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         // Only posts are searched; pages section is not active
         #expect(state.filteredItems.count == 1)
         #expect(state.filteredItems[0].id == "remote-1")
+    }
+}
+
+// MARK: - AppState status filter
+
+@Suite struct AppStateStatusFilterTests {
+
+    private func postsState() throws -> AppState {
+        let state = AppState()
+        state.posts = [
+            try makePost(id: 1, title: "Alpha", status: "publish"),
+            try makePost(id: 2, title: "Beta", status: "draft"),
+            try makePost(id: 3, title: "Alpha draft", status: "draft"),
+            try makePost(id: 4, title: "Gamma", status: "future"),
+        ]
+        state.selectedSection = .posts
+        return state
+    }
+
+    @Test func filterDefaultsToAll() throws {
+        let state = try postsState()
+        #expect(state.statusFilter == .all)
+        #expect(state.filteredItems.count == 4)
+    }
+
+    @Test func draftFilterShowsOnlyDrafts() throws {
+        let state = try postsState()
+        state.statusFilter = .draft
+        #expect(state.filteredItems.map(\.id) == ["remote-2", "remote-3"])
+    }
+
+    @Test func filterCombinesWithSearch() throws {
+        let state = try postsState()
+        state.statusFilter = .draft
+        state.searchText = "alpha"
+        #expect(state.filteredItems.map(\.id) == ["remote-3"])
+    }
+
+    @Test func postsAndPagesKeepSeparateFilters() throws {
+        let state = try postsState()
+        state.pages = [try makePost(id: 9, status: "draft", type: "page")]
+        state.statusFilter = .draft
+        state.selectedSection = .pages
+        #expect(state.statusFilter == .all)
+        state.selectedSection = .posts
+        #expect(state.statusFilter == .draft)
+    }
+
+    @Test func localDraftsAndMediaIgnoreTheFilter() throws {
+        let state = AppState()
+        state.localDrafts = [makeDraft(id: 1)]
+        state.selectedSection = .localDrafts
+        state.statusFilter = .draft
+        #expect(state.statusFilter == .all)
+        #expect(state.filteredItems.count == 1)
+    }
+
+    @Test func pendingAndPrivateAreOfferedOnlyWhenPresent() throws {
+        let state = try postsState()
+        #expect(state.availableStatusFilters == [.all, .publish, .draft, .future])
+        state.posts.append(try makePost(id: 5, status: "private"))
+        #expect(state.availableStatusFilters == [.all, .publish, .draft, .future, .private])
+    }
+
+    @Test func filterFallsBackToAllWhenItsStatusIsGone() throws {
+        let state = try postsState()
+        state.posts.append(try makePost(id: 5, status: "pending"))
+        state.statusFilter = .pending
+        #expect(state.filteredItems.map(\.id) == ["remote-5"])
+        state.posts.removeLast()
+        #expect(state.statusFilter == .all)
+        #expect(state.filteredItems.count == 4)
+    }
+
+    @Test func countsCoverTheWholeSectionAndIgnoreSearch() throws {
+        let state = try postsState()
+        state.searchText = "zzz"
+        #expect(state.statusCount(.all) == 4)
+        #expect(state.statusCount(.draft) == 2)
+        #expect(state.statusCount(.future) == 1)
+        #expect(state.statusCount(.pending) == 0)
+    }
+
+    @Test func scheduledListsSoonestFirst() throws {
+        let state = AppState()
+        state.posts = [
+            try makePost(id: 1, status: "future", date: "2026-12-01T09:00:00"),
+            try makePost(id: 2, status: "future", date: "2026-10-10T09:00:00"),
+            try makePost(id: 3, status: "future", date: "2026-11-01T09:00:00"),
+        ]
+        state.selectedSection = .posts
+        state.statusFilter = .future
+        #expect(state.filteredItems.map(\.id) == ["remote-2", "remote-3", "remote-1"])
+    }
+
+    // When clocks go back, local times can run backwards while UTC runs forwards.
+    @Test func scheduledSortsByUTCWhenLocalTimesOverlap() throws {
+        let state = AppState()
+        state.posts = [
+            try makePost(id: 1, status: "future", date: "2026-11-01T01:15:00", dateGmt: "2026-11-01T06:15:00"),
+            try makePost(id: 2, status: "future", date: "2026-11-01T01:45:00", dateGmt: "2026-11-01T05:45:00"),
+        ]
+        state.selectedSection = .posts
+        state.statusFilter = .future
+        #expect(state.filteredItems.map(\.id) == ["remote-2", "remote-1"])
+    }
+
+    @Test func otherFiltersKeepServerOrder() throws {
+        let state = AppState()
+        state.posts = [
+            try makePost(id: 1, status: "draft", date: "2026-01-01T00:00:00"),
+            try makePost(id: 2, status: "draft", date: "2026-02-01T00:00:00"),
+        ]
+        state.selectedSection = .posts
+        state.statusFilter = .draft
+        #expect(state.filteredItems.map(\.id) == ["remote-1", "remote-2"])
+    }
+
+    @Test func titlesMatchTheRowStatusWords() {
+        #expect(PostStatusFilter.all.title(in: .posts) == "All Posts")
+        #expect(PostStatusFilter.all.title(in: .pages) == "All Pages")
+        #expect(PostStatusFilter.publish.title(in: .posts) == "Published")
+        #expect(PostStatusFilter.draft.title(in: .posts) == "Draft")
+        #expect(PostStatusFilter.future.title(in: .posts) == "Scheduled")
     }
 }
 

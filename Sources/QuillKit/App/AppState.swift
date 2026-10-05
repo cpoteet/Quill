@@ -26,6 +26,23 @@ public enum SidebarSection: String, Hashable, CaseIterable {
     }
 }
 
+public enum PostStatusFilter: String, Hashable, CaseIterable {
+    case all, publish, draft, future, pending, `private`
+
+    func title(in section: SidebarSection) -> String {
+        self == .all ? "All \(section.shortTitle)" : PostListRow.statusLabel(rawValue)
+    }
+
+    func matches(_ post: WPPost) -> Bool {
+        self == .all || post.status == rawValue
+    }
+}
+
+private extension WPPost {
+    // `date` is the site's wall clock, which runs backwards when clocks go back.
+    var publishSortKey: String { dateGmt.isEmpty ? date : dateGmt }
+}
+
 public enum PostItem: Identifiable, Hashable {
     case remote(WPPost)
     case local(LocalDraft)
@@ -61,6 +78,8 @@ public final class AppState: ObservableObject {
     @Published public var selectedSection: SidebarSection = .posts
     @Published public var selectedItem: PostItem?
     @Published public var searchText: String = ""
+    @Published private var postStatusFilter: PostStatusFilter = .all
+    @Published private var pageStatusFilter: PostStatusFilter = .all
     @Published public var credentials: Credentials?
 
     @Published public var posts: [WPPost] = []
@@ -171,11 +190,55 @@ public final class AppState: ObservableObject {
         selectedSection == .localDrafts ? nil : listError
     }
 
+    private var sectionPosts: [WPPost] {
+        switch selectedSection {
+        case .posts: return posts
+        case .pages: return pages
+        case .localDrafts, .media: return []
+        }
+    }
+
+    public var availableStatusFilters: [PostStatusFilter] {
+        PostStatusFilter.allCases.filter { filter in
+            switch filter {
+            case .pending, .private: return statusCount(filter) > 0
+            default: return true
+            }
+        }
+    }
+
+    // Reads back as All once no post has the stored status, without forgetting the choice.
+    public var statusFilter: PostStatusFilter {
+        get {
+            let stored: PostStatusFilter
+            switch selectedSection {
+            case .posts: stored = postStatusFilter
+            case .pages: stored = pageStatusFilter
+            case .localDrafts, .media: return .all
+            }
+            return availableStatusFilters.contains(stored) ? stored : .all
+        }
+        set {
+            switch selectedSection {
+            case .posts: postStatusFilter = newValue
+            case .pages: pageStatusFilter = newValue
+            case .localDrafts, .media: break
+            }
+        }
+    }
+
+    public func statusCount(_ filter: PostStatusFilter) -> Int {
+        sectionPosts.count(where: filter.matches)
+    }
+
     public var filteredItems: [PostItem] {
         let items: [PostItem]
         switch selectedSection {
-        case .posts: items = posts.map { .remote($0) }
-        case .pages: items = pages.map { .remote($0) }
+        case .posts, .pages:
+            let filter = statusFilter
+            var matching = sectionPosts.filter(filter.matches)
+            if filter == .future { matching.sort { $0.publishSortKey < $1.publishSortKey } }
+            items = matching.map { .remote($0) }
         case .localDrafts: items = localDrafts.map { .local($0) }
         case .media: return []
         }

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-04 — 648 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-05 — 660 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (648 tests)
+1. **Swift tests** — `swift test` (660 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (648 tests, 42 suites)
+## Swift test suite (660 tests, 43 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -161,6 +161,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 14 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
+| 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 12 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All, counts that ignore search, Scheduled sorted soonest first by UTC |
 
 ---
 
@@ -1268,6 +1269,25 @@ File: `Tests/QuillTests/ErrorMessageTests.swift`
 | `aRetryClearsItsOwnBannerError` | An operation that runs again clears the banner it set, so a successful retry leaves no stale error |
 | `anotherOperationLeavesTheBannerAlone` | A different operation leaves the banner in place |
 | `errorToastsStayLongerThanSuccessToasts` | Error toasts stay 6 seconds; success and info toasts 2 |
+
+### 41. View-model — `AppStateStatusFilterTests` (12 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `filterDefaultsToAll` | A fresh section filters nothing |
+| `draftFilterShowsOnlyDrafts` | `.draft` keeps only `draft` posts, in server order |
+| `filterCombinesWithSearch` | Status filter and title search both apply |
+| `postsAndPagesKeepSeparateFilters` | A Posts filter does not carry into Pages, and is still set on return |
+| `localDraftsAndMediaIgnoreTheFilter` | Local Drafts read `.all` and setting a filter there does nothing |
+| `pendingAndPrivateAreOfferedOnlyWhenPresent` | `availableStatusFilters` adds Pending/Private only when the section has some |
+| `filterFallsBackToAllWhenItsStatusIsGone` | A Pending filter reads back as All once no pending post is left |
+| `countsCoverTheWholeSectionAndIgnoreSearch` | `statusCount` counts the loaded section, not the searched list |
+| `scheduledListsSoonestFirst` | `.future` sorts by date ascending |
+| `scheduledSortsByUTCWhenLocalTimesOverlap` | `.future` sorts by `date_gmt`, so the hour repeated when clocks go back keeps publication order |
+| `otherFiltersKeepServerOrder` | Every other filter keeps WordPress's order |
+| `titlesMatchTheRowStatusWords` | Menu titles are "All Posts"/"All Pages" and the row status words |
 
 ## JS block parser tests (67 tests)
 
@@ -3112,6 +3132,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
 - [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
 - [ ] The search prompt names the section: Search Posts, Search Pages, Search Drafts, Search Media.
+- [ ] **Status filter.** On Posts and Pages, the filter button right of the search field opens a menu of All, Published, Draft, Scheduled (plus Pending and Private when the site has any) with counts that match WordPress admin. Pick one → the list narrows and the button turns solid amber; search narrows it further. Switch to Pages and back → each section kept its own filter. Scheduled lists soonest first. The button is absent on Drafts and Media.
 
 **Sidebar focus — the three checks.** Nothing here is automatable: the bug only appears once the WKWebView holds first responder, and scripted clicks cannot put it there (see the scripted-clicks gotcha in `docs/gotchas.md`). A selected row draws *emphasized* (solid amber, white text) when the list has focus and *unemphasized* (flat grey) when it does not. Grey is the failure. Last run green on 2026-09-20.
 
