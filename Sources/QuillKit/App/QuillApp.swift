@@ -82,7 +82,7 @@ public struct QuillApp: App {
 
                 Divider()
 
-                Button("Revert to Saved\u{2026}") {
+                Button("Revert to Saved") {
                     appState.triggerRevert = true
                 }
                 .disabled(!appState.editorIsDirty || appState.selectedItem?.isRemote != true)
@@ -116,7 +116,7 @@ public struct QuillApp: App {
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 Divider()
-                Button("New Media") {
+                Button("New Media\u{2026}") {
                     appState.selectedSection = .media
                     appState.triggerMediaUpload = true
                 }

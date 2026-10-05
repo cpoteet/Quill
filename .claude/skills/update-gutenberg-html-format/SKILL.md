@@ -46,7 +46,7 @@ Background: `docs/block-model.md` (the attribute carrier, unsupported-block pres
 
 6. **Check in real WebKit and the app.**
    - Run the build-and-run command in the root `CLAUDE.md`, then `./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"`.
-   - With Quill connected to the Studio site: click "+ New Post", paste the markup through code view, edit a paragraph, Save Draft, and read the saved HTML from SQLite (`docs/gotchas.md`, "Verify saved draft HTML straight from SQLite"). Computer-use clicks need `request_full_control` to reach the editor. Discard the draft.
+   - With Quill connected to the Studio site: click "+ New Post", paste the markup through code view, edit a paragraph, Save Locally, and read the saved HTML from SQLite (`docs/gotchas.md`, "Verify saved draft HTML straight from SQLite"). Computer-use clicks need `request_full_control` to reach the editor. Discard the draft.
    - A session that cannot drive the app reports this step as not verified rather than skipping it.
 
 7. **Update the docs:** the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`, and the test counts in the root `CLAUDE.md` and `docs/testing-plan.md`.

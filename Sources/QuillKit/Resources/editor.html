@@ -2292,7 +2292,7 @@
         hint.textContent = `${count} image${count === 1 ? '' : 's'} · Renders as a WordPress gallery · `
         const edit = document.createElement('button')
         edit.type = 'button'
-        edit.textContent = 'Edit'
+        edit.textContent = 'Edit…'
         edit.addEventListener('click', event => { if (event.detail < 2) window.editGallery(getPos()) })
         hint.appendChild(edit)
         this.dom.addEventListener('dblclick', event => { if (!edit.contains(event.target)) window.editGallery(getPos()) })

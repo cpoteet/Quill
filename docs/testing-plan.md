@@ -743,7 +743,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `remoteStatusBadgeIsPostStatus` | `post.status` (e.g. `"draft"`) used directly |
 | `localPostStatusBadgeIsLocalPost` | `type="post"` → `"local-post"` |
 | `localPageStatusBadgeIsLocalPage` | `type="page"` → `"local-page"` |
-| `onlyARemoteItemReportsItselfAsRemote` | `.isRemote` true for a remote post, false for a local draft — the sole gate on File → Revert to Saved… and Preview in Browser |
+| `onlyARemoteItemReportsItselfAsRemote` | `.isRemote` true for a remote post, false for a local draft — the sole gate on File → Revert to Saved and Preview in Browser |
 
 ### 15. View-model — `SidebarSectionTests` (8 tests)
 
@@ -3181,7 +3181,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Insert a captioned gallery, make an unrelated visual edit elsewhere in the post, save, re-fetch the raw content → all captions and alts are still present and not duplicated.
 - [ ] Save a post containing a sheet-inserted gallery, then make an unrelated visual edit elsewhere in the post and save again → re-fetch the raw content and confirm the gallery block comments are still present (this is the fix for the previous `_rawHTML`-only silent-drop behavior).
 - [ ] Open a post containing a gallery authored outside Quill (e.g. in the WordPress block editor) → it loads as a thumbnail-grid card, not exploded into individual resizable images. A single click only selects it.
-- [ ] **Editing a gallery** (new local draft; paste `Scripts/fixtures/settings-gallery.html` in code view, switch back): double-click the first card, select the second and press Return, and click the first card's **Edit** link → each opens **Edit Gallery** with its images in order, its columns, **Keep Current Links**, and **Mixed** for the second gallery. Reorder, change an alt text, change one caption, click **Update Gallery**, Save Draft, then read the draft from SQLite (`docs/gotchas.md`): the attachment links, the custom link, the untouched formatted caption and `is-style-rounded` are all still there, and the gallery comment's keys are in the same order as the fixture. Open the first gallery again, pick **Full Image**, Update → `linkTo` and every `linkDestination` are `media`, still in core's key order. Cmd+Z → exactly that update is undone.
+- [ ] **Editing a gallery** (new local draft; paste `Scripts/fixtures/settings-gallery.html` in code view, switch back): double-click the first card, select the second and press Return, and click the first card's **Edit…** link → each opens **Edit Gallery** with its images in order, its columns, **Keep Current Links**, and **Mixed** for the second gallery. Reorder, change an alt text, change one caption, click **Update Gallery**, Save Locally, then read the draft from SQLite (`docs/gotchas.md`): the attachment links, the custom link, the untouched formatted caption and `is-style-rounded` are all still there, and the gallery comment's keys are in the same order as the fixture. Open the first gallery again, pick **Full Image**, Update → `linkTo` and every `linkDestination` are `media`, still in core's key order. Cmd+Z → exactly that update is undone.
 - [ ] Open a gallery for editing, click **Cancel**, then click the toolbar Gallery button and insert → a **new** gallery appears after the selected one; the selected gallery is untouched.
 - [ ] Insert a gallery of library images, then edit it → thumbnails, titles and grid checkmarks come back; add an image, pick Full Image and Thumbnail, Update → every image is a `-150x150` file linked to its full-size upload.
 - [ ] Edit a gallery whose images were resized or edited in WordPress (one image's file ends `-e…` or is a `-rotated` copy): change only the alt text or the order, leave Size where it opened, Update → each existing image still points at the same file it had, and the gallery's Size menu did not rewrite them to one size. Add an image without touching Size → the new image uses the gallery's size, and the others keep their files. Then change Size → every image switches to it.
@@ -3496,7 +3496,7 @@ Run this on a **new local draft**, never a published post.
 
 - [ ] Open a post containing a block Quill cannot model and does not preserve → no banner. Preservation is the normal case; the banner means content actually went missing.
 - [ ] Force the failure case: in code view, paste a block, leave code view, and delete the card it became. A banner appears naming the block, in the singular if it is one block and the plural if it is more, and it says this is Quill's limitation rather than something you did.
-- [ ] **While the banner is unacknowledged, saving is refused** — ⌘S, Publish/Update, and Save Draft all show the "Can't save yet" message.
+- [ ] **While the banner is unacknowledged, saving is refused** — ⌘S, Publish/Update, Save Draft and Save Locally all show the "Can't save yet" message.
 - [ ] Switching to another post while the banner is up does **not** write the squashed content (check the draft in SQLite, not through the UI — see the root `CLAUDE.md`).
 - [ ] Closing the editor while the banner is up does not write it either.
 - [ ] Autosave is suspended while the banner is up — no new row appears in the `autosaves` table.
@@ -3595,8 +3595,8 @@ human is required.
 - [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
 - [ ] Switch between filters quickly (Images, Documents, Audio, back to All Media) → each shows a spinner while it loads and never flashes "No media yet" before its items arrive. A filter that really has nothing still ends on the empty state.
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
-- [ ] Toolbar + menu → Upload Media opens the file picker and does NOT create a post.
-- [ ] File → New Media (⌘⌥N) opens the same file picker.
+- [ ] Toolbar + menu → Upload Media… opens the file picker and does NOT create a post.
+- [ ] File → New Media… (⌘⌥N) opens the same file picker.
 - [ ] Right-clicking a thumbnail selects it and offers Copy URL, Open in Browser, Delete.
 - [ ] Deleting removes the thumbnail and clears the selection.
 - [ ] **Paging survives a local change.** Delete an item, then scroll to the bottom → the next page continues from where the grid ends, with nothing skipped. Upload an item, then scroll to the bottom → nothing appears twice. Paging sends an offset taken from the item count, so both cases self-correct; a page number would not.
@@ -3626,10 +3626,10 @@ window's licence link all point at `quill.siolon.com`, which is published from
 
 **Menu commands**
 - [ ] File → New Post (⌘N) and New Page (⌘⇧N) each create a local draft in the right section, from any section including Media.
-- [ ] File → New Media (⌘⌥N) opens the file picker and does not create a post.
+- [ ] File → New Media… (⌘⌥N) opens the file picker and does not create a post.
 - [ ] Edit → **Paste as Markdown** (⌘⇧V) converts Markdown on the clipboard into real blocks (a heading stays a heading, a list stays a list). Plain ⌘V in the same spot is unaffected and still pastes normally.
 - [ ] Edit → Find… (⌘F) opens the find bar; File → Save (⌘S) and Publish (⌘⇧P) match the buttons in the editor.
-- [ ] File → Revert to Saved… and Preview in Browser are enabled on a remote post and disabled on a local draft.
+- [ ] File → Revert to Saved and Preview in Browser are enabled on a remote post and disabled on a local draft.
 - [ ] View → Refresh (⌘R) reloads the current section — including while the sidebar is collapsed.
 
 **The site itself**
@@ -3639,7 +3639,7 @@ window's licence link all point at `quill.siolon.com`, which is published from
 
 ### 7.28 Paste
 
-On a new local draft, connected to a test site (a pasted image uploads to the connected site's media library). After each paste, Save Draft and read the bytes from SQLite (`docs/gotchas.md`), then check them with `Scripts/wp-validator.js` or paste them into the block editor's code editor: no block may come up as "unexpected or invalid content". The automated side is `Scripts/test-editor-paste-sources.js` and the harness in `Scripts/fixtures/paste/README.md`.
+On a new local draft, connected to a test site (a pasted image uploads to the connected site's media library). After each paste, Save Locally and read the bytes from SQLite (`docs/gotchas.md`), then check them with `Scripts/wp-validator.js` or paste them into the block editor's code editor: no block may come up as "unexpected or invalid content". The automated side is `Scripts/test-editor-paste-sources.js` and the harness in `Scripts/fixtures/paste/README.md`.
 
 - [ ] A Word document with bulleted and numbered lists (one lettered sub-level), a table with right-aligned numbers, a centered line and an embedded picture: the lists are real nested lists, the lettered level stays lettered, the centered line and the cells stay aligned, and the picture uploads (pill, then one toast) and ends with the site's URL, not a `data:` URL.
 - [ ] A Google Doc with bold, italic, a link, a nested list and a table: the formatting survives and nothing else turns bold.

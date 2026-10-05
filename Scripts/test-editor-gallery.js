@@ -916,7 +916,7 @@ describe('galleryBlock — editing', () => {
     win.setContent(fixture('settings-gallery.html'))
     const count = posted.length
     const link = editor.view.nodeDOM(galleryPos(0)).querySelector('.gallery-card-hint button')
-    assert.equal(link.textContent, 'Edit')
+    assert.equal(link.textContent, 'Edit…')
     link.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }))
     assert.equal(posted.length, count + 1)
   })

@@ -146,7 +146,7 @@
             <tbody>
               <tr><td>Sidebar</td><td>Left</td><td>Hides or shows the sidebar</td></tr>
               <tr><td>Refresh</td><td>Left</td><td>Reloads the current section from WordPress (⌘R). Hidden while the sidebar is hidden</td></tr>
-              <tr><td>+</td><td>Left</td><td>A menu with New Post, New Page and Upload Media. Hidden while the sidebar is hidden</td></tr>
+              <tr><td>+</td><td>Left</td><td>A menu with New Post, New Page and Upload Media…. Hidden while the sidebar is hidden</td></tr>
               <tr><td>Back to Media</td><td>Left</td><td>Closes the large preview in the media library. Shown only while a preview is open</td></tr>
               <tr><td>Save Locally</td><td>Right</td><td>Saves a local draft on your Mac. Nothing is sent to WordPress. Shown only for local drafts</td></tr>
               <tr><td>Revert</td><td>Right</td><td>Throws away unsaved changes and reloads the post from WordPress. Shown only when a post that's already on WordPress has unsaved changes</td></tr>
@@ -158,7 +158,7 @@
           </table>
         </div>
         <p class="docs-body">The icon to the left of the title shows the post's status (see <a href="#status" class="content-link">Status</a>). When there are unsaved changes, the window's close button shows a dot, the same as in TextEdit or Pages.</p>
-        <p class="docs-body">The editor's buttons are also in the menus: <strong>File → Save</strong> (⌘S), <strong>File → Publish</strong> (⇧⌘P, named to match the publish button), <strong>File → Revert to Saved…</strong> and <strong>File → Preview in Browser</strong>. <strong>View → Refresh</strong> (⌘R) reloads the current section.</p>
+        <p class="docs-body">The editor's buttons are also in the menus: <strong>File → Save</strong> (⌘S), <strong>File → Publish</strong> (⇧⌘P, named to match the publish button), <strong>File → Revert to Saved</strong> and <strong>File → Preview in Browser</strong>. <strong>View → Refresh</strong> (⌘R) reloads the current section.</p>
         <h3 class="docs-h3">When Nothing Is Open</h3>
         <p class="docs-body">With no item selected, the editor area reads "Select a post to edit" (or page, or draft). Start something new from the <strong>File</strong> menu, the <strong>+</strong> menu, or with the shortcuts in the next section.</p>
       </section>
@@ -170,7 +170,7 @@
         <ul class="docs-list">
           <li><strong>New Post</strong> (⌘N)</li>
           <li><strong>New Page</strong> (⇧⌘N)</li>
-          <li><strong>New Media</strong> (⌥⌘N), called <strong>Upload Media</strong> in the + menu</li>
+          <li><strong>New Media…</strong> (⌥⌘N), called <strong>Upload Media…</strong> in the + menu</li>
         </ul>
         <p class="docs-body">A new post or page starts as a <strong>local draft</strong> in the Drafts section. It stays on your Mac until you send it to WordPress.</p>
         <p class="docs-body">Type the title in the <strong>Title</strong> field at the top of the editor, and the body below it. Headings, lists, quotes and other blocks show their formatting as you write. Your theme's fonts and colors apply only on the published site.</p>
@@ -414,7 +414,7 @@
         </ul>
         <div class="docs-note"><strong>About Size:</strong> WordPress usually offers the browser several sizes of each image and lets it choose, which is what keeps photos sharp on Retina screens. On a modern high-resolution display you may see no difference between Medium and Large for that reason. Size still matters in older browsers, RSS feeds and email, and it always changes how much data the page loads.</div>
         <p class="docs-body">Click <strong>Insert Gallery</strong> to add the gallery as a single block. The button is available once at least one image is selected.</p>
-        <p class="docs-body">In the editor, a gallery shows as a grid of thumbnails. To change one, double-click it, select it and press Return, or click <strong>Edit</strong> under the thumbnails. The gallery picker opens as <strong>Edit Gallery</strong> with the gallery's images, settings, alt text and captions filled in. While the images load, the picker is dimmed; if they can't be loaded, it shows the error and a <strong>Retry</strong> button. Make your changes and click <strong>Update Gallery</strong> to replace the gallery in place. <strong>Edit → Undo</strong> puts the old one back. An update keeps each image's current file unless you choose a different Size.</p>
+        <p class="docs-body">In the editor, a gallery shows as a grid of thumbnails. To change one, double-click it, select it and press Return, or click <strong>Edit…</strong> under the thumbnails. The gallery picker opens as <strong>Edit Gallery</strong> with the gallery's images, settings, alt text and captions filled in. While the images load, the picker is dimmed; if they can't be loaded, it shows the error and a <strong>Retry</strong> button. Make your changes and click <strong>Update Gallery</strong> to replace the gallery in place. <strong>Edit → Undo</strong> puts the old one back. An update keeps each image's current file unless you choose a different Size.</p>
         <p class="docs-body">If the gallery is changed or removed from the post while the picker is open, the update isn't applied and Quill shows "The post changed while the gallery was open, so the gallery wasn't updated."</p>
         <p class="docs-body">Galleries made in the WordPress editor can be edited the same way, and anything the picker doesn't show is kept: each image's size, link and "open in new tab" setting, block style and theme classes, colors, spacing and aspect ratio, and captions with formatting such as bold or links. A gallery that uses WordPress's default column layout keeps it until you change <strong>Columns</strong>. A formatted caption stays formatted unless you change its text; a changed caption is saved as plain text. An image that is no longer in your media library keeps its own file and size.</p>
         <p class="docs-body">These options only appear when you edit a gallery made elsewhere:</p>
@@ -574,7 +574,7 @@
               <tr><td>Show Details</td><td>Opens the details inspector for that item</td></tr>
               <tr><td>Copy URL</td><td>Copies the file's address</td></tr>
               <tr><td>Open in Browser</td><td>Opens the item's attachment page on your site. Not shown if the item has none</td></tr>
-              <tr><td>Delete…</td><td>Deletes the file from WordPress for good. See <a href="#deleting-media" class="content-link">Deleting Media</a></td></tr>
+              <tr><td>Delete</td><td>Deletes the file from WordPress for good. See <a href="#deleting-media" class="content-link">Deleting Media</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -599,11 +599,11 @@
         </div>
         <p class="docs-body">To change an image's alt text, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> under the field. If the save fails, it shows <strong>Not saved</strong> with the reason, and your text stays in the field so you can try again.</p>
         <h3 class="docs-h3" id="uploading">Uploading</h3>
-        <p class="docs-body">Choose <strong>Upload Media</strong> from the <strong>+</strong> menu, or <strong>File → New Media</strong> (⌥⌘N) from anywhere in Quill. Pick a file in the window that opens. You can upload any file type your WordPress site allows.</p>
+        <p class="docs-body">Choose <strong>Upload Media…</strong> from the <strong>+</strong> menu, or <strong>File → New Media…</strong> (⌥⌘N) from anywhere in Quill. Pick a file in the window that opens. You can upload any file type your WordPress site allows.</p>
         <p class="docs-body">The new item appears at the top of the grid, already selected. If the current filter wouldn't show it, for example a PDF uploaded while <strong>Images</strong> is selected, Quill switches to <strong>All Media</strong> so it's still in view. If a search is active, Quill clears it for the same reason.</p>
         <p class="docs-body">HEIC photos are converted to JPEG before they're uploaded. WordPress accepts HEIC files but can't make thumbnails or other sizes from them, so an unconverted HEIC would sit in your library with no dimensions and no smaller versions. The conversion happens on your Mac, keeps the photo's full resolution and orientation, and leaves your original file alone. It applies to every way of uploading: the Media section, the image picker, the gallery picker and dragging onto the editor. Other formats, such as JPEG, PNG, GIF, WebP and PDF, are uploaded as they are.</p>
         <h3 class="docs-h3" id="deleting-media">Deleting Media</h3>
-        <p class="docs-body">Right-click an item and choose <strong>Delete…</strong>. Quill asks you to confirm first.</p>
+        <p class="docs-body">Right-click an item and choose <strong>Delete</strong>. Quill asks you to confirm first.</p>
         <div class="docs-note">Deleting media is permanent. WordPress has no trash for media, so a deleted file can't be recovered.</div>
       </section>
 
@@ -619,7 +619,7 @@
         <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can click <strong>Skip for Now</strong> and add a key here later.</p>
         <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
         <h3 class="docs-h3" id="writing-style">Writing Style</h3>
-        <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude, which writes a short style guide. Quill uses that guide whenever it writes or reviews for you.</p>
+        <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts…</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude, which writes a short style guide. Quill uses that guide whenever it writes or reviews for you.</p>
         <p class="docs-body">The guide is rewritten whenever you change which posts you picked. If you connect Quill to a different WordPress site, your picks are cleared and you'll need to choose again.</p>
         <h3 class="docs-h3">Web Search</h3>
         <p class="docs-body">With <strong>Web Search</strong> turned on in Settings, Claude can search the web for current information while writing a post. It's on to begin with. Turn it off to write from Claude's own knowledge only, which is faster and costs less.</p>

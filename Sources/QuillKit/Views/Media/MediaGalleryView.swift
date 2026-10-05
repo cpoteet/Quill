@@ -217,7 +217,7 @@ struct MediaGalleryView: NSViewRepresentable {
             }
 
             menu.addItem(.separator())
-            let deleteItem = NSMenuItem(title: "Delete\u{2026}",
+            let deleteItem = NSMenuItem(title: "Delete",
                                         action: #selector(MediaMenuTarget.delete(_:)),
                                         keyEquivalent: "")
             deleteItem.target = coordinator.menuTarget

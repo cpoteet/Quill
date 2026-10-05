@@ -50,7 +50,7 @@ public struct PreferencesView: View {
                     SecureField("Anthropic API Key", text: $aiAPIKey)
                     LabeledContent("Writing Style") {
                         HStack(spacing: 8) {
-                            Button("Choose Posts") { isSamplePickerOpen = true }
+                            Button("Choose Posts\u{2026}") { isSamplePickerOpen = true }
                                 .disabled(posts.isEmpty)
                             Text(aiSamplePostIDs.isEmpty
                                  ? "No samples selected"

@@ -133,7 +133,7 @@ public struct SidebarView: View {
                         Button("New Page", systemImage: "book.badge.plus") {
                             appState.createNewDraft(type: "page", draftStore: services.draftStore)
                         }
-                        Button("Upload Media", systemImage: "photo.badge.plus") {
+                        Button("Upload Media\u{2026}", systemImage: "photo.badge.plus") {
                             appState.selectedSection = .media
                             appState.triggerMediaUpload = true
                         }

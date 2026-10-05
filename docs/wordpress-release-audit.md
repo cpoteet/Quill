@@ -75,7 +75,7 @@ The comparison and validator suites run WordPress's own packages as test-only re
 ### Finish
 
 - [ ] **12. Real WebKit.** `./build.sh`, then `./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"` reports every fixture passing.
-- [ ] **13. In the app.** On a new local draft (never a published post), paste markup for each changed block through code view, edit a paragraph, Save Draft, and read the saved HTML from SQLite (see the `docs/gotchas.md` entry "Verify saved draft HTML straight from SQLite"). Discard the draft.
+- [ ] **13. In the app.** On a new local draft (never a published post), paste markup for each changed block through code view, edit a paragraph, Save Locally, and read the saved HTML from SQLite (see the `docs/gotchas.md` entry "Verify saved draft HTML straight from SQLite"). Discard the draft.
 - [ ] **14. Docs.** Update the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`, the test counts in the root `CLAUDE.md` and `docs/testing-plan.md`, and comment on any open GitHub issue the release made out of date.
 - [ ] **15. Record the run** under **Past runs** below: date, what was verified live versus inferred, findings, what changed in Quill, and open items. Say plainly when nothing needed changing.
 - [ ] **16. Commit**, once the user says so.
