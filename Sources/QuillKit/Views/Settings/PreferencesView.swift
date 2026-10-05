@@ -64,10 +64,8 @@ public struct PreferencesView: View {
 
                 if let error = saveError {
                     Section {
-                        Text(error)
-                            .foregroundStyle(.red)
+                        InlineError(message: error)
                             .font(.caption)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }

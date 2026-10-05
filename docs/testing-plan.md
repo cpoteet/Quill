@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-04 — 634 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-04 — 648 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (634 tests)
+1. **Swift tests** — `swift test` (648 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (634 tests, 41 suites)
+## Swift test suite (648 tests, 42 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -160,6 +160,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
+| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 14 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 
 ---
 
@@ -1246,6 +1247,27 @@ File: `Tests/QuillTests/NetworkFailureTests.swift`
 | `apiErrorSaysOfflineWhenTheMacHasNoConnection` | `APIError.networkError(URLError(.notConnectedToInternet))` reads "You're offline. Connect to the internet and try again.", not the site message that tells the user to check the URL |
 | `apiErrorPassesThroughOtherNetworkErrors` | Any other error's own message is shown unchanged |
 | `anthropicErrorShowsFriendlyMessageForConnectivityFailure` | `AnthropicError.networkError(URLError(.notConnectedToInternet))` reads "Couldn't reach the Anthropic API…" |
+
+### 40. Errors — `ErrorMessageTests` (14 tests)
+
+File: `Tests/QuillTests/ErrorMessageTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `settingsFixableErrors` | 401, 403, an invalid URL, a web page instead of data, and no site connected are fixed in Settings |
+| `errorsSettingsCannotFix` | 404, 500 and a network error are not, so the sidebar offers only Retry |
+| `loadFailureCarriesTheMessageAndTheSettingsFlag` | `LoadFailure` keeps the error's message and `APIError.isFixedInSettings` |
+| `loadFailureFromANonAPIErrorDoesNotPointAtSettings` | A `URLError` never offers Settings |
+| `anthropicRateLimitSaysToWait` | HTTP 429 reads "You've hit Anthropic's rate limit…" |
+| `anthropicOverloadAndServerErrorsSayTryAgainLater` | 529 and 500 read "Anthropic's API is busy or having problems…" |
+| `anthropicRejectedRequestQuotesAnthropicsOwnMessage` | A 400 with Anthropic's JSON error quotes its `error.message` |
+| `anthropicErrorWithoutAReadableBodyNamesTheStatus` | An unreadable body falls back to the status code, never the raw body |
+| `anthropicUnauthorizedReadsLikeAnInvalidKey` | 401 from `complete` reads the same as `invalidKey` |
+| `aiFailureShowsAnthropicsReason` | An AI rewrite failure shows `AnthropicError`'s own message |
+| `aiFailureFromAnythingElseIsGeneric` | Any other error shows "Claude couldn't finish that rewrite. Try again." |
+| `aRetryClearsItsOwnBannerError` | An operation that runs again clears the banner it set, so a successful retry leaves no stale error |
+| `anotherOperationLeavesTheBannerAlone` | A different operation leaves the banner in place |
+| `errorToastsStayLongerThanSuccessToasts` | Error toasts stay 6 seconds; success and info toasts 2 |
 
 ## JS block parser tests (67 tests)
 
@@ -3150,7 +3172,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Drag a non-image file (e.g. a `.txt` or `.pdf`) onto the editor → nothing happens (file is ignored).
 - [ ] Drag multiple image files onto the editor at once → all upload and insert; the pill counts up ("Uploading image 2 of 3…") and the drop ends in **one** summary toast ("3 images inserted"), not one toast per file.
 - [ ] Drop a `.heic` alongside two ordinary images → the batch still ends in a single "3 images inserted" toast (the "Converted to JPEG" note only appears on a single-file drop).
-- [ ] Disconnect the network and drop one image → the toast reads "Upload failed: …" with the underlying error. Reconnect, then drop three images with one deliberately unusable → the toast summarizes as "1 of 3 images failed to upload".
+- [ ] Disconnect the network and drop one image → the editor banner reads "Upload failed: …" with the underlying error. Reconnect, then drop three images with one deliberately unusable → the banner summarizes as "1 of 3 images failed to upload".
 - [ ] Drop a batch of images, and while the pill is still counting, drop a second batch → the two batches run one after the other: the pill never disappears early, and a toast and the pill are never visible on top of each other in the bottom slot.
 - [ ] **A slow drop goes only to its own post.** Throttle the network, drop a large image on post A and click post B before the upload finishes → B is unchanged, A is unchanged when reopened, and the toast says the image reached the Media Library but was not inserted. Repeat with a pasted image.
 - [ ] **A section round-trip does not insert into a dead editor.** Drop a large image on post A, click Media and then back to A before the upload finishes → the image is not in A, and it is in the Media Library. Known limit: the "not inserted" toast is drawn on the editor the section switch tore down, so no message shows.
@@ -3254,7 +3276,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ### 7.7 Save / publish / draft / schedule
 
 - [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally". The toolbar button is **Save Locally** and the primary button reads **Save to WordPress** with the upload icon, not the paperplane.
-- [ ] If the local draft save fails (e.g. disk full) → a red error toast appears with the failure reason.
+- [ ] If the local draft save fails (e.g. disk full) → the editor banner reads "Couldn't save the draft: …" with the failure reason.
 - [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
 - [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.
 - [ ] Press ⌘S on a remote draft → it updates on WordPress while keeping its "draft" status.
@@ -3263,7 +3285,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Close and reopen a scheduled post → the correct future date appears in the settings panel.
 - [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
 - [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
-- [ ] Open a post while offline (or force the full-post fetch to fail) → an error toast explains the post may be missing content; attempting to save shows "Can't save — this post never finished loading" instead of silently publishing empty content over the real post.
+- [ ] Open a post while offline (or force the full-post fetch to fail) → the editor banner explains the post may be missing content; attempting to save shows "Can't save: this post never finished loading" instead of silently publishing empty content over the real post.
 - [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
 - [ ] **Featured image, on a post, a page and a local draft.** Click Choose… and pick an image → the thumbnail shows with its alt text (or "No alt text"), and Replace… and Remove. Save (publish, for the local draft) and reopen → the image is still set. Replace… with another image, save and reopen → the new one is set. Remove, save and reopen → the slot is empty, so `featured_media: 0` reached the server.
 - [ ] Drop an image file from Finder on the Featured Image box → the outline turns the accent colour while hovering, "Uploading…" shows, then the uploaded image is set. Drop a HEIC → it uploads as JPEG. Drag a PDF or other non-image file over the box → no outline appears and it can't be dropped, the same as the editor body.
@@ -3316,7 +3338,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] The Revert button does not appear for local drafts.
 - [ ] The Revert button does not appear for a remote post that has not been edited.
 - [ ] Click Revert, confirm, then switch to another post before the reload returns → the other post keeps its own content; the reverted post's server copy does not land in it.
-- [ ] Trigger two toasts in quick succession (e.g. two rapid saves) → the second toast's 2-second dismiss timer is not cut short by the first toast's timer; it stays visible for its own full duration.
+- [ ] Trigger two toasts in quick succession (e.g. two rapid saves) → the second toast's dismiss timer is not cut short by the first toast's timer; it stays visible for its own full duration.
 
 ### 7.10 Delete / trash
 
@@ -3354,13 +3376,13 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
 - [ ] Click Accept → the AI content is kept; click Discard → the original content is restored.
 - [ ] If the AI returns tables, lists, or headings, save and fetch the raw HTML → it has proper WordPress classes (`wp-block-table`, `wp-block-list`, `wp-block-heading`, etc.).
-- [ ] If Claude errors or times out → the original text is restored, an error toast appears, and the editor is not corrupted.
+- [ ] If Claude errors or times out → the original text is restored, the editor banner gives the reason (offline, key rejected, rate limit, overloaded), and the editor is not corrupted.
 - [ ] Disconnect from the internet and trigger an AI operation → the error message reads as a clear "couldn't reach the Anthropic API" message, not a raw NSURLError string.
 - [ ] Trigger an AI operation via the right-click menu on one selection, then — while "✶ Rewriting…" or the result bar is still showing — right-click a different selection and trigger another AI operation → it is refused with the toast "Finish the current AI rewrite first…", and the first result still lands in its own range. Only one Accept/Discard bar is interactive; pressing Return or Escape does not double-fire.
 - [ ] Select a sentence and ask for a rewrite that will contain `&` (e.g. select "Research and development costs are high." and Make Shorter, which usually returns "R&D") → the editor shows `R&D`, not `R&amp;D`. Save and check the raw HTML → `R&amp;D`, never `R&amp;amp;D`.
 - [ ] Select a sentence together with the space after it (drag one character past the full stop) and Make Shorter → the result keeps one space before the next sentence. Repeat with the space before the sentence.
 - [ ] Start an AI operation, and while "✶ Rewriting…" is showing, click a different post → the new post opens unchanged, no Accept/Discard bar appears, and the reply never lands in it. Go back to the first post and check its content → no "✶ Rewriting…" text was saved (the placeholder is a decoration, never content).
-- [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and an error toast appears; no Accept/Discard bar is shown over the placeholder.
+- [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and the banner reads "Claude couldn't finish that rewrite. Try again."; no Accept/Discard bar is shown over the placeholder.
 - [ ] **Edits made while Claude responds are kept.** Start Make Longer on one paragraph and, while "✶ Rewriting…" shows, type in another paragraph → the typing stays after the result arrives, after Accept and after Discard.
 - [ ] **Typing next to the pending text in real WebKit.** While "✶ Rewriting…" shows, click at the very start of the dimmed text and type a few words → every keystroke appears (WebKit drops keystrokes next to a widget decoration in some positions; jsdom cannot show this, see the "widget decoration next to the caret" entry in `docs/editor-gotchas.md`).
 - [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty.
@@ -3491,7 +3513,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
 - [ ] With the cursor inside a footnote, pressing keyboard shortcuts for block operations (e.g. ⌘⇧7 for ordered list, ⌘⇧8 for bullet list) does nothing.
 - [ ] With the cursor inside a footnote entry, Backspace and Delete keys work normally (can delete characters and merge text).
-- [ ] Drag an image from Finder onto a footnote entry → an error toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
+- [ ] Drag an image from Finder onto a footnote entry → an info toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
 - [ ] Paste rich content (containing headings, lists, or images) into a footnote → block elements are stripped; only inline text and formatting survive.
 
 ### 7.21 Update checker
@@ -3752,10 +3774,10 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 54 | AI selection detection uses ProseMirror state (handles reversed/table selections) | 👁 §7.11 (select in table, right-click) |
 | 55 | AI result panel clamps to webview bounds, fallback for invalid rects | 👁 §7.11 |
 | 56 | Footnote content restricted to inline-only (no images, block elements, keyboard shortcuts) | 👁 §7.20 |
-| 57 | Image drops rejected in footnotes with error toast | 👁 §7.20 |
+| 57 | Image drops rejected in footnotes with an info toast | 👁 §7.20 |
 | 58 | Paste in footnotes strips block elements to inline text | 👁 §7.20 |
 | 59 | Update checker version comparison handles all semver cases, and strips the tag's `v` prefix first | ✅ `UpdateCheckerTests` (12 tests) |
-| 60 | Draft save failure shows error toast | 👁 §7.7 |
+| 60 | Draft save failure shows the editor banner | 👁 §7.7 |
 | 61 | `syncContentToSwift` fires after AI-generated content set | 👁 §7.11 (generate post, verify autosave captures content) |
 | 62 | Backspace/Delete passthrough inside footnotes (`_fnPassthrough`) | 👁 §7.20 (delete chars in footnote entry) |
 | 63 | Image caption Enter exits to paragraph below (imageCaptionExit plugin) | 👁 §7.4 (Enter in caption) |
@@ -3780,8 +3802,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 82 | Taxonomy creation retry doesn't resubmit already-created pending names | 👁 §7.7 (create post with 2+ new tags, force one to fail, retry save) |
 | 83 | `AIResultPanel` event monitor not double-registered across repeated `show()` calls | 👁 §7.11 (trigger AI op twice via right-click without dismissing) |
 | 84 | Toast dismiss timer restarts on every `presentToast()` call via a bumped `toastToken`, even when two consecutive toasts share identical text (keying `.task(id:)` on the message string alone couldn't detect that case) | 👁 §7.9 (trigger two consecutive same-text toasts — e.g. save twice with no changes — and confirm the second shows for a full 2s. Note: a multi-image drop now raises one summary toast, so it no longer exercises this) |
-| 85 | `PostEditorView.loadItem()` bails out of its catch block on a stale/cancelled load instead of writing `contentLoadFailed`/`saveError` for whichever post is now displayed | 👁 §7.7 (switch away from a post before its full-content fetch fails) |
-| 86 | `saveError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
+| 85 | `PostEditorView.loadItem()` bails out of its catch block on a stale/cancelled load instead of writing `contentLoadFailed`/`bannerError` for whichever post is now displayed | 👁 §7.7 (switch away from a post before its full-content fetch fails) |
+| 86 | `bannerError` is reset at the start of every `loadItem()` call so a stale error banner from a previous failed load doesn't persist over a subsequently-opened post or draft | 👁 §7.7 (fail a post load, then open a different post/draft that loads fine) |
 | 87 | `UpdateChecker.check()` throws on transport/decode failure so `hasCheckedForUpdate` only latches on success, matching `lastLoadedCredentials`'s retry-on-failure semantics | 👁 §7.21 (simulate a network failure on first check, confirm a later remount retries) |
 | 88 | `APIError`/`AnthropicError` share one `NetworkFailure.isConnectivity` check instead of two independently-maintained copies | ✅ `NetworkFailureTests` + `AnthropicClientTests.networkErrorPassesThroughUnrecognizedMessage` |
 | 89 | Existing galleries loaded from a post survive as an atomic `galleryBlock` node (not the `_rawHTML` verbatim safety net) — an unrelated visual edit elsewhere no longer silently drops the gallery on save | ✅ `WPPostDecodingTests.blockGalleryContentSurvivesEditorHTML` + JS `toWordPressHTML — gallery` (16 tests) + `galleryBlock` load/round-trip tests (13 tests) + 👁 §7.4 |
@@ -3901,6 +3923,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (28 tests) + 👁 §7.1 |
 | 204 | A button's `href`, the editor web view's `file:` loads and Preview/Open in Browser accepted script or local URLs; the credentials file was written before it was made owner-only | ✅ `test-editor-containers.js` `'a button link with a script URL loses the URL but keeps its label'`, `EditorCoordinatorTests.onlyTheEditorsOwnFileMayLoad`, `PostEditorHelpersTests.previewURLRefusesANonWebScheme`, `JSONFileStoreTests.savingLeavesOnlyTheOwnerOnlyFileBehind` |
 | 205 | Connectivity errors were recognised by English phrases in `localizedDescription`, so they were missed on every non-English system and "not found" matched unrelated errors. `NetworkFailure.isConnectivity` checks `URLError` codes, and `APIError` tells a Mac with no connection that it is offline instead of telling it to check the site URL | ✅ `NetworkFailureTests` (8 tests) |
+| 206 | Errors about the open post appeared in toasts that vanished after 2 seconds, an AI rewrite failure never said why, and the sidebar's load error always pointed at Settings. Errors about the open post go to the banner, error toasts stay 6 seconds and are announced, AI failures show Anthropic's reason, and the sidebar row offers Retry, with Settings only for sign-in or address problems | ✅ `ErrorMessageTests` (14 tests) + 👁 §7.7 |
 
 ---
 

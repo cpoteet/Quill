@@ -117,7 +117,7 @@ struct MediaDetailView: View {
                     Text("Saved").font(.subheadline).foregroundStyle(.secondary)
                 case .failed(let message):
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.subheadline).foregroundStyle(.red)
+                        .font(.subheadline).symbolRenderingMode(.multicolor)
                         .accessibilityHidden(true)
                     Text("Not saved: \(message)").font(.subheadline).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.tail).help(message)

@@ -75,11 +75,8 @@ struct OnboardingError: View {
 
     var body: some View {
         if let message {
-            Text(message)
+            InlineError(message: message)
                 .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

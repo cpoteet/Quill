@@ -82,7 +82,7 @@ public final class AppState: ObservableObject {
 
     @Published public var isLoadingList: Bool = true
     @Published public var hasLoadedList: Bool = false
-    @Published public var listError: String?
+    @Published public var listError: LoadFailure?
     // Set only after a successful loadAllSections() — lets SidebarView skip
     // refetching everything when it remounts (sidebar hide/show) with unchanged credentials.
     @Published public var lastLoadedCredentials: Credentials?
@@ -92,7 +92,7 @@ public final class AppState: ObservableObject {
     @Published public var selectedMedia: WPMedia?
     @Published public var isLoadingMedia: Bool = true
     @Published public var hasLoadedMedia: Bool = false
-    @Published public var mediaError: String?
+    @Published public var mediaError: LoadFailure?
 
     @Published public var aiSettings: AISettings?
     @Published public var triggerMediaUpload: Bool = false
@@ -167,7 +167,7 @@ public final class AppState: ObservableObject {
     }
 
     // Local Drafts load from SQLite, so a failed network load says nothing about them.
-    public var sectionListError: String? {
+    public var sectionListError: LoadFailure? {
         selectedSection == .localDrafts ? nil : listError
     }
 
@@ -181,5 +181,15 @@ public final class AppState: ObservableObject {
         }
         guard !searchText.isEmpty else { return items }
         return items.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+    }
+}
+
+public struct LoadFailure: Equatable {
+    public let message: String
+    public let needsSettings: Bool
+
+    public init(_ error: Error) {
+        message = error.localizedDescription
+        needsSettings = (error as? APIError)?.isFixedInSettings ?? false
     }
 }

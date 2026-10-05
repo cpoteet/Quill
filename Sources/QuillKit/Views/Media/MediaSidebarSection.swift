@@ -10,7 +10,7 @@ struct MediaSidebarSection: View {
                     .tag(filter)
             }
             if let error = appState.mediaError {
-                SidebarErrorRow(message: error)
+                SidebarErrorRow(failure: error)
             }
         }
         .listStyle(.sidebar)

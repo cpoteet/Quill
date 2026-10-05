@@ -116,18 +116,7 @@ public struct EvaluationPanel: View {
     }
 
     private func errorView(_ message: String) -> some View {
-        VStack(spacing: 12) {
-            Text("Evaluation failed.")
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Retry") { onReEvaluate() }
-                .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        PaneError(title: "Evaluation failed", message: message, retry: onReEvaluate)
     }
 }
 

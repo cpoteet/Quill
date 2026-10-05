@@ -42,9 +42,8 @@ struct GeneratePostSheet: View {
             }
 
             if let error = errorText {
-                Text(error)
+                InlineError(message: error)
                     .font(.caption)
-                    .foregroundStyle(.red)
             }
 
             HStack {
@@ -94,7 +93,7 @@ struct GeneratePostSheet: View {
             )
 
             guard let parsed = AIPromptBuilder.parseGenerateResponse(result.text) else {
-                errorText = "Claude returned an unexpected format. Please try again."
+                errorText = "Claude's reply came back in a form Quill couldn't read. Try again."
                 isGenerating = false
                 return
             }

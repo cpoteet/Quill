@@ -8,6 +8,14 @@ public enum APIError: Error, LocalizedError {
     case unexpectedHTML
     case notConnected
 
+    public var isFixedInSettings: Bool {
+        switch self {
+        case .invalidURL, .unexpectedHTML, .notConnected: return true
+        case .httpError(let code, _): return code == 401 || code == 403
+        case .decodingError, .networkError: return false
+        }
+    }
+
     public var errorDescription: String? {
         switch self {
         case .invalidURL: return "That doesn't look like a valid site URL. Make sure it uses HTTPS."
@@ -30,7 +38,7 @@ public enum APIError: Error, LocalizedError {
     private static func friendlyHTTPMessage(code: Int, rawBody: String) -> String {
         fputs("API HTTP \(code): \(rawBody)\n", stderr)
         switch code {
-        case 400: return "WordPress didn't accept the request. Try re-entering your Application Password — make sure there are no extra spaces."
+        case 400: return "WordPress didn't accept the request. Try re-entering your Application Password and check it has no extra spaces."
         case 401: return "Couldn't sign in. Double-check your username and Application Password."
         case 403: return "Your WordPress account doesn't have permission to do this. Check your role in WordPress Admin."
         case 404: return "That content doesn't exist anymore. It may have been deleted from WordPress."

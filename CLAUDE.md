@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 634 Swift + 1,511 JS tests, all passing as of 2026-10-04 (1,510 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 648 Swift + 1,511 JS tests, all passing as of 2026-10-04 (1,510 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -132,6 +132,7 @@ These two fail silently with the whole test suite green:
 - **A view placed in an `.inspector` must not set its own width**
 - **`SectionLabel` is the one heading above an inspector or sheet section**
 - **Sheet actions go in a bottom bar, never in a top header row**
+- **Each kind of feedback has one job: alert, editor banner, toast, inline error**
 - **Inputs are system `.roundedBorder` fields; only a list gets a hand-drawn surface**
 - **Verify saved draft HTML straight from SQLite rather than through the UI**
 - **jsdom and Chrome both lie about ProseMirror's empty-node caret**

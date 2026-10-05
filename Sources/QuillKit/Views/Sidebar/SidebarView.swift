@@ -199,7 +199,7 @@ public struct SidebarView: View {
                 updateRow(update)
             }
             if let error = appState.sectionListError {
-                SidebarErrorRow(message: error)
+                SidebarErrorRow(failure: error)
             }
             ForEach(appState.filteredItems) { item in
                 PostListRow(item: item, isSelected: appState.selectedItem == item)
@@ -286,7 +286,7 @@ public struct SidebarView: View {
         } catch is CancellationError {
             appState.isLoadingList = false
         } catch {
-            appState.listError = error.localizedDescription
+            appState.listError = LoadFailure(error)
             appState.hasLoadedList = true
             appState.isLoadingList = false
         }
@@ -315,7 +315,7 @@ public struct SidebarView: View {
         } catch is CancellationError {
             appState.isLoadingList = false
         } catch {
-            appState.listError = error.localizedDescription
+            appState.listError = LoadFailure(error)
             appState.hasLoadedList = true
             appState.isLoadingList = false
         }
@@ -381,7 +381,8 @@ public struct SidebarView: View {
 }
 
 struct SidebarErrorRow: View {
-    let message: String
+    let failure: LoadFailure
+    @EnvironmentObject private var appState: AppState
     @Environment(\.openSettings) private var openSettings
 
     private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
@@ -396,12 +397,17 @@ struct SidebarErrorRow: View {
                 .alignmentGuide(.firstTextBaseline) { $0[.top] + Self.triangleTopInset + Self.capHeight }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
-                Text(message)
+                Text(failure.message)
                     .foregroundStyle(.secondary)
                     .lineLimit(4)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Open Blog Settings…") { openSettings() }
-                    .controlSize(.small)
+                HStack(spacing: 6) {
+                    Button("Retry") { appState.triggerRefresh = true }
+                    if failure.needsSettings {
+                        Button("Open Blog Settings…") { openSettings() }
+                    }
+                }
+                .controlSize(.small)
             }
         }
         .font(.subheadline)

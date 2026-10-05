@@ -133,11 +133,7 @@ public struct GallerySheet: View {
                 ProgressView("Loading media…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = loadError {
-                VStack(spacing: 8) {
-                    Text(error).foregroundStyle(.secondary)
-                    Button("Retry") { Task { await loadMedia() } }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                PaneError(title: "Couldn't load media", message: error) { Task { await loadMedia() } }
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -180,9 +176,8 @@ public struct GallerySheet: View {
                         .padding(.top, 12)
                 } else if let selectionError {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(selectionError)
+                        InlineError(message: selectionError)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
                         Button("Retry") {
                             isLoadingSelection = true
                             Task { await loadSelection() }
@@ -403,7 +398,7 @@ public struct GallerySheet: View {
         let ids = editing.images.compactMap(\.id)
         if !ids.isEmpty {
             guard let creds = appState.credentials else {
-                selectionError = "No WordPress site configured."
+                selectionError = APIError.notConnected.errorDescription
                 return
             }
             do {
@@ -451,7 +446,7 @@ public struct GallerySheet: View {
     private func loadMedia() async {
         guard let creds = appState.credentials else {
             isLoading = false
-            loadError = "No WordPress site configured."
+            loadError = APIError.notConnected.errorDescription
             return
         }
         isLoading = true

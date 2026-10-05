@@ -61,10 +61,49 @@ struct SectionLabel: View {
     }
 }
 
+// MARK: - Errors
+
+/// An error shown beside the thing that failed, inside a form, sheet or panel.
+struct InlineError: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor)
+                .accessibilityHidden(true)
+            Text(message)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A failure that leaves a whole pane with nothing to show.
+struct PaneError: View {
+    let title: String
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(title, systemImage: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor)
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry", action: retry)
+        }
+    }
+}
+
 // MARK: - Toast
 
 enum ToastStyle {
     case success, info, error
+
+    var duration: Duration { self == .error ? .seconds(6) : .seconds(2) }
 }
 
 struct ToastView: View {
@@ -151,7 +190,7 @@ extension View {
     /// message text is unchanged from the previous toast) — keying the dismiss timer on the
     /// message string alone can't distinguish "still showing the first toast" from "a second,
     /// textually-identical toast just replaced it", so an unchanged string would inherit
-    /// whatever time was left on the first toast's timer instead of a fresh 2 seconds.
+    /// whatever time was left on the first toast's timer instead of a fresh `ToastStyle.duration`.
     func toast(message: Binding<String?>, style: Binding<ToastStyle> = .constant(.success), token: Int = 0) -> some View {
         ZStack(alignment: .bottom) {
             self
@@ -166,7 +205,8 @@ extension View {
                     )
                     .zIndex(1)
                     .task(id: token) {
-                        try? await Task.sleep(for: .seconds(2))
+                        AccessibilityNotification.Announcement(msg).post()
+                        try? await Task.sleep(for: style.wrappedValue.duration)
                         guard !Task.isCancelled else { return }
                         message.wrappedValue = nil
                         style.wrappedValue = .success

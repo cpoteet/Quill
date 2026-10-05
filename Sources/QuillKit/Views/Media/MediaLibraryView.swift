@@ -206,7 +206,7 @@ extension MediaLibraryView {
         } catch is CancellationError {
             // The replacing load owns isLoadingMedia.
         } catch {
-            appState.mediaError = error.localizedDescription
+            appState.mediaError = LoadFailure(error)
             appState.hasLoadedMedia = true
             appState.isLoadingMedia = false
         }
@@ -231,7 +231,7 @@ extension MediaLibraryView {
             hasMore = items.count == perPage
         } catch is CancellationError {
         } catch {
-            appState.mediaError = error.localizedDescription
+            appState.mediaError = LoadFailure(error)
         }
     }
 

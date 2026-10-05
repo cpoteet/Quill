@@ -81,7 +81,15 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .httpError(let code, let msg): return "API error \(code): \(msg)"
+        case .httpError(401, _): return AnthropicError.invalidKey.errorDescription
+        case .httpError(429, _): return "You've hit Anthropic's rate limit. Wait a minute and try again."
+        case .httpError(let code, _) where code >= 500:
+            return "Anthropic's API is busy or having problems. Try again in a moment."
+        case .httpError(let code, let body):
+            if let message = Self.apiMessage(in: body) {
+                return "Anthropic didn't accept the request: \(message)"
+            }
+            return "Anthropic returned an error (HTTP \(code)). Try again."
         case .noTextContent: return "Claude returned no text content."
         case .invalidResponse: return "Unexpected response from API."
         case .invalidKey: return "Anthropic didn't accept this key."
@@ -92,6 +100,18 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
             }
             return msg
         }
+    }
+
+    private static func apiMessage(in body: String) -> String? {
+        struct Envelope: Decodable {
+            struct Detail: Decodable { let message: String }
+            let error: Detail
+        }
+        guard let data = body.data(using: .utf8),
+              let message = try? JSONDecoder().decode(Envelope.self, from: data).error.message,
+              !message.isEmpty
+        else { return nil }
+        return message
     }
 }
 

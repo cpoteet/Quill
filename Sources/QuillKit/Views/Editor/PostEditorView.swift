@@ -18,8 +18,7 @@ public struct PostEditorView: View {
     @State private var stats = PostStats()
     @State private var inspectorPane: InspectorPane?
     @State private var isSaving: Bool = false
-    @State private var saveError: String?
-    @State private var previewError: String?
+    @State private var bannerError: EditorBanner?
     @State private var showConflictAlert: Bool = false
     @State private var conflictFromPreview = false
     @State private var autosaveTask: Task<Void, Never>?
@@ -84,7 +83,7 @@ public struct PostEditorView: View {
             // The alarm sits above the save error, which refers to it as
             // "the warning above".
             if let alarm = blockRiskAlarm { blockRiskBanner(alarm) }
-            if saveError != nil { errorBanner }
+            if bannerError != nil { errorBanner }
             ZStack {
                 EditorView(
                     handle: editorHandle,
@@ -115,7 +114,7 @@ public struct PostEditorView: View {
                         }
                     },
                     onDropRejected: { message in
-                        presentToast(message, isError: true)
+                        presentToast(message, style: .info)
                     },
                     onSearchLinks: { query in
                         guard let creds = appState.credentials else { return [] }
@@ -148,7 +147,7 @@ public struct PostEditorView: View {
                     onAIOperation: { operation in
                         // Kept, not replaced: a post switch cancels the running request through aiTask.
                         guard !aiRequestInFlight else {
-                            presentToast(Self.aiBusyMessage, isError: true)
+                            presentToast(Self.aiBusyMessage, style: .info)
                             return
                         }
                         aiTask = Task { await executeAIOperation(operation) }
@@ -180,7 +179,7 @@ public struct PostEditorView: View {
                         }
                     },
                     onGalleryUpdateDropped: {
-                        presentToast("The post changed while the gallery was open, so the gallery wasn't updated.", isError: true)
+                        bannerError = EditorBanner(message: "The post changed while the gallery was open, so the gallery wasn't updated.", source: .gallery)
                     },
                     aiEnabled: appState.aiEnabled,
                     hasTextSelection: hasTextSelection
@@ -217,6 +216,7 @@ public struct PostEditorView: View {
             }
             .sheet(item: $gallerySheet) { request in
                 GallerySheet(editing: request.editing, onInsert: { selections, columns, cropped, linkTo, sizeSlug in
+                    bannerError = bannerError?.clearing(.gallery)
                     let info = Self.galleryPayload(
                         selections: selections, columns: columns, cropped: cropped,
                         linkTo: linkTo, sizeSlug: sizeSlug, editing: request.editing)
@@ -231,6 +231,9 @@ public struct PostEditorView: View {
         }
         .uploadStatus($uploadStatus)
         .toast(message: $toastMessage, style: $toastStyle, token: toastToken)
+        .onChange(of: bannerError) { _, banner in
+            if let banner { AccessibilityNotification.Announcement(banner.message).post() }
+        }
         .alert("Revert to Server Version?", isPresented: $showDiscardAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Revert", role: .destructive) { discardChanges() }
@@ -276,17 +279,6 @@ public struct PostEditorView: View {
             }
         } message: {
             Text("This post was modified on the server since you last fetched it.")
-        }
-        .alert(
-            "Preview Failed",
-            isPresented: Binding(
-                get: { previewError != nil },
-                set: { if !$0 { previewError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(previewError ?? "")
         }
         .onChange(of: item.id) {
             evaluationTask?.cancel()
@@ -532,17 +524,17 @@ public struct PostEditorView: View {
     // #1 Dismissible error banner
     private var errorBanner: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(.orange)
+            Image(systemName: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor)
                 .font(.system(size: 13))
                 .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.calloutCapHeight / 2 }
-            Text(saveError ?? "")
+            Text(bannerError?.message ?? "")
                 .font(.callout)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
             Spacer()
             Button {
-                saveError = nil
+                bannerError = nil
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .medium))
@@ -611,7 +603,7 @@ public struct PostEditorView: View {
     // Nil when the body may be written to WordPress or the draft store; otherwise why not.
     private func writeBlockedReason(_ action: String) -> String? {
         if contentLoadFailed {
-            return "Can't \(action) — this post never finished loading. Reopen it before making changes."
+            return "Can't \(action): this post never finished loading. Reopen it before making changes."
         }
         if alarmBlocksSaving {
             return "Can't \(action) yet. Quill found content it can't preserve in this post, see the warning above."
@@ -644,11 +636,12 @@ public struct PostEditorView: View {
 
     private func uploadFeaturedImage(_ provider: NSItemProvider) {
         guard let creds = appState.credentials, let itemID = loadedItem?.id else { return }
+        bannerError = bannerError?.clearing(.featuredImage)
         featuredUploadItemIDs.insert(itemID)
         Task {
             defer { featuredUploadItemIDs.remove(itemID) }
             guard let url = await FeaturedImageSection.copyDroppedImage(from: provider) else {
-                presentToast("Couldn't read the dropped image.", isError: true)
+                reportError("Couldn't read the dropped image.", from: .featuredImage, about: itemID)
                 return
             }
             defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
@@ -662,7 +655,7 @@ public struct PostEditorView: View {
                     presentToast("The image is in the Media Library but wasn't set as the featured image.", style: .info)
                 }
             } catch {
-                presentToast("Couldn't upload the featured image: \(error.localizedDescription)", isError: true)
+                reportError("Couldn't upload the featured image: \(error.localizedDescription)", from: .featuredImage, about: itemID)
             }
         }
     }
@@ -677,13 +670,22 @@ public struct PostEditorView: View {
         toastToken += 1
     }
 
+    // The banner belongs to the open post, so an error about a post the user left goes to a toast.
+    private func reportError(_ message: String, from source: EditorBanner.Source, about postID: PostItem.ID?) {
+        if isOpen(postID) {
+            bannerError = EditorBanner(message: message, source: source)
+        } else {
+            presentToast(message, isError: true)
+        }
+    }
+
     /// Backs the Edit ▸ Paste as Markdown command. Reads the clipboard here in Swift
     /// and hands the text to `window.insertMarkdown`, so this never goes through the
     /// web view's own paste handling — an ordinary ⌘V is completely unaffected.
     private func pasteAsMarkdown() {
         guard let webView = editorWebView else { return }
         guard let text = NSPasteboard.general.string(forType: .string), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            presentToast("The clipboard has no text to paste.", isError: true)
+            presentToast("The clipboard has no text to paste.", style: .info)
             return
         }
         guard let encoded = try? JSONEncoder().encode(text),
@@ -700,7 +702,7 @@ public struct PostEditorView: View {
             case "parse-error": message = "That clipboard text couldn't be read as Markdown."
             default:            message = "The clipboard has no text to paste."
             }
-            presentToast(message, isError: true)
+            presentToast(message, style: .info)
         }
     }
 
@@ -727,7 +729,7 @@ public struct PostEditorView: View {
         // A local draft opened after a remote post failed to load must not
         // inherit its blocked state. The editor re-posts blocksAtRisk after the
         // content below lands, so a real alarm for this post still arrives.
-        saveError = nil
+        bannerError = nil
         blockRiskAlarm = nil
         contentLoadFailed = false
         settings.newCategoryNames = []
@@ -749,12 +751,12 @@ public struct PostEditorView: View {
                 } catch {
                     // Bail out here (instead of falling through to the staleness guard below)
                     // if the user has already switched away — otherwise this now-irrelevant
-                    // task's failure would stomp contentLoadFailed/saveError for whichever
+                    // task's failure would stomp contentLoadFailed/bannerError for whichever
                     // post is currently displayed.
                     guard !Task.isCancelled, loadedItem == requestedItem else { return }
                     loadedPost = post
                     contentLoadFailed = true
-                    saveError = "Couldn't load the full post (showing cached preview only — it may be missing content). Reopen this post once your connection is back before making changes."
+                    bannerError = EditorBanner(message: "Couldn't load the full post, so this is a cached preview that may be missing content. Reopen the post once you're connected, before making changes.", source: .load)
                 }
             } else {
                 loadedPost = post
@@ -895,10 +897,11 @@ public struct PostEditorView: View {
     private func performAutosave() async {
         // Or the squashed content silently becomes the local draft.
         if alarmBlocksSaving { return }
+        bannerError = bannerError?.clearing(.autosave)
         do {
             try writeLocalCopy(of: item)
         } catch {
-            presentToast("Autosave failed: \(error.localizedDescription)", isError: true)
+            bannerError = EditorBanner(message: "Autosave failed: \(error.localizedDescription)", source: .autosave)
         }
     }
 
@@ -915,9 +918,10 @@ public struct PostEditorView: View {
         guard case .local(let draft) = item else { return }
         isSaving = true
         defer { isSaving = false }
+        bannerError = bannerError?.clearing(.save)
         await editorHandle.flushPendingContent()
         if let reason = writeBlockedReason("save") {
-            saveError = reason
+            bannerError = EditorBanner(message: reason, source: .save)
             return
         }
         do {
@@ -932,7 +936,7 @@ public struct PostEditorView: View {
             cleanSettings = settings
             presentToast("Saved locally")
         } catch {
-            presentToast("Save failed: \(error.localizedDescription)", isError: true)
+            bannerError = EditorBanner(message: "Couldn't save the draft: \(error.localizedDescription)", source: .save)
         }
     }
 
@@ -951,14 +955,14 @@ public struct PostEditorView: View {
         defer { isSaving = false }
         await editorHandle.flushPendingContent()
         if let reason = writeBlockedReason("save") {
-            saveError = reason
+            bannerError = EditorBanner(message: reason, source: .save)
             return
         }
         if let loadedID = loadedItem?.id, featuredUploadItemIDs.contains(loadedID) {
             presentToast("The featured image is still uploading. Save again when it's done.", style: .info)
             return
         }
-        saveError = nil
+        bannerError = bannerError?.clearing(.save)
 
         let client = WordPressClient(credentials: creds)
         // Captured up front so the save finishes for this post even if the user switches mid-save.
@@ -973,7 +977,7 @@ public struct PostEditorView: View {
         func stillOnPost() -> Bool { loadedItem?.id == savedItemID && appState.selectedItem?.id == savedItemID }
         func report(_ message: String) {
             if stillOnPost() {
-                saveError = message
+                bannerError = EditorBanner(message: message, source: .save)
             } else {
                 presentToast("“\(savedTitle)” wasn't saved: \(message)", isError: true)
             }
@@ -1006,7 +1010,7 @@ public struct PostEditorView: View {
                 }
             }
         } catch {
-            report("Failed to create taxonomy: \(error.localizedDescription)")
+            report("Couldn't create the new category or tag: \(error.localizedDescription)")
             return
         }
 
@@ -1144,6 +1148,7 @@ public struct PostEditorView: View {
     }
 
     private func loadFromServer(postID: Int) {
+        bannerError = bannerError?.clearing(.revert)
         Task {
             guard let creds = appState.credentials,
                 case .remote(let current) = item
@@ -1158,7 +1163,7 @@ public struct PostEditorView: View {
                 applyRemotePost(post)
             } catch {
                 guard loadedItem?.id == requestedID else { return }
-                presentToast("Couldn't load the server version: \(error.localizedDescription)", isError: true)
+                bannerError = EditorBanner(message: "Couldn't load the server version: \(error.localizedDescription)", source: .revert)
             }
         }
     }
@@ -1167,7 +1172,7 @@ public struct PostEditorView: View {
 
     private func handleDroppedImages(_ urls: [URL], postID: PostItem.ID?) async {
         let files = urls.filter { $0.isFileURL }
-        await uploadImages(files.map { ($0, insertAtCursor(ifStillOn: postID)) })
+        await uploadImages(files.map { ($0, insertAtCursor(ifStillOn: postID)) }, postID: postID)
     }
 
     // A token marks an image already in the document, which only has its source swapped.
@@ -1178,7 +1183,7 @@ public struct PostEditorView: View {
             }
         }
         guard appState.credentials != nil else {
-            presentToast("Connect a WordPress site to upload pasted images", isError: true)
+            reportError("Connect a WordPress site in Settings to upload pasted images.", from: .upload, about: postID)
             return
         }
         let folder = FileManager.default.temporaryDirectory
@@ -1202,7 +1207,7 @@ public struct PostEditorView: View {
                 return true
             }))
         }
-        await uploadImages(uploads)
+        await uploadImages(uploads, postID: postID)
     }
 
     private func isOpen(_ postID: PostItem.ID?) -> Bool {
@@ -1240,8 +1245,9 @@ public struct PostEditorView: View {
         return String(data: data, encoding: .utf8)
     }
 
-    private func uploadImages(_ files: [(URL, (WPMedia) -> Bool)]) async {
+    private func uploadImages(_ files: [(URL, (WPMedia) -> Bool)], postID: PostItem.ID?) async {
         guard let creds = appState.credentials, !files.isEmpty else { return }
+        if isOpen(postID) { bannerError = bannerError?.clearing(.upload) }
         let client = WordPressClient(credentials: creds)
 
         var inserted = 0
@@ -1274,10 +1280,8 @@ public struct PostEditorView: View {
         uploadStatus = nil
         let failed = files.count - inserted - notInserted
         if failed > 0, let firstError {
-            presentToast(
-                Self.uploadFailureMessage(failed: failed, total: files.count, firstError: firstError),
-                isError: true
-            )
+            reportError(Self.uploadFailureMessage(failed: failed, total: files.count, firstError: firstError),
+                        from: .upload, about: postID)
         } else if notInserted > 0 {
             presentToast(Self.uploadNotInsertedMessage(count: notInserted), isError: true)
         } else {
@@ -1376,6 +1380,10 @@ public struct PostEditorView: View {
         return didConvert ? "Converted to JPEG · Image inserted" : "Image inserted"
     }
 
+    nonisolated static func aiFailureMessage(for error: Error) -> String {
+        (error as? AnthropicError)?.errorDescription ?? "Claude couldn't finish that rewrite. Try again."
+    }
+
     nonisolated static let aiBusyMessage = "Finish the current AI rewrite first: wait for it, then accept or discard it."
 
     nonisolated static func uploadNotInsertedMessage(count: Int) -> String {
@@ -1444,9 +1452,10 @@ public struct PostEditorView: View {
 
     private func openPreview(force: Bool = false) async {
         guard let creds = appState.credentials, let post = remotePost else { return }
+        bannerError = bannerError?.clearing(.preview)
         await editorHandle.flushPendingContent()
         if let reason = writeBlockedReason("preview") {
-            saveError = reason
+            bannerError = EditorBanner(message: reason, source: .preview)
             return
         }
         let client = WordPressClient(credentials: creds)
@@ -1477,7 +1486,7 @@ public struct PostEditorView: View {
             }
             let linkBase = autosave.link ?? post.link
             guard let url = PostEditorView.previewURL(from: linkBase) else {
-                previewError = "WordPress returned an invalid preview URL: \(linkBase)"
+                reportError("WordPress returned an invalid preview URL: \(linkBase)", from: .preview, about: previewedItemID)
                 return
             }
             NSWorkspace.shared.open(url)
@@ -1489,7 +1498,7 @@ public struct PostEditorView: View {
                 }
             }
         } catch {
-            previewError = error.localizedDescription
+            reportError("Couldn't open the preview: \(error.localizedDescription)", from: .preview, about: previewedItemID)
         }
     }
 
@@ -1506,7 +1515,7 @@ public struct PostEditorView: View {
     @MainActor
     private func executeEvaluation() async {
         guard let aiSettings = appState.aiSettings else {
-            evaluationError = "No API key configured. Add one in Preferences → AI."
+            evaluationError = "Add a Claude API key in Settings under AI Writing."
             return
         }
         guard stats.words >= 100 else { return }
@@ -1534,7 +1543,7 @@ public struct PostEditorView: View {
             if let result = AIPromptBuilder.parseEvaluationResponse(responseText) {
                 evaluationResult = result
             } else {
-                evaluationError = "Could not parse evaluation response."
+                evaluationError = "Claude's evaluation came back in a form Quill couldn't read. Try again."
             }
         } catch is CancellationError {
             return
@@ -1559,6 +1568,7 @@ public struct PostEditorView: View {
         guard let webView = editorWebView else { return }
         aiRequestInFlight = true
         defer { aiRequestInFlight = false }
+        bannerError = bannerError?.clearing(.ai)
 
         // 1. Tell JS to capture the selection and show the loading placeholder.
         //    JS returns { text, context, containerText, containerFrom, containerTo }.
@@ -1578,7 +1588,7 @@ public struct PostEditorView: View {
                 }
             }
         }
-        if opInfo.busy { presentToast(Self.aiBusyMessage, isError: true) }
+        if opInfo.busy { presentToast(Self.aiBusyMessage, style: .info) }
         guard !opInfo.text.isEmpty else { return }
 
         // 2. Determine if this operation needs to replace the whole container
@@ -1623,7 +1633,7 @@ public struct PostEditorView: View {
             }
             guard inserted else {
                 webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
-                presentToast("Claude couldn't complete that — please try again.", isError: true)
+                bannerError = EditorBanner(message: "Claude couldn't finish that rewrite. Try again.", source: .ai)
                 return
             }
 
@@ -1641,9 +1651,8 @@ public struct PostEditorView: View {
             )
         } catch {
             guard !Task.isCancelled else { return }
-            // Restore original text and show a toast
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
-            presentToast("Claude couldn't complete that — please try again.", isError: true)
+            bannerError = EditorBanner(message: Self.aiFailureMessage(for: error), source: .ai)
         }
     }
 }

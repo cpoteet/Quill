@@ -32,11 +32,7 @@ public struct MediaPickerView: View {
                 ProgressView("Loading media…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = loadError {
-                VStack(spacing: 8) {
-                    Text(error).foregroundStyle(.secondary)
-                    Button("Retry") { Task { await loadMedia() } }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                PaneError(title: "Couldn't load media", message: error) { Task { await loadMedia() } }
             } else if mediaItems.isEmpty {
                 ContentUnavailableView("No Media", systemImage: "photo.on.rectangle",
                                        description: Text("Upload an image to get started."))
