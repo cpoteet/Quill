@@ -15,6 +15,9 @@ public enum APIError: Error, LocalizedError {
         case .decodingError: return "WordPress sent a reply Quill couldn't read. A plugin or theme may be adding text to it."
         case .networkError(let e):
             let msg = e.localizedDescription
+            if (e as? URLError)?.code == .notConnectedToInternet {
+                return "You're offline. Connect to the internet and try again."
+            }
             if NetworkFailure.isConnectivity(e) {
                 return "Couldn't reach your site. Check the URL and make sure your site is online."
             }

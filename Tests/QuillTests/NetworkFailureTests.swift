@@ -41,6 +41,11 @@ import Testing
         #expect(err.errorDescription == "Couldn't reach your site. Check the URL and make sure your site is online.")
     }
 
+    @Test func apiErrorSaysOfflineWhenTheMacHasNoConnection() {
+        let err = APIError.networkError(URLError(.notConnectedToInternet))
+        #expect(err.errorDescription == "You're offline. Connect to the internet and try again.")
+    }
+
     @Test func apiErrorPassesThroughOtherNetworkErrors() {
         let err = APIError.networkError(FakeError(description: "The Internet connection appears to be offline."))
         #expect(err.errorDescription == "The Internet connection appears to be offline.")
