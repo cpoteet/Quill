@@ -4,6 +4,14 @@ public struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var onboarding = OnboardingModel()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var launchSidebarWidth = Self.clampedSidebarWidth(UserDefaults.standard.double(forKey: sidebarWidthKey))
+
+    private static let sidebarWidthKey = "sidebarWidth"
+    private static let sidebarWidthRange: ClosedRange<Double> = 260...400
+
+    private static func clampedSidebarWidth(_ width: Double) -> Double {
+        min(max(width, sidebarWidthRange.lowerBound), sidebarWidthRange.upperBound)
+    }
 
     public init() {}
 
@@ -14,7 +22,15 @@ public struct ContentView: View {
             } else {
                 NavigationSplitView(columnVisibility: $columnVisibility) {
                     SidebarView(columnVisibility: $columnVisibility)
-                        .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 400)
+                        .onGeometryChange(for: Double.self) { $0.size.width } action: { width in
+                            guard columnVisibility != .detailOnly else { return }
+                            UserDefaults.standard.set(Self.clampedSidebarWidth(width), forKey: Self.sidebarWidthKey)
+                        }
+                        .navigationSplitViewColumnWidth(
+                            min: Self.sidebarWidthRange.lowerBound,
+                            ideal: launchSidebarWidth,
+                            max: Self.sidebarWidthRange.upperBound
+                        )
                 } detail: {
                     detailContent
                         .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
