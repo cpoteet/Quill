@@ -381,12 +381,7 @@ describe('accent and caret are defined once per theme', () => {
     assert.doesNotMatch(source, /caret-color:\s*#/)
   })
 
-  // The card blocks (embed, gallery, passthrough) and the settings select paint their
-  // own ring at a literal #b45309 / #d08c3a rather than var(--accent), so they do not
-  // shift between themes the way image and node selection do. Pinned as the current
-  // state, not endorsed -- if these move onto the variable, delete this test.
-  test('only the known card rings sit outside the accent variable', () => {
-    const literalRings = source.match(/outline:\s*2px solid #[0-9a-f]{6}/gi) || []
-    assert.strictEqual(literalRings.length, 4)
+  test('every selection and focus ring uses the accent variable', () => {
+    assert.doesNotMatch(source, /outline:\s*2px solid #[0-9a-f]{6}/i)
   })
 })

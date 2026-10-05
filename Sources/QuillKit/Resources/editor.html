@@ -8,7 +8,7 @@
 
     /* Every link in the editor -- prose, footnote markers, backrefs -- uses
        these two and nothing else. */
-    :root { --link: #a26814; --accent: #eea737; --caret: #bf801e; }
+    :root { --link: #a26814; --accent: #c77700; --caret: #bf801e; }
     body.dark { --link: #f0b450; --accent: #f0b450; --caret: #eea737; }
 
     body {
@@ -182,7 +182,7 @@
     }
     #toolbar-row2 .setting-select:hover { background-color: rgba(0,0,0,0.055); }
     body.dark #toolbar-row2 .setting-select:hover { background-color: rgba(255,255,255,0.085); }
-    #toolbar-row2 .setting-select:focus-visible { outline: 2px solid #d08c3a; outline-offset: 1px; }
+    #toolbar-row2 .setting-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     #toolbar-row2 .setting-select option { color: initial; background: initial; }
 
     #toolbar .tb-text-icon {
@@ -587,13 +587,6 @@
     body.dark .ProseMirror hr::before { border-top-color: rgba(255,255,255,0.22); }
     .ProseMirror hr:hover { background: rgba(0,0,0,0.035); }
     body.dark .ProseMirror hr:hover { background: rgba(255,255,255,0.05); }
-    /* Nothing styles ProseMirror-selectednode here, so without this a selected
-       separator looks exactly like an unselected one. */
-    .ProseMirror hr.ProseMirror-selectednode {
-      background: rgba(238,167,55,0.18);
-      outline: none;
-    }
-    body.dark .ProseMirror hr.ProseMirror-selectednode { background: rgba(240,180,80,0.26); }
     .ProseMirror hr.is-style-wide::before { width: 100%; }
     .ProseMirror hr.is-style-dots::before {
       content: '\00b7\00b7\00b7';
@@ -847,7 +840,7 @@
       background: transparent;
     }
 
-    .ProseMirror .selectedCell { background: rgba(238,167,55,0.14); }
+    .ProseMirror .selectedCell { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
     /* Placeholder */
     .ProseMirror p.is-editor-empty:first-child::before {
@@ -951,7 +944,7 @@
       cursor: default;
       user-select: none;
     }
-    .embed-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
+    .embed-card.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .embed-card-provider { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
     .embed-card-url { font-size: 12px; color: #777; word-break: break-all; }
     .embed-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
@@ -969,7 +962,7 @@
       cursor: default;
       user-select: none;
     }
-    .gallery-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
+    .gallery-card.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .gallery-card-grid { display: flex; flex-wrap: wrap; gap: 6px; }
     .gallery-card-grid img {
       width: 64px;
@@ -995,7 +988,7 @@
       cursor: default;
       user-select: none;
     }
-    .passthrough-card.selected { outline: 2px solid #b45309; outline-offset: 1px; }
+    .passthrough-card.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
     .passthrough-card-peek {
       font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
