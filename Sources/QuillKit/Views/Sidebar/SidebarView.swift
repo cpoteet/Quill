@@ -111,7 +111,7 @@ public struct SidebarView: View {
         .onChange(of: appState.triggerRefresh) { _, newValue in
             guard newValue else { return }
             appState.triggerRefresh = false
-            Task { await loadCurrentSection() }
+            Task { await refresh() }
         }
         .toolbar {
             ToolbarItem {
@@ -123,7 +123,7 @@ public struct SidebarView: View {
 
                 ToolbarItem {
                     Button {
-                        Task { await loadCurrentSection() }
+                        Task { await refresh() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -296,6 +296,15 @@ public struct SidebarView: View {
             appState.listError = LoadFailure(error)
             appState.hasLoadedList = true
             appState.isLoadingList = false
+        }
+    }
+
+    private func refresh() async {
+        if appState.credentials != appState.lastLoadedCredentials {
+            if appState.selectedSection == .media { appState.mediaRefreshToken += 1 }
+            await loadAllSections()
+        } else {
+            await loadCurrentSection()
         }
     }
 

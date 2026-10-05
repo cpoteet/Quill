@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-05 — 660 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-05 — 668 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (660 tests)
+1. **Swift tests** — `swift test` (668 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (660 tests, 43 suites)
+## Swift test suite (668 tests, 44 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -160,8 +160,9 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
-| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 14 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
-| 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 12 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All, counts that ignore search, Scheduled sorted soonest first by UTC |
+| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
+| 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
+| 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
 
 ---
 
@@ -895,7 +896,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | Test | What it checks |
 |---|---|
 | `publishButtonTitlePerStatus` | The button label names what the click does: a local draft reads `"Save to WordPress"`, a server draft `"Save Draft"`, a live post set back to Draft `"Switch to Draft"`, then `"Publish"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"` |
-| `publishButtonIconPerStatus` | Drafts get the upload icon, a live post's Update gets `arrow.up.circle`, and only statuses that publish or queue the post get the paperplane |
+| `publishButtonIconPerStatus` | Drafts get the upload icon, a live post's Update gets `arrow.up.circle`, and only statuses that publish or queue the post get the paperplane, also when a live post is moved to Scheduled, Pending or Private |
 | `toastMessagePerStatus` | Each status transition maps to the correct toast string |
 | `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
 | `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
@@ -1249,20 +1250,21 @@ File: `Tests/QuillTests/NetworkFailureTests.swift`
 | `apiErrorPassesThroughOtherNetworkErrors` | Any other error's own message is shown unchanged |
 | `anthropicErrorShowsFriendlyMessageForConnectivityFailure` | `AnthropicError.networkError(URLError(.notConnectedToInternet))` reads "Couldn't reach the Anthropic API…" |
 
-### 40. Errors — `ErrorMessageTests` (14 tests)
+### 40. Errors — `ErrorMessageTests` (15 tests)
 
 File: `Tests/QuillTests/ErrorMessageTests.swift`
 
 | Test | What it checks |
 |---|---|
-| `settingsFixableErrors` | 401, 403, an invalid URL, a web page instead of data, and no site connected are fixed in Settings |
-| `errorsSettingsCannotFix` | 404, 500 and a network error are not, so the sidebar offers only Retry |
+| `settingsFixableErrors` | 400, 401, 403, a host that can't be found or times out, an invalid URL, a web page instead of data, and no site connected are fixed in Settings — each of these messages points at the password or the URL |
+| `errorsSettingsCannotFix` | 404, 500, no internet connection, a bad server response and a decoding error are not, so the sidebar offers only Retry |
 | `loadFailureCarriesTheMessageAndTheSettingsFlag` | `LoadFailure` keeps the error's message and `APIError.isFixedInSettings` |
 | `loadFailureFromANonAPIErrorDoesNotPointAtSettings` | A `URLError` never offers Settings |
 | `anthropicRateLimitSaysToWait` | HTTP 429 reads "You've hit Anthropic's rate limit…" |
 | `anthropicOverloadAndServerErrorsSayTryAgainLater` | 529 and 500 read "Anthropic's API is busy or having problems…" |
 | `anthropicRejectedRequestQuotesAnthropicsOwnMessage` | A 400 with Anthropic's JSON error quotes its `error.message` |
-| `anthropicErrorWithoutAReadableBodyNamesTheStatus` | An unreadable body falls back to the status code, never the raw body |
+| `anthropicErrorWithoutAReadableBodyNamesTheStatus` | A non-JSON body, JSON without `error.message`, or an empty message falls back to the status code, never the raw body |
+| `anthropicServerErrorIgnoresTheBodyMessage` | A 5xx with a readable `error.message` still reads "busy or having problems"; 499 quotes the message |
 | `anthropicUnauthorizedReadsLikeAnInvalidKey` | 401 from `complete` reads the same as `invalidKey` |
 | `aiFailureShowsAnthropicsReason` | An AI rewrite failure shows `AnthropicError`'s own message |
 | `aiFailureFromAnythingElseIsGeneric` | Any other error shows "Claude couldn't finish that rewrite. Try again." |
@@ -1270,7 +1272,7 @@ File: `Tests/QuillTests/ErrorMessageTests.swift`
 | `anotherOperationLeavesTheBannerAlone` | A different operation leaves the banner in place |
 | `errorToastsStayLongerThanSuccessToasts` | Error toasts stay 6 seconds; success and info toasts 2 |
 
-### 41. View-model — `AppStateStatusFilterTests` (12 tests)
+### 41. View-model — `AppStateStatusFilterTests` (16 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -1282,12 +1284,26 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `postsAndPagesKeepSeparateFilters` | A Posts filter does not carry into Pages, and is still set on return |
 | `localDraftsAndMediaIgnoreTheFilter` | Local Drafts read `.all` and setting a filter there does nothing |
 | `pendingAndPrivateAreOfferedOnlyWhenPresent` | `availableStatusFilters` adds Pending/Private only when the section has some |
-| `filterFallsBackToAllWhenItsStatusIsGone` | A Pending filter reads back as All once no pending post is left |
+| `filterFallsBackToAllWhenItsStatusIsGone` | A Pending filter reads back as All once no pending post is left, and as Pending again once one returns |
+| `publishedDraftAndScheduledAreOfferedEvenWhenEmpty` | An empty section still offers All, Published, Draft and Scheduled |
+| `pagesFilterTheirOwnList` | A Pages filter and its counts read `pages`, not `posts` |
+| `mediaIgnoresTheFilter` | Media reads `.all`, a filter set there does nothing, and counts are zero |
+| `listErrorIsHiddenOnlyForLocalDrafts` | `sectionListError` is the list error on Posts, Pages and Media, and `nil` on Local Drafts |
 | `countsCoverTheWholeSectionAndIgnoreSearch` | `statusCount` counts the loaded section, not the searched list |
 | `scheduledListsSoonestFirst` | `.future` sorts by date ascending |
 | `scheduledSortsByUTCWhenLocalTimesOverlap` | `.future` sorts by `date_gmt`, so the hour repeated when clocks go back keeps publication order |
 | `otherFiltersKeepServerOrder` | Every other filter keeps WordPress's order |
-| `titlesMatchTheRowStatusWords` | Menu titles are "All Posts"/"All Pages" and the row status words |
+| `titlesMatchTheRowStatusWords` | Menu titles are "All Posts"/"All Pages" and the row status words, Pending and Private included |
+
+### 42. Settings — `FeaturedImageSectionTests` (3 tests)
+
+File: `Tests/QuillTests/FeaturedImageSectionTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `droppedImageIsCopiedAloneIntoAFreshTempFolder` | The copy keeps the dropped file's name (`photo.png`, not the type-named `PNG image.png` that `loadFileRepresentation` produces), its bytes and extension, and sits alone in a new folder directly under the temp directory, so `uploadFeaturedImage` deleting that folder removes nothing else; the original is untouched |
+| `twoDropsOfTheSameFileGetSeparateFolders` | Each drop gets its own folder |
+| `providerWithoutAnImageYieldsNil` | A provider holding no image returns `nil` instead of hanging |
 
 ## JS block parser tests (67 tests)
 
@@ -3151,6 +3167,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] **Sidebar drag-collapse.** With the window at 900pt and the inspector hidden, drag the sidebar divider all the way left until it collapses, keep holding, drag back out → the sidebar returns and the window stays 900pt wide.
 - [ ] **Offline, Local Drafts shows the drafts and no error.** Turn off Wi-Fi and launch → Local Drafts lists every saved draft. The sidebar shows no error row, the empty-state overlay does not appear, and the detail placeholder does not say "Couldn't load…". Switch to Posts → the error row and "Couldn't load posts" appear there.
 - [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The error triangle lines up with the first line of the error text, not the middle of a wrapped message.
+- [ ] **Retry after a failed launch load fills every section.** Turn off Wi-Fi and launch → Posts shows the error row. Turn Wi-Fi back on and click Retry → Posts loads; switch to Pages → the pages are listed, not "No pages yet". Repeat with ⌘R and with the toolbar Refresh button instead of Retry.
+- [ ] **Open Blog Settings… only when Settings can fix it.** In Settings, change the site URL to a domain that does not exist and relaunch → the sidebar error says to check the URL and the row offers Open Blog Settings… beside Retry. Turn off Wi-Fi and relaunch with the correct URL → the error says the Mac is offline and the row offers only Retry. (An HTTP 400 also offers Settings; `ErrorMessageTests.settingsFixableErrors` covers it.)
 
 ### 7.3 Editor — content & Gutenberg round-trip
 
@@ -3196,6 +3214,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Drop a `.heic` alongside two ordinary images → the batch still ends in a single "3 images inserted" toast (the "Converted to JPEG" note only appears on a single-file drop).
 - [ ] Disconnect the network and drop one image → the editor banner reads "Upload failed: …" with the underlying error. Reconnect, then drop three images with one deliberately unusable → the banner summarizes as "1 of 3 images failed to upload".
 - [ ] Drop a batch of images, and while the pill is still counting, drop a second batch → the two batches run one after the other: the pill never disappears early, and a toast and the pill are never visible on top of each other in the bottom slot.
+- [ ] **An upload clears an error toast.** Throttle the network, turn it off, press ⌘S on post A and click post B before the save fails → a "wasn't saved" error toast shows for 6 seconds. Turn the network back on and drop an image on B while that toast is showing → the toast goes away and the progress pill takes the bottom slot; the two never overlap.
 - [ ] **A slow drop goes only to its own post.** Throttle the network, drop a large image on post A and click post B before the upload finishes → B is unchanged, A is unchanged when reopened, and the toast says the image reached the Media Library but was not inserted. Repeat with a pasted image.
 - [ ] **A section round-trip does not insert into a dead editor.** Drop a large image on post A, click Media and then back to A before the upload finishes → the image is not in A, and it is in the Media Library. Known limit: the "not inserted" toast is drawn on the editor the section switch tore down, so no message shows.
 - [ ] After any image insert (toolbar button, media picker, or Finder drop), start typing immediately → the text goes into a new paragraph **below** the image, not into the caption. Click the caption area under the image → the caret moves there and a caption can be typed.
@@ -3313,6 +3332,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Drop an image file from Finder on the Featured Image box → the outline turns the accent colour while hovering, "Uploading…" shows, then the uploaded image is set. Drop a HEIC → it uploads as JPEG. Drag a PDF or other non-image file over the box → no outline appears and it can't be dropped, the same as the editor body.
 - [ ] Drop a large image on the Featured Image box of a local draft and press Publish while "Uploading…" shows → a toast says the featured image is still uploading and nothing is published. Publish again once it finishes → the post is created with the image.
 - [ ] Drop an image on the Featured Image box and switch to another post before the upload finishes → the other post's featured image does not change, and a toast says the image is in the Media Library but wasn't set.
+- [ ] **Featured image keeps its file name.** Drop `beach-sunset.png` from Finder on the Featured Image box → in the Media Library (and on the site's Media page) the file is `beach-sunset.png`, not `PNG image.png`.
+- [ ] **A section round-trip mid-upload does not set the image.** Throttle the network, drop a large image on the Featured Image box of post A, click Media and then back to A before the upload finishes → A's featured image is unchanged and the reopened editor does not show "Uploading…" or block Save. The image is in the Media Library. Known limit, shared with editor drops: the "wasn't set" toast is drawn on the torn-down editor, so no message shows.
 - [ ] Toggle comment status between open and closed → the setting round-trips correctly on save.
 - [ ] In the page parent picker, the current page does not appear in the list. Save with a parent selected → the parent is set on the server.
 - [ ] The Publish button shows an outline paper plane on a draft (and for other status changes) and an outline up-arrow circle on a published post. Publish a remote draft → the button switches to Update, with the up-arrow icon, straight away, without reselecting the post.
@@ -3494,6 +3515,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] The toast message after saving reflects what happened (e.g. "Published" vs "Updated" vs "Scheduled").
 - [ ] Set a future date → the status changes to "future" and the button changes to "Schedule".
 - [ ] Set visibility to Private → the status changes to "private" and the button changes to "Publish Privately".
+- [ ] On a published post, switch the status to Scheduled, Pending or Private → the button's icon changes from the up-arrow circle to the paper plane, since the click moves the post out of public view.
 
 ### 7.18 Find & replace
 
@@ -3899,7 +3921,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 157 | Switching posts while an AI operation was in flight let the reply land in the newly opened post. `setContent` clears the AI state, `showAIResult` refuses with no operation in progress, and `PostEditorView` cancels `aiTask` and dismisses the result panel in `loadItem()`. Still open: the old post's flush can save the placeholder (`Views/Editor/CLAUDE.md`) | ✅ `test-ai-output-validity.js` `'a result that arrives after the post changed leaves the new post alone'` + 👁 §7.11 |
 | 158 | With the original kept as HTML, Discard went through `getHTML`/`setContent`, which trims a paragraph's trailing space. `_aiOriginalDoc` keeps the ProseMirror doc itself, and Discard posts the restored HTML to Swift | ✅ `test-ai-output-validity.js` `'discarding keeps a space the author just typed at the end of a paragraph, and tells Swift'` |
 | 159 | The highlight after `showAIResult` and the caret after Accept are computed from the inserted range, not the original selection | ✅ `test-ai-output-validity.js` `'the highlighted result is exactly the inserted text, and accepting puts the caret after it'` |
-| 160 | Offline, Local Drafts showed the network load's "Couldn't load…" error in the sidebar, the empty state and the detail placeholder, though drafts are local. `AppState.sectionListError` hides `listError` on Local Drafts | 👁 §7.2 — no test covers `sectionListError` |
+| 160 | Offline, Local Drafts showed the network load's "Couldn't load…" error in the sidebar, the empty state and the detail placeholder, though drafts are local. `AppState.sectionListError` hides `listError` on Local Drafts | ✅ `AppStateStatusFilterTests.listErrorIsHiddenOnlyForLocalDrafts` + 👁 §7.2 |
 | 161 | The update banner offered and opened whatever `html_url` the releases API returned. It must now be `https` on `github.com` | 👁 §7.21 — the URL check has no unit test |
 | 162 | Quill saved pixel heights core never writes, so `style="width:650px;height:480px"` squashed the image wherever `max-width` narrowed it. Now, as in core: a proportional drag saves the width with `height:auto` (a drag off the natural ratio, or a typed H, still saves a height); `window.insertImage` takes no dimensions, so an inserted image saves none; a size button swaps the URL and `size-*` class and keeps any width; Reset clears both dimensions | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` drag, size-button, Reset and insert tests |
 | 163 | Editing an image's alt text, size or link left the image toolbar open after the caret moved elsewhere: `setNodeMarkup` dropped the NodeSelection while focus was in the toolbar, so `deselectNode` never hid it | ✅ `test-editor-keyboard.js` `'image toolbar visibility'` |
@@ -3945,7 +3967,14 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (28 tests) + 👁 §7.1 |
 | 204 | A button's `href`, the editor web view's `file:` loads and Preview/Open in Browser accepted script or local URLs; the credentials file was written before it was made owner-only | ✅ `test-editor-containers.js` `'a button link with a script URL loses the URL but keeps its label'`, `EditorCoordinatorTests.onlyTheEditorsOwnFileMayLoad`, `PostEditorHelpersTests.previewURLRefusesANonWebScheme`, `JSONFileStoreTests.savingLeavesOnlyTheOwnerOnlyFileBehind` |
 | 205 | Connectivity errors were recognised by English phrases in `localizedDescription`, so they were missed on every non-English system and "not found" matched unrelated errors. `NetworkFailure.isConnectivity` checks `URLError` codes, and `APIError` tells a Mac with no connection that it is offline instead of telling it to check the site URL | ✅ `NetworkFailureTests` (8 tests) |
-| 206 | Errors about the open post appeared in toasts that vanished after 2 seconds, an AI rewrite failure never said why, and the sidebar's load error always pointed at Settings. Errors about the open post go to the banner, error toasts stay 6 seconds and are announced, AI failures show Anthropic's reason, and the sidebar row offers Retry, with Settings only for sign-in or address problems | ✅ `ErrorMessageTests` (14 tests) + 👁 §7.7 |
+| 206 | Errors about the open post appeared in toasts that vanished after 2 seconds, an AI rewrite failure never said why, and the sidebar's load error always pointed at Settings. Errors about the open post go to the banner, error toasts stay 6 seconds and are announced, AI failures show Anthropic's reason, and the sidebar row offers Retry, with Settings only for sign-in or address problems | ✅ `ErrorMessageTests` (15 tests) + 👁 §7.7 |
+| 207 | The Posts/Pages status filter must stay per section and follow the list it filters: a Pending or Private filter falls back to All when none are left and returns when one comes back, Pages count and filter `pages`, and Media and Local Drafts ignore it | ✅ `AppStateStatusFilterTests` (16 tests) + 👁 §7.2 |
+| 208 | After a failed launch load, Retry (or ⌘R, or the toolbar Refresh) on Posts reloaded only Posts and cleared the shared error, so Pages then showed "No pages yet" with nothing loaded. `SidebarView.refresh()` re-runs `loadAllSections()` while `credentials != lastLoadedCredentials` | 👁 §7.2 — `SidebarView` has no harness |
+| 209 | A wrong domain (host not found, timed out) or an HTTP 400 said to check the URL or re-enter the Application Password but offered only Retry. `APIError.isFixedInSettings` covers exactly the errors whose message points at Settings; a Mac with no internet connection still gets only Retry | ✅ `ErrorMessageTests.settingsFixableErrors` and `errorsSettingsCannotFix` + 👁 §7.2 |
+| 210 | A featured image dropped from Finder was uploaded as "PNG image.png", because `loadFileRepresentation(for: .image)` names its copy after the type. `copyDroppedImage` reads the file's own name through `loadObject(ofClass: URL.self)` | ✅ `FeaturedImageSectionTests.droppedImageIsCopiedAloneIntoAFreshTempFolder` + 👁 §7.7 |
+| 211 | A featured-image upload that finished after a section round-trip set the image on a torn-down editor. `uploadFeaturedImage` sets it only when `isOpen(itemID)` and the editor web view captured at the start is still in a window — the guard dropped and pasted images use (#188); the image stays in the Media Library and the info toast draws on the dead view | 👁 §7.7 — the upload task has no harness |
+| 212 | An upload started while a 6-second error toast was showing drew the progress pill on top of the toast. `uploadImages` clears the toast when a batch starts | 👁 §7.4 |
+| 213 | A live post moved to Scheduled, Pending or Private must show the paperplane, not Update's `arrow.up.circle` — the click changes where the post goes | ✅ `PostEditorHelpersTests.publishButtonIconPerStatus` + 👁 §7.17 |
 
 ---
 

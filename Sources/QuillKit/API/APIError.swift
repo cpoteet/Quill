@@ -11,8 +11,10 @@ public enum APIError: Error, LocalizedError {
     public var isFixedInSettings: Bool {
         switch self {
         case .invalidURL, .unexpectedHTML, .notConnected: return true
-        case .httpError(let code, _): return code == 401 || code == 403
-        case .decodingError, .networkError: return false
+        case .httpError(let code, _): return [400, 401, 403].contains(code)
+        case .networkError(let e):
+            return NetworkFailure.isConnectivity(e) && (e as? URLError)?.code != .notConnectedToInternet
+        case .decodingError: return false
         }
     }
 

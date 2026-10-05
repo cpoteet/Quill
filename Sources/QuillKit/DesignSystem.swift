@@ -165,7 +165,7 @@ struct UploadStatusPill: View {
 
 extension View {
     /// Bottom-center progress pill. Uses the same slot as `toast(message:style:token:)`;
-    /// callers must clear the status before presenting a toast so the two never overlap.
+    /// callers clear whichever is showing before presenting the other, so the two never overlap.
     func uploadStatus(_ message: Binding<String?>) -> some View {
         ZStack(alignment: .bottom) {
             self

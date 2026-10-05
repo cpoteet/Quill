@@ -638,7 +638,7 @@ public struct PostEditorView: View {
         guard let creds = appState.credentials, let itemID = loadedItem?.id else { return }
         bannerError = bannerError?.clearing(.featuredImage)
         featuredUploadItemIDs.insert(itemID)
-        Task {
+        Task { [editorWebView] in
             defer { featuredUploadItemIDs.remove(itemID) }
             guard let url = await FeaturedImageSection.copyDroppedImage(from: provider) else {
                 reportError("Couldn't read the dropped image.", from: .featuredImage, about: itemID)
@@ -649,7 +649,7 @@ public struct PostEditorView: View {
                 let media = try await Task.detached(priority: .userInitiated) {
                     try await uploadPickedImage(url, credentials: creds)
                 }.value
-                if loadedItem?.id == itemID && appState.selectedItem?.id == itemID {
+                if isOpen(itemID), editorWebView?.window != nil {
                     settings.featuredMediaID = media.id
                 } else {
                     presentToast("The image is in the Media Library but wasn't set as the featured image.", style: .info)
@@ -1254,6 +1254,7 @@ public struct PostEditorView: View {
         var notInserted = 0
         var didConvert = false
         var firstError: String? = nil
+        toastMessage = nil
 
         for (index, (url, place)) in files.enumerated() {
             uploadStatus = Self.uploadStatusText(index: index + 1, total: files.count)

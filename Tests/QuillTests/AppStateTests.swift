@@ -267,6 +267,46 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         state.posts.removeLast()
         #expect(state.statusFilter == .all)
         #expect(state.filteredItems.count == 4)
+        state.posts.append(try makePost(id: 6, status: "pending"))
+        #expect(state.statusFilter == .pending)
+        #expect(state.filteredItems.map(\.id) == ["remote-6"])
+    }
+
+    @Test func publishedDraftAndScheduledAreOfferedEvenWhenEmpty() {
+        let state = AppState()
+        state.selectedSection = .posts
+        #expect(state.availableStatusFilters == [.all, .publish, .draft, .future])
+    }
+
+    @Test func pagesFilterTheirOwnList() throws {
+        let state = try postsState()
+        state.pages = [
+            try makePost(id: 7, status: "publish", type: "page"),
+            try makePost(id: 8, status: "draft", type: "page"),
+        ]
+        state.selectedSection = .pages
+        state.statusFilter = .draft
+        #expect(state.filteredItems.map(\.id) == ["remote-8"])
+        #expect(state.statusCount(.all) == 2)
+    }
+
+    @Test func mediaIgnoresTheFilter() {
+        let state = AppState()
+        state.selectedSection = .media
+        state.statusFilter = .draft
+        #expect(state.statusFilter == .all)
+        #expect(state.statusCount(.all) == 0)
+    }
+
+    @Test func listErrorIsHiddenOnlyForLocalDrafts() {
+        let state = AppState()
+        state.listError = LoadFailure(APIError.httpError(statusCode: 401, body: ""))
+        for section in [SidebarSection.posts, .pages, .media] {
+            state.selectedSection = section
+            #expect(state.sectionListError == state.listError)
+        }
+        state.selectedSection = .localDrafts
+        #expect(state.sectionListError == nil)
     }
 
     @Test func countsCoverTheWholeSectionAndIgnoreSearch() throws {
@@ -319,6 +359,8 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(PostStatusFilter.publish.title(in: .posts) == "Published")
         #expect(PostStatusFilter.draft.title(in: .posts) == "Draft")
         #expect(PostStatusFilter.future.title(in: .posts) == "Scheduled")
+        #expect(PostStatusFilter.pending.title(in: .pages) == "Pending")
+        #expect(PostStatusFilter.private.title(in: .pages) == "Private")
     }
 }
 

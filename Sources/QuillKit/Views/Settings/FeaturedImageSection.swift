@@ -141,11 +141,13 @@ struct FeaturedImageSection: View {
 
     // The provider's file is deleted when its handler returns, so the caller gets a copy in its own folder to remove.
     static func copyDroppedImage(from provider: NSItemProvider) async -> URL? {
-        await withCheckedContinuation { continuation in
+        let originalName = await droppedFileBaseName(provider)
+        return await withCheckedContinuation { continuation in
             _ = provider.loadFileRepresentation(for: .image) { url, _, _ in
                 guard let url else { return continuation.resume(returning: nil) }
                 let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-                let copy = folder.appendingPathComponent(url.lastPathComponent)
+                let name = originalName.map { "\($0).\(url.pathExtension)" } ?? url.lastPathComponent
+                let copy = folder.appendingPathComponent(name)
                 do {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                     try FileManager.default.copyItem(at: url, to: copy)
@@ -153,6 +155,17 @@ struct FeaturedImageSection: View {
                 } catch {
                     continuation.resume(returning: nil)
                 }
+            }
+        }
+    }
+
+    // loadFileRepresentation names its copy after the type ("PNG image.png"), so a Finder drop reads the name here.
+    private static func droppedFileBaseName(_ provider: NSItemProvider) async -> String? {
+        guard provider.canLoadObject(ofClass: URL.self) else { return nil }
+        return await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                let name = url.flatMap { $0.isFileURL ? $0.deletingPathExtension().lastPathComponent : nil }
+                continuation.resume(returning: name?.isEmpty == false ? name : nil)
             }
         }
     }

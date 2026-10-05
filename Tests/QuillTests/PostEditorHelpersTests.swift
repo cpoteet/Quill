@@ -132,6 +132,9 @@ import Testing
         for status in [PostStatus.publish, .future, .pending, .private] {
             #expect(PostEditorView.publishButtonIcon(status: status, isPublishedRemote: false) == "paperplane")
         }
+        for status in [PostStatus.future, .pending, .private] {
+            #expect(PostEditorView.publishButtonIcon(status: status, isPublishedRemote: true) == "paperplane")
+        }
     }
 
     @Test func toastMessagePerStatus() {

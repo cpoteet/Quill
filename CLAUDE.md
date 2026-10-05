@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 660 Swift + 1,511 JS tests, all passing as of 2026-10-05 (1,510 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 668 Swift + 1,511 JS tests, all passing as of 2026-10-05 (1,510 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -49,13 +49,14 @@ Sources/QuillKit/
   App/              AppState, AppServices, QuillApp, AppSupportDirectory, UpdateChecker
   Auth/             CredentialsStore (file-based, not system keychain), AppAuthorization, ConnectSite
   API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy), MimeType, ImageConversion
+                    APIError, NetworkFailure (connectivity by URLError code)
   AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
     ContentView.swift
     Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
-                    TitleTextField, LinkPickerView, BlockRiskAlarm
-    Sidebar/        SidebarView, PostListRow
+                    TitleTextField, LinkPickerView, BlockRiskAlarm, EditorBanner
+    Sidebar/        SidebarView, PostListRow, SidebarStatusFilterButton, SidebarCollapseFix
     Settings/       PreferencesView, PostSettingsPanel, FeaturedImageSection, AboutView
     Media/          MediaLibraryView, MediaGalleryView, MediaPreviewOverlay
                     MediaSidebarSection (filter list), MediaDetailView (inspector)

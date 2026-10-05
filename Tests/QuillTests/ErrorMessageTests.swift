@@ -7,8 +7,11 @@ import Testing
     // MARK: - Which load failures Settings can fix
 
     @Test(arguments: [
-        APIError.httpError(statusCode: 401, body: ""),
+        APIError.httpError(statusCode: 400, body: ""),
+        .httpError(statusCode: 401, body: ""),
         .httpError(statusCode: 403, body: ""),
+        .networkError(URLError(.cannotFindHost)),
+        .networkError(URLError(.timedOut)),
         .invalidURL,
         .unexpectedHTML,
         .notConnected,
@@ -21,6 +24,8 @@ import Testing
         APIError.httpError(statusCode: 404, body: ""),
         .httpError(statusCode: 500, body: ""),
         .networkError(URLError(.notConnectedToInternet)),
+        .networkError(URLError(.badServerResponse)),
+        .decodingError(CocoaError(.coderReadCorrupt)),
     ])
     func errorsSettingsCannotFix(error: APIError) {
         #expect(!error.isFixedInSettings)
@@ -59,6 +64,18 @@ import Testing
     @Test func anthropicErrorWithoutAReadableBodyNamesTheStatus() {
         #expect(AnthropicError.httpError(418, "<html>teapot</html>").errorDescription
                 == "Anthropic returned an error (HTTP 418). Try again.")
+        #expect(AnthropicError.httpError(400, #"{"type":"error"}"#).errorDescription
+                == "Anthropic returned an error (HTTP 400). Try again.")
+        #expect(AnthropicError.httpError(400, #"{"error":{"type":"x","message":""}}"#).errorDescription
+                == "Anthropic returned an error (HTTP 400). Try again.")
+    }
+
+    @Test func anthropicServerErrorIgnoresTheBodyMessage() {
+        let body = #"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#
+        #expect(AnthropicError.httpError(529, body).errorDescription
+                == "Anthropic's API is busy or having problems. Try again in a moment.")
+        #expect(AnthropicError.httpError(499, body).errorDescription
+                == "Anthropic didn't accept the request: Overloaded")
     }
 
     @Test func anthropicUnauthorizedReadsLikeAnInvalidKey() {
