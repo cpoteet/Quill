@@ -100,7 +100,7 @@ public struct SidebarView: View {
             }
         }
         .toolbar(removing: .sidebarToggle)
-        .background(SidebarCollapseFix().frame(width: 0, height: 0))
+        .background(SplitItemCollapseFix(behavior: .sidebar).frame(width: 0, height: 0))
         // Adding toolbar items while the column is still sliding in overflows them into a » menu.
         .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX >= 0 } action: { isFullyOnScreen = $0 }
         .onChange(of: appState.selectedItem) { _, _ in

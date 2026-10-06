@@ -53,10 +53,10 @@ Sources/QuillKit/
   AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
-    ContentView.swift
+    ContentView.swift, SplitItemCollapseFix.swift
     Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
                     TitleTextField, LinkPickerView, BlockRiskAlarm, EditorBanner
-    Sidebar/        SidebarView, PostListRow, SidebarStatusFilterButton, SidebarCollapseFix
+    Sidebar/        SidebarView, PostListRow, SidebarStatusFilterButton
     Settings/       PreferencesView, PostSettingsPanel, FeaturedImageSection, AboutView
     Media/          MediaLibraryView, MediaGalleryView, MediaPreviewOverlay
                     MediaSidebarSection (filter list), MediaDetailView (inspector)
@@ -114,6 +114,7 @@ These two fail silently with the whole test suite green:
 - **A carried attribute is a script sink — everything the raw-attribute carrier snapshots gets replayed onto the live contenteditable**
 - **Post markup is parsed only into `inertDocument()`, never into an element of the live page**
 - **The toolbar-wide fade on inspector toggle is an implicit `sublayers` CATransition on the toolbar's glass hosting view, and `InspectorTitlebarFix` nulls that action**
+- **A split item's default uncollapse grows the split view instead of shrinking its siblings, so `SplitItemCollapseFix` sets `collapseBehavior = .useConstraints` on the sidebar and the inspector**
 - **Measure the region the user is describing, not the whole strip**
 - **`AppState` orders taxonomies once, on assignment — the settings panel never sorts**
 - **The unsupported-block sentinel is a per-save random nonce, and must stay one**
@@ -145,6 +146,7 @@ These two fail silently with the whole test suite green:
 
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
+- `docs/platform-workarounds.md` — every workaround for an Apple or WebKit bug, with a test for whether it is still needed; work through it after each macOS release. A new workaround gets an entry here as well as its gotcha
 - `docs/editor-gotchas.md` — the 77 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
