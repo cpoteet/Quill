@@ -508,6 +508,17 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         #expect(state.selectedItem == item)
         #expect(state.credentials == newPassword)
     }
+
+    @Test func connectingForgetsWhetherTheAccountCanPostUnfilteredHTML() async {
+        let state = AppState()
+        state.credentials = siteA
+        state.canPostUnfilteredHTML = true
+        let otherUser = Credentials(siteURL: URL(string: "https://a.test/")!, username: "author", appPassword: "p")
+
+        await state.connect(otherUser)
+
+        #expect(state.canPostUnfilteredHTML == nil)
+    }
 }
 
 // MARK: - Replacing a media item after a save

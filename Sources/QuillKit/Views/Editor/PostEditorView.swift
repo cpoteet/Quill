@@ -25,6 +25,7 @@ public struct PostEditorView: View {
     @State private var lastSavedServerModified: String = ""
     @State private var showImagePicker = false
     @State private var gallerySheet: GallerySheetRequest?
+    @State private var customHTMLSheet: CustomHTMLRequest?
     @State private var toastMessage: String? = nil
     @State private var toastStyle: ToastStyle = .success
     // Bumped on every presentToast() call so the toast's dismiss timer restarts even when
@@ -103,6 +104,10 @@ public struct PostEditorView: View {
                     },
                     onInsertGallery: { edit in
                         gallerySheet = GallerySheetRequest(editing: edit)
+                    },
+                    onCustomHTML: { request in
+                        customHTMLSheet = request
+                        Task { await appState.loadUnfilteredHTMLCapability() }
                     },
                     onImageFilesDropped: { urls in
                         // Serialized: overlapping drops share `uploadStatus`, so a second
@@ -228,6 +233,15 @@ public struct PostEditorView: View {
                 })
                 .environmentObject(appState)
                 .frame(minWidth: 720, minHeight: 480)
+            }
+            .sheet(item: $customHTMLSheet) { request in
+                CustomHTMLSheet(request: request, canPostUnfilteredHTML: appState.canPostUnfilteredHTML, onCommit: { html in
+                    let info: [String: Any] = ["html": html, "replace": request.isEditing]
+                    NotificationCenter.default.post(name: .insertCustomHTML, object: nil, userInfo: info)
+                    customHTMLSheet = nil
+                }, onCancel: {
+                    customHTMLSheet = nil
+                })
             }
         }
         .uploadStatus($uploadStatus)

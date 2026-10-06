@@ -602,7 +602,7 @@ describe('insert menu', () => {
 
   test('every menu item uses the heading menu label typography', () => {
     const items = Array.from(win.document.querySelectorAll('#insert-menu [data-insert]'))
-    assert.equal(items.length, 8)
+    assert.equal(items.length, 9)
     for (const el of items) {
       assert.ok(el.querySelector('.heading-menu-label'), `${el.dataset.insert} has no label span`)
     }

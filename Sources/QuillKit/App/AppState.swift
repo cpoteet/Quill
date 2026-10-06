@@ -81,6 +81,8 @@ public final class AppState: ObservableObject {
     @Published private var postStatusFilter: PostStatusFilter = .all
     @Published private var pageStatusFilter: PostStatusFilter = .all
     @Published public var credentials: Credentials?
+    /// Asked once per connection, the first time the Custom HTML sheet opens; nil until WordPress answers.
+    @Published public var canPostUnfilteredHTML: Bool?
 
     @Published public var posts: [WPPost] = []
     @Published public var pages: [WPPost] = []
@@ -158,6 +160,14 @@ public final class AppState: ObservableObject {
             selectedMedia = nil
         }
         credentials = newCredentials
+        canPostUnfilteredHTML = nil
+    }
+
+    @MainActor public func loadUnfilteredHTMLCapability() async {
+        guard canPostUnfilteredHTML == nil, let creds = credentials else { return }
+        let allowed = try? await WordPressClient(credentials: creds).canPostUnfilteredHTML()
+        guard credentials == creds else { return }
+        canPostUnfilteredHTML = allowed
     }
 
     // Looked up by ID after the request, since the list can change while it runs.

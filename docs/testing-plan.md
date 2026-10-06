@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-05 — 668 Swift tests + 1,511 JS tests (1,510 pass, 1 skipped), no failures._
+_Last updated: 2026-10-05 — 682 Swift tests + 1,548 JS tests (1,547 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,10 +16,10 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (668 tests)
-2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (68 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (93 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (47 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (682 tests)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (108 tests — pure Node; `serializeAttributes` compared with WordPress)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (66 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (273 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
@@ -33,7 +33,7 @@ This document is the authoritative reference for Quill's automated test suite an
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
 17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (59 tests — checked by WordPress's own block validator)
-18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (62 tests — same validator, over every fixture)
+18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the eighteen passed.
 
@@ -111,7 +111,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (668 tests, 44 suites)
+## Swift test suite (682 tests, 44 suites)
 
 Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -125,7 +125,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 62 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 65 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -151,8 +151,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
-| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 22 | `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
-| 32 | `SiteSwitchTests` | `AppStateTests.swift` | 3 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
+| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 32 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
+| 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
@@ -289,7 +289,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (62 tests)
+### 5. Networking — `WordPressClientTests` (65 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -339,6 +339,9 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 | Test | What it checks |
 |---|---|
+| `canPostUnfilteredHTMLReadsTheCurrentUsersCapability` | `GET users/me?context=edit`, `unfiltered_html: true` gives true |
+| `canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool` | siolon.com's `can_runPHP` is a string; decoding every capability as a Bool failed the whole response, so the CSS/JS tabs never showed |
+| `canPostUnfilteredHTMLIsFalseWithoutTheCapability` | No `unfiltered_html` key gives false |
 | `fetchAllCategoriesHitsCategoriesEndpointWithPerPage100` | `per_page=100` |
 | `fetchAllCategoriesPaginatesAcrossMultiplePages` | Follows `X-WP-TotalPages` to page 2 |
 | `fetchAllTagsHitsTagsEndpointWithPerPage100` | `/tags` endpoint |
@@ -1071,7 +1074,7 @@ The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/
 
 ---
 
-### 31. Editor — `GalleryEditTests` (22 tests)
+### 31. Editor — `GalleryEditTests` (32 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift half of editing a gallery: decoding what `window.editGallery` posts, and building what `window.insertGallery` receives. Spec: `docs/superpowers/specs/2026-09-11-gallery-editing-design.md`.
 
@@ -1088,6 +1091,16 @@ File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift
 | `galleryPayloadKeepsUntouchedKeys` | `blockAttrs`, `extraClasses`, `extraAttrs`, `captionHTML` go back unchanged, plus `replace: true` |
 | `galleryPayloadDropsCaptionHTMLWhenCaptionChanged` | A changed caption is sent as plain text only |
 | `galleryPayloadMixedKeepsEachSize` | Mixed keeps each image's size and URL; a new image gets Large; no gallery `sizeSlug` is sent |
+| `customHTMLRequestReadsAnInsertBody` | The insert menu's `{}` body opens the Custom HTML sheet in insert mode |
+| `customHTMLRequestReadsAnEditBody` | `{ html }` opens it in edit mode with that HTML |
+| `customHTMLRequestRejectsAMalformedBody` | A non-dictionary body, or an `html` that is not a string, opens no sheet |
+| `customHTMLPartsSplitGutenbergsMarkedStyleAndScript` | Gutenberg's `<style data-wp-block-html="css">` and `<script data-wp-block-html="js">` come out into their tabs and join back to the same bytes |
+| `customHTMLPartsLeaveUnmarkedContentAsHTMLByteForByte` | An unmarked `<style>`/`<script>` stays in the HTML tab, whitespace and all |
+| `customHTMLPartsLeaveACommentedOutMarkerAlone` | A marked script inside an HTML comment stays in the HTML tab; extracting it would make commented-out code live on save |
+| `customHTMLPartsOnlyReadMarkersWhereGutenbergWritesThem` | A marker after the HTML is not split out; Gutenberg always writes style, then script, then HTML |
+| `customHTMLPartsJoinInGutenbergsOrder` | CSS, then JavaScript, then HTML, a blank line apart; empty parts are left out |
+| `customHTMLPartsReportWhetherTheyHoldCode` | `hasCode` keeps the tabs on for a block that already has CSS or JS; whitespace-only parts count as empty |
+| `customHTMLScriptCarriesSpecialCharactersIntact` | The `insertCustomHTML(…)` call Swift evaluates decodes back to the same HTML, with quotes, a backslash, `</script>`, an emoji and U+2028 |
 | `galleryPayloadPickedSizeAppliesToEveryImage` | Picking a size resizes an existing image through its `WPMedia` |
 | `galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo` | Keep Current Links keeps existing `href`s, links a new image to its attachment page with `linkDestination: attachment` in core's key order, sends the gallery's own `linkTo` and `keepLinks: true` |
 | `galleryPayloadUnchangedSizeKeepsEachImagesOwnURL` | With the Size menu left where it started (`initialSizeSlug`), an existing image keeps its own `src`, including a `-e…` edited-copy URL, while a new image gets the gallery size |
@@ -1100,7 +1113,7 @@ File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift
 | `galleryPayloadImageWithoutMediaKeepsItsURL` | An image the library did not return keeps its URL and size, and sends no id |
 | `galleryPayloadInsertKeepsTheInsertShape` | With no edit, the payload is exactly the insert keys it always was |
 
-### 32. App — `SiteSwitchTests` (3 tests)
+### 32. App — `SiteSwitchTests` (4 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -1109,6 +1122,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `anotherSiteFlushesTheOpenPostThenClearsTheOldSitesState` | The open post's persist hook runs while the old credentials and the open post are still set; afterwards selection, posts, pages, media and the selected media are empty |
 | `theFirstSiteConnectsWithoutFlushingAnything` | With no site connected yet, `connect` runs no flush and keeps the open local draft |
 | `theSameSiteWithNewCredentialsKeepsTheOpenPost` | A new password for the same site (trailing slash aside) runs no flush and keeps the selection |
+| `connectingForgetsWhetherTheAccountCanPostUnfilteredHTML` | Another account on the same site may not have `unfiltered_html`, so every connection asks again |
 
 ### 33. App — `MediaReplaceTests` (3 tests)
 
@@ -1411,7 +1425,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `freeform prose is never wrapped` | |
 | `a nested block inside a claimed block does not make the parent wrap` | A `wp:query` holding a `wp:post-title` is one top-level block, not two |
 
-### `wrapUnsupportedBlocks` (7 tests)
+### `wrapUnsupportedBlocks` (14 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1420,7 +1434,26 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `wraps exactly the eight unsupported blocks in the corpus fixture` | The counter-example: eight wrappers, prose untouched |
 | `replaces a shortcode block with a wrapper carrying its source` | The wrapper carries `data-quill-unsupported-source` and a readable label |
 | `stores quotes and ampersands in the source without corruption` | Setting the attribute through the DOM escapes correctly and `getAttribute` returns the original |
+| `a styled div outside any block becomes a Custom HTML block` | An unmodeled element in classic HTML is wrapped with `<!-- wp:html -->` delimiters, the way Gutenberg's Convert to Blocks keeps it, instead of losing its wrapper in the editor |
+| `a bare div wrapping prose is left for the editor to unwrap` | A grouping tag with no attributes changes nothing on the page, so its paragraphs stay editable paragraph blocks |
+| `a styled element inside a bare wrapper is kept, the wrapper is not` | The search goes through bare wrappers to the element that needs keeping |
+| `an element whose tag carries its meaning is kept even without attributes` | `iframe`, `center` and the like are not grouping tags, so they are kept bare |
+| `classic prose with inline formatting is untouched` | Loose text, inline elements, a classed `<p>` and a list return the input unchanged |
+| `an element with a wp-block class is left to its own parse rule` | The class rules and the passthrough catch-all still own `wp-block-*` markup outside a block |
+| `a Custom HTML block is labelled Custom HTML` | Not "Html" |
 | `keeps supported blocks in place around a wrapped one` | Document order survives |
+
+### `Custom HTML source` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `a new block is wrapped in bare wp:html delimiters` | `customHTMLSource` writes core's shape |
+| `the inner HTML comes back without the delimiters or their newlines` | `customHTMLBlock` returns what the sheet shows |
+| `nested block delimiters inside the HTML are kept` | The HTML is sliced from the source; the parser's `innerHTML` would drop the nested block |
+| `comments, blank lines and edge whitespace survive a round trip` | Only the one newline on each side is removed |
+| `the opening comment is kept byte for byte` | An edit keeps the original comment, `33.0` included |
+| `a self-closing block reads as empty and is written as a pair` | `<!-- wp:html /-->` opens empty and saves as an open/close pair with its attributes |
+| `anything but a single Custom HTML block is null` | Another block, two blocks, or prose around one, is not editable as Custom HTML |
 
 ### `countBlockNames and unrepresentedBlockNames` (8 tests)
 
@@ -1495,6 +1528,35 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `an ordinary passthrough block still renders a card with no peek` | A classed block like `wp:spacer` takes the old path, no peek added |
 | `an ordinary unmodeled block renders a labelled card with a peek` | The common case: a block Quill has no node for is shown as a named, non-editable card |
 | `an unmodeled block nested in a modeled container still matches by class` | The class-based card is what is left of the old path, and it is the only thing covering a block nested inside a container Quill does model |
+
+### `styled HTML outside any block becomes a Custom HTML block` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `it loads as a Custom HTML card` | The disclosure box from post 17780 shows as a labelled card, not bare text |
+| `an edit elsewhere saves it as a wp:html block, styling intact` | Before this, an edited save turned the box into a plain paragraph and dropped its class |
+| `a bare wrapper still saves its paragraphs as paragraph blocks` | Unwrapping a bare `<div>` still converts its prose to blocks |
+| `an unedited post still round-trips byte-identically` | Opening and saving without an edit changes nothing |
+
+### `Custom HTML insert and edit` (15 tests)
+
+| Test | What it checks |
+|---|---|
+| `insert adds one Custom HTML card at the selection` | One labelled card, saved as a `wp:html` block after the paragraph |
+| `editCustomHTML posts the inner HTML` | The sheet receives the HTML without its delimiters |
+| `a replace changes only that card and keeps its comment attributes` | The other block is untouched; the edited one keeps `metadata` |
+| `a replace after the card was deleted changes nothing` | A replace applies only to the card the sheet was opened on |
+| `undo after a replace restores the old HTML in one step` | Waits past `newGroupDelay`, like the gallery's undo test |
+| `editCustomHTML ignores other cards` | A shortcode card posts nothing |
+| `inserting inside a column puts the block after the columns` | A nested `core/html` would have no card on reload |
+| `inserting with a block selected inside a quote puts the block after the quote` | A selected block's `$from` sits one level shallower than a caret's, so depth alone put the card inside the quote |
+| `inserting in a footnote does nothing` | Same guard as the gallery |
+| `special characters survive the JSON payload` | The JS side of the bridge; the Swift side is `customHTMLScriptCarriesSpecialCharactersIntact` |
+| `inserted HTML never runs a handler` | An `<img onerror>` never fires; `--check-fixtures` repeats this in WebKit |
+| `a Custom HTML card offers Edit…` | The hint and button, and the button posts the HTML |
+| `double-clicking a Custom HTML card opens the editor` | |
+| `other cards keep the Code View hint` | A calendar card is unchanged |
+| `the insert menu offers Custom HTML` | After Preformatted; posts `{}` |
 
 ### `the wrap applies at post_content entry points only` (5 tests)
 
@@ -2555,7 +2617,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `the menu lists every container block` | columns, accordion, tabs, details and buttons all present as `[data-insert]` items |
 | `clicking a menu item inserts that block` | Clicking the Details item produces a `detailsBlock` |
 | `clicking a menu item label inserts that block` | The label lives in a span, so a real pointer lands on the span rather than the button the previous test clicks |
-| `every menu item uses the heading menu label typography` | All seven items carry a `.heading-menu-label` span |
+| `every menu item uses the heading menu label typography` | All nine items carry a `.heading-menu-label` span |
 | `the insert button is a labelled pill like the heading dropdown` | A text label plus exactly one chevron SVG — no icon glyph |
 | `the menu closes after an insertion` | The `visible` class is dropped once a block is inserted |
 

@@ -210,6 +210,7 @@ function passthroughLabelFromClass(cls) {
 }
 
 function passthroughLabelFromBlockName(name) {
+  if (name === 'core/html') return 'Custom HTML'
   const base = name.includes('/') ? name.split('/').pop() : name
   return titleCaseHyphenated(base)
 }
@@ -310,18 +311,73 @@ function unrepresentedBlockNames(expectedCounts, accountedCounts) {
   return missing
 }
 
+function unsupportedWrapper(doc, source, blockName) {
+  const el = doc.createElement('div')
+  el.className = 'wp-block-quill-unsupported'
+  el.setAttribute('data-quill-unsupported-source', source)
+  el.setAttribute('data-quill-unsupported-label', passthroughLabelFromBlockName(blockName))
+  return el
+}
+
+// Top-level tags outside any block that the editor turns into prose without losing anything.
+const FREEFORM_PROSE_TAGS = new Set([
+  'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'BLOCKQUOTE', 'PRE', 'HR',
+  'TABLE', 'FIGURE', 'IMG', 'DETAILS', 'BR', 'WBR',
+  'A', 'ABBR', 'B', 'BDI', 'BDO', 'CITE', 'CODE', 'DATA', 'DEL', 'DFN', 'EM', 'I', 'INS',
+  'KBD', 'MARK', 'Q', 'S', 'SAMP', 'SMALL', 'SPAN', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR',
+])
+
+// Grouping tags with no meaning of their own: bare, the editor unwraps them harmlessly.
+const FREEFORM_GROUPING_TAGS = new Set(['DIV', 'SECTION', 'ARTICLE', 'ASIDE', 'HEADER', 'FOOTER', 'MAIN', 'NAV'])
+
+// Kept as Custom HTML, as Gutenberg's Convert to Blocks does: docs/block-model.md.
+function freeformElementsToKeep(parent, into) {
+  for (const el of Array.from(parent.children)) {
+    if (FREEFORM_PROSE_TAGS.has(el.tagName)) continue
+    if (Array.from(el.classList).some(c => c.startsWith('wp-block-'))) continue
+    if (FREEFORM_GROUPING_TAGS.has(el.tagName) && el.attributes.length === 0) freeformElementsToKeep(el, into)
+    else into.push(el)
+  }
+  return into
+}
+
+function wrapFreeformHTML(source, doc) {
+  const container = doc.createElement('div')
+  container.innerHTML = source
+  const keep = freeformElementsToKeep(container, [])
+  if (!keep.length) return source
+  for (const el of keep) {
+    el.replaceWith(unsupportedWrapper(doc, `<!-- wp:html -->\n${el.outerHTML}\n<!-- /wp:html -->`, 'core/html'))
+  }
+  return container.innerHTML
+}
+
+// Sliced from the source, not the parser's innerHTML, which leaves out nested blocks.
+function customHTMLBlock(source, parse) {
+  const blocks = parse(source).filter(b => b.blockName || b.innerHTML.trim())
+  if (blocks.length !== 1 || blocks[0].blockName !== 'core/html') return null
+  const text = source.slice(blocks[0].start, blocks[0].end)
+  const openerEnd = text.indexOf('-->') + 3
+  const opener = text.slice(0, openerEnd)
+  if (opener.endsWith('/-->')) return { html: '', opener: opener.slice(0, -4).trimEnd() + ' -->' }
+  const closeAt = text.lastIndexOf('<!-- /wp:html')
+  const body = text.slice(openerEnd, closeAt < openerEnd ? text.length : closeAt)
+  return { html: body.replace(/^\n/, '').replace(/\n$/, ''), opener }
+}
+
+function customHTMLSource(html, opener = '<!-- wp:html -->') {
+  return `${opener}\n${html}\n<!-- /wp:html -->`
+}
+
 function wrapUnsupportedBlocks(html, parse, doc) {
   doc = doc || inertDocument()
   const slices = blockSourceSlices(html, parse)
-  if (!slices.some(s => blockNeedsWrapping(s, doc))) return html
-  return slices.map(slice => {
+  const wrapped = slices.map(slice => {
+    if (!slice.blockName) return wrapFreeformHTML(slice.source, doc)
     if (!blockNeedsWrapping(slice, doc)) return slice.source
-    const el = doc.createElement('div')
-    el.className = 'wp-block-quill-unsupported'
-    el.setAttribute('data-quill-unsupported-source', slice.source)
-    el.setAttribute('data-quill-unsupported-label', passthroughLabelFromBlockName(slice.blockName))
-    return el.outerHTML
-  }).join('')
+    return unsupportedWrapper(doc, slice.source, slice.blockName).outerHTML
+  })
+  return wrapped.some((s, i) => s !== slices[i].source) ? wrapped.join('') : html
 }
 
 // The element as authored, without the marker ProseMirror adds to copied HTML.
@@ -1764,5 +1820,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
+  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
 }

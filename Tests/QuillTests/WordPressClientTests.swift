@@ -537,6 +537,35 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.httpMethod == "POST")
     }
 
+    @Test func canPostUnfilteredHTMLReadsTheCurrentUsersCapability() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    #"{"id":1,"capabilities":{"edit_posts":true,"unfiltered_html":true}}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.canPostUnfilteredHTML())
+        #expect(capturedRequest?.url?.path.hasSuffix("/users/me") == true)
+        #expect(capturedRequest?.url?.query?.contains("context=edit") == true)
+    }
+
+    // A plugin on siolon.com adds `can_runPHP` with a string value.
+    @Test func canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":1,"capabilities":{"can_runPHP":"1","unfiltered_html":true}}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.canPostUnfilteredHTML())
+    }
+
+    @Test func canPostUnfilteredHTMLIsFalseWithoutTheCapability() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":1,"capabilities":{"edit_posts":true}}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.canPostUnfilteredHTML() == false)
+    }
+
     @Test func fetchAllCategoriesHitsCategoriesEndpointWithPerPage100() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

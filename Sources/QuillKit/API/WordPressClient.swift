@@ -197,6 +197,27 @@ public struct WordPressClient: Sendable {
         return try await post(url, body: MediaAltPayload(altText: altText))
     }
 
+    // MARK: - Current user
+
+    /// Without `unfiltered_html`, WordPress strips the account's `<script>` and `<style>` on save.
+    public func canPostUnfilteredHTML() async throws -> Bool {
+        let user: CurrentUser = try await get(endpoint("users/me", query: ["context": "edit"]))
+        return user.capabilities.unfilteredHTML
+    }
+
+    // Reads one key: plugins add capabilities whose values are not booleans (siolon.com's `can_runPHP` is a string).
+    private struct CurrentUser: Decodable {
+        struct Capabilities: Decodable {
+            let unfilteredHTML: Bool
+            enum CodingKeys: String, CodingKey { case unfilteredHTML = "unfiltered_html" }
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                unfilteredHTML = (try? container.decode(Bool.self, forKey: .unfilteredHTML)) ?? false
+            }
+        }
+        let capabilities: Capabilities
+    }
+
     // MARK: - Taxonomies
 
     public func fetchAllCategories() async throws -> [WPCategory] {

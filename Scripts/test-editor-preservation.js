@@ -5,7 +5,7 @@
 // the wrap/unwrap path crosses setContent, the passthrough node's parse rule
 // and getContent, none of which the pure editor-transforms.js helpers reach.
 
-const { test, describe, before, after } = require('node:test')
+const { test, describe, before, beforeEach, after } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM, VirtualConsole } = require('jsdom')
 const fs = require('fs')
@@ -117,6 +117,206 @@ describe('unsupported blocks become passthrough cards', () => {
     win.setContent(src)
     assert.equal(win.document.querySelectorAll('#editor .passthrough-card').length, 1)
     assert.equal(win.getContent(), src)
+  })
+})
+
+describe('styled HTML outside any block becomes a Custom HTML block', () => {
+  const DIV = '<div class="ai-disclosure-box">\n  <p>Portions of this post were written with the help of AI.</p>\n</div>'
+  const SRC = '<!-- wp:paragraph -->\n<p class="wp-block-paragraph">Overall.</p>\n<!-- /wp:paragraph -->\n\n' + DIV
+
+  test('it loads as a Custom HTML card', () => {
+    win.setContent(SRC)
+    const card = win.document.querySelector('#editor .passthrough-card')
+    assert.equal(card.querySelector('.passthrough-card-label').textContent, 'Custom HTML')
+  })
+
+  test('an edit elsewhere saves it as a wp:html block, styling intact', () => {
+    win.setContent(SRC)
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('X')
+    assert.match(win.getContent(), new RegExp('<!-- wp:html -->\\n' + DIV + '\\n<!-- /wp:html -->'))
+  })
+
+  test('a bare wrapper still saves its paragraphs as paragraph blocks', () => {
+    win.setContent('<div><p>One.</p><p>Two.</p></div>')
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('X')
+    assert.equal((win.getContent().match(/<!-- wp:paragraph -->/g) || []).length, 2)
+  })
+
+  test('an unedited post still round-trips byte-identically', () => {
+    win.setContent(SRC)
+    assert.equal(win.getContent(), SRC)
+  })
+})
+
+describe('Custom HTML insert and edit', () => {
+  const posted = []
+  const HTML_BLOCK = '<!-- wp:html -->\n<p>a</p>\n<!-- /wp:html -->'
+  const insert = (html, replace = false) => win.insertCustomHTML(JSON.stringify({ html, replace }))
+  const editSave = () => { editor.commands.setTextSelection(1); editor.commands.insertContent('X'); return win.getContent() }
+  const cards = () => {
+    const found = []
+    editor.state.doc.descendants((node, pos) => { if (node.type.name === 'gutenbergPassthrough') found.push({ node, pos }) })
+    return found
+  }
+
+  before(() => {
+    win.webkit = win.webkit || {}
+    win.webkit.messageHandlers = Object.assign({}, win.webkit.messageHandlers, {
+      customHTML: { postMessage: m => posted.push(m) },
+    })
+    // Undo scrolls the selection into view, and jsdom gives text no geometry.
+    const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+    for (const proto of [win.Text.prototype, win.Range.prototype]) {
+      if (proto.getClientRects) continue
+      proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+      proto.getBoundingClientRect = () => rect
+    }
+  })
+  beforeEach(() => { posted.length = 0 })
+
+  test('insert adds one Custom HTML card at the selection', () => {
+    win.setContent('<p>Intro</p>')
+    editor.commands.setTextSelection(6)
+    insert('<div class="box">Hi</div>')
+    const all = win.document.querySelectorAll('#editor .passthrough-card')
+    assert.equal(all.length, 1)
+    assert.equal(all[0].querySelector('.passthrough-card-label').textContent, 'Custom HTML')
+    assert.match(editSave(), /Intro<\/p>[\s\S]*<!-- wp:html -->\n<div class="box">Hi<\/div>\n<!-- \/wp:html -->/)
+  })
+
+  test('editCustomHTML posts the inner HTML', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    win.editCustomHTML(cards()[0].pos)
+    assert.equal(posted.length, 1)
+    assert.equal(posted[0].html, '<p>a</p>')
+  })
+
+  test('a replace changes only that card and keeps its comment attributes', () => {
+    const second = '<!-- wp:html {"metadata":{"name":"N"}} -->\n<p>b</p>\n<!-- /wp:html -->'
+    win.setContent('<p>Intro</p>' + HTML_BLOCK + second)
+    win.editCustomHTML(cards()[1].pos)
+    insert('<p>new</p>', true)
+    const out = editSave()
+    assert.ok(out.includes(HTML_BLOCK))
+    assert.ok(out.includes('<!-- wp:html {"metadata":{"name":"N"}} -->\n<p>new</p>\n<!-- /wp:html -->'))
+    assert.ok(!out.includes('<p>b</p>'))
+  })
+
+  test('a replace after the card was deleted changes nothing', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    const { node, pos } = cards()[0]
+    win.editCustomHTML(pos)
+    editor.commands.deleteRange({ from: pos, to: pos + node.nodeSize })
+    const before = editor.getHTML()
+    insert('<p>new</p>', true)
+    assert.equal(editor.getHTML(), before)
+    assert.equal(cards().length, 0)
+  })
+
+  test('undo after a replace restores the old HTML in one step', async () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    // Past prosemirror-history's newGroupDelay, or the load and the replace share one undo step.
+    await new Promise(r => setTimeout(r, 600))
+    win.editCustomHTML(cards()[0].pos)
+    insert('<p>new</p>', true)
+    editor.commands.undo()
+    assert.equal(cards()[0].node.attrs.unsupportedSource, HTML_BLOCK)
+  })
+
+  test('editCustomHTML ignores other cards', () => {
+    win.setContent('<p>Intro</p><!-- wp:shortcode -->[x]<!-- /wp:shortcode -->')
+    win.editCustomHTML(cards()[0].pos)
+    assert.equal(posted.length, 0)
+  })
+
+  test('inserting inside a column puts the block after the columns', () => {
+    win.setContent('<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:paragraph -->\n<p>In column</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->')
+    let inColumn = null
+    editor.state.doc.descendants((node, pos) => { if (inColumn === null && node.type.name === 'paragraph') inColumn = pos + 2 })
+    editor.commands.setTextSelection(inColumn)
+    insert('<p>x</p>')
+    const doc = editor.state.doc
+    assert.equal(cards().length, 1)
+    let columnsAt = -1
+    doc.forEach((child, _, i) => { if (child.type.name === 'columnsBlock') columnsAt = i })
+    assert.equal(doc.child(columnsAt + 1).type.name, 'gutenbergPassthrough')
+  })
+
+  test('inserting with a block selected inside a quote puts the block after the quote', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:separator -->\n<hr class="wp-block-separator has-alpha-channel-opacity"/>\n<!-- /wp:separator --></blockquote>\n<!-- /wp:quote -->')
+    let rule = null
+    editor.state.doc.descendants((node, pos) => { if (rule === null && node.type.name === 'horizontalRule') rule = pos })
+    editor.commands.setNodeSelection(rule)
+    insert('<p>x</p>')
+    const doc = editor.state.doc
+    assert.equal(cards().length, 1)
+    assert.equal(doc.child(0).type.name, 'blockquote')
+    assert.equal(doc.child(1).type.name, 'gutenbergPassthrough')
+  })
+
+  test('inserting in a footnote does nothing', () => {
+    const id = 'fn-1'
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    let inNote = null
+    editor.state.doc.descendants((node, pos) => { if (inNote === null && node.type.name === 'footnoteItem') inNote = pos + 2 })
+    editor.commands.setTextSelection(inNote)
+    const before = editor.getHTML()
+    insert('<p>x</p>')
+    assert.equal(editor.getHTML(), before)
+  })
+
+  test('special characters survive the JSON payload', () => {
+    const html = '<script>"\\</script>😀\u2028'
+    win.setContent('<p>Intro</p>')
+    editor.commands.setTextSelection(6)
+    insert(html)
+    assert.equal(cards()[0].node.attrs.unsupportedSource, win.customHTMLSource(html))
+  })
+
+  test('inserted HTML never runs a handler', async () => {
+    win.__ran = 0
+    win.setContent('<p>Intro</p>')
+    editor.commands.setTextSelection(6)
+    insert('<img src="x" onerror="window.__ran++">')
+    editSave()
+    await new Promise(r => setTimeout(r, 50))
+    assert.equal(win.__ran, 0)
+  })
+
+  const hint = () => win.document.querySelector('#editor .passthrough-card-hint')
+
+  test('a Custom HTML card offers Edit…', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    assert.ok(hint().textContent.startsWith('Renders as Custom HTML in WordPress · '))
+    const button = hint().querySelector('button')
+    assert.equal(button.textContent, 'Edit…')
+    button.dispatchEvent(new win.MouseEvent('click', { bubbles: true, detail: 1 }))
+    assert.equal(posted.length, 1)
+    assert.equal(posted[0].html, '<p>a</p>')
+  })
+
+  test('double-clicking a Custom HTML card opens the editor', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    win.document.querySelector('#editor .passthrough-card').dispatchEvent(new win.MouseEvent('dblclick', { bubbles: true }))
+    assert.equal(posted.length, 1)
+  })
+
+  test('other cards keep the Code View hint', () => {
+    win.setContent('<p>Intro</p><!-- wp:calendar /-->')
+    assert.equal(hint().textContent, 'Not editable in the visual editor; use Code View (</>)')
+    assert.equal(hint().querySelector('button'), null)
+  })
+
+  test('the insert menu offers Custom HTML', () => {
+    const item = win.document.querySelector('#insert-menu [data-insert="customHTML"]')
+    assert.equal(item.textContent, 'Custom HTML')
+    assert.equal(item.previousElementSibling.dataset.insert, 'preformatted')
+    item.dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    assert.equal(posted.length, 1)
+    assert.equal(posted[0].html, undefined)
   })
 })
 

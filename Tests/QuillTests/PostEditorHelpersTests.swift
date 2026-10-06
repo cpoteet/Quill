@@ -446,6 +446,74 @@ import Testing
         #expect(GalleryEdit(body: [String: Any]()) == nil)
     }
 
+    @Test func customHTMLRequestReadsAnInsertBody() throws {
+        let request = try #require(CustomHTMLRequest(body: [String: Any]()))
+        #expect(request.html == nil)
+        #expect(request.isEditing == false)
+    }
+
+    @Test func customHTMLRequestReadsAnEditBody() {
+        #expect(CustomHTMLRequest(body: ["html": "<p>a</p>"])?.html == "<p>a</p>")
+        #expect(CustomHTMLRequest(body: ["html": "<p>a</p>"])?.isEditing == true)
+    }
+
+    @Test func customHTMLRequestRejectsAMalformedBody() {
+        #expect(CustomHTMLRequest(body: "x") == nil)
+        #expect(CustomHTMLRequest(body: ["html": 3]) == nil)
+    }
+
+    @Test func customHTMLPartsSplitGutenbergsMarkedStyleAndScript() {
+        let content = "<style data-wp-block-html=\"css\">\n.box { color: red; }\n</style>\n\n<script data-wp-block-html=\"js\">\ngo()\n</script>\n\n<div class=\"box\">Hi</div>"
+        let parts = CustomHTMLParts(content: content)
+        #expect(parts.html == "<div class=\"box\">Hi</div>")
+        #expect(parts.css == ".box { color: red; }")
+        #expect(parts.js == "go()")
+        #expect(parts.content == content)
+    }
+
+    @Test func customHTMLPartsLeaveUnmarkedContentAsHTMLByteForByte() {
+        let content = "\n<style>.a{}</style>\n<script>go()</script>\n<div>x</div>  "
+        let parts = CustomHTMLParts(content: content)
+        #expect(parts.html == content)
+        #expect(parts.css.isEmpty && parts.js.isEmpty)
+        #expect(parts.content == content)
+    }
+
+    @Test func customHTMLPartsLeaveACommentedOutMarkerAlone() {
+        let content = "<!-- <script data-wp-block-html=\"js\">alert(1)</script> -->\n<div>x</div>"
+        let parts = CustomHTMLParts(content: content)
+        #expect(parts.js.isEmpty)
+        #expect(parts.content == content)
+    }
+
+    @Test func customHTMLPartsOnlyReadMarkersWhereGutenbergWritesThem() {
+        let content = "<div>x</div>\n<style data-wp-block-html=\"css\">.a{}</style>"
+        #expect(CustomHTMLParts(content: content).html == content)
+    }
+
+    @Test func customHTMLPartsJoinInGutenbergsOrder() {
+        let parts = CustomHTMLParts(html: "<p>a</p>", css: ".a{}", js: "go()")
+        #expect(parts.content == "<style data-wp-block-html=\"css\">\n.a{}\n</style>\n\n<script data-wp-block-html=\"js\">\ngo()\n</script>\n\n<p>a</p>")
+        #expect(CustomHTMLParts(html: "", css: ".a{}", js: "").content == "<style data-wp-block-html=\"css\">\n.a{}\n</style>")
+    }
+
+    @Test func customHTMLPartsReportWhetherTheyHoldCode() {
+        #expect(CustomHTMLParts(content: "<p>a</p>").hasCode == false)
+        #expect(CustomHTMLParts(html: "", css: "", js: "go()").hasCode)
+        #expect(CustomHTMLParts(html: " ", css: "\n", js: "").isEmpty)
+    }
+
+    @Test func customHTMLScriptCarriesSpecialCharactersIntact() throws {
+        let html = "<script>\"\\</script>😀\u{2028}"
+        let script = try #require(EditorCoordinator.customHTMLScript(html: html, replace: true))
+        #expect(script.hasPrefix("insertCustomHTML(") && script.hasSuffix(")"))
+        let argument = String(script.dropFirst("insertCustomHTML(".count).dropLast())
+        let json = try JSONDecoder().decode(String.self, from: Data(argument.utf8))
+        let payload = try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        #expect(payload["html"] as? String == html)
+        #expect(payload["replace"] as? Bool == true)
+    }
+
     @Test func galleryEditSharedSizeIsTheInitialSize() {
         let decoded = edit([image(id: 1, url: "a", sizeSlug: "medium"), image(id: 2, url: "b", sizeSlug: "medium")])
         #expect(decoded.initialSizeSlug == "medium")

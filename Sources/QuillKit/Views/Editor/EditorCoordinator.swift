@@ -67,6 +67,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     weak var webView: WKWebView?
     var onInsertImage: (() -> Void)?
     var onInsertGallery: ((GalleryEdit?) -> Void)?
+    var onCustomHTML: ((CustomHTMLRequest) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
     var onSelectionChanged: ((CGRect?) -> Void)?
@@ -98,6 +99,12 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             name: .insertGalleryData,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInsertCustomHTML(_:)),
+            name: .insertCustomHTML,
+            object: nil
+        )
     }
 
     @objc private func handleInsertMedia(_ note: Notification) {
@@ -110,6 +117,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     @objc private func handleInsertGallery(_ note: Notification) {
         guard let payload = note.userInfo as? [String: Any], payload["images"] is [[String: Any]] else { return }
         insertGallery(payload: payload)
+    }
+
+    @objc private func handleInsertCustomHTML(_ note: Notification) {
+        guard let html = note.userInfo?["html"] as? String, let replace = note.userInfo?["replace"] as? Bool else { return }
+        insertCustomHTML(html: html, replace: replace)
     }
 
     // WKScriptMessageHandler
@@ -140,6 +152,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         case "insertGallery":
             let edit = GalleryEdit(body: message.body)
             DispatchQueue.main.async { self.onInsertGallery?(edit) }
+        case "customHTML":
+            guard let request = CustomHTMLRequest(body: message.body) else { return }
+            DispatchQueue.main.async { self.onCustomHTML?(request) }
         case "showLinkPicker":
             guard
                 let body    = message.body as? [String: Any],
@@ -354,6 +369,20 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         }
     }
 
+    static func customHTMLScript(html: String, replace: Bool) -> String? {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: ["html": html, "replace": replace] as [String: Any]),
+              let jsonStr = String(data: jsonData, encoding: .utf8),
+              let escapedData = try? JSONEncoder().encode(jsonStr),
+              let escapedStr = String(data: escapedData, encoding: .utf8)
+        else { return nil }
+        return "insertCustomHTML(\(escapedStr))"
+    }
+
+    func insertCustomHTML(html: String, replace: Bool) {
+        guard let wv = webView, let script = Self.customHTMLScript(html: html, replace: replace) else { return }
+        wv.evaluateJavaScript(script, completionHandler: nil)
+    }
+
     // WKNavigationDelegate
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         applyColorScheme()
@@ -485,4 +514,5 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 extension Notification.Name {
     static let insertMediaURL = Notification.Name("Quill.insertMediaURL")
     static let insertGalleryData = Notification.Name("Quill.insertGalleryData")
+    static let insertCustomHTML = Notification.Name("Quill.insertCustomHTML")
 }

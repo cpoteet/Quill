@@ -24,6 +24,7 @@ an unedited capture.
 | `post-17780.html` | A whole published post: classic prose, images, footnotes, two accordions |
 | `tabs-block.html` | A `core/tabs` with a tab list and panels |
 | `unsupported-blocks.html` | Hand-written, not a site capture: one of each block shape Quill cannot model, so Custom HTML, a shortcode, three self-closing dynamic blocks, a synced pattern, a page break, a read-more, and a third-party block with no `wp-block-` class |
+| `freeform-custom-html.html` | Hand-written: a classed `<div>` outside any block, which saves as a Custom HTML block, and a bare `<div>` around a paragraph, which saves as a paragraph block. Not byte-identical after an edit by design, so it is outside `--check-fixtures`, which runs only `settings-*` |
 | `settings-paragraph.html` | A `core/paragraph` with `dropCap` |
 | `settings-script-handlers.html` | Hand-written: a Custom HTML block whose `<img onerror>` counts itself in `window.__quillScriptRan`. Saved byte for byte like any fixture; `--check-fixtures` also fails if the handler ever ran |
 | `settings-list.html` | A `core/list`, ordered, with `start`, `reversed` and `type: upper-roman` |

@@ -971,11 +971,11 @@
       border-radius: 4px;
     }
     .gallery-card-hint { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; }
-    .gallery-card-hint button {
+    .gallery-card-hint button, .passthrough-card-hint button {
       font: inherit; font-style: normal; color: var(--link);
       background: none; border: none; padding: 0; cursor: pointer;
     }
-    .gallery-card-hint button:hover { text-decoration: underline; }
+    .gallery-card-hint button:hover, .passthrough-card-hint button:hover { text-decoration: underline; }
     body.dark .gallery-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
     body.dark .gallery-card-hint { color: #777; }
     /* ── Passthrough card (unsupported Gutenberg block) ─── */
@@ -1508,6 +1508,7 @@
     <button class="heading-menu-item" data-insert="buttons" role="menuitem"><span class="heading-menu-label">Buttons</span></button>
     <button class="heading-menu-item" data-insert="pullquote" role="menuitem"><span class="heading-menu-label">Pullquote</span></button>
     <button class="heading-menu-item" data-insert="preformatted" role="menuitem"><span class="heading-menu-label">Preformatted</span></button>
+    <button class="heading-menu-item" data-insert="customHTML" role="menuitem"><span class="heading-menu-label">Custom HTML</span></button>
     <button class="heading-menu-item" data-insert="separator" role="menuitem"><span class="heading-menu-label">Separator</span></button>
   </div>
   <div id="table-size-menu" role="dialog" aria-label="Table size">
@@ -2491,7 +2492,7 @@
     }
 
     class PassthroughNodeView {
-      constructor(node) {
+      constructor(node, getPos) {
         this.dom = document.createElement('div')
         this.dom.className = 'passthrough-card'
         const label = document.createElement('div')
@@ -2507,8 +2508,18 @@
         }
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
-        hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
         this.dom.append(hint)
+        if (!node.attrs.unsupportedSource || !customHTMLBlock(node.attrs.unsupportedSource, parseBlocks)) {
+          hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
+          return
+        }
+        hint.textContent = 'Renders as Custom HTML in WordPress · '
+        const edit = document.createElement('button')
+        edit.type = 'button'
+        edit.textContent = 'Edit…'
+        edit.addEventListener('click', event => { if (event.detail < 2) window.editCustomHTML(getPos()) })
+        hint.appendChild(edit)
+        this.dom.addEventListener('dblclick', event => { if (!edit.contains(event.target)) window.editCustomHTML(getPos()) })
       }
       selectNode()   { this.dom.classList.add('selected') }
       deselectNode() { this.dom.classList.remove('selected') }
@@ -3210,7 +3221,7 @@
       },
 
       addNodeView() {
-        return ({ node }) => new PassthroughNodeView(node)
+        return ({ node, getPos }) => new PassthroughNodeView(node, getPos)
       },
     })
 
@@ -5061,6 +5072,7 @@
       buttons:      () => window.insertButtons(),
       pullquote:    () => editor.chain().focus().setPullquote().run(),
       preformatted: () => editor.chain().focus().setPreformatted().run(),
+      customHTML:   () => window.webkit?.messageHandlers?.customHTML?.postMessage({}),
       separator:    () => window.insertSeparator(),
     }
 
@@ -5952,6 +5964,7 @@
       editor.view.dispatch(tr)
       extractFootnotes(toWordPressHTML(editor.getHTML()))
       window.setContent('<p></p>')
+      window.insertCustomHTML(JSON.stringify({ html: source, replace: false }))
       editor.view.pasteHTML(source)
     })
     window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
@@ -6049,6 +6062,45 @@
         return true
       }).run()
     }
+    // The Custom HTML card the sheet was opened on; a replace applies only while the document still holds it.
+    let _customHTMLEdit = null
+    window.editCustomHTML = (pos) => {
+      const node = editor.state.doc.nodeAt(pos)
+      if (node?.type.name !== 'gutenbergPassthrough' || !node.attrs.unsupportedSource) return
+      const block = customHTMLBlock(node.attrs.unsupportedSource, parseBlocks)
+      if (!block) return
+      _customHTMLEdit = node
+      window.webkit?.messageHandlers?.customHTML?.postMessage({ html: block.html })
+    }
+    function _customHTMLAttrs(source) {
+      const sourceHTML = unsupportedWrapper(inertDocument(), source, 'core/html').outerHTML
+      return { blockLabel: 'Custom HTML', unsupportedSource: source, sourceHTML }
+    }
+    window.insertCustomHTML = (json) => {
+      const edited = _customHTMLEdit
+      _customHTMLEdit = null
+      let payload
+      try { payload = JSON.parse(json) } catch { return }
+      if (typeof payload.html !== 'string') return
+      if (payload.replace) {
+        let pos = null
+        editor.state.doc.descendants((node, at) => { if (node === edited) pos = at })
+        if (!edited || pos === null) return
+        const { opener } = customHTMLBlock(edited.attrs.unsupportedSource, parseBlocks)
+        const attrs = { ...edited.attrs, ..._customHTMLAttrs(customHTMLSource(payload.html, opener)) }
+        editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, null, attrs))
+        return
+      }
+      if (_isInFootnote()) return
+      const card = { type: 'gutenbergPassthrough', attrs: _customHTMLAttrs(customHTMLSource(payload.html)) }
+      // Nested Custom HTML has no card on reload, so a caret or selected block inside a container inserts after it.
+      const { selection } = editor.state
+      const chain = editor.chain().focus()
+      const nested = selection.$from.depth > (selection.node ? 0 : 1)
+      const at = nested ? selection.$from.after(1) : (selection.node ? selection.to : null)
+      ;(at === null ? chain.insertContent(card) : chain.insertContentAt(at, card)).run()
+    }
+
     window.insertGallery = (json) => {
       if (_isInFootnote()) return
       let payload
