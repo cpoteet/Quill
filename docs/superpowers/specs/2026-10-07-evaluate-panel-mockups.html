@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evaluate panel mockups</title>
+<style>
+  :root { --accent:#C77700; --ink:#1d1d1f; --muted:#6e6e73; --faint:#8e8e93; --line:rgba(0,0,0,.1); --page:#dcdcde; --panel:#f5f5f6; --fill:rgba(0,0,0,.05); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:32px 16px 64px; background:var(--page); font:13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; color:var(--ink); }
+  main { max-width:1080px; margin:0 auto; }
+  header p, .caption { font-size:14px; line-height:1.5; color:#3a3a3c; max-width:760px; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  .options { display:flex; flex-wrap:wrap; gap:24px; margin-top:24px; }
+  .option { flex:1 1 320px; max-width:340px; }
+  .option h2 { font-size:16px; margin:0 0 4px; }
+  .option .caption { font-size:13px; margin:0 0 12px; min-height:58px; }
+  .insp { background:var(--panel); border-radius:10px; box-shadow:0 0 0 .5px rgba(0,0,0,.25), 0 12px 32px rgba(0,0,0,.14); height:760px; overflow:hidden; display:flex; flex-direction:column; }
+  .ihead { padding:10px 16px; font-weight:600; font-size:13px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .scroll { overflow:auto; flex:1; }
+  .foot { border-top:1px solid var(--line); padding:8px; text-align:center; }
+  .sec { padding:12px 16px 4px; display:flex; justify-content:space-between; align-items:baseline; }
+  .label { font-size:11px; font-weight:600; color:var(--muted); }
+  .count { font-size:11px; color:var(--faint); }
+  .review { padding:4px 16px 12px; }
+  .review p { margin:0 0 8px; }
+  .review ol { margin:0; padding-left:18px; }
+  .review li { margin:0 0 6px; }
+  .row { padding:9px 16px 10px; border-top:1px solid var(--line); position:relative; }
+  .row:hover { background:var(--fill); }
+  .rtop { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
+  .cat { font-size:11px; font-weight:600; color:var(--muted); }
+  .old { color:var(--muted); text-decoration:line-through; text-decoration-color:rgba(0,0,0,.35); }
+  .new { color:var(--ink); }
+  .why { font-size:11px; color:var(--muted); margin-top:3px; }
+  .del { color:var(--muted); text-decoration:line-through; }
+  .ins { color:var(--ink); background:rgba(199,119,0,.14); border-radius:2px; padding:0 1px; }
+  .btn { font-size:11px; background:#fff; border-radius:5px; padding:1px 8px; box-shadow:0 0 0 .5px rgba(0,0,0,.22), 0 .5px 1px rgba(0,0,0,.12); white-space:nowrap; cursor:default; }
+  .btn.pri { background:var(--accent); color:#fff; box-shadow:0 .5px 1px rgba(0,0,0,.25); }
+  .done { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+  .applied { opacity:.5; }
+  .claim { margin:0 0 4px; }
+  .src { margin:6px 0 4px; padding-left:8px; border-left:2px solid rgba(0,0,0,.15); color:#3a3a3c; font-size:12px; }
+  .host { font-size:11px; color:var(--accent); }
+  .spin { display:flex; align-items:center; gap:8px; padding:12px 16px; color:var(--muted); border-top:1px solid var(--line); }
+  .spin i { width:12px; height:12px; border-radius:50%; border:2px solid rgba(0,0,0,.15); border-top-color:rgba(0,0,0,.5); display:block; }
+  .seg { margin:10px 16px 6px; display:flex; background:rgba(0,0,0,.06); border-radius:6px; padding:2px; }
+  .seg span { flex:1; text-align:center; font-size:11px; padding:2px 0; border-radius:4px; color:var(--ink); }
+  .seg span.on { background:#fff; box-shadow:0 .5px 1px rgba(0,0,0,.2); }
+  .warn { color:#b25e00; }
+  .notes { margin-top:40px; max-width:760px; font-size:14px; line-height:1.55; color:#3a3a3c; }
+  .notes li { margin-bottom:6px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Evaluate panel</h1>
+  <p>Three layouts for the inspector in <code>2026-10-07-ai-prompts-design.md</code>, filled with real findings from the 2026-10-07 test runs. These are web approximations of SwiftUI: section headings are <code>SectionLabel</code>, buttons are standard small bordered buttons, and the panel sits in the existing <code>.inspector</code>, so take layout, hierarchy and copy from here, not pixel values. Clicking a row still jumps to the text in the editor, as now. Styles are inline because this is a single reference file, not app code.</p>
+</header>
+
+<div class="options">
+
+<!-- A -->
+<section class="option">
+  <h2>A. One list, read top to bottom</h2>
+  <p class="caption">Review first, then each group with its count. Shown while the fact-check is still running, with one correction already applied.</p>
+  <div class="insp">
+    <div class="ihead">Content Evaluation</div>
+    <div class="scroll">
+      <div class="sec"><span class="label">Review</span></div>
+      <div class="review">
+        <p>A clear personal arc from WordPress to Microsoft to AI, and the dry asides give it warmth.</p>
+        <ol>
+          <li>The title is generic. Name what actually changed over twenty years.</li>
+          <li>“The Discipline of Writing” opens with a statement about the blog, then drifts into social media and AI.</li>
+        </ol>
+      </div>
+
+      <div class="sec"><span class="label">Corrections</span><span class="btn">Apply All</span></div>
+      <div class="row applied">
+        <div class="rtop"><span class="cat">Spelling</span><span class="done">✓ Applied</span></div>
+        <div><span class="old">on on this blog</span> → <span class="new">on this blog</span></div>
+      </div>
+      <div class="row">
+        <div class="rtop"><span class="cat">Grammar</span><span class="btn">Apply</span></div>
+        <div><span class="old">it feel off in recent years</span> → <span class="new">it fell off in recent years</span></div>
+        <div class="why">Caption. The past tense of “fall off” is “fell off.”</div>
+      </div>
+      <div class="row">
+        <div class="rtop"><span class="cat">Grammar</span><span class="btn">Apply</span></div>
+        <div><span class="old">but it gives a window</span> → <span class="new">but they give a window</span></div>
+        <div class="why">The subject is “numbers,” which is plural.</div>
+      </div>
+
+      <div class="sec"><span class="label">Suggestions</span><span class="count">3</span></div>
+      <div class="row">
+        <div class="rtop"><span class="cat">Concision</span><span class="btn">Apply</span></div>
+        <div><span class="old">The blog itself is no stranger to sharing my thoughts on the discipline of writing for this blog.</span> → <span class="new">I have written about the discipline of writing here before.</span></div>
+        <div class="why">Repeats “blog” and circles back on itself.</div>
+      </div>
+
+      <div class="sec"><span class="label">Facts</span></div>
+      <div class="spin"><i></i>Checking facts…</div>
+    </div>
+    <div class="foot"><span class="btn">↻ Re-evaluate</span></div>
+  </div>
+</section>
+
+<!-- B -->
+<section class="option">
+  <h2>B. Tabs</h2>
+  <p class="caption">A segmented control switches between the groups, so a long list of corrections doesn't push the facts out of sight. Shown on the Facts tab.</p>
+  <div class="insp">
+    <div class="ihead">Content Evaluation</div>
+    <div class="seg"><span>Review</span><span>Fixes 7</span><span>Ideas 3</span><span class="on">Facts 3</span></div>
+    <div class="scroll">
+      <div class="sec"><span class="label">Check These</span><span class="count">12 claims checked</span></div>
+      <div class="row">
+        <div class="rtop"><span class="cat warn">⚠︎ Needs a qualifier</span><span class="btn">Use Wording</span></div>
+        <p class="claim">“This is the only place in Purview to see all Copilot prompt and responses.”</p>
+        <div class="why">eDiscovery also retrieves prompts and responses, and your own table says so.</div>
+        <div class="src">“Copilot prompts and responses are stored as individual messages within the user's mailbox.”</div>
+        <span class="host">techcommunity.microsoft.com ↗</span>
+      </div>
+      <div class="row">
+        <div class="rtop"><span class="cat warn">⚠︎ Sources disagree</span></div>
+        <p class="claim">“It does not display the prompt or the response.”</p>
+        <div class="why">Microsoft's Copilot page says prompts and responses are captured in the audit log, while its eDiscovery guidance says audit holds only metadata. Worth a qualifier.</div>
+        <div class="src">“Like other activities, prompts and responses are captured in the unified audit log.”</div>
+        <span class="host">learn.microsoft.com ↗</span>
+      </div>
+      <div class="row">
+        <div class="rtop"><span class="cat warn">⚠︎ Outdated</span><span class="btn">Use Wording</span></div>
+        <p class="claim">“Searches retained Copilot interaction records stored as compliance records”</p>
+        <div class="why">Microsoft describes them as messages in users' mailboxes.</div>
+        <div class="src">“Copilot prompts and responses are stored as individual messages within the user's mailbox.”</div>
+        <span class="host">techcommunity.microsoft.com ↗</span>
+      </div>
+    </div>
+    <div class="foot"><span class="btn">↻ Re-evaluate</span></div>
+  </div>
+</section>
+
+<!-- C -->
+<section class="option">
+  <h2>C. Compact, with tracked changes</h2>
+  <p class="caption">Like A, but each fix is one line with the change marked inside the sentence, the way Word's Track Changes does, and the reason sits behind a disclosure. Fits about twice as many rows.</p>
+  <div class="insp">
+    <div class="ihead">Content Evaluation</div>
+    <div class="scroll">
+      <div class="sec"><span class="label">Review</span></div>
+      <div class="review">
+        <p>A clear personal arc, and the dry asides give it warmth. The title is generic, and “The Discipline of Writing” drifts after its first paragraph.</p>
+      </div>
+
+      <div class="sec"><span class="label">Corrections</span><span class="btn">Apply All 7</span></div>
+      <div class="row"><div class="rtop"><span>but it <span class="del">feel</span> <span class="ins">fell</span> off in recent years</span><span class="btn">Apply</span></div></div>
+      <div class="row"><div class="rtop"><span>I started out <span class="del">focus</span> <span class="ins">focused</span> on frontend</span><span class="btn">Apply</span></div></div>
+      <div class="row"><div class="rtop"><span>but <span class="del">it gives</span> <span class="ins">they give</span> a window</span><span class="btn">Apply</span></div></div>
+      <div class="row"><div class="rtop"><span>stands out as <span class="ins">the</span> prime offender</span><span class="btn">Apply</span></div></div>
+      <div class="row"><div class="rtop"><span>look back on <span class="del">on</span> this blog</span><span class="btn">Apply</span></div></div>
+
+      <div class="sec"><span class="label">Suggestions</span><span class="count">3</span></div>
+      <div class="row">
+        <div class="rtop"><span class="cat">▸ Concision</span><span class="btn">Apply</span></div>
+        <div><span class="del">The blog itself is no stranger to sharing my thoughts on the discipline of writing for this blog.</span> <span class="ins">I have written about the discipline of writing here before.</span></div>
+      </div>
+
+      <div class="sec"><span class="label">Check These</span><span class="count">5 claims checked</span></div>
+      <div class="row">
+        <div class="rtop"><span class="cat warn">▸ ⚠︎ Needs a qualifier</span></div>
+        <p class="claim">“An Introduction to Mobile-First Media Queries on SitePoint”</p>
+      </div>
+    </div>
+    <div class="foot"><span class="btn">↻ Re-evaluate</span></div>
+  </div>
+</section>
+
+</div>
+
+<div class="notes">
+  <p><strong>Behaviour common to all three</strong></p>
+  <ul>
+    <li><strong>Apply</strong> replaces the finding's exact text in the editor as one undoable step, then marks the row Applied. If the text has changed since the evaluation, Apply is disabled and the row says “Text has changed.”</li>
+    <li><strong>Apply All</strong> appears on Corrections only, since suggestions are judgment calls.</li>
+    <li><strong>Facts</strong> fill in when the second request finishes. With Web Search off, the Facts section says “Turn on Web Search in Settings to check facts.”</li>
+    <li>Fact checks never use the Corrections styling. A fact check offers “Use Wording” only when it came with a replacement, and the link opens the source in the browser.</li>
+  </ul>
+</div>
+</main>
+</body>
+</html>

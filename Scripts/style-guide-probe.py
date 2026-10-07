@@ -4,14 +4,14 @@ from html.parser import HTMLParser
 
 SUPPORT = os.path.expanduser("~/Library/Application Support/Quill")
 KEEP = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "blockquote",
-        "a", "em", "strong", "i", "b", "sup", "figcaption"}
-BLOCK = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "blockquote", "figcaption"}
-BREAK = {"br", "hr", "div", "figure", "section", "table", "tr", "td", "th", "pre", "details", "summary", "dt", "dd"}
+        "a", "em", "strong", "i", "b", "sup", "figcaption", "table", "tr", "th", "td"}
+BLOCK = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "blockquote", "figcaption", "table", "tr"}
+BREAK = {"br", "hr", "div", "figure", "section", "pre", "details", "summary", "dt", "dd"}
 
 # Keep in sync with AIPromptBuilder.styleGuideGenerationPrompt.
 PROMPT = """Analyze these blog post samples and write a style guide that another writer can follow to write new posts in this author's style. The guide will be used both to write new posts and to judge whether a draft sounds like this author.
 
-Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
+Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, tables, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
 
 Rules:
 - Write each point as an instruction to the writer ("Open with…", "Use…"), not as a description of the author.
@@ -31,7 +31,7 @@ Structure and length:
 Formatting:
 Avoid:
 
-Formatting covers headings, lists, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
+Formatting covers headings, lists, tables, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
 
 Aim for about 500 words. Start your response with "Voice and tone:" and end it after the Avoid section.
 
@@ -91,13 +91,17 @@ def load_samples(creds, ids):
     return samples
 
 
-def complete(api_key, model, prompt):
-    body = json.dumps({
+def complete(api_key, model, prompt, effort):
+    request = {
         "model": model,
         "max_tokens": 16000,
         "system": [{"type": "text", "text": "Return only the requested style guide with no preamble."}],
         "messages": [{"role": "user", "content": prompt}],
-    }).encode()
+    }
+    if effort:
+        request["thinking"] = {"type": "adaptive"}
+        request["output_config"] = {"effort": effort}
+    body = json.dumps(request).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body, headers={
         "x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
     with urllib.request.urlopen(req) as r:
@@ -119,9 +123,10 @@ def quote_report(guide, bodies):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit("usage: Scripts/style-guide-probe.py <model-id>")
+    if len(sys.argv) not in (2, 3):
+        sys.exit("usage: Scripts/style-guide-probe.py <model-id> [effort]")
     model = sys.argv[1]
+    effort = sys.argv[2] if len(sys.argv) == 3 else None
     creds = json.load(open(f"{SUPPORT}/credentials.json"))
     ai = json.load(open(f"{SUPPORT}/ai_settings.json"))
 
@@ -130,7 +135,7 @@ def main():
         f"--- Sample {i}: {title} ({len(plain(body).split()):,} words) ---\n{body}"
         for i, (title, body) in enumerate(samples, 1))
 
-    resp = complete(ai["apiKey"], model, prompt)
+    resp = complete(ai["apiKey"], model, prompt, effort)
     if resp["stop_reason"] == "refusal":
         sys.exit(f"{model} refused the request")
     guide = "".join(b["text"] for b in resp["content"] if b["type"] == "text")
@@ -138,7 +143,7 @@ def main():
 
     total, counts = quote_report(guide, [b for _, b in samples])
     u = resp["usage"]
-    print(f"\n{model}: {len(guide.split())} words, stop {resp['stop_reason']}, "
+    print(f"\n{model} ({effort or 'default effort'}): {len(guide.split())} words, stop {resp['stop_reason']}, "
           f"{u['input_tokens']} in / {u['output_tokens']} out", file=sys.stderr)
     print(f"{total} quotes: {counts['2+']} in 2+ samples, {counts['1']} in one, "
           f"{counts['0']} not found", file=sys.stderr)

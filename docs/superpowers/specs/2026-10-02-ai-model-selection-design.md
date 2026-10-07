@@ -4,14 +4,14 @@ _Design, 2026-10-02._
 
 ## Problem
 
-Every AI feature in Quill (style-guide generation, Generate Post, Evaluate, selection rewrites) calls `AnthropicClient.complete`, which defaults to `claude-haiku-4-5` and sends no thinking or effort settings. None of the four call sites pass a model. The web search tool is pinned to `web_search_20250305`, the basic version, even though newer models support `web_search_20260209`, which filters search results before they reach the model.
+Every AI feature in Quill (style-guide generation, Generate Post, Evaluate, selection rewrites) calls `AnthropicClient.complete`, which defaults to `claude-haiku-4-5` and sends no thinking or effort settings. None of the four call sites pass a model. The web search tool is pinned to `web_search_20250305`, the basic version, even though newer models support `web_search_20260209` and `web_search_20260318`.
 
 ## Goals
 
 1. The author picks any model their API key can use, and a reasoning level, in Settings → AI Writing. All four AI features use that choice.
 2. Quill does not keep a list of models. The list and what each model supports come from the Models API (`GET /v1/models`), so a newly released model appears without an app update.
 3. Web search uses the newest tool version the selected model accepts, without a table of which model takes which version.
-4. With the defaults (Claude Haiku 4.5, reasoning Off), every request Quill sends is the same as today's, apart from the web search tool version and the style-guide request.
+4. The default is the newest Haiku the API lists (Claude Haiku 5.5 as of 2026-10-07) at the model's default reasoning level, and it follows new Haiku releases without an app update (see Default model).
 5. The style guide describes the author's writing more accurately, and the author can regenerate it at any time, for example after switching models (see Style-guide generation).
 
 Non-goals: streaming responses, a different model per feature, showing prices, and the server-side refusal fallback (see Out of scope).
@@ -25,8 +25,8 @@ Two pop-up menus are added to the AI Writing section, directly after the API key
 ```
 AI Writing
   Anthropic API Key   [••••••••••••]
-  Model               [Claude Haiku 4.5        ▾]
-  Reasoning           [Off                     ▾]
+  Model               [Claude Haiku 5.5        ▾]
+  Reasoning           [Model default           ▾]
                       Higher levels think longer before answering.
                       Responses take more time and cost more.
   Writing Style       Choose Posts   3 posts selected
@@ -49,7 +49,7 @@ The options come from the selected model's `capabilities` in the Models API resp
 | `thinking.types.enabled.supported` only (Claude Haiku 4.5) | Off, Low, Medium, High | Off |
 | Neither | Off (menu disabled) | Off |
 
-There is no Off for adaptive models because some of them (Claude Opus 5.5, Claude Sonnet 5.5) reject a request that turns thinking off. "Model default" exists because the Models API does not report each model's default effort (Claude Opus 5.5 defaults to Medium, Claude Sonnet 5.5 to High).
+There is no Off for adaptive models. Some of them (Claude Opus 5.5, Claude Sonnet 5.5) reject a request that turns thinking off, and on Claude Haiku 5.5, which accepts it, Anthropic's prompting guide reports reasoning-like text leaking into the reply with thinking off. Low is the cheap option instead. "Model default" exists because the Models API does not report each model's default effort (Claude Opus 5.5 defaults to Medium, Claude Sonnet 5.5 to High).
 
 For enabled-only models, Low/Medium/High are Quill's labels for a fixed thinking budget, not API levels. The pane does not explain the difference: for the author, both mean "more thinking, slower, costs more."
 
@@ -66,15 +66,21 @@ When the author switches models and the saved reasoning option does not exist fo
 - Fetched when Settings opens with a saved API key, and when the author finishes editing the key field (on submit or focus loss), not on every keystroke.
 - The fetched list, including each model's `capabilities` and `max_tokens`, is saved in `AISettings`, so Settings and every AI call work offline from the last fetch.
 - If the fetch fails, Settings keeps the saved list and shows the error as a caption under Model.
-- If the saved model is not in a successful fetch, Settings switches to Claude Haiku 4.5 and shows "Your saved model is no longer available. Switched to Claude Haiku 4.5." If Haiku 4.5 is not in the list either, it switches to the first model in the list.
+- If the saved model is not in a successful fetch, Settings switches back to the default model and shows "Your saved model is no longer available. Switched to <display name>."
+
+### Default model
+
+Quill does not pin a default model ID. The default is the newest model (by `created_at`) whose Models API `line` is `"haiku"`, so the next Haiku becomes the default when it ships. Before the first successful fetch, and if no listed model has that line, the default is `claude-haiku-5-5`. An author who has never picked a model follows the default; picking one in the menu pins it.
+
+Haiku 5.5 was chosen on 2026-10-07 from the style-guide probe (see Findings): it is far more accurate than Claude Haiku 4.5 at about a seventh of the cost per run, and close to Claude Sonnet 5.5.
 
 ## Data model
 
 `AISettings` (`Sources/QuillKit/AI/AISettings.swift`) gains:
 
-- `model: String`, default `"claude-haiku-4-5"`
-- `reasoning: AIReasoning`, default `.off`; cases `.off`, `.modelDefault`, `.level(String)` where the string is the API effort name (`low`, `medium`, `high`, `xhigh`, `max`)
-- `models: [AIModelInfo]`, default empty: the last fetched list; each has `id`, `displayName`, `createdAt`, `maxTokens`, `supportsAdaptiveThinking`, `supportsEnabledThinking`, `effortLevels: [String]`
+- `model: String?`, default `nil`, meaning the default model (see Default model)
+- `reasoning: AIReasoning`, default `.modelDefault`; cases `.off`, `.modelDefault`, `.level(String)` where the string is the API effort name (`low`, `medium`, `high`, `xhigh`, `max`)
+- `models: [AIModelInfo]`, default empty: the last fetched list; each has `id`, `displayName`, `createdAt`, `maxTokens`, `line`, `supportsAdaptiveThinking`, `supportsEnabledThinking`, `effortLevels: [String]`, `supportsWebSearch`
 - `webSearchToolByModel: [String: String]`, default empty: the web search tool type that last worked for each model ID (see Web search)
 
 All new fields decode with defaults when absent, so an existing `ai_settings.json` loads unchanged.
@@ -109,16 +115,23 @@ Base values stay as they are: 4,096 for Evaluate, rewrites and style-guide gener
 
 ## Web search
 
-The Models API has no web search capability field (checked against the Models API reference, 2026-10-02), so the version a model accepts cannot be looked up. Some hard-coding cannot be avoided: Quill has to know the type string of each version, and a future version may change the response format. What can be avoided is a model-to-version table.
+The Models API reports whether a model accepts web search at all (`capabilities.server_tools.web_search.supported`), but not which version (checked 2026-10-07). When it is false, the Web Search checkbox is disabled with the caption "This model can't search the web," and requests omit the tool. For a model that supports it, the version still cannot be looked up. Some hard-coding cannot be avoided: Quill has to know the type string of each version, and a future version may change the response format. What can be avoided is a model-to-version table.
 
-- `AnthropicClient` holds one ordered list of known versions, newest first: `["web_search_20260209", "web_search_20250305"]`.
+- `AnthropicClient` holds one ordered list of known versions, newest first: `["web_search_20260318", "web_search_20260209", "web_search_20250305"]`. Quill always sends the newest version the model accepts.
 - For a model with no entry in `webSearchToolByModel`, the first web search request tries the newest version. If the API answers 400 and the error message names the tool type, the client retries once with the next version, and so on down the list.
 - The version that succeeds is saved in `webSearchToolByModel[modelID]`, so later requests skip the failed attempts. A rejected request costs no tokens.
 - Adding a future version means adding one string to the front of the list.
 
 During implementation, check the exact 400 error text the API returns for an unsupported tool version, and match on it narrowly so other 400s are not retried.
 
-`web_search_20260209` filters results using code execution internally. Quill must not also declare a `code_execution` tool.
+### How Claude calls search
+
+From `web_search_20260209` on, the tool defaults to dynamic filtering: Claude calls search from Python it writes and filters the results before reading them. Each feature chooses, through the tool's `allowed_callers` field, which every version accepts:
+
+- **Evaluate's fact-check sends `allowed_callers: ["direct"]`.** It makes a few targeted lookups, and on 2026-10-07 Claude Haiku 5.5's search code crashed in 7 of 8 runs, costing twice as much for fewer fact checks (see `2026-10-07-ai-prompts-design.md`).
+- **Generate Post also sends `allowed_callers: ["direct"]`.** Tested on 2026-10-07: dynamic filtering's code crashed two or three times per post, linked fewer sources, cost about twice as much and once took over two minutes.
+
+Dynamic filtering runs in code execution that the API provisions itself. Quill must not also declare a `code_execution` tool.
 
 ### `pause_turn`
 
@@ -158,7 +171,7 @@ The style guide uses the selected model and reasoning level like every other fea
 
 - The title is `title.rendered` with entities decoded.
 - The word count is the number of words in the reduced body with its tags removed, written with a thousands separator.
-- `h1`–`h6`, `p`, `ul`, `ol`, `li`, `blockquote`, `a`, `em`, `strong`, `i`, `b`, `sup` and `figcaption` are kept with every attribute removed, link URLs included. Each `<img>` becomes `[image]` on its own line. Every other tag is removed and its text kept. `<br>` and removed block tags (`div`, `figure`, `td`, `pre` and the like) become a line break, so the words on either side are not joined. Elements left empty are dropped, and each block element starts a new line.
+- `h1`–`h6`, `p`, `ul`, `ol`, `li`, `blockquote`, `a`, `em`, `strong`, `i`, `b`, `sup`, `figcaption`, `table`, `tr`, `th` and `td` are kept with every attribute removed, link URLs included. Each `<img>` becomes `[image]` on its own line. Every other tag is removed and its text kept. `<br>` and removed block tags (`div`, `figure`, `pre` and the like) become a line break, so the words on either side are not joined. Elements left empty are dropped, and each block element starts a new line.
 - Entities are decoded with the table `stripHTML` already uses, moved into a helper both functions share, except `&lt;`, `&gt;` and `&amp;`, which stay encoded. A post that writes about `<em>` as text must not gain a real `<em>` tag. The word count strips tags first, then decodes those three.
 
 The reduction is a pure function in `AIPromptBuilder`, so it is tested without a network call. `styleGuideGenerationPrompt` takes the reduced samples with their titles and word counts.
@@ -170,7 +183,7 @@ The system prompt stays "Return only the requested style guide with no preamble.
 ```text
 Analyze these blog post samples and write a style guide that another writer can follow to write new posts in this author's style. The guide will be used both to write new posts and to judge whether a draft sounds like this author.
 
-Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
+Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, tables, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
 
 Rules:
 - Write each point as an instruction to the writer ("Open with…", "Use…"), not as a description of the author.
@@ -190,7 +203,7 @@ Structure and length:
 Formatting:
 Avoid:
 
-Formatting covers headings, lists, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
+Formatting covers headings, lists, tables, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
 
 Aim for about 500 words. Start your response with "Voice and tone:" and end it after the Avoid section.
 ```
@@ -213,9 +226,20 @@ Four prompt versions were run once each against the five sample posts. Outputs v
 - **The models follow instructions about what to do:** the fixed labels, the first line, writing instructions instead of descriptions, describing tendencies, copying quotes exactly (made-up quotes fell from 4 to 0).
 - **They don't reliably follow instructions that need counting or holding back:** word limits (overshot by 10–80%), "at least two samples" (26 of 42 quotes came from a single post), "never quote a whole sentence", "don't name products". Rewording one of these brought back a different failure, so the remaining risk is handled where the guide is used (Using the guide), not in more prompt wording.
 - **Claude Sonnet 5.5 was much more accurate than Claude Haiku 4.5.** Haiku claimed frequent sentence fragments (5 in 382 sentences), a favourite verb that never appears, and italics used for one word only. Haiku 4.5 is a year older than Sonnet 5.5, so rerun the probe when a newer Haiku ships before drawing conclusions about the default.
+- **Rerun on 2026-10-07 with Claude Haiku 5.5** (five posts on varied topics, two runs per setting):
+
+  | Model | Words | Cost per run | Result |
+  |---|---|---|---|
+  | Claude Haiku 4.5 | 436–492 | $0.012 | Accurate but generic ("Avoid abrupt endings"); overstates habits (footnotes "liberally", in 2 of 5 posts). |
+  | Claude Haiku 5.5, low | 479–500 | $0.002 | Specific, mostly accurate habits: semicolon-stacked sentences, "However / Plus / Also" openers, wry parentheticals, footnotes as an end list. |
+  | Claude Haiku 5.5, medium (default) | 456–485 | $0.002 | Same as low. One run claimed "no call to action" for a post that ends on a download link. |
+  | Claude Haiku 5.5, high | 448–467 | $0.004 | About 6× the thinking tokens of low with no visible gain. |
+  | Claude Sonnet 5.5 | 644–660 | $0.036 | Most perceptive (a neutral voice for explainer posts, cranky remarks kept in footnotes); overshoots the length by 30%. |
+
+  Haiku 5.5 was the only model to keep to the ~500-word target. Quotes per guide rose from 7–12 on Haiku 4.5 to 22–40, still about half from a single post, which makes the line in Using the guide more important. The table rows were a run of bare lines, because the reduction dropped table tags; tables are now kept.
 - **The samples limit what the guide can learn.** When most samples share a topic, the guide treats it as style ("stress that human expertise matters when using AI"). Picking samples on varied topics improves the guide more than prompt changes.
 
-`Scripts/style-guide-probe.py <model-id>` reruns the test with the author's saved samples, API key and site credentials from Quill's Application Support folder. It prints the guide, then its word count, token usage and how many quotes appear in two or more samples, one, or none. Its prompt and sample reduction must match `AIPromptBuilder`.
+`Scripts/style-guide-probe.py <model-id> [effort]` reruns the test with the author's saved samples, API key and site credentials from Quill's Application Support folder. It prints the guide, then its word count, token usage and how many quotes appear in two or more samples, one, or none. Its prompt and sample reduction must match `AIPromptBuilder`.
 
 ## Tests
 
