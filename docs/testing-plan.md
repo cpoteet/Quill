@@ -116,7 +116,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
-Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
+Framework: Swift Testing, from the toolchain (no package dependency). Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
 ### Suite summary
 

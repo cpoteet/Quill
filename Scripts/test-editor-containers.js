@@ -1821,9 +1821,15 @@ describe('delete block control', () => {
 
   const deleteKey = () => win.document.querySelector('#block-controls [data-cmd="deleteBlock"]')
 
-  // jsdom has no Range.getClientRects, so any dispatch made while the view
-  // really holds focus dies inside ProseMirror's scroll-into-view.
-  before(() => { editor.view.dom.blur() })
+  // A dispatch scrolls the selection into view, and jsdom gives text no geometry.
+  before(() => {
+    const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+    for (const proto of [win.Text.prototype, win.Range.prototype]) {
+      if (proto.getClientRects) continue
+      proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+      proto.getBoundingClientRect = () => rect
+    }
+  })
 
   const blocks = {
     columns:      () => win.insertColumns(2),

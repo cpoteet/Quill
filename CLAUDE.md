@@ -24,7 +24,7 @@ Runs everything — 712 Swift + 1,655 JS tests, all passing as of 2026-10-08 (1,
 
 **Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 
-Requirements: Swift 6.3.1, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`; only `Scripts/node_modules/` is gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
+Requirements: Swift 6.4, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`; only `Scripts/node_modules/` is gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
 **Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
 

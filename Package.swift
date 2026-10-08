@@ -9,7 +9,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.3"),
-        .package(url: "https://github.com/apple/swift-testing.git", from: "0.10.0"),
     ],
     targets: [
         .executableTarget(
@@ -28,10 +27,7 @@ let package = Package(
         ),
         .testTarget(
             name: "QuillTests",
-            dependencies: [
-                "QuillKit",
-                .product(name: "Testing", package: "swift-testing"),
-            ],
+            dependencies: ["QuillKit"],
             path: "Tests/QuillTests"
         ),
     ]

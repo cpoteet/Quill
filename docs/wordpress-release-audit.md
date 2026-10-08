@@ -42,12 +42,12 @@ The comparison and validator suites run WordPress's own packages as test-only re
   ```bash
   V=7.2.0   # the new release
   SHA=$(curl -s https://raw.githubusercontent.com/WordPress/wordpress-develop/$V/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['gutenberg']['sha'])")
-  for p in block-serialization-default-parser blocks block-library block-editor; do
+  for p in block-serialization-default-parser blocks block-library block-editor components compose data private-apis rich-text; do
     echo "$p $(curl -s https://raw.githubusercontent.com/WordPress/gutenberg/$SHA/packages/$p/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")"
   done
   ```
 
-- [ ] **4. Pin them.** In `Scripts/`, run `npm install --save-dev --save-exact` with those four versions (`@wordpress/block-serialization-default-parser@…`, `@wordpress/blocks@…`, `@wordpress/block-library@…`, and `@wordpress/block-editor@…` only if it is listed), then set the same `blocks` and `block-editor` versions in the `overrides` block of `Scripts/package.json`.
+- [ ] **4. Pin them.** In `Scripts/`, run `npm install --save-dev --save-exact` with those four versions (`@wordpress/block-serialization-default-parser@…`, `@wordpress/blocks@…`, `@wordpress/block-library@…`, and `@wordpress/block-editor@…` only if it is listed), then set the same `blocks` and `block-editor` versions, plus the `components`, `compose`, `data`, `private-apis` and `rich-text` versions, in the `overrides` block of `Scripts/package.json`. Then delete `Scripts/node_modules` and `Scripts/package-lock.json` and run `npm install`, so the overrides reach every nested copy. The transitive five must match the release too: newer ones on npm use `private-apis` 2.x, and a second `private-apis` copy fails every validator suite with "Cannot unlock an object that was not locked before".
 
 ### Check that Quill reads blocks as WordPress does
 
@@ -152,9 +152,8 @@ grep -o 'is-style-[a-z-]*' /Users/Chris/Dev/Studio/wp-includes/js/dist/block-lib
 
 - **Table of Contents may register in a later release.** It is `nav`-rooted, so it is preserved either way; confirm when it registers.
 - **Formats other than HEIC may break uploads the same way.** Only HEIC/HEIF convert to JPEG. TIFF and similar depend on the host's image editor. Re-check if users report it.
-- **The test packages were ahead of 7.1.2** (checked 2026-09-26): `block-library` 10.4.0 against the 10.2.0 WordPress 7.1.2 ships, `blocks` 15.27.0 against 15.24.0, `block-serialization-default-parser` 5.55.0 against 5.51.0. Steps 3–4 align them on the next run.
 
-Closed since the 7.1 run: self-closing server-rendered blocks (`core/icon`, `core/latest-posts`) and the Shortcode block are preserved byte for byte by unsupported-block preservation (2026-09-12) and covered by `Scripts/fixtures/unsupported-blocks.html`.
+Closed since the 7.1 run: self-closing server-rendered blocks (`core/icon`, `core/latest-posts`) and the Shortcode block are preserved byte for byte by unsupported-block preservation (2026-09-12) and covered by `Scripts/fixtures/unsupported-blocks.html`. The test packages, which had run ahead of 7.1.2, were aligned to 7.1.3 on 2026-10-08 (steps 3–5 and 7; step 6 not run).
 
 ---
 

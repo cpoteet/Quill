@@ -23,6 +23,6 @@
     "@tiptap/extension-list-item": "2.27.3",
     "@tiptap/extension-code-block": "2.27.3",
     "@tiptap/pm": "2.27.3",
-    "esbuild": "0.25.12"
+    "esbuild": "0.28.2"
   }
 }

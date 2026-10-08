@@ -141,7 +141,7 @@ onto it" — its children are still replayed.
 - `DELETABLE_BLOCKS` is the single source for all three block-level gestures
 - `ContainerExit` must keep `priority: 250`
 - Esc reaches the editor keymap before the document-level listeners that close the menus
-- A jsdom suite that dispatches into a container needs `editor.view.dom.blur()` in `before()`
+- A jsdom suite that dispatches into a container needs a `getClientRects` stub in `before()`
 - Image-caption Enter uses `handleKeyDown`, not `addKeyboardShortcuts`, so it fires before every keymap plugin
 - `_fnPassthrough` allows Backspace/Delete through footnote keyboard guards
 - Find & replace decorations use their own `PluginKey('findReplace')` and dispatch meta-only transactions, which do not re-fire `update`

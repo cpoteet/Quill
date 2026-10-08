@@ -248,13 +248,19 @@ describe('pasted images the site does not host yet', () => {
     editor.view.dom.dispatchEvent(ev)
   }
 
-  const settle = () => new Promise(resolve => setTimeout(resolve, 50))
+  const uploadsReach = count => new Promise((resolve, reject) => {
+    const start = Date.now()
+    const poll = () => uploads.length >= count ? resolve()
+      : Date.now() - start > 2000 ? reject(new Error(`${uploads.length} of ${count} uploads arrived`))
+      : setTimeout(poll, 10)
+    poll()
+  })
 
   test('a screenshot on the clipboard is sent for upload and nothing is inserted yet', async () => {
     uploads.length = 0
     const bytes = Buffer.from(pixel.split(',')[1], 'base64')
     pasteData({}, [new win.File([bytes], 'Screenshot.png', { type: 'image/png' })])
-    await settle()
+    await uploadsReach(1)
     assert.equal(uploads.length, 1)
     assert.equal(uploads[0].token, null)
     assert.match(uploads[0].dataURL, /^data:image\/png;base64,/)
@@ -264,7 +270,7 @@ describe('pasted images the site does not host yet', () => {
   test('a data: image inside pasted HTML is sent with a token and swapped for the upload', async () => {
     uploads.length = 0
     pasteData({ 'text/html': `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`, 'text/plain': 'Before' })
-    await settle()
+    await uploadsReach(1)
     assert.equal(uploads.length, 1)
     assert.match(uploads[0].token, /^paste-\d+$/)
     win.resolvePastedImage(uploads[0].token, 'https://example.com/wp-content/uploads/chart.png', 321)
@@ -279,10 +285,10 @@ describe('pasted images the site does not host yet', () => {
     uploads.length = 0
     const html = `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`
     pasteData({ 'text/html': html, 'text/plain': 'Before' })
-    await settle()
+    await uploadsReach(1)
     win.forgetPastedImage(uploads[0].token)
     pasteData({ 'text/html': html, 'text/plain': 'Before' })
-    await settle()
+    await uploadsReach(2)
     assert.equal(uploads.length, 2)
     assert.notEqual(uploads[1].token, uploads[0].token)
     win.forgetPastedImage(uploads[1].token)
@@ -291,7 +297,7 @@ describe('pasted images the site does not host yet', () => {
   test('one undo after the upload lands takes back the paste, not just the swap to the uploaded file', async () => {
     uploads.length = 0
     pasteData({ 'text/html': `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`, 'text/plain': 'Before' })
-    await settle()
+    await uploadsReach(1)
     await new Promise(resolve => setTimeout(resolve, 600))
     win.resolvePastedImage(uploads[0].token, 'https://example.com/wp-content/uploads/chart.png', 321)
     editor.commands.undo()
