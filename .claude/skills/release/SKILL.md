@@ -38,6 +38,8 @@ Stop if the working tree is dirty or `v<version>` already exists. Push unpushed 
 
 Run `./test.sh`. Stop on any failure.
 
+Run `./Scripts/check-dependencies.sh` and show the user any in-range update to something that ships in the app (SQLite.swift, Tiptap, ProseMirror, marked), any `MISMATCH` against the current WordPress release, and any audit finding not already explained in the `update-dependencies` skill's Traps. Do not update anything inside the release. If the user wants the updates, stop here and run the `update-dependencies` skill first.
+
 ### Step 1 — Bump the version
 
 `build.sh` holds the version twice, as `CFBundleVersion` and `CFBundleShortVersionString`. Both are always the release version. If they already match `<version>`, skip this step.

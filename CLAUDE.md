@@ -22,6 +22,8 @@ Runs everything — 712 Swift + 1,655 JS tests, all passing as of 2026-10-08 (1,
 
 **The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
 
+**Dependencies:** the `update-dependencies` skill (`.claude/skills/update-dependencies/`); `./Scripts/check-dependencies.sh` is its read-only report.
+
 **Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 
 Requirements: Swift 6.4, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`; only `Scripts/node_modules/` is gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
@@ -31,7 +33,7 @@ Requirements: Swift 6.4, macOS 27, full **Xcode** (`build.sh` compiles `Assets.x
 ## Key decisions
 
 - **Stack:** Swift 6, SwiftUI (macOS 27 only — no availability gates), WKWebView, URLSession async/await
-- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`). To update Tiptap at any time, just tell Claude "check for new versions of Tiptap" — Claude will check the latest release, update the versions in `Scripts/tiptap-bundle/package.json` and its lockfile if needed, regenerate the bundle, update `editor.html` and `CLAUDE.md`, and rebuild.
+- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`).
 - **API:** WordPress REST API with Application Passwords (no plugin required)
 - **Login:** first run connects through WordPress's browser approval (`authorize-application.php`), which calls back on `quill://authorize`; manual application-password entry is the fallback.
 - **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
