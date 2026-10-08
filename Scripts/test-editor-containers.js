@@ -414,6 +414,28 @@ describe('accordion block', () => {
     assert.equal(node.child(0).child(1).type.name, 'accordionPanel')
   })
 
+  test('typing right after insert goes into the heading', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    assert.equal(editor.state.selection.$head.parent.type.name, 'accordionHeading')
+  })
+
+  test('inserting from an existing empty heading leaves that accordion untouched', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    const headingPos = editor.state.selection.from
+    editor.commands.setTextSelection(headingPos + 3)
+    editor.commands.insertContent('Old panel')
+    editor.commands.setTextSelection(headingPos)
+    win.insertAccordion()
+    editor.commands.insertContent('Second')
+    const items = []
+    editor.state.doc.descendants(n => {
+      if (n.type.name === 'accordionItem') items.push([n.child(0).textContent, n.child(1).textContent])
+    })
+    assert.deepEqual(items, [['', 'Old panel'], ['Second', '']])
+  })
+
   test('parses the real accordion fixture', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, 'fixtures/accordion-block.html'), 'utf8')

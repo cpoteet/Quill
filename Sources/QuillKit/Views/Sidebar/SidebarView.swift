@@ -44,6 +44,17 @@ public struct SidebarView: View {
         )
     }
 
+    // A save replaces the cached post but not `selectedItem`, so rows match the selection by id.
+    private var itemSelection: Binding<PostItem.ID?> {
+        Binding(
+            get: { appState.selectedItem?.id },
+            set: { id in
+                guard id != appState.selectedItem?.id else { return }
+                appState.selectedItem = appState.filteredItems.first { $0.id == id }
+            }
+        )
+    }
+
     /// The WKWebView keeps first responder across a row click, which leaves the selection drawn unemphasized.
     private func focusPostList() {
         guard appState.selectedSection != .media else { return }
@@ -200,7 +211,7 @@ public struct SidebarView: View {
     }
 
     private var postList: some View {
-        List(selection: $appState.selectedItem) {
+        List(selection: itemSelection) {
             if let update = appState.updateAvailable {
                 updateRow(update)
             }
@@ -208,8 +219,8 @@ public struct SidebarView: View {
                 SidebarErrorRow(failure: error)
             }
             ForEach(appState.filteredItems) { item in
-                PostListRow(item: item, isSelected: appState.selectedItem == item)
-                    .tag(item)
+                PostListRow(item: item, isSelected: appState.selectedItem?.id == item.id)
+                    .tag(item.id)
                     .contextMenu {
                         Button(role: .destructive) {
                             itemPendingDelete = item
@@ -368,7 +379,7 @@ public struct SidebarView: View {
                 try services.draftStore.delete(id: draft.id)
                 appState.localDrafts.removeAll { $0.id == draft.id }
             }
-            if appState.selectedItem == item {
+            if appState.selectedItem?.id == item.id {
                 appState.selectedItem = nil
             }
         } catch {

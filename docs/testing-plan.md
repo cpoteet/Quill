@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-08 — 712 Swift tests + 1,584 JS tests (1,583 pass, 1 skipped), no failures._
+_Last updated: 2026-10-08 — 712 Swift tests + 1,586 JS tests (1,585 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (276 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (278 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (45 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
@@ -818,7 +818,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 |---|---|
 | `publishButtonTitlePerStatus` | The button label names what the click does: a local draft reads `"Save to WordPress"`, a server draft `"Save Draft"`, a live post set back to Draft `"Switch to Draft"`, then `"Publish"`, `"Update"`, `"Schedule"`, `"Submit for Review"`, `"Publish Privately"` |
 | `publishButtonIconPerStatus` | Drafts get the upload icon, a live post's Update gets `arrow.up.circle`, and only statuses that publish or queue the post get the paperplane, also when a live post is moved to Scheduled, Pending or Private |
-| `toastMessagePerStatus` | Each status transition maps to the correct toast string |
+| `toastMessagePerStatus` | Each status transition maps to the correct toast string; publishing an already published post says Updated |
 | `statusChangeToFutureSetsDefaultDate` | Switching to `future` when no date exists → `publishDate` set to a non-nil default |
 | `statusChangeToFuturePreservesExistingDate` | Switching to `future` when a date already exists → existing date preserved |
 | `statusChangeToPrivateClearsScheduledDate` | Switching from `future` to `private` → `publishDate` cleared to `nil` |
@@ -2554,7 +2554,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (276 tests)
+## JS container tests (278 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2622,11 +2622,13 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `accordion block` (5 tests)
+### `accordion block` (7 tests)
 
 | Test | What it checks |
 |---|---|
 | `inserts one item with a heading and a panel` | `accordionBlock > accordionItem > accordionHeading + accordionPanel` |
+| `typing right after insert goes into the heading` | `insertAccordion` leaves the caret in the empty heading, not the panel |
+| `inserting from an existing empty heading leaves that accordion untouched` | With the caret in an accordion's heading, the new accordion goes after it rather than splitting it, and the caret moves to the new heading |
 | `parses the real accordion fixture` | `fixtures/accordion-block.html` becomes one `accordionBlock` with two items |
 | `heading text round-trips` | The fixture's heading text survives a save |
 | `saves with all four delimiter types` | `wp:accordion`, `wp:accordion-item`, `wp:accordion-heading`, `wp:accordion-panel` |
@@ -3352,7 +3354,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] **Decorative images:** in WordPress, mark an image as decorative (the image block's "Mark as decorative" toggle, WP 7.1+). Open that post in Quill, make an unrelated edit, save → re-fetch the raw content and confirm the `<img>` still carries `role="none"`. Do the same for a decorative image that also links to its full size → the `role` stays on the `<img>`, not on the `<a>`.
 - [ ] Insert a fresh image in Quill and save → its `<img>` has no `role` attribute at all (Quill never invents one).
 - [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
-- [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, and movies.
+- [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, Word/Excel/PowerPoint files, `.txt` and `.csv`; movies are not selectable.
+- [ ] Upload a `.docx` → it appears under Documents with a document icon and Type DOCX. Upload a `.csv` while Documents is selected → Quill switches to All Media and the file is there.
 - [ ] In the media picker sheet, the Cancel button is visible and dismisses the sheet.
 - [ ] If the media library has more than 50 images, scroll the picker grid to the bottom → a spinner appears and the next page appends, with no button to click. Keep scrolling → it pages again. Confirm no image appears twice (a duplicated row means the `hasMore`/`isLoadingMore` guards inside `loadMoreMedia` were lost). Do the same in `GallerySheet`.
 - [ ] Click the Gallery toolbar button → the `GallerySheet` opens with a media grid; tapping images toggles a checkmark and adds them to the "Selected" list; "Insert Gallery" is disabled until at least one image is selected.
@@ -3794,7 +3797,7 @@ human is required.
 - [ ] Single-clicking a thumbnail selects it and opens the inspector.
 - [ ] Arrow keys move the selection left, right, up and down.
 - [ ] The inspector follows the selection and shows the right filename.
-- [ ] The toolbar's Media Info button is disabled when nothing is selected.
+- [ ] The toolbar's Media Info button is disabled when nothing is selected and the inspector is closed. Open the inspector, then deselect → the button stays enabled, so it can still close the inspector.
 - [ ] That button closes the inspector without clearing the selection ring.
 - [ ] With the inspector closed, selecting another image does NOT reopen it.
 - [ ] Pressing the button again reopens it, showing the current selection.

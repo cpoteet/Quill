@@ -1007,6 +1007,7 @@ public struct PostEditorView: View {
         let savedContent = htmlContent
         let savedFootnotes = footnotesMeta
         let baseline = lastSavedServerModified
+        let wasPublished = isPublishedRemote
         var saved = settings
         // A section switch rebuilds this view, leaving the old one's loadedItem unchanged; the selection moves in both cases.
         func stillOnPost() -> Bool { loadedItem?.id == savedItemID && appState.selectedItem?.id == savedItemID }
@@ -1106,7 +1107,7 @@ public struct PostEditorView: View {
                     } else {
                         try? services.autosaveStore.delete(site: site, postID: post.id)
                     }
-                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status))")
+                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status, isPublishedRemote: wasPublished))")
                     return
                 }
                 try? services.autosaveStore.delete(site: site, postID: post.id)
@@ -1157,7 +1158,7 @@ public struct PostEditorView: View {
             if let cleanupWarning {
                 presentToast(cleanupWarning, isError: true)
             } else {
-                presentToast(Self.toastMessage(forStatus: status))
+                presentToast(Self.toastMessage(forStatus: status, isPublishedRemote: wasPublished))
             }
         } catch {
             report(error.localizedDescription)
@@ -1472,9 +1473,9 @@ public struct PostEditorView: View {
         "This time has already passed. WordPress will publish the post now, dated \(date.formatted(date: .abbreviated, time: .shortened))."
     }
 
-    nonisolated static func toastMessage(forStatus status: PostStatus) -> String {
+    nonisolated static func toastMessage(forStatus status: PostStatus, isPublishedRemote: Bool = false) -> String {
         switch status {
-        case .publish: return "Published"
+        case .publish: return isPublishedRemote ? "Updated" : "Published"
         case .future: return "Scheduled"
         case .pending: return "Submitted for review"
         case .private: return "Published privately"

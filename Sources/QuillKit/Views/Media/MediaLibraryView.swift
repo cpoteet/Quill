@@ -40,6 +40,7 @@ struct MediaLibraryView: View {
                     }
                     .help("Media Info")
                     .accessibilityLabel("Media Info")
+                    .disabled(appState.selectedMedia == nil && !appState.isMediaInspectorOpen)
                 }
             }
             .inspector(isPresented: $appState.isMediaInspectorOpen) {
@@ -277,7 +278,8 @@ extension MediaLibraryView {
 
     func uploadFromDisk() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [UTType.image, UTType.pdf]
+        panel.allowedContentTypes = [UTType.image, UTType.pdf, UTType.plainText, UTType.commaSeparatedText]
+            + ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].compactMap { UTType(filenameExtension: $0) }
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }

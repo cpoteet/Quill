@@ -6144,7 +6144,7 @@
 
     window.insertAccordion = () => {
       if (_isInFootnote()) return false
-      editor.chain().focus().insertContent({
+      const accordion = {
         type: 'accordionBlock',
         content: [{
           type: 'accordionItem',
@@ -6153,7 +6153,20 @@
             { type: 'accordionPanel', content: [{ type: 'paragraph' }] },
           ],
         }],
-      }).run()
+      }
+      const { $from } = editor.state.selection
+      // A block inserted into a heading splits its accordion, so it goes after the whole accordion instead.
+      const at = $from.parent.type.name === 'accordionHeading'
+        ? $from.after(_ancestorDepth($from, 'accordionBlock'))
+        : null
+      const chain = editor.chain().focus()
+      ;(at === null ? chain.insertContent(accordion) : chain.insertContentAt(at, accordion)).run()
+      // insertContent leaves the caret at the end of the new block, so its heading is the last one before it.
+      let target = null
+      editor.state.doc.nodesBetween(0, editor.state.selection.from, (node, pos) => {
+        if (node.type.name === 'accordionHeading') target = pos + 1
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
       return true
     }
 

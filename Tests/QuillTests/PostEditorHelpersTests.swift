@@ -139,6 +139,8 @@ import Testing
 
     @Test func toastMessagePerStatus() {
         #expect(PostEditorView.toastMessage(forStatus: .publish) == "Published")
+        #expect(PostEditorView.toastMessage(forStatus: .publish, isPublishedRemote: true) == "Updated")
+        #expect(PostEditorView.toastMessage(forStatus: .draft, isPublishedRemote: true) == "Draft saved")
         #expect(PostEditorView.toastMessage(forStatus: .future) == "Scheduled")
         #expect(PostEditorView.toastMessage(forStatus: .pending) == "Submitted for review")
         #expect(PostEditorView.toastMessage(forStatus: .private) == "Published privately")
