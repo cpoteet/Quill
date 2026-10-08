@@ -50,6 +50,11 @@ before(async () => {
 
 after(() => { if (win) win.close() })
 
+function _depthOf($pos, typeName) {
+  for (let d = $pos.depth; d > 0; d--) if ($pos.node(d).type.name === typeName) return d
+  return -1
+}
+
 describe('columns block', () => {
   before(() => { editor.commands.setContent('<p></p>', false) })
 
@@ -398,6 +403,104 @@ describe('buttons toolbar controls', () => {
     assert.equal(editor.state.doc.child(0).childCount, 1)
     press('deleteButton')
     assert.equal(editor.state.doc.child(0).childCount, 1)
+  })
+})
+
+describe('block inserts from a container title', () => {
+  before(() => { editor.commands.setContent('<p></p>', false) })
+
+  const sig = n => n.isText ? '' : n.type.name + (n.childCount
+    ? '(' + Array.from({ length: n.childCount }, (_, i) => sig(n.child(i))).filter(Boolean).join(',') + ')'
+    : '')
+  const hosts = {
+    accordionHeading: () => win.insertAccordion(),
+    tabButton: () => win.insertTabs(2),
+    buttonBlock: () => win.insertButtons(),
+  }
+  const inserts = {
+    table: [() => win.insertTable(2, 2), 'table'],
+    image: [() => win.insertImage('http://x/b.jpg', null, ''), 'image'],
+    gallery: [() => win.insertGallery(JSON.stringify({ images: [{ id: 1, url: 'http://x/a.jpg', alt: '' }] })), 'galleryBlock'],
+    tabs: [() => win.insertTabs(2), 'tabsBlock'],
+    accordion: [() => win.insertAccordion(), 'accordionBlock'],
+    buttons: [() => win.insertButtons(), 'buttonsBlock'],
+    details: [() => win.insertDetails(), 'detailsBlock'],
+    separator: [() => win.insertSeparator(), 'horizontalRule'],
+    columns: [() => win.insertColumns(2), 'columnsBlock'],
+    markdown: [() => win.insertMarkdown('- a\n- b'), 'bulletList'],
+  }
+  const caretInto = (host, text) => {
+    editor.commands.setContent('<p></p>', false)
+    hosts[host]()
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === host) at = pos + 1 + n.content.size })
+    editor.commands.setTextSelection(at)
+    if (text) editor.commands.insertContent(text)
+  }
+
+  for (const host of Object.keys(hosts)) for (const text of ['', 'Title']) {
+    for (const [name, [insert, type]] of Object.entries(inserts)) {
+      test(`${name} from ${text ? 'a filled' : 'an empty'} ${host} goes after the whole container`, () => {
+        caretInto(host, text)
+        const container = sig(editor.state.doc.child(0))
+        const containerText = editor.state.doc.child(0).textContent
+        insert()
+        assert.equal(sig(editor.state.doc.child(0)), container)
+        assert.equal(editor.state.doc.child(0).textContent, containerText)
+        assert.equal(editor.state.doc.child(1).type.name, type)
+      })
+    }
+  }
+
+  test('the caret lands in the new block, not the container it came from', () => {
+    for (const [insert, firstOf] of [[() => win.insertTabs(2), 'tabPanel'], [() => win.insertAccordion(), 'accordionHeading'], [() => win.insertColumns(2), 'columnBlock']]) {
+      caretInto('tabButton', '')
+      insert()
+      const $head = editor.state.selection.$head
+      assert.equal($head.before(1), editor.state.doc.child(0).nodeSize)
+      assert.ok(_depthOf($head, firstOf) > 0)
+    }
+  })
+
+  test('one-line Markdown from a title also goes after the container', () => {
+    caretInto('accordionHeading', '')
+    win.insertMarkdown('Plain **text**')
+    assert.equal(editor.state.doc.child(0).textContent, '')
+    assert.equal(editor.state.doc.child(1).textContent, 'Plain text')
+  })
+
+  for (const [name, insert, firstOf] of [['Tabs', () => win.insertTabs(2), 'tabPanel'], ['Accordion', () => win.insertAccordion(), 'accordionHeading'], ['Columns', () => win.insertColumns(2), 'columnBlock']]) {
+    test(`${name} inserted mid-paragraph takes the caret into the new block`, () => {
+      editor.commands.setContent('<p>abc</p>', false)
+      editor.commands.setTextSelection(2)
+      insert()
+      editor.commands.insertContent('X')
+      const $head = editor.state.selection.$head
+      assert.ok(_depthOf($head, firstOf) > 0)
+      assert.ok(editor.getText().includes('bc'))
+      assert.ok(!editor.getText().includes('Xbc'))
+    })
+
+    test(`${name} inserted inside another ${name} takes the caret into the inner one`, () => {
+      editor.commands.setContent('<p></p>', false)
+      insert()
+      const blockType = editor.state.doc.child(0).type.name
+      editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 3)
+      insert()
+      const $head = editor.state.selection.$head
+      const blockDepths = []
+      for (let d = 1; d <= $head.depth; d++) if ($head.node(d).type.name === blockType) blockDepths.push(d)
+      assert.equal(blockDepths.length, 2)
+      assert.ok(_depthOf($head, firstOf) > blockDepths[1])
+    })
+  }
+
+  test('one undo removes the insert and its landing paragraph', () => {
+    caretInto('accordionHeading', 'Title')
+    const before = editor.getJSON()
+    win.insertTabs(2)
+    editor.commands.undo()
+    assert.deepEqual(editor.getJSON(), before)
   })
 })
 

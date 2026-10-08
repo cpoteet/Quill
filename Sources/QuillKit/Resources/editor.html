@@ -4295,6 +4295,30 @@
       return -1
     }
 
+    // A block inserted into one of these titles splits its container, so it goes after the whole container.
+    const TITLE_CONTAINERS = { accordionHeading: 'accordionBlock', tabButton: 'tabsBlock', buttonBlock: 'buttonsBlock' }
+
+    function _blockInsertChain() {
+      const chain = editor.chain().focus()
+      const { $from } = editor.state.selection
+      const container = TITLE_CONTAINERS[$from.parent.type.name]
+      if (!container) return chain
+      const after = $from.after(_ancestorDepth($from, container))
+      return chain.insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1)
+    }
+
+    // The new block is the first `targetType` at or after the insert point, so the caret goes there.
+    function _insertContainer(block, targetType, offset) {
+      let at = null
+      _blockInsertChain().command(({ tr }) => { at = tr.selection.from; return true }).insertContent(block).run()
+      let target = null
+      editor.state.doc.descendants((node, pos) => {
+        if (target === null && node.type.name === targetType && pos >= at - 1) target = pos + offset
+        return target === null
+      })
+      if (target !== null) editor.commands.setTextSelection(target)
+    }
+
     function _buttonBlockTarget(state) {
       const $head = state.selection.$head
       for (let d = $head.depth; d > 0; d--) {
@@ -5160,7 +5184,7 @@
     window.insertTable = (rows, cols) => {
       _closeTableMenu()
       if (_isInFootnote()) return false
-      editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
+      _blockInsertChain().insertTable({ rows, cols, withHeaderRow: true }).run()
       return true
     }
 
@@ -5984,7 +6008,7 @@
       const attrs = { src: url }
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt
-      editor.chain().focus().setImage(attrs).run()
+      _blockInsertChain().setImage(attrs).run()
       // setImage leaves the cursor inside the figure's empty figcaption. Move it
       // to a fresh paragraph after the image instead; the caption stays clickable.
       const { $from } = editor.state.selection
@@ -6120,31 +6144,26 @@
       }
       // A selected block (often the gallery just edited or cancelled) stays; the new gallery goes after it.
       const { selection } = editor.state
-      const chain = editor.chain().focus()
-      ;(selection.node ? chain.insertContentAt(selection.to, gallery) : chain.insertContent(gallery)).run()
+      ;(selection.node
+        ? editor.chain().focus().insertContentAt(selection.to, gallery)
+        : _blockInsertChain().insertContent(gallery)).run()
     }
     window.insertTabs = (count) => {
       if (_isInFootnote()) return false
       const labels = Array.from({ length: count }, (_, i) => `Tab ${i + 1}`)
-      const at = editor.state.selection.from
-      editor.chain().focus().insertContent({
+      _insertContainer({
         type: 'tabsBlock',
         content: [
           { type: 'tabList', content: labels.map(l => ({ type: 'tabButton', content: [{ type: 'text', text: l }] })) },
           { type: 'tabPanels', content: labels.map(l => ({ type: 'tabPanel', attrs: { label: l }, content: [{ type: 'paragraph' }] })) },
         ],
-      }).run()
-      let target = null
-      editor.state.doc.descendants((node, pos) => {
-        if (target === null && node.type.name === 'tabPanel' && pos >= at - 1) target = pos + 2
-      })
-      if (target !== null) editor.commands.setTextSelection(target)
+      }, 'tabPanel', 2)
       return true
     }
 
     window.insertAccordion = () => {
       if (_isInFootnote()) return false
-      const accordion = {
+      _insertContainer({
         type: 'accordionBlock',
         content: [{
           type: 'accordionItem',
@@ -6153,26 +6172,13 @@
             { type: 'accordionPanel', content: [{ type: 'paragraph' }] },
           ],
         }],
-      }
-      const { $from } = editor.state.selection
-      // A block inserted into a heading splits its accordion, so it goes after the whole accordion instead.
-      const at = $from.parent.type.name === 'accordionHeading'
-        ? $from.after(_ancestorDepth($from, 'accordionBlock'))
-        : null
-      const chain = editor.chain().focus()
-      ;(at === null ? chain.insertContent(accordion) : chain.insertContentAt(at, accordion)).run()
-      // insertContent leaves the caret at the end of the new block, so its heading is the last one before it.
-      let target = null
-      editor.state.doc.nodesBetween(0, editor.state.selection.from, (node, pos) => {
-        if (node.type.name === 'accordionHeading') target = pos + 1
-      })
-      if (target !== null) editor.commands.setTextSelection(target)
+      }, 'accordionHeading', 1)
       return true
     }
 
     window.insertButtons = () => {
       if (_isInFootnote()) return false
-      editor.chain().focus().insertContent({
+      _blockInsertChain().insertContent({
         type: 'buttonsBlock',
         content: [{ type: 'buttonBlock' }],
       }).run()
@@ -6181,7 +6187,7 @@
 
     window.insertDetails = () => {
       if (_isInFootnote()) return false
-      editor.chain().focus().insertContent({
+      _blockInsertChain().insertContent({
         type: 'detailsBlock',
         content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
       }).run()
@@ -6190,7 +6196,7 @@
 
     window.insertSeparator = () => {
       if (_isInFootnote()) return false
-      editor.chain().focus().setHorizontalRule().run()
+      _blockInsertChain().setHorizontalRule().run()
       return true
     }
 
@@ -6200,13 +6206,7 @@
         type: 'columnBlock',
         content: [{ type: 'paragraph' }],
       }))
-      const at = editor.state.selection.from
-      editor.chain().focus().insertContent({ type: 'columnsBlock', content: columns }).run()
-      let target = null
-      editor.state.doc.descendants((node, pos) => {
-        if (target === null && node.type.name === 'columnBlock' && pos >= at - 1) target = pos + 2
-      })
-      if (target !== null) editor.commands.setTextSelection(target)
+      _insertContainer({ type: 'columnsBlock', content: columns }, 'columnBlock', 2)
       return true
     }
     // Convert a Markdown string to HTML and insert it at the cursor.
@@ -6237,7 +6237,7 @@
       const clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
 
-      editor.chain().focus().insertContent(clean, {
+      _blockInsertChain().insertContent(clean, {
         parseOptions: { preserveWhitespace: false },
       }).run()
       return 'ok'

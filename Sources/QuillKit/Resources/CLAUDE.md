@@ -102,6 +102,7 @@ onto it" — its children are still replayed.
 - ProseMirror's two clipboard branches have separate hooks, and `handlePaste` runs *after* the parse, not before
 - Anything that inserts generated HTML must strip inter-block whitespace text nodes AND pass `parseOptions: { preserveWhitespace: false }`
 - `formatHTML`'s `BLOCK` set changes affect ALL existing content wrapped in that tag, not just the new case motivating the change
+- Every block insert goes through `_blockInsertChain()`, because a block inserted into an accordion heading, tab title or button splits its container
 - Gap-cursor styling, not doc-model surgery, for the caret next to atomic block nodes
 - `marked` is a second, separate IIFE bundle — kept out of `bundle-tiptap.sh` so updating it never touches the editor bundle
 - Tiptap is bundled locally as IIFE — `type="module"`/ES `import` silently fails under `file://` in WKWebView and `editorReady` never fires

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-08 — 712 Swift tests + 1,586 JS tests (1,585 pass, 1 skipped), no failures._
+_Last updated: 2026-10-08 — 712 Swift tests + 1,655 JS tests (1,654 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (278 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (347 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (45 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
@@ -2554,7 +2554,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (278 tests)
+## JS container tests (347 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2621,6 +2621,17 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | Test | What it checks |
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
+
+### `block inserts from a container title` (69 tests)
+
+| Test | What it checks |
+|---|---|
+| `<insert> from an empty/a filled <title> goes after the whole container` (60 tests) | Each of the ten block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown), from an empty and a filled accordion heading, tab title and button, leaves the container and its text unchanged and puts the new block straight after it |
+| `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
+| `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
+| `<Tabs/Accordion/Columns> inserted mid-paragraph takes the caret into the new block` (3 tests) | Inserting in the middle of `abc` puts the caret in the new block, not in the split-off `bc` |
+| `<Tabs/Accordion/Columns> inserted inside another … takes the caret into the inner one` (3 tests) | A container inserted inside one of its own kind gets the caret, not the outer one's first child |
+| `one undo removes the insert and its landing paragraph` | The paragraph `_blockInsertChain` adds and the insert are one undo step |
 
 ### `accordion block` (7 tests)
 

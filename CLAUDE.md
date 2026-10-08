@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 712 Swift + 1,586 JS tests, all passing as of 2026-10-08 (1,585 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 712 Swift + 1,655 JS tests, all passing as of 2026-10-08 (1,654 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -148,7 +148,7 @@ These two fail silently with the whole test suite green:
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
 - `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
 - `docs/platform-workarounds.md` — every workaround for an Apple or WebKit bug, with a test for whether it is still needed; work through it after each macOS release. A new workaround gets an entry here as well as its gotcha
-- `docs/editor-gotchas.md` — the 77 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
+- `docs/editor-gotchas.md` — the 78 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
 - `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
 - `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` — one spec + plan pair per feature, named by date
