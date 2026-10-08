@@ -66,20 +66,18 @@ public struct PreferencesView: View {
                         Text("Higher levels think longer before answering. Responses take more time and cost more.")
                     }
                     .disabled(reasoningChoices.count < 2)
-                    LabeledContent("Writing Style") {
-                        VStack(alignment: .trailing, spacing: 6) {
-                            HStack(spacing: 8) {
-                                Text(ai.samplePostIDs.isEmpty
-                                     ? "No samples selected"
-                                     : "\(ai.samplePostIDs.count) post\(ai.samplePostIDs.count == 1 ? "" : "s") selected")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Button("Choose Posts\u{2026}") { isSamplePickerOpen = true }
-                                    .disabled(posts.isEmpty)
-                            }
+                    LabeledContent {
+                        HStack(spacing: 8) {
+                            Button("Choose Posts\u{2026}") { isSamplePickerOpen = true }
+                                .disabled(posts.isEmpty)
                             Button("Regenerate") { Task { await regenerateStyleGuide() } }
                                 .disabled(hasNoKey || ai.samplePostIDs.isEmpty || isAnalyzing || isSaving)
                         }
+                    } label: {
+                        Text("Writing Style")
+                        Text(ai.samplePostIDs.isEmpty
+                             ? "No samples selected"
+                             : "\(ai.samplePostIDs.count) post\(ai.samplePostIDs.count == 1 ? "" : "s") selected")
                     }
                     Toggle(isOn: $ai.webSearchEnabled) {
                         Text("Web Search")
