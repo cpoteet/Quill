@@ -3757,6 +3757,7 @@ Run this on a **new local draft**, never a published post.
 ### 7.24 Block settings & style controls
 
 - [ ] With the caret inside a block that has settings, a second toolbar row appears naming only that block's group; it disappears when the caret leaves, and nested containers show both groups at once.
+- [ ] One hairline separates the toolbar from the post, under whichever bar is last: under the main toolbar alone, under the second row when it shows, and under the find bar when that is open. No line sits between the two toolbar rows, and none is doubled. Check light and dark.
 - [ ] Toggle each style control (button, quote, separator, image, table) → the style applies in the editor, survives a save and a reopen, replaces the previous style rather than stacking, and leaves classes you wrote yourself alone.
 - [ ] Open each in Gutenberg → the style shows there too, and the block is valid.
 - [ ] **Accordion icons:** change the icon and its position → every heading in the accordion changes with the block, one undo reverses the lot, and an item added afterwards inherits the setting.
