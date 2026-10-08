@@ -69,9 +69,8 @@ public struct PostEditorView: View {
     @State private var resultPanel: AIResultPanel = AIResultPanel()
 
     // Evaluation state
-    @State private var isEvaluating: Bool = false
-    @State private var evaluationResult: EvaluationResult? = nil
-    @State private var evaluationError: String? = nil
+    @State private var evaluation: EvaluationState? = nil
+    @State private var evaluationSetupError: String? = nil
     @State private var evaluationTask: Task<Void, Never>? = nil
     @State private var aiTask: Task<Void, Never>? = nil
 
@@ -171,7 +170,7 @@ public struct PostEditorView: View {
                     onTriggerEvaluate: {
                         if !isEvaluating {
                             inspectorPane = .evaluation
-                            if evaluationResult == nil && evaluationError == nil {
+                            if evaluation == nil && evaluationSetupError == nil {
                                 evaluationTask = Task { await executeEvaluation() }
                             }
                         }
@@ -259,7 +258,7 @@ public struct PostEditorView: View {
             Button("Cancel", role: .cancel) {}
             Button("Continue") { isAISheetOpen = true }
         } message: {
-            Text("This will replace your current title and content.")
+            Text(postType == "page" ? "This will replace your current title and content." : "This will replace your current title, excerpt and content.")
         }
         .alert("Publish Now?", isPresented: $showPastScheduleAlert) {
             Button("Cancel", role: .cancel) {}
@@ -268,17 +267,20 @@ public struct PostEditorView: View {
             Text(Self.pastScheduleMessage(for: settings.publishDate ?? Date()))
         }
         .sheet(isPresented: $isAISheetOpen) {
-            if let settings = appState.aiSettings {
+            if let aiSettings = appState.aiSettings {
                 GeneratePostSheet(
-                    aiSettings: settings
-                ) { generatedTitle, generatedHTML in
+                    aiSettings: aiSettings
+                ) { generatedTitle, generatedHTML, generatedExcerpt in
                     title = generatedTitle
                     contentSyncPending = true
                     htmlContent = generatedHTML
+                    if postType != "page" { settings.excerpt = generatedExcerpt }
                     isAISheetOpen = false
                     scheduleAutosave()
                 } onCancel: {
                     isAISheetOpen = false
+                } onWebSearchTool: { tool, modelID in
+                    rememberWebSearchTool(tool, for: modelID)
                 }
             }
         }
@@ -299,9 +301,8 @@ public struct PostEditorView: View {
             evaluationTask?.cancel()
             evaluationTask = nil
             if inspectorPane == .evaluation { inspectorPane = nil }
-            isEvaluating = false
-            evaluationResult = nil
-            evaluationError = nil
+            evaluation = nil
+            evaluationSetupError = nil
         }
         .onChange(of: inspectorPane) { _, pane in
             let open = pane == .evaluation
@@ -436,13 +437,16 @@ public struct PostEditorView: View {
                 state: evaluationPanelState,
                 onReEvaluate: { if !isEvaluating { evaluationTask = Task { await executeEvaluation() } } },
                 onFindingSelected: { quote in
-                    guard let data = try? JSONEncoder().encode(quote),
-                          let json = String(data: data, encoding: .utf8) else { return }
+                    guard let json = Self.jsonLiteral(quote) else { return }
                     if let wv = editorWebView { wv.window?.makeFirstResponder(wv) }
                     editorWebView?.evaluateJavaScript(
                         "window.findAndSelectText(\(json))", completionHandler: nil)
-                }
+                },
+                onApply: { ids in Task { await applyFindings(ids) } },
+                onShowTab: { Task { await refreshEvaluationStatuses() } }
             )
+            .onAppear { Task { await refreshEvaluationStatuses() } }
+            .onChange(of: htmlContent) { Task { await refreshEvaluationStatuses() } }
         } else {
             PostSettingsPanel(
                 settings: $settings,
@@ -1537,53 +1541,156 @@ public struct PostEditorView: View {
 
     // MARK: - Evaluation
 
+    private var isEvaluating: Bool { evaluation?.isRunning == true }
+
     private var evaluationPanelState: EvaluationPanelState {
         if stats.words < 100 { return .shortContent }
-        if isEvaluating { return .loading }
-        if let error = evaluationError { return .error(error) }
-        if let result = evaluationResult { return .result(result) }
-        return .loading
+        if let error = evaluationSetupError { return .error(error) }
+        return .evaluation(evaluation ?? EvaluationState(searchAvailable: false))
     }
 
+    /// A published post's date, which the fact-check judges its claims against.
+    private var publishedOn: Date? {
+        guard case .remote(let post)? = loadedItem, post.status == "publish" else { return nil }
+        return PostSettings.parseWPDate(post.dateGmt.isEmpty ? post.date : post.dateGmt)
+    }
+
+    private static func jsonLiteral<T: Encodable>(_ value: T) -> String? {
+        guard let data = try? JSONEncoder().encode(value) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func evaluationMessage(for error: Error) -> String {
+        error is DecodingError
+            ? "Claude's evaluation came back in a form Quill couldn't read. Try again."
+            : error.localizedDescription
+    }
+
+    private enum EvaluationHalf: Sendable {
+        case review(Result<ReviewResult, Error>)
+        case facts(Result<(FactCheckResult, tool: String?), Error>)
+    }
+
+    /// Sends the review and the fact-check at once; each half lands in the panel as soon as it is ready.
     @MainActor
     private func executeEvaluation() async {
         guard let aiSettings = appState.aiSettings else {
-            evaluationError = "Add a Claude API key in Settings under AI Writing."
+            evaluationSetupError = "Add a Claude API key in Settings under AI Writing."
             return
         }
         guard stats.words >= 100 else { return }
 
-        isEvaluating = true
-        evaluationResult = nil
-        evaluationError = nil
+        let postID = loadedItem?.id
+        // A section switch rebuilds this view, so check the selection as well as loadedItem.
+        func stillOnPost() -> Bool {
+            !Task.isCancelled && loadedItem?.id == postID && appState.selectedItem?.id == postID
+        }
+        let modelID = aiSettings.resolvedModelID()
+        let modelCanSearch = aiSettings.resolvedModel()?.supportsWebSearch != false
+        let searchAvailable = aiSettings.webSearchEnabled && modelCanSearch
+        let run = EvaluationState(searchAvailable: searchAvailable, modelCanSearch: modelCanSearch)
+        evaluationSetupError = nil
+        evaluation = run
         editorWebView?.evaluateJavaScript("window.setEvaluating?.(true)", completionHandler: nil)
-        defer {
-            isEvaluating = false
-            editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil)
-        }
+        defer { editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil) }
 
-        let prompt = AIPromptBuilder.evaluatePostPrompt(title: title, html: htmlContent, styleGuide: aiSettings.styleGuide)
-        let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
         let client = AnthropicClient(apiKey: aiSettings.apiKey)
+        let html = EvaluationPrompts.appendingFootnotes(to: htmlContent, meta: footnotesMeta)
+        let postTitle = title
+        let published = publishedOn
+        let today = Date()
+        let reviewOptions = CompletionOptions(settings: aiSettings, jsonSchema: EvaluationPrompts.reviewSchema)
+        let factOptions = CompletionOptions(
+            settings: aiSettings,
+            webSearch: WebSearchUse(maxUses: 8, knownTool: aiSettings.knownWebSearchTool(for: modelID)),
+            jsonSchema: EvaluationPrompts.factCheckSchema
+        )
+        let guide = aiSettings.styleGuide
 
-        do {
-            let responseText = try await client.complete(
-                userMessage: prompt,
-                systemPrompt: system,
-                useWebSearch: false
-            ).text
-            guard !Task.isCancelled else { return }
-            if let result = AIPromptBuilder.parseEvaluationResponse(responseText) {
-                evaluationResult = result
-            } else {
-                evaluationError = "Claude's evaluation came back in a form Quill couldn't read. Try again."
+        await withTaskGroup(of: EvaluationHalf.self) { group in
+            group.addTask {
+                do {
+                    let reply = try await client.complete(
+                        userMessage: EvaluationPrompts.review(title: postTitle, html: html, publishedOn: published),
+                        systemPrompt: EvaluationPrompts.reviewSystem(styleGuide: guide, today: today),
+                        options: reviewOptions)
+                    return .review(.success(try EvaluationPrompts.parseReview(reply.text)))
+                } catch {
+                    return .review(.failure(error))
+                }
             }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard !Task.isCancelled else { return }
-            evaluationError = error.localizedDescription
+            if searchAvailable {
+                group.addTask {
+                    do {
+                        let reply = try await client.complete(
+                            userMessage: EvaluationPrompts.factCheck(title: postTitle, html: html, publishedOn: published),
+                            systemPrompt: EvaluationPrompts.factCheckSystem(today: today),
+                            options: factOptions)
+                        return .facts(.success((try EvaluationPrompts.parseFactCheck(reply.text), reply.webSearchTool)))
+                    } catch {
+                        return .facts(.failure(error))
+                    }
+                }
+            }
+            for await half in group {
+                guard stillOnPost(), evaluation?.id == run.id else { continue }
+                switch half {
+                case .review(.success(let result)):
+                    evaluation?.review = .done(result)
+                case .review(.failure(let error)):
+                    if error is CancellationError { continue }
+                    evaluation?.review = .failed(Self.evaluationMessage(for: error))
+                case .facts(.success(let (result, tool))):
+                    evaluation?.facts = .done(result)
+                    rememberWebSearchTool(tool, for: modelID)
+                case .facts(.failure(let error)):
+                    if error is CancellationError { continue }
+                    evaluation?.facts = .failed(Self.evaluationMessage(for: error))
+                }
+                await refreshEvaluationStatuses()
+            }
         }
+    }
+
+    private func rememberWebSearchTool(_ tool: String?, for modelID: String) {
+        guard let tool, var settings = appState.aiSettings, settings.knownWebSearchTool(for: modelID) != tool else { return }
+        settings.rememberWebSearchTool(tool, for: modelID)
+        appState.aiSettings = settings
+        try? AISettingsStore.save(settings)
+    }
+
+    /// Asks the editor which findings can still be applied, so changed text disables its Apply.
+    @MainActor
+    private func refreshEvaluationStatuses() async {
+        guard let run = evaluation, let webView = editorWebView else { return }
+        let items = run.applicable
+        guard !items.isEmpty, let json = Self.jsonLiteral(items.map(\.original)) else { return }
+        let statuses = try? await webView.evaluateJavaScript("window.findingStatus(\(json))") as? [String]
+        guard let statuses, evaluation?.id == run.id else { return }
+        evaluation?.updateStatuses(ids: items.map(\.id), statuses: statuses)
+    }
+
+    @MainActor
+    private func applyFindings(_ ids: [UUID]) async {
+        guard let run = evaluation, let webView = editorWebView else { return }
+        for id in ids {
+            guard let item = run.applicable.first(where: { $0.id == id }),
+                  let original = Self.jsonLiteral(item.original),
+                  let replacement = Self.jsonLiteral(item.replacement) else { continue }
+            let status = try? await webView.evaluateJavaScript(
+                "window.applyEvaluationFinding(\(original), \(replacement))") as? String
+            guard evaluation?.id == run.id else { return }
+            if status == "code-view" {
+                presentToast("Switch out of code view to apply changes.", style: .info)
+                return
+            }
+            if status == "applied" {
+                evaluation?.markApplied(id)
+            } else if let status {
+                evaluation?.updateStatuses(ids: [id], statuses: [status])
+            }
+        }
+        await refreshEvaluationStatuses()
     }
 
     // MARK: - AI selection handling
@@ -1604,56 +1711,58 @@ public struct PostEditorView: View {
         bannerError = bannerError?.clearing(.ai)
 
         // 1. Tell JS to capture the selection and show the loading placeholder.
-        //    JS returns { text, context, containerText, containerFrom, containerTo }.
-        let opInfo: (text: String, context: String?, containerText: String?, containerFrom: Int?, containerTo: Int?, busy: Bool) = await withCheckedContinuation { continuation in
+        //    JS returns { text, context, containerFrom, containerTo, html, before, after }.
+        struct Begun: Sendable {
+            var text = "", html = "", before = "", after = ""
+            var context: String?
+            var containerFrom: Int?
+            var containerTo: Int?
+            var busy = false
+        }
+        let begun: Begun = await withCheckedContinuation { continuation in
             webView.evaluateJavaScript("beginAIOperation()") { result, _ in
-                if let dict = result as? [String: Any] {
-                    continuation.resume(returning: (
-                        text: dict["text"] as? String ?? "",
-                        context: dict["context"] as? String,
-                        containerText: dict["containerText"] as? String,
-                        containerFrom: dict["containerFrom"] as? Int,
-                        containerTo: dict["containerTo"] as? Int,
-                        busy: dict["busy"] as? Bool == true
-                    ))
-                } else {
-                    continuation.resume(returning: ("", nil, nil, nil, nil, false))
-                }
+                let dict = result as? [String: Any] ?? [:]
+                continuation.resume(returning: Begun(
+                    text: dict["text"] as? String ?? "", html: dict["html"] as? String ?? "",
+                    before: dict["before"] as? String ?? "", after: dict["after"] as? String ?? "",
+                    context: dict["context"] as? String, containerFrom: dict["containerFrom"] as? Int,
+                    containerTo: dict["containerTo"] as? Int, busy: dict["busy"] as? Bool == true))
             }
         }
-        if opInfo.busy { presentToast(Self.aiBusyMessage, style: .info) }
-        guard !opInfo.text.isEmpty else { return }
+        if begun.busy { presentToast(Self.aiBusyMessage, style: .info) }
+        guard !begun.text.isEmpty, !begun.html.isEmpty else { return }
+        let context = begun.context
+        let containerFrom = begun.containerFrom
+        let containerTo = begun.containerTo
 
-        // 2. Determine if this operation needs to replace the whole container
-        let isList = opInfo.context == "bulletList" || opInfo.context == "orderedList"
-        let isTable = opInfo.context == "table"
-        let needsContainerReplace = (isList || isTable) && (
-            operation == .convertToTable || operation == .convertToList ||
-            operation == .makeLonger || operation == .makeShorter
-        )
-
-        // For container operations, send the full container content to Claude
-        let promptText = needsContainerReplace ? (opInfo.containerText ?? opInfo.text) : opInfo.text
+        // 2. Inside a list or table the editor sent the whole container, and the result replaces it.
+        let needsContainerReplace = context == "bulletList" || context == "orderedList" || context == "table"
+        let selection = AISelection(html: begun.html, plainText: begun.text, before: begun.before,
+                                    after: begun.after, title: title, context: context)
 
         // 3. Call Claude (selection operations never use web search — faster + cheaper)
         let client = AnthropicClient(apiKey: settings.apiKey)
-        let system = AIPromptBuilder.systemPrompt(styleGuide: settings.styleGuide)
-        let userMsg = AIPromptBuilder.operationPrompt(selectedHTML: promptText, operation: operation, context: opInfo.context)
+        let postID = loadedItem?.id
+        // A section switch rebuilds this view, so check the selection as well as loadedItem.
+        func stillOnPost() -> Bool {
+            !Task.isCancelled && loadedItem?.id == postID && appState.selectedItem?.id == postID
+        }
 
         do {
-            let resultHTML = AIPromptBuilder.cleanOperationResult(try await client.complete(
-                userMessage: userMsg,
-                systemPrompt: system,
-                useWebSearch: false
-            ).text)
-            guard !Task.isCancelled else { return }
+            let reply = try await client.complete(
+                userMessage: SelectionPrompts.user(selection, operation: operation),
+                systemPrompt: SelectionPrompts.system(styleGuide: settings.styleGuide),
+                options: CompletionOptions(settings: settings, jsonSchema: SelectionPrompts.schema)
+            )
+            let resultHTML = AIPromptBuilder.cleanOperationResult(try SelectionPrompts.parse(reply.text))
+            guard stillOnPost() else { return }
             // 4. Show result in editor — JS replaces loading placeholder with result and selects it.
             guard let jsonData = try? JSONEncoder().encode(resultHTML),
                   let jsonStr = String(data: jsonData, encoding: .utf8) else { return }
 
             // Pass container boundaries for structural transforms so JS replaces the whole container
             let showArgs: String
-            if needsContainerReplace, let cf = opInfo.containerFrom, let ct = opInfo.containerTo {
+            if needsContainerReplace, let cf = containerFrom, let ct = containerTo {
                 showArgs = "\(jsonStr), \(cf), \(ct)"
             } else {
                 showArgs = jsonStr

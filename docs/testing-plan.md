@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-05 — 682 Swift tests + 1,548 JS tests (1,547 pass, 1 skipped), no failures._
+_Last updated: 2026-10-08 — 712 Swift tests + 1,584 JS tests (1,583 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,26 +16,27 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (682 tests)
+1. **Swift tests** — `swift test` (712 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (108 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (66 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (273 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (275 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (276 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
-11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (41 tests — live Tiptap editor in jsdom)
-12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (57 tests — live Tiptap editor in jsdom)
+11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (45 tests — live Tiptap editor in jsdom)
+12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
 13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (59 tests — checked by WordPress's own block validator)
-18. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (67 tests — checked by WordPress's own block validator)
+18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (21 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
+19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the eighteen passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nineteen passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -111,9 +112,9 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (682 tests, 44 suites)
+## Swift test suite (712 tests, 47 suites)
 
-Two files hold more than one suite: `AIPromptBuilderTests.swift` holds three (`AIPromptBuilderTests`, `EvaluationParserTests`, `EvaluatePostPromptTests`) that the table below groups into one row, and `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
+One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
 Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -132,8 +133,8 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 15 | Autosave CRUD, one-per-post, keyed by site, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 6 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, autosaves rebuilt with a site key, drafts and autosaves independent |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 88 | `parseGenerateResponse` edge cases (incl. `<cite>` wrapper stripped while inner citation text is preserved, even across a nested inline tag), system prompt, all prompt builders (incl. list/table context with correct `<ul>`/`<ol>` tags, and Make Longer/Shorter word targets tiered at 40 and 150 words), evaluation ANCHOR parsing, table cells, `<summary>` and `<dt>`/`<dd>` read as block breaks in the evaluation text, style guide injection, typographic entity decoding, content exclusion filters, phantom punctuation-spacing suppression, `cleanOperationResult` fence stripping, and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
-| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 26 | `verifyKey` (Models API request, 401 as `invalidKey`), request headers, web search, multi-block joining, error handling (incl. optional `stop_reason` decoding and `AnthropicError.networkError` wrapping) |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 26 | Generate Post's system prompt (date, the no-invention rule, guide and search paragraphs only when they apply), user prompt and JSON schema; `parseGenerated` (citation wrappers stripped with their words kept, space before punctuation closed, tables normalized, empty or truncated replies rejected); the style-guide sample reduction, header and prompt; `cleanOperationResult`; and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 56 | `requestBody` for every row of the reasoning table (never `thinking: disabled`), `max_tokens` budgets and cap, JSON schema in `output_config.format` sent with `properties` in `required` order, direct web search; web search version fallback on the API's real rejection text; `pause_turn` continuations; refusal; the 600-second timeout; `listModels` (capabilities, newest first, paging, 401); `verifyKey`, headers, text joining and error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
@@ -146,7 +147,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
 | 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 8 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact |
-| 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerateResponse`/`cleanOperationResult` make of its `.raw.txt` — the Swift half of the AI output validity suite |
+| 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerated` or `SelectionPrompts.parse` + `cleanOperationResult` make of its JSON `.raw.txt` — the Swift half of the AI output validity suite |
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
@@ -163,6 +164,11 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
 | 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
+| 43 | `AISettingsTests` | `AISettingsTests.swift` | 20 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
+| 44 | `EvaluationPromptsTests` | `EvaluationPromptsTests.swift` | 18 | `postText` markers for headings, list items, table rows, captions and footnotes, code and embeds left out, no phantom spaces, every line findable in the editor's text (`Scripts/fixtures/evaluate/`); the review and fact-check prompts (date, publish line, guide paragraph only with a guide); the schemas; parsing (no-op findings dropped, claims counted) |
+| 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 12 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, the counts line and tab labels |
+| 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 7 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
+| 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 5 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
 
 ---
 
@@ -538,198 +544,110 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (88 tests)
+### 12. AI — `AIPromptBuilderTests` (26 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
-Pure function tests — no network, no async. `parseGenerateResponse` has been patched twice for real production bugs; these tests pin every edge case.
-
-#### `parseGenerateResponse` (14 tests)
+Pure function tests — no network, no async. Generate Post's prompt text is copied from `docs/superpowers/specs/2026-10-07-ai-prompts-design.md`; the style-guide prompt and sample reduction must stay in step with `Scripts/style-guide-probe.py`.
 
 | Test | What it checks |
 |---|---|
-| `happyPathParsesCorrectly` | Standard `TITLE:…CONTENT:…` structure |
-| `markdownFencesStripped` | ` ```html … ``` ` fences removed before parsing |
-| `webSearchPreambleGluedDirectlyToTitle` | Preamble text joined to `TITLE:` without newline still parsed (uses `range(of:)`, not `hasPrefix`) |
-| `caseInsensitiveMarkers` | `title:`/`content:` lowercase → still parsed |
-| `missingTitleMarkerReturnsNil` | No `TITLE:` → `nil` |
-| `missingContentMarkerReturnsNil` | No `CONTENT:` → `nil` |
-| `emptyTitleReturnsNil` | `TITLE:` with no text → `nil` |
-| `emptyContentReturnsNil` | `CONTENT:` with no text → `nil` |
-| `titleIsTrimmed` | Leading/trailing whitespace stripped from title |
-| `contentIsTrimmerd` | Content trimmed via `whitespacesAndNewlines` |
-| `contentMarkerScopedAfterTitleMarker` | Stray `CONTENT:` before `TITLE:` doesn't fool parser |
-| `citeTagWrapperStrippedButTextKept` | `<cite index="…">…</cite>` wrapper from web search citations is removed but the sentence inside it is kept in the generated HTML |
-| `citeTagWithNestedInlineTagStillStripped` | A citation wrapping a nested inline tag (e.g. `<a>`) still has its `<cite>` wrapper stripped — regression guard for the `[^<]*` capture group that used to fail to match (and therefore fail to strip) any citation containing markup |
-| `emptyCiteTagRemovedEntirely` | An empty `<cite>` tag is removed with no leftover text |
+| `generateSystemHasDateAndNoInventionRule` | Generate system has date and no invention rule |
+| `withoutSearchOmitsSearchParagraphAndLinkSentence` | Without search omits search paragraph and link sentence |
+| `generateSystemWithoutGuideOmitsTheVoiceParagraph` | Generate system without guide omits the voice paragraph |
+| `generatePromptNamesHTMLElementsAndJSONFields` | Generate prompt names htmlelements and jsonfields |
+| `parseGeneratedReadsTheFields` | Parse generated reads the fields |
+| `parseGeneratedClosesSpaceBeforePunctuation` | Parse generated closes space before punctuation |
+| `parseGeneratedStripsCiteTagsAndNormalizesTables` | Parse generated strips cite tags and normalizes tables |
+| `parseGeneratedRejectsAnEmptyPostOrTruncatedJSON` | Parse generated rejects an empty post or truncated JSON |
+| `nonTableInlineStylesLeftAlone` | Non table inline styles left alone |
+| `tableWithOwnClassKeepsIt` | Table with own class keeps it |
+| `cleanOperationResultTrims` | Clean operation result trims |
+| `cleanOperationResultNormalizesTables` | Clean operation result normalizes tables |
+| `tableWithBothStyleAndClassKeepsOnlyTheClass` | Table with both style and class keeps only the class |
+| `styleIsStrippedFromEveryTableTagIncludingCaptionAndFoot` | Style is stripped from every table tag including caption and foot |
+| `strippingStyleLeavesTheOtherAttributesAndText` | Stripping style leaves the other attributes and text |
+| `singleQuotedStylesAreStrippedToo` | Single quoted styles are stripped too |
+| `multipleTablesEachGetTheDefaultLayoutClass` | Multiple tables each get the default layout class |
+| `reduceSampleKeepsStructuralTagsWithoutAttributes` | Reduce sample keeps structural tags without attributes |
+| `reduceSampleTurnsImagesIntoMarkersAndKeepsCaptions` | Reduce sample turns images into markers and keeps captions |
+| `reduceSampleRemovesOtherTagsButKeepsText` | Reduce sample removes other tags but keeps text |
+| `reduceSampleKeepsWordsApartAcrossBreaksAndRemovedBlocks` | Reduce sample keeps words apart across breaks and removed blocks |
+| `reduceSampleDropsEmptyElements` | Reduce sample drops empty elements |
+| `reduceSampleDecodesEntitiesButKeepsMarkupEncoded` | Reduce sample decodes entities but keeps markup encoded |
+| `sampleHeaderHasTitleAndFormattedCount` | Sample header has title and formatted count |
+| `styleGuidePromptHasTheEightLabelsInOrder` | Style guide prompt has the eight labels in order |
+| `styleGuidePromptNumbersSamplesWithTitleAndCount` | Style guide prompt numbers samples with title and count |
 
-#### `systemPrompt` (3 tests)
-
-| Test | What it checks |
-|---|---|
-| `systemPromptWithoutStyleGuide` | `nil` guide → no style block |
-| `systemPromptWithEmptyStyleGuideExcludesStyleBlock` | Empty string guide → same as nil |
-| `systemPromptWithStyleGuideIncludesIt` | Non-empty guide appended to prompt |
-
-#### `generatePostPrompt` & `operationPrompt` (21 tests)
-
-| Test | What it checks |
-|---|---|
-| `generatePostPromptNamesHTMLElements` | Prompt contains `<h2>`, `<h3>`, `<p>`, `<ul>`, `<li>` (prevents headings-only-p regression) |
-| `generatePostPromptIncludesUserPrompt` | User's prompt string embedded |
-| `operationPromptIncludesSelectedHTML` | Selected HTML embedded after "Content to transform:" |
-| `makeLongerInstructionPresent` | "longer" in `makeLonger` operation prompt |
-| `makeShorterInstructionPresent` | "shorter" in `makeShorter` operation prompt |
-| `convertToTableMentionsTableTags` | Table-related tags in `convertToTable` prompt |
-| `convertToListMentionsListTags` | List-related tags in `convertToList` prompt |
-| `makeLongerWithBulletListContextUsesUlTag` | `context: "bulletList"` → list-specific expansion prompt with `<ul>` |
-| `makeLongerWithOrderedListContextUsesOlTag` | `context: "orderedList"` → list-specific expansion prompt with `<ol>` (not `<ul>`) |
-| `makeShorterWithOrderedListContextUsesOlTag` | `context: "orderedList"` → list-specific condensation prompt with `<ol>` |
-| `makeShorterWithBulletListContextUsesUlTag` | `context: "bulletList"` → list-specific condensation prompt with `<ul>` |
-| `makeLongerWithTableContextUsesTableInstruction` | `context: "table"` → table cell expansion prompt |
-| `makeShorterWithTableContextUsesTableInstruction` | `context: "table"` → table cell condensation prompt |
-| `operationPromptWithNilContextUsesDefaultInstruction` | `context: nil` → default "expand this content" (not list/table-specific) |
-| `makeLongerStatesWordTargetFromSelection` | A 5-word selection gets "from 5 words to about 20 words", a ceiling of 25, and an instruction to keep the same number of paragraphs |
-| `makeLongerScalesDownForLongerSelections` | 100 words → about 200 (ceiling 250); 200 words → about 300 (ceiling 400) |
-| `makeShorterScalesUpForLongerSelections` | 10 words → about 7 (ceiling 8); 100 → about 50 (ceiling 60); 200 → about 80 (ceiling 100), keeping the paragraph count |
-| `lengthTiersSwitchAtFortyAndAfterOneHundredFiftyWords` | Make Longer/Shorter word targets at 39, 40, 150 and 151 words: under 40 words longer is ×4 and shorter ×0.7; 40–150 is ×2 and ×0.5; over 150 is ×1.5 and ×0.4, each with a hard ceiling |
-| `makeShorterNeverTargetsZeroWords` | A one-word selection gets a Make Shorter target of 1 word, not 0 |
-| `wordTargetCountsWordsAcrossParagraphBreaks` | Words split by `\n` and `\n\n` are counted separately (4 words, not 2) |
-| `listAndTableContextsGetNoWordTarget` | `bulletList`, `orderedList` and `table` contexts get no word target for either operation |
-
-#### `styleGuideGenerationPrompt` (3 tests)
-
-| Test | What it checks |
-|---|---|
-| `styleGuidePromptNumbersSamples` | `--- Sample 1 ---` / `--- Sample 2 ---` numbering |
-| `styleGuidePromptWithEmptySamples` | 0 samples → no crash, empty content |
-| `styleGuidePromptWordLimit` | 150-word limit mentioned in prompt |
-
-#### `parseEvaluationResponse` (15 tests)
-
-| Test | What it checks |
-|---|---|
-| `happyPathTwoFindings` | Standard format parsed to `EvaluationResult` with 2 findings |
-| `emptyFindingsReturnsResultWithNoFindings` | Empty `FINDINGS:` block → result with 0 findings, not nil |
-| `missingSummaryMarkerReturnsNil` | No `SUMMARY:` → `nil` |
-| `missingFindingsMarkerReturnsNil` | No `FINDINGS:` → `nil` |
-| `emptySummaryReturnsNil` | `SUMMARY:` with no text → `nil` |
-| `caseInsensitiveMarkers` | `summary:` / `findings:` lowercase accepted |
-| `findingWithoutSuggestionHasNilSuggestion` | Omitting `SUGGESTION` field → `finding.suggestion == nil` |
-| `findingWithEmptySuggestionFieldHasNilSuggestion` | `SUGGESTION:` with no text → `nil` |
-| `nonQuoteLinesBetweenFindingsAreSkipped` | Non-`QUOTE:` lines between findings ignored |
-| `findingsMarkerScopedAfterSummaryMarker` | Stray `FINDINGS:` before `SUMMARY:` not used as real marker |
-| `anchorFieldIsParsedIntoFinding` | Full `ANCHOR:` field parsed into `finding.anchor` |
-| `anchorFieldIsNilWhenOmitted` | No `ANCHOR:` field → `finding.anchor == nil` |
-| `anchorFieldStripsOuterQuotes` | Surrounding `"` stripped from ANCHOR value |
-| `anchorFieldEmptyStringBecomesNil` | `ANCHOR: ""` → `nil` (not empty string) |
-| `anchorFieldCaseInsensitivePrefix` | Lowercase `anchor:` accepted |
-
-#### `evaluatePostPrompt` (19 tests)
-
-| Test | What it checks |
-|---|---|
-| `promptIncludesTitle` | Post title embedded in prompt |
-| `promptStripsHTMLTags` | HTML removed, text content preserved |
-| `promptKeepsBlockBoundariesAsParagraphBreaks` | Headings, paragraphs and list items reach Claude separated by blank lines, not run together |
-| `promptKeepsTableCellsAndDetailsApartFromTheNextBlock` | `</td>`, `</th>`, `</summary>`, `</dt>` and `</dd>` are block breaks, so table cells, a `<details>` summary and definition terms reach Claude on their own lines rather than run together |
-| `promptDecodesHTMLEntities` | `&amp;` / `&lt;` / `&gt;` decoded |
-| `promptDecodesSmartQuoteEntities` | `&ldquo;` / `&rdquo;` / `&rsquo;` decoded to Unicode typography chars |
-| `promptDecodesTypographicDashAndEllipsis` | `&ndash;` / `&mdash;` / `&hellip;` decoded |
-| `promptNamesAllFiveCategories` | Grammar, Clarity, Readability, Wordiness, Tone all named |
-| `promptIncludesSummaryAndFindingsFormatInstructions` | `SUMMARY:` / `FINDINGS:` / `QUOTE:` / `ISSUE:` format spec present |
-| `promptIncludesAnchorFormatSpec` | `ANCHOR:` format instruction present |
-| `promptIncludesStyleGuideWhenProvided` | Non-nil guide embedded with "established writing style" framing |
-| `promptOmitsStyleGuideBlockWhenNil` | `nil` guide → no style block in prompt |
-| `promptOmitsStyleGuideBlockWhenEmpty` | Empty string guide → no style block |
-| `promptExcludesImageCaptionText` | Image caption text excluded from the content sent to Claude |
-| `promptExcludesCodeBlockContent` | Code block content excluded from the content sent to Claude |
-| `promptExcludesEmbedFigureContent` | Embed figure content excluded from the content sent to Claude |
-| `promptExcludesFootnoteMarkersAndBackrefs` | Footnote markers and backref links excluded from content sent to Claude |
-| `promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags` | Inline tags (`<a>`) followed by commas don't leave phantom spaces in stripped text |
-| `promptStripsSpaceBeforeClosingPunctuation` | Phantom spaces before `;`, `)`, `!`, etc. from inline tag stripping are removed |
-
-#### `cleanOperationResult` & `normalizeAITables` (13 tests)
-
-Claude writes tables with inline styles and no class; Gutenberg's `core/table` draws neither, so the block fails validation the moment it is saved. These pin the cleanup that runs on every AI result before it reaches the editor.
-
-| Test | What it checks |
-|---|---|
-| `cleanOperationResultStripsFencesAndTrims` | ` ```html … ``` ` fences removed and the result trimmed |
-| `cleanOperationResultStripsABareFence` | An unlabelled ` ``` ` fence removed too |
-| `cleanOperationResultLeavesUnfencedHTMLAlone` | HTML with no fence passes through unchanged |
-| `cleanOperationResultNormalizesTables` | A right-click rewrite goes through the same table cleanup a generated post does |
-| `tableInlineStylesStripped` | `style` removed from `<table>` |
-| `styleIsStrippedFromEveryTableTagIncludingCaptionAndFoot` | …and from `<thead>`, `<tbody>`, `<tfoot>`, `<tr>`, `<th>`, `<td>`, `<caption>` |
-| `singleQuotedStylesAreStrippedToo` | `style='…'` stripped as well as `style="…"` |
-| `strippingStyleLeavesTheOtherAttributesAndText` | Only the `style` attribute goes; everything else on the tag survives |
-| `nonTableInlineStylesLeftAlone` | A `style` outside a table is untouched — this pass is not a general style stripper |
-| `tableWithOwnClassKeepsIt` | A `<table>` that already has a class keeps it rather than being overwritten |
-| `tableWithBothStyleAndClassKeepsOnlyTheClass` | Style stripped, existing class kept, no second class added |
-| `multipleTablesEachGetTheDefaultLayoutClass` | Every classless table in the result gets `has-fixed-layout`, not just the first |
-| `generatePromptForbidsInlineStyles` | The prompt itself tells Claude not to write inline styles, so the cleanup is a backstop rather than the only defence |
-
-The tag match ends at a word boundary that excludes `-` and word characters (`(?![-\w])`). Without it, `table\b` matched the `table` in `<table-of-contents style="…">` and rewrote it into `<table class="has-fixed-layout"-of-contents>` — a custom element mangled into invalid markup.
+The table tag match ends at a word boundary that excludes `-` and word characters (`(?![-\w])`). Without it, `table\b` matched the `table` in `<table-of-contents style="…">` and rewrote it into `<table class="has-fixed-layout"-of-contents>` — a custom element mangled into invalid markup.
 
 ---
 
-### 13. AI — `AnthropicClientTests` (26 tests)
+### 13. AI — `AnthropicClientTests` (56 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
-Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`
+Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`, `Tests/QuillTests/Support/AIModelFixtures.swift` (the Models API values recorded on 2026-10-07)
 
-`@Suite(.serialized)` — uses its own `AnthropicMockURLProtocol` subclass with a separate `static var requestHandler` to avoid races with `WordPressClientTests`' `MockURLProtocol`. Body reconstruction: URLSession clears `httpBody` in URLProtocol; `AnthropicMockURLProtocol.startLoading()` reads the body from `httpBodyStream`.
-
-#### Request headers (3 tests)
+`@Suite(.serialized)` — uses its own `AnthropicMockURLProtocol` subclass with a separate `static var requestHandler` to avoid races with `WordPressClientTests`' `MockURLProtocol`. Body reconstruction: URLSession clears `httpBody` in URLProtocol; `AnthropicMockURLProtocol.startLoading()` reads the body from `httpBodyStream`. The web search rejection fixture is the exact 400 the API returned on 2026-10-07 for an unknown tool type.
 
 | Test | What it checks |
 |---|---|
-| `requestHasApiKeyHeader` | `x-api-key` header set |
-| `requestHasVersionHeader` | `anthropic-version: 2023-06-01` |
-| `requestHasContentTypeHeader` | `content-type: application/json` |
-
-#### Beta headers & web search (3 tests)
-
-| Test | What it checks |
-|---|---|
-| `noBetaHeaderSent` | No `anthropic-beta` header sent (prompt caching and web search are GA, no longer need beta header) |
-| `toolsAbsentWhenWebSearchOff` | `tools` key absent from body |
-| `toolsPresentWhenWebSearchOn` | `tools` array contains `web_search_20250305` |
-
-#### Prompt caching (1 test)
-
-| Test | What it checks |
-|---|---|
-| `systemBlockHasCacheControlEphemeral` | System block has `cache_control: {"type":"ephemeral"}` |
-
-#### Response handling (8 tests)
-
-| Test | What it checks |
-|---|---|
-| `singleTextBlockReturnsText` | Single `type:"text"` block → its text |
-| `multipleTextBlocksAreJoinedInOrder` | Multiple text blocks → joined in order (web-search fragmentation gotcha) |
-| `nonTextBlocksExcludedFromJoin` | `server_tool_use` and `web_search_tool_result` blocks excluded |
-| `allNonTextBlocksThrowsNoTextContent` | All non-text blocks → `AnthropicError.noTextContent` |
-| `truncatedTrueWhenStopReasonIsMaxTokens` | `stop_reason: "max_tokens"` → `truncated: true` |
-| `truncatedFalseWhenStopReasonIsEndTurn` | `stop_reason: "end_turn"` → `truncated: false` |
-| `missingStopReasonFieldDoesNotThrowAndIsNotTruncated` | Response JSON omitting `stop_reason` entirely still decodes (field is `Optional`) and reports `truncated: false` |
-| `nonOkStatusThrowsHttpError` | Non-200 → `AnthropicError.httpError(code, body)` |
-
-#### Error handling (6 tests)
-
-| Test | What it checks |
-|---|---|
-| `httpErrorPreservesBodyString` | Error body string preserved |
-| `malformedJsonThrows` | Garbage JSON → decoding throws |
-| `networkFailureThrows` | `URLError` from mock → error surfaced |
-| `networkFailureWrapsAsAnthropicNetworkError` | Any transport error from `session.data(for:)` is wrapped as `AnthropicError.networkError`, not left as a raw `URLError` |
-| `networkErrorPassesThroughUnrecognizedMessage` | `errorDescription` passes through the underlying error's message verbatim when it isn't a connectivity `URLError` |
-| `verifyKeyRequestsModelsWithKeyAndVersion` | `verifyKey` sends `GET /v1/models?limit=1` with the key and version headers |
-| `verifyKeySucceedsOn200` | A 200 means the key works |
-| `verifyKeyThrowsInvalidKeyOn401` | A 401 throws `invalidKey` |
-| `verifyKeyThrowsHTTPErrorOn500` | Any other failure status throws `httpError` with the body |
-| `verifyKeyWrapsTransportFailureAsNetworkError` | A transport failure throws `networkError` |
-| `invalidKeyMessage` | `invalidKey` reads "Anthropic didn't accept this key." |
+| `adaptiveModelDefault` | Adaptive model default |
+| `adaptiveLevel` | Adaptive level |
+| `enabledOnlyOff` | Enabled only off |
+| `enabledOnlyMedium` | Enabled only medium |
+| `enabledOnlyLowAndHighBudgets` | Enabled only low and high budgets |
+| `requestForUnknownModelOmitsThinking` | Request for unknown model omits thinking |
+| `neverSendsDisabledThinking` | Never sends disabled thinking |
+| `maxTokensCappedAtModelLimit` | Max tokens capped at model limit |
+| `jsonSchemaGoesInOutputConfigFormat` | Json schema goes in output config format |
+| `webSearchToolIsDirect` | Web search tool is direct |
+| `systemAndUserMessage` | System and user message |
+| `optionsFromSettingsUseResolvedModelAndNormalizedReasoning` | Options from settings use resolved model and normalized reasoning |
+| `refusalThrowsRefused` | Refusal throws refused |
+| `textIsJoinedFromTextBlocksOnly` | Text is joined from text blocks only |
+| `sharedSessionTimeoutIs600` | Shared session timeout is600 |
+| `requestHasApiKeyHeader` | Request has api key header |
+| `requestHasVersionHeader` | Request has version header |
+| `requestHasContentTypeHeader` | Request has content type header |
+| `noBetaHeaderSent` | No beta header sent |
+| `toolsAbsentWhenWebSearchOff` | Tools absent when web search off |
+| `toolsPresentWhenWebSearchOn` | Tools present when web search on |
+| `systemBlockHasCacheControlEphemeral` | System block has cache control ephemeral |
+| `singleTextBlockReturnsText` | Single text block returns text |
+| `multipleTextBlocksAreJoinedInOrder` | Multiple text blocks are joined in order |
+| `nonTextBlocksExcludedFromJoin` | Non text blocks excluded from join |
+| `allNonTextBlocksThrowsNoTextContent` | All non text blocks throws no text content |
+| `truncatedTrueWhenStopReasonIsMaxTokens` | Truncated true when stop reason is max tokens |
+| `cutOffStructuredReplyThrowsCutOffWithTheTool` | A JSON reply cut off at `max_tokens` throws `cutOff`, carrying the accepted web search tool |
+| `thinkingThatUsesTheWholeBudgetThrowsCutOff` | Thinking that uses the whole budget throws `cutOff`, not "no text content" |
+| `truncatedFalseWhenStopReasonIsEndTurn` | Truncated false when stop reason is end turn |
+| `missingStopReasonFieldDoesNotThrowAndIsNotTruncated` | Missing stop reason field does not throw and is not truncated |
+| `nonOkStatusThrowsHttpError` | Non ok status throws http error |
+| `httpErrorPreservesBodyString` | Http error preserves body string |
+| `malformedJsonThrows` | Malformed json throws |
+| `networkFailureThrows` | Network failure throws |
+| `networkFailureWrapsAsAnthropicNetworkError` | Network failure wraps as anthropic network error |
+| `networkErrorPassesThroughUnrecognizedMessage` | Network error passes through unrecognized message |
+| `verifyKeyRequestsModelsWithKeyAndVersion` | Verify key requests models with key and version |
+| `verifyKeySucceedsOn200` | Verify key succeeds on200 |
+| `verifyKeyThrowsInvalidKeyOn401` | Verify key throws invalid key on401 |
+| `verifyKeyThrowsHTTPErrorOn500` | Verify key throws httperror on500 |
+| `verifyKeyWrapsTransportFailureAsNetworkError` | Verify key wraps transport failure as network error |
+| `listModelsDecodesCapabilities` | List models decodes capabilities |
+| `listModelsSortsNewestFirst` | List models sorts newest first |
+| `listModelsFollowsPaging` | List models follows paging |
+| `listModelsInvalidKeyThrowsInvalidKey` | List models invalid key throws invalid key |
+| `triesNewestVersionFirst` | Tries newest version first |
+| `matchingRejectionRetriesNextVersion` | Matching rejection retries next version |
+| `unrelated400IsNotRetried` | Unrelated400 is not retried |
+| `knownVersionIsUsedDirectly` | Known version is used directly |
+| `noToolWithoutWebSearch` | No tool without web search |
+| `pauseTurnContinuesAndJoinsText` | Pause turn continues and joins text |
+| `pauseTurnStopsAfterThreeContinuations` | Pause turn stops after three continuations |
+| `structuredOutputAcrossPauseTurnParsesLastText` | Structured output across pause turn parses last text |
+| `schemaPropertiesAreSentInRequiredOrder` | Schema properties are sent in required order |
+| `invalidKeyMessage` | Invalid key message |
 
 ---
 
@@ -1319,7 +1237,124 @@ File: `Tests/QuillTests/FeaturedImageSectionTests.swift`
 | `twoDropsOfTheSameFileGetSeparateFolders` | Each drop gets its own folder |
 | `providerWithoutAnImageYieldsNil` | A provider holding no image returns `nil` instead of hanging |
 
-## JS block parser tests (67 tests)
+### 43. AI — `AISettingsTests` (20 tests)
+
+File: `Tests/QuillTests/AISettingsTests.swift`
+
+Pure tests of `AISettings` and its model rules; fixtures from `Support/AIModelFixtures.swift`.
+
+| Test | What it checks |
+|---|---|
+| `decodesSettingsWrittenBeforeModelSelection` | Decodes settings written before model selection |
+| `roundTripsNewFields` | Round trips new fields |
+| `defaultModelIsNewestHaiku` | Default model is newest haiku |
+| `defaultModelFallsBackWithoutAList` | Default model falls back without alist |
+| `defaultModelFallsBackWithoutAHaiku` | Default model falls back without ahaiku |
+| `pinnedModelWins` | Pinned model wins |
+| `adaptiveOptionsHaveNoOff` | Adaptive options have no off |
+| `enabledOnlyOptions` | Enabled only options |
+| `unknownModelOnlyOff` | Unknown model only off |
+| `switchingToEnabledOnlyResetsModelDefaultToOff` | Switching to enabled only resets model default to off |
+| `switchingToAdaptiveResetsOffToModelDefault` | Switching to adaptive resets off to model default |
+| `offeredReasoningIsKept` | Offered reasoning is kept |
+| `fetchKeepsPinnedModelThatStillExists` | Fetch keeps pinned model that still exists |
+| `fetchDropsMissingPinnedModelWithNotice` | Fetch drops missing pinned model with notice |
+| `fetchWithoutPinnedModelHasNoNotice` | Fetch without pinned model has no notice |
+| `fetchNormalizesReasoningForTheResolvedModel` | Fetch normalizes reasoning for the resolved model |
+| `rememberedWebSearchToolIsUsedWhileTheVersionListIsUnchanged` | A remembered tool is reused while `webSearchVersions` keeps its head |
+| `rememberedWebSearchToolIsIgnoredOnceANewerVersionShips` | A tool probed against an older list is ignored, so the newest version is tried |
+| `settingsWithoutAVersionsHeadReprobe` | Settings saved before the head was recorded probe again |
+| `rememberingAfterANewerVersionShipsDropsToolsProbedAgainstTheOldList` | Remembering after an update clears the old entries and records the new head |
+
+---
+
+### 44. AI — `EvaluationPromptsTests` (18 tests)
+
+File: `Tests/QuillTests/EvaluationPromptsTests.swift`
+
+Pure tests of Evaluate's two prompts. `postTextMatchesEditorText` reads `Scripts/fixtures/evaluate/`, whose editor-text file the JS evaluate suite keeps equal to the real editor.
+
+| Test | What it checks |
+|---|---|
+| `postTextMarksStructure` | Post text marks structure |
+| `postTextHeadingLevelsAndTableRows` | Post text heading levels and table rows |
+| `postTextMarksFootnotes` | Post text marks footnotes |
+| `postTextLeavesOutCodeAndEmbeds` | Post text leaves out code and embeds |
+| `postTextKeepsNonBreakingSpacesAsTheEditorDoes` | Source whitespace collapses but each `&nbsp;` stays a space, as ProseMirror keeps it, so a finding over a typed double space can be applied |
+| `postTextLeavesOutScriptsAndStyles` | A Custom HTML block's `<script>` and `<style>` text never reaches Claude |
+| `postTextJoinsInlineElementsWithoutPhantomSpaces` | Post text joins inline elements without phantom spaces |
+| `postTextKeepsTheAuthorsOwnSpaceBeforePunctuation` | Post text keeps the authors own space before punctuation |
+| `appendingFootnotesBuildsTheList` | Appending footnotes builds the list |
+| `postTextMatchesEditorText` | Post text matches editor text |
+| `reviewSystemHasDateAndGuide` | Review system has date and guide |
+| `reviewSystemOmitsGuideParagraphWithoutGuide` | Review system omits guide paragraph without guide |
+| `reviewPromptHasDateAndPublishLine` | Review prompt has date and publish line |
+| `factCheckPromptsCarryDateAndSearchLimit` | Fact check prompts carry date and search limit |
+| `reviewSchemaListsTheCategories` | Review schema lists the categories |
+| `parseReviewDropsNoOpItems` | Parse review drops no op items |
+| `parseFactCheckCountsClaims` | Parse fact check counts claims |
+| `parseReviewRejectsMalformedJSON` | Parse review rejects malformed JSON |
+
+---
+
+### 45. AI — `EvaluationStateTests` (12 tests)
+
+File: `Tests/QuillTests/EvaluationStateTests.swift`
+
+Pure tests of the state `EvaluationPanel` draws.
+
+| Test | What it checks |
+|---|---|
+| `startsLoadingBothHalves` | Starts loading both halves |
+| `unavailableFactsWhenSearchOff` | Unavailable facts when search off |
+| `factsNoticeNamesTheModelWhenItCantSearch` | With a model that can't search, Facts says to choose another model |
+| `factsFailureKeepsReview` | Facts failure keeps review |
+| `reviewFailureKeepsFacts` | Review failure keeps facts |
+| `appliedFindingIsMarked` | Applied finding is marked |
+| `statusesComeBackInOrder` | Statuses come back in order |
+| `factChecksWithoutReplacementAreNotApplicable` | Fact checks without replacement are not applicable |
+| `applyAllSkipsMissingAndAmbiguous` | Apply all skips missing and ambiguous |
+| `unknownStatusMeansNotYetChecked` | Unknown status means not yet checked |
+| `countsLineSummarizesTheTabs` | Counts line summarizes the tabs |
+| `tabLabelsHideZeroCounts` | Tab labels hide zero counts |
+
+---
+
+### 46. AI — `SelectionPromptsTests` (7 tests)
+
+File: `Tests/QuillTests/SelectionPromptsTests.swift`
+
+Pure tests of the right-click rewrite prompts.
+
+| Test | What it checks |
+|---|---|
+| `targetsMatchToday` | Targets match today |
+| `userPromptWrapsSelectionAndContext` | User prompt wraps selection and context |
+| `instructionPerOperation` | Instruction per operation |
+| `convertInstructionsNameTheirTags` | Convert instructions name their tags |
+| `listAndTableKeepContainerInstruction` | List and table keep container instruction |
+| `systemPromptHasGuideOrNot` | System prompt has guide or not |
+| `parseReadsHTMLField` | Parse reads htmlfield |
+
+---
+
+### 47. App — `AIModelLoadingTests` (5 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+`ContentView` runs `loadAIModelsIfNeeded` whenever the API key changes, so launch, an upgrade and onboarding all fill an empty list. Without one every AI call falls back to no thinking.
+
+| Test | What it checks |
+|---|---|
+| `fillsAnEmptyModelListAndSavesIt` | An empty list is fetched, applied and saved |
+| `leavesAnExistingListAlone` | No fetch when a list is cached |
+| `doesNothingWithoutAKey` | No fetch with an empty key |
+| `dropsTheListWhenTheKeyChangedDuringTheFetch` | A result for a key that's no longer current is neither applied nor saved |
+| `aFailedFetchChangesNothing` | A network failure leaves the settings as they were |
+
+---
+
+## JS block parser tests (69 tests)
 
 File: `Scripts/test-block-parser.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`
@@ -1347,7 +1382,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (92 tests)
+## JS block serializer tests (108 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1467,9 +1502,9 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS AI output validity tests (59 tests)
+## JS AI output validity tests (67 tests)
 
-`Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
+`Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its JSON `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
 | Test | What it checks |
 |------|----------------|
@@ -1477,7 +1512,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `a generated post saves as valid blocks` (5 tests) | No invalid, classic or unregistered block, and `serialize(parse(saved))` is byte-identical; heading levels 2–4 survive; no `style=` reaches the save; the table saves like a toolbar table; a second save is a no-op |
 | `markup Claude sometimes writes saves as valid blocks` (8 tests) | Validity for the six shapes that used to fail, then one test each that the heading `id` becomes `anchor`, a custom class becomes `className`, `start` reaches the delimiter, a code language class moves to the `<pre>`, a table `<caption>` and a figure caption land in `<figcaption>`, plus idempotency |
 | `everything else Claude might write saves as valid blocks` (3 tests) | Validity for h1–h6, legacy inline tags, entities, divs, bare text, mixed lists, three quote shapes, header-less / merged-cell / foot-section tables, `<pre>`, images, `<dl>`, `<details>`, sectioning tags; no listed phrase is lost; idempotency |
-| `a right-click AI result saves as valid blocks` (3 tests) | The same validity check for a rewritten table, list, and pair of paragraphs |
+| `a right-click AI result saves as valid blocks` (3 tests) | The same validity check for a rewritten table, list, and pair of paragraphs; a link Claude wrote without a stub is saved as plain text |
 | `a right-click AI result replaces only the selection` (21 tests) | This row covers twelve of them; the nine `↳` rows below cover the rest. A sentence selected at the start, middle or end of a paragraph is replaced in place and the paragraph is not split; a selection across bold text and one across two paragraphs keep the text outside them (exactly `Before one.` / `Merged.` / `After two.`); a two-paragraph result for the whole paragraph, or its start, middle or end, leaves no empty paragraph and no stray edge space, checked against the exact paragraph sequence; a second operation after a paragraph-splitting result still replaces the right text; Discard restores the original |
 | ↳ `the highlighted result is exactly the inserted text, and accepting puts the caret after it` | After `showAIResult` the selection covers `Short.` and nothing else; after Accept the selection is an empty caret directly after it |
 | ↳ `discarding keeps a space the author just typed at the end of a paragraph, and tells Swift` | Discard restores the ProseMirror doc exactly, trailing space included, and posts the restored HTML to Swift once |
@@ -1490,7 +1525,19 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 | `editing while Claude responds` (15 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text, and the view shows the label right before the dimmed (`.ai-pending`) text until Accept; typing at the collapsed caret lands after the result; a result for text deleted meanwhile is not inserted, and Discard then frees the next operation; Discard after the paragraph holding the result, or the whole document, was deleted brings none of it back; Discard after a table result that ends the post leaves no empty trailing paragraph; a list rewrite still replaces its own list, and only it, after text is typed above; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
 
-## JS fixture validity sweep (62 tests)
+| `a selection goes to Claude as reduced HTML with stubs` (8 tests) | `beginAIOperation` sends the selection as HTML with links as `<a id="L1">` and footnote markers as `<sup id="F1"></sup>` and no other attribute, a list as its whole container, and the rest of the paragraph plus one paragraph on each side as `before`/`after`; `showAIResult` restores link attributes and the marker by ID (its footnote body kept), unwraps an unknown or repeated stub, survives a dropped marker, and puts an inline result inside its paragraph without splitting it or losing the spaces around it |
+
+## JS evaluate tests (21 tests)
+
+`Scripts/test-editor-evaluate.js` loads the real `editor.html` in jsdom and drives Evaluate's Apply.
+
+| Test | What it checks |
+|------|----------------|
+| `applyEvaluationFinding` (19 tests) | Applies a correction inside emphasis and keeps the mark; returns `missing` after the text changed and `ambiguous` when it appears twice, changing nothing; keeps a link on unchanged words and across a link boundary; an empty replacement deletes; applies inside a caption and a table cell; one ⌘Z restores the original; matches through typographic quotes; never matches across two paragraphs; is case-sensitive; an inserted word lands between the right words; a footnote marker inside a changed run is kept; a non-breaking space matches a plain one; refuses with `code-view` while code view is open; matches whole words only; a line break matches a space and stays, including inside a changed phrase; a non-breaking space typed after a sentence matches two spaces |
+| `findingStatus` (1 test) | Reports `ok`, `missing` and `ambiguous` for a list of originals without editing |
+| `the editor search text` (1 test) | `_editorSearchText()` for `Scripts/fixtures/evaluate/post.html` equals `post.editor-text.txt`, the fixture `EvaluationPromptsTests.postTextMatchesEditorText` checks against |
+
+## JS fixture validity sweep (64 tests)
 
 `Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture, then the block-comment attributes WordPress parses from each.
 
@@ -1503,7 +1550,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS preservation tests (47 tests)
+## JS preservation tests (66 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1647,7 +1694,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (273 tests)
+## JS editor tests (275 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1931,7 +1978,7 @@ Footnote bodies now live in post meta rather than in `post_content` (`docs/footn
 | `no backref is written into the list — WordPress renders it from meta` | Writing one would show two arrows on the published page |
 | `marker id is idempotent across repeated transforms` | |
 
-### `extractFootnotes` (6 tests)
+### `extractFootnotes` (8 tests)
 
 The split that moves footnote bodies out of the content and into meta on save.
 
@@ -1943,6 +1990,8 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `strips a legacy backref anchor from the stored body` | Posts written before the move carry an inline backref that must not end up in meta |
 | `content with no footnotes is returned untouched` | |
 | `leaves the rest of the block comments intact` | |
+| `says whether a list was found` | `found` is what makes a list typed in code view authoritative for the meta |
+| `a list beside a delimiter leaves one delimiter` | A delimiter typed along with the list is not doubled |
 
 ### `inlineFootnotes` (11 tests)
 
@@ -2350,7 +2399,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 
 ---
 
-## JS gallery tests (70 tests)
+## JS gallery tests (73 tests)
 
 File: `Scripts/test-editor-gallery.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2905,7 +2954,7 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
-## JS passthrough tests (36 tests)
+## JS passthrough tests (38 tests)
 
 File: `Scripts/test-editor-passthrough.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2995,7 +3044,7 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ---
 
-## JS paste tests (56 tests)
+## JS paste tests (58 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3065,7 +3114,7 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 
 ---
 
-## JS paste source tests (58 tests)
+## JS paste source tests (59 tests)
 
 File: `Scripts/test-editor-paste-sources.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3089,7 +3138,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (41 tests)
+## JS footnotes tests (45 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3104,7 +3153,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 | `migrating a legacy inline list` | 3 | A post written before the move is left exactly as it was until it is edited; the first edit moves the bodies into meta and the list out of the content; the legacy backref anchor does not survive into the meta |
 | `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
 | `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |
-| `code view shows what will actually be saved` | 4 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards |
+| `code view shows what will actually be saved` | 8 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards; a list typed in code view sends its bodies to Swift (any ID, not only `fn-<uuid>`), a typed delimiter plus list gives one delimiter and no card, and code view shows the delimiter again afterwards |
 | `backref chrome in the editor` | 8 | The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
 | `link colour is defined once per theme` | 3 | Both themes declared as variables on `:root` and `body.dark`; prose links, footnote markers and backrefs all read the variable; nothing carries a hard-coded colour |
 
@@ -3138,7 +3187,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (232 tests)
+## JS block settings tests (235 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3460,22 +3509,39 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] With no API key configured: the pencil (✦) and checkmark buttons in the editor toolbar are hidden, and AI items are absent from the right-click context menu.
 - [ ] Add an API key in Settings → both toolbar buttons appear and AI context menu items appear, without relaunching the app.
 
+**Model and Reasoning (Settings)**
+- [ ] With no API key, the Model picker's caption reads "Enter an API key to load models."
+- [ ] Enter a key → the Model picker fills from the Models API; with no saved pick it selects the newest Haiku. Quit, go offline, relaunch → the saved list still shows and AI calls still use the saved model.
+- [ ] Pick an adaptive-thinking model → Reasoning has no "Off". Pick Haiku 4.5 → Reasoning offers Off, Low, Medium, High. The Reasoning caption reads "Higher levels think longer before answering. Responses take more time and cost more."
+- [ ] Pick a model that can't search → the Web Search caption reads "This model can't search the web." and the toggle is disabled.
+- [ ] Edit `ai_settings.json` so `model` names an ID the API no longer lists, reopen Settings with a key → the caption reads "Your saved model is no longer available. Switched to <name>." and the picker shows that model.
+- [ ] Change Model or Reasoning without pressing Save, close Settings → the AI features keep using the saved choice.
+- [ ] Complete onboarding with an API key, or upgrade with an `ai_settings.json` that has no `models`, and don't open Settings → `ai_settings.json` gains a `models` list within a few seconds of launch.
+
+**Style guide**
+- [ ] Choose Posts…, pick sample posts on varied topics, Save → a style guide is generated ("Analyzing writing style…", then "Saved."). Re-save with the same sample posts → no new Claude call is made. Change the site URL → sample posts and style guide are cleared.
+- [ ] Click Regenerate → a new guide is generated with the selected model, about 500 words, under the eight labels from "Voice and tone:" to "Avoid:". It describes habits, not topics, and quotes only words or short phrases.
+- [ ] Manual prompt check, a few cents per run: `python3 Scripts/style-guide-probe.py <model-id> [effort]` reads the API key, site credentials and sample post IDs from `~/Library/Application Support/Quill/`, fetches those posts, then prints the guide, its word count and stop reason, and how many of its quotes appear in two or more samples. Run it after changing `AIPromptBuilder.styleGuideGenerationPrompt` or the sample reduction; the probe's `PROMPT` must match the Swift prompt.
+
 **Generate content**
-- [ ] Click the pencil button on an empty editor → the generate dialog opens directly. On a non-empty editor → a "Replace Content?" confirmation appears first.
+- [ ] Click the pencil button on an empty editor → the generate dialog opens directly. On a non-empty editor → a "Replace Content?" confirmation appears first; on a post it says the excerpt is replaced too, on a page it doesn't.
   - [ ] ⌘↩ confirms from the keyboard; Escape or Cancel dismisses without generating.
-- [ ] Generate a post → the result includes a title and structured HTML with headings (not just plain paragraphs).
-- [ ] If Claude's response is cut off by the token limit → a "Post may be cut off" dialog appears. "Get Full Version" (⌘↩) retries for a complete result; "Use What I Have" accepts the truncated version.
-- [ ] Generate with web search enabled → the result is coherent and complete (not fragmented); citations don't break the output.
+- [ ] Generate a post → the title, the body (headings, paragraphs, lists as the description needs) and, on a post, the Excerpt field are filled. On a page the excerpt is not touched.
+- [ ] Generate with Web Search on, about something recent → facts taken from a search are linked inline to their sources; the result is coherent, not fragmented.
+- [ ] If the reply is cut off → a "Post was cut off" alert with only Get Full Version (⌘↩) and Cancel. Get Full Version retries with the larger limit. If that is cut off too → the sheet shows "The post was too long to finish. Try a shorter description."
 
 **Selection operations (right-click menu)**
-- [ ] Select some text, right-click → Make Longer, Make Shorter, To Table, and To List appear in the context menu. Each produces a correct result when clicked.
-- [ ] Deselect all text, right-click → the AI items are absent.
+- [ ] Select some text, right-click → Make Longer, Make Shorter, Rephrase, Fix Spelling & Grammar, then Convert to Table and Convert to List after a separator. Each produces a correct result when clicked.
+- [ ] Deselect all text, right-click → the AI items are absent. Right-click inside a footnote body → the AI items are absent.
 - [ ] The AI menu items are not hidden by macOS AutoFill or Services items that may be injected into the menu.
-- [ ] Select text inside a bullet list, right-click → Make Longer/Shorter appear. The result preserves the list format.
-- [ ] Click inside a table, select some cells, right-click → Make Longer/Shorter appear. The result preserves the table structure.
+- [ ] Select a sentence with a link, bold text and a footnote marker, then run each command → the link keeps its URL, the bold stays where its words stay, and the footnote marker and its body survive. Claude never invents a new link.
+- [ ] Fix Spelling & Grammar on a sentence with a typo → only the error changes. On a sentence with no errors → the text comes back unchanged.
+- [ ] Rephrase → the same meaning at about the same length, in the author's voice.
+- [ ] Select text inside a bullet list, right-click → every command keeps the list: same items, still a list. In a table → same rows and columns.
 - [ ] Drag-select in reverse (from bottom to top) → AI menu items still appear for selections ≥ 10 characters.
 - [ ] Make Shorter on one sentence in the middle of a paragraph → only that sentence changes; the sentences before and after it stay, and the paragraph is not split.
 - [ ] Make Longer on one sentence → the result is a few sentences in the same paragraph, not several new paragraphs. Make Shorter on a long paragraph → it stays one paragraph.
+- [ ] A request Claude refuses → the original text is restored and the banner reads "Claude declined this request."
 
 **Result handling**
 - [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
@@ -3500,16 +3566,21 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] The bar sits centred at the bottom of the editor, not beside the result, so it never covers the rewritten text or the text around it. Resize the window while it shows → it stays centred at the bottom.
 - [ ] Trigger the AI result bar, then type in the sidebar search field → the bar stays visible and correctly positioned (doesn't disappear or duplicate).
 
-**Style guide**
-- [ ] In Settings, select sample posts → a style guide is generated. Re-save with the same sample posts → no new Claude call is made. Change the site URL → sample posts and style guide are cleared.
-
-**Post evaluation**
-- [ ] Click the checkmark button in the editor toolbar → a panel appears with a summary and a list of findings.
-- [ ] Click a finding card → the corresponding sentence in the editor is selected and scrolled into view (the full sentence, not just a few words).
-- [ ] If a style guide is saved, evaluation findings that match the author's established voice should not appear (e.g. intentionally conversational tone not flagged).
-- [ ] The number of findings is reasonable (5–12 for a typical post); clicking every finding navigates to the correct sentence.
-- [ ] The checkmark button shows an active/highlighted state while the evaluation panel is open.
-- [ ] The checkmark button is disabled (non-clickable) while the evaluation is running.
+**Evaluate**
+- [ ] Click the checkmark button → the panel opens with Review, Fixes, Ideas and Facts tabs. While the requests run, Review shows "Reviewing…" and the Facts tab reads "Facts …"; when they finish, each tab shows its count ("Fixes 3") and Review lists the counts line ("3 fixes, 2 ideas, 1 fact to check").
+- [ ] The checkmark button is highlighted while the panel is open and disabled while an evaluation runs. Re-evaluate is disabled while one runs, and a new run returns to the Review tab.
+- [ ] On a near-empty post → "Add more content before evaluating."
+- [ ] Click a row in Fixes or Ideas → the matching text is selected and scrolled into view. Each row shows the original struck through, then "→" and the replacement.
+- [ ] Apply on a row → the text changes in the editor, the row reads "Applied", and one ⌘Z undoes it. An applied row stays "Applied" after ⌘Z.
+- [ ] Open code view (`</>`) and press Apply → a toast reads "Switch out of code view to apply changes." and the row stays unapplied.
+- [ ] Apply a suggestion whose original spans a footnote marker → the marker and its footnote stay; the marker sits after the new words.
+- [ ] Apply All on Fixes → every correction that still matches is applied; rows already applied or changed are skipped. Ideas has no Apply All.
+- [ ] Edit a flagged sentence by hand → its row reads "Text has changed" and Apply is disabled, without switching tabs. Make the flagged text appear twice → the row reads "Appears more than once".
+- [ ] With Web Search on, Facts lists "Check These" with "N claims checked"; each row shows the quoted claim, the explanation, the source sentence and its host as a link. A row with a suggested wording has Use Wording, which behaves like Apply. With no claims → "Nothing to check."
+- [ ] With Web Search off → Facts reads "Turn on Web Search in Settings to check facts." With a model that can't search → "This model can't search the web. Choose another model in Settings to check facts." Either way no fact-check request is made.
+- [ ] Footnote bodies are evaluated: a typo inside a footnote is flagged.
+- [ ] If a style guide is saved, intentionally conversational tone that matches it is not flagged.
+- [ ] If either request fails → that half shows an inline error and the other half's results still show. Re-evaluate runs both again.
 - [ ] Click evaluate, then immediately switch to another post → the old evaluation result does not appear for the new post.
 
 ### 7.12 Settings panel & preferences
@@ -3621,6 +3692,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] With the cursor inside a footnote entry, Backspace and Delete keys work normally (can delete characters and merge text).
 - [ ] Drag an image from Finder onto a footnote entry → an info toast appears ("Images can't be inserted in footnotes") and the image is not inserted.
 - [ ] Paste rich content (containing headings, lists, or images) into a footnote → block elements are stripped; only inline text and formatting survive.
+- [ ] On a new local draft, open code view and type a paragraph with a footnote marker plus its `<ol class="wp-block-footnotes">` list; leave code view and press ⌘S → `local_drafts.footnotes` holds the body (check with `sqlite3`), the content holds one `<!-- wp:footnotes /-->`, and the note is still there after switching drafts and back. Repeat with a typed `<!-- wp:footnotes /-->` above the list → still one delimiter and no "not editable" card.
 
 ### 7.21 Update checker
 
@@ -3828,8 +3900,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 7 | Cancellation re-thrown, not wrapped | ✅ `WordPressClientTests.urlErrorCancelledRethrowsAsCancellationError` |
 | 8 | `searchLinks` ignores sub-failures | ✅ `WordPressClientTests.searchLinks*` |
 | 9 | Web-search response joined across blocks | ✅ `AnthropicClientTests.multipleTextBlocksAreJoinedInOrder` |
-| 10 | Web-search preamble before `TITLE:` | ✅ `AIPromptBuilderTests.webSearchPreambleGluedDirectlyToTitle` |
-| 11 | AI prompt must name HTML elements | ✅ `AIPromptBuilderTests.generatePostPromptNamesHTMLElements` |
+| 10 | Generate's reply is JSON, so no web-search preamble can reach the post | ✅ `AIPromptBuilderTests.parseGeneratedReadsTheFields` + `AnthropicClientTests.structuredOutputAcrossPauseTurnParsesLastText` |
+| 11 | AI prompt must name HTML elements | ✅ `AIPromptBuilderTests.generatePromptNamesHTMLElementsAndJSONFields` |
 | 12 | `toWordPressHTML` transforms (all rows) | ✅ JS editor tests + 👁 §7.3 |
 | 12a | Empty blockquote `<cite>` stripped on save | ✅ JS `empty cite is stripped` + 👁 §7.3 |
 | 13 | List `<p>` unwrap only single-child | ✅ JS `multi-child <li> is left untouched` |
@@ -3866,17 +3938,17 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 43 | `FootnoteSync` deletes list entry when marker removed | 👁 §7.20 |
 | 44 | Footnote backref: `sup` gets `id="ref-fn-…"`, list item gets `<a class="footnote-backref">` | ✅ `toWordPressHTML — footnote backrefs` (3 JS tests) + 👁 §7.20 |
 | 45 | Non-image media shows file icon in sidebar cell and "Preview unavailable" in detail view; alt text hidden | 👁 §7.2 |
-| 46 | Evaluation `ANCHOR:` field parsed to `finding.anchor`; omission → `nil` | ✅ `EvaluationParserTests.anchorFieldIsParsedIntoFinding` + `.anchorFieldIsNilWhenOmitted` |
+| 46 | Evaluate's Apply refuses an `original` that is missing or appears twice | ✅ `test-editor-evaluate.js` `'returns missing …'` + `'returns ambiguous …'` |
 | 47 | Classic (pre-Gutenberg) content gets wpautop treatment | ✅ `WPPostDecodingTests.classicContent*` (10 tests) |
 | 48 | HTML entities in post/media titles decoded for display | ✅ `WPPostDecodingTests.decodes*` + `.noEntitiesPassthrough` (5 tests) |
-| 47 | Style guide injected into evaluation prompt when non-nil/non-empty | ✅ `EvaluatePostPromptTests.promptIncludesStyleGuideWhenProvided` + `.promptOmitsStyleGuideBlockWhenNil` |
-| 48 | `stripHTML` decodes typographic entities (smart quotes, em/en dash, ellipsis) | ✅ `EvaluatePostPromptTests.promptDecodesSmartQuoteEntities` + `.promptDecodesTypographicDashAndEllipsis` |
+| 47 | Style guide paragraph in the review prompt only when a guide exists | ✅ `EvaluationPromptsTests.reviewSystemHasDateAndGuide` + `.reviewSystemOmitsGuideParagraphWithoutGuide` |
+| 48 | Evaluate's post text decodes entities to the editor's characters | ✅ `EvaluationPromptsTests.postTextJoinsInlineElementsWithoutPhantomSpaces` + `.postTextMatchesEditorText` |
 | 49 | Empty state flash before first load (`hasLoadedList`/`hasLoadedMedia`) | ✅ `AppStateLoadingTests` (2 tests) + 👁 §7.1 |
 | 49 | Evaluation task cancelled on post switch — stale result cannot appear for new post | 👁 §7.11 (switch posts mid-evaluation) |
 | 50 | Confirmation sheets (Revert / Conflict / Replace / Truncation) have ⌘↩ on primary action | 👁 §7.8 + §7.9 + §7.11 |
 | 51 | HR → `wp-block-separator has-alpha-channel-opacity` | ✅ JS `hr gains wp-block-separator class` + `hr class is idempotent` |
 | 52 | Tiptap table artifacts stripped (style, colgroup, default colspan/rowspan, p-in-cell) | ✅ JS table cleanup tests (3 tests) |
-| 53 | AI Make Longer/Shorter uses list/table-specific prompts when context detected | ✅ `AIPromptBuilderTests.makeLongerWithListContextUsesListInstruction` + 3 siblings + 👁 §7.11 |
+| 53 | AI Make Longer/Shorter uses list/table-specific prompts when context detected | ✅ `SelectionPromptsTests.listAndTableKeepContainerInstruction` + 👁 §7.11 |
 | 54 | AI selection detection uses ProseMirror state (handles reversed/table selections) | 👁 §7.11 (select in table, right-click) |
 | 55 | AI result panel clamps to webview bounds, fallback for invalid rects | 👁 §7.11 |
 | 56 | Footnote content restricted to inline-only (no images, block elements, keyboard shortcuts) | 👁 §7.20 |
@@ -3891,7 +3963,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 65 | Cite toggle button adds/removes cite node in blockquote | 👁 §7.3 (cite toggle) |
 | 66 | Footnote back-arrow is `contentEditable: false` (not selectable/editable) | 👁 §7.20 (↩ not part of editable text) |
 | 67 | Excerpt field does not adopt auto-generated `rendered` excerpt from WordPress | ✅ `WPPostDecodingTests.excerptText*` (4 tests) |
-| 68 | `stripHTML` phantom space before punctuation after inline tags | ✅ `AIPromptBuilderTests.promptDoesNotInjectSpaceBeforePunctuationAfterInlineTags` + `.promptStripsSpaceBeforeClosingPunctuation` |
+| 68 | `stripHTML` phantom space before punctuation after inline tags | ✅ `EvaluationPromptsTests.postTextJoinsInlineElementsWithoutPhantomSpaces` + `.postTextKeepsTheAuthorsOwnSpaceBeforePunctuation` |
 | 69 | Anchor matching tolerates whitespace differences around punctuation | ✅ `findMatchesLoose` (7 JS tests) + `fuzzyAnchorRegex` (3 JS tests) |
 | 70 | Footnote Enter inserts soft break (not swallowed) | ✅ `test-editor-keyboard.js` footnote Enter test + 👁 §7.20 |
 | 71 | Blockquote Enter with selection deletes selection before split | ✅ `test-editor-keyboard.js` blockquote selection test + 👁 §7.3 |
@@ -3899,7 +3971,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 73 | Image toolbar clamped below main toolbar-wrap | 👁 §7.4 (scroll image near top of viewport) |
 | 74 | Cmd+click opens links (scheme-restricted via `isAllowedExternalURL`) | ✅ `EditorCoordinatorTests` + 👁 §7.5 |
 | 75 | `WordPressClient` query params escape literal `+` to `%2B` | ✅ `WordPressClientTests.searchQueryPlusCharacterIsPercentEscaped` |
-| 76 | AI-generated `<cite>` wrapper stripped but inner citation text kept, even across a nested inline tag | ✅ `AIPromptBuilderTests.citeTagWrapperStrippedButTextKept` + `.citeTagWithNestedInlineTagStillStripped` + `.emptyCiteTagRemovedEntirely` |
+| 76 | AI-generated `<cite>` wrapper stripped but inner citation text kept, even across a nested inline tag | ✅ `AIPromptBuilderTests.parseGeneratedStripsCiteTagsAndNormalizesTables` |
 | 77 | `AnthropicClient` transport errors wrapped as `AnthropicError.networkError` with friendly offline message | ✅ `AnthropicClientTests.networkFailureWrapsAsAnthropicNetworkError` + `.networkErrorShowsFriendlyMessageWhenUnderlyingDescriptionMentionsOffline` + `.networkErrorPassesThroughUnrecognizedMessage` |
 | 78 | `AnthropicClient` decodes responses with `stop_reason` omitted (Optional) | ✅ `AnthropicClientTests.missingStopReasonFieldDoesNotThrowAndIsNotTruncated` |
 | 79 | MIME type lookups consolidated into `MimeType.forFile`/`forExtension` (no per-call-site drift) | ✅ `MimeTypeTests` (12 tests) |
@@ -4002,7 +4074,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 176 | "Use Server" in the conflict alert left the autosave stash, so the rejected edits came back on the next open and the conflict repeated. It now calls `discardChanges()`, which deletes the stash first; `loadFromServer` also resets `footnotesMeta` and checks `loadedItem` after its fetch | 👁 §7.8 — no test drives the alert |
 | 177 | Updating a gallery without changing Size rewrote every existing image to the gallery-wide size URL, replacing edited and rotated copies. An existing image keeps its own `src` unless Size differs from `initialSizeSlug` | ✅ `GalleryEditTests.galleryPayloadUnchangedSizeKeepsEachImagesOwnURL` and `galleryPayloadUnchangedSharedSizeGivesNewImagesThatSize` + 👁 §7.4 |
 | 178 | Switching Media filters flashed "No media yet": the cancelled load's `CancellationError` branch cleared `isLoadingMedia` while the replacing load was starting. The branch now leaves the flag to the replacing load | 👁 §7.26 — `MediaLibraryView.loadMedia` has no harness |
-| 179 | The evaluation text ran table cells, `<summary>` and `<dt>`/`<dd>` into the next block, because `stripHTML` only broke on other closing tags | ✅ `EvaluatePostPromptTests.promptKeepsTableCellsAndDetailsApartFromTheNextBlock` |
+| 179 | The evaluation text ran table cells, `<summary>` and `<dt>`/`<dd>` into the next block, because `stripHTML` only broke on other closing tags | ✅ `EvaluationPromptsTests.postTextMarksStructure` + `.postTextHeadingLevelsAndTableRows` |
 | 180 | The image toolbar's H field must show the height a width-only image implies, and a typed H must keep its ratio (or scale from natural size when the image has no dimensions) | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` height-field tests (3) |
 | 181 | A link to a rotated copy of the same upload, even with `?ver=`, must record `linkDestination` `media` (a different upload records `custom`), and `align` follows `linkDestination` in the `wp:image` comment as in core | ✅ `test-editor.js` `'standalone image block comments'` (rotated copy, different upload, key order) |
 | 182 | An event-handler attribute on a gallery image, its link or its figure must never run in the editor, through load, save, code view, copy, a gallery rebuild or paste | ✅ `--check-fixtures` script handler probe `Scripts/fixtures/script-sinks/gallery-img-handler.html` (real WebKit) |

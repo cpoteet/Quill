@@ -275,6 +275,56 @@ describe('code view shows what will actually be saved', () => {
     assert.deepEqual(JSON.parse(win.getFootnotes()), [{ id: ID, content: 'A <em>note</em>.' }])
   })
 
+  const typeInCodeView = source => {
+    const sent = { content: [], footnotes: [] }
+    const saved = win.webkit
+    win.webkit = { messageHandlers: {
+      contentChanged: { postMessage: m => sent.content.push(m) },
+      footnotesChanged: { postMessage: m => sent.footnotes.push(m) },
+    } }
+    try {
+      toggle()
+      codeView().value = source
+      toggle()
+    } finally {
+      win.webkit = saved
+    }
+    return { content: sent.content.at(-1), footnotes: JSON.parse(sent.footnotes.at(-1)) }
+  }
+
+  test('a footnote list typed in code view reaches the meta', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->', '')
+    const sent = typeInCodeView(`<p>Plain paragraph with a note.${marker(ID)}</p>\n<ol class="wp-block-footnotes"><li id="${ID}">Mostly on the support forums.</li></ol>`)
+    assert.deepEqual(sent.footnotes, [{ id: ID, content: 'Mostly on the support forums.' }])
+    assert.match(sent.content, /<!-- wp:footnotes \/-->/)
+    assert.doesNotMatch(sent.content, /wp-block-footnotes/)
+    assert.match(editor.getHTML(), /Mostly on the support forums\./)
+  })
+
+  test('a footnote id that is not fn-<uuid> keeps its body too', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->', '')
+    const sent = typeInCodeView(`<p>Note.${marker('fn1')}</p>\n<ol class="wp-block-footnotes"><li id="fn1">A short note.</li></ol>`)
+    assert.deepEqual(sent.footnotes, [{ id: 'fn1', content: 'A short note.' }])
+  })
+
+  test('a delimiter typed with the list leaves one delimiter and no card', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->', '')
+    const sent = typeInCodeView(`<p>Note.${marker(ID)}</p>\n\n<!-- wp:footnotes /-->\n<ol class="wp-block-footnotes"><li id="${ID}">The body.</li></ol>`)
+    assert.equal(sent.content.match(/wp:footnotes/g).length, 1)
+    assert.deepEqual(sent.footnotes, [{ id: ID, content: 'The body.' }])
+    assert.doesNotMatch(editor.getHTML(), /wp-block-quill-unsupported/)
+  })
+
+  test('code view shows the delimiter again after a list was typed there', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->', '')
+    typeInCodeView(`<p>Note.${marker(ID)}</p>\n<ol class="wp-block-footnotes"><li id="${ID}">The body.</li></ol>`)
+    toggle()
+    const src = codeView().value
+    toggle()
+    assert.match(src, /<!-- wp:footnotes \/-->/)
+    assert.doesNotMatch(src, /wp-block-footnotes/)
+  })
+
   test('the list comes back in the visual editor after a code-view round trip', () => {
     win.setContent(`<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`, META(ID))
     editor.commands.insertContentAt(1, 'x')

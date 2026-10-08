@@ -566,3 +566,55 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
     }
 }
 
+
+// MARK: - AI model list
+
+@MainActor @Suite struct AIModelLoadingTests {
+
+    @Test func fillsAnEmptyModelListAndSavesIt() async {
+        let state = AppState()
+        state.aiSettings = AISettings(apiKey: "k")
+        var saved: AISettings?
+        await state.loadAIModelsIfNeeded(fetch: { _ in [haiku55, sonnet55] }, save: { saved = $0 })
+        #expect(state.aiSettings?.models == [haiku55, sonnet55])
+        #expect(saved?.models == [haiku55, sonnet55])
+    }
+
+    @Test func leavesAnExistingListAlone() async {
+        let state = AppState()
+        var settings = AISettings(apiKey: "k")
+        settings.models = [haiku45]
+        state.aiSettings = settings
+        var fetched = false
+        await state.loadAIModelsIfNeeded(fetch: { _ in fetched = true; return [haiku55] }, save: { _ in })
+        #expect(!fetched)
+        #expect(state.aiSettings?.models == [haiku45])
+    }
+
+    @Test func doesNothingWithoutAKey() async {
+        let state = AppState()
+        state.aiSettings = AISettings(apiKey: "")
+        var fetched = false
+        await state.loadAIModelsIfNeeded(fetch: { _ in fetched = true; return [haiku55] }, save: { _ in })
+        #expect(!fetched)
+    }
+
+    @Test func dropsTheListWhenTheKeyChangedDuringTheFetch() async {
+        let state = AppState()
+        state.aiSettings = AISettings(apiKey: "old")
+        var saved = false
+        await state.loadAIModelsIfNeeded(fetch: { _ in
+            state.aiSettings = AISettings(apiKey: "new")
+            return [haiku55]
+        }, save: { _ in saved = true })
+        #expect(state.aiSettings?.models == [])
+        #expect(!saved)
+    }
+
+    @Test func aFailedFetchChangesNothing() async {
+        let state = AppState()
+        state.aiSettings = AISettings(apiKey: "k")
+        await state.loadAIModelsIfNeeded(fetch: { _ in throw URLError(.notConnectedToInternet) }, save: { _ in })
+        #expect(state.aiSettings?.models == [])
+    }
+}

@@ -1,5 +1,1 @@
-<ul>
-<li>Feed twice a day</li>
-<li>Walk <strong>every</strong> morning</li>
-<li>Book an annual checkup</li>
-</ul>
+{"html": "<ul>\n<li>Feed twice a day</li>\n<li>Walk <strong>every</strong> morning</li>\n<li>Book an annual checkup</li>\n</ul>\n"}

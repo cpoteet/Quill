@@ -1126,14 +1126,15 @@ function footnotesComment(root) {
     n => n.nodeType === 8 && n.textContent.trim() === 'wp:footnotes /') || null
 }
 
-// Returns { content, footnotes } -- the list swapped for the delimiter, and the
-// bodies to store in meta.
+// Returns { content, footnotes, found } -- the list swapped for the delimiter (or dropped
+// beside an existing one), the bodies to store in meta, and whether there was a list.
 function extractFootnotes(html, doc) {
   doc = doc || inertDocument()
   const div = doc.createElement('div')
   div.innerHTML = html || ''
   const list = div.querySelector('ol.wp-block-footnotes')
-  if (!list) return { content: html || '', footnotes: [] }
+  if (!list) return { content: html || '', footnotes: [], found: false }
+  const hasDelimiter = footnotesComment(div) !== null
 
   const footnotes = []
   Array.from(list.children).forEach(li => {
@@ -1144,11 +1145,14 @@ function extractFootnotes(html, doc) {
   // Spliced out of the string: re-serializing the DOM would undo the save's self-closed <hr/> and <img/>.
   const at = /\s*<ol\b[^>]*\bclass="[^"]*\bwp-block-footnotes\b[^"]*"[^>]*>[\s\S]*?<\/ol>/.exec(html)
   if (!at) {
-    list.replaceWith(doc.createComment(' wp:footnotes /'))
-    return { content: div.innerHTML, footnotes }
+    if (hasDelimiter) list.remove()
+    else list.replaceWith(doc.createComment(' wp:footnotes /'))
+    return { content: div.innerHTML, footnotes, found: true }
   }
   const before = html.slice(0, at.index)
-  return { content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + html.slice(at.index + at[0].length), footnotes }
+  const after = html.slice(at.index + at[0].length)
+  if (hasDelimiter) return { content: before + after, footnotes, found: true }
+  return { content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + after, footnotes, found: true }
 }
 
 // Rebuilds the editable list from meta. A post whose meta is empty keeps the

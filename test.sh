@@ -35,6 +35,7 @@ run "JS inline format tests"  node --test Scripts/test-editor-inline-formats.js
 run "JS settings registry tests"  node --test Scripts/test-block-settings-registry.js
 run "JS block settings tests"  node --test Scripts/test-editor-block-settings.js
 run "JS AI output validity tests"  node --test Scripts/test-ai-output-validity.js
+run "JS evaluate tests"  node --test Scripts/test-editor-evaluate.js
 run "JS fixture validity sweep"  node --test Scripts/test-fixture-validity.js
 
 echo ""

@@ -64,7 +64,12 @@ class Reducer(HTMLParser):
 def reduce_html(s):
     r = Reducer()
     r.feed(s)
-    text = re.sub(r"<(\w+)>\s*</\1>", "", "".join(r.out))
+    text = "".join(r.out)
+    while True:
+        emptied = re.sub(r"<(\w+)>\s*</\1>", "", text)
+        if emptied == text:
+            break
+        text = emptied
     return "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
 

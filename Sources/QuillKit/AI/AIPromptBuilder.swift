@@ -1,125 +1,213 @@
 import Foundation
 
-public enum AIWritingOperation {
+public enum AIWritingOperation: Sendable {
     case makeLonger
     case makeShorter
+    case fixSpelling
+    case rephrase
     case convertToTable
     case convertToList
 }
 
-public struct EvaluationFinding {
-    public let quote: String
-    public let anchor: String?   // 3–4 verbatim words for navigation; nil falls back to quote
-    public let issue: String
-    public let suggestion: String?
-}
-
-public struct EvaluationResult {
-    public let summary: String
-    public let findings: [EvaluationFinding]
-}
-
 public struct AIPromptBuilder {
 
-    /// System prompt, optionally incorporating a pre-computed writing style guide.
-    public static func systemPrompt(styleGuide: String?) -> String {
-        var parts: [String] = [
-            "You are a writing assistant embedded in a WordPress editor. " +
-            "Always follow the output format specified in the user message exactly. " +
-            "Do not wrap output in markdown code fences. " +
-            "Produce clean, minimal HTML for any HTML content."
+    /// User-turn prompt that builds the style guide from sample posts. `Scripts/style-guide-probe.py` must match it.
+    public static func styleGuideGenerationPrompt(samples: [(title: String, html: String)]) -> String {
+        let reduced = samples.enumerated().map { i, sample in
+            let body = reduceSample(html: sample.html)
+            return sampleHeader(index: i + 1, title: decodeEntities(sample.title, keepMarkupEntities: false),
+                                words: wordCount(ofReduced: body)) + "\n" + body
+        }
+        return styleGuideInstructions + "\n\n" + reduced.joined(separator: "\n\n")
+    }
+
+    private static let styleGuideInstructions = """
+    Analyze these blog post samples and write a style guide that another writer can follow to write new posts in this author's style. The guide will be used both to write new posts and to judge whether a draft sounds like this author.
+
+    Each sample is one post's title, word count and body. The HTML has been reduced to its structure: headings, paragraphs, lists, tables, block quotes, links, emphasis and footnotes. Images appear as [image], followed by their caption if they have one.
+
+    Rules:
+    - Write each point as an instruction to the writer ("Open with…", "Use…"), not as a description of the author.
+    - Describe how the author writes, not what they write about. Leave out topics, products, hobbies and projects from the samples unless they show a habit that would carry over to any subject.
+    - State a pattern only if it appears in at least two samples. Leave out generic writing advice.
+    - Describe habits as tendencies ("often", "now and then"), not as rules to apply every time.
+    - You may illustrate a habit with a word or short phrase in quotation marks, copied exactly from the samples. Never quote a whole sentence, and don't name products or technologies.
+
+    Use exactly these labels, in this order, with nothing added to them. Under each label, write a short paragraph or a few bullets:
+
+    Voice and tone:
+    Sentence rhythm:
+    Vocabulary:
+    Humor and personality:
+    Openings and closings:
+    Structure and length:
+    Formatting:
+    Avoid:
+
+    Formatting covers headings, lists, tables, footnotes, links, images and captions. Avoid covers things a generic writer would do that this author doesn't, and only where the samples make it clear.
+
+    Aim for about 500 words. Start your response with "Voice and tone:" and end it after the Avoid section.
+    """
+
+    public static func sampleHeader(index: Int, title: String, words: Int) -> String {
+        "--- Sample \(index): \(title) (\(words.formatted(.number.locale(Locale(identifier: "en_US")))) words) ---"
+    }
+
+    private static func wordCount(ofReduced body: String) -> Int {
+        let text = body.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&amp;", with: "&")
+        return text.split(whereSeparator: \.isWhitespace).count
+    }
+
+    private static let sampleKeptTags: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "blockquote",
+                                                      "a", "em", "strong", "i", "b", "sup", "figcaption", "table", "tr", "th", "td"]
+    private static let sampleBlockTags: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "blockquote",
+                                                       "figcaption", "table", "tr"]
+    private static let sampleBreakTags: Set<String> = ["br", "hr", "div", "figure", "section", "pre", "details", "summary", "dt", "dd"]
+
+    /// Reduces a sample post to its structure: kept tags lose every attribute, images become [image], other tags go.
+    public static func reduceSample(html: String) -> String {
+        let tag = try! NSRegularExpression(pattern: #"<!--[\s\S]*?-->|<(/?)([A-Za-z][A-Za-z0-9]*)\b[^>]*>"#)
+        let ns = html as NSString
+        var out = ""
+        var cursor = 0
+        func appendText(_ range: NSRange) {
+            guard range.length > 0 else { return }
+            let text = decodeEntities(ns.substring(with: range), keepMarkupEntities: true)
+            out += text.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+        }
+        for match in tag.matches(in: html, range: NSRange(location: 0, length: ns.length)) {
+            appendText(NSRange(location: cursor, length: match.range.location - cursor))
+            cursor = match.range.location + match.range.length
+            guard match.range(at: 2).location != NSNotFound else { continue }
+            let name = ns.substring(with: match.range(at: 2)).lowercased()
+            let closing = match.range(at: 1).length > 0
+            let selfClosing = ns.substring(with: match.range).hasSuffix("/>")
+            if !closing && name == "img" {
+                out += "\n[image] "
+            } else if sampleKeptTags.contains(name) {
+                if !closing { out += (sampleBlockTags.contains(name) ? "\n" : "") + "<\(name)>" }
+                if closing || selfClosing { out += "</\(name)>" }
+            } else if sampleBreakTags.contains(name) {
+                out += selfClosing ? "\n\n" : "\n"
+            }
+        }
+        appendText(NSRange(location: cursor, length: ns.length - cursor))
+        while true {
+            let emptied = out.replacingOccurrences(of: #"<(\w+)>\s*</\1>"#, with: "", options: .regularExpression)
+            if emptied == out { break }
+            out = emptied
+        }
+        return out.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
+    private static let namedEntities: [String: String] = [
+        "amp": "&", "lt": "<", "gt": ">", "nbsp": "\u{00A0}", "quot": "\"", "apos": "'",
+        "lsquo": "\u{2018}", "rsquo": "\u{2019}", "ldquo": "\u{201C}", "rdquo": "\u{201D}",
+        "ndash": "\u{2013}", "mdash": "\u{2014}", "hellip": "\u{2026}",
+    ]
+
+    /// Decodes WordPress's common named entities and every numeric one. With `keepMarkupEntities`, `<`, `>` and `&` stay encoded.
+    static func decodeEntities(_ text: String, keepMarkupEntities: Bool) -> String {
+        let entity = try! NSRegularExpression(pattern: #"&(#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z]+);"#)
+        let ns = text as NSString
+        var out = ""
+        var cursor = 0
+        for match in entity.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            out += ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+            cursor = match.range.location + match.range.length
+            let body = ns.substring(with: match.range(at: 1))
+            var decoded: String?
+            if body.hasPrefix("#") {
+                let digits = body.dropFirst()
+                let value = digits.first == "x" || digits.first == "X"
+                    ? UInt32(digits.dropFirst(), radix: 16) : UInt32(digits)
+                decoded = value.flatMap(Unicode.Scalar.init).map { String(Character($0)) }
+            } else {
+                decoded = namedEntities[body]
+            }
+            if let char = decoded, keepMarkupEntities, let kept = ["<": "&lt;", ">": "&gt;", "&": "&amp;"][char] {
+                decoded = kept
+            }
+            out += decoded ?? ns.substring(with: match.range)
+        }
+        out += ns.substring(from: cursor)
+        return out
+    }
+
+    // MARK: - Generate Post
+
+    public static func generateSystem(styleGuide: String?, today: Date, webSearch: Bool) -> String {
+        var parts = [
+            "You write blog post drafts for an author in Quill, a WordPress editor. Today's date is \(EvaluationPrompts.day(today)).",
+            "The author edits the draft and publishes it under their own name, so everything in it must be true of them, and you don't know their life. Don't write about what the author does, did, uses, tried, noticed or plans, and don't mention their work, clients or history, unless the description tells you about it. Give opinions as judgments about the subject (\"Templates should…\", \"The better choice is…\"), not as reports of the author's own habits or experience.",
         ]
-        if let guide = styleGuide, !guide.isEmpty {
-            parts.append("Write in this author's style:\n\n\(guide)")
+        let guide = styleGuide.flatMap { $0.isEmpty ? nil : $0 }
+        if guide != nil {
+            parts.append("Write in the author's voice, following the style guide below. Its quoted words and phrases show the author's habits; don't copy them, because a copied phrase reads as a tic.")
+        }
+        if webSearch {
+            parts.append("Your training data ends well before today's date. Records, office holders, prices, versions, rules and anything \"latest\" may have changed since then, so search for those before you write about them, even when you feel sure. Facts that can't change need no search.")
+        }
+        if let guide {
+            parts.append("<style_guide>\n\(guide)\n</style_guide>")
         }
         return parts.joined(separator: "\n\n")
     }
 
-    /// User-turn prompt that asks Claude to produce a compact writing style guide
-    /// from plain-text sample post contents. Used once when the user saves their
-    /// sample post selection in Settings.
-    public static func styleGuideGenerationPrompt(sampleContents: [String]) -> String {
-        let samples = sampleContents.enumerated().map { i, c in
-            "--- Sample \(i + 1) ---\n\(c)"
-        }.joined(separator: "\n\n")
+    public static func generatePrompt(description: String, webSearch: Bool) -> String {
+        let linking = webSearch
+            ? #" Link each fact you took from a search to its source, with <a href="…"> on the words it supports, the way the author links inline."#
+            : ""
         return """
-        Analyze these blog post samples and write a concise style guide (150 words max) \
-        capturing this author's writing style. Cover: voice and tone, sentence rhythm, \
-        vocabulary level, use of humor or personality, and any distinctive patterns. \
-        Return only the style guide — no preamble, no labels.
+        Write a blog post from this description:
 
-        \(samples)
+        <description>
+        \(description)
+        </description>
+
+        Follow the style guide's length and structure unless the description asks for something else. Use only the HTML the post needs: <h2> for sections (<h3> under one only when a section needs it), <p>, <ul> or <ol> with <li>, <blockquote>, <em>, <strong>, and <table> with <thead>, <tbody>, <tr>, <th> and <td> for tabular data. No other tags, no attributes except href, no styles and no Markdown.\(linking)
+
+        Put the title, as plain text, in "title"; one or two sentences for the post's excerpt in "excerpt"; and the body in "html".
         """
     }
 
-    /// User-turn prompt for generating a brand-new post.
-    /// Returns a prompt that asks Claude to produce TITLE and CONTENT sections.
-    public static func generatePostPrompt(userPrompt: String) -> String {
-        """
-        Write a blog post based on this description: \(userPrompt)
+    nonisolated(unsafe) public static let generateSchema: [String: Any] = [
+        "type": "object",
+        "properties": [
+            "title": ["type": "string"],
+            "excerpt": ["type": "string"],
+            "html": ["type": "string"],
+        ],
+        "required": ["title", "excerpt", "html"],
+        "additionalProperties": false,
+    ]
 
-        Format your response exactly as:
-        TITLE: <the post title, plain text, no HTML>
+    public struct EmptyGeneratedPost: Error {}
 
-        CONTENT:
-        <well-structured HTML using <h2> for major sections, <h3> for sub-sections, <p> for paragraphs, and <ul>/<li> for lists where appropriate, and <table>/<thead>/<tbody>/<tr>/<th>/<td> for tabular data. No style attributes, no markdown, no code fences, just clean HTML.>
-        """
-    }
-
-    /// Parse Claude's generate-post response into (title, htmlContent).
-    /// Returns nil if the format is not recognised.
-    public static func parseGenerateResponse(_ text: String) -> (title: String, html: String)? {
-        // Strip any markdown code fences Claude might add despite instructions
-        var cleaned = text
-        if let fenceRange = cleaned.range(of: "```html", options: .caseInsensitive) {
-            cleaned.removeSubrange(fenceRange)
-        }
-        cleaned = cleaned.replacingOccurrences(of: "```", with: "")
-
-        // When web search is on, Claude emits a preamble text block that gets joined
-        // directly to the TITLE: line without a newline. Search for "TITLE:" anywhere.
-        guard let titleMarker = cleaned.range(of: "TITLE:", options: .caseInsensitive) else {
-            return nil
-        }
-        // Everything from the marker onward; grab the title up to the first newline
-        let afterTitle = cleaned[titleMarker.upperBound...]
-        let titleEnd = afterTitle.firstIndex(of: "\n") ?? afterTitle.endIndex
-        let title = afterTitle[..<titleEnd].trimmingCharacters(in: .whitespaces)
-
-        // Find CONTENT: after the title marker
-        guard let contentMarker = cleaned.range(of: "CONTENT:", options: .caseInsensitive,
-                                                range: titleMarker.upperBound..<cleaned.endIndex) else {
-            return nil
-        }
-        var html = String(cleaned[contentMarker.upperBound...])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Strip <cite index="..."> tags injected by Anthropic web search citations, but keep
-        // any text inside them — a 2026-07-05 real-response check found no <cite> tags in
-        // practice, but if Claude ever wraps actual sentences in one, deleting the whole match
-        // would silently drop that text from the generated post. The inner group uses a
-        // non-greedy `.*?` (not `[^<]*`) so citations wrapping a nested inline tag like
-        // `<a>`/`<em>` still match instead of leaving the whole `<cite>` wrapper unstripped.
-        html = html.replacingOccurrences(
-            of: #"<cite\s+index="[^"]*">(.*?)</cite>"#,
-            with: "$1",
-            options: .regularExpression
-        )
-
-        html = normalizeAITables(html)
-
-        guard !title.isEmpty, !html.isEmpty else { return nil }
-        return (title, html)
+    /// Reads Generate's JSON reply. Throws when it doesn't parse (a truncated reply never does) or holds no post.
+    public static func parseGenerated(_ json: String) throws -> (title: String, excerpt: String, html: String) {
+        struct Payload: Decodable { let title, excerpt, html: String }
+        let payload = try JSONDecoder().decode(Payload.self, from: Data(json.utf8))
+        // Keep the words inside a search citation even if Claude wraps whole sentences, nested tags included.
+        var html = payload.html.replacingOccurrences(
+            of: #"<cite\s+index="[^"]*">(.*?)</cite>"#, with: "$1", options: .regularExpression)
+        // Citation spans leave a space before the punctuation that follows them ("honestly , they're").
+        html = html.replacingOccurrences(of: #" +(?=[,.;:!?](?:\s|<|$))"#, with: "", options: .regularExpression)
+        html = normalizeAITables(html).trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = payload.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !html.isEmpty else { throw EmptyGeneratedPost() }
+        return (title, payload.excerpt.trimmingCharacters(in: .whitespacesAndNewlines), html)
     }
 
     /// Cleans a selection operation's reply before it reaches the editor.
-    public static func cleanOperationResult(_ text: String) -> String {
-        var html = text
-        if let fenceRange = html.range(of: "```html", options: .caseInsensitive) {
-            html.removeSubrange(fenceRange)
-        }
-        html = html.replacingOccurrences(of: "```", with: "")
-        return normalizeAITables(html).trimmingCharacters(in: .whitespacesAndNewlines)
+    public static func cleanOperationResult(_ html: String) -> String {
+        normalizeAITables(html).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Strips Claude's inline table styles and gives new tables core's default fixed layout, as the toolbar does.
@@ -132,255 +220,6 @@ public struct AIPromptBuilder {
             of: #"<table(?![-\w])(?![^>]*\bclass\s*=)"#,
             with: #"<table class="has-fixed-layout""#,
             options: [.regularExpression, .caseInsensitive]
-        )
-    }
-
-    /// User-turn prompt for a selection operation.
-    public static func operationPrompt(selectedHTML: String, operation: AIWritingOperation, context: String? = nil) -> String {
-        let isList = context == "bulletList" || context == "orderedList"
-        let isTable = context == "table"
-        let instruction: String
-        let listTag = context == "orderedList" ? "<ol>" : "<ul>"
-        let words = selectedHTML.split(whereSeparator: \.isWhitespace).count
-        func scaled(_ factor: Double) -> Int { max(1, Int((Double(words) * factor).rounded())) }
-        switch operation {
-        case .makeLonger:
-            if isList {
-                instruction = "Expand each list item to roughly 2–3 times its current length by adding detail, examples, or explanation. Preserve the author's voice and list format. Return the result as an HTML list (\(listTag) with <li> tags). Return only the expanded list — no preamble, no explanation."
-            } else if isTable {
-                instruction = "Expand the content of each table cell by adding detail or explanation. Preserve the table structure and the author's voice. Return only the expanded table as HTML — no preamble, no explanation."
-            } else {
-                let (target, ceiling): (Double, Double) = words < 40 ? (4, 5) : words <= 150 ? (2, 2.5) : (1.5, 2)
-                instruction = "Expand this content from \(words) words to about \(scaled(target)) words, and never more than \(scaled(ceiling)). Add new sentences that bring in supporting detail or explanation, rather than lengthening the existing sentences; a single sentence becomes about four sentences. Keep the same number of paragraphs — do not add new paragraphs, headings, or lists. Preserve the author's voice. Do not pad with filler. Return only the expanded version as HTML — no preamble, no explanation."
-            }
-        case .makeShorter:
-            if isList {
-                instruction = "Condense each list item to its essential point, removing redundancy while preserving meaning and the author's voice. Return the result as an HTML list (\(listTag) with <li> tags). Return only the shortened list — no preamble, no explanation."
-            } else if isTable {
-                instruction = "Condense each table cell to its essential content, removing redundancy while preserving meaning and the table structure. Return only the shortened table as HTML — no preamble, no explanation."
-            } else {
-                let (target, ceiling): (Double, Double) = words < 40 ? (0.7, 0.8) : words <= 150 ? (0.5, 0.6) : (0.4, 0.5)
-                instruction = "Condense this content from \(words) words to about \(scaled(target)) words, and never more than \(scaled(ceiling)). Cut the least essential sentences and tighten the wording of the rest; a single sentence stays one tighter sentence. Keep the same number of paragraphs — do not merge paragraphs or turn them into lists. Preserve the meaning and the author's voice. Return only the shortened version as HTML — no preamble, no explanation."
-            }
-        case .convertToTable:
-            instruction = "Convert this content into an HTML table. Use <table>, <thead>, <tbody>, <tr>, <th>, and <td> tags. Identify logical columns from the content. Return only the table HTML — no preamble, no explanation."
-        case .convertToList:
-            instruction = "Convert this content into an HTML unordered list using <ul> and <li> tags. Each distinct point or item becomes a list item. Return only the list HTML — no preamble, no explanation."
-        }
-        return "\(instruction)\n\nContent to transform:\n\(selectedHTML)"
-    }
-
-    /// Prompt for evaluating the writing quality of a full post or page.
-    /// Strips HTML to plain text before sending to reduce token usage.
-    public static func evaluatePostPrompt(title: String, html: String, styleGuide: String?) -> String {
-        let body = stripHTML(html)
-        let styleContext: String
-        if let guide = styleGuide, !guide.isEmpty {
-            styleContext = """
-
-        Author's established writing style:
-        \(guide)
-
-        Treat elements consistent with this style as intentional — do not flag them as issues.
-        """
-        } else {
-            styleContext = ""
-        }
-        return """
-        You are a writing quality evaluator. Analyze the following blog post for \
-        grammar, clarity, readability, wordiness, and tone/voice consistency.\(styleContext)
-
-        Title: \(title)
-
-        Content:
-        \(body)
-
-        Respond in this exact format:
-
-        SUMMARY:
-        <2–4 sentence prose critique of the overall writing quality>
-
-        FINDINGS:
-        QUOTE: "display phrase (≤15 words, can be approximate)" | ANCHOR: "3–4 verbatim words" | ISSUE: short label | SUGGESTION: rewrite (optional)
-
-        Rules:
-        - QUOTE is shown to the user in the panel — it can be approximate or paraphrased, ≤15 words
-        - ANCHOR is 3–4 consecutive words copied verbatim, character-for-character from the \
-          Content above — no punctuation changes, no added or removed characters. \
-          It is used to locate the text in the editor and must match exactly.
-        - ISSUE label should be one of: Grammar, Clarity, Readability, Wordiness, Passive Voice, Tone
-        - SUGGESTION is optional — omit the pipe and SUGGESTION field if you have no specific rewrite
-        - Flag issues that would meaningfully improve the writing — skip minor stylistic preferences
-        - For Wordiness: only flag phrases that are genuinely excessive and could be cut or \
-          shortened without losing meaning; do not flag every slightly-long sentence
-        - Prioritise the most impactful findings; aim for the 5–12 most significant issues
-        - If there are no issues worth flagging, leave FINDINGS empty
-        """
-    }
-
-    /// Parses Claude's evaluation response into an EvaluationResult.
-    /// Returns nil if the SUMMARY: or FINDINGS: markers are missing or the summary is empty.
-    public static func parseEvaluationResponse(_ text: String) -> EvaluationResult? {
-        guard let summaryRange = text.range(of: "SUMMARY:", options: .caseInsensitive) else {
-            return nil
-        }
-        guard let findingsRange = text.range(
-            of: "FINDINGS:",
-            options: .caseInsensitive,
-            range: summaryRange.upperBound..<text.endIndex
-        ) else {
-            return nil
-        }
-
-        let summary = String(text[summaryRange.upperBound..<findingsRange.lowerBound])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !summary.isEmpty else { return nil }
-
-        let findingsText = String(text[findingsRange.upperBound...])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        var findings: [EvaluationFinding] = []
-        for line in findingsText.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.uppercased().hasPrefix("QUOTE:") else { continue }
-
-            let parts = trimmed.components(separatedBy: " | ")
-            guard parts.count >= 2 else { continue }
-
-            // Strip "QUOTE:" prefix, then remove surrounding quotes if present
-            let quotePart = parts[0]
-                .replacingOccurrences(of: "QUOTE:", with: "", options: .caseInsensitive)
-                .trimmingCharacters(in: .whitespaces)
-            let quote: String
-            if quotePart.hasPrefix("\""), quotePart.hasSuffix("\""), quotePart.count > 1 {
-                quote = String(quotePart.dropFirst().dropLast())
-            } else {
-                quote = quotePart
-            }
-            guard !quote.isEmpty else { continue }
-
-            guard let issuePart = parts.first(where: { $0.uppercased().hasPrefix("ISSUE:") }) else { continue }
-            let issue = issuePart
-                .replacingOccurrences(of: "ISSUE:", with: "", options: .caseInsensitive)
-                .trimmingCharacters(in: .whitespaces)
-            guard !issue.isEmpty else { continue }
-
-            let anchor = parts
-                .first(where: { $0.uppercased().hasPrefix("ANCHOR:") })
-                .map { part -> String in
-                    var s = part
-                        .replacingOccurrences(of: "ANCHOR:", with: "", options: .caseInsensitive)
-                        .trimmingCharacters(in: .whitespaces)
-                    if s.hasPrefix("\""), s.hasSuffix("\""), s.count > 1 {
-                        s = String(s.dropFirst().dropLast())
-                    }
-                    return s
-                }
-                .flatMap { $0.isEmpty ? nil : $0 }
-
-            let suggestion = parts
-                .first(where: { $0.uppercased().hasPrefix("SUGGESTION:") })
-                .map { $0.replacingOccurrences(of: "SUGGESTION:", with: "", options: .caseInsensitive)
-                          .trimmingCharacters(in: .whitespaces) }
-                .flatMap { $0.isEmpty ? nil : $0 }
-
-            findings.append(EvaluationFinding(quote: quote, anchor: anchor, issue: issue, suggestion: suggestion))
-        }
-
-        return EvaluationResult(summary: summary, findings: findings)
-    }
-
-    // A control character, so the whitespace collapse below never eats it.
-    private static let blockBreak = "\u{1E}"
-
-    private static func stripHTML(_ html: String) -> String {
-        // Strip non-prose blocks entirely before tag removal so they don't produce
-        // nonsensical evaluation findings.
-        // (?s) enables DOTALL so . matches newlines inside multi-line blocks
-        var text = html.replacingOccurrences(
-            of: #"(?s)<figcaption[^>]*>.*?</figcaption>"#,
-            with: " ",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(
-            of: #"(?s)<pre[^>]*>.*?</pre>"#,
-            with: " ",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(
-            of: #"(?s)<figure[^>]*wp-block-embed[^>]*>.*?</figure>"#,
-            with: " ",
-            options: .regularExpression
-        )
-        // Footnote markers are inline atoms in the editor (no text), so strip them
-        // entirely — leaving the number causes Claude to flag it as stray text.
-        text = text.replacingOccurrences(
-            of: #"<sup[^>]*data-fn[^>]*>.*?</sup>"#,
-            with: "",
-            options: .regularExpression
-        )
-        // Footnote backrefs (↩) are NodeView artifacts not in the ProseMirror doc —
-        // strip so footnote list text matches the editor for anchor navigation.
-        text = text.replacingOccurrences(
-            of: #"<a[^>]*footnote-backref[^>]*>.*?</a>"#,
-            with: "",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(
-            of: #"</(p|h[1-6]|li|blockquote|pre|div|td|th|summary|dt|dd)>"#,
-            with: blockBreak,
-            options: .regularExpression
-        )
-        // Remove remaining tags (replace with space to prevent smashing adjacent inline elements)
-        text = text.replacingOccurrences(of: #"<[^>]+(>|$)"#, with: " ", options: .regularExpression)
-        // Decode HTML entities — named + numeric forms common in WordPress content
-        text = text
-            .replacingOccurrences(of: "&amp;",   with: "&")
-            .replacingOccurrences(of: "&lt;",    with: "<")
-            .replacingOccurrences(of: "&gt;",    with: ">")
-            .replacingOccurrences(of: "&nbsp;",  with: "\u{00A0}")
-            .replacingOccurrences(of: "&#160;",  with: "\u{00A0}")
-            .replacingOccurrences(of: "&quot;",  with: "\"")
-            .replacingOccurrences(of: "&#34;",   with: "\"")
-            .replacingOccurrences(of: "&#39;",   with: "'")
-            .replacingOccurrences(of: "&apos;",  with: "'")
-            .replacingOccurrences(of: "&#8216;", with: "\u{2018}")
-            .replacingOccurrences(of: "&lsquo;", with: "\u{2018}")
-            .replacingOccurrences(of: "&#8217;", with: "\u{2019}")
-            .replacingOccurrences(of: "&rsquo;", with: "\u{2019}")
-            .replacingOccurrences(of: "&#8220;", with: "\u{201C}")
-            .replacingOccurrences(of: "&ldquo;", with: "\u{201C}")
-            .replacingOccurrences(of: "&#8221;", with: "\u{201D}")
-            .replacingOccurrences(of: "&rdquo;", with: "\u{201D}")
-            .replacingOccurrences(of: "&#8211;", with: "\u{2013}")
-            .replacingOccurrences(of: "&ndash;", with: "\u{2013}")
-            .replacingOccurrences(of: "&#8212;", with: "\u{2014}")
-            .replacingOccurrences(of: "&mdash;", with: "\u{2014}")
-            .replacingOccurrences(of: "&#8230;", with: "\u{2026}")
-            .replacingOccurrences(of: "&hellip;", with: "\u{2026}")
-        text = text
-            .components(separatedBy: blockBreak)
-            .map { $0.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ") }
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n\n")
-        // Inline tags were replaced with spaces above, which injects a phantom
-        // space before punctuation that immediately follows an inline element —
-        // e.g. "<a>DSPM</a>, <a>Content</a>" becomes "DSPM , Content". English
-        // never puts a space before these marks, and the editor's own text-node
-        // concatenation has none, so strip it. This prevents phantom "spaces
-        // around commas" findings and keeps the plain text aligned with
-        // findAndSelectText's anchor matching for jump-to-finding.
-        text = text.replacingOccurrences(
-            of: #" +([,.;:!?)\]])"#,
-            with: "$1",
-            options: .regularExpression
-        )
-        // Symmetric case: a phantom space after an opening bracket (e.g. an inline
-        // tag right after "(" — "(<a>ref</a>)" -> "( ref)").
-        return text.replacingOccurrences(
-            of: #"([(\[]) +"#,
-            with: "$1",
-            options: .regularExpression
         )
     }
 }

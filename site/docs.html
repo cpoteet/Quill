@@ -621,7 +621,7 @@
 
       <section class="docs-section" id="ai-writing-features">
         <h2 class="docs-h2">AI Writing Features</h2>
-        <p class="docs-body">Quill can use Anthropic's Claude API, with the Claude Haiku model, to write posts, rewrite selected text and review your writing. These features are off until you add your own Anthropic API key, and Anthropic bills you directly for what you use.</p>
+        <p class="docs-body">Quill can use Anthropic's Claude API to write posts, rewrite selected text and review your writing. These features are off until you add your own Anthropic API key, and Anthropic bills you directly for what you use.</p>
         <h3 class="docs-h3">Setting Up</h3>
         <ol class="docs-ol">
           <li>Create an API key at <a href="https://platform.claude.com/settings/keys" class="content-link" target="_blank" rel="noopener">platform.claude.com/settings/keys</a>.</li>
@@ -630,23 +630,36 @@
         </ol>
         <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can click <strong>Skip for Now</strong> and add a key here later.</p>
         <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it; a wrong key shows up as an error the first time you use a feature. Errors from Anthropic say what went wrong, such as a key it didn't accept, its rate limit, or its service being busy. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
+        <h3 class="docs-h3">Model and Reasoning</h3>
+        <p class="docs-body">The <strong>Model</strong> menu lists every Claude model your API key can use, newest first. Quill loads the list when you open Settings and when you finish typing a key, so a new model appears without a Quill update. Until you pick one, Quill uses the newest Claude Haiku, which is fast and inexpensive, and follows it when a newer Haiku comes out. If the model you picked is retired, Quill switches back to that default and tells you.</p>
+        <p class="docs-body"><strong>Reasoning</strong> sets how long Claude thinks before it answers. <strong>Model default</strong> lets the model decide. Higher levels take more time and cost more; Low is the quickest. The menu lists only the levels the selected model offers, and some older models start at Off.</p>
         <h3 class="docs-h3" id="writing-style">Writing Style</h3>
-        <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts…</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude, which writes a short style guide. Quill uses that guide whenever it writes or reviews for you.</p>
-        <p class="docs-body">The guide is rewritten whenever you change which posts you picked. If you connect Quill to a different WordPress site, your picks are cleared and you'll need to choose again.</p>
+        <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts…</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude with their titles, headings, lists and captions, and Claude writes a style guide of about 500 words. Quill uses that guide whenever it writes, rewrites or reviews for you.</p>
+        <p class="docs-body">Pick posts on different topics. When most of them share a subject, the guide mistakes the subject for your style.</p>
+        <p class="docs-body">The guide is rewritten whenever you change which posts you picked. Click <strong>Regenerate</strong> to rebuild it with the model you have selected now, for example after switching models. If you connect Quill to a different WordPress site, your picks are cleared and you'll need to choose again.</p>
         <h3 class="docs-h3">Web Search</h3>
-        <p class="docs-body">With <strong>Web Search</strong> turned on in Settings, Claude can search the web for current information while writing a post. It's on to begin with. Turn it off to write from Claude's own knowledge only, which is faster and costs less.</p>
+        <p class="docs-body">With <strong>Web Search</strong> turned on in Settings, Claude can search the web for current information while writing a post, and Evaluate checks your facts. It's on to begin with. Turn it off to work from Claude's own knowledge only, which is faster and costs less. If the selected model can't search the web, the switch can't be changed and says so, and Evaluate's Facts tab says to choose another model.</p>
         <h3 class="docs-h3">Generating a Post</h3>
-        <p class="docs-body">Click the pencil button in the toolbar. Describe what you want, anything from a topic to a detailed brief, and click <strong>Generate</strong> (⌘Return). Quill writes a complete post or page with a title and loads it into the editor. With web search on, Claude looks up the topic before writing.</p>
-        <p class="docs-body">If the editor already has content, a <strong>Replace Content?</strong> alert asks you to confirm first, because the new post replaces your title and text.</p>
-        <p class="docs-body">If a long post hits the first length limit, a <strong>Post may be cut off</strong> alert appears. <strong>Get Full Version</strong> asks for a longer response, which costs more. <strong>Use What I Have</strong> keeps what was written.</p>
+        <p class="docs-body">Click the pencil button in the toolbar. Describe what you want, anything from a topic to a detailed brief, and click <strong>Generate</strong> (⌘Return). Quill writes a complete post or page with a title and loads it into the editor, and fills in the post's excerpt. With web search on, Claude looks up anything that may have changed, such as prices and versions, and links each fact it found to its source.</p>
+        <p class="docs-body">Claude writes in your style but doesn't make things up about you: it won't invent your experiences, work or history unless your description mentions them. Opinions come out as judgments about the subject. Add the personal parts yourself.</p>
+        <p class="docs-body">If the editor already has content, a <strong>Replace Content?</strong> alert asks you to confirm first, because the new post replaces your title and text, and on a post the excerpt too.</p>
+        <p class="docs-body">If a long post hits the first length limit before it's finished, a <strong>Post was cut off</strong> alert appears. <strong>Get Full Version</strong> asks again with a longer limit, which costs more.</p>
         <h3 class="docs-h3">Evaluating Your Writing</h3>
         <p class="docs-body">Click the checkmark button in the toolbar to have Claude review the current post or page. It needs at least 100 words; with fewer, the panel asks you to add more.</p>
-        <p class="docs-body">The results open in the inspector on the right, in place of Post Settings. They include a short summary and a list of findings. Each finding has a category (Grammar, Clarity, Readability, Wordiness, Passive Voice or Tone) and sometimes a suggested rewrite.</p>
+        <p class="docs-body">The results open in the inspector on the right, in place of Post Settings. Quill sends two requests at once: one for the review and one, with web search, to check your facts. The review usually arrives first; the fact checks fill in when they're ready. The tabs along the top switch between four views:</p>
         <ul class="docs-list">
-          <li>Click a finding to select that sentence in the editor and scroll to it. Paragraphs, list items and table cells are read separately, so a finding never runs across two of them.</li>
+          <li><strong>Review</strong> — what works in the post, then the two or three changes that would improve it most, such as the title, the opening or the order of sections. It starts with a count of what the other tabs hold.</li>
+          <li><strong>Fixes</strong> — corrections any copy editor would make: spelling, grammar, punctuation, word choice and inconsistent names or terms, in captions, tables and footnotes too. Each shows the old text struck through and the new text after it.</li>
+          <li><strong>Ideas</strong> — suggestions that are judgment calls: a sentence that's hard to follow, wording that could be shorter, a repeated word, or a passage that drifts from your style.</li>
+          <li><strong>Facts</strong> — claims worth checking. Each shows the claim, what's wrong with it, the source's own sentence, and a link that opens the source in your browser. A published post is judged against its publish date. With Web Search off, the tab says to turn it on.</li>
+        </ul>
+        <ul class="docs-list">
+          <li>Click <strong>Apply</strong> to make a fix or suggestion in the editor. Only the changed words are rewritten, so links and formatting on the rest stay, and ⌘Z undoes it. <strong>Apply All</strong> on the Fixes tab applies every correction that can still be applied.</li>
+          <li>If you've edited the text a finding points at, its Apply button is replaced by <strong>Text has changed</strong>.</li>
+          <li>A fact check offers <strong>Use Wording</strong> when Claude suggested a correction; hover over the button to read it first. Treat fact checks as things to look into: read the source before you change anything.</li>
+          <li>Click a finding to select that sentence in the editor and scroll to it.</li>
           <li>Click <strong>Re-evaluate</strong> at the bottom of the panel to run the review again after you've made changes.</li>
-          <li>If the review fails, the panel reads "Evaluation failed" with the reason and a <strong>Retry</strong> button.</li>
-          <li>If you've set up a <a href="#writing-style" class="content-link">writing style</a>, Claude takes it into account and doesn't flag choices that match how you normally write.</li>
+          <li>If one request fails, the other's results still appear, and the failed tab says why. If you've set up a <a href="#writing-style" class="content-link">writing style</a>, Claude treats the way you normally write as intentional.</li>
         </ul>
         <p class="docs-body">The checkmark button is highlighted while the results are open, and turned off while a review is running. The panel has no close button: click <strong>Post Settings</strong> in the window toolbar to close the inspector, and click it again to get your settings back.</p>
         <h3 class="docs-h3">Rewriting a Selection</h3>
@@ -657,14 +670,17 @@
               <tr><th class="docs-table__col--label">Command</th><th>What it does</th></tr>
             </thead>
             <tbody>
-              <tr><td>Make Longer</td><td>Adds supporting detail. A short passage grows to about four times its length; a long one to about one and a half times</td></tr>
-              <tr><td>Make Shorter</td><td>Cuts the least important sentences and tightens the rest. A short passage shrinks to about 70% of its length; a long one to about 40%</td></tr>
+              <tr><td>Make Longer</td><td>Keeps your sentences and adds new ones that explain the reasoning or give an example, without adding facts or experiences you didn't write. A short passage grows to about four times its length; a long one to about one and a half times</td></tr>
+              <tr><td>Make Shorter</td><td>Cuts the least important sentences and tightens the rest, keeping your words where it can. A short passage shrinks to about 70% of its length; a long one to about 40%</td></tr>
+              <tr><td>Rephrase</td><td>Makes the selection read more clearly, with the same meaning and about the same length, keeping your wording where it already works</td></tr>
+              <tr><td>Fix Spelling &amp; Grammar</td><td>Fixes spelling, grammar and punctuation, and nothing else</td></tr>
               <tr><td>Convert to Table</td><td>Turns the selection into a table</td></tr>
               <tr><td>Convert to List</td><td>Turns the selection into a bulleted or numbered list</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-body">Make Longer and Make Shorter keep the same number of paragraphs. They don't add headings or lists, and they don't merge paragraphs. When the selection is in a list or table, they lengthen or shorten each item or cell and keep the list or table intact.</p>
+        <p class="docs-body">Make Longer and Make Shorter keep the same number of paragraphs. They don't add headings or lists, and they don't merge paragraphs. When the selection is in a list or table, every command works on the whole list or table and keeps its items, rows and columns.</p>
+        <p class="docs-body">Claude sees the rest of the paragraph and the paragraphs on either side, so a rewrite fits where it goes, and a sentence you select stays inside its paragraph. Links, footnote markers and formatting such as bold and italics stay with the words they belong to.</p>
         <p class="docs-body">These commands change only the selected text and never use web search. They don't appear inside footnotes.</p>
         <p class="docs-body">While Claude works, your selection is dimmed with a <strong>✶ Rewriting…</strong> label in front of it. You can keep writing elsewhere in the post in the meantime; the result goes where the selected text is, even if your edits have moved it.</p>
         <p class="docs-body">The new text replaces your selection, highlighted, and an <strong>Accept</strong> / <strong>Discard</strong> bar appears at the bottom of the editor. Click Accept or press Return to keep it. Click Discard, press Esc or click anywhere else to put your original text back. Discarding restores only the rewritten passage, so edits you made elsewhere while Claude worked stay. If the rewrite fails or Claude sends back nothing usable, your text stays as it was and a banner above the editor says why.</p>

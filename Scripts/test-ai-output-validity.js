@@ -217,7 +217,9 @@ describe('a right-click AI result saves as valid blocks', () => {
     const start = '<!-- wp:paragraph -->\n<p>Pets are a big commitment for anyone.</p>\n<!-- /wp:paragraph -->'
     const saved = saveOperationResult(start, 'Pets are a big commitment', fixture('operation-paragraphs'))
     assertGutenbergValid(saved, ['core/paragraph'])
-    assert.match(saved, /our guide<\/a>/)
+    // Claude never sees a URL, so a link it writes is invented and goes in as plain text.
+    assert.match(saved, /read our guide first/)
+    assert.doesNotMatch(saved, /<a /)
   })
 })
 
@@ -602,3 +604,92 @@ describe('editing while Claude responds', () => {
   })
 })
 
+
+describe('a selection goes to Claude as reduced HTML with stubs', () => {
+  const FN = 'fn-11111111-2222-4333-8444-555555555555'
+  const footnoted = `<!-- wp:paragraph -->\n<p>Intro para.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>See the <a href="https://example.com" target="_blank" rel="noopener">docs</a> today.<sup data-fn="${FN}" class="fn" id="${FN}-link"><a href="#${FN}">1</a></sup> More <em>words</em> here.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`
+  const META = JSON.stringify([{ id: FN, content: 'The note body.' }])
+
+  function select(text) {
+    const search = win._editorSearchText()
+    const at = search.text.indexOf(text)
+    assert.ok(at >= 0, `"${text}" is not in the document`)
+    editor.commands.setTextSelection({ from: search.positions[at], to: search.positions[at + text.length - 1] + 1 })
+  }
+
+  function rewrite(text, resultHTML) {
+    select(text)
+    const op = win.beginAIOperation()
+    assert.ok(op && !op.busy, 'beginAIOperation refused the selection')
+    const inserted = win.showAIResult(resultHTML, op.containerFrom, op.containerTo)
+    win.acceptAIResult()
+    win.syncContentToSwift()
+    return { op, inserted, saved: sentToSwift.at(-1) }
+  }
+
+  test('selection html reduces links and footnotes to stubs', () => {
+    win.setContent(footnoted, META)
+    select('See the docs today. More words here.')
+    const op = win.beginAIOperation()
+    win.discardAIResult()
+    assert.equal(op.html, 'See the <a id="L1">docs</a> today.<sup id="F1"></sup> More <em>words</em> here.')
+    assert.doesNotMatch(op.html, /href|target|data-fn|class=/)
+  })
+
+  test('before and after carry the rest of the paragraph for a mid-paragraph selection', () => {
+    win.setContent('<p>Intro para.</p><p>First sentence here. Second sentence is selected. Third one.</p><p>Outro para.</p>')
+    select('Second sentence is selected.')
+    const op = win.beginAIOperation()
+    win.discardAIResult()
+    assert.equal(op.html, 'Second sentence is selected.')
+    assert.equal(op.before, 'Intro para.\n\nFirst sentence here. ')
+    assert.equal(op.after, ' Third one.\n\nOutro para.')
+  })
+
+  test('a list sends its whole container, reduced', () => {
+    win.setContent('<p>Before.</p><ul><li><p>One <a href="https://example.com">link</a></p></li><li><p>Two items here</p></li></ul><p>After.</p>')
+    select('Two items here')
+    const op = win.beginAIOperation()
+    win.discardAIResult()
+    assert.equal(op.html, '<ul><li><p>One <a id="L1">link</a></p></li><li><p>Two items here</p></li></ul>')
+    assert.equal(op.before, 'Before.')
+    assert.equal(op.after, 'After.')
+  })
+
+  test('showAIResult restores link attributes and the footnote marker by id', () => {
+    win.setContent(footnoted, META)
+    const { saved } = rewrite('See the docs today. More words here.', 'Read the <a id="L1">docs</a> now.<sup id="F1"></sup> More <em>words</em>.')
+    assert.match(saved, /<a (?=[^>]*href="https:\/\/example.com")(?=[^>]*target="_blank")(?=[^>]*rel="noopener")[^>]*>docs<\/a>/)
+    assert.match(saved, /<p>Read the <a [^>]*>docs<\/a> now\.<sup data-fn="fn-11111111-2222-4333-8444-555555555555" class="fn" id="fn-11111111-2222-4333-8444-555555555555-link"><a href="#fn-11111111-2222-4333-8444-555555555555">1<\/a><\/sup> More <em>words<\/em>\.<\/p>/)
+    assert.match(editor.getHTML(), /The note body\./)
+  })
+
+  test('unknown stub id is unwrapped to its text', () => {
+    win.setContent(footnoted, META)
+    const { saved } = rewrite('See the docs today.', 'Read <a id="L9">this</a> now.')
+    assert.match(saved, /<p>Read this now\.<sup/)
+  })
+
+  test('duplicated stub keeps the first and unwraps the rest', () => {
+    win.setContent(footnoted, META)
+    const { saved } = rewrite('See the docs today.', 'The <a id="L1">docs</a> and <a id="L1">guides</a> today.')
+    assert.match(saved, /<p>The <a [^>]*href="https:\/\/example.com"[^>]*>docs<\/a> and guides today\.<sup/)
+  })
+
+  test('dropped footnote stub leaves no marker and no text loss', () => {
+    win.setContent(footnoted, META)
+    const { saved } = rewrite('See the docs today. More words here.', 'See the <a id="L1">docs</a> today. More <em>words</em> here.')
+    assert.match(saved, /<p>Intro para\.<\/p>/)
+    assert.match(saved, /<p>See the <a [^>]*>docs<\/a> today\. More <em>words<\/em> here\.<\/p>/)
+    assert.doesNotMatch(saved, /data-fn/)
+  })
+
+  test('inline result inside a paragraph does not split it', () => {
+    win.setContent('<p>Intro para.</p><p>First sentence here. Second sentence is selected. Third one.</p><p>Outro para.</p>')
+    const before = topLevelTexts().length
+    const { inserted } = rewrite('Second sentence is selected.', 'The <em>second</em> sentence, rewritten.')
+    assert.equal(inserted, true)
+    assert.equal(topLevelTexts().length, before)
+    assert.deepEqual(topLevelTexts(), ['Intro para.', 'First sentence here. The second sentence, rewritten. Third one.', 'Outro para.'])
+  })
+})

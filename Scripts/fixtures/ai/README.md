@@ -8,12 +8,12 @@ Each case is a pair:
 
 | File | What it is |
 |---|---|
-| `<name>.raw.txt` | Claude's reply as the API returns it, including the quirks Quill cleans up (code fences, the web-search preamble, citation tags, inline table styles) |
+| `<name>.raw.txt` | Claude's reply as the API returns it, including the quirks Quill cleans up (citation tags, inline table styles); `generate-*` replies are the `{"title", "excerpt", "html"}` JSON Generate Post asks for, `operation-*` replies the `{"html": …}` JSON the right-click rewrites ask for |
 | `<name>.html` | What Swift hands the editor after cleanup |
 
-`generate-*` cases go through `AIPromptBuilder.parseGenerateResponse` (the
+`generate-*` cases go through `AIPromptBuilder.parseGenerated` (the
 Generate Post sheet); `operation-*` cases go through
-`AIPromptBuilder.cleanOperationResult` (the right-click rewrites).
+`SelectionPrompts.parse` and `AIPromptBuilder.cleanOperationResult` (the right-click rewrites).
 `AIOutputFixtureTests.swift` fails if a `.html` stops matching its `.raw.txt`, so
 edit the raw reply first and then regenerate its partner. The JS suite never
 reads the `.raw.txt` files.

@@ -11,11 +11,13 @@ public struct PreferencesView: View {
     @State private var saveSuccess: Bool = false
 
     // AI Writing settings
-    @State private var aiAPIKey: String = ""
-    @State private var aiSamplePostIDs: [Int] = []
-    @State private var aiWebSearchEnabled: Bool = true
+    @State private var ai = AISettings()
     @State private var isSamplePickerOpen: Bool = false
     @State private var isAnalyzing: Bool = false
+    @State private var modelFetchError: String?
+    @State private var modelNotice: String?
+    @State private var fetchedKey: String?
+    @FocusState private var apiKeyFocused: Bool
     var onSave: (Credentials) -> Void
     var posts: [WPPost]
     var credentials: Credentials?
@@ -47,19 +49,43 @@ public struct PreferencesView: View {
                 }
 
                 Section("AI Writing") {
-                    SecureField("Anthropic API Key", text: $aiAPIKey)
+                    SecureField("Anthropic API Key", text: $ai.apiKey)
+                        .focused($apiKeyFocused)
+                        .onSubmit { Task { await fetchModels() } }
+                    Picker(selection: modelSelection) {
+                        ForEach(modelChoices, id: \.id) { Text($0.displayName).tag($0.id) }
+                    } label: {
+                        Text("Model")
+                        if let caption = modelCaption { Text(caption) }
+                    }
+                    .disabled(hasNoKey || ai.models.isEmpty)
+                    Picker(selection: reasoningSelection) {
+                        ForEach(reasoningChoices, id: \.self) { Text(Self.label(for: $0)).tag($0) }
+                    } label: {
+                        Text("Reasoning")
+                        Text("Higher levels think longer before answering. Responses take more time and cost more.")
+                    }
+                    .disabled(reasoningChoices.count < 2)
                     LabeledContent("Writing Style") {
-                        HStack(spacing: 8) {
-                            Button("Choose Posts\u{2026}") { isSamplePickerOpen = true }
-                                .disabled(posts.isEmpty)
-                            Text(aiSamplePostIDs.isEmpty
-                                 ? "No samples selected"
-                                 : "\(aiSamplePostIDs.count) post\(aiSamplePostIDs.count == 1 ? "" : "s") selected")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        VStack(alignment: .trailing, spacing: 6) {
+                            HStack(spacing: 8) {
+                                Text(ai.samplePostIDs.isEmpty
+                                     ? "No samples selected"
+                                     : "\(ai.samplePostIDs.count) post\(ai.samplePostIDs.count == 1 ? "" : "s") selected")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Button("Choose Posts\u{2026}") { isSamplePickerOpen = true }
+                                    .disabled(posts.isEmpty)
+                            }
+                            Button("Regenerate") { Task { await regenerateStyleGuide() } }
+                                .disabled(hasNoKey || ai.samplePostIDs.isEmpty || isAnalyzing || isSaving)
                         }
                     }
-                    Toggle("Web Search", isOn: $aiWebSearchEnabled)
+                    Toggle(isOn: $ai.webSearchEnabled) {
+                        Text("Web Search")
+                        if !modelSearches { Text("This model can't search the web.") }
+                    }
+                    .disabled(!modelSearches)
                 }
 
                 if let error = saveError {
@@ -91,7 +117,7 @@ public struct PreferencesView: View {
         .sheet(isPresented: $isSamplePickerOpen) {
             SamplePostPickerSheet(
                 posts: posts,
-                selectedIDs: $aiSamplePostIDs,
+                selectedIDs: $ai.samplePostIDs,
                 onDone: { isSamplePickerOpen = false }
             )
         }
@@ -99,13 +125,82 @@ public struct PreferencesView: View {
             loadExisting()
             loadExistingAI()
         }
+        .task { await fetchModels() }
+        .onChange(of: apiKeyFocused) { _, focused in
+            if !focused { Task { await fetchModels() } }
+        }
     }
+
+    // MARK: - Model and reasoning
+
+    private var hasNoKey: Bool { ai.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    private var modelChoices: [AIModelInfo] { ai.models }
+
+    private var modelSelection: Binding<String> {
+        Binding(
+            get: { ai.resolvedModelID() },
+            set: { id in
+                ai.model = id
+                ai.reasoning = ai.normalizedReasoning()
+                modelNotice = nil
+            }
+        )
+    }
+
+    private var modelCaption: String? {
+        if hasNoKey { return "Enter an API key to load models." }
+        return modelFetchError ?? modelNotice
+    }
+
+    private var reasoningChoices: [AIReasoning] { AISettings.reasoningOptions(for: ai.resolvedModel()) }
+
+    private var reasoningSelection: Binding<AIReasoning> {
+        Binding(get: { ai.normalizedReasoning() }, set: { ai.reasoning = $0 })
+    }
+
+    private var modelSearches: Bool { ai.resolvedModel()?.supportsWebSearch ?? true }
+
+    static func label(for reasoning: AIReasoning) -> String {
+        switch reasoning {
+        case .off: "Off"
+        case .modelDefault: "Model default"
+        case .level("xhigh"): "Extra High"
+        case .level(let level): level.capitalized
+        }
+    }
+
+    private func fetchModels() async {
+        let key = currentKey
+        guard !key.isEmpty, key != fetchedKey else { return }
+        fetchedKey = key
+        do {
+            let models = try await AnthropicClient(apiKey: key).listModels()
+            guard currentKey == key else { return }
+            let (next, notice) = ai.applyingFetchedModels(models)
+            ai.models = next.models
+            ai.model = next.model
+            ai.reasoning = next.reasoning
+            modelNotice = notice
+            modelFetchError = nil
+            // The list is a cache for every AI call, so it's kept even if the author never presses Save.
+            if var stored = try? AISettingsStore.load(), stored.apiKey == key {
+                stored = stored.applyingFetchedModels(models).0
+                try? AISettingsStore.save(stored)
+                onSaveAISettings?(stored)
+            }
+        } catch {
+            guard currentKey == key else { return }
+            fetchedKey = nil
+            modelFetchError = error.localizedDescription
+        }
+    }
+
+    private var currentKey: String { ai.apiKey.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private func loadExistingAI() {
         guard let settings = try? AISettingsStore.load() else { return }
-        aiAPIKey = settings.apiKey
-        aiSamplePostIDs = settings.samplePostIDs
-        aiWebSearchEnabled = settings.webSearchEnabled
+        ai = settings
     }
 
     private func saveAll() async {
@@ -117,7 +212,7 @@ public struct PreferencesView: View {
         let previousCreds = try? CredentialsStore.load()
         let siteURLChanged = previousCreds != nil && previousCreds?.siteURL.absoluteString != siteURL
         if siteURLChanged {
-            aiSamplePostIDs = []
+            ai.samplePostIDs = []
         }
 
         // Save WordPress credentials if any field is filled
@@ -152,10 +247,10 @@ public struct PreferencesView: View {
         // - IDs unchanged + site unchanged + existing guide   → keep guide, skip regen
         // - IDs changed OR site changed OR no existing guide  → regen
         let previousSettings = try? AISettingsStore.load()
-        let idsUnchanged = Set(aiSamplePostIDs) == Set(previousSettings?.samplePostIDs ?? [])
+        let idsUnchanged = Set(ai.samplePostIDs) == Set(previousSettings?.samplePostIDs ?? [])
 
         let existingGuide: String?
-        if aiSamplePostIDs.isEmpty {
+        if ai.samplePostIDs.isEmpty {
             existingGuide = nil
         } else if idsUnchanged && !siteURLChanged {
             existingGuide = previousSettings?.styleGuide
@@ -163,67 +258,73 @@ public struct PreferencesView: View {
             existingGuide = nil
         }
 
-        let shouldRegen = !aiAPIKey.isEmpty && !aiSamplePostIDs.isEmpty && existingGuide == nil
+        let shouldRegen = !hasNoKey && !ai.samplePostIDs.isEmpty && existingGuide == nil
 
         // Persist immediately with whatever guide is valid right now
-        var current = AISettings(
-            apiKey: aiAPIKey,
-            samplePostIDs: aiSamplePostIDs,
-            webSearchEnabled: aiWebSearchEnabled,
-            styleGuide: existingGuide
-        )
+        ai.styleGuide = existingGuide
+        ai.reasoning = ai.normalizedReasoning()
         do {
-            try AISettingsStore.save(current)
+            try AISettingsStore.save(ai)
         } catch {
             saveError = "Couldn't save the Claude settings: \(error.localizedDescription)"
             return
         }
-        onSaveAISettings?(current)
+        onSaveAISettings?(ai)
 
-        // Optionally regenerate the style guide
         if shouldRegen {
-            isAnalyzing = true
-            var sampleContents: [String] = []
-            if let creds = credentials {
-                let wpClient = WordPressClient(credentials: creds)
-                for id in aiSamplePostIDs {
-                    let postType = posts.first(where: { $0.id == id })?.type ?? "post"
-                    let fetched = try? await (postType == "page"
-                        ? wpClient.fetchPage(id: id)
-                        : wpClient.fetchPost(id: id))
-                    if let fetched {
-                        let stripped = fetched.content.rendered
-                            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !stripped.isEmpty { sampleContents.append(stripped) }
-                    }
-                }
-            }
-
-            if !sampleContents.isEmpty {
-                do {
-                    let client = AnthropicClient(apiKey: aiAPIKey)
-                    let prompt = AIPromptBuilder.styleGuideGenerationPrompt(sampleContents: sampleContents)
-                    let guide = try await client.complete(
-                        userMessage: prompt,
-                        systemPrompt: "Return only the requested style guide with no preamble.",
-                        useWebSearch: false
-                    ).text
-                    current.styleGuide = guide
-                    try AISettingsStore.save(current)
-                    onSaveAISettings?(current)
-                } catch {
-                    saveError = "Style analysis failed: \(error.localizedDescription)"
-                    isAnalyzing = false
-                    return
-                }
-            }
-            isAnalyzing = false
+            guard await generateStyleGuide() else { return }
         }
 
         saveSuccess = true
         try? await Task.sleep(nanoseconds: 2_000_000_000)
         saveSuccess = false
+    }
+
+    private func regenerateStyleGuide() async {
+        saveError = nil
+        ai.reasoning = ai.normalizedReasoning()
+        guard await generateStyleGuide() else { return }
+        saveSuccess = true
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        saveSuccess = false
+    }
+
+    /// Builds the guide from the sample posts with the selected model, then saves it. False when it failed.
+    private func generateStyleGuide() async -> Bool {
+        isAnalyzing = true
+        defer { isAnalyzing = false }
+        var samples: [(title: String, html: String)] = []
+        if let creds = credentials {
+            let wpClient = WordPressClient(credentials: creds)
+            for id in ai.samplePostIDs {
+                let postType = posts.first(where: { $0.id == id })?.type ?? "post"
+                let fetched = try? await (postType == "page"
+                    ? wpClient.fetchPage(id: id)
+                    : wpClient.fetchPost(id: id))
+                if let fetched, !AIPromptBuilder.reduceSample(html: fetched.content.rendered).isEmpty {
+                    samples.append((fetched.title.rendered, fetched.content.rendered))
+                }
+            }
+        }
+        guard !samples.isEmpty else {
+            saveError = "Couldn't load the sample posts from WordPress, so the style guide wasn't updated."
+            return false
+        }
+        do {
+            let prompt = AIPromptBuilder.styleGuideGenerationPrompt(samples: samples)
+            let guide = try await AnthropicClient(apiKey: ai.apiKey).complete(
+                userMessage: prompt,
+                systemPrompt: "Return only the requested style guide with no preamble.",
+                options: CompletionOptions(settings: ai)
+            ).text
+            ai.styleGuide = guide
+            try AISettingsStore.save(ai)
+            onSaveAISettings?(ai)
+            return true
+        } catch {
+            saveError = "Style analysis failed: \(error.localizedDescription)"
+            return false
+        }
     }
 
     private func loadExisting() {

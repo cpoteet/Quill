@@ -37,7 +37,7 @@ public struct PostSettings: Equatable {
     }
 
     // date_gmt comes with or without a zone suffix depending on the WordPress version; either is UTC.
-    private static func parseWPDate(_ iso: String) -> Date? {
+    static func parseWPDate(_ iso: String) -> Date? {
         if let date = ISO8601DateFormatter().date(from: iso) { return date }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

@@ -149,6 +149,19 @@ public final class AppState: ObservableObject {
         aiSettings = try? AISettingsStore.load()
     }
 
+    // Without a model list every AI call falls back to no thinking, so it's fetched as soon as there's a key.
+    @MainActor public func loadAIModelsIfNeeded(
+        fetch: (String) async throws -> [AIModelInfo] = { try await AnthropicClient(apiKey: $0).listModels() },
+        save: (AISettings) throws -> Void = { try AISettingsStore.save($0) }
+    ) async {
+        guard let settings = aiSettings, !settings.apiKey.isEmpty, settings.models.isEmpty,
+              let models = try? await fetch(settings.apiKey),
+              let current = aiSettings, current.apiKey == settings.apiKey, current.models.isEmpty else { return }
+        let next = current.applyingFetchedModels(models).0
+        aiSettings = next
+        try? save(next)
+    }
+
     // The open post is saved while the old site is still current, so its stash is keyed to that site.
     @MainActor public func connect(_ newCredentials: Credentials) async {
         if let current = credentials, current.siteKey != newCredentials.siteKey {

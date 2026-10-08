@@ -62,7 +62,12 @@ the wire format never sees one.
 - **Authority** — only the visual document is authoritative for the bodies.
   Code view shows the delimiter alone, so `_postContent(html, false)` there
   leaves `_footnotes` untouched; an edit in code view must not clear what the
-  delimiter stands for.
+  delimiter stands for. The exception is HTML that holds an
+  `<ol class="wp-block-footnotes">` itself (typed or pasted into code view, or a
+  legacy post): `extractFootnotes` reports `found`, its bodies become the meta,
+  and leaving code view rebuilds the editor from that split. Until 2026-10-08
+  the list was cut out of the content and its bodies thrown away. A list next
+  to an existing delimiter is dropped rather than turned into a second one.
 
 ## Migration
 

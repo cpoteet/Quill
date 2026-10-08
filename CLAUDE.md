@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 682 Swift + 1,548 JS tests, all passing as of 2026-10-05 (1,547 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 712 Swift + 1,584 JS tests, all passing as of 2026-10-08 (1,583 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -50,7 +50,7 @@ Sources/QuillKit/
   Auth/             CredentialsStore (file-based, not system keychain), AppAuthorization, ConnectSite
   API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy), MimeType, ImageConversion
                     APIError, NetworkFailure (connectivity by URLError code)
-  AI/               AnthropicClient, AISettings, AISettingsStore, AIPromptBuilder
+  AI/               AnthropicClient, AISettings (+ AISettingsStore), AIPromptBuilder, EvaluationPrompts, EvaluationState, SelectionPrompts
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
     ContentView.swift, SplitItemCollapseFix.swift
@@ -62,7 +62,7 @@ Sources/QuillKit/
     Media/          MediaLibraryView, MediaGalleryView, MediaPreviewOverlay
                     MediaSidebarSection (filter list), MediaDetailView (inspector)
                     MediaPickerView, GallerySheet
-    AI/             GeneratePostSheet, AIResultPanel, SamplePostPickerSheet
+    AI/             GeneratePostSheet, AIResultPanel, SamplePostPickerSheet, EvaluationPanel
     Onboarding/     OnboardingModel, OnboardingView (+ Welcome, Waiting, Manual, AI)
   Resources/        editor.html (Tiptap)
                     editor-transforms.js (WordPress HTML transforms, shared with test suite)

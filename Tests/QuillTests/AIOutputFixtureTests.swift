@@ -28,8 +28,8 @@ import Testing
         let raw = try read("\(name).raw.txt")
         let expected = try read("\(name).html")
         let cleaned = name.hasPrefix("generate-")
-            ? AIPromptBuilder.parseGenerateResponse(raw)?.html
-            : AIPromptBuilder.cleanOperationResult(raw)
+            ? (try? AIPromptBuilder.parseGenerated(raw))?.html
+            : (try? SelectionPrompts.parse(raw)).map(AIPromptBuilder.cleanOperationResult)
         #expect(cleaned == expected)
     }
 }

@@ -1441,6 +1441,17 @@ describe('extractFootnotes', () => {
     assert.match(r.content, /<!-- wp:paragraph -->/)
     assert.match(r.content, /<!-- \/wp:paragraph -->/)
   })
+
+  test('says whether a list was found', () => {
+    assert.equal(split('<p>x</p><ol class="wp-block-footnotes"></ol>').found, true)
+    assert.equal(split('<p>x</p><!-- wp:footnotes /-->').found, false)
+  })
+
+  test('a list beside a delimiter leaves one delimiter', () => {
+    const r = split('<p>x</p>\n\n<!-- wp:footnotes /-->\n<ol class="wp-block-footnotes"><li id="fn-a">N</li></ol>')
+    assert.equal(r.content.match(/wp:footnotes/g).length, 1)
+    assert.deepEqual(r.footnotes, [{ id: 'fn-a', content: 'N' }])
+  })
 })
 
 describe('inlineFootnotes', () => {

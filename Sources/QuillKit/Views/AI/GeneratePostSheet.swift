@@ -2,15 +2,16 @@ import SwiftUI
 
 struct GeneratePostSheet: View {
     let aiSettings: AISettings
-    var onResult: (String, String) -> Void   // (title, html)
+    var onResult: (String, String, String) -> Void   // (title, html, excerpt)
     var onCancel: () -> Void
+    /// The web search tool version that worked, and the model it worked for.
+    var onWebSearchTool: (String, String) -> Void = { _, _ in }
 
     @State private var prompt: String = ""
     @State private var isGenerating: Bool = false
     @State private var statusText: String = ""
     @State private var errorText: String? = nil
     @State private var showTruncationAlert: Bool = false
-    @State private var truncatedParsed: (title: String, html: String)? = nil
     @FocusState private var promptFocused: Bool
 
     var body: some View {
@@ -60,16 +61,14 @@ struct GeneratePostSheet: View {
         }
         .padding(20)
         .frame(width: 480)
-        .alert("Post may be cut off", isPresented: $showTruncationAlert) {
-            Button("Use What I Have") {
-                if let parsed = truncatedParsed { onResult(parsed.title, parsed.html) }
-            }
+        .alert("Post was cut off", isPresented: $showTruncationAlert) {
+            Button("Cancel", role: .cancel) {}
             Button("Get Full Version") {
                 Task { await generate(maxTokens: 16384) }
             }
             .keyboardShortcut(.defaultAction)
         } message: {
-            Text("The generated post hit the initial length limit and may be incomplete. Get the full version? (Uses more API budget)")
+            Text("The generated post hit the initial length limit before it was finished. Get the full version? (Uses more API budget)")
         }
     }
 
@@ -78,35 +77,36 @@ struct GeneratePostSheet: View {
         isGenerating = true
         promptFocused = false
         errorText = nil
-        truncatedParsed = nil
-        statusText = aiSettings.webSearchEnabled ? "Searching the web…" : "Writing…"
-
+        let modelID = aiSettings.resolvedModelID()
+        let webSearch = aiSettings.webSearchEnabled && aiSettings.resolvedModel()?.supportsWebSearch != false
+        statusText = webSearch ? "Searching the web…" : "Writing…"
         do {
             let client = AnthropicClient(apiKey: aiSettings.apiKey)
-            let system = AIPromptBuilder.systemPrompt(styleGuide: aiSettings.styleGuide)
-            let userMsg = AIPromptBuilder.generatePostPrompt(userPrompt: prompt)
             let result = try await client.complete(
-                userMessage: userMsg,
-                systemPrompt: system,
-                useWebSearch: aiSettings.webSearchEnabled,
-                maxTokens: maxTokens
+                userMessage: AIPromptBuilder.generatePrompt(description: prompt, webSearch: webSearch),
+                systemPrompt: AIPromptBuilder.generateSystem(styleGuide: aiSettings.styleGuide, today: Date(), webSearch: webSearch),
+                options: CompletionOptions(
+                    settings: aiSettings,
+                    baseMaxTokens: maxTokens,
+                    webSearch: webSearch ? WebSearchUse(maxUses: 10, knownTool: aiSettings.knownWebSearchTool(for: modelID)) : nil,
+                    jsonSchema: AIPromptBuilder.generateSchema
+                )
             )
-
-            guard let parsed = AIPromptBuilder.parseGenerateResponse(result.text) else {
+            if let tool = result.webSearchTool { onWebSearchTool(tool, modelID) }
+            isGenerating = false
+            guard let parsed = try? AIPromptBuilder.parseGenerated(result.text) else {
                 errorText = "Claude's reply came back in a form Quill couldn't read. Try again."
-                isGenerating = false
                 return
             }
-
+            onResult(parsed.title, parsed.html, parsed.excerpt)
+        } catch AnthropicError.cutOff(let tool) {
+            // A cut-off JSON reply can't be read, so the only way forward is the longer budget.
+            if let tool { onWebSearchTool(tool, modelID) }
             isGenerating = false
-
-            // Only prompt for the full version on the first (budget) pass.
-            // If the high-budget pass also truncates, just use what we got.
-            if result.truncated && maxTokens < 16384 {
-                truncatedParsed = (parsed.title, parsed.html)
+            if maxTokens < 16384 {
                 showTruncationAlert = true
             } else {
-                onResult(parsed.title, parsed.html)
+                errorText = "The post was too long to finish. Try a shorter description."
             }
         } catch {
             errorText = error.localizedDescription

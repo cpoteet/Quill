@@ -5716,10 +5716,10 @@
     // post_content and the footnote meta are produced together -- the delimiter
     // left in the content stands in for the bodies sent alongside it. Only the
     // visual document is authoritative for those bodies; code view shows the
-    // delimiter alone, so an edit there must not clear what it stands for.
+    // delimiter alone, so an edit there must not clear what it stands for, unless it holds a list itself.
     function _postContent(html, footnotesAuthoritative, send = true) {
       const split = extractFootnotes(html)
-      if (footnotesAuthoritative) _footnotes = JSON.stringify(split.footnotes)
+      if (footnotesAuthoritative || split.found) _footnotes = JSON.stringify(split.footnotes)
       if (send && window.webkit?.messageHandlers?.contentChanged) {
         window.webkit.messageHandlers.contentChanged.postMessage(split.content)
       }
@@ -5788,12 +5788,13 @@
       _codeViewOriginal = null
       if (userEdited) {
         // User changed the HTML — parse it back into Tiptap and update raw stores.
-        _rawHTML = html
-        _rawHTMLOnLoad = html
-        let stored = []
-        try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
+        const split = extractFootnotes(html)
+        _rawHTML = split.content
+        _rawHTMLOnLoad = split.content
+        let stored = split.footnotes
+        if (!split.found) try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
         editor.commands.setTextSelection(0)
-        editor.commands.setContent(_wrapIncoming(inlineFootnotes(html, stored)), false)
+        editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), false)
         editor.commands.setTextSelection(0)
         _reportBlocksAtRisk(html)
       }
@@ -6396,6 +6397,86 @@
       _selChangeTimer = setTimeout(_reportSelectionToSwift, 150)
     })
 
+    // ProseMirror caches its DOMSerializer on the schema the first time anything is serialized.
+    function _domSerializer() {
+      if (!editor.schema.cached.domSerializer) editor.getHTML()
+      return editor.schema.cached.domSerializer
+    }
+
+    const _AI_BARE_TAGS = new Set(['EM', 'STRONG', 'CODE', 'S'])
+
+    // Serializes content for Claude with nothing it would have to copy: links become <a id="L1">,
+    // footnote markers <sup id="F1"></sup>, and every other attribute goes. Returns { html, stubs }.
+    function _aiSelectionHTML(fragment) {
+      const doc = inertDocument()
+      const div = doc.createElement('div')
+      div.appendChild(_domSerializer().serializeFragment(fragment, { document: doc }))
+      const stubs = {}
+      let links = 0, notes = 0
+      div.querySelectorAll('sup.fn[data-fn]').forEach(sup => {
+        const id = 'F' + (++notes)
+        stubs[id] = { tag: 'sup', html: sup.outerHTML }
+        const stub = doc.createElement('sup')
+        stub.setAttribute('id', id)
+        sup.replaceWith(stub)
+      })
+      div.querySelectorAll('*').forEach(el => {
+        if (el.tagName === 'SUP' && /^F\d+$/.test(el.id) && stubs[el.id]) return
+        if (el.tagName === 'A') {
+          const id = 'L' + (++links)
+          stubs[id] = { tag: 'a', attrs: Array.from(el.attributes, a => [a.name, a.value]) }
+          Array.from(el.attributes).forEach(a => el.removeAttribute(a.name))
+          el.setAttribute('id', id)
+          return
+        }
+        Array.from(el.attributes).forEach(a => el.removeAttribute(a.name))
+      })
+      return { html: div.innerHTML, stubs }
+    }
+
+    // Puts the stubbed links and footnote markers back. A stub Quill didn't hand out, or one used twice,
+    // is unwrapped to its text; a marker Claude dropped is simply gone.
+    function _restoreAIStubs(root, stubs) {
+      const used = new Set()
+      const unwrap = el => el.replaceWith(...Array.from(el.childNodes))
+      root.querySelectorAll('a, sup').forEach(el => {
+        const stub = stubs[el.getAttribute('id')]
+        if (!stub || used.has(el.id) || stub.tag !== el.tagName.toLowerCase()) { unwrap(el); return }
+        used.add(el.id)
+        if (stub.tag === 'a') {
+          el.removeAttribute('id')
+          stub.attrs.forEach(([name, value]) => el.setAttribute(name, value))
+        } else {
+          const t = root.ownerDocument.createElement('template')
+          t.innerHTML = stub.html
+          el.replaceWith(t.content)
+        }
+      })
+    }
+
+    // The plain text around [from, to): the rest of its own textblock, plus one textblock further out.
+    function _aiContext(from, to) {
+      const blocks = []
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isTextblock) return true
+        blocks.push({ from: pos + 1, to: pos + 1 + node.content.size })
+        return false
+      })
+      const text = (a, b) => editor.state.doc.textBetween(a, b, '\n', '')
+      const own = b => b.from <= from && from <= b.to
+      const ownEnd = b => b.from <= to && to <= b.to
+      const startIdx = blocks.findIndex(own)
+      const endIdx = blocks.findIndex(ownEnd)
+      const prev = startIdx >= 0 ? blocks[startIdx - 1] : [...blocks].reverse().find(b => b.to <= from)
+      const next = endIdx >= 0 ? blocks[endIdx + 1] : blocks.find(b => b.from >= to)
+      const lead = startIdx >= 0 ? text(blocks[startIdx].from, from) : ''
+      const tail = endIdx >= 0 ? text(to, blocks[endIdx].to) : ''
+      return {
+        before: [prev && text(prev.from, prev.to), lead].filter(Boolean).join('\n\n'),
+        after: [tail, next && text(next.from, next.to)].filter(Boolean).join('\n\n'),
+      }
+    }
+
     // Called by Swift when the user taps a pill button.
     // Marks the selection as pending (a decoration, not content) and returns the
     // selected plain text for use as prompt input.
@@ -6444,13 +6525,23 @@
         ? (containerText || editor.state.doc.textBetween(from, to, '\n', ''))
         : editor.state.doc.textBetween(from, to, '\n', '')
 
+      const doc = editor.state.doc
+      const $to = doc.resolve(to)
+      const content = context
+        ? doc.slice(containerFrom, containerTo).content
+        : $from.sameParent($to) && $from.parent.isTextblock
+          ? $from.parent.slice($from.parentOffset, $to.parentOffset).content
+          : doc.slice(from, to).content
+      const { html, stubs } = _aiSelectionHTML(content)
+      const { before, after } = context ? _aiContext(containerFrom, containerTo) : _aiContext(from, to)
+
       // Collapsed, so typing cannot overwrite the pending text.
       editor.chain().focus()
         .setTextSelection(to)
-        .command(({ tr }) => { tr.setMeta(aiOperationKey, { phase: 'pending', from, to }); return true })
+        .command(({ tr }) => { tr.setMeta(aiOperationKey, { phase: 'pending', from, to, stubs }); return true })
         .run()
 
-      return { text: selectedText, context, containerText, containerFrom, containerTo }
+      return { text: selectedText, context, containerText, containerFrom, containerTo, html, before, after }
     }
 
     // Called by Swift with Claude's HTML result.
@@ -6462,6 +6553,10 @@
       // Clean Claude's response through the DOM so regex edge-cases can't slip through
       const _tmp = inertDocument().createElement('div')
       _tmp.innerHTML = html
+      _restoreAIStubs(_tmp, op.stubs || {})
+      // A result with no block element is a rewrite of inline text, and its spaces are content.
+      const _blockTags = /^(P|H[1-6]|UL|OL|LI|TABLE|THEAD|TBODY|TR|TD|TH|BLOCKQUOTE|PRE|FIGURE|HR|DIV)$/
+      const inlineOnly = !Array.from(_tmp.childNodes).some(n => n.nodeType === Node.ELEMENT_NODE && _blockTags.test(n.tagName))
       // Remove empty block elements (<p></p>, <p>&nbsp;</p>, etc.)
       _tmp.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {
         if (!el.textContent.trim() && !el.querySelector('img, table')) el.remove()
@@ -6469,9 +6564,11 @@
       // Remove whitespace-only text nodes between block elements — ProseMirror
       // treats the \n\n Claude emits between <p> tags as text and wraps the first
       // one in a blank paragraph even with preserveWhitespace: false.
-      Array.from(_tmp.childNodes).forEach(n => {
-        if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n.remove()
-      })
+      if (!inlineOnly) {
+        Array.from(_tmp.childNodes).forEach(n => {
+          if (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n.remove()
+        })
+      }
       const cleanHtml = _tmp.innerHTML.trim()
       if (!cleanHtml) return null
 
@@ -6499,16 +6596,17 @@
         nodeTo   = op.to
       }
 
-      // A lone paragraph inside one paragraph goes in as inline text, or it splits the paragraph.
+      // A lone paragraph, or inline content, inside one paragraph goes in as inline text, or it splits the paragraph.
       let insertContent = cleanHtml
       const $start = editor.state.doc.resolve(nodeFrom)
       const $end = editor.state.doc.resolve(nodeTo)
       const onlyChild = _tmp.childNodes.length === 1 ? _tmp.firstElementChild : null
-      if (onlyChild?.tagName === 'P' && $start.parent.isTextblock && $start.sameParent($end)) {
+      const inlineSource = onlyChild?.tagName === 'P' ? onlyChild : inlineOnly ? _tmp : null
+      if (inlineSource && $start.parent.isTextblock && $start.sameParent($end)) {
         // Tiptap inserts an unmarked HTML string verbatim, entities and all, so plain text goes in as a text node.
-        insertContent = onlyChild.children.length
-          ? onlyChild.innerHTML
-          : { type: 'text', text: onlyChild.textContent.replace(/[ \t\r\n\f]+/g, ' ').replace(/^ | $/g, '') }
+        insertContent = inlineSource.children.length
+          ? inlineSource.innerHTML.trim()
+          : { type: 'text', text: inlineSource.textContent.replace(/[ \t\r\n\f]+/g, ' ').replace(/^ | $/g, '') }
         const doc = editor.state.doc
         if (nodeTo - nodeFrom > 1 && doc.textBetween(nodeFrom, nodeFrom + 1) === ' ') nodeFrom += 1
         if (nodeTo - nodeFrom > 1 && doc.textBetween(nodeTo - 1, nodeTo) === ' ') nodeTo -= 1
@@ -6572,6 +6670,129 @@
         tr.replace(op.from, op.to, op.original)
       }
       editor.view.dispatch(tr)
+    }
+
+    // ── Evaluate: apply a finding ─────────────────────
+    // The document's text as Evaluate's findings quote it: text nodes in order, with a space where a block ends.
+    // `positions[i]` is the document position of text[i]; `breaks` holds the indices of those inserted spaces.
+    function _editorSearchText() {
+      const positions = []
+      const breaks = new Set()
+      const lineBreaks = new Set()
+      let text = ''
+      editor.state.doc.descendants((node, pos) => {
+        // A line break reads as a space, as Evaluate's text has it.
+        if (node.type.name === 'hardBreak' && positions.length > 0 && pos - positions[positions.length - 1] - 1 < 2) {
+          lineBreaks.add(text.length)
+          text += ' '
+          positions.push(pos)
+          return false
+        }
+        if (!node.isText) return true
+        if (positions.length > 0) {
+          const prevEnd = positions[positions.length - 1] + 1
+          // Sibling blocks sit 2 positions apart; an inline atom between two text nodes only 1.
+          if (pos - prevEnd >= 2) {
+            breaks.add(text.length)
+            text += ' '
+            positions.push(prevEnd)
+          }
+        }
+        for (let i = 0; i < node.text.length; i++) positions.push(pos + i)
+        text += node.text
+        return true
+      })
+      return { text, positions, breaks, lineBreaks }
+    }
+    window._editorSearchText = _editorSearchText
+
+    function _normalizeTypography(s) {
+      return s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\u00A0/g, ' ')
+    }
+
+    function _locateFinding(original, search = _editorSearchText()) {
+      if (!original) return { status: 'missing', search }
+      const word = /[\p{L}\p{N}_]/u
+      const usable = m => {
+        for (let i = m.start; i < m.end; i++) if (search.breaks.has(i)) return false
+        if (word.test(original[0]) && m.start > 0 && word.test(search.text[m.start - 1])) return false
+        return !(word.test(original[original.length - 1]) && word.test(search.text[m.end] || ''))
+      }
+      let matches = findMatches(search.text, original, true).filter(usable)
+      if (!matches.length) {
+        matches = findMatches(_normalizeTypography(search.text), _normalizeTypography(original), true).filter(usable)
+      }
+      if (!matches.length) return { status: 'missing', search }
+      if (matches.length > 1) return { status: 'ambiguous', search }
+      return { status: 'ok', search, match: matches[0] }
+    }
+
+    // The runs that differ between two strings, word by word: [{ from, to, text }] with from/to offsets into `a`.
+    function _changedRuns(a, b) {
+      const split = s => s.split(/(\s+)/).filter(t => t !== '')
+      const at = split(a)
+      const bt = split(b)
+      const lcs = Array.from({ length: at.length + 1 }, () => new Array(bt.length + 1).fill(0))
+      for (let i = at.length - 1; i >= 0; i--) {
+        for (let j = bt.length - 1; j >= 0; j--) {
+          lcs[i][j] = at[i] === bt[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1])
+        }
+      }
+      const offsets = [0]
+      for (const t of at) offsets.push(offsets[offsets.length - 1] + t.length)
+      const runs = []
+      let i = 0, j = 0, run = null
+      const flush = () => { if (run) { runs.push(run); run = null } }
+      while (i < at.length || j < bt.length) {
+        if (i < at.length && j < bt.length && at[i] === bt[j]) {
+          flush(); i++; j++
+        } else if (j < bt.length && (i === at.length || lcs[i][j + 1] >= lcs[i + 1][j])) {
+          run = run || { from: offsets[i], to: offsets[i], text: '' }
+          run.text += bt[j++]
+        } else {
+          run = run || { from: offsets[i], to: offsets[i], text: '' }
+          run.to = offsets[++i]
+        }
+      }
+      flush()
+      return runs
+    }
+
+    // Replaces a finding's exact `original` with `replacement` in one undoable step. Only the changed words are
+    // rewritten, each taking the marks where it sits, so a link or emphasis on unchanged words survives.
+    // An inline atom inside a changed run (footnote marker, hard break) stays; the new text takes the run's first stretch.
+    window.applyEvaluationFinding = (original, replacement) => {
+      if (codeViewActive) return 'code-view'
+      const found = _locateFinding(original)
+      if (found.status !== 'ok') return found.status
+      const { positions, lineBreaks } = found.search
+      const { start, end } = found.match
+      const docPos = offset => offset < end - start ? positions[start + offset] : positions[end - 1] + 1
+      const tr = editor.state.tr.setStoredMarks(null)
+      for (const run of _changedRuns(original, replacement).reverse()) {
+        const stretches = []
+        let open = null
+        for (let k = start + run.from; k < start + run.to; k++) {
+          if (lineBreaks.has(k)) open = null
+          else if (open && open.to === positions[k]) open.to++
+          else stretches.push(open = { from: positions[k], to: positions[k] + 1 })
+        }
+        if (!stretches.length) {
+          tr.insertText(run.text, docPos(run.from))
+          continue
+        }
+        for (const later of stretches.slice(1).reverse()) tr.delete(later.from, later.to)
+        const first = stretches[0]
+        if (run.text) tr.insertText(run.text, first.from, first.to)
+        else tr.delete(first.from, first.to)
+      }
+      if (tr.docChanged) editor.view.dispatch(tr)
+      return 'applied'
+    }
+
+    window.findingStatus = originals => {
+      const search = _editorSearchText()
+      return originals.map(original => _locateFinding(original, search).status)
     }
 
     window.findAndSelectText = function(query) {

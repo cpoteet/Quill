@@ -45,6 +45,7 @@ public struct ContentView: View {
             onboarding.appState = appState
             loadCredentialsAtLaunch()
         }
+        .task(id: appState.aiSettings?.apiKey) { await appState.loadAIModelsIfNeeded() }
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         .onOpenURL { url in Task { await onboarding.handleCallback(url) } }
     }

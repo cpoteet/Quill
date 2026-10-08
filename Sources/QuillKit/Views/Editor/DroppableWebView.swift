@@ -154,13 +154,17 @@ public final class DroppableWebView: WKWebView {
         let showAI = aiEnabled && !inFootnote && (hasSelection ?? hasTextSelection)
         if showAI {
             menu.addItem(.separator())
-            let aiActions: [(String, Selector)] = [
+            let aiActions: [(String, Selector)?] = [
                 ("Make Longer",  #selector(aiMakeLonger)),
                 ("Make Shorter", #selector(aiMakeShorter)),
+                ("Rephrase", #selector(aiRephrase)),
+                ("Fix Spelling & Grammar", #selector(aiFixSpelling)),
+                nil,
                 ("Convert to Table", #selector(aiConvertToTable)),
                 ("Convert to List",  #selector(aiConvertToList)),
             ]
-            for (title, sel) in aiActions {
+            for action in aiActions {
+                guard let (title, sel) = action else { menu.addItem(.separator()); continue }
                 let item = NSMenuItem(title: title, action: sel, keyEquivalent: "")
                 item.target = self
                 menu.addItem(item)
@@ -173,6 +177,8 @@ public final class DroppableWebView: WKWebView {
 
     @objc private func aiMakeLonger()      { onAIOperation?(.makeLonger) }
     @objc private func aiMakeShorter()     { onAIOperation?(.makeShorter) }
+    @objc private func aiRephrase()        { onAIOperation?(.rephrase) }
+    @objc private func aiFixSpelling()     { onAIOperation?(.fixSpelling) }
     @objc private func aiConvertToTable()  { onAIOperation?(.convertToTable) }
     @objc private func aiConvertToList()   { onAIOperation?(.convertToList) }
     @objc private func applySpellingSuggestion(_ sender: NSMenuItem) {

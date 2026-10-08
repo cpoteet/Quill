@@ -64,6 +64,7 @@ When the author switches models and the saved reasoning option does not exist fo
 ### Loading the model list
 
 - Fetched when Settings opens with a saved API key, and when the author finishes editing the key field (on submit or focus loss), not on every keystroke.
+- Also fetched once at launch, and when onboarding saves a key, if no list is saved yet; otherwise an author who never opens Settings would run every feature with thinking off. Added 2026-10-08 after the final review.
 - The fetched list, including each model's `capabilities` and `max_tokens`, is saved in `AISettings`, so Settings and every AI call work offline from the last fetch.
 - If the fetch fails, Settings keeps the saved list and shows the error as a caption under Model.
 - If the saved model is not in a successful fetch, Settings switches back to the default model and shows "Your saved model is no longer available. Switched to <display name>."

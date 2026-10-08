@@ -1,11 +1,1 @@
-```html
-<table style="border-collapse: collapse;">
-  <thead>
-    <tr><th style="border: 1px solid #ccc; padding: 8px;">Plan</th><th style="border: 1px solid #ccc; padding: 8px;">Price</th></tr>
-  </thead>
-  <tbody>
-    <tr><td style="border: 1px solid #ccc; padding: 8px;">Basic</td><td style="border: 1px solid #ccc; padding: 8px;">$10</td></tr>
-    <tr><td style="border: 1px solid #ccc; padding: 8px;">Pro</td><td style="border: 1px solid #ccc; padding: 8px;">$25</td></tr>
-  </tbody>
-</table>
-```
+{"html": "<table style=\"border-collapse: collapse;\">\n  <thead>\n    <tr><th style=\"border: 1px solid #ccc; padding: 8px;\">Plan</th><th style=\"border: 1px solid #ccc; padding: 8px;\">Price</th></tr>\n  </thead>\n  <tbody>\n    <tr><td style=\"border: 1px solid #ccc; padding: 8px;\">Basic</td><td style=\"border: 1px solid #ccc; padding: 8px;\">$10</td></tr>\n    <tr><td style=\"border: 1px solid #ccc; padding: 8px;\">Pro</td><td style=\"border: 1px solid #ccc; padding: 8px;\">$25</td></tr>\n  </tbody>\n</table>\n"}
