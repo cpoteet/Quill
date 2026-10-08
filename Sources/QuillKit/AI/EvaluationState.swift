@@ -14,8 +14,8 @@ public struct EvaluationState {
         }
     }
 
-    public enum Tab: Hashable, CaseIterable {
-        case review, fixes, ideas, facts
+    public enum Page: Hashable, CaseIterable {
+        case fixes, ideas, facts
     }
 
 
@@ -77,36 +77,21 @@ public struct EvaluationState {
         (review.value?.corrections ?? []).filter { canApply($0.id) }
     }
 
-    public var countsLine: String {
-        func count(_ n: Int, _ one: String, _ many: String) -> String {
-            n == 0 ? "no \(many)" : n == 1 ? "1 \(one)" : "\(n) \(many)"
+    /// How many findings a page holds once its request is done; nil while it runs, or if it failed or is unavailable.
+    public func count(_ page: Page) -> Int? {
+        switch page {
+        case .fixes: review.value?.corrections.count
+        case .ideas: review.value?.suggestions.count
+        case .facts: facts.value?.checks.count
         }
-        var parts: [String] = []
-        if let result = review.value {
-            parts.append(count(result.corrections.count, "fix", "fixes"))
-            parts.append(count(result.suggestions.count, "idea", "ideas"))
-        }
-        switch facts {
-        case .loading: parts.append("checking facts…")
-        case .done(let result): parts.append(count(result.checks.count, "fact to check", "facts to check"))
-        case .failed, .unavailable: break
-        }
-        return parts.joined(separator: ", ")
     }
 
-    public func tabLabel(_ tab: Tab) -> String {
-        func labelled(_ name: String, _ n: Int?) -> String {
-            guard let n, n > 0 else { return name }
-            return "\(name) \(n)"
+    public func isLoading(_ page: Page) -> Bool {
+        switch page {
+        case .fixes, .ideas: if case .loading = review { return true }
+        case .facts: if case .loading = facts { return true }
         }
-        switch tab {
-        case .review: return "Review"
-        case .fixes: return labelled("Fixes", review.value?.corrections.count)
-        case .ideas: return labelled("Ideas", review.value?.suggestions.count)
-        case .facts:
-            if case .loading = facts { return "Facts …" }
-            return labelled("Facts", facts.value?.checks.count)
-        }
+        return false
     }
 }
 

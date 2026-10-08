@@ -166,7 +166,7 @@ Framework: `swift-testing`. Target: `Tests/QuillTests/`. Support files: `Tests/Q
 | 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
 | 43 | `AISettingsTests` | `AISettingsTests.swift` | 20 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
 | 44 | `EvaluationPromptsTests` | `EvaluationPromptsTests.swift` | 18 | `postText` markers for headings, list items, table rows, captions and footnotes, code and embeds left out, no phantom spaces, every line findable in the editor's text (`Scripts/fixtures/evaluate/`); the review and fact-check prompts (date, publish line, guide paragraph only with a guide); the schemas; parsing (no-op findings dropped, claims counted) |
-| 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 12 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, the counts line and tab labels |
+| 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 12 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, each list's count and loading state |
 | 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 7 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
 | 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 5 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
 
@@ -3581,15 +3581,15 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Trigger the AI result bar, then type in the sidebar search field → the bar stays visible and correctly positioned (doesn't disappear or duplicate).
 
 **Evaluate**
-- [ ] Click the checkmark button → the panel opens with Review, Fixes, Ideas and Facts tabs. While the requests run, Review shows "Reviewing…" and the Facts tab reads "Facts …"; when they finish, each tab shows its count ("Fixes 3") and Review lists the counts line ("3 fixes, 2 ideas, 1 fact to check").
-- [ ] The checkmark button is highlighted while the panel is open and disabled while an evaluation runs. Re-evaluate is disabled while one runs, and a new run returns to the Review tab.
+- [ ] Click the checkmark button → the panel opens on the review, with rows for Fixes, Ideas and Facts to Check below it. While the requests run, the review shows "Reviewing…" and each row shows a small spinner where its count goes; when they finish, each row shows its count, 0 included. Click a row → its list opens with a back arrow and the list's name in the header; the back arrow returns to the review.
+- [ ] The checkmark button is highlighted while the panel is open and disabled while an evaluation runs. Re-evaluate is disabled while one runs, and a new run returns to the review.
 - [ ] On a near-empty post → "Add more content before evaluating."
 - [ ] Click a row in Fixes or Ideas → the matching text is selected and scrolled into view. Each row shows the original struck through, then "→" and the replacement.
 - [ ] Apply on a row → the text changes in the editor, the row reads "Applied", and one ⌘Z undoes it. An applied row stays "Applied" after ⌘Z.
 - [ ] Open code view (`</>`) and press Apply → a toast reads "Switch out of code view to apply changes." and the row stays unapplied.
 - [ ] Apply a suggestion whose original spans a footnote marker → the marker and its footnote stay; the marker sits after the new words.
 - [ ] Apply All on Fixes → every correction that still matches is applied; rows already applied or changed are skipped. Ideas has no Apply All.
-- [ ] Edit a flagged sentence by hand → its row reads "Text has changed" and Apply is disabled, without switching tabs. Make the flagged text appear twice → the row reads "Appears more than once".
+- [ ] Edit a flagged sentence by hand → its row reads "Text has changed" and Apply is disabled, without leaving the list. Make the flagged text appear twice → the row reads "Appears more than once".
 - [ ] With Web Search on, Facts lists "Check These" with "N claims checked"; each row shows the quoted claim, the explanation, the source sentence and its host as a link. A row with a suggested wording has Use Wording, which behaves like Apply. With no claims → "Nothing to check."
 - [ ] With Web Search off → Facts reads "Turn on Web Search in Settings to check facts." With a model that can't search → "This model can't search the web. Choose another model in Settings to check facts." Either way no fact-check request is made.
 - [ ] Footnote bodies are evaluated: a typo inside a footnote is flagged.

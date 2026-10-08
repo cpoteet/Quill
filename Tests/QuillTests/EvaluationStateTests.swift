@@ -106,27 +106,25 @@ import Testing
         #expect(state.applyNote(result.corrections[0].id) == nil)
     }
 
-    @Test func countsLineSummarizesTheTabs() throws {
+    @Test func pageCountsWaitForTheirOwnRequest() throws {
         var state = EvaluationState(searchAvailable: true)
-        state.review = .done(try review(corrections: 7, suggestions: 3))
-        #expect(state.countsLine == "7 fixes, 3 ideas, checking facts…")
+        #expect(state.isLoading(.fixes) && state.isLoading(.ideas) && state.isLoading(.facts))
+        #expect(state.count(.fixes) == nil)
+        state.review = .done(try review(corrections: 7, suggestions: 0))
+        #expect(!state.isLoading(.fixes) && !state.isLoading(.ideas) && state.isLoading(.facts))
+        #expect(state.count(.fixes) == 7)
+        #expect(state.count(.ideas) == 0)
+        #expect(state.count(.facts) == nil)
         state.facts = .done(try facts(3))
-        #expect(state.countsLine == "7 fixes, 3 ideas, 3 facts to check")
-        state.review = .done(try review(corrections: 1, suggestions: 0))
-        state.facts = .done(try facts(1))
-        #expect(state.countsLine == "1 fix, no ideas, 1 fact to check")
-        state.facts = .unavailable
-        #expect(state.countsLine == "1 fix, no ideas")
+        #expect(!state.isLoading(.facts))
+        #expect(state.count(.facts) == 3)
     }
 
-    @Test func tabLabelsHideZeroCounts() throws {
-        var state = EvaluationState(searchAvailable: true)
-        #expect(state.tabLabel(.facts) == "Facts …")
-        state.review = .done(try review(corrections: 7, suggestions: 0))
-        state.facts = .done(try facts(0))
-        #expect(state.tabLabel(.review) == "Review")
-        #expect(state.tabLabel(.fixes) == "Fixes 7")
-        #expect(state.tabLabel(.ideas) == "Ideas")
-        #expect(state.tabLabel(.facts) == "Facts")
+    @Test func failedOrUnavailablePagesHaveNoCount() throws {
+        var state = EvaluationState(searchAvailable: false)
+        state.review = .failed("Overloaded")
+        #expect(!state.isLoading(.fixes) && !state.isLoading(.facts))
+        #expect(state.count(.fixes) == nil)
+        #expect(state.count(.facts) == nil)
     }
 }

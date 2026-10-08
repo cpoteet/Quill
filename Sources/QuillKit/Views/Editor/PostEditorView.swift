@@ -443,7 +443,7 @@ public struct PostEditorView: View {
                         "window.findAndSelectText(\(json))", completionHandler: nil)
                 },
                 onApply: { ids in Task { await applyFindings(ids) } },
-                onShowTab: { Task { await refreshEvaluationStatuses() } }
+                onShowPage: { Task { await refreshEvaluationStatuses() } }
             )
             .onAppear { Task { await refreshEvaluationStatuses() } }
             .onChange(of: htmlContent) { Task { await refreshEvaluationStatuses() } }

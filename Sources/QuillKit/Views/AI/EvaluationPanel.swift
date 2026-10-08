@@ -11,22 +11,22 @@ public struct EvaluationPanel: View {
     let onReEvaluate: () -> Void
     let onFindingSelected: (String) -> Void
     let onApply: ([UUID]) -> Void
-    let onShowTab: () -> Void
+    let onShowPage: () -> Void
 
-    @State private var tab: EvaluationState.Tab = .review
+    @State private var page: EvaluationState.Page?
 
     public init(
         state: EvaluationPanelState,
         onReEvaluate: @escaping () -> Void,
         onFindingSelected: @escaping (String) -> Void,
         onApply: @escaping ([UUID]) -> Void,
-        onShowTab: @escaping () -> Void
+        onShowPage: @escaping () -> Void
     ) {
         self.state = state
         self.onReEvaluate = onReEvaluate
         self.onFindingSelected = onFindingSelected
         self.onApply = onApply
-        self.onShowTab = onShowTab
+        self.onShowPage = onShowPage
     }
 
     public var body: some View {
@@ -35,14 +35,45 @@ public struct EvaluationPanel: View {
             Divider()
             content
         }
+        .onChange(of: evaluationID) { page = nil }
+        .onChange(of: page) { onShowPage() }
+    }
+
+    private var evaluationID: UUID? {
+        if case .evaluation(let evaluation) = state { return evaluation.id }
+        return nil
+    }
+
+    private static func title(_ page: EvaluationState.Page) -> String {
+        switch page {
+        case .fixes: "Fixes"
+        case .ideas: "Ideas"
+        case .facts: "Facts to Check"
+        }
     }
 
     private var header: some View {
-        Text("Content Evaluation")
-            .font(.headline)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+        HStack(spacing: 6) {
+            if let page, case .evaluation(let evaluation) = state {
+                Button { self.page = nil } label: { Image(systemName: "chevron.left") }
+                    .buttonStyle(.borderless)
+                    .help("Back")
+                    .accessibilityLabel("Back")
+                Text(Self.title(page)).font(.headline)
+                Spacer()
+                if page == .fixes, let corrections = evaluation.review.value?.corrections, !corrections.isEmpty {
+                    Button("Apply All") { onApply(evaluation.applyAllTargets.map(\.id)) }
+                        .controlSize(.small)
+                        .disabled(evaluation.applyAllTargets.isEmpty)
+                }
+            } else {
+                Text("Content Evaluation").font(.headline)
+                Spacer()
+            }
+        }
+        .frame(minHeight: 20)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -64,21 +95,13 @@ public struct EvaluationPanel: View {
 
     private func evaluationView(_ evaluation: EvaluationState) -> some View {
         VStack(spacing: 0) {
-            Picker("Show", selection: $tab) {
-                ForEach(EvaluationState.Tab.allCases, id: \.self) { Text(evaluation.tabLabel($0)).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    switch tab {
-                    case .review: reviewTab(evaluation)
-                    case .fixes: findingsTab(evaluation, title: "Corrections", applyAll: true) { $0.corrections }
-                    case .ideas: findingsTab(evaluation, title: "Suggestions", applyAll: false) { $0.suggestions }
-                    case .facts: factsTab(evaluation)
+                    switch page {
+                    case nil: overview(evaluation)
+                    case .fixes: findingsPage(evaluation, empty: "No corrections.") { $0.corrections }
+                    case .ideas: findingsPage(evaluation, empty: "No suggestions.") { $0.suggestions }
+                    case .facts: factsPage(evaluation)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,20 +114,13 @@ public struct EvaluationPanel: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
         }
-        .onChange(of: evaluation.id) { tab = .review }
-        .onChange(of: tab) { onShowTab() }
     }
 
-    // MARK: - Review
+    // MARK: - Overview
 
     @ViewBuilder
-    private func reviewTab(_ evaluation: EvaluationState) -> some View {
+    private func overview(_ evaluation: EvaluationState) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !evaluation.countsLine.isEmpty {
-                Text(evaluation.countsLine)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
             switch evaluation.review {
             case .loading, .unavailable:
                 progress("Reviewing\u{2026}")
@@ -122,13 +138,20 @@ public struct EvaluationPanel: View {
             }
         }
         .padding(16)
+        ForEach(EvaluationState.Page.allCases, id: \.self) { page in
+            Divider()
+            PageRow(title: Self.title(page), count: evaluation.count(page), isLoading: evaluation.isLoading(page)) {
+                self.page = page
+            }
+        }
+        Divider()
     }
 
     // MARK: - Fixes and Ideas
 
     @ViewBuilder
-    private func findingsTab(_ evaluation: EvaluationState, title: String, applyAll: Bool,
-                             findings: (ReviewResult) -> [ReviewFinding]) -> some View {
+    private func findingsPage(_ evaluation: EvaluationState, empty: String,
+                              findings: (ReviewResult) -> [ReviewFinding]) -> some View {
         switch evaluation.review {
         case .loading, .unavailable:
             progress("Reviewing\u{2026}").padding(16)
@@ -136,26 +159,13 @@ public struct EvaluationPanel: View {
             InlineError(message: message).padding(16)
         case .done(let result):
             let items = findings(result)
-            HStack {
-                SectionLabel(title)
-                Spacer()
-                if applyAll && !items.isEmpty {
-                    Button("Apply All") { onApply(evaluation.applyAllTargets.map(\.id)) }
-                        .controlSize(.small)
-                        .disabled(evaluation.applyAllTargets.isEmpty)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
             if items.isEmpty {
-                Text(applyAll ? "No corrections." : "No suggestions.")
+                Text(empty)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
+                    .padding(16)
             }
-            ForEach(items) { finding in
-                Divider()
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, finding in
+                if index > 0 { Divider() }
                 FindingRow(
                     finding: finding,
                     applied: evaluation.isApplied(finding.id),
@@ -171,7 +181,7 @@ public struct EvaluationPanel: View {
     // MARK: - Facts
 
     @ViewBuilder
-    private func factsTab(_ evaluation: EvaluationState) -> some View {
+    private func factsPage(_ evaluation: EvaluationState) -> some View {
         switch evaluation.facts {
         case .loading:
             progress("Checking facts\u{2026}").padding(16)
@@ -182,16 +192,12 @@ public struct EvaluationPanel: View {
         case .failed(let message):
             InlineError(message: message).padding(16)
         case .done(let result):
-            HStack(alignment: .firstTextBaseline) {
-                SectionLabel("Check These")
-                Spacer()
-                Text("\(result.claimsChecked) claim\(result.claimsChecked == 1 ? "" : "s") checked")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+            Text("\(result.claimsChecked) claim\(result.claimsChecked == 1 ? "" : "s") checked")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
             if result.checks.isEmpty {
                 Text("Nothing to check.")
                     .foregroundStyle(.secondary)
@@ -217,6 +223,39 @@ public struct EvaluationPanel: View {
             ProgressView().controlSize(.small)
             Text(text).foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct PageRow: View {
+    let title: String
+    let count: Int?
+    let isLoading: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(title)
+                Spacer()
+                if isLoading {
+                    ProgressView().controlSize(.mini)
+                } else if let count {
+                    Text("\(count)").monospacedDigit().foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(isHovering ? Color.primary.opacity(0.06) : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .accessibilityValue(isLoading ? "Loading" : count.map(String.init) ?? "")
     }
 }
 
