@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-08 — 712 Swift tests + 1,655 JS tests (1,654 pass, 1 skipped), no failures._
+_Last updated: 2026-10-08 — 729 Swift tests + 1,683 JS tests (1,682 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,15 +16,15 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (712 tests)
+1. **Swift tests** — `swift test` (729 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (108 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (66 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (275 tests via Node's built-in runner + jsdom)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (115 tests — pure Node; `serializeAttributes` compared with WordPress)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (276 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (347 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (353 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (45 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
@@ -32,8 +32,8 @@ This document is the authoritative reference for Quill's automated test suite an
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (67 tests — checked by WordPress's own block validator)
-18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (21 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (72 tests — checked by WordPress's own block validator)
+18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nineteen passed.
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (712 tests, 47 suites)
+## Swift test suite (729 tests, 47 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -126,15 +126,15 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 65 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 68 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link) |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
-| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 15 | Autosave CRUD, one-per-post, keyed by site, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
+| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 16 | Autosave CRUD, one-per-post, keyed by site, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 6 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, autosaves rebuilt with a site key, drafts and autosaves independent |
-| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 26 | Generate Post's system prompt (date, the no-invention rule, guide and search paragraphs only when they apply), user prompt and JSON schema; `parseGenerated` (citation wrappers stripped with their words kept, space before punctuation closed, tables normalized, empty or truncated replies rejected); the style-guide sample reduction, header and prompt; `cleanOperationResult`; and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
-| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 56 | `requestBody` for every row of the reasoning table (never `thinking: disabled`), `max_tokens` budgets and cap, JSON schema in `output_config.format` sent with `properties` in `required` order, direct web search; web search version fallback on the API's real rejection text; `pause_turn` continuations; refusal; the 600-second timeout; `listModels` (capabilities, newest first, paging, 401); `verifyKey`, headers, text joining and error handling |
+| 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 27 | Generate Post's system prompt (date, the no-invention rule, guide and search paragraphs only when they apply), user prompt and JSON schema; `parseGenerated` (citation wrappers stripped with their words kept, space before `,` and `.` closed and before `; : ! ?` only after a citation, tables normalized, empty or truncated replies rejected); the style-guide sample reduction, header and prompt; `cleanOperationResult`; and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
+| 13 | `AnthropicClientTests` | `AnthropicClientTests.swift` | 62 | `requestBody` for every row of the reasoning table (never `thinking: disabled`), `max_tokens` budgets and cap, JSON schema in `output_config.format` sent with `properties` in `required` order, direct web search; web search version fallback on the API's real rejection text; `pause_turn` continuations; refusal; the cut-off message suggesting lower reasoning only when thinking was sent; the 600-second timeout; `listModels` (capabilities, newest first, paging, 401); `verifyKey`, headers, text joining and error handling |
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
@@ -152,7 +152,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
-| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 32 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
+| 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
@@ -164,11 +164,11 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
 | 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
-| 43 | `AISettingsTests` | `AISettingsTests.swift` | 20 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
+| 43 | `AISettingsTests` | `AISettingsTests.swift` | 22 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
 | 44 | `EvaluationPromptsTests` | `EvaluationPromptsTests.swift` | 18 | `postText` markers for headings, list items, table rows, captions and footnotes, code and embeds left out, no phantom spaces, every line findable in the editor's text (`Scripts/fixtures/evaluate/`); the review and fact-check prompts (date, publish line, guide paragraph only with a guide); the schemas; parsing (no-op findings dropped, claims counted) |
-| 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 12 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, each list's count and loading state |
-| 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 7 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
-| 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 5 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
+| 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 14 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, each list's count and loading state |
+| 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 8 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
+| 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 6 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
 
 ---
 
@@ -295,7 +295,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (65 tests)
+### 5. Networking — `WordPressClientTests` (68 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -345,15 +345,25 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 | Test | What it checks |
 |---|---|
-| `canPostUnfilteredHTMLReadsTheCurrentUsersCapability` | `GET users/me?context=edit`, `unfiltered_html: true` gives true |
-| `canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool` | siolon.com's `can_runPHP` is a string; decoding every capability as a Bool failed the whole response, so the CSS/JS tabs never showed |
-| `canPostUnfilteredHTMLIsFalseWithoutTheCapability` | No `unfiltered_html` key gives false |
 | `fetchAllCategoriesHitsCategoriesEndpointWithPerPage100` | `per_page=100` |
 | `fetchAllCategoriesPaginatesAcrossMultiplePages` | Follows `X-WP-TotalPages` to page 2 |
 | `fetchAllTagsHitsTagsEndpointWithPerPage100` | `/tags` endpoint |
 | `fetchAllTagsPaginatesAcrossMultiplePages` | Tags pagination |
 | `createCategoryUsesPostMethodOnCategoriesEndpoint` | `POST /categories` with `{"name":…}` |
 | `createTagUsesPostMethodOnTagsEndpoint` | `POST /tags` with `{"name":…}` |
+
+#### `canPostUnfilteredHTML` (6 tests)
+
+Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unfiltered_html` capability is not enough on its own: a multisite non-super-admin, or any user on a site with `DISALLOW_UNFILTERED_HTML`, keeps the role capability but WordPress still strips their scripts and styles. The `wp:action-unfiltered-html` link on a post fetched with `context=edit` is what reflects the real permission (WordPress compacts `https://api.w.org/` relations through its `wp` CURIE; the full URI is accepted too).
+
+| Test | What it checks |
+|---|---|
+| `canPostUnfilteredHTMLReadsTheCapabilityThenAPostsActionLink` | `GET users/me?context=edit`, then `GET posts` with `context=edit` and `_links`; the capability plus the action link gives true |
+| `canPostUnfilteredHTMLAcceptsTheUncompactedRelation` | The full `https://api.w.org/action-unfiltered-html` relation counts as well as the compact `wp:` one WordPress sends |
+| `canPostUnfilteredHTMLIsFalseWhenThePostHasNoActionLink` | The capability with no `action-unfiltered-html` link on the post gives false — the multisite and `DISALLOW_UNFILTERED_HTML` case |
+| `canPostUnfilteredHTMLFallsBackToTheCapabilityWithNoPosts` | A site with no posts to read the link from falls back to the capability |
+| `canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool` | siolon.com's `can_runPHP` is a string; decoding every capability as a Bool failed the whole response, so the CSS/JS tabs never showed |
+| `canPostUnfilteredHTMLIsFalseWithoutTheCapability` | No `unfiltered_html` key gives false, and no posts request is made |
 
 #### Error mapping (8 tests)
 
@@ -479,7 +489,7 @@ Uses `AppDatabase.inMemory()` — each test gets an isolated DB.
 
 ---
 
-### 9. Storage — `AutosaveStoreTests` (15 tests)
+### 9. Storage — `AutosaveStoreTests` (16 tests)
 
 File: `Tests/QuillTests/AutosaveStoreTests.swift`
 
@@ -544,7 +554,7 @@ File: `Tests/QuillTests/AppDatabaseTests.swift`
 
 ---
 
-### 12. AI — `AIPromptBuilderTests` (26 tests)
+### 12. AI — `AIPromptBuilderTests` (27 tests)
 
 File: `Tests/QuillTests/AIPromptBuilderTests.swift`
 
@@ -557,7 +567,8 @@ Pure function tests — no network, no async. Generate Post's prompt text is cop
 | `generateSystemWithoutGuideOmitsTheVoiceParagraph` | Generate system without guide omits the voice paragraph |
 | `generatePromptNamesHTMLElementsAndJSONFields` | Generate prompt names htmlelements and jsonfields |
 | `parseGeneratedReadsTheFields` | Parse generated reads the fields |
-| `parseGeneratedClosesSpaceBeforePunctuation` | Parse generated closes space before punctuation |
+| `parseGeneratedClosesSpaceBeforePunctuation` | A space before `,` or `.` is always closed; a space before `;` `:` `!` `?` is closed only where a stripped citation tag left it |
+| `parseGeneratedKeepsFrenchSpacingBeforeHighPunctuation` | `Pourquoi ?` and `Attention :` keep their space — French typography puts one before `; : ! ?` |
 | `parseGeneratedStripsCiteTagsAndNormalizesTables` | Parse generated strips cite tags and normalizes tables |
 | `parseGeneratedRejectsAnEmptyPostOrTruncatedJSON` | Parse generated rejects an empty post or truncated JSON |
 | `nonTableInlineStylesLeftAlone` | Non table inline styles left alone |
@@ -583,7 +594,7 @@ The table tag match ends at a word boundary that excludes `-` and word character
 
 ---
 
-### 13. AI — `AnthropicClientTests` (56 tests)
+### 13. AI — `AnthropicClientTests` (62 tests)
 
 File: `Tests/QuillTests/AnthropicClientTests.swift`
 Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`, `Tests/QuillTests/Support/AIModelFixtures.swift` (the Models API values recorded on 2026-10-07)
@@ -598,6 +609,8 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`, `Tests/Quill
 | `enabledOnlyMedium` | Enabled only medium |
 | `enabledOnlyLowAndHighBudgets` | Enabled only low and high budgets |
 | `requestForUnknownModelOmitsThinking` | Request for unknown model omits thinking |
+| `adaptiveLevelTheModelDoesNotOfferSendsNoEffort` | An effort level missing from the model's list sends adaptive thinking with no `output_config.effort` |
+| `enabledOnlyLevelWithoutABudgetSendsNoThinking` | `xhigh` and `max` have no enabled-thinking budget, so nothing is added to `max_tokens` |
 | `neverSendsDisabledThinking` | Never sends disabled thinking |
 | `maxTokensCappedAtModelLimit` | Max tokens capped at model limit |
 | `jsonSchemaGoesInOutputConfigFormat` | Json schema goes in output config format |
@@ -621,6 +634,7 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`, `Tests/Quill
 | `truncatedTrueWhenStopReasonIsMaxTokens` | Truncated true when stop reason is max tokens |
 | `cutOffStructuredReplyThrowsCutOffWithTheTool` | A JSON reply cut off at `max_tokens` throws `cutOff`, carrying the accepted web search tool |
 | `thinkingThatUsesTheWholeBudgetThrowsCutOff` | Thinking that uses the whole budget throws `cutOff`, not "no text content" |
+| `cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` | `cutOff(reasoned:)`: the message mentions reasoning only when the request sent thinking, since lowering reasoning cannot help a request that had none |
 | `truncatedFalseWhenStopReasonIsEndTurn` | Truncated false when stop reason is end turn |
 | `missingStopReasonFieldDoesNotThrowAndIsNotTruncated` | Missing stop reason field does not throw and is not truncated |
 | `nonOkStatusThrowsHttpError` | Non ok status throws http error |
@@ -642,6 +656,9 @@ Support: `Tests/QuillTests/Support/AnthropicMockURLProtocol.swift`, `Tests/Quill
 | `matchingRejectionRetriesNextVersion` | Matching rejection retries next version |
 | `unrelated400IsNotRetried` | Unrelated400 is not retried |
 | `knownVersionIsUsedDirectly` | Known version is used directly |
+| `knownToolOutsideTheListIsTriedFirstThenTheList` | A remembered version Quill doesn't list goes first; when it is rejected the list starts from the newest |
+| `rejectedKnownVersionFallsBackOnlyToOlderOnes` | A rejected remembered version moves on to the versions after it, never back to newer ones |
+| `oldestVersionRejectedSurfacesTheAPIError` | When every version is rejected, the last 400 is thrown as `httpError` after exactly one try each |
 | `noToolWithoutWebSearch` | No tool without web search |
 | `pauseTurnContinuesAndJoinsText` | Pause turn continues and joins text |
 | `pauseTurnStopsAfterThreeContinuations` | Pause turn stops after three continuations |
@@ -992,7 +1009,7 @@ The Swift half of the AI output validity suite: keeps each `Scripts/fixtures/ai/
 
 ---
 
-### 31. Editor — `GalleryEditTests` (32 tests)
+### 31. Editor — `GalleryEditTests` (33 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift half of editing a gallery: decoding what `window.editGallery` posts, and building what `window.insertGallery` receives. Spec: `docs/superpowers/specs/2026-09-11-gallery-editing-design.md`.
 
@@ -1018,6 +1035,7 @@ File: `Tests/QuillTests/PostEditorHelpersTests.swift` (its own suite). The Swift
 | `customHTMLPartsOnlyReadMarkersWhereGutenbergWritesThem` | A marker after the HTML is not split out; Gutenberg always writes style, then script, then HTML |
 | `customHTMLPartsJoinInGutenbergsOrder` | CSS, then JavaScript, then HTML, a blank line apart; empty parts are left out |
 | `customHTMLPartsReportWhetherTheyHoldCode` | `hasCode` keeps the tabs on for a block that already has CSS or JS; whitespace-only parts count as empty |
+| `customHTMLPartsReadAMarkedScriptWithoutAStyle` | A block with only Gutenberg's marked `<script>` splits into JS and HTML with empty CSS |
 | `customHTMLScriptCarriesSpecialCharactersIntact` | The `insertCustomHTML(…)` call Swift evaluates decodes back to the same HTML, with quotes, a backslash, `</script>`, an emoji and U+2028 |
 | `galleryPayloadPickedSizeAppliesToEveryImage` | Picking a size resizes an existing image through its `WPMedia` |
 | `galleryPayloadKeepLinksLinksNewImagesByGalleryLinkTo` | Keep Current Links keeps existing `href`s, links a new image to its attachment page with `linkDestination: attachment` in core's key order, sends the gallery's own `linkTo` and `keepLinks: true` |
@@ -1237,7 +1255,7 @@ File: `Tests/QuillTests/FeaturedImageSectionTests.swift`
 | `twoDropsOfTheSameFileGetSeparateFolders` | Each drop gets its own folder |
 | `providerWithoutAnImageYieldsNil` | A provider holding no image returns `nil` instead of hanging |
 
-### 43. AI — `AISettingsTests` (20 tests)
+### 43. AI — `AISettingsTests` (22 tests)
 
 File: `Tests/QuillTests/AISettingsTests.swift`
 
@@ -1252,11 +1270,13 @@ Pure tests of `AISettings` and its model rules; fixtures from `Support/AIModelFi
 | `defaultModelFallsBackWithoutAHaiku` | Default model falls back without ahaiku |
 | `pinnedModelWins` | Pinned model wins |
 | `adaptiveOptionsHaveNoOff` | Adaptive options have no off |
+| `adaptiveOptionsListOnlyTheModelsLevelsInOrder` | The model's effort levels are offered in low-to-max order whatever order the API lists them |
 | `enabledOnlyOptions` | Enabled only options |
 | `unknownModelOnlyOff` | Unknown model only off |
 | `switchingToEnabledOnlyResetsModelDefaultToOff` | Switching to enabled only resets model default to off |
 | `switchingToAdaptiveResetsOffToModelDefault` | Switching to adaptive resets off to model default |
 | `offeredReasoningIsKept` | Offered reasoning is kept |
+| `reasoningLabelsReadAsWords` | `PreferencesView.label(for:)`: Off, Model default, Extra High for `xhigh`, and each other level capitalized |
 | `fetchKeepsPinnedModelThatStillExists` | Fetch keeps pinned model that still exists |
 | `fetchDropsMissingPinnedModelWithNotice` | Fetch drops missing pinned model with notice |
 | `fetchWithoutPinnedModelHasNoNotice` | Fetch without pinned model has no notice |
@@ -1297,7 +1317,7 @@ Pure tests of Evaluate's two prompts. `postTextMatchesEditorText` reads `Scripts
 
 ---
 
-### 45. AI — `EvaluationStateTests` (12 tests)
+### 45. AI — `EvaluationStateTests` (14 tests)
 
 File: `Tests/QuillTests/EvaluationStateTests.swift`
 
@@ -1315,12 +1335,14 @@ Pure tests of the state `EvaluationPanel` draws.
 | `factChecksWithoutReplacementAreNotApplicable` | Fact checks without replacement are not applicable |
 | `applyAllSkipsMissingAndAmbiguous` | Apply all skips missing and ambiguous |
 | `unknownStatusMeansNotYetChecked` | Unknown status means not yet checked |
-| `countsLineSummarizesTheTabs` | Counts line summarizes the tabs |
-| `tabLabelsHideZeroCounts` | Tab labels hide zero counts |
+| `pageCountsWaitForTheirOwnRequest` | Each page's count and loading state follow its own request |
+| `failedOrUnavailablePagesHaveNoCount` | A failed review or unavailable facts has no count and is not loading |
+| `applicableListsCorrectionsThenSuggestionsThenWordedFactChecks` | `applicable` is corrections, suggestions, then only the fact checks with a replacement, in that order, with their originals and replacements |
+| `anAppliedFindingHasNoApplyNote` | An applied finding shows no "Text has changed" note even when the text it replaced is now missing |
 
 ---
 
-### 46. AI — `SelectionPromptsTests` (7 tests)
+### 46. AI — `SelectionPromptsTests` (8 tests)
 
 File: `Tests/QuillTests/SelectionPromptsTests.swift`
 
@@ -1333,12 +1355,13 @@ Pure tests of the right-click rewrite prompts.
 | `instructionPerOperation` | Instruction per operation |
 | `convertInstructionsNameTheirTags` | Convert instructions name their tags |
 | `listAndTableKeepContainerInstruction` | List and table keep container instruction |
+| `convertingInsideAListOrTableUsesTheGeneralConvertInstruction` | Convert to Table and Convert to List ignore the list/table context and use their general instruction |
 | `systemPromptHasGuideOrNot` | System prompt has guide or not |
 | `parseReadsHTMLField` | Parse reads htmlfield |
 
 ---
 
-### 47. App — `AIModelLoadingTests` (5 tests)
+### 47. App — `AIModelLoadingTests` (6 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -1347,6 +1370,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | Test | What it checks |
 |---|---|
 | `fillsAnEmptyModelListAndSavesIt` | An empty list is fetched, applied and saved |
+| `aFetchDropsAPinnedModelThatIsGoneAndFitsTheReasoningToTheNewDefault` | The fetched list goes through `applyingFetchedModels`: a retired pinned model is cleared and the reasoning normalized, in memory and on disk |
 | `leavesAnExistingListAlone` | No fetch when a list is cached |
 | `doesNothingWithoutAKey` | No fetch with an empty key |
 | `dropsTheListWhenTheKeyChangedDuringTheFetch` | A result for a key that's no longer current is neither applied nor saved |
@@ -1382,7 +1406,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (108 tests)
+## JS block serializer tests (115 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1438,7 +1462,7 @@ Each top-level block paired with its literal slice of the original `post_content
 | `nested unclosed blocks gain closers innermost first` | `<!-- wp:group --><!-- wp:acme/x -->t` gains `<!-- /wp:acme/x --><!-- /wp:group -->`, keeping the third-party namespace |
 | `a stray close comment is left as freeform, the way the parser reads it` | Matches WordPress: the stray comment and everything after it is one freeform slice |
 
-### `blockSourceSlices over the real fixtures` (28 tests)
+### `blockSourceSlices over the real fixtures` (30 tests)
 
 One test per `Scripts/fixtures/*.html`: the slices concatenate to the file byte for byte.
 
@@ -1460,7 +1484,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `freeform prose is never wrapped` | |
 | `a nested block inside a claimed block does not make the parent wrap` | A `wp:query` holding a `wp:post-title` is one top-level block, not two |
 
-### `wrapUnsupportedBlocks` (14 tests)
+### `wrapUnsupportedBlocks` (19 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1472,13 +1496,18 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `a styled div outside any block becomes a Custom HTML block` | An unmodeled element in classic HTML is wrapped with `<!-- wp:html -->` delimiters, the way Gutenberg's Convert to Blocks keeps it, instead of losing its wrapper in the editor |
 | `a bare div wrapping prose is left for the editor to unwrap` | A grouping tag with no attributes changes nothing on the page, so its paragraphs stay editable paragraph blocks |
 | `a styled element inside a bare wrapper is kept, the wrapper is not` | The search goes through bare wrappers to the element that needs keeping |
+| `big and strike are inline prose, not Custom HTML` | `<big>` and `<strike>` in classic content stay editable text, like other inline tags |
+| `a styled wrapper around blocks is not kept as an empty Custom HTML block` | A styled `<div>` that opens before blocks and closes after them is split across freeform slices; the opener's slice parses as an empty element with no closing tag, and `isSlicedWrapperOpener` skips it instead of keeping an empty card |
+| `an empty styled div that closes in its own slice is still kept` | An empty `<div id>` whose closing tag is in the same slice is still kept as Custom HTML |
 | `an element whose tag carries its meaning is kept even without attributes` | `iframe`, `center` and the like are not grouping tags, so they are kept bare |
 | `classic prose with inline formatting is untouched` | Loose text, inline elements, a classed `<p>` and a list return the input unchanged |
 | `an element with a wp-block class is left to its own parse rule` | The class rules and the passthrough catch-all still own `wp-block-*` markup outside a block |
 | `a Custom HTML block is labelled Custom HTML` | Not "Html" |
+| `freeform elements and unsupported blocks are each wrapped in document order` | Freeform elements and an unsupported block in one post become three cards in source order, with the paragraph and loose prose left in place |
+| `a kept element nested two bare wrappers deep is lifted out alone` | The search recurses through more than one bare wrapper and leaves the wrappers and prose around the card |
 | `keeps supported blocks in place around a wrapped one` | Document order survives |
 
-### `Custom HTML source` (7 tests)
+### `Custom HTML source` (9 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1488,6 +1517,8 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `comments, blank lines and edge whitespace survive a round trip` | Only the one newline on each side is removed |
 | `the opening comment is kept byte for byte` | An edit keeps the original comment, `33.0` included |
 | `a self-closing block reads as empty and is written as a pair` | `<!-- wp:html /-->` opens empty and saves as an open/close pair with its attributes |
+| `whitespace around the one block does not count as another block` | Blank freeform text around a lone `wp:html` block still opens it |
+| `an opener with no closer reads to the end` | An unclosed `wp:html` comment yields the HTML after it |
 | `anything but a single Custom HTML block is null` | Another block, two blocks, or prose around one, is not editable as Custom HTML |
 
 ### `countBlockNames and unrepresentedBlockNames` (8 tests)
@@ -1502,7 +1533,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS AI output validity tests (67 tests)
+## JS AI output validity tests (72 tests)
 
 `Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its JSON `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
@@ -1525,15 +1556,15 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
 | `editing while Claude responds` (15 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text, and the view shows the label right before the dimmed (`.ai-pending`) text until Accept; typing at the collapsed caret lands after the result; a result for text deleted meanwhile is not inserted, and Discard then frees the next operation; Discard after the paragraph holding the result, or the whole document, was deleted brings none of it back; Discard after a table result that ends the post leaves no empty trailing paragraph; a list rewrite still replaces its own list, and only it, after text is typed above; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
 
-| `a selection goes to Claude as reduced HTML with stubs` (8 tests) | `beginAIOperation` sends the selection as HTML with links as `<a id="L1">` and footnote markers as `<sup id="F1"></sup>` and no other attribute, a list as its whole container, and the rest of the paragraph plus one paragraph on each side as `before`/`after`; `showAIResult` restores link attributes and the marker by ID (its footnote body kept), unwraps an unknown or repeated stub, survives a dropped marker, and puts an inline result inside its paragraph without splitting it or losing the spaces around it |
+| `a selection goes to Claude as reduced HTML with stubs` (13 tests) | `beginAIOperation` sends the selection as HTML with links as `<a id="L1">` and footnote markers as `<sup id="F1"></sup>` and no other attribute, a list or table as its whole container, and the rest of the paragraph plus one paragraph on each side as `before`/`after`; `showAIResult` restores link attributes and the marker by ID (its footnote body kept), unwraps an unknown or repeated stub, one on the wrong tag, or an invented footnote marker with no stub id, survives a dropped marker, puts a plain-text result in as text with its whitespace collapsed, and puts an inline result inside its paragraph without splitting it or losing the spaces around it; a plain `<sup>` with no stub id (`E=mc<sup>2</sup>`) goes to Claude and comes back intact |
 
-## JS evaluate tests (21 tests)
+## JS evaluate tests (24 tests)
 
 `Scripts/test-editor-evaluate.js` loads the real `editor.html` in jsdom and drives Evaluate's Apply.
 
 | Test | What it checks |
 |------|----------------|
-| `applyEvaluationFinding` (19 tests) | Applies a correction inside emphasis and keeps the mark; returns `missing` after the text changed and `ambiguous` when it appears twice, changing nothing; keeps a link on unchanged words and across a link boundary; an empty replacement deletes; applies inside a caption and a table cell; one ⌘Z restores the original; matches through typographic quotes; never matches across two paragraphs; is case-sensitive; an inserted word lands between the right words; a footnote marker inside a changed run is kept; a non-breaking space matches a plain one; refuses with `code-view` while code view is open; matches whole words only; a line break matches a space and stays, including inside a changed phrase; a non-breaking space typed after a sentence matches two spaces |
+| `applyEvaluationFinding` (22 tests) | Applies a correction inside emphasis and keeps the mark; returns `missing` after the text changed and `ambiguous` when it appears twice, changing nothing; keeps a link on unchanged words and across a link boundary; an empty replacement deletes; applies inside a caption and a table cell; one ⌘Z restores the original; matches through typographic quotes; never matches across two paragraphs, even when the quote has the space the search text puts between them; is case-sensitive; an inserted word lands between the right words; a footnote marker inside a changed run is kept; a non-breaking space matches a plain one; refuses with `code-view` while code view is open; matches whole words only; a line break matches a space and stays, including inside a changed phrase; a non-breaking space typed after a sentence matches two spaces; several changed runs each keep their marks; a word added at the end lands after the last word; a word that only starts a longer word is not a match |
 | `findingStatus` (1 test) | Reports `ok`, `missing` and `ambiguous` for a list of originals without editing |
 | `the editor search text` (1 test) | `_editorSearchText()` for `Scripts/fixtures/evaluate/post.html` equals `post.editor-text.txt`, the fixture `EvaluationPromptsTests.postTextMatchesEditorText` checks against |
 
@@ -1550,7 +1581,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS preservation tests (66 tests)
+## JS preservation tests (72 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1563,7 +1594,7 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 |---|---|
 | `window.parseBlocks is callable` | The `block-parser.js` `<script>` tag is present and `parseBlocks` is reachable on `window` (a top-level `const` would not be) |
 
-### `unsupported blocks become passthrough cards` (8 tests)
+### `unsupported blocks become passthrough cards` (7 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1572,7 +1603,6 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `the peek is truncated for a long block` | Capped at 120 characters plus an ellipsis |
 | `the peek renders markup as text, never as live DOM` | `textContent`, not `innerHTML` — a Custom HTML block must not execute in the editor |
 | `the card keeps the existing hint line` | The Code View hint is unchanged |
-| `an ordinary passthrough block still renders a card with no peek` | A classed block like `wp:spacer` takes the old path, no peek added |
 | `an ordinary unmodeled block renders a labelled card with a peek` | The common case: a block Quill has no node for is shown as a named, non-editable card |
 | `an unmodeled block nested in a modeled container still matches by class` | The class-based card is what is left of the old path, and it is the only thing covering a block nested inside a container Quill does model |
 
@@ -1585,22 +1615,28 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `a bare wrapper still saves its paragraphs as paragraph blocks` | Unwrapping a bare `<div>` still converts its prose to blocks |
 | `an unedited post still round-trips byte-identically` | Opening and saving without an edit changes nothing |
 
-### `Custom HTML insert and edit` (15 tests)
+### `Custom HTML insert and edit` (21 tests)
 
 | Test | What it checks |
 |---|---|
 | `insert adds one Custom HTML card at the selection` | One labelled card, saved as a `wp:html` block after the paragraph |
 | `editCustomHTML posts the inner HTML` | The sheet receives the HTML without its delimiters |
 | `a replace changes only that card and keeps its comment attributes` | The other block is untouched; the edited one keeps `metadata` |
+| `saving the editor unchanged leaves the post byte-exact and unedited` | Edit… then Save with no change returns the original source byte for byte, so an unchanged sheet does not rewrite the post |
 | `a replace after the card was deleted changes nothing` | A replace applies only to the card the sheet was opened on |
 | `undo after a replace restores the old HTML in one step` | Waits past `newGroupDelay`, like the gallery's undo test |
 | `editCustomHTML ignores other cards` | A shortcode card posts nothing |
 | `inserting inside a column puts the block after the columns` | A nested `core/html` would have no card on reload |
 | `inserting with a block selected inside a quote puts the block after the quote` | A selected block's `$from` sits one level shallower than a caret's, so depth alone put the card inside the quote |
+| `inserting with a top-level block selected puts the card right after it` | A selected top-level separator stays, and the card follows it |
+| `an insert after an edit was opened adds a card and leaves the edited one alone` | A cancelled edit leaves nothing behind for a later insert to replace |
+| `a replaced card opens with its new HTML the next time` | A replace updates the card's source, so the sheet opens on the new HTML |
+| `a malformed payload changes nothing` | Unparseable JSON or a non-string `html` is ignored |
 | `inserting in a footnote does nothing` | Same guard as the gallery |
 | `special characters survive the JSON payload` | The JS side of the bridge; the Swift side is `customHTMLScriptCarriesSpecialCharactersIntact` |
 | `inserted HTML never runs a handler` | An `<img onerror>` never fires; `--check-fixtures` repeats this in WebKit |
 | `a Custom HTML card offers Edit…` | The hint and button, and the button posts the HTML |
+| `double-clicking Edit… opens the editor once` | The click, second click and dblclick of a real double-click on the button post one message |
 | `double-clicking a Custom HTML card opens the editor` | |
 | `other cards keep the Code View hint` | A calendar card is unchanged |
 | `the insert menu offers Custom HTML` | After Preformatted; posts `{}` |
@@ -1632,7 +1668,7 @@ Runs `Scripts/fixtures/unsupported-blocks.html` — one of each shape that used 
 | `no wrapper markup reaches the saved output` | No `quill-unsupported` string in what goes to WordPress |
 | `each unsupported block renders its own card` | Eight cards, so paragraphs are not being swallowed |
 
-### `the alarm reports only genuine loss` (9 tests)
+### `the alarm reports only genuine loss` (11 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1694,7 +1730,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (275 tests)
+## JS editor tests (276 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1978,7 +2014,7 @@ Footnote bodies now live in post meta rather than in `post_content` (`docs/footn
 | `no backref is written into the list — WordPress renders it from meta` | Writing one would show two arrows on the published page |
 | `marker id is idempotent across repeated transforms` | |
 
-### `extractFootnotes` (8 tests)
+### `extractFootnotes` (9 tests)
 
 The split that moves footnote bodies out of the content and into meta on save.
 
@@ -1992,6 +2028,7 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `leaves the rest of the block comments intact` | |
 | `says whether a list was found` | `found` is what makes a list typed in code view authoritative for the meta |
 | `a list beside a delimiter leaves one delimiter` | A delimiter typed along with the list is not doubled |
+| `a list the splice cannot find is swapped through the DOM, beside a delimiter or not` | A single-quoted class takes the DOM path: beside a delimiter the list is removed, alone it becomes the delimiter |
 
 ### `inlineFootnotes` (11 tests)
 
@@ -2554,7 +2591,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (347 tests)
+## JS container tests (353 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2622,11 +2659,11 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `block inserts from a container title` (69 tests)
+### `block inserts from a container title` (75 tests)
 
 | Test | What it checks |
 |---|---|
-| `<insert> from an empty/a filled <title> goes after the whole container` (60 tests) | Each of the ten block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown), from an empty and a filled accordion heading, tab title and button, leaves the container and its text unchanged and puts the new block straight after it |
+| `<insert> from an empty/a filled <title> goes after the whole container` (66 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title and button, leaves the container and its text unchanged and puts the new block straight after it |
 | `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
 | `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
 | `<Tabs/Accordion/Columns> inserted mid-paragraph takes the caret into the new block` (3 tests) | Inserting in the middle of `abc` puts the caret in the new block, not in the split-off `bc` |
@@ -3268,6 +3305,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Posts, Pages, Local Drafts, and Media sections each load and show their items.
 - [ ] The section picker sits at the top of the sidebar, not in the window toolbar. Each segment carries an icon; hovering a segment shows a hover state and the pointer does not change to a resize cursor.
 - [ ] Switch sections with the picker → the list, the search prompt and the editor empty state all follow, and the selection in the old section is not carried over.
+- [ ] Save a remote post, and publish a local draft → the row for the saved post stays highlighted in the sidebar afterwards.
 - [ ] Clicking a sidebar item highlights it with Quill's amber accent (not the default macOS blue). This holds only while the user's System Settings accent is "Multicolor" — see the root `CLAUDE.md`.
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
 - [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
@@ -3303,7 +3341,9 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Open a post, save it without making any changes, then fetch the raw content → it should be identical to before (no drift).
 - [ ] Multi-paragraph list items survive a save without being collapsed into a single paragraph.
 - [ ] **Block fidelity round trip.** In Gutenberg, make a post with: a paragraph given a text colour and a font size, a button given background and text colours and a border radius, an accordion whose heading has a text colour, a quote containing a heading and a list, a default table, an image linked to a custom URL with "open in new tab", a Group, and a Media & Text. Save. Open it in Quill, type one character in an unrelated paragraph, save. Reopen in Gutenberg → **no block shows "Block contains unexpected or invalid content"**, and every colour, radius, link target and table layout is as it was. This is the one check `--check-fixtures` cannot make, because only Gutenberg runs Gutenberg's validator.
-- [ ] Open a **classic** (pre-Gutenberg) post, type one character, save → the post is converted to blocks. Expected, not a bug; confirm no prose is lost, and note that a wrapper `<div>` with a custom class does not survive.
+- [ ] Open a **classic** (pre-Gutenberg) post, type one character, save → the post is converted to blocks. Expected, not a bug; confirm no prose is lost. A `<div>` with a class, style or id shows as a "Custom HTML" card and saves as a `wp:html` block with its markup intact; a bare `<div>` is unwrapped and its paragraphs become paragraph blocks.
+- [ ] In the same kind of classic post, text in `<big>` or `<strike>` stays ordinary editable text, not a Custom HTML card.
+- [ ] A post where a styled `<div>` wraps block markup (the `<div class="…">` opens before a `<!-- wp:paragraph -->` and closes after it) loads its blocks normally, with no empty Custom HTML card.
 - [ ] A post containing a Group or Media & Text shows a "Not editable in the visual editor" card with a peek of its source, and saving without touching it leaves the post byte-identical.
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
@@ -3452,6 +3492,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
 - [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
 - [ ] Open a post while offline (or force the full-post fetch to fail) → the editor banner explains the post may be missing content; attempting to save shows "Can't save: this post never finished loading" instead of silently publishing empty content over the real post.
+- [ ] **Share.** A published or private post or page shows a Share button (square with an up arrow) in the editor toolbar. It opens the macOS share menu with the post's public URL and title. A draft, scheduled or pending post and a local draft show no Share button.
 - [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
 - [ ] **Featured image, on a post, a page and a local draft.** Click Choose… and pick an image → the thumbnail shows with its alt text (or "No alt text"), and Replace… and Remove. Save (publish, for the local draft) and reopen → the image is still set. Replace… with another image, save and reopen → the new one is set. Remove, save and reopen → the slot is empty, so `featured_media: 0` reached the server.
 - [ ] Drop an image file from Finder on the Featured Image box → the outline turns the accent colour while hovering, "Uploading…" shows, then the uploaded image is set. Drop a HEIC → it uploads as JPEG. Drag a PDF or other non-image file over the box → no outline appears and it can't be dropped, the same as the editor body.
@@ -3512,6 +3553,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 - [ ] Right-click a remote post and choose Delete → a confirmation dialog appears. Confirm → the post moves to WordPress Trash (recoverable, not permanently deleted).
 - [ ] Same test with a page → the page moves to Trash.
+- [ ] Trash the post that is open in the editor → its editor closes; it does not stay open and editable.
 - [ ] Delete a local draft → it disappears from the sidebar and is removed from local storage.
 - [ ] Delete a media item → a confirmation dialog warns that deletion is permanent. Confirm → the item is gone from both the grid and the WordPress server.
 - [ ] If deletion fails (e.g. no permission, or offline) → an error alert appears; the item remains in the list.
@@ -3531,9 +3573,11 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Edit `ai_settings.json` so `model` names an ID the API no longer lists, reopen Settings with a key → the caption reads "Your saved model is no longer available. Switched to <name>." and the picker shows that model.
 - [ ] Change Model or Reasoning without pressing Save, close Settings → the AI features keep using the saved choice.
 - [ ] Complete onboarding with an API key, or upgrade with an `ai_settings.json` that has no `models`, and don't open Settings → `ai_settings.json` gains a `models` list within a few seconds of launch.
+- [ ] **Settings does not save over what the app stored meanwhile.** Move `ai_settings.json`'s `models` list aside, launch and open Settings at once, wait for the list to load in the background, then press Save → the file still holds the `models` list. Likewise, with Settings open, run Generate with Web Search on, then press Save → `webSearchToolByModel` is still in the file.
 
 **Style guide**
 - [ ] Choose Posts…, pick sample posts on varied topics, Save → a style guide is generated ("Analyzing writing style…", then "Saved."). Re-save with the same sample posts → no new Claude call is made. Change the site URL → sample posts and style guide are cleared.
+- [ ] The Writing Style row is one control tall: the sample count is a caption under the label, as Reasoning's is, and Choose Posts… and Regenerate sit side by side.
 - [ ] Click Regenerate → a new guide is generated with the selected model, about 500 words, under the eight labels from "Voice and tone:" to "Avoid:". It describes habits, not topics, and quotes only words or short phrases.
 - [ ] Manual prompt check, a few cents per run: `python3 Scripts/style-guide-probe.py <model-id> [effort]` reads the API key, site credentials and sample post IDs from `~/Library/Application Support/Quill/`, fetches those posts, then prints the guide, its word count and stop reason, and how many of its quotes appear in two or more samples. Run it after changing `AIPromptBuilder.styleGuideGenerationPrompt` or the sample reduction; the probe's `PROMPT` must match the Swift prompt.
 
@@ -3543,12 +3587,15 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Generate a post → the title, the body (headings, paragraphs, lists as the description needs) and, on a post, the Excerpt field are filled. On a page the excerpt is not touched.
 - [ ] Generate with Web Search on, about something recent → facts taken from a search are linked inline to their sources; the result is coherent, not fragmented.
 - [ ] If the reply is cut off → a "Post was cut off" alert with only Get Full Version (⌘↩) and Cancel. Get Full Version retries with the larger limit. If that is cut off too → the sheet shows "The post was too long to finish. Try a shorter description."
+- [ ] A cut-off error from a request sent with reasoning on suggests a lower reasoning level. With Reasoning at Off → the message says to try again with less text and does not mention reasoning.
+- [ ] Generate a post in French → the space before `?`, `!`, `:` and `;` is kept (`Pourquoi ?`), while a space before `,` or `.` is still closed.
 
 **Selection operations (right-click menu)**
 - [ ] Select some text, right-click → Make Longer, Make Shorter, Rephrase, Fix Spelling & Grammar, then Convert to Table and Convert to List after a separator. Each produces a correct result when clicked.
 - [ ] Deselect all text, right-click → the AI items are absent. Right-click inside a footnote body → the AI items are absent.
 - [ ] The AI menu items are not hidden by macOS AutoFill or Services items that may be injected into the menu.
 - [ ] Select a sentence with a link, bold text and a footnote marker, then run each command → the link keeps its URL, the bold stays where its words stay, and the footnote marker and its body survive. Claude never invents a new link.
+- [ ] Select a sentence holding an ordinary superscript (`E=mc²` written with Gutenberg's Superscript format) and Rephrase → the superscript is still a superscript after Accept.
 - [ ] Fix Spelling & Grammar on a sentence with a typo → only the error changes. On a sentence with no errors → the text comes back unchanged.
 - [ ] Rephrase → the same meaning at about the same length, in the author's voice.
 - [ ] Select text inside a bullet list, right-click → every command keeps the list: same items, still a list. In a table → same rows and columns.
@@ -3584,6 +3631,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Click the checkmark button → the panel opens on the review, with rows for Fixes, Ideas and Facts to Check below it. While the requests run, the review shows "Reviewing…" and each row shows a small spinner where its count goes; when they finish, each row shows its count, 0 included. Click a row → its list opens with a back arrow and the list's name in the header; the back arrow returns to the review.
 - [ ] The checkmark button is highlighted while the panel is open and disabled while an evaluation runs. Re-evaluate is disabled while one runs, and a new run returns to the review.
 - [ ] On a near-empty post → "Add more content before evaluating."
+- [ ] Click the checkmark on a post under 100 words, then keep the panel open and type past 100 words → the panel shows an Evaluate button, not a stuck "Reviewing…". Click it → the evaluation runs.
 - [ ] Click a row in Fixes or Ideas → the matching text is selected and scrolled into view. Each row shows the original struck through, then "→" and the replacement.
 - [ ] Apply on a row → the text changes in the editor, the row reads "Applied", and one ⌘Z undoes it. An applied row stays "Applied" after ⌘Z.
 - [ ] Open code view (`</>`) and press Apply → a toast reads "Switch out of code view to apply changes." and the row stays unapplied.
@@ -3591,6 +3639,8 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Apply All on Fixes → every correction that still matches is applied; rows already applied or changed are skipped. Ideas has no Apply All.
 - [ ] Edit a flagged sentence by hand → its row reads "Text has changed" and Apply is disabled, without leaving the list. Make the flagged text appear twice → the row reads "Appears more than once".
 - [ ] With Web Search on, Facts lists "Check These" with "N claims checked"; each row shows the quoted claim, the explanation, the source sentence and its host as a link. A row with a suggested wording has Use Wording, which behaves like Apply. With no claims → "Nothing to check."
+- [ ] A fact-check source opens in the browser only for an `http` or `https` URL; any other scheme shows no link.
+- [ ] With VoiceOver on, every Fixes, Ideas and Facts row offers the "Show in Post" action, which selects the matching text.
 - [ ] With Web Search off → Facts reads "Turn on Web Search in Settings to check facts." With a model that can't search → "This model can't search the web. Choose another model in Settings to check facts." Either way no fact-check request is made.
 - [ ] Footnote bodies are evaluated: a typo inside a footnote is flagged.
 - [ ] If a style guide is saved, intentionally conversational tone that matches it is not flagged.
@@ -3619,6 +3669,8 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Enter and exit full screen → the window chrome stays stable.
 - [ ] Open a post, then toggle the inspector open and closed → the toolbar does not dim or fade. This is what `InspectorTitlebarFix` suppresses; watch the toolbar, do not glance away.
 - [ ] Re-expand the inspector after collapsing it → the content pane's titlebar background does not paint over the inspector's first 52pt.
+- [ ] Open a long post and open the inspector → the post body never goes blank during the animation, and the editor narrows smoothly, the way closing the inspector widens it.
+- [ ] **One selection colour in the editor.** Select an image, an embed, a gallery, an unsupported-block card, a separator and a range of table cells, and focus the settings dropdown → each draws the same app-accent outline (`#C77700` light, `#BF801E` dark). The find bar, table-size picker and embed menu use the same accent, with dark text on filled buttons, and highlighted table-size cells keep their border in dark mode.
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
 - [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.
@@ -3753,6 +3805,15 @@ Run this on a **new local draft**, never a published post.
 - [ ] Clicking anywhere on an accordion header row or the details arrow collapses the block; clicking the title text places the caret.
 - [ ] **Cite:** inside a pullquote or a blockquote, the toolbar offers a "Cite" control. Adding one puts the caret in it ready to type; Enter leaves the quote; removing it takes the citation away cleanly. It saves inside the blockquote, where core puts it.
 - [ ] Collapse state, hints and selection chrome never reach the saved markup — check the raw content after collapsing things and saving.
+- [ ] **Inserts from a container title.** With the caret in an accordion heading, a tab title and a button, each both empty and with text, insert Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown and Embed → the container stays whole and the new block lands straight after it. Inserting an Accordion puts the caret in its heading. One ⌘Z removes the insert.
+
+**Custom HTML**
+- [ ] The insert menu lists Custom HTML after Preformatted. Choose it → the "Custom HTML" sheet opens; type HTML and press Insert (⌘↩) → a "Custom HTML" card appears at the caret. Save → the raw content holds a `<!-- wp:html -->` block, and Gutenberg opens it as a valid Custom HTML block.
+- [ ] Insert Custom HTML with the caret inside a column or a quote → the card goes after the whole container.
+- [ ] Click Edit… on the card, or double-click the card → "Edit Custom HTML" opens with the block's HTML. Change it and Save → only that card changes, and one ⌘Z restores the old HTML.
+- [ ] Click Edit… and Save without changing anything → the post is not marked edited, and a save leaves the raw content byte-identical.
+- [ ] HTML holding `<script>` or an `onerror` handler never runs in the editor.
+- [ ] **CSS and JavaScript tabs.** As an Administrator on a single site, the sheet shows HTML, CSS and JavaScript tabs. As a user WordPress would strip code for — an Editor on multisite, a multisite site Administrator who is not a super admin, or anyone on a site with `define('DISALLOW_UNFILTERED_HTML', true)` — only the HTML editor shows, unless the block being edited already holds CSS or JavaScript.
 
 ### 7.24 Block settings & style controls
 
@@ -4039,7 +4100,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 126 | `EditorCoordinator.setContent` deduped on the HTML alone, so a footnote-only difference — an autosave restore, or two drafts sharing a body — never reached JS. `EditorPushState` holds both halves and each message handler records its own | ✅ `EditorPushDecisionTests` (4 tests) |
 | 127 | The Link mark modelled only `href`/`target`/`rel`, so core's `title` and its own `data-*` on an anchor were dropped on the first edit | ✅ `test-editor-inline-formats.js` `'a link keeps the attributes the mark does not model'` |
 | 128 | Every heading emitted `{"level":2}`, which core omits because 2 is the default — harmless to Gutenberg, noise in every post's diff. An h2 Quill authored now writes no level, while an h2 whose comment explicitly carried one keeps it | ✅ `test-block-serializer.js` `'block descriptors'` + `test-editor-block-settings.js` `'a heading omits the level core treats as the default'` |
-| 129 | A classic (undelimited) post is **converted** to blocks on the first edit, and a wrapper element the conversion has no block for — a bare `<div class="custom-box">` — is dropped with its class. The tripwire is silent because freeform content is not a block. This is the same flattening Gutenberg's own "Convert to blocks" performs and is almost certainly wanted, but it is a conversion, not preservation | 👁 §7.3 (open a classic post, type one character, save, compare the raw content) — recorded in the block-model design spec under "Existing posts are out of scope" |
+| 129 | A classic (undelimited) post is **converted** to blocks on the first edit. A wrapper element the conversion has no block for — `<div class="custom-box">` — used to be dropped with its class, silently, because freeform content is not a block. `wrapUnsupportedBlocks` now keeps an element with attributes (or a tag that carries meaning, like `iframe`) as a `wp:html` block, the way Gutenberg's Convert to Blocks does; a bare `<div>` is still unwrapped and its prose becomes paragraph blocks | ✅ `test-editor-preservation.js` `'styled HTML outside any block becomes a Custom HTML block'` (4 tests) + `test-block-serializer.js` `wrapUnsupportedBlocks` + 👁 §7.3 |
 | 130 | The raw-attribute carrier replayed **every** attribute of a loaded element onto the live contenteditable, `on*` handlers from post content included, which then ran inside the privileged web view. `isCarryableAttr` now filters at all three snapshot points | ✅ `test-editor-preservation.js` `'an attribute that could run script is not carried'` (7 tests) |
 | 131 | The placeholder left where a preserved block sat was the fixed string `QUILLUNSUPPORTED<n>QUILLEND`; an author could type it into a post and the first-occurrence replace then moved the preserved bytes to that text — silently, because the block count never changed. It is a per-save random nonce now, substituted with one global pass | ✅ `test-editor-preservation.js` `'preserved block bytes cannot be relocated by post text'` |
 | 132 | The trailing-paragraph strip removed the last child whenever it was an empty `<p>`, which also deleted an empty `core/paragraph` an author wrote at the end of a post. Scoped to the shapes `TRAILING_PARAGRAPH_AFTER` actually follows | ✅ `test-editor.js` `'trailing paragraph'` (5 tests) |
@@ -4124,6 +4185,19 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 211 | A featured-image upload that finished after a section round-trip set the image on a torn-down editor. `uploadFeaturedImage` sets it only when `isOpen(itemID)` and the editor web view captured at the start is still in a window — the guard dropped and pasted images use (#188); the image stays in the Media Library and the info toast draws on the dead view | 👁 §7.7 — the upload task has no harness |
 | 212 | An upload started while a 6-second error toast was showing drew the progress pill on top of the toast. `uploadImages` clears the toast when a batch starts | 👁 §7.4 |
 | 213 | A live post moved to Scheduled, Pending or Private must show the paperplane, not Update's `arrow.up.circle` — the click changes where the post goes | ✅ `PostEditorHelpersTests.publishButtonIconPerStatus` + 👁 §7.17 |
+| 214 | A block inserted with the caret in an accordion heading, tab title or button split the container (an extra empty accordion, Tabs cut in two, a Table from an empty button deleting the Buttons block). Every block insert starts with `_blockInsertChain()`, which moves the caret to a new paragraph after the container in the same undo step. The Embed insert had its own path and still split the container until `_insertEmbedFromMenu` used the chain too | ✅ `test-editor-containers.js` `'block inserts from a container title'` (75 tests, 6 of them Embed) + 👁 §7.23 |
+| 215 | A right-click AI rewrite stripped every ordinary superscript (`E=mc<sup>2</sup>`), because `_restoreAIStubs` treated any `<sup>` as a footnote stub. It now leaves a `<sup>` with no attributes alone and still unwraps an invented footnote marker that has no stub id | ✅ `test-ai-output-validity.js` `'a plain superscript survives the rewrite'`, `'an invented footnote marker without a stub id is unwrapped'` + 👁 §7.11 |
+| 216 | Custom HTML Edit… then Save with no change rewrote the block and marked the post edited. `insertCustomHTML` returns early when the HTML sent back equals the block's current HTML | ✅ `test-editor-preservation.js` `'saving the editor unchanged leaves the post byte-exact and unedited'` + 👁 §7.23 |
+| 217 | `<big>` and `<strike>` in classic content were kept as Custom HTML cards instead of editable text | ✅ `test-block-serializer.js` `'big and strike are inline prose, not Custom HTML'` + 👁 §7.3 |
+| 218 | A styled `<div>` wrapped around block markup became an empty Custom HTML card: the parser splits it across freeform slices, so its opener parses as an empty element. `isSlicedWrapperOpener` skips an empty grouping element whose closing tag is not in its slice | ✅ `test-block-serializer.js` `'a styled wrapper around blocks is not kept as an empty Custom HTML block'` and `'an empty styled div that closes in its own slice is still kept'` + 👁 §7.3 |
+| 219 | The Custom HTML sheet offered CSS and JavaScript tabs to users whose code WordPress strips on save: `capabilities.unfiltered_html` is the role's capability, which a multisite non-super-admin or a site with `DISALLOW_UNFILTERED_HTML` still reports. `canPostUnfilteredHTML` also requires the `action-unfiltered-html` link on a post fetched with `context=edit`, and falls back to the capability when the site has no posts (`Sources/QuillKit/API/CLAUDE.md`) | ✅ `WordPressClientTests` `canPostUnfilteredHTML` (5 tests) + 👁 §7.23 |
+| 220 | A cut-off AI reply always suggested a lower reasoning level, even when the request sent no thinking. `AnthropicError.cutOff` carries `reasoned`, and the message offers that advice only when it is true | ✅ `AnthropicClientTests.cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` + 👁 §7.11 |
+| 221 | Generate removed the space before `; : ! ?`, which French typography requires. `parseGenerated` always closes a space before `,` and `.`, and before `; : ! ?` only where a stripped citation tag left one | ✅ `AIPromptBuilderTests.parseGeneratedKeepsFrenchSpacingBeforeHighPunctuation` and `.parseGeneratedClosesSpaceBeforePunctuation` + 👁 §7.11 |
+| 222 | Saving Settings wrote its own copy of the AI settings over the model list and web-search tool versions the app stored while Settings was open. `keepStateStoredElsewhere` merges both from the stored file (same API key only) before each save (`Sources/QuillKit/Views/Settings/CLAUDE.md`) | 👁 §7.11 — `PreferencesView` has no harness |
+| 223 | Evaluate clicked on a post under 100 words, then typed past 100 words, showed "Reviewing…" with nothing running. The panel's new `.ready` state shows an Evaluate button when there is no evaluation yet | 👁 §7.11 — `evaluationPanelState` is private view state |
+| 224 | A fact-check source opened any URL scheme Claude returned. The link shows only for `http` and `https`; fact-check rows also gained VoiceOver's "Show in Post" action, which Fixes and Ideas rows already had | 👁 §7.11 — `EvaluationPanel` has no harness |
+| 225 | Web search tool versions: a remembered version Quill does not list is tried first and then the list from the newest; a rejected remembered version moves only to older ones; when every version is rejected, the API's last 400 is shown after one try each | ✅ `AnthropicClientTests` `knownToolOutsideTheListIsTriedFirstThenTheList`, `rejectedKnownVersionFallsBackOnlyToOlderOnes`, `oldestVersionRejectedSurfacesTheAPIError` |
+| 226 | A reasoning level the chosen model does not offer must not be sent: an adaptive model gets adaptive thinking with no `effort`, and `xhigh`/`max` on an enabled-thinking-only model send no thinking. A fetched model list without the pinned model clears the pin and fits the reasoning to the new default | ✅ `AnthropicClientTests` `adaptiveLevelTheModelDoesNotOfferSendsNoEffort`, `enabledOnlyLevelWithoutABudgetSendsNoThinking`; `AIModelLoadingTests.aFetchDropsAPinnedModelThatIsGoneAndFitsTheReasoningToTheNewDefault` + 👁 §7.11 |
 
 ---
 

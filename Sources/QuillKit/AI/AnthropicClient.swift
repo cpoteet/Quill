@@ -126,7 +126,7 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
     case invalidKey
     case refused
     /// A reply that hit `max_tokens` before any usable text, or a structured reply that can't be parsed because it was cut.
-    case cutOff(webSearchTool: String?)
+    case cutOff(webSearchTool: String?, reasoned: Bool)
 
     public static func == (lhs: AnthropicError, rhs: AnthropicError) -> Bool {
         switch (lhs, rhs) {
@@ -136,7 +136,8 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
         case (.invalidResponse, .invalidResponse): return true
         case (.invalidKey, .invalidKey): return true
         case (.refused, .refused): return true
-        case (.cutOff(let l), .cutOff(let r)): return l == r
+        case (.cutOff(let lTool, let lReasoned), .cutOff(let rTool, let rReasoned)):
+            return lTool == rTool && lReasoned == rReasoned
         case (.networkError(let lError), .networkError(let rError)):
             return String(describing: lError) == String(describing: rError)
         default: return false
@@ -158,7 +159,8 @@ public enum AnthropicError: Error, LocalizedError, Equatable {
         case .invalidResponse: return "Unexpected response from API."
         case .invalidKey: return "Anthropic didn't accept this key."
         case .refused: return "Claude declined this request."
-        case .cutOff: return "Claude's reply was cut off before it finished. A lower reasoning level leaves more room for the answer."
+        case .cutOff(_, true): return "Claude's reply was cut off before it finished. A lower reasoning level leaves more room for the answer."
+        case .cutOff(_, false): return "Claude's reply was cut off before it finished. Try again with less text."
         case .networkError(let error):
             let msg = error.localizedDescription
             if NetworkFailure.isConnectivity(error) {
@@ -308,14 +310,17 @@ public struct AnthropicClient: Sendable {
         var continuation: [[String: Any]] = []
         var texts: [String] = []
         var stopReason: String?
+        var reasoned = false
         for _ in 0...Self.maxContinuations {
             var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
             request.httpMethod = "POST"
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
             request.setValue("application/json", forHTTPHeaderField: "content-type")
-            request.httpBody = try Self.orderedJSON(Self.requestBody(
-                system: systemPrompt, user: userMessage, options: options, webSearchTool: tool, continuation: continuation))
+            let body = Self.requestBody(
+                system: systemPrompt, user: userMessage, options: options, webSearchTool: tool, continuation: continuation)
+            reasoned = body["thinking"] != nil
+            request.httpBody = try Self.orderedJSON(body)
 
             let (data, http) = try await send(request)
             guard http.statusCode == 200 else {
@@ -334,7 +339,7 @@ public struct AnthropicClient: Sendable {
         // Structured output arrives whole in the last response; earlier ones hold only search narration.
         let text = options.jsonSchema == nil ? texts.joined() : (texts.last ?? "")
         if stopReason == "max_tokens" && (text.isEmpty || options.jsonSchema != nil) {
-            throw AnthropicError.cutOff(webSearchTool: tool)
+            throw AnthropicError.cutOff(webSearchTool: tool, reasoned: reasoned)
         }
         guard !text.isEmpty else { throw AnthropicError.noTextContent }
         return Result(text: text, truncated: stopReason == "max_tokens", webSearchTool: tool)

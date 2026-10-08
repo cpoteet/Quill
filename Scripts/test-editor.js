@@ -1452,6 +1452,17 @@ describe('extractFootnotes', () => {
     assert.equal(r.content.match(/wp:footnotes/g).length, 1)
     assert.deepEqual(r.footnotes, [{ id: 'fn-a', content: 'N' }])
   })
+
+  test('a list the splice cannot find is swapped through the DOM, beside a delimiter or not', () => {
+    const list = "<ol class='wp-block-footnotes'><li id=\"fn-a\">N</li></ol>"
+    const beside = split('<p>x</p><!-- wp:footnotes /-->' + list)
+    assert.equal(beside.content, '<p>x</p><!-- wp:footnotes /-->')
+    assert.equal(beside.found, true)
+    assert.deepEqual(beside.footnotes, [{ id: 'fn-a', content: 'N' }])
+    const alone = split('<p>x</p>' + list + '<p>y</p>')
+    assert.equal(alone.content, '<p>x</p><!-- wp:footnotes /--><p>y</p>')
+    assert.equal(alone.found, true)
+  })
 })
 
 describe('inlineFootnotes', () => {

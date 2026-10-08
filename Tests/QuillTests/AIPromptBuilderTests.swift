@@ -57,9 +57,16 @@ import Testing
     }
 
     @Test func parseGeneratedClosesSpaceBeforePunctuation() throws {
-        #expect(try generated("<p>Honestly , they're fine . <a href=\"x\">Docs</a> ; more: yes ! Is it ?</p>").html
-                == "<p>Honestly, they're fine. <a href=\"x\">Docs</a>; more: yes! Is it?</p>")
+        #expect(try generated("<p>Honestly , they're fine . <a href=\"x\">Docs</a> , more.</p>").html
+                == "<p>Honestly, they're fine. <a href=\"x\">Docs</a>, more.</p>")
+        #expect(try generated(#"<p>See <cite index="1">this</cite> ; then <cite index="2">that</cite> !</p>"#).html
+                == "<p>See this; then that!</p>")
         #expect(try generated("<p>Use .NET and version 3 .5</p>").html == "<p>Use .NET and version 3 .5</p>")
+    }
+
+    @Test func parseGeneratedKeepsFrenchSpacingBeforeHighPunctuation() throws {
+        #expect(try generated("<p>Pourquoi ? Attention : ceci ; voilà !</p>").html
+                == "<p>Pourquoi ? Attention : ceci ; voilà !</p>")
     }
 
     @Test func parseGeneratedStripsCiteTagsAndNormalizesTables() throws {

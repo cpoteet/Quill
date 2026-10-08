@@ -5248,7 +5248,7 @@
       let parsed
       try { parsed = new URL(raw) } catch (_) { return }
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return
-      editor.chain().focus().insertContent({ type: 'embedBlock', attrs: { url: raw } }).run()
+      _blockInsertChain().insertContent({ type: 'embedBlock', attrs: { url: raw } }).run()
       _closeEmbedMenu()
     }
 
@@ -6110,7 +6110,8 @@
         let pos = null
         editor.state.doc.descendants((node, at) => { if (node === edited) pos = at })
         if (!edited || pos === null) return
-        const { opener } = customHTMLBlock(edited.attrs.unsupportedSource, parseBlocks)
+        const { opener, html } = customHTMLBlock(edited.attrs.unsupportedSource, parseBlocks)
+        if (payload.html === html) return
         const attrs = { ...edited.attrs, ..._customHTMLAttrs(customHTMLSource(payload.html, opener)) }
         editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, null, attrs))
         return
@@ -6415,8 +6416,6 @@
       return editor.schema.cached.domSerializer
     }
 
-    const _AI_BARE_TAGS = new Set(['EM', 'STRONG', 'CODE', 'S'])
-
     // Serializes content for Claude with nothing it would have to copy: links become <a id="L1">,
     // footnote markers <sup id="F1"></sup>, and every other attribute goes. Returns { html, stubs }.
     function _aiSelectionHTML(fragment) {
@@ -6447,11 +6446,12 @@
     }
 
     // Puts the stubbed links and footnote markers back. A stub Quill didn't hand out, or one used twice,
-    // is unwrapped to its text; a marker Claude dropped is simply gone.
+    // is unwrapped to its text; a marker Claude dropped is simply gone. A plain superscript has no attributes and stays.
     function _restoreAIStubs(root, stubs) {
       const used = new Set()
       const unwrap = el => el.replaceWith(...Array.from(el.childNodes))
       root.querySelectorAll('a, sup').forEach(el => {
+        if (el.tagName === 'SUP' && el.attributes.length === 0) return
         const stub = stubs[el.getAttribute('id')]
         if (!stub || used.has(el.id) || stub.tag !== el.tagName.toLowerCase()) { unwrap(el); return }
         used.add(el.id)

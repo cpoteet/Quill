@@ -499,6 +499,11 @@ import Testing
         #expect(CustomHTMLParts(html: "", css: ".a{}", js: "").content == "<style data-wp-block-html=\"css\">\n.a{}\n</style>")
     }
 
+    @Test func customHTMLPartsReadAMarkedScriptWithoutAStyle() {
+        let parts = CustomHTMLParts(content: "<script data-wp-block-html=\"js\">\ngo()\n</script>\n\n<p>x</p>")
+        #expect(parts == CustomHTMLParts(html: "<p>x</p>", css: "", js: "go()"))
+    }
+
     @Test func customHTMLPartsReportWhetherTheyHoldCode() {
         #expect(CustomHTMLParts(content: "<p>a</p>").hasCode == false)
         #expect(CustomHTMLParts(html: "", css: "", js: "go()").hasCode)

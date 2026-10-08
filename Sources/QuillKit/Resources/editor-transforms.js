@@ -323,8 +323,8 @@ function unsupportedWrapper(doc, source, blockName) {
 const FREEFORM_PROSE_TAGS = new Set([
   'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'BLOCKQUOTE', 'PRE', 'HR',
   'TABLE', 'FIGURE', 'IMG', 'DETAILS', 'BR', 'WBR',
-  'A', 'ABBR', 'B', 'BDI', 'BDO', 'CITE', 'CODE', 'DATA', 'DEL', 'DFN', 'EM', 'I', 'INS',
-  'KBD', 'MARK', 'Q', 'S', 'SAMP', 'SMALL', 'SPAN', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR',
+  'A', 'ABBR', 'B', 'BDI', 'BDO', 'BIG', 'CITE', 'CODE', 'DATA', 'DEL', 'DFN', 'EM', 'I', 'INS',
+  'KBD', 'MARK', 'Q', 'S', 'SAMP', 'SMALL', 'SPAN', 'STRIKE', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR',
 ])
 
 // Grouping tags with no meaning of their own: bare, the editor unwraps them harmlessly.
@@ -341,10 +341,16 @@ function freeformElementsToKeep(parent, into) {
   return into
 }
 
+// The parser slices `<div class="x">` + blocks + `</div>` apart, so the wrapper's opener arrives alone and empty.
+function isSlicedWrapperOpener(el, source) {
+  return FREEFORM_GROUPING_TAGS.has(el.tagName) && !el.innerHTML.trim()
+    && !new RegExp(`</${el.tagName}\\s*>`, 'i').test(source)
+}
+
 function wrapFreeformHTML(source, doc) {
   const container = doc.createElement('div')
   container.innerHTML = source
-  const keep = freeformElementsToKeep(container, [])
+  const keep = freeformElementsToKeep(container, []).filter(el => !isSlicedWrapperOpener(el, source))
   if (!keep.length) return source
   for (const el of keep) {
     el.replaceWith(unsupportedWrapper(doc, `<!-- wp:html -->\n${el.outerHTML}\n<!-- /wp:html -->`, 'core/html'))

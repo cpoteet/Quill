@@ -199,10 +199,21 @@ public struct WordPressClient: Sendable {
 
     // MARK: - Current user
 
-    /// Without `unfiltered_html`, WordPress strips the account's `<script>` and `<style>` on save.
+    /// Without `unfiltered_html`, WordPress strips `<script>` and `<style>` on save; see API/CLAUDE.md for why a post's action link decides.
     public func canPostUnfilteredHTML() async throws -> Bool {
         let user: CurrentUser = try await get(endpoint("users/me", query: ["context": "edit"]))
-        return user.capabilities.unfilteredHTML
+        guard user.capabilities.unfilteredHTML else { return false }
+        let posts: [PostActions] = try await get(endpoint("posts", query: [
+            "context": "edit", "status": "any", "per_page": "1", "_fields": "id,_links",
+        ]))
+        guard let post = posts.first else { return true }
+        return post.links.keys.contains { ["wp:action-unfiltered-html", "https://api.w.org/action-unfiltered-html"].contains($0) }
+    }
+
+    private struct PostActions: Decodable {
+        struct Ignored: Decodable { init(from decoder: Decoder) {} }
+        let links: [String: Ignored]
+        enum CodingKeys: String, CodingKey { case links = "_links" }
     }
 
     // Reads one key: plugins add capabilities whose values are not booleans (siolon.com's `can_runPHP` is a string).

@@ -419,6 +419,21 @@ describe('wrapUnsupportedBlocks', () => {
     assert.match(out, /^<p>Before\.<\/p>/)
   })
 
+  test('big and strike are inline prose, not Custom HTML', () => {
+    const src = 'Some <strike>old</strike> and <big>loud</big> text.'
+    assert.equal(wrap(src), src)
+  })
+
+  test('a styled wrapper around blocks is not kept as an empty Custom HTML block', () => {
+    const src = '<div class="x">\n<!-- wp:paragraph -->\n<p>Inside.</p>\n<!-- /wp:paragraph -->\n</div>'
+    assert.deepEqual(wrappedSources(wrap(src)), [])
+  })
+
+  test('an empty styled div that closes in its own slice is still kept', () => {
+    const out = wrap('<p>Before.</p><div id="anchor"></div>')
+    assert.deepEqual(wrappedSources(out), [['Custom HTML', '<!-- wp:html -->\n<div id="anchor"></div>\n<!-- /wp:html -->']])
+  })
+
   test('classic prose with inline formatting is untouched', () => {
     const src = 'Loose text with <strong>bold</strong> and <a href="x">a link</a>.\n\n<p class="note">Styled <span style="color:red">prose</span>.</p>\n<ul><li>Item</li></ul>'
     assert.equal(wrap(src), src)
@@ -431,6 +446,29 @@ describe('wrapUnsupportedBlocks', () => {
 
   test('a Custom HTML block is labelled Custom HTML', () => {
     assert.equal(wrappedSources(wrap('<!-- wp:html --><div>Hi</div><!-- /wp:html -->'))[0][0], 'Custom HTML')
+  })
+
+  const shape = out => {
+    const body = new JSDOM('<body>' + out + '</body>').window.document.body
+    body.querySelectorAll('.wp-block-quill-unsupported').forEach(el => el.replaceWith(`[${el.getAttribute('data-quill-unsupported-label')}]`))
+    return body.innerHTML
+  }
+
+  test('freeform elements and unsupported blocks are each wrapped in document order', () => {
+    const para = '<!-- wp:paragraph --><p>A</p><!-- /wp:paragraph -->'
+    const out = wrap(para + '\n<iframe src="x"></iframe>\n<!-- wp:calendar /-->\n<p>Loose</p><center>Hi</center>')
+    assert.deepEqual(wrappedSources(out), [
+      ['Custom HTML', '<!-- wp:html -->\n<iframe src="x"></iframe>\n<!-- /wp:html -->'],
+      ['Calendar', '<!-- wp:calendar /-->'],
+      ['Custom HTML', '<!-- wp:html -->\n<center>Hi</center>\n<!-- /wp:html -->'],
+    ])
+    assert.equal(shape(out), para + '\n[Custom HTML]\n[Calendar]\n<p>Loose</p>[Custom HTML]')
+  })
+
+  test('a kept element nested two bare wrappers deep is lifted out alone', () => {
+    const out = wrap('<div><section><p>Prose.</p><nav class="toc"><a href="#a">A</a></nav></section></div>')
+    assert.deepEqual(wrappedSources(out), [['Custom HTML', '<!-- wp:html -->\n<nav class="toc"><a href="#a">A</a></nav>\n<!-- /wp:html -->']])
+    assert.equal(shape(out), '<div><section><p>Prose.</p>[Custom HTML]</section></div>')
   })
 
   test('keeps supported blocks in place around a wrapped one', () => {
@@ -472,6 +510,12 @@ describe('Custom HTML source', () => {
     const block = customHTMLBlock('<!-- wp:html {"n":1} /-->', parse)
     assert.deepEqual(block, { html: '', opener: '<!-- wp:html {"n":1} -->' })
     assert.equal(customHTMLSource('<p>a</p>', block.opener), '<!-- wp:html {"n":1} -->\n<p>a</p>\n<!-- /wp:html -->')
+  })
+  test('whitespace around the one block does not count as another block', () => {
+    assert.deepEqual(customHTMLBlock('\n\n<!-- wp:html -->\n<p>a</p>\n<!-- /wp:html -->\n', parse), { html: '<p>a</p>', opener: '<!-- wp:html -->' })
+  })
+  test('an opener with no closer reads to the end', () => {
+    assert.deepEqual(customHTMLBlock('<!-- wp:html -->\n<p>a</p>', parse), { html: '<p>a</p>', opener: '<!-- wp:html -->' })
   })
   test('anything but a single Custom HTML block is null', () => {
     assert.equal(customHTMLBlock('<!-- wp:shortcode -->[x]<!-- /wp:shortcode -->', parse), null)

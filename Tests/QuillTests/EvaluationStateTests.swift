@@ -81,6 +81,32 @@ import Testing
         #expect(state.applyNote(ids[0]) == nil)
     }
 
+    @Test func applicableListsCorrectionsThenSuggestionsThenWordedFactChecks() throws {
+        var state = EvaluationState(searchAvailable: true)
+        let result = try review(corrections: 2, suggestions: 1)
+        state.review = .done(result)
+        let checks = try EvaluationPrompts.parseFactCheck(#"""
+        {"claims":[],"fact_checks":[
+          {"original":"f0","explanation":"e","source_quote":"q","source_url":"u","replacement":""},
+          {"original":"f1","explanation":"e","source_quote":"q","source_url":"u","replacement":"fixed"}]}
+        """#)
+        state.facts = .done(checks)
+        #expect(state.applicable.map(\.original) == ["c0", "c1", "s0", "f1"])
+        #expect(state.applicable.map(\.replacement) == ["newc0", "newc1", "news0", "fixed"])
+        #expect(state.applicableIDs == result.corrections.map(\.id) + result.suggestions.map(\.id) + [checks.checks[1].id])
+    }
+
+    @Test func anAppliedFindingHasNoApplyNote() throws {
+        var state = EvaluationState(searchAvailable: false)
+        let result = try review()
+        state.review = .done(result)
+        let id = result.corrections[0].id
+        state.markApplied(id)
+        state.updateStatuses(ids: [id], statuses: ["missing"])
+        #expect(state.applyNote(id) == nil)
+        #expect(!state.canApply(id))
+    }
+
     @Test func factChecksWithoutReplacementAreNotApplicable() throws {
         var state = EvaluationState(searchAvailable: true)
         state.review = .done(try review(corrections: 0, suggestions: 0))

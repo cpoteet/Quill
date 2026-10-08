@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 712 Swift + 1,655 JS tests, all passing as of 2026-10-08 (1,654 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 729 Swift + 1,683 JS tests, all passing as of 2026-10-08 (1,682 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"

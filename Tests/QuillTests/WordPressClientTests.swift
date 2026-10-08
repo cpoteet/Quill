@@ -537,33 +537,72 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.httpMethod == "POST")
     }
 
-    @Test func canPostUnfilteredHTMLReadsTheCurrentUsersCapability() async throws {
-        var capturedRequest: URLRequest?
+    private static let unfilteredUser = #"{"id":1,"capabilities":{"edit_posts":true,"unfiltered_html":true}}"#
+    // WordPress compacts api.w.org relations through its `wp` CURIE.
+    private static let postWithUnfilteredAction =
+        #"[{"id":7,"_links":{"self":[{"href":"x"}],"wp:action-unfiltered-html":[{"href":"x"}]}}]"#
+
+    private func mockUnfilteredHTML(user: String, posts: String, requests: UnfilteredRequests) {
         MockURLProtocol.requestHandler = { request in
-            capturedRequest = request
+            requests.urls.append(request.url!)
+            let body = request.url!.path.hasSuffix("/users/me") ? user : posts
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                    #"{"id":1,"capabilities":{"edit_posts":true,"unfiltered_html":true}}"#.data(using: .utf8)!)
+                    body.data(using: .utf8)!)
         }
+    }
+
+    final class UnfilteredRequests: @unchecked Sendable { var urls: [URL] = [] }
+
+    @Test func canPostUnfilteredHTMLReadsTheCapabilityThenAPostsActionLink() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: Self.unfilteredUser, posts: Self.postWithUnfilteredAction, requests: requests)
         #expect(try await client.canPostUnfilteredHTML())
-        #expect(capturedRequest?.url?.path.hasSuffix("/users/me") == true)
-        #expect(capturedRequest?.url?.query?.contains("context=edit") == true)
+        #expect(requests.urls.count == 2)
+        #expect(requests.urls[0].path.hasSuffix("/users/me"))
+        #expect(requests.urls[0].query?.contains("context=edit") == true)
+        #expect(requests.urls[1].path.hasSuffix("/posts"))
+        let query = requests.urls[1].query ?? ""
+        #expect(query.contains("context=edit"))
+        #expect(query.contains("_links"))
+    }
+
+    @Test func canPostUnfilteredHTMLAcceptsTheUncompactedRelation() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: Self.unfilteredUser,
+                           posts: #"[{"id":7,"_links":{"https://api.w.org/action-unfiltered-html":[{"href":"x"}]}}]"#,
+                           requests: requests)
+        #expect(try await client.canPostUnfilteredHTML())
+    }
+
+    // Multisite non-super-admins and DISALLOW_UNFILTERED_HTML keep the role capability but lose the permission.
+    @Test func canPostUnfilteredHTMLIsFalseWhenThePostHasNoActionLink() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: Self.unfilteredUser,
+                           posts: #"[{"id":7,"_links":{"self":[{"href":"x"}],"wp:action-publish":[{"href":"x"}]}}]"#,
+                           requests: requests)
+        #expect(try await client.canPostUnfilteredHTML() == false)
+    }
+
+    @Test func canPostUnfilteredHTMLFallsBackToTheCapabilityWithNoPosts() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: Self.unfilteredUser, posts: "[]", requests: requests)
+        #expect(try await client.canPostUnfilteredHTML())
     }
 
     // A plugin on siolon.com adds `can_runPHP` with a string value.
     @Test func canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool() async throws {
-        MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":1,"capabilities":{"can_runPHP":"1","unfiltered_html":true}}"#.data(using: .utf8)!)
-        }
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: #"{"id":1,"capabilities":{"can_runPHP":"1","unfiltered_html":true}}"#,
+                           posts: Self.postWithUnfilteredAction, requests: requests)
         #expect(try await client.canPostUnfilteredHTML())
     }
 
     @Test func canPostUnfilteredHTMLIsFalseWithoutTheCapability() async throws {
-        MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":1,"capabilities":{"edit_posts":true}}"#.data(using: .utf8)!)
-        }
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: #"{"id":1,"capabilities":{"edit_posts":true}}"#,
+                           posts: Self.postWithUnfilteredAction, requests: requests)
         #expect(try await client.canPostUnfilteredHTML() == false)
+        #expect(requests.urls.count == 1)
     }
 
     @Test func fetchAllCategoriesHitsCategoriesEndpointWithPerPage100() async throws {

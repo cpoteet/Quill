@@ -580,6 +580,20 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         #expect(saved?.models == [haiku55, sonnet55])
     }
 
+    @Test func aFetchDropsAPinnedModelThatIsGoneAndFitsTheReasoningToTheNewDefault() async {
+        let state = AppState()
+        var settings = AISettings(apiKey: "k")
+        settings.model = "claude-opus-3"
+        settings.reasoning = .level("xhigh")
+        state.aiSettings = settings
+        var saved: AISettings?
+        await state.loadAIModelsIfNeeded(fetch: { _ in [haiku45] }, save: { saved = $0 })
+        #expect(state.aiSettings?.model == nil)
+        #expect(state.aiSettings?.resolvedModelID() == "claude-haiku-4-5")
+        #expect(state.aiSettings?.reasoning == .off)
+        #expect(saved?.model == nil && saved?.reasoning == .off)
+    }
+
     @Test func leavesAnExistingListAlone() async {
         let state = AppState()
         var settings = AISettings(apiKey: "k")

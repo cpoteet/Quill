@@ -664,6 +664,43 @@ describe('a selection goes to Claude as reduced HTML with stubs', () => {
     assert.match(editor.getHTML(), /The note body\./)
   })
 
+  test('a table sends its whole container, every attribute stripped', () => {
+    win.setContent('<p>Before.</p><table class="has-fixed-layout"><tbody><tr><td>Name <strong>bold</strong></td><td>Two cells here</td></tr></tbody></table><p>After.</p>')
+    select('Two cells here')
+    const op = win.beginAIOperation()
+    win.discardAIResult()
+    assert.equal(op.context, 'table')
+    assert.equal(op.html, '<table><colgroup><col><col></colgroup><tbody><tr><td><p>Name <strong>bold</strong></p></td><td><p>Two cells here</p></td></tr></tbody></table>')
+    assert.equal(op.before, 'Before.')
+    assert.equal(op.after, 'After.')
+  })
+
+  test('a stub id on the wrong tag is unwrapped, not restored', () => {
+    win.setContent(footnoted, META)
+    const link = rewrite('See the docs today.', 'Read the <sup id="L1">docs</sup> now.').saved
+    assert.match(link, /<p>Read the docs now\.<sup data-fn=/)
+    assert.doesNotMatch(link, /example\.com/)
+    win.setContent(footnoted, META)
+    const note = rewrite('See the docs today. More words here.', 'See the <a id="L1">docs</a> today.<a id="F1">1</a> More words here.').saved
+    assert.match(note, /today\.1 More words here\.<\/p>/)
+    assert.doesNotMatch(note, /data-fn/)
+  })
+
+  test('a plain superscript survives the rewrite', () => {
+    win.setContent('<p>Einstein wrote E=mc<sup>2</sup> in a famous paper.</p>')
+    const op = (() => { select('Einstein wrote E=mc2 in a famous paper.'); const o = win.beginAIOperation(); win.discardAIResult(); return o })()
+    assert.equal(op.html, 'Einstein wrote E=mc<sup>2</sup> in a famous paper.')
+    const { saved } = rewrite('Einstein wrote E=mc2 in a famous paper.', 'Einstein wrote E=mc<sup>2</sup> in a celebrated paper.')
+    assert.match(saved, /<p>Einstein wrote E=mc<sup>2<\/sup> in a celebrated paper\.<\/p>/)
+  })
+
+  test('an invented footnote marker without a stub id is unwrapped', () => {
+    win.setContent(footnoted, META)
+    const { saved } = rewrite('See the docs today.', 'Read the docs now.<sup class="fn" data-fn="invented">1</sup>')
+    assert.match(saved, /<p>Read the docs now\.1<sup data-fn="fn-11111111/)
+    assert.doesNotMatch(saved, /invented/)
+  })
+
   test('unknown stub id is unwrapped to its text', () => {
     win.setContent(footnoted, META)
     const { saved } = rewrite('See the docs today.', 'Read <a id="L9">this</a> now.')
@@ -682,6 +719,13 @@ describe('a selection goes to Claude as reduced HTML with stubs', () => {
     assert.match(saved, /<p>Intro para\.<\/p>/)
     assert.match(saved, /<p>See the <a [^>]*>docs<\/a> today\. More <em>words<\/em> here\.<\/p>/)
     assert.doesNotMatch(saved, /data-fn/)
+  })
+
+  test('a plain-text result inside a paragraph goes in as text, its whitespace collapsed', () => {
+    win.setContent('<p>Intro para.</p><p>First sentence here. Second sentence is selected. Third one.</p><p>Outro para.</p>')
+    const { inserted } = rewrite('Second sentence is selected.', ' The second\n sentence &amp; more. ')
+    assert.equal(inserted, true)
+    assert.deepEqual(topLevelTexts(), ['Intro para.', 'First sentence here. The second sentence & more. Third one.', 'Outro para.'])
   })
 
   test('inline result inside a paragraph does not split it', () => {

@@ -194,11 +194,14 @@ public struct AIPromptBuilder {
     public static func parseGenerated(_ json: String) throws -> (title: String, excerpt: String, html: String) {
         struct Payload: Decodable { let title, excerpt, html: String }
         let payload = try JSONDecoder().decode(Payload.self, from: Data(json.utf8))
-        // Keep the words inside a search citation even if Claude wraps whole sentences, nested tags included.
-        var html = payload.html.replacingOccurrences(
-            of: #"<cite\s+index="[^"]*">(.*?)</cite>"#, with: "$1", options: .regularExpression)
         // Citation spans leave a space before the punctuation that follows them ("honestly , they're").
-        html = html.replacingOccurrences(of: #" +(?=[,.;:!?](?:\s|<|$))"#, with: "", options: .regularExpression)
+        var html = payload.html.replacingOccurrences(
+            of: #"</cite> +(?=[;:!?](?:\s|<|$))"#, with: "</cite>", options: .regularExpression)
+        // Keep the words inside a search citation even if Claude wraps whole sentences, nested tags included.
+        html = html.replacingOccurrences(
+            of: #"<cite\s+index="[^"]*">(.*?)</cite>"#, with: "$1", options: .regularExpression)
+        // French spaces before ; : ! ? but no language spaces before a comma or full stop.
+        html = html.replacingOccurrences(of: #" +(?=[,.](?:\s|<|$))"#, with: "", options: .regularExpression)
         html = normalizeAITables(html).trimmingCharacters(in: .whitespacesAndNewlines)
         let title = payload.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty, !html.isEmpty else { throw EmptyGeneratedPost() }

@@ -99,7 +99,7 @@ struct GeneratePostSheet: View {
                 return
             }
             onResult(parsed.title, parsed.html, parsed.excerpt)
-        } catch AnthropicError.cutOff(let tool) {
+        } catch AnthropicError.cutOff(let tool, _) {
             // A cut-off JSON reply can't be read, so the only way forward is the longer budget.
             if let tool { onWebSearchTool(tool, modelID) }
             isGenerating = false

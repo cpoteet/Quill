@@ -119,6 +119,25 @@ describe('applyEvaluationFinding', () => {
   test('does not match across two paragraphs', () => {
     load('<p>Counting</p><p>I started</p>')
     assert.equal(win.applyEvaluationFinding('CountingI', 'Counting I'), 'missing')
+    assert.equal(win.applyEvaluationFinding('Counting I', 'Counting, I'), 'missing')
+    assert.equal(body(), '<p>Counting</p><p>I started</p>')
+  })
+
+  test('several changed runs each keep the marks where they sit', () => {
+    load('<p>It <em>feel</em> off, but it gives a window.</p>')
+    assert.equal(win.applyEvaluationFinding('It feel off, but it gives', 'It fell off, but they give'), 'applied')
+    assert.equal(body(), '<p>It <em>fell</em> off, but they give a window.</p>')
+  })
+
+  test('a word added at the end lands after the last word', () => {
+    load('<p>stands out as prime offender here.</p>')
+    assert.equal(win.applyEvaluationFinding('as prime offender', 'as prime offender today'), 'applied')
+    assert.equal(body(), '<p>stands out as prime offender today here.</p>')
+  })
+
+  test('a word that only starts a longer word is not a match', () => {
+    load('<p>The edits are in.</p>')
+    assert.deepEqual(Array.from(win.findingStatus(['The edit', 'edits are'])), ['missing', 'ok'])
   })
 
   test('is case-sensitive', () => {

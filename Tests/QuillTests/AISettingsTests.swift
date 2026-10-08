@@ -43,6 +43,11 @@ import Testing
         #expect(AISettings.reasoningOptions(for: haiku55) == [.modelDefault, .level("low"), .level("medium"), .level("high"), .level("xhigh"), .level("max")])
     }
 
+    @Test func adaptiveOptionsListOnlyTheModelsLevelsInOrder() {
+        var limited = haiku55; limited.effortLevels = ["max", "low", "high"]
+        #expect(AISettings.reasoningOptions(for: limited) == [.modelDefault, .level("low"), .level("high"), .level("max")])
+    }
+
     @Test func enabledOnlyOptions() { #expect(AISettings.reasoningOptions(for: haiku45) == [.off, .level("low"), .level("medium"), .level("high")]) }
 
     @Test func unknownModelOnlyOff() { #expect(AISettings.reasoningOptions(for: nil) == [.off]) }
@@ -60,6 +65,13 @@ import Testing
     @Test func offeredReasoningIsKept() {
         var s = AISettings(); s.models = [haiku55]; s.reasoning = .level("xhigh")
         #expect(s.normalizedReasoning() == .level("xhigh"))
+    }
+
+    @MainActor @Test func reasoningLabelsReadAsWords() {
+        #expect(PreferencesView.label(for: .off) == "Off")
+        #expect(PreferencesView.label(for: .modelDefault) == "Model default")
+        #expect(PreferencesView.label(for: .level("xhigh")) == "Extra High")
+        #expect(["low", "medium", "high", "max"].map { PreferencesView.label(for: .level($0)) } == ["Low", "Medium", "High", "Max"])
     }
 
     // MARK: - applyingFetchedModels

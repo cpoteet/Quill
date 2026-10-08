@@ -261,6 +261,7 @@ public struct PreferencesView: View {
         // Persist immediately with whatever guide is valid right now
         ai.styleGuide = existingGuide
         ai.reasoning = ai.normalizedReasoning()
+        keepStateStoredElsewhere()
         do {
             try AISettingsStore.save(ai)
         } catch {
@@ -316,6 +317,7 @@ public struct PreferencesView: View {
                 options: CompletionOptions(settings: ai)
             ).text
             ai.styleGuide = guide
+            keepStateStoredElsewhere()
             try AISettingsStore.save(ai)
             onSaveAISettings?(ai)
             return true
@@ -323,6 +325,13 @@ public struct PreferencesView: View {
             saveError = "Style analysis failed: \(error.localizedDescription)"
             return false
         }
+    }
+
+    /// The app fetches models and records web-search versions while Settings is open; don't save over them.
+    private func keepStateStoredElsewhere() {
+        guard let stored = try? AISettingsStore.load(), stored.apiKey == ai.apiKey else { return }
+        if ai.models.isEmpty { ai.models = stored.models }
+        ai.webSearchToolByModel.merge(stored.webSearchToolByModel) { mine, _ in mine }
     }
 
     private func loadExisting() {

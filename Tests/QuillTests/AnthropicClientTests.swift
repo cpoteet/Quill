@@ -94,6 +94,21 @@ import Testing
         #expect((body(haiku45, .level("high"))["thinking"] as? [String: Any])?["budget_tokens"] as? Int == 16384)
     }
 
+    @Test func adaptiveLevelTheModelDoesNotOfferSendsNoEffort() {
+        var limited = haiku55; limited.effortLevels = ["low", "high"]
+        let b = body(limited, .level("xhigh"))
+        #expect(ns(b["thinking"]) == ns(["type": "adaptive"]))
+        #expect(b["output_config"] == nil)
+    }
+
+    @Test func enabledOnlyLevelWithoutABudgetSendsNoThinking() {
+        for level in ["xhigh", "max"] {
+            let b = body(haiku45, .level(level))
+            #expect(b["thinking"] == nil)
+            #expect(b["max_tokens"] as? Int == 4096)
+        }
+    }
+
     @Test func requestForUnknownModelOmitsThinking() {
         for reasoning in [AIReasoning.off, .modelDefault, .level("high")] {
             let b = body(nil, reasoning)
@@ -330,7 +345,7 @@ import Testing
     @Test func cutOffStructuredReplyThrowsCutOffWithTheTool() async throws {
         let json = #"{"content":[{"type":"text","text":"{\"html\": \"<p>par"}],"stop_reason":"max_tokens"}"#
         AnthropicMockURLProtocol.requestHandler = makeHandler(body: Data(json.utf8))
-        await #expect(throws: AnthropicError.cutOff(webSearchTool: "web_search_20260318")) {
+        await #expect(throws: AnthropicError.cutOff(webSearchTool: "web_search_20260318", reasoned: true)) {
             _ = try await client.complete(userMessage: "u", systemPrompt: "s", options: searchOptions(schema: ["type": "object"]))
         }
     }
@@ -338,7 +353,12 @@ import Testing
     @Test func thinkingThatUsesTheWholeBudgetThrowsCutOff() async throws {
         let json = #"{"content":[{"type":"thinking","thinking":"hmm","signature":"x"}],"stop_reason":"max_tokens"}"#
         AnthropicMockURLProtocol.requestHandler = makeHandler(body: Data(json.utf8))
-        await #expect(throws: AnthropicError.cutOff(webSearchTool: nil)) { _ = try await completeDefault() }
+        await #expect(throws: AnthropicError.cutOff(webSearchTool: nil, reasoned: false)) { _ = try await completeDefault() }
+    }
+
+    @Test func cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent() {
+        #expect(AnthropicError.cutOff(webSearchTool: nil, reasoned: true).errorDescription?.contains("reasoning") == true)
+        #expect(AnthropicError.cutOff(webSearchTool: nil, reasoned: false).errorDescription?.contains("reasoning") == false)
     }
 
     @Test func truncatedFalseWhenStopReasonIsEndTurn() async throws {
@@ -608,6 +628,45 @@ import Testing
         let result = try await client.complete(userMessage: "u", systemPrompt: "s", options: searchOptions(knownTool: "web_search_20260209"))
         #expect(tools == ["web_search_20260209"])
         #expect(result.webSearchTool == "web_search_20260209")
+    }
+
+    @Test func knownToolOutsideTheListIsTriedFirstThenTheList() async throws {
+        var tools: [String?] = []
+        AnthropicMockURLProtocol.requestHandler = { req in
+            let tool = Self.sentTool(req)
+            tools.append(tool)
+            if tool == "web_search_20260318" { return Self.ok(req, try self.successBody(textBlocks: ["hi"])) }
+            return (HTTPURLResponse(url: req.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Self.unknownToolBody(tool!))
+        }
+        let result = try await client.complete(userMessage: "u", systemPrompt: "s", options: searchOptions(knownTool: "web_search_20270101"))
+        #expect(tools == ["web_search_20270101", "web_search_20260318"])
+        #expect(result.webSearchTool == "web_search_20260318")
+    }
+
+    @Test func rejectedKnownVersionFallsBackOnlyToOlderOnes() async throws {
+        var tools: [String?] = []
+        AnthropicMockURLProtocol.requestHandler = { req in
+            let tool = Self.sentTool(req)
+            tools.append(tool)
+            if tool == "web_search_20250305" { return Self.ok(req, try self.successBody(textBlocks: ["hi"])) }
+            return (HTTPURLResponse(url: req.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Self.unknownToolBody(tool!))
+        }
+        _ = try await client.complete(userMessage: "u", systemPrompt: "s", options: searchOptions(knownTool: "web_search_20260209"))
+        #expect(tools == ["web_search_20260209", "web_search_20250305"])
+    }
+
+    @Test func oldestVersionRejectedSurfacesTheAPIError() async {
+        var tools: [String?] = []
+        AnthropicMockURLProtocol.requestHandler = { req in
+            let tool = Self.sentTool(req)
+            tools.append(tool)
+            return (HTTPURLResponse(url: req.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Self.unknownToolBody(tool!))
+        }
+        let last = String(data: Self.unknownToolBody("web_search_20250305"), encoding: .utf8)!
+        await #expect(throws: AnthropicError.httpError(400, last)) {
+            _ = try await client.complete(userMessage: "u", systemPrompt: "s", options: searchOptions())
+        }
+        #expect(tools == AnthropicClient.webSearchVersions)
     }
 
     @Test func noToolWithoutWebSearch() async throws {

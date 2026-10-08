@@ -2,6 +2,7 @@ import SwiftUI
 
 public enum EvaluationPanelState {
     case shortContent
+    case ready
     case error(String)
     case evaluation(EvaluationState)
 }
@@ -86,6 +87,9 @@ public struct EvaluationPanel: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding()
+        case .ready:
+            Button("Evaluate", action: onReEvaluate)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .error(let message):
             PaneError(title: "Evaluation failed", message: message, retry: onReEvaluate)
         case .evaluation(let evaluation):
@@ -363,7 +367,8 @@ private struct FactCheckRow: View {
                         Rectangle().fill(.quaternary).frame(width: 2)
                     }
             }
-            if let url = URL(string: check.sourceURL), let host = url.host() {
+            if let url = URL(string: check.sourceURL), ["http", "https"].contains(url.scheme?.lowercased()),
+               let host = url.host() {
                 Link("\(host.hasPrefix("www.") ? String(host.dropFirst(4)) : host) \u{2197}", destination: url)
                     .font(.subheadline)
                     .foregroundStyle(Color.accentColor)
@@ -376,5 +381,7 @@ private struct FactCheckRow: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onJump)
         .onHover { isHovering = $0 }
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Show in Post", onJump)
     }
 }

@@ -70,6 +70,16 @@ import Testing
         #expect(shorterTable.contains("Condense each table cell"))
     }
 
+    @Test func convertingInsideAListOrTableUsesTheGeneralConvertInstruction() {
+        for context in ["bulletList", "orderedList", "table"] {
+            let table = SelectionPrompts.user(selection(context: context), operation: .convertToTable)
+            #expect(table.contains("Convert the selection into an HTML table"), "\(context)")
+            let list = SelectionPrompts.user(selection(context: context), operation: .convertToList)
+            #expect(list.contains("Convert the selection into an HTML unordered list"), "\(context)")
+            #expect(!table.contains("Keep the same") && !list.contains("Keep the same"), "\(context)")
+        }
+    }
+
     @Test func systemPromptHasGuideOrNot() {
         let with = SelectionPrompts.system(styleGuide: "Terse.")
         #expect(with.hasPrefix("You edit part of a blog post for its author in Quill, a WordPress editor. You rewrite only the selected text; the text around it is there so your rewrite fits in its place.\n\nMatch the author's voice. The selected text is the best example of it; the style guide below describes it more broadly. Quoted words and phrases in the guide are examples of the author's habits, not phrases to reuse."))

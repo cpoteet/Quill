@@ -204,6 +204,14 @@ describe('Custom HTML insert and edit', () => {
     assert.ok(!out.includes('<p>b</p>'))
   })
 
+  test('saving the editor unchanged leaves the post byte-exact and unedited', () => {
+    const source = '<p>Intro</p><!-- wp:html --><b>x</b><!-- /wp:html -->'
+    win.setContent(source)
+    win.editCustomHTML(cards()[0].pos)
+    insert(posted[0].html, true)
+    assert.equal(win.getContent(), source)
+  })
+
   test('a replace after the card was deleted changes nothing', () => {
     win.setContent('<p>Intro</p>' + HTML_BLOCK)
     const { node, pos } = cards()[0]
@@ -256,6 +264,43 @@ describe('Custom HTML insert and edit', () => {
     assert.equal(doc.child(1).type.name, 'gutenbergPassthrough')
   })
 
+  test('inserting with a top-level block selected puts the card right after it', () => {
+    win.setContent('<p>Intro</p><hr><p>End</p>')
+    let rule = null
+    editor.state.doc.descendants((node, pos) => { if (rule === null && node.type.name === 'horizontalRule') rule = pos })
+    editor.commands.setNodeSelection(rule)
+    insert('<p>x</p>')
+    const names = []
+    editor.state.doc.forEach(child => names.push(child.type.name))
+    assert.deepEqual(names, ['paragraph', 'horizontalRule', 'gutenbergPassthrough', 'paragraph'])
+  })
+
+  test('an insert after an edit was opened adds a card and leaves the edited one alone', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    win.editCustomHTML(cards()[0].pos)
+    editor.commands.setTextSelection(6)
+    insert('<p>new</p>')
+    assert.deepEqual(cards().map(c => c.node.attrs.unsupportedSource), [win.customHTMLSource('<p>new</p>'), HTML_BLOCK])
+  })
+
+  test('a replaced card opens with its new HTML the next time', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    win.editCustomHTML(cards()[0].pos)
+    insert('<p>new</p>', true)
+    win.editCustomHTML(cards()[0].pos)
+    assert.deepEqual(posted.map(m => m.html), ['<p>a</p>', '<p>new</p>'])
+    assert.equal(win.document.querySelector('#editor .passthrough-card-label').textContent, 'Custom HTML')
+  })
+
+  test('a malformed payload changes nothing', () => {
+    win.setContent('<p>Intro</p>')
+    editor.commands.setTextSelection(6)
+    const before = editor.getHTML()
+    win.insertCustomHTML('not json')
+    win.insertCustomHTML(JSON.stringify({ html: 3, replace: false }))
+    assert.equal(editor.getHTML(), before)
+  })
+
   test('inserting in a footnote does nothing', () => {
     const id = 'fn-1'
     win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
@@ -296,6 +341,15 @@ describe('Custom HTML insert and edit', () => {
     button.dispatchEvent(new win.MouseEvent('click', { bubbles: true, detail: 1 }))
     assert.equal(posted.length, 1)
     assert.equal(posted[0].html, '<p>a</p>')
+  })
+
+  test('double-clicking Edit… opens the editor once', () => {
+    win.setContent('<p>Intro</p>' + HTML_BLOCK)
+    const button = hint().querySelector('button')
+    for (const [type, detail] of [['click', 1], ['click', 2], ['dblclick', 2]]) {
+      button.dispatchEvent(new win.MouseEvent(type, { bubbles: true, detail }))
+    }
+    assert.equal(posted.length, 1)
   })
 
   test('double-clicking a Custom HTML card opens the editor', () => {

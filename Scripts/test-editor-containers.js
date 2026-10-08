@@ -428,6 +428,10 @@ describe('block inserts from a container title', () => {
     separator: [() => win.insertSeparator(), 'horizontalRule'],
     columns: [() => win.insertColumns(2), 'columnsBlock'],
     markdown: [() => win.insertMarkdown('- a\n- b'), 'bulletList'],
+    embed: [() => {
+      win.document.getElementById('embed-url-input').value = 'https://www.youtube.com/watch?v=abc'
+      win.document.getElementById('embed-insert-btn').click()
+    }, 'embedBlock'],
   }
   const caretInto = (host, text) => {
     editor.commands.setContent('<p></p>', false)

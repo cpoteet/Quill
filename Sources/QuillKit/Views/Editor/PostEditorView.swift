@@ -1547,7 +1547,8 @@ public struct PostEditorView: View {
     private var evaluationPanelState: EvaluationPanelState {
         if stats.words < 100 { return .shortContent }
         if let error = evaluationSetupError { return .error(error) }
-        return .evaluation(evaluation ?? EvaluationState(searchAvailable: false))
+        guard let evaluation else { return .ready }
+        return .evaluation(evaluation)
     }
 
     /// A published post's date, which the fact-check judges its claims against.
