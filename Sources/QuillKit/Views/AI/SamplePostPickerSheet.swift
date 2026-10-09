@@ -11,7 +11,7 @@ struct SamplePostPickerSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Choose Style Samples")
                     .font(.headline)
-                Text("Select up to 5 posts that represent your writing style. Claude will match your voice generating and evaluating content.")
+                Text("Select up to 5 posts that represent your writing style. Claude will match your voice when generating and evaluating content.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
