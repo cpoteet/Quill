@@ -38,6 +38,7 @@
     <aside class="toc">
       <p class="toc__heading">Releases</p>
       <ul class="toc__list">
+        <li><a href="#v2.3.0" class="toc__link"><span>v2.3.0</span><span class="toc__date">Oct 8</span></a></li>
         <li><a href="#v2.2.0" class="toc__link"><span>v2.2.0</span><span class="toc__date">Oct 3</span></a></li>
         <li><a href="#v2.1.0" class="toc__link"><span>v2.1.0</span><span class="toc__date">Sep 30</span></a></li>
         <li><a href="#v2.0.0" class="toc__link"><span>v2.0.0</span><span class="toc__date">Sep 25</span></a></li>
@@ -58,11 +59,79 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.3.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.3.0</h2>
+          <span class="release__date">October 8, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(6)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Featured Images in Post Settings</h4>
+            <p class="release__body">Posts and pages now have a Featured Image section in Post Settings, where you can choose, upload, replace or remove the image. Before, Quill kept an existing featured image but couldn't set or change one, so you had to go to the WordPress admin.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Model Choice and Rewritten AI Prompts</h4>
+            <p class="release__body">In Settings you can now choose which Claude model Quill uses and how long it reasons. Every AI prompt was rewritten and tested: rewrites keep links and footnote markers, the right-click menu adds Rephrase and Fix Spelling &amp; Grammar, and Generate fills in the excerpt and links the facts it looked up to their sources.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">HTML Outside Blocks Is Kept, and a Custom HTML Block</h4>
+            <p class="release__body">Before this release, editing a classic post turned any HTML outside a block, such as a <code>&lt;div&gt;</code> with a class or an <code>&lt;iframe&gt;</code>, into plain paragraphs when you saved, and the markup was lost. Quill now keeps that HTML as a Custom HTML block, the same way WordPress's Convert to Blocks does. You can also insert and edit Custom HTML blocks in Quill with a new supported editor block.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Evaluate Applies Fixes and Checks Facts</h4>
+            <p class="release__body">Evaluate now runs a review and a web-search fact check together, and sorts the results into Fixes, Ideas and Facts to Check, with each fact linked to its source. One click applies a fix or suggestion to the post without disturbing its links or formatting, and you can undo it like any other edit.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Filter Posts and Pages by Status</h4>
+            <p class="release__body">A filter button next to the sidebar search shows only published, draft or scheduled items, with a count for each. You no longer have to scroll the whole list to find work in progress.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Errors Stay on Screen and Say What Went Wrong</h4>
+            <p class="release__body">A failed save, upload, preview or AI request now shows in a banner above the editor that stays until you dismiss it or try again, instead of a notice that faded after two seconds. Messages give the reason, including Anthropic's reason for an AI failure and "You're offline" when your Mac has no connection. The sidebar's load error now has a Retry button.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(5)</span></h3>
+          <ul class="release__list">
+            <li><strong>Share button</strong> — Published and private posts have a Share button in the editor toolbar that opens the macOS share menu with the post's link.</li>
+            <li><strong>Clearer save buttons</strong> — The save buttons now say where the post goes, such as Save to WordPress, Save Draft, Switch to Draft and Save Locally, instead of Publish Draft.</li>
+            <li><strong>More upload types</strong> — The media library now uploads Word, Excel, PowerPoint, .txt and .csv files as well as images and PDFs.</li>
+            <li><strong>Sidebar width remembered</strong> — Quill reopens with the sidebar at the width you last left it.</li>
+            <li><strong>Consistent editor accent</strong> — Selections, focus rings, the find bar and the table-size picker all use Quill's amber accent, and selection outlines are easier to see in light mode.</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(10)</span></summary>
+          <ul class="release__list">
+            <li>Opening the inspector no longer makes the post flash blank while it slides in.</li>
+            <li>Dragging the sidebar closed and back open no longer makes the window wider.</li>
+            <li>Switching sections while Post Settings or Media Info is open no longer makes the selected section button slide into place.</li>
+            <li>A post stays highlighted in the sidebar after you save it.</li>
+            <li>Moving the open post to the trash now closes its editor.</li>
+            <li>Updating a published post now says "Updated" instead of "Published".</li>
+            <li>A block inserted while the cursor is in an accordion heading, tab title or button now goes after that Accordion, Tabs or Buttons block instead of splitting or deleting it.</li>
+            <li>Footnotes typed or pasted into code view are no longer lost after saving and reloading.</li>
+            <li>After Quill fails to load your site at launch, Refresh (⌘R) reloads both Posts and Pages, so Pages no longer reads "No pages yet".</li>
+            <li>On Macs set to a language other than English, a failed connection now shows Quill's explanation instead of the raw system error.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.2.0">
         <header class="release__header">
           <h2 class="release__version">v2.2.0</h2>
           <span class="release__date">October 3, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
