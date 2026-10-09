@@ -36,20 +36,22 @@
   <div class="docs-layout">
 
     <aside class="toc">
-      <p class="toc__heading">Contents</p>
-      <ul class="toc__list">
-        <li><a href="#introduction" class="toc__link">Introduction</a></li>
-        <li><a href="#requirements--installation" class="toc__link">Requirements and Installation</a></li>
-        <li><a href="#connecting-to-wordpress" class="toc__link">Connecting to WordPress</a></li>
-        <li><a href="#the-interface" class="toc__link">Quill's Interface</a></li>
-        <li><a href="#writing--editing" class="toc__link">Writing and Editing</a></li>
-        <li><a href="#content-elements" class="toc__link">Content Elements</a></li>
-        <li><a href="#post--page-settings" class="toc__link">Post and Page Settings</a></li>
-        <li><a href="#media-library" class="toc__link">Media Library</a></li>
-        <li><a href="#ai-writing-features" class="toc__link">AI Writing Features</a></li>
-        <li><a href="#keyboard-reference" class="toc__link">Keyboard Shortcuts</a></li>
-        <li><a href="#limitations--compatibility" class="toc__link">Limitations and Compatibility</a></li>
-      </ul>
+      <details class="toc__disclosure" data-collapse-width="900" open>
+        <summary class="toc__heading">Contents</summary>
+        <ul class="toc__list">
+          <li><a href="#introduction" class="toc__link">Introduction</a></li>
+          <li><a href="#requirements--installation" class="toc__link">Requirements and Installation</a></li>
+          <li><a href="#connecting-to-wordpress" class="toc__link">Connecting to WordPress</a></li>
+          <li><a href="#the-interface" class="toc__link">Quill's Interface</a></li>
+          <li><a href="#writing--editing" class="toc__link">Writing and Editing</a></li>
+          <li><a href="#content-elements" class="toc__link">Content Elements</a></li>
+          <li><a href="#post--page-settings" class="toc__link">Post and Page Settings</a></li>
+          <li><a href="#media-library" class="toc__link">Media Library</a></li>
+          <li><a href="#ai-writing-features" class="toc__link">AI Writing Features</a></li>
+          <li><a href="#keyboard-reference" class="toc__link">Keyboard Shortcuts</a></li>
+          <li><a href="#limitations--compatibility" class="toc__link">Limitations and Compatibility</a></li>
+        </ul>
+      </details>
     </aside>
 
     <main class="docs-content">
@@ -87,7 +89,7 @@
           <li>When your browser asks whether to open Quill, allow it. Quill finishes connecting.</li>
         </ol>
         <p class="docs-body">WordPress names the password "Quill on" followed by your Mac's name and the date and time you connected, for example "Quill on Studio Mac (Oct 3, 2:15:07 PM)". On your profile you can tell your Macs and connections apart, and revoke one without affecting the others. If you click <strong>No, I do not approve of this connection</strong>, Quill returns to the first screen with a note saying it wasn't approved. If you approve but Quill then can't connect, the first screen says so and gives the reason. While Quill waits, <strong>Open it again</strong> reopens the approval page and <strong>Cancel</strong> starts over.</p>
-        <p class="docs-body">Once connected, Quill offers to add an Anthropic API key for the <a href="#ai-writing-features" class="content-link">AI writing features</a>. Paste a key and click <strong>Save</strong>, or click <strong>Skip for Now</strong> to add one later in Settings. Quill skips this step if a key is already set.</p>
+        <p class="docs-body">Once connected, Quill offers to add an Anthropic API key for the <a href="#ai-writing-features" class="content-link">AI writing features</a>. Paste a key and click <strong>Save</strong>, or click <strong>Skip for Now</strong> to add one later in Settings. Quill skips this step if a key is already set. After saving a key, choose <strong>Quill → Settings</strong> (⌘,) and go to the <strong>AI Writing</strong> section. There you can choose a model and reasoning level, teach Quill your writing style and turn web search on or off. See <a href="#ai-setup" class="content-link">Setting Up</a> under AI Writing Features.</p>
         <h3 class="docs-h3">Connecting With an Application Password</h3>
         <p class="docs-body">Some sites turn browser approval off. When yours does, Quill asks for an application password instead. You can also choose <strong>Use an application password instead</strong> on the first screen. On that screen, <strong>Open Profile Page</strong> opens the Application Passwords section of your WordPress profile in the browser (log in first if WordPress asks), which covers steps 1 to 3 below.</p>
         <h4 class="docs-h4">Step 1: Create an Application Password</h4>
@@ -624,7 +626,7 @@
       <section class="docs-section" id="ai-writing-features">
         <h2 class="docs-h2">AI Writing Features</h2>
         <p class="docs-body">Quill can use Anthropic's Claude API to write posts, rewrite selected text and review your writing. These features are off until you add your own Anthropic API key, and Anthropic bills you directly for what you use.</p>
-        <h3 class="docs-h3">Setting Up</h3>
+        <h3 class="docs-h3" id="ai-setup">Setting Up</h3>
         <ol class="docs-ol">
           <li>Create an API key at <a href="https://platform.claude.com/settings/keys" class="content-link" target="_blank" rel="noopener">platform.claude.com/settings/keys</a>.</li>
           <li>Choose <strong>Quill → Settings</strong> (⌘,) and find the <strong>AI Writing</strong> section.</li>
@@ -809,6 +811,7 @@
   </footer>
 
   <script src="scroll-spy.js"></script>
+  <script src="toc-disclosure.js"></script>
   <script src="docs-tables.js"></script>
   <script src="nav.js"></script>
 </body>

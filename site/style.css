@@ -421,15 +421,29 @@ kbd {
   margin-bottom: 34px;
 }
 
+/* Each fact's dot sits in the strip before it; clip-path hides the strip at the start of every line */
 .hero__facts {
+  --facts-gap: 0.8em;
   margin-top: 24px;
+  margin-left: calc(-1 * var(--facts-gap));
+  clip-path: inset(0 0 0 var(--facts-gap));
   font-size: 14px;
   color: var(--color-ink-60);
   text-wrap: balance;
 }
 
 .hero__facts span {
+  position: relative;
+  margin-left: var(--facts-gap);
   white-space: nowrap;
+}
+
+.hero__facts span::before {
+  content: '·' / '';
+  position: absolute;
+  right: 100%;
+  width: var(--facts-gap);
+  text-align: center;
 }
 
 .hero__cta {
@@ -864,6 +878,49 @@ kbd {
   font-size: 11px;
   padding-top: 2px;
   color: var(--color-ink-60);
+}
+
+.toc__disclosure > summary {
+  list-style: none;
+}
+
+.toc__disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.toc__count {
+  display: none;
+  color: var(--color-accent-text);
+}
+
+.toc__disclosure--narrow > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--color-hairline);
+  cursor: pointer;
+}
+
+.toc__disclosure--narrow > summary::after {
+  content: 'Show all ↓';
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-accent-text);
+}
+
+.toc__disclosure--narrow[open] > summary {
+  margin-bottom: 14px;
+}
+
+.toc__disclosure--narrow[open] > summary::after {
+  content: 'Hide ↑';
+}
+
+.toc__disclosure--narrow .toc__count {
+  display: inline;
 }
 
 /* ── Docs ── */
@@ -1313,8 +1370,12 @@ kbd {
     padding-bottom: 48px;
   }
 
+  .hero__text {
+    max-width: 620px;
+  }
+
   .hero__headline {
-    font-size: 2.25rem;
+    font-size: 44px;
   }
 
   .hero__crop {
@@ -1363,19 +1424,34 @@ kbd {
     font-size: 32px;
   }
 
-  .docs-layout,
+  .docs-layout {
+    grid-template-columns: 1fr;
+    padding-top: 40px;
+    gap: 32px;
+  }
+
+  .changelog-layout {
+    gap: 40px;
+  }
+
+  .docs-layout .toc {
+    position: static;
+  }
+
+  .docs-keys__row {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
   .changelog-layout {
     grid-template-columns: 1fr;
     padding-top: 40px;
     gap: 32px;
   }
 
-  .toc {
+  .changelog-layout .toc {
     position: static;
-  }
-
-  .docs-keys__row {
-    grid-template-columns: 120px minmax(0, 1fr);
   }
 }
 
@@ -1387,6 +1463,10 @@ kbd {
 
   .lead__lists {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero__headline {
+    font-size: 2.25rem;
   }
 
   .hero__crop {
