@@ -304,6 +304,11 @@ public struct PostEditorView: View {
             evaluation = nil
             evaluationSetupError = nil
         }
+        .onChange(of: appState.inspectorCloseToken) {
+            var closing = Transaction()
+            closing.disablesAnimations = true
+            withTransaction(closing) { inspectorPane = nil }
+        }
         .onChange(of: inspectorPane) { _, pane in
             let open = pane == .evaluation
             editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)

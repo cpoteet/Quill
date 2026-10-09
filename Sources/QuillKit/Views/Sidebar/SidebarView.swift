@@ -35,11 +35,12 @@ public struct SidebarView: View {
             get: { appState.selectedSection },
             set: { section in
                 guard section != appState.selectedSection else { return }
-                appState.selectedItem = nil
-                appState.selectedMedia = nil
-                appState.searchText = ""
-                appState.mediaSearchText = ""
-                appState.selectedSection = section
+                appState.switchSection(to: section) {
+                    appState.selectedItem = nil
+                    appState.selectedMedia = nil
+                    appState.searchText = ""
+                    appState.mediaSearchText = ""
+                }
             }
         )
     }
@@ -151,8 +152,7 @@ public struct SidebarView: View {
                             appState.createNewDraft(type: "page", draftStore: services.draftStore)
                         }
                         Button("Upload Media\u{2026}", systemImage: "photo.badge.plus") {
-                            appState.selectedSection = .media
-                            appState.triggerMediaUpload = true
+                            appState.switchSection(to: .media) { appState.triggerMediaUpload = true }
                         }
                     } label: {
                         Image(systemName: "plus")

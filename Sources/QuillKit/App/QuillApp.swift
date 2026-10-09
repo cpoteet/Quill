@@ -117,8 +117,7 @@ public struct QuillApp: App {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 Divider()
                 Button("New Media\u{2026}") {
-                    appState.selectedSection = .media
-                    appState.triggerMediaUpload = true
+                    appState.switchSection(to: .media) { appState.triggerMediaUpload = true }
                 }
                 .keyboardShortcut("n", modifiers: [.command, .option])
             }

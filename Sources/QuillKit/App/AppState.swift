@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 public enum SidebarSection: String, Hashable, CaseIterable {
     case posts = "Posts"
@@ -121,6 +122,7 @@ public final class AppState: ObservableObject {
     @Published public var mediaSearchText: String = ""
     @Published public var mediaRefreshToken: Int = 0
     @Published public var isMediaInspectorOpen: Bool = false
+    @Published public var inspectorCloseToken: Int = 0
     @Published public var triggerShowMediaDetails: Bool = false
     @Published public var triggerFindBar: Bool = false
     @Published public var triggerPasteMarkdown: Bool = false
@@ -190,13 +192,26 @@ public final class AppState: ObservableObject {
         if selectedMedia?.id == updated.id { selectedMedia = updated }
     }
 
-    public func createNewDraft(type: String, draftStore: DraftStore) {
+    @MainActor public func createNewDraft(type: String, draftStore: DraftStore) {
         guard let id = try? draftStore.create(title: "Untitled", content: "", excerpt: "", type: type) else { return }
         guard let updated = try? draftStore.fetchAll(),
               let newDraft = updated.first(where: { $0.id == id }) else { return }
         localDrafts = updated
-        selectedSection = .localDrafts
-        selectedItem = .local(newDraft)
+        switchSection(to: .localDrafts) { self.selectedItem = .local(newDraft) }
+    }
+
+    // An inspector torn down in the same layout pass as a section switch makes the sidebar picker slide — see Views/Sidebar/CLAUDE.md.
+    @MainActor public func switchSection(to section: SidebarSection, then: @escaping @MainActor () -> Void = {}) {
+        var closing = Transaction()
+        closing.disablesAnimations = true
+        withTransaction(closing) {
+            isMediaInspectorOpen = false
+            inspectorCloseToken += 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+            self.selectedSection = section
+            then()
+        }
     }
 
     public var sectionIsEmpty: Bool {

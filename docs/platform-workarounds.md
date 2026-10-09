@@ -103,6 +103,14 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `docs/editor-gotchas.md`, "A widget decoration next to the caret".
 - **Last checked:** before macOS 27, 2026-09-12.
 
+### Section picker button slides up after leaving an open inspector
+
+- **Bug:** when a section switch removes the view that owns an open inspector, SwiftUI removes the inspector's split item. In that same layout pass, AppKit places the sidebar's split item at its collapsed position (`{-260, 0}`) and sizes its `NSGlassEffectView` and hosting view to their fitting height (147pt instead of the window's 672pt). The next pass restores them. The newly selected picker segment is the only view with real glass, and its glass animates from the transient position, so it slides up into place. Our own `SplitItemCollapseFix` is not involved: the pass happens without it.
+- **Code:** `AppState.switchSection(to:then:)`. It closes both inspectors with animations disabled (`isMediaInspectorOpen`, and `inspectorCloseToken`, which `PostEditorView` watches), then changes the section 10ms later, so the close and the switch land in separate layout passes. The sidebar picker, the + menu and the File menu all switch sections through it.
+- **Test:** open Media, select an image, open Media Info, click Posts. The Posts segment must appear in place, with no slide. Repeat from a post with Post Settings open, clicking Media, and with + ▸ Upload Media…. To bypass the workaround, set `selectedSection` directly instead of calling `switchSection`. For a precise check, log the sidebar `NSGlassEffectView`'s frame: it must never drop below the window height.
+- **Detail:** `Sources/QuillKit/Views/Sidebar/CLAUDE.md`, "Section switches go through `AppState.switchSection`".
+- **Last checked:** macOS 27.0, 2026-10-08.
+
 ## Retired
 
 - **`Picker` appearance workaround** — removed in `4bc933a` once macOS 27 fixed the stale appearance (`docs/superpowers/plans/2026-09-18-native-ui.md`, Task 9).
