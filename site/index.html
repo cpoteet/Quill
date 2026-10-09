@@ -28,20 +28,23 @@
   <section class="hero">
     <div class="hero__inner">
       <div class="hero__text">
-        <h1 class="hero__headline">Your WordPress site deserves a real Mac app.</h1>
-        <p class="hero__subline">Write, edit, and publish from a native, fast macOS app. Connects directly to your self-hosted WordPress site with all the WordPress capabilities you'd expect.</p>
+        <h1 class="hero__headline">Your WordPress site deserves a <span class="hero__selected">real</span> Mac app.</h1>
+        <p class="hero__subline">Write, edit and publish to your self-hosted WordPress site from a native Mac app, without opening the WordPress admin.</p>
         <div class="hero__cta">
           <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large" id="download">Download for Mac</a>
           <a href="docs.html" class="text-link">Read the User Guide →</a>
         </div>
+        <p class="hero__facts"><span>Free</span> · <span>macOS 27 on Apple Silicon</span> · <span>Self-hosted WordPress 7+</span> · <span>Notarized by Apple</span></p>
       </div>
-      <div class="hero__screenshot">
+      <div class="hero__crop">
         <picture>
-          <source srcset="images/post-view-dark.png" media="(prefers-color-scheme: dark)">
+          <source srcset="images/hero-editor-dark.webp" media="(prefers-color-scheme: dark)">
           <img
-            src="images/post-view.png"
-            alt="Quill app showing the post editor with rich text and settings panel"
-            class="hero__img"
+            src="images/hero-editor.webp"
+            alt="Quill's editor showing a post's title, the formatting toolbar and body text"
+            class="hero__crop-img"
+            width="860"
+            height="562"
           >
         </picture>
       </div>
@@ -49,101 +52,104 @@
   </section>
 
   <div class="features">
+    <section class="lead">
+      <div class="lead__inner">
+        <div class="lead__intro">
+          <p class="eyebrow">Editor</p>
+          <h2 class="lead__headline">A full-featured editor. <br>No browser required.</h2>
+          <p class="feature-row__body">Write posts and pages with headings, lists, tables, images, galleries, footnotes and embeds. WordPress blocks like Columns, Tabs and Accordion work like the rest of your text, and posts save in the same block format as the WordPress editor, so you can switch between the two.</p>
+        </div>
+        <div class="lead__lists">
+          <div>
+            <h3 class="lead__list-title">Blocks</h3>
+            <ul class="feature-list">
+              <li>Set a block's options, like the tab that opens first</li>
+              <li>Colors, font sizes and block styles set in WordPress are kept</li>
+              <li>Blocks Quill can't edit save back unchanged</li>
+              <li>Quill warns you before a save that would lose anything</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="lead__list-title">Bring Your Work</h3>
+            <ul class="feature-list">
+              <li>Paste a Markdown draft with ⇧⌘V, or type Markdown as you write</li>
+              <li>Paste from Google Docs, Word or a web page and get clean blocks, with the pictures uploaded</li>
+              <li>Drag photos in from the Finder or paste a screenshot, and they upload to your media library</li>
+              <li>Paste a YouTube, Vimeo or Spotify link on its own line to embed it</li>
+            </ul>
+          </div>
+        </div>
+        <div class="lead__image">
+          <picture>
+            <source srcset="images/blocks-view-dark.webp" media="(prefers-color-scheme: dark)">
+            <img src="images/blocks-view.webp" alt="Quill editing an Accordion block, with the block's settings row under the toolbar" class="feature-img" width="2200" height="1245" loading="lazy">
+          </picture>
+        </div>
+      </div>
+    </section>
+
     <section class="feature-row">
-  <div class="feature-row__inner">
-    <div class="feature-row__text">
-      <p class="eyebrow">Editor</p>
-      <h2 class="feature-row__headline">A full-featured editor.<br />No browser required.</h2>
-      <p class="feature-row__body">Write posts and pages with the full formatting toolkit in a modern editor experience all tuned inside a modern and familiar Mac experience.</p>
-      <ul class="feature-list">
-        <li>Renders everything in Gutenberg-compatible markup</li>
-        <li>Supports several additional blocks like tabs, accordion, and details</li>
-        <li>Inline image resizing with drag handles and dimension fields</li>
-        <li>Support for the most common post and page metadata</li>
-      </ul>
-    </div>
-    <div class="feature-row__image">
-      <picture>
-        <source srcset="images/page-view-dark.png" media="(prefers-color-scheme: dark)">
-        <img
-          src="images/page-view.png"
-          alt="Quill page editor showing rich text formatting toolbar and page settings panel"
-          class="feature-img"
-        >
-      </picture>
-    </div>
+      <div class="feature-row__inner">
+        <div class="feature-row__text">
+          <p class="eyebrow">AI Writing Assistant</p>
+          <h2 class="feature-row__headline">Review and rework <br>your writing with Claude.</h2>
+          <p class="feature-row__body">Evaluate a post to see what works, the few changes that would improve it most, and a list of specific fixes. Select any passage to rework it in place. The AI features are optional and use your own Anthropic API key; without one, you won't see them.</p>
+          <ul class="feature-list">
+            <li>Fixes for spelling, grammar and word choice, ideas for clarity and wordiness, and fact checks when web search is on</li>
+            <li>Make a selection longer or shorter, rephrase it, fix its grammar, or turn it into a table or list</li>
+            <li>Learns your style from up to five of your posts</li>
+            <li>Generate a full draft from a prompt when you want a starting point</li>
+          </ul>
+        </div>
+        <div class="feature-row__image">
+          <picture>
+            <source srcset="images/evaluate-view-dark.webp" media="(prefers-color-scheme: dark)">
+            <img src="images/evaluate-view.webp" alt="Quill's Evaluate panel reviewing a post" class="feature-img" width="1400" height="899" loading="lazy">
+          </picture>
+        </div>
+      </div>
+    </section>
+
+    <section class="pair">
+      <div class="pair__inner">
+        <div class="pair__item">
+          <p class="eyebrow">Offline Writing</p>
+          <h2 class="pair__headline">Write offline. Publish when you're ready.</h2>
+          <p class="feature-row__body">Drafts stay on your Mac until you send them, so you can write without a connection. Quill autosaves every 30 seconds, brings back unsaved changes the next time you open it, and warns you if the post was changed in WordPress while you were editing.</p>
+          <picture>
+            <source srcset="images/draft-view-dark.webp" media="(prefers-color-scheme: dark)">
+            <img src="images/draft-view.webp" alt="Quill showing a local draft with the Save to WordPress button in the toolbar" class="feature-img" width="1400" height="899" loading="lazy">
+          </picture>
+        </div>
+        <div class="pair__item">
+          <p class="eyebrow">Media Library</p>
+          <h2 class="pair__headline">Your media library, right there.</h2>
+          <p class="feature-row__body">Browse every image, document, video and audio file on your site without opening the WordPress admin. Filter by type, upload new files, edit alt text and copy a file's URL. iPhone HEIC photos are converted to JPEG when you upload them.</p>
+          <picture>
+            <source srcset="images/media-view-dark.webp" media="(prefers-color-scheme: dark)">
+            <img src="images/media-view.webp" alt="Quill media library showing thumbnail grid and file metadata panel" class="feature-img" width="1400" height="899" loading="lazy">
+          </picture>
+        </div>
+      </div>
+    </section>
   </div>
-</section>
-    <section class="feature-row feature-row--reverse">
-  <div class="feature-row__inner">
-    <div class="feature-row__text">
-      <p class="eyebrow">Media Library</p>
-      <h2 class="feature-row__headline">Your media library,<br />right there.</h2>
-      <p class="feature-row__body">Browse your full WordPress media library without opening the admin area. A thumbnail grid with a details panel shows filename, dimensions, upload date, and source URL. Right-click any file to copy its URL, open in browser, or delete it. Also shows documents, video, and audio files.</p>
+
+  <section class="also">
+    <div class="also__inner">
+      <h2 class="also__heading">Also in Quill</h2>
+      <dl class="also__list">
+        <div><dt>Footnotes</dt><dd>Saved the way WordPress stores them, so they show up in your theme.</dd></div>
+        <div><dt>Scheduling</dt><dd>Pick a publish date, with a warning if it has already passed.</dd></div>
+        <div><dt>Featured images</dt><dd>Set, replace or remove one from Post Settings.</dd></div>
+        <div><dt>Status filters</dt><dd>Show only published, draft, scheduled, pending or private items.</dd></div>
+        <div><dt>Find and replace</dt><dd>Search the post you're editing and replace one match or all of them.</dd></div>
+        <div><dt>Share</dt><dd>Open the macOS share menu for a published post's link.</dd></div>
+        <div><dt>Preview</dt><dd>See the post in your site's theme before you publish.</dd></div>
+        <div><dt>Code view</dt><dd>Edit a post's HTML directly when you need to.</dd></div>
+        <div><dt>Keyboard shortcuts</dt><dd>Save, publish and preview without leaving the keyboard.</dd></div>
+      </dl>
     </div>
-    <div class="feature-row__image">
-      <picture>
-        <source srcset="images/media-view-dark.png" media="(prefers-color-scheme: dark)">
-        <img
-          src="images/media-view.png"
-          alt="Quill media library showing thumbnail grid and file metadata panel"
-          class="feature-img"
-        >
-      </picture>
-    </div>
-  </div>
-</section>
-    <section class="feature-row">
-  <div class="feature-row__inner">
-    <div class="feature-row__text">
-      <p class="eyebrow">AI Writing Assistant</p>
-      <h2 class="feature-row__headline">An AI writing assistant tuned to your voice.</h2>
-      <p class="feature-row__body">An optional writing assistant powered by the Claude API and the Haiku model. Setup requires your own Anthropic API key, but the controls are hidden if not configured.</p>
-      <ul class="feature-list">
-        <li>Have Claude write entire posts with a prompt</li>
-        <li>Select text and expand, contract, or convert to a table or list</li>
-        <li>Learns your voice from your existing posts</li>
-        <li>Evaluate posts/pages for clarity, voice, wordiness, and more</li>
-      </ul>
-    </div>
-    <div class="feature-row__image">
-      <picture>
-        <source srcset="images/ai-writing-dark.png" media="(prefers-color-scheme: dark)">
-        <img
-          src="images/ai-writing.png"
-          alt="Quill showing the Generate Post with Claude dialog"
-          class="feature-img"
-        >
-      </picture>
-    </div>
-  </div>
-</section>
-    <section class="feature-row feature-row--reverse">
-  <div class="feature-row__inner">
-    <div class="feature-row__text">
-      <p class="eyebrow">Offline Writing</p>
-      <h2 class="feature-row__headline">Write offline.<br>Publish when you're ready.</h2>
-      <p class="feature-row__body">Quill allows to write completely on your Mac without the need to push to WordPress or have an active internet connection. Push drafts to WordPress, schedule posts, or publish directly.</p>
-      <ul class="feature-list">
-        <li>Local drafts stored in SQLite, no internet required to write</li>
-        <li>Autosave every 30 seconds while you write</li>
-        <li>Unsaved changes restored automatically on next launch</li>
-        <li>Conflict detection if the post was edited elsewhere</li>
-      </ul>
-    </div>
-    <div class="feature-row__image">
-      <picture>
-        <source srcset="images/draft-view-dark.png" media="(prefers-color-scheme: dark)">
-        <img
-          src="images/draft-view.png"
-          alt="Quill showing a local draft with the Save to WordPress button in the toolbar"
-          class="feature-img"
-        >
-      </picture>
-    </div>
-  </div>
-</section>
-  </div>
+  </section>
 
   <section class="setup">
     <div class="setup__inner">
@@ -152,7 +158,7 @@
         <ul class="requirements">
           <li class="requirement-item">
             <div>
-              <p class="requirement-item__title">macOS Golden Gate with Apple Silicon</p>
+              <p class="requirement-item__title">macOS 27 (Golden Gate) on Apple Silicon</p>
               <p class="requirement-item__note">Quill will not launch on earlier versions</p>
             </div>
           </li>
@@ -180,25 +186,16 @@
         <h2 class="setup__heading">Up and running in minutes</h2>
         <ol class="steps">
           <li class="step">
-            <span class="step__number">01</span>
-            <div class="step__content">
-              <p class="step__title">Download and unzip</p>
-              <p class="step__body">Download the ZIP, unzip it, and move <code>Quill.app</code> to your <code>/Applications</code> folder.</p>
-            </div>
+            <p class="step__title">Download and unzip</p>
+            <p class="step__body">Download the ZIP, unzip it, and move <code>Quill.app</code> to your <code>/Applications</code> folder.</p>
           </li>
           <li class="step">
-            <span class="step__number">02</span>
-            <div class="step__content">
-              <p class="step__title">Connect your site</p>
-              <p class="step__body">Launch Quill and enter your site's address. Your browser opens WordPress's approval page; click <strong>Yes, I approve of this connection</strong> and Quill finishes connecting. If your site turns browser approval off, Quill asks for an <a href="docs.html#connecting-to-wordpress" class="content-link">application password</a> instead.</p>
-            </div>
+            <p class="step__title">Connect your site</p>
+            <p class="step__body">Open Quill and enter your site's address. WordPress opens in your browser and asks you to approve the connection; click <strong>Yes, I approve of this connection</strong>. There's no application password to create. If your site turns browser approval off, Quill asks for an <a href="docs.html#connecting-to-wordpress" class="content-link">application password</a> instead.</p>
           </li>
           <li class="step">
-            <span class="step__number">03</span>
-            <div class="step__content">
-              <p class="step__title">Input Claude API for Content Generation (Optional)</p>
-              <p class="step__body">Create an API key in the <a href="https://platform.claude.com" target="_blank" rel="noopener" class="content-link">Claude Platform Dashboard</a>. Quill offers to add it right after you connect, or you can enter it in Settings later. You can choose up to 5 posts to build a personal writing style and enable web search.</p>
-            </div>
+            <p class="step__title">Add a Claude API key (optional)</p>
+            <p class="step__body">Create a key in the <a href="https://platform.claude.com" target="_blank" rel="noopener" class="content-link">Claude Platform dashboard</a>. Quill offers to add it right after you connect, or you can add it later in Settings.</p>
           </li>
         </ol>
       </div>
@@ -209,6 +206,7 @@
     <div class="closing-cta__inner">
       <img src="images/quill-icon.svg" alt="Quill app icon" class="closing-cta__icon">
       <h2 class="closing-cta__headline">Quill is free to use.</h2>
+      <p class="closing-cta__note">No account, no subscription, no plugin on your site.</p>
       <div class="closing-cta__actions">
         <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large">Download for Mac</a>
         <a href="changelog.html" class="text-link">What's new in 2.2 →</a>
@@ -220,7 +218,7 @@
     <div class="footer__inner">
       <div class="footer__col">
         <p class="footer__logo"><img src="images/quill-icon.svg" alt="" class="footer__icon">Quill — A native macOS app for WordPress</p>
-        <p class="footer__disclaimer">Quill is provided as-is. No support is offered. <a href="https://github.com/cpoteet/Quill/issues">Feedback and bug reports</a> are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
+        <p class="footer__disclaimer">Quill is provided as-is. No support is offered. <a href="https://github.com/cpoteet/Quill/issues" target="_blank" rel="noopener">Feedback and bug reports</a> are welcome but responses and fixes are not guaranteed. Use at your own risk.</p>
         <p class="footer__disclaimer">© 2026 <a href="https://www.siolon.com" target="_blank" rel="noopener">Chris Poteet</a></p>
       </div>
       <nav class="footer__links" aria-label="Legal">

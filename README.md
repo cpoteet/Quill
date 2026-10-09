@@ -6,7 +6,7 @@ Quill connects to any self-hosted WordPress site through the built-in REST API a
 
 **[Download, documentation and changelog → quill.siolon.com](https://quill.siolon.com)**
 
-![Quill editing a post](site/images/post-view.png)
+![Quill editing an Accordion block, with the block settings row under the toolbar](site/images/blocks-view.webp)
 
 ## Requirements
 
