@@ -490,6 +490,14 @@ kbd {
   width: 100%;
 }
 
+/* Window edge, not shadow margin (65 of 1400px each side), aligns with the column */
+.feature-row__image .feature-img,
+.pair__item .feature-img {
+  width: calc(100% * 1400 / 1270);
+  max-width: none;
+  margin-left: calc(-100% * 65 / 1270);
+}
+
 /* ── Lead: Editor ── */
 .lead {
   background: var(--color-card);
@@ -504,7 +512,7 @@ kbd {
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   column-gap: 64px;
   row-gap: 56px;
-  align-items: end;
+  align-items: start;
 }
 
 .lead__headline {
@@ -534,6 +542,9 @@ kbd {
 
 .lead__image {
   grid-column: 1 / -1;
+  justify-self: center;
+  width: 100%;
+  max-width: 960px;
 }
 
 /* ── Pair: Offline and Media ── */
