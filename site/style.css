@@ -1499,6 +1499,13 @@ kbd {
     font-size: 2rem;
   }
 
+  /* Stacked, the window edge (not the 93-of-2200px shadow margin) meets the column, as the feature images below do */
+  .lead__image .feature-img {
+    width: calc(100% * 2200 / 2014);
+    max-width: none;
+    margin-left: calc(-100% * 93 / 2014);
+  }
+
   .setup,
   .also {
     padding-top: 56px;
