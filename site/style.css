@@ -555,6 +555,7 @@ kbd {
 /* ── Feature Rows ── */
 .feature-row {
   border-top: 1px solid var(--color-hairline);
+  overflow-x: clip;
 }
 
 .feature-row__inner {
@@ -603,7 +604,8 @@ kbd {
   width: 100%;
 }
 
-/* Window edge, not shadow margin (65 of 1400px each side), aligns with the column */
+/* Window edge, not shadow margin (65 of 1400px each side), aligns with the column;
+   the margin can then pass the page edge, which .feature-row, .lead and .pair clip */
 .feature-row__image .feature-img,
 .pair__item .feature-img {
   width: calc(100% * 1400 / 1270);
@@ -615,6 +617,7 @@ kbd {
 .lead {
   background: var(--color-card);
   border-top: 1px solid var(--color-hairline);
+  overflow-x: clip;
 }
 
 .lead__inner {
@@ -664,6 +667,7 @@ kbd {
 .pair {
   background: var(--color-card);
   border-top: 1px solid var(--color-hairline);
+  overflow-x: clip;
 }
 
 .pair__inner {
