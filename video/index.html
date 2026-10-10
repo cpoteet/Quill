@@ -125,13 +125,15 @@
 
             <section id="media-view">
               <div id="media-grid"></div>
+              <div id="media-preview"><img alt=""></div>
+              <div class="glass-btn" id="btn-back"><svg viewBox="0 0 20 20"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></div>
             </section>
           </main>
 
           <aside id="inspector">
             <div id="eval-panel" class="panel">
               <div class="panel-head">Content Evaluation</div>
-              <div id="eval-loading"><span class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Evaluating…</div>
+              <div id="eval-loading"><span class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Reviewing…</div>
               <div id="eval-body">
                 <p>The opening is vivid and the pacing suits a trip report. The gear list in the accordion is a useful aside.</p>
                 <ol>
@@ -145,33 +147,37 @@
                   <div>Facts to Check<span>1 ›</span></div>
                 </div>
               </div>
+              <div id="eval-footer"><span class="btn"><svg viewBox="0 0 12 12"><path d="M9.6 6.2a3.6 3.6 0 1 1-1.2-2.9"/><path d="M8.9 1.6v2.1H6.8"/></svg>Re-evaluate</span></div>
             </div>
 
             <div id="settings-panel" class="panel">
-              <div class="section-label">Status</div>
-              <div class="popup" id="status-popup"><span id="status-value">Draft</span><svg viewBox="0 0 10 14"><path d="m2.5 5 2.5-2.5L7.5 5M2.5 9l2.5 2.5L7.5 9"/></svg></div>
-              <div class="section-label">Publish Date</div>
-              <div class="toggle-row">Schedule<span class="switch"><i></i></span></div>
-              <div class="section-label">Categories</div>
-              <div class="field">Filter or add category…</div>
-              <div class="list-box" id="categories">
-                <div class="check" data-cat="gear"><i></i>Gear</div>
-                <div class="check" data-cat="hiking"><i></i>Hiking</div>
-                <div class="check" data-cat="photography"><i></i>Photography</div>
-                <div class="check" data-cat="trail-notes"><i></i>Trail Notes</div>
-                <div class="check" data-cat="travel"><i></i>Travel</div>
-              </div>
-              <div class="section-label">Tags</div>
-              <div class="tokens" id="tags"></div>
-              <div class="field" id="tag-field"><span id="tag-text"></span><span id="tag-caret" class="ui-caret"></span><span id="tag-placeholder">Search or add tags…</span></div>
-              <div class="section-label">Featured Image</div>
-              <div id="featured-empty">
-                <span class="btn" id="btn-choose">Choose…</span>
-                <span class="hint">or drop an image here</span>
-              </div>
-              <div id="featured-set">
-                <img id="featured-img" alt="">
-                <div class="btn-row"><span class="btn">Replace…</span><span class="btn">Remove</span></div>
+              <div id="settings-scroll">
+                <div class="section-label">Status</div>
+                <div class="popup" id="status-popup"><span id="status-value">Draft</span><svg viewBox="0 0 10 14"><path d="m2.5 5 2.5-2.5L7.5 5M2.5 9l2.5 2.5L7.5 9"/></svg></div>
+                <div class="section-label">Publish Date</div>
+                <div class="toggle-row">Schedule<span class="switch"><i></i></span></div>
+                <div class="section-label">Categories</div>
+                <div class="field">Filter or add category…</div>
+                <div class="list-box" id="categories">
+                  <div class="check" data-cat="gear"><i></i>Gear</div>
+                  <div class="check" data-cat="hiking"><i></i>Hiking</div>
+                  <div class="check" data-cat="photography"><i></i>Photography</div>
+                  <div class="check" data-cat="trail-notes"><i></i>Trail Notes</div>
+                  <div class="check" data-cat="travel"><i></i>Travel</div>
+                </div>
+                <div class="section-label">Tags</div>
+                <div class="tokens" id="tags"></div>
+                <div class="field" id="tag-field"><span id="tag-text"></span><span id="tag-caret" class="ui-caret"></span><span id="tag-placeholder">Search or add tags…</span></div>
+                <div class="list-box" id="tag-list"></div>
+                <div class="section-label">Featured Image</div>
+                <div id="featured-empty">
+                  <span class="btn" id="btn-choose">Choose…</span>
+                  <span class="hint">or drop an image here</span>
+                </div>
+                <div id="featured-set">
+                  <img id="featured-img" alt="">
+                  <div class="btn-row"><span class="btn">Replace…</span><span class="btn">Remove</span></div>
+                </div>
               </div>
             </div>
           </aside>
@@ -182,11 +188,13 @@
               <div class="glass-icon" id="btn-save-wp"><svg viewBox="0 0 20 20"><path d="M6.8 15.4H5.3a3.3 3.3 0 0 1-.3-6.6 4.8 4.8 0 0 1 9.1-1.4 3.9 3.9 0 0 1 .7 8H13.2"/><path d="M10 18V10.3M7.3 13l2.7-2.7 2.7 2.7"/></svg></div>
             </div>
             <div class="glass-group" id="actions-remote">
+              <div class="glass-icon" id="btn-revert"><svg viewBox="0 0 20 20"><path d="M7.2 4.2 3.8 7.6l3.4 3.4"/><path d="M3.8 7.6h8.4a4.2 4.2 0 0 1 0 8.4H9.5"/></svg></div>
               <div class="glass-icon"><svg viewBox="0 0 20 20"><path d="M2 10s3-5.2 8-5.2 8 5.2 8 5.2-3 5.2-8 5.2S2 10 2 10z"/><circle cx="10" cy="10" r="3" class="fill"/><circle cx="10" cy="10" r="1" fill="#fff" stroke="none"/></svg></div>
-              <div class="glass-icon"><svg viewBox="0 0 20 20"><path d="M10 2.8v9.4M7 5.6l3-3 3 3"/><path d="M7 8.5H5.5v8.7h9V8.5H13"/></svg></div>
+              <div class="glass-icon" id="btn-share"><svg viewBox="0 0 20 20"><path d="M10 2.8v9.4M7 5.6l3-3 3 3"/><path d="M7 8.5H5.5v8.7h9V8.5H13"/></svg></div>
               <div class="glass-icon" id="btn-publish">
                 <svg class="ico-draft" viewBox="0 0 20 20"><path d="M6.8 15.4H5.3a3.3 3.3 0 0 1-.3-6.6 4.8 4.8 0 0 1 9.1-1.4 3.9 3.9 0 0 1 .7 8H13.2"/><path d="M10 18V10.3M7.3 13l2.7-2.7 2.7 2.7"/></svg>
                 <svg class="ico-publish" viewBox="0 0 20 20"><path d="M17.5 2.5 2.8 8.6l5.6 2.6 2.6 5.8z"/><path d="m17.5 2.5-9.1 8.7"/></svg>
+                <svg class="ico-update" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="M10 14V6.4M6.9 9.4 10 6.3l3.1 3.1"/></svg>
               </div>
             </div>
             <div class="glass-btn" id="btn-inspector"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M12.5 4v12"/><path d="M14.3 7h1.2M14.3 9.5h1.2"/></svg></div>
@@ -223,8 +231,6 @@
         </div>
       </div>
     </div>
-
-    <div id="keycaps"></div>
 
     <div id="closing">
       <img id="close-icon" src="assets/app-icon.svg" alt="">

@@ -10,6 +10,7 @@ let t = hashTime()
 let playing = false
 let last = 0
 let busy = false
+let duration = 60
 
 function fit() {
   const k = Math.min(box.clientWidth / 1920, box.clientHeight / 1080)
@@ -29,7 +30,7 @@ function tick(now) {
   if (!playing) return
   t += (now - last) / 1000
   last = now
-  if (t >= 60) { t = 60; playing = false; play.textContent = 'Play' }
+  if (t >= duration) { t = duration; playing = false; play.textContent = 'Play' }
   show()
   requestAnimationFrame(tick)
 }
@@ -37,12 +38,21 @@ function tick(now) {
 play.addEventListener('click', () => {
   playing = !playing
   play.textContent = playing ? 'Pause' : 'Play'
-  if (t >= 60) t = 0
+  if (t >= duration) t = 0
   last = performance.now()
   requestAnimationFrame(tick)
 })
 scrub.addEventListener('input', () => { t = Number(scrub.value); show() })
 window.addEventListener('resize', fit)
 window.addEventListener('hashchange', () => { t = hashTime(); show() })
-frame.addEventListener('load', () => { fit(); const wait = () => frame.contentWindow.seek ? show() : setTimeout(wait, 50); wait() })
+frame.addEventListener('load', () => {
+  fit()
+  const wait = () => {
+    if (!frame.contentWindow.seek) return setTimeout(wait, 50)
+    duration = frame.contentWindow.DURATION
+    scrub.max = duration
+    show()
+  }
+  wait()
+})
 fit()

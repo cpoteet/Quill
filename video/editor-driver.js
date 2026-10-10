@@ -192,6 +192,11 @@ const EditorDriver = (() => {
     return [ox + c.left, oy + (c.top + c.bottom) / 2]
   }
 
+  function posAtPoint([x, y]) {
+    const [ox, oy] = frameOrigin()
+    return ed.view.posAtCoords({ left: x - ox, top: y - oy })?.pos ?? null
+  }
+
   function blockTop(childIndex) {
     const el = ed.view.dom.children[childIndex]
     return el ? toWrap(el.getBoundingClientRect()).y : 0
@@ -210,6 +215,6 @@ const EditorDriver = (() => {
 
   return {
     init, setDoc, select, posIn, showCaret, showSelection, setPending, setHeadingMenu, setInsertMenu, setDropOverlay,
-    setScroll, pointOfSelector, pointOfPos, blockTop, settled,
+    setScroll, pointOfSelector, pointOfPos, posAtPoint, blockTop, settled,
   }
 })()

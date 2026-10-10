@@ -49,8 +49,8 @@ const CAMERA = [
   [33.4, [880, 290, 1.55]],
   [35.9, [880, 290, 1.55]],
   [36.8, [680, 200, 1.45]],
-  [39.75, [680, 200, 1.45]],
-  [40.6, BASE],
+  [38.75, [680, 200, 1.45]],
+  [39.6, BASE],
   [42.8, BASE],
   [43.8, [880, 230, 1.6]],
   [45.4, [880, 280, 1.6]],
@@ -63,20 +63,18 @@ const CAMERA = [
   [55.0, [520, 340, 0.2], Ease.in],
 ]
 
-const KEYCAPS = [
-  [36.9, 37.9, ['⌘', 'S']],
-  [46.55, 47.05, ['↩']],
-  [47.4, 47.9, ['↩']],
-]
+const SITE_TAGS = ['alpine', 'backpacking', 'camping', 'lakes', 'maps', 'snow', 'summit', 'wildflowers']
+
+// How far Post Settings scrolls to bring the featured image into view.
+const SETTINGS_SCROLL = 211
 
 const TOASTS = [
   [19.3, 20.9, 'Image inserted'],
-  [37.05, 38.5, 'Saved locally'],
-  [40.0, 42.6, `“${COPY.title}”: Draft saved`],
-  [51.0, 53.6, `“${COPY.title}”: Published`],
+  [39.0, 42.6, 'Saved to WordPress'],
+  [51.0, 53.6, 'Published'],
 ]
 
-const CLICKS = [11.35, 11.85, 13.1, 13.65, 17.9, 22.6, 23.6, 25.3, 26.0, 27.2, 28.0, 30.7, 31.7, 36.2, 39.6, 43.3, 44.5, 45.2, 45.9, 48.2, 49.5, 50.2, 50.95]
+const CLICKS = [11.35, 11.85, 13.1, 13.65, 17.9, 22.6, 23.6, 23.98, 24.12, 25.3, 26.0, 27.2, 28.0, 30.7, 31.7, 36.2, 38.6, 43.3, 44.5, 45.2, 45.9, 48.2, 49.5, 50.2, 50.95]
 
 // Document nodes
 
@@ -147,7 +145,7 @@ const TARGETS = {
   draftsTab: () => pointOf('.tab[data-tab="drafts"]'),
   firstTile: () => pointOf('#media-grid img', 0.4, 0.45),
   p1Start: () => EditorDriver.pointOfPos(EditorDriver.posIn(0, 0)),
-  p1Sel: t => EditorDriver.pointOfPos(EditorDriver.posIn(0, Math.round(lerp(0, COPY.p1.length, Ease.inOut(span(t, 26.0, 26.9)))))),
+  p1End: () => EditorDriver.pointOfPos(EditorDriver.posIn(0, 'end')),
   p1Mid: () => EditorDriver.pointOfPos(EditorDriver.posIn(0, 34)),
   shorter: () => pointOf('#menu-shorter', 0.35),
   accept: () => pointOf('#ai-accept'),
@@ -168,13 +166,13 @@ const POINTER = [
   [11.25, 'headingButton'],
   [11.4, 'headingButton'],
   [11.75, 'heading2'],
-  [11.9, 'heading2'],
-  [12.6, [760, 420]],
+  [11.9, [377, 244]],
+  [12.6, [384, 250]],
   [13.0, 'insert'],
   [13.15, 'insert'],
   [13.5, 'accordionItem'],
-  [13.75, 'accordionItem'],
-  [14.6, [760, 560]],
+  [13.75, [854, 210]],
+  [14.6, [860, 216]],
   [15.4, [1180, 470], Ease.in],
   [16.2, [1180, 470]],
   [17.5, [640, 460], Ease.outQuint],
@@ -189,7 +187,7 @@ const POINTER = [
   [25.4, 'draftsTab'],
   [25.95, 'p1Start'],
   [26.0, 'p1Start'],
-  [26.9, 'p1Sel', Ease.linear],
+  [26.9, 'p1End', 'drag'],
   [27.15, 'p1Mid'],
   [27.9, 'shorter'],
   [28.1, 'shorter'],
@@ -201,10 +199,11 @@ const POINTER = [
   [33.2, [880, 470]],
   [36.1, 'inspector'],
   [36.3, 'inspector'],
-  [37.6, [880, 160]],
-  [39.5, 'saveWP'],
-  [39.7, 'saveWP'],
-  [40.6, [930, 160]],
+  [37.0, [980, 50]],
+  [37.7, 'saveWP'],
+  [38.7, 'saveWP'],
+  [39.4, [984, 54]],
+  [42.6, [990, 56]],
   [43.2, 'inspector'],
   [43.4, 'inspector'],
   [44.4, 'hiking'],
@@ -213,8 +212,9 @@ const POINTER = [
   [45.3, 'trailNotes'],
   [45.85, 'tagField'],
   [46.0, 'tagField'],
+  [47.55, 'tagField'],
   [48.1, 'choose'],
-  [48.3, 'choose'],
+  [48.3, [900, 498]],
   [49.4, 'statusPopup'],
   [49.6, 'statusPopup'],
   [50.1, 'published'],
@@ -243,8 +243,9 @@ function pointerAt(t) {
       const [t0, from] = POINTER[i - 1]
       const a = resolveTarget(from, t)
       const b = resolveTarget(target, t)
-      const p = (ease || Ease.inOut)(span(t, t0, t1))
-      const arc = Math.sin(Math.PI * p) * Math.min(40, Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.08)
+      const drag = ease === 'drag'
+      const p = (drag ? Ease.inOut : ease || Ease.inOut)(span(t, t0, t1))
+      const arc = drag ? 0 : Math.sin(Math.PI * p) * Math.min(40, Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.08)
       return [lerp(a[0], b[0], p), lerp(a[1], b[1], p) - arc]
     }
   }
@@ -281,6 +282,7 @@ function setupMedia() {
     grid.appendChild(img)
   })
   $('#drag-img').src = Photos.hero
+  $('#media-preview img').src = Photos.hero
   $('#featured-img').src = Photos.hero
 }
 
@@ -374,17 +376,17 @@ function renderTitle(t) {
   css($('#title-caret'), { opacity: String(active ? blink(t, typingSince(t) || 6.6) : 0) })
   $('#draft-row-title').textContent = t >= 8.0 ? COPY.title : 'Untitled'
 
-  const saved = t >= 40.0
+  const saved = t >= 39.0
   const published = t >= 51.0
-  css($('#status-icon .st-local'), { opacity: String(1 - span(t, 40.0, 40.25)) })
-  css($('#status-icon .st-draft'), { opacity: String(Math.min(span(t, 40.0, 40.25), 1 - span(t, 51.0, 51.25))) })
+  css($('#status-icon .st-local'), { opacity: String(1 - span(t, 39.0, 39.25)) })
+  css($('#status-icon .st-draft'), { opacity: String(Math.min(span(t, 39.0, 39.25), 1 - span(t, 51.0, 51.25))) })
   css($('#status-icon .st-publish'), { opacity: String(span(t, 51.0, 51.25)) })
-  const pop = saved ? 1 + 0.18 * Math.sin(Math.PI * span(t, published ? 51.0 : 40.0, published ? 51.4 : 40.4)) : 1
+  const pop = saved ? 1 + 0.18 * Math.sin(Math.PI * span(t, published ? 51.0 : 39.0, published ? 51.4 : 39.4)) : 1
   css($('#status-icon'), { transform: `scale(${pop})` })
 }
 
 function renderSidebar(t) {
-  const tab = t >= 22.6 && t < 25.3 ? 'media' : t >= 40.0 ? 'posts' : 'drafts'
+  const tab = t >= 22.6 && t < 25.3 ? 'media' : t >= 39.0 ? 'posts' : 'drafts'
   $$('.tab').forEach(el => el.classList.toggle('selected', el.dataset.tab === tab))
   $('#search-label').textContent = { media: 'Search Media', posts: 'Search Posts', drafts: 'Search Drafts' }[tab]
   $('#sidebar').classList.toggle('has-filter', tab === 'posts')
@@ -392,8 +394,11 @@ function renderSidebar(t) {
   const mv = Math.min(span(t, 22.6, 22.85), 1 - span(t, 25.3, 25.5))
   css($('#media-view'), { opacity: String(mv), visibility: mv > 0 ? 'visible' : 'hidden' })
   $('#media-grid img').classList.toggle('selected', t >= 23.6)
+  const preview = Ease.out(span(t, 24.12, 24.37))
+  css($('#media-preview'), { opacity: String(preview) })
+  css($('#btn-back'), { opacity: String(preview) })
 
-  const arrive = Ease.outQuint(span(t, 40.15, 40.7))
+  const arrive = Ease.outQuint(span(t, 39.15, 39.7))
   css($('#post-row'), { maxHeight: `${arrive * 60}px`, opacity: String(arrive), paddingTop: `${arrive * 8}px`, paddingBottom: `${arrive * 8}px` })
   const published = t >= 51.0
   $('#post-row-meta').textContent = published ? 'Oct 9, 2026 · Published' : 'Oct 9, 2026 · Draft'
@@ -401,12 +406,16 @@ function renderSidebar(t) {
 }
 
 function renderToolbar(t) {
-  const remote = span(t, 40.0, 40.3)
-  css($('#actions-local'), { opacity: String(1 - remote), visibility: remote < 1 ? 'visible' : 'hidden' })
+  const remote = span(t, 39.0, 39.3)
+  const local = (1 - remote) * (1 - Math.min(span(t, 22.6, 22.85), 1 - span(t, 25.3, 25.5)))
+  css($('#actions-local'), { opacity: String(local), visibility: local > 0 ? 'visible' : 'hidden' })
   css($('#actions-remote'), { opacity: String(remote), visibility: remote > 0 ? 'visible' : 'hidden' })
   $('#window').classList.toggle('is-publish', t >= 50.2)
-  css($('#tooltip'), { opacity: String(window01(t, 39.05, 39.65, 0.15)) })
-  $('#btn-save-wp').classList.toggle('pressed', t >= 39.55 && t < 39.75)
+  $('#window').classList.toggle('is-published', t >= 51.0)
+  css($('#btn-revert'), { display: t >= 44.5 && t < 51.0 ? 'flex' : 'none' })
+  css($('#btn-share'), { display: t >= 51.0 ? 'flex' : 'none' })
+  css($('#tooltip'), { opacity: String(window01(t, 38.05, 38.65, 0.15)) })
+  $('#btn-save-wp').classList.toggle('pressed', t >= 38.55 && t < 38.75)
   $('#btn-publish').classList.toggle('pressed', t >= 50.9 && t < 51.05)
   $('#btn-inspector').classList.toggle('pressed', (t >= 36.15 && t < 36.35) || (t >= 43.25 && t < 43.45))
 }
@@ -418,6 +427,7 @@ function renderInspector(t) {
   css($('#eval-panel'), { opacity: String(evalOpen > 0 && t < 40 ? 1 : 0) })
   css($('#eval-loading'), { display: t < 33.0 ? 'flex' : 'none' })
   css($('#eval-body'), { opacity: String(Ease.out(span(t, 33.0, 33.4))) })
+  css($('#eval-footer'), { opacity: t < 33.0 ? '0.45' : '1' })
   css($('#settings-panel'), { opacity: String(settingsOpen > 0 ? 1 : 0) })
 
   $('.check[data-cat="hiking"]').classList.toggle('on', t >= 44.5)
@@ -435,6 +445,13 @@ function renderInspector(t) {
   if (t >= 46.0 && t < 46.6) tagText = typed(t, 46.0, 46.5, 'alpine')
   if (t >= 46.8 && t < 47.45) tagText = typed(t, 46.8, 47.3, 'sunrise')
   $('#tag-text').textContent = tagText
+  const rows = SITE_TAGS.filter(tag => !tags.includes(tag) && tag.includes(tagText)).map(tag => `<div class="tag-row">${tag}</div>`)
+  if (tagText && !SITE_TAGS.includes(tagText)) rows.push(`<div class="tag-row add"><svg viewBox="0 0 12 12"><path d="M6 1.5v9M1.5 6h9"/></svg>Add "${tagText}"</div>`)
+  const tagList = $('#tag-list')
+  if (tagList.dataset.value !== rows.join('')) {
+    tagList.dataset.value = rows.join('')
+    tagList.innerHTML = rows.join('')
+  }
   const tagFocus = t >= 45.9 && t < 48.0
   css($('#tag-placeholder'), { display: tagText ? 'none' : 'inline' })
   css($('#tag-caret'), { display: tagFocus ? 'inline-block' : 'none', opacity: String(blink(t, typingSince(t) || 45.9)) })
@@ -443,6 +460,8 @@ function renderInspector(t) {
   css($('#featured-empty'), { display: featured ? 'none' : 'flex' })
   css($('#featured-set'), { display: featured ? 'block' : 'none', opacity: String(Ease.out(span(t, 48.4, 48.8))) })
   $('#btn-choose').classList.toggle('pressed', t >= 48.15 && t < 48.35)
+  const scroll = Ease.inOut(span(t, 47.55, 48.0)) - Ease.inOut(span(t, 48.95, 49.35))
+  css($('#settings-scroll'), { transform: `translateY(${-Math.round(scroll * SETTINGS_SCROLL)}px)` })
 
   $('#status-value').textContent = t >= 50.2 ? 'Published' : 'Draft'
 }
@@ -491,18 +510,6 @@ function renderPointer(t) {
   css($('#drag-ghost'), { opacity: String(ghost), transform: `translate(${x - 60}px, ${y - 40}px) scale(${1 - 0.3 * span(t, 17.95, 18.15)})` })
 }
 
-function renderKeycaps(t) {
-  const cap = KEYCAPS.find(([a, b]) => t >= a && t < b)
-  const box = $('#keycaps')
-  const key = cap ? cap[2].join('|') : ''
-  if (box.dataset.value !== key) {
-    box.dataset.value = key
-    box.innerHTML = cap ? cap[2].map(k => `<span class="key">${k}</span>`).join('') : ''
-  }
-  const p = cap ? window01(t, cap[0], cap[1], 0.15) : 0
-  css(box, { opacity: String(p), transform: `translateY(${(1 - p) * 10}px) scale(${0.94 + 0.06 * p})` })
-}
-
 function renderEditor(t) {
   const state = editorState(t)
   EditorDriver.setDoc({ type: 'doc', content: state.content })
@@ -513,7 +520,9 @@ function renderEditor(t) {
   EditorDriver.setScroll(scroll * (EditorDriver.blockTop(3) - 40))
 
   EditorDriver.showCaret(caretPos, state.caret && blink(t, typingSince(t)))
-  EditorDriver.showSelection(state.selection && [EditorDriver.posIn(...state.selection[0]), EditorDriver.posIn(...state.selection[1])])
+  const selection = state.selection && [EditorDriver.posIn(...state.selection[0]), EditorDriver.posIn(...state.selection[1])]
+  if (t >= 26.0 && t < 26.9) selection[1] = clamp(EditorDriver.posAtPoint(pointerAt(t)) ?? selection[0], selection[0], EditorDriver.posIn(0, 'end'))
+  EditorDriver.showSelection(selection)
 
   const pending = t >= 28.05 && t < 29.6
   EditorDriver.setPending(pending ? 0 : null, 0.3 + 0.55 * (0.5 - 0.5 * Math.cos((t - 28.05) * Math.PI * 1.6)))
@@ -534,7 +543,6 @@ function render(t) {
   renderMenus(t)
   renderHUD(t)
   renderPointer(t)
-  renderKeycaps(t)
   renderClosing(t)
 }
 

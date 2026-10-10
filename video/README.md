@@ -5,7 +5,7 @@ A 60-second intro for the GitHub README and release pages. The stage is an HTML 
 ## Files
 
 - `index.html`, `stage.css`: the stage, captions and rebuilt window chrome
-- `timeline.js`: beats, camera, pointer path, keycaps, toasts and audio cues
+- `timeline.js`: beats, camera, pointer path, toasts and audio cues
 - `editor-driver.js`: drives the real editor in its iframe (document, caret, selection overlay, menus)
 - `motion.js`: easing, keyframes and typing rhythm
 - `photos.js`: generated landscape images for the post and the media library
@@ -24,5 +24,7 @@ swiftc -O render/*.swift -o out/render
 - `--music-gain` (default 0.55) and `--effects-gain` (default 2) balance the music against the UI sounds.
 
 The video render takes about 15 minutes; re-muxing audio takes seconds. Output goes to `out/`, which is gitignored.
+
+The website plays the copy in `site/video/`, and the README shows its poster. After a new render, copy `out/quill-intro.mp4` to `site/video/quill-intro.mp4`, and replace `site/video/quill-intro-poster.webp` if the title card changed.
 
 The music track, `assets/audio.mp3`, is licensed and gitignored so it is never published with the repo. Keep a local copy; the final mux needs it.
