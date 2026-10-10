@@ -145,6 +145,8 @@ import Testing
         #expect(PostEditorView.toastMessage(forStatus: .pending) == "Submitted for review")
         #expect(PostEditorView.toastMessage(forStatus: .private) == "Published privately")
         #expect(PostEditorView.toastMessage(forStatus: .draft) == "Draft saved")
+        #expect(PostEditorView.toastMessage(forStatus: .draft, isLocal: true) == "Saved to WordPress")
+        #expect(PostEditorView.toastMessage(forStatus: .publish, isLocal: true) == "Published")
     }
 
     // MARK: - Dropped-image upload feedback

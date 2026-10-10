@@ -1135,10 +1135,10 @@ public struct PostEditorView: View {
                     appState.posts.insert(created, at: 0)
                 }
                 if !draftRemoved {
-                    cleanupWarning = "\(Self.toastMessage(forStatus: status)). The local draft couldn't be removed; delete it so it isn't published twice."
+                    cleanupWarning = "\(Self.toastMessage(forStatus: status, isLocal: true)). The local draft couldn't be removed; delete it so it isn't published twice."
                 }
                 guard stillOnPost() else {
-                    presentToast("“\(savedTitle)”: \(cleanupWarning ?? Self.toastMessage(forStatus: status))", isError: cleanupWarning != nil)
+                    presentToast("“\(savedTitle)”: \(cleanupWarning ?? Self.toastMessage(forStatus: status, isLocal: true))", isError: cleanupWarning != nil)
                     return
                 }
                 // Typing during the request is newer than the created post; stash it so the remote load restores it.
@@ -1163,7 +1163,7 @@ public struct PostEditorView: View {
             if let cleanupWarning {
                 presentToast(cleanupWarning, isError: true)
             } else {
-                presentToast(Self.toastMessage(forStatus: status, isPublishedRemote: wasPublished))
+                presentToast(Self.toastMessage(forStatus: status, isLocal: !isRemote, isPublishedRemote: wasPublished))
             }
         } catch {
             report(error.localizedDescription)
@@ -1478,13 +1478,13 @@ public struct PostEditorView: View {
         "This time has already passed. WordPress will publish the post now, dated \(date.formatted(date: .abbreviated, time: .shortened))."
     }
 
-    nonisolated static func toastMessage(forStatus status: PostStatus, isPublishedRemote: Bool = false) -> String {
+    nonisolated static func toastMessage(forStatus status: PostStatus, isLocal: Bool = false, isPublishedRemote: Bool = false) -> String {
         switch status {
         case .publish: return isPublishedRemote ? "Updated" : "Published"
         case .future: return "Scheduled"
         case .pending: return "Submitted for review"
         case .private: return "Published privately"
-        case .draft: return "Draft saved"
+        case .draft: return isLocal ? "Saved to WordPress" : "Draft saved"
         }
     }
 
