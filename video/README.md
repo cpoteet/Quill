@@ -25,6 +25,6 @@ swiftc -O render/*.swift -o out/render
 
 The video render takes about 15 minutes; re-muxing audio takes seconds. Output goes to `out/`, which is gitignored.
 
-The website plays the copy in `site/video/`, and the README shows its poster. After a new render, copy `out/quill-intro.mp4` to `site/video/quill-intro.mp4`, and replace `site/video/quill-intro-poster.webp` if the title card changed.
+The website plays the copy in `site/video/`, with `quill-intro-poster.webp` as its poster. After a new render, copy `out/quill-intro.mp4` to `site/video/quill-intro.mp4`, and replace `site/video/quill-intro-poster.webp` if the title card changed.
 
 The music track, `assets/audio.mp3`, is licensed and gitignored so it is never published with the repo. Keep a local copy; the final mux needs it.
