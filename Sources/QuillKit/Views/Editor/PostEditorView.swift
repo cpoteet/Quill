@@ -486,7 +486,7 @@ public struct PostEditorView: View {
 
     private var statusBadgeLabel: String {
         if case .local = item { return "Local Draft" }
-        switch settings.status {
+        switch cleanSettings.status {
         case .publish:  return "Published"
         case .draft:    return "Draft"
         case .future:   return "Scheduled"
@@ -497,7 +497,7 @@ public struct PostEditorView: View {
 
     private var statusKey: String {
         if case .local(let d) = item { return "local-\(d.type)" }
-        return settings.status.rawValue
+        return cleanSettings.status.rawValue
     }
 
     // Distinct danger styling, not the amber of a recoverable save error:
