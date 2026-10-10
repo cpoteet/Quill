@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Quill intro</title>
+  <link rel="stylesheet" href="stage.css">
+</head>
+<body>
+  <div id="stage">
+
+    <div id="opening">
+      <img id="open-icon" src="assets/app-icon.svg" alt="">
+      <div class="wordmark"><span id="open-word"></span><span id="open-caret" class="stage-caret"></span></div>
+      <p id="open-sub" class="subline">A native Mac app for your WordPress site.</p>
+    </div>
+
+    <div id="captions">
+      <div class="caption" data-beat="write">
+        <h2>A full editor.<br>No browser.</h2>
+        <p class="subline">A full formatting toolbar, plus Columns, Tabs and Accordions, saved in WordPress’s block format.</p>
+      </div>
+      <div class="caption" data-beat="media">
+        <h2>Drop in a photo.<br>It uploads.</h2>
+        <p class="subline">Browse and filter your site’s media library.</p>
+      </div>
+      <div class="caption" data-beat="claude">
+        <h2>Review it<br>with Claude.</h2>
+        <p class="subline">Rework a passage in place, or get fixes and ideas for the whole post. Uses your own Anthropic API key.</p>
+      </div>
+      <div class="caption" data-beat="offline">
+        <h2>Write offline.<br>Publish when you’re ready.</h2>
+        <p class="subline">Drafts stay on your Mac until you send them to WordPress.</p>
+      </div>
+      <div class="caption" data-beat="settings">
+        <h2>Categories, tags,<br>featured image.</h2>
+        <p class="subline">Set them in Post Settings, then publish.</p>
+      </div>
+    </div>
+
+    <div id="viewport">
+      <div id="camera">
+        <div id="window">
+
+          <aside id="sidebar">
+            <div class="traffic"><i></i><i></i><i></i></div>
+            <div class="glass-btn" id="btn-sidebar">
+              <svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M7.5 4v12"/><path d="M4.5 7h1.2M4.5 9.5h1.2"/></svg>
+            </div>
+            <div class="glass-btn" id="btn-refresh">
+              <svg viewBox="0 0 20 20"><path d="M15.5 10a5.5 5.5 0 1 1-1.8-4.1"/><path d="M14 2.8v3.4h-3.4"/></svg>
+            </div>
+            <div class="glass-btn wide" id="btn-new">
+              <svg viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"/></svg>
+              <svg class="chev" viewBox="0 0 10 10"><path d="m2.5 4 2.5 2.5L7.5 4"/></svg>
+            </div>
+
+            <nav class="tabs">
+              <div class="tab" data-tab="posts">
+                <svg viewBox="0 0 20 20"><path d="M5 2.8h6.5L15 6.3V17a.8.8 0 0 1-.8.8H5.8A.8.8 0 0 1 5 17z"/><path d="M11.3 3v3.5H15"/><path d="M7.5 10h5M7.5 12.5h5M7.5 15h3"/></svg>
+                <span>Posts</span>
+              </div>
+              <div class="tab" data-tab="pages">
+                <svg viewBox="0 0 20 20"><rect x="5" y="2.8" width="10" height="15" rx="1"/><path d="M7.5 6.5h5M7.5 9h5M7.5 11.5h5"/></svg>
+                <span>Pages</span>
+              </div>
+              <div class="tab" data-tab="drafts">
+                <svg viewBox="0 0 20 20"><path d="M13.6 4.2l2.2 2.2L8 14.2l-2.9.7.7-2.9z"/></svg>
+                <span>Drafts</span>
+              </div>
+              <div class="tab" data-tab="media">
+                <svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"/><circle cx="7" cy="8.2" r="1.5" class="fill"/><path class="fill" d="M3.2 14.6 7.6 10.6l2.7 2.5 2.2-2 4.3 3.9v.4c0 .5-.4.9-.9.9H4.1c-.5 0-.9-.4-.9-.9z"/></svg>
+                <span>Media</span>
+              </div>
+            </nav>
+
+            <div class="filter-btn"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/><path d="M6 7.5h8M7.5 10h5M9 12.5h2"/></svg></div>
+            <div class="search-field"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6"/><path d="m10.4 10.4 3.4 3.4"/></svg><span id="search-label">Search Drafts</span></div>
+
+            <div class="side-list" data-list="drafts">
+              <div class="row selected" id="draft-row">
+                <div class="row-title" id="draft-row-title">Untitled</div>
+                <div class="row-meta"><i class="dot" id="draft-row-dot"></i><span id="draft-row-meta">Post Draft</span></div>
+              </div>
+            </div>
+
+            <div class="side-list" data-list="posts">
+              <div class="row selected" id="post-row">
+                <div class="row-title">Above the Tree Line</div>
+                <div class="row-meta"><i class="dot" id="post-row-dot"></i><span id="post-row-meta">Oct 9, 2026 · Draft</span></div>
+              </div>
+              <div class="row"><div class="row-title">Packing Light for Two Nights</div><div class="row-meta"><i class="dot published"></i>Sep 28, 2026 · Published</div></div>
+              <div class="row"><div class="row-title">What a Wet Spring Taught Me</div><div class="row-meta"><i class="dot published"></i>Sep 12, 2026 · Published</div></div>
+              <div class="row"><div class="row-title">The Case for Slow Miles</div><div class="row-meta"><i class="dot published"></i>Aug 30, 2026 · Published</div></div>
+              <div class="row"><div class="row-title">Notes from the Lakeshore Loop</div><div class="row-meta"><i class="dot published"></i>Aug 14, 2026 · Published</div></div>
+              <div class="row"><div class="row-title">Paper Maps Still Win</div><div class="row-meta"><i class="dot published"></i>Jul 29, 2026 · Published</div></div>
+            </div>
+
+            <div class="side-list" data-list="media">
+              <div class="filter selected" data-filter="all"><svg viewBox="0 0 20 20"><path d="M5.6 4.6 14.4 3c.9-.2 1.7.4 1.8 1.3l1.2 7.1"/><rect x="2.5" y="6.6" width="12.4" height="10" rx="1.8"/><circle cx="6.3" cy="9.8" r="1.2" class="fill"/><path class="fill" d="M3.1 15.3l3.6-3.2 2.2 2 1.8-1.6 3.6 3.1v.2c0 .4-.3.7-.7.7H3.8c-.4 0-.7-.3-.7-.7z"/></svg>All Media</div>
+              <div class="filter" data-filter="images"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"/><circle cx="7" cy="8.2" r="1.5" class="fill"/><path class="fill" d="M3.2 14.6 7.6 10.6l2.7 2.5 2.2-2 4.3 3.9v.4c0 .5-.4.9-.9.9H4.1c-.5 0-.9-.4-.9-.9z"/></svg>Images</div>
+              <div class="filter"><svg viewBox="0 0 20 20"><path d="M5 2.8h6.5L15 6.3V17a.8.8 0 0 1-.8.8H5.8A.8.8 0 0 1 5 17z"/><path d="M11.3 3v3.5H15"/></svg>Documents</div>
+              <div class="filter"><svg viewBox="0 0 20 20"><path d="M3 9v2M5 7.5v5M7 5v10M9 7v6M11 3.5v13M13 6.5v7M15 8v4M17 9.2v1.6"/></svg>Audio</div>
+              <div class="filter"><svg viewBox="0 0 20 20"><rect x="2.8" y="4.5" width="14.4" height="11" rx="1.4"/><path d="M5.8 4.5v11M14.2 4.5v11M2.8 8h3M2.8 12h3M14.2 8h3M14.2 12h3"/></svg>Video</div>
+            </div>
+          </aside>
+
+          <main id="content">
+            <section id="editor-view">
+              <div id="title-row">
+                <span id="status-icon">
+                  <svg class="st st-local" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9"/><path d="M5.6 10.6 6.9 6.4h6.2l1.3 4.2v2.5c0 .6-.4 1-1 1H6.6c-.6 0-1-.4-1-1z" class="glyph"/><path d="M5.8 10.6h2.4l.8 1.3h2l.8-1.3h2.4" class="glyph"/></svg>
+                  <svg class="st st-draft" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9"/><path d="m12 5.6 2.4 2.4-5.8 5.8-3 .6.6-3z" class="glyph-fill"/></svg>
+                  <svg class="st st-publish" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9"/><path d="m6.2 10.2 2.6 2.6 5-5.3" class="glyph"/></svg>
+                </span>
+                <span id="post-title"><span id="post-title-text"></span><span id="title-caret" class="ui-caret"></span><span id="title-placeholder">Title</span></span>
+              </div>
+              <iframe id="editor-frame" src="../Sources/QuillKit/Resources/editor.html" title="Editor"></iframe>
+              <div id="upload-pill" class="hud"><span class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Uploading image…</div>
+              <div id="toast" class="hud"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7"/><path d="m5 8.2 2 2 4-4.2"/></svg><span id="toast-text"></span></div>
+              <div id="ai-bar" class="hud">
+                <span class="btn" id="ai-accept"><svg viewBox="0 0 12 12"><path d="m2.5 6.3 2.3 2.3 4.7-5"/></svg>Accept</span>
+                <span class="btn" id="ai-discard"><svg viewBox="0 0 12 12"><path d="m3 3 6 6M9 3 3 9"/></svg>Discard</span>
+              </div>
+            </section>
+
+            <section id="media-view">
+              <div id="media-grid"></div>
+            </section>
+          </main>
+
+          <aside id="inspector">
+            <div id="eval-panel" class="panel">
+              <div class="panel-head">Content Evaluation</div>
+              <div id="eval-loading"><span class="spinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Evaluating…</div>
+              <div id="eval-body">
+                <p>The opening is vivid and the pacing suits a trip report. The gear list in the accordion is a useful aside.</p>
+                <ol>
+                  <li>“The last mile” arrives before anything about the climb. One sentence on the route would set it up.</li>
+                  <li>Name the lake in the first paragraph so readers can find it on a map.</li>
+                  <li>Add alt text to the photo so screen readers can describe it.</li>
+                </ol>
+                <div class="eval-rows">
+                  <div>Fixes<span>3 ›</span></div>
+                  <div>Ideas<span>2 ›</span></div>
+                  <div>Facts to Check<span>1 ›</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="settings-panel" class="panel">
+              <div class="section-label">Status</div>
+              <div class="popup" id="status-popup"><span id="status-value">Draft</span><svg viewBox="0 0 10 14"><path d="m2.5 5 2.5-2.5L7.5 5M2.5 9l2.5 2.5L7.5 9"/></svg></div>
+              <div class="section-label">Publish Date</div>
+              <div class="toggle-row">Schedule<span class="switch"><i></i></span></div>
+              <div class="section-label">Categories</div>
+              <div class="field">Filter or add category…</div>
+              <div class="list-box" id="categories">
+                <div class="check" data-cat="gear"><i></i>Gear</div>
+                <div class="check" data-cat="hiking"><i></i>Hiking</div>
+                <div class="check" data-cat="photography"><i></i>Photography</div>
+                <div class="check" data-cat="trail-notes"><i></i>Trail Notes</div>
+                <div class="check" data-cat="travel"><i></i>Travel</div>
+              </div>
+              <div class="section-label">Tags</div>
+              <div class="tokens" id="tags"></div>
+              <div class="field" id="tag-field"><span id="tag-text"></span><span id="tag-caret" class="ui-caret"></span><span id="tag-placeholder">Search or add tags…</span></div>
+              <div class="section-label">Featured Image</div>
+              <div id="featured-empty">
+                <span class="btn" id="btn-choose">Choose…</span>
+                <span class="hint">or drop an image here</span>
+              </div>
+              <div id="featured-set">
+                <img id="featured-img" alt="">
+                <div class="btn-row"><span class="btn">Replace…</span><span class="btn">Remove</span></div>
+              </div>
+            </div>
+          </aside>
+
+          <div id="toolbar-right">
+            <div class="glass-group" id="actions-local">
+              <div class="glass-icon" id="btn-save-local"><svg viewBox="0 0 20 20"><path d="M7.6 6.7H5.9c-.6 0-1 .3-1.2.8L2.8 11.4v4c0 .9.7 1.6 1.6 1.6h11.2c.9 0 1.6-.7 1.6-1.6v-4l-1.9-3.9c-.2-.5-.7-.8-1.2-.8h-1.7"/><path d="M2.8 11.4H7c.6 0 1 1.6 3 1.6s2.4-1.6 3-1.6h4.2"/><path d="M10 2.8v7.6M7.4 7.9l2.6 2.6 2.6-2.6"/></svg></div>
+              <div class="glass-icon" id="btn-save-wp"><svg viewBox="0 0 20 20"><path d="M6.8 15.4H5.3a3.3 3.3 0 0 1-.3-6.6 4.8 4.8 0 0 1 9.1-1.4 3.9 3.9 0 0 1 .7 8H13.2"/><path d="M10 18V10.3M7.3 13l2.7-2.7 2.7 2.7"/></svg></div>
+            </div>
+            <div class="glass-group" id="actions-remote">
+              <div class="glass-icon"><svg viewBox="0 0 20 20"><path d="M2 10s3-5.2 8-5.2 8 5.2 8 5.2-3 5.2-8 5.2S2 10 2 10z"/><circle cx="10" cy="10" r="3" class="fill"/><circle cx="10" cy="10" r="1" fill="#fff" stroke="none"/></svg></div>
+              <div class="glass-icon"><svg viewBox="0 0 20 20"><path d="M10 2.8v9.4M7 5.6l3-3 3 3"/><path d="M7 8.5H5.5v8.7h9V8.5H13"/></svg></div>
+              <div class="glass-icon" id="btn-publish">
+                <svg class="ico-draft" viewBox="0 0 20 20"><path d="M6.8 15.4H5.3a3.3 3.3 0 0 1-.3-6.6 4.8 4.8 0 0 1 9.1-1.4 3.9 3.9 0 0 1 .7 8H13.2"/><path d="M10 18V10.3M7.3 13l2.7-2.7 2.7 2.7"/></svg>
+                <svg class="ico-publish" viewBox="0 0 20 20"><path d="M17.5 2.5 2.8 8.6l5.6 2.6 2.6 5.8z"/><path d="m17.5 2.5-9.1 8.7"/></svg>
+              </div>
+            </div>
+            <div class="glass-btn" id="btn-inspector"><svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M12.5 4v12"/><path d="M14.3 7h1.2M14.3 9.5h1.2"/></svg></div>
+            <div id="tooltip">Save to WordPress</div>
+          </div>
+
+          <div id="status-menu" class="menu">
+            <div class="item" data-status="draft"><span class="tick">✓</span>Draft</div>
+            <div class="item">Pending Review</div>
+            <div class="item" data-status="publish">Published</div>
+            <div class="item">Scheduled</div>
+            <div class="item">Private</div>
+          </div>
+
+          <div id="context-menu" class="menu">
+            <div class="item">Cut</div>
+            <div class="item">Copy</div>
+            <div class="item">Paste</div>
+            <hr>
+            <div class="item">Make Longer</div>
+            <div class="item" id="menu-shorter">Make Shorter</div>
+            <div class="item">Rephrase</div>
+            <div class="item">Fix Spelling &amp; Grammar</div>
+            <hr>
+            <div class="item">Convert to Table</div>
+            <div class="item">Convert to List</div>
+          </div>
+
+          <div id="drag-ghost"><img id="drag-img" alt=""><span class="badge">1</span></div>
+
+          <svg id="pointer" viewBox="0 0 24 24">
+            <path d="M5.5 2.8v16.4l4.1-3.9 2.6 6.1 2.9-1.2-2.6-6h5.9z" fill="#000" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div id="keycaps"></div>
+
+    <div id="closing">
+      <img id="close-icon" src="assets/app-icon.svg" alt="">
+      <div class="wordmark"><span>Quill</span><span id="close-caret" class="stage-caret"></span></div>
+      <p class="subline">Free · macOS 27 · quill.siolon.com</p>
+    </div>
+
+    <div id="fade"></div>
+  </div>
+
+  <script src="photos.js"></script>
+  <script src="motion.js"></script>
+  <script src="editor-driver.js"></script>
+  <script src="timeline.js"></script>
+</body>
+</html>

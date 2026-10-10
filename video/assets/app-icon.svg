@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D3820A"/>
+      <stop offset="1" stop-color="#BC6F00"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.25"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#body)"/>
+  <rect x="102" y="102" width="820" height="820" rx="184" fill="none" stroke="url(#rim)" stroke-width="4"/>
+  <g transform="translate(512 486) scale(0.74) translate(-512 -512)">
+    <g transform="translate(37 19.9) scale(3.8)" fill="#FFFFFF"><path fill-rule="evenodd" d="M178 22C174 47 163 70 147 91C160 84 166 75 169 68C168 89 154 113 135 130C151 123 159 111 163 104C157 128 142 149 120 162C137 154 146 145 150 138C140 165 120 184 92 190C79 173 77 157 82 137C81 151 84 160 88 165C82 141 89 122 101 106C96 120 94 133 97 141C92 121 102 100 113 90C105 106 104 119 106 126C103 104 119 86 129 74C119 91 118 104 119 109C121 79 144 40 178 22ZM170 37C144 79 111 138 91 188L94 188C114 138 146 78 170 37Z"/><path d="M92 181C85 200 79 218 72 237L81 230C85 214 91 198 97 183Z"/></g>
+  </g>
+</svg>

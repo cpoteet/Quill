@@ -11,3 +11,5 @@ Scripts/node_modules/
 .agents/
 AGENTS.md
 .impeccable/
+video/out/
+video/assets/audio.mp3
