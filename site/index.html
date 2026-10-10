@@ -32,7 +32,7 @@
         <p class="hero__subline">Write, edit and publish to your self-hosted WordPress site from a native Mac app, without opening the WordPress admin.</p>
         <div class="hero__cta">
           <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large" id="download">Download for Mac</a>
-          <a href="docs.html" class="text-link">Read the User Guide →</a>
+          <a href="#tour" class="text-link" data-tour-open>Watch the one-minute tour</a>
         </div>
         <p class="hero__facts"><span>Free</span><wbr><span>macOS 27 on Apple Silicon</span><wbr><span>Self-hosted WordPress 7+</span><wbr><span>Notarized by Apple</span></p>
       </div>
@@ -228,6 +228,31 @@
     </div>
   </footer>
 
+  <dialog class="tour" id="tour" aria-labelledby="tour-title">
+    <div class="tour__bar">
+      <h2 class="tour__title" id="tour-title">Quill in one minute</h2>
+      <button type="button" class="tour__close" data-tour-close aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <video class="tour__video" controls playsinline preload="none" width="1920" height="1080" poster="video/quill-intro-poster.webp" aria-describedby="tour-summary">
+      <source src="video/quill-intro.mp4" type="video/mp4">
+      <a href="video/quill-intro.mp4">Download the video</a>
+    </video>
+    <details class="tour__summary" id="tour-summary">
+      <summary>What the video shows</summary>
+      <ol>
+        <li><strong>A full editor. No browser.</strong> A post is written with a heading from the toolbar and an Accordion block.</li>
+        <li><strong>Drop in a photo. It uploads.</strong> A photo dragged from the Finder uploads into the post, then appears in the media library.</li>
+        <li><strong>Review it with Claude.</strong> A paragraph is shortened in place, then Claude evaluates the whole post.</li>
+        <li><strong>Write offline. Publish when you’re ready.</strong> The local draft is saved to WordPress and moves to the Posts list.</li>
+        <li><strong>Categories, tags, featured image.</strong> They are set in Post Settings, and the post is published.</li>
+      </ol>
+      <p>The video has music and interface sounds, and no narration.</p>
+    </details>
+  </dialog>
+
   <script src="nav.js"></script>
+  <script src="tour.js"></script>
 </body>
 </html>
