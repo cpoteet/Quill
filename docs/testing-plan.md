@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 733 Swift tests + 1,683 JS tests (1,682 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 735 Swift tests + 1,700 JS tests (1,699 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,19 +16,19 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (733 tests)
+1. **Swift tests** — `swift test` (735 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (115 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (276 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (279 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (87 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (98 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (353 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
-11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (45 tests — live Tiptap editor in jsdom)
+11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
-13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (59 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (60 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (733 tests, 47 suites)
+## Swift test suite (735 tests, 47 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -138,7 +138,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
-| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 10 | `AppState.filteredItems` per section, search filtering |
+| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 11 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 53 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
@@ -159,7 +159,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 5 | `EditorCoordinator.flushPendingContent` and the `setContent` guard, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 6 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
@@ -712,7 +712,7 @@ Tests that `AppState` initializes with loading flags set correctly — `isLoadin
 | `initialListStateWaitsForFirstLoad` | `isLoadingList == true`, `hasLoadedList == false` on fresh `AppState` |
 | `initialMediaStateWaitsForFirstLoad` | `isLoadingMedia == true`, `hasLoadedMedia == false` on fresh `AppState` |
 
-### 17. View-model — `AppStateFilteredItemsTests` (10 tests)
+### 17. View-model — `AppStateFilteredItemsTests` (11 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -728,6 +728,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `partialTitleMatchReturnsItem` | `"World"` matches `"Hello World"` |
 | `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
 | `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
+| `newDraftClearsTheSearchSoItIsListed` | `createNewDraft` (⌘N) clears the search, so the new draft is listed in Drafts rather than hidden behind "No Results" (run-log issue 1) |
 
 ---
 
@@ -1177,7 +1178,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (5 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (6 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1188,6 +1189,7 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `flushBeforeTheEditorIsReadyAsksNothing` | Before `editorReady`, no script is run |
 | `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
 | `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
+| `insertImagePassesTheMediaWidthForAnInlineImage` | `insertImage` hands the editor the media's width (or `null`), which an inline image in a table cell is capped by (run-log issue 10) |
 
 ### 39. API — `NetworkFailureTests` (8 tests)
 
@@ -1734,7 +1736,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (276 tests)
+## JS editor tests (279 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -2018,7 +2020,7 @@ Footnote bodies now live in post meta rather than in `post_content` (`docs/footn
 | `no backref is written into the list — WordPress renders it from meta` | Writing one would show two arrows on the published page |
 | `marker id is idempotent across repeated transforms` | |
 
-### `extractFootnotes` (9 tests)
+### `extractFootnotes` (11 tests)
 
 The split that moves footnote bodies out of the content and into meta on save.
 
@@ -2028,13 +2030,15 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `returns each footnote body keyed by its id, in document order` | |
 | `keeps inline markup inside a footnote body` | Bold, links and the rest survive the move |
 | `strips a legacy backref anchor from the stored body` | Posts written before the move carry an inline backref that must not end up in meta |
+| `strips the backref core renders, as on a list copied from a published page` | Core's `<a href="#<id>-link" aria-label="Jump to footnote reference N">↩︎</a>`, pasted in code view, must not reach meta either; WordPress adds its own at render time (run-log issue 13) |
+| `keeps a link in the body that points somewhere else on the page` | Only the link back to this note's own marker is removed |
 | `content with no footnotes is returned untouched` | |
 | `leaves the rest of the block comments intact` | |
 | `says whether a list was found` | `found` is what makes a list typed in code view authoritative for the meta |
 | `a list beside a delimiter leaves one delimiter` | A delimiter typed along with the list is not doubled |
 | `a list the splice cannot find is swapped through the DOM, beside a delimiter or not` | A single-quoted class takes the DOM path: beside a delimiter the list is removed, alone it becomes the delimiter |
 
-### `inlineFootnotes` (11 tests)
+### `inlineFootnotes` (12 tests)
 
 The inverse, run on load so the notes are editable in the editor.
 
@@ -2044,7 +2048,8 @@ The inverse, run on load so the notes are editable in the editor.
 | `restores footnotes in meta order` | |
 | `round-trips with extractFootnotes, the delimiter separated like any block` | The list becomes `<!-- wp:footnotes /-->` after a blank line, as core separates blocks, and inlines back |
 | `extractFootnotes leaves the rest of the saved markup byte for byte` | The list is spliced out of the string; re-serializing the DOM undid the save's self-closed `<hr/>` and `<img/>` |
-| `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta behind it is shown as a non-editable card rather than an empty list |
+| `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta and no markers is shown as a non-editable card rather than an empty list |
+| `empty meta with markers gives each marker an empty note at the delimiter` | A post whose notes are missing gets one empty, editable note per marker, so the author can write them (run-log issue 12) |
 | `meta without a delimiter in the content changes nothing` | |
 | `only the delimiter is replaced; the markup around it keeps its exact bytes` | The whole output is compared: single-quoted attributes, `<br/>` and `<img/>` around the delimiter are not re-serialized |
 | `a delimiter nested inside a block is left alone; the top-level one becomes the list` | The splice picks the top-level comment's own occurrence in the string, not the first match |
@@ -2279,7 +2284,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
-## JS keyboard tests (87 tests)
+## JS keyboard tests (98 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2296,6 +2301,14 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 | `Enter mid-word splits the paragraph cleanly` | Mid-text split |
 | `Backspace at start of 2nd paragraph merges into the first (joinBackward)` | Boundary backspace merges paragraphs |
 | `Shift+Enter inserts a hard break, not a new paragraph` | Hard break insertion |
+
+### `⌘← / ⌘→ beside a card` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `⌘→ at the end of a paragraph before a card keeps the caret in the paragraph` | ProseMirror node-selects the next atom on any → at a textblock's end, ⌘ included, so the next keystroke replaced the card (run-log issue 2) |
+| `⌘← at the start of a paragraph after a card keeps the caret in the paragraph` | The same, leftwards |
+| `a plain → at the end of the paragraph still selects the card` | Arrowing onto a card without ⌘ is unchanged |
 
 ### `headings` (1 test)
 
@@ -2434,9 +2447,24 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `inserting while an image node is selected replaces it and still lands below` | Node-selection replace path also ends below the new image |
 | `inside a list item the image and its paragraph stay in the item` | The figure serializes inside `<li>` — insert doesn't break out of the list |
 | `inside a blockquote the image and its paragraph stay in the quote` | Insert stays scoped to the blockquote |
-| `inside a table cell the image and its paragraph stay in that cell` | Insert stays scoped to the cell |
+| `inside a table cell the image goes inline in that cell, as core cells hold text` | A cell gets an inline image in its paragraph, not an image block (run-log issue 10) |
 | `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
 | `inside a footnote the insert is refused and the document is unchanged` | Footnote entries reject image insertion outright |
+
+### `inline images` (8 tests)
+
+The block editor's inline image (its `core/image` rich-text format, `<img class="wp-image-N" style="width: Npx;" src alt>`), the `inlineImage` node (run-log issue 10). Gutenberg deletes an image block from a table cell on its next save, so a cell only ever holds this.
+
+| Test | What it checks |
+|---|---|
+| `one in a table cell is kept byte for byte when another block is edited` | Attributes in source order, `style` untouched, no `/>` |
+| `one in a paragraph of text stays in the paragraph` | The paragraph is no longer split around an image block |
+| `an image alone in a paragraph still becomes an image block` | Classic `<p><img></p>` content is unchanged |
+| `a script handler on one is not carried into the editor or the save` | The carrier's `on*` filter applies |
+| `insertImage in a table cell inserts one as the block editor does, no wider than 150px` | `class`, `style`, `src`, `alt`, in Gutenberg's order and with its 150 px cap |
+| `insertImage in a table cell keeps a narrower image at its own width` | |
+| `one copied on its own, with no line around it, pastes into a cell as one` | ProseMirror serializes a lone inline image as a bare `<img data-quill-inline-image>`; the marker is enough to parse it back inline |
+| `insertImage outside a table cell still inserts an image block` | |
 
 ---
 
@@ -3168,7 +3196,7 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 
 ---
 
-## JS paste source tests (59 tests)
+## JS paste source tests (60 tests)
 
 File: `Scripts/test-editor-paste-sources.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3180,7 +3208,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 | `every captured clipboard pastes as valid, clean Gutenberg markup` | 16 | One per source: no validation problem, WordPress would save it back unchanged, no foreign style, attribute, class, bare span or empty paragraph, and every word of the plain-text flavor is kept (the chat apps' "Copy code" and language labels excepted) |
 | `what each source becomes` | 9 | Word lists become nested core lists with a lettered sub-level; Word and Docs alignment becomes core's `textAlign`; Word's formatting becomes plain marks; VS Code becomes one code block; chat-app code keeps its code and drops the label and copy button; Docs' not-bold wrapper does not bold everything; WordPress emoji become the character; a phrase lands inside a paragraph with its word spaces; a front-end copy loses its render-only classes and gets its embed back |
 | `paste fallbacks` | 7 | WebKit's empty HTML for a closed `<details>` falls back to the plain text, short or long; its extra wrapper around an open `<details>` is dropped; a YouTube URL in an empty paragraph becomes an embed, and stays a link in a sentence or for an unknown host; plain text pasted into an empty formatted paragraph keeps that paragraph's alignment, since `transformPasted` leaves a plain-text slice open |
-| `pasted images the site does not host yet` | 6 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id; an unreadable `file:` image is dropped; an image Swift gave up on (`forgetPastedImage`) is sent again when pasted again; one undo after the upload lands takes back the whole paste, not just the swap from base64 to the uploaded file; a redo brings back the uploaded file, not the base64 |
+| `pasted images the site does not host yet` | 7 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id, and so is one a pasted heading keeps inline (an `inlineImage`, run-log issue 10); an unreadable `file:` image is dropped; an image Swift gave up on (`forgetPastedImage`) is sent again when pasted again; one undo after the upload lands takes back the whole paste, not just the swap from base64 to the uploaded file; a redo brings back the uploaded file, not the base64 |
 | `outside HTML cannot reach Quill internals` | 1 | Pasted `data-quill-block-attrs`, event handlers and `javascript:` links never reach the save |
 | `pasting into a list item` | 5 | Pasted blocks become further items, not paragraphs packed into one `<li>`; a single pasted paragraph joins the item; a quote's paragraphs pasted with other blocks become items of their own; a quote pasted alone becomes items too; a quote's citation, bare text, headings and nested lists all survive as items |
 | `pasting blocks into a paragraph` | 2 | The first block pasted into an empty top-level paragraph replaces it and keeps its attributes, as in the block editor; pasted into a paragraph with text, it still joins that paragraph |
@@ -3192,7 +3220,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (45 tests)
+## JS footnotes tests (47 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3202,7 +3230,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 | Group | Tests | What it checks |
 |---|---|---|
 | `the transform helpers reach the editor as globals` | 1 | `extractFootnotes`/`inlineFootnotes` are callable in the page — the classic-script global-exposure boundary |
-| `loading a post with native footnotes` | 3 | A delimiter plus meta becomes an editable list; the block is not frozen into an unsupported card; a delimiter with **no** meta behind it falls through to a passthrough card instead |
+| `loading a post with native footnotes` | 5 | A delimiter plus meta becomes an editable list; the block is not frozen into an unsupported card; a delimiter with **no** meta and no markers falls through to a passthrough card instead; markers with no meta load as an editable list with an empty note each and no card, and a note written there saves with one delimiter and no stray paragraph (run-log issue 12) |
 | `saving` | 9 | `post_content` carries the delimiter and never the list; `getFootnotes()` matches what core stores; an edited body reaches the meta; the marker keeps core's `<fnId>-link` anchor; no backref is written into `post_content`, because WordPress renders it; an unedited post saves back byte-identically; an unsupported block with single-quoted attributes beside the footnotes is saved byte for byte after an edit (the list is spliced in at the delimiter, not by re-serializing the post); a second load/save cycle is idempotent; deleting the last marker clears the meta rather than stranding it |
 | `migrating a legacy inline list` | 3 | A post written before the move is left exactly as it was until it is edited; the first edit moves the bodies into meta and the list out of the content; the legacy backref anchor does not survive into the meta |
 | `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
@@ -3406,7 +3434,8 @@ Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has it
 - [ ] After any image insert (toolbar button, media picker, or Finder drop), start typing immediately → the text goes into a new paragraph **below** the image, not into the caption. Click the caption area under the image → the caret moves there and a caption can be typed.
 - [ ] Insert two images back to back → only one empty paragraph sits between/after them (blank paragraphs don't stack).
 - [ ] Save a post with an inserted image and check code view → no `<p></p>` follows the `<!-- /wp:image -->` block: Quill's own empty paragraph after an image is chrome and is not saved (one you typed into, or that sits inside a quote or table cell, is saved).
-- [ ] Insert an image with the cursor inside a list item, a blockquote, and a table cell → in each case the image and its new paragraph stay inside that container.
+- [ ] Insert an image with the cursor inside a list item and a blockquote → in each case the image and its new paragraph stay inside that container. In a table cell → the image goes inline in the cell's text (at most 150 px wide, its own width if narrower), and saves as `<img class="wp-image-N" style="width: Npx;" …>` with no `wp:image` comment.
+- [ ] Open a post whose table cell or paragraph holds an inline image written by the block editor, edit another block, save → the image is still inline and its markup is unchanged.
 - [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
 - [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
@@ -3772,7 +3801,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] **Preview sends the notes.** On a draft with footnotes, edit a note and click Preview → the preview shows the edited note. Undo the edit back to the saved text and Preview again → the preview, and the draft on the server (`?context=edit`), show the saved note, not the edited one.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
 - [ ] **Edit only a footnote body** — change nothing else in the post. The window's unsaved-changes dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
-- [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone. (2026-10-11: the card shows, with an empty "1." line under it; run-log issue 12.)
+- [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card when it has no footnote markers. When it has markers, it shows the footnotes list with an empty note for each marker and no card; writing a note and saving stores it in meta. Saving without touching either leaves it alone.
 - [ ] **Legacy migration:** open a post whose footnotes were written as an inline list by an older build. Save it without editing → unchanged. Now type one character and save → the bodies move into `meta.footnotes`, the list leaves the content, and no stray backref is stored.
 - [ ] Open a post with footnotes in code view → the source shows the delimiter, not the list. Leave code view without editing → the notes are still there.
 - [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
@@ -3915,7 +3944,7 @@ human is required.
 - [ ] **Paging survives a local change.** Delete an item, then scroll to the bottom → the next page continues from where the grid ends, with nothing skipped. Upload an item, then scroll to the bottom → nothing appears twice. Paging sends an offset taken from the item count, so both cases self-correct; a page number would not.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
 - [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
-- [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is. (2026-10-11: the spinner stops when the first upload finishes; run-log issue 11.)
+- [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
 - [ ] Change the filter or the search while a page is loading (throttle the network) → the grid shows only the new filter's items; the old page never lands in it.
 - [ ] Upload a file while a search is active → the search clears and the new item is shown and selected.
 - [ ] Open the media picker (Insert Image) and the gallery sheet on a site whose newest uploads are PDFs or audio → both show images only, with no empty first page. Upload an image from the picker, then scroll to the bottom → no image appears twice (the sheets page by offset).

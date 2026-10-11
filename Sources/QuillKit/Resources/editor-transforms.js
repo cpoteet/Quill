@@ -989,7 +989,9 @@ function toWordPressHTML(html, doc) {
   // Core self-closes img and hr but not br; runs before the source substitution.
   let out = div.innerHTML
     .replace(/<[a-z][^>]*>/gi, tag => tag.replace(/ (open|reversed)=""/g, ' $1'))
-    .replace(/<(img|hr)((?:"[^"]*"|'[^']*'|[^>"'])*)>/gi, (m, tag, attrs) => `<${tag}${attrs.replace(/\/\s*$/, '')}/>`)
+    .replace(/<(img|hr)((?:"[^"]*"|'[^']*'|[^>"'])*)>/gi, (m, tag, attrs) => attrs.endsWith(' data-quill-inline-image=""')
+      ? `<${tag}${attrs.slice(0, -' data-quill-inline-image=""'.length)}>`
+      : `<${tag}${attrs.replace(/\/\s*$/, '')}/>`)
   if (unsupported.length) {
     out = out.replace(new RegExp(nonce + '(\\d+)' + nonce, 'g'), (m, i) => unsupported[Number(i)])
   }
@@ -1145,7 +1147,9 @@ function extractFootnotes(html, doc) {
   const footnotes = []
   Array.from(list.children).forEach(li => {
     if (!li.id) return
-    li.querySelectorAll('.footnote-backref').forEach(a => a.remove())
+    li.querySelectorAll('a').forEach(a => {
+      if (a.classList.contains('footnote-backref') || a.getAttribute('href') === '#' + li.id + '-link') a.remove()
+    })
     footnotes.push({ id: li.id, content: li.innerHTML.trim() })
   })
   // Spliced out of the string: re-serializing the DOM would undo the save's self-closed <hr/> and <img/>.
@@ -1161,15 +1165,20 @@ function extractFootnotes(html, doc) {
   return { content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + after, footnotes, found: true }
 }
 
-// Rebuilds the editable list from meta. A post whose meta is empty keeps the
-// bare delimiter, which wrapUnsupportedBlocks then preserves as a card.
+// Rebuilds the editable list from meta, or with an empty note per marker when
+// meta has none. With no markers either, the bare delimiter stays, and
+// wrapUnsupportedBlocks preserves it as a card.
 function inlineFootnotes(html, footnotes, doc) {
   doc = doc || inertDocument()
-  if (!Array.isArray(footnotes) || footnotes.length === 0) return html || ''
   const div = doc.createElement('div')
   div.innerHTML = html || ''
   const comment = footnotesComment(div)
   if (!comment) return html || ''
+  if (!Array.isArray(footnotes) || footnotes.length === 0) {
+    const ids = new Set(Array.from(div.querySelectorAll('sup[data-fn]'), sup => sup.getAttribute('data-fn')))
+    footnotes = Array.from(ids, id => ({ id }))
+    if (footnotes.length === 0) return html || ''
+  }
 
   const ol = doc.createElement('ol')
   ol.className = 'wp-block-footnotes'

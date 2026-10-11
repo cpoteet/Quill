@@ -80,6 +80,22 @@ describe('loading a post with native footnotes', () => {
     win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->', '[]')
     assert.match(editor.getHTML(), /wp-block-quill-unsupported/)
   })
+
+  test('markers with no meta load as an editable list with an empty note each, and no card', () => {
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`, '[]')
+    const types = []
+    editor.state.doc.forEach(n => types.push(n.type.name))
+    assert.deepEqual(types, ['paragraph', 'footnotesList'])
+    assert.equal(editor.state.doc.lastChild.childCount, 1)
+  })
+
+  test('a note written for such a marker saves with one delimiter and no stray paragraph', () => {
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`, '[]')
+    editor.commands.insertContentAt(editor.state.doc.content.size - 2, 'Written.')
+    win.syncContentToSwift()
+    assert.equal(win.getContent(), `<!-- wp:paragraph -->\n<p>Body${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`)
+    assert.deepEqual(JSON.parse(win.getFootnotes()), [{ id: ID, content: 'Written.' }])
+  })
 })
 
 describe('saving', () => {

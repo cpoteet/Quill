@@ -111,7 +111,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         guard let url = note.userInfo?["url"] as? String else { return }
         let mediaId = note.userInfo?["mediaId"] as? Int
         let alt     = note.userInfo?["alt"]     as? String
-        insertImage(url: url, mediaId: mediaId, alt: alt)
+        let width   = note.userInfo?["width"]   as? Int
+        insertImage(url: url, mediaId: mediaId, alt: alt, width: width)
     }
 
     @objc private func handleInsertGallery(_ note: Notification) {
@@ -340,7 +341,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         }
     }
 
-    func insertImage(url: String, mediaId: Int? = nil, alt: String? = nil) {
+    func insertImage(url: String, mediaId: Int? = nil, alt: String? = nil, width: Int? = nil) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
             let urlStr = String(data: jsonURL, encoding: .utf8)
@@ -354,7 +355,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         } else {
             altStr = "null"
         }
-        wv.evaluateJavaScript("insertImage(\(urlStr), \(idStr), \(altStr))", completionHandler: nil)
+        let widthStr = width.map { String($0) } ?? "null"
+        wv.evaluateJavaScript("insertImage(\(urlStr), \(idStr), \(altStr), \(widthStr))", completionHandler: nil)
     }
 
     func insertGallery(payload: [String: Any]) {

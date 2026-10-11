@@ -196,6 +196,16 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.filteredItems.count == 1)
         #expect(state.filteredItems[0].id == "remote-1")
     }
+
+    @MainActor @Test func newDraftClearsTheSearchSoItIsListed() async throws {
+        let state = AppState()
+        state.posts = [try makePost(id: 1, title: "QA post")]
+        state.searchText = "QA"
+        state.createNewDraft(type: "post", draftStore: DraftStore(db: try AppDatabase.inMemory()))
+        for _ in 0..<100 where state.selectedItem == nil { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(state.selectedSection == .localDrafts)
+        #expect(state.filteredItems.map(\.id) == [state.selectedItem?.id])
+    }
 }
 
 // MARK: - AppState status filter

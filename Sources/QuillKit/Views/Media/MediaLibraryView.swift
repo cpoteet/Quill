@@ -8,7 +8,7 @@ struct MediaLibraryView: View {
     @State private var hasMore = false
     @State private var isLoadingMore = false
     @State private var uploadTask: Task<Void, Never>?
-    @State private var isUploading = false
+    @State private var uploadsInFlight = 0
     @State private var previewedMedia: WPMedia?
     @State private var mediaPendingDelete: WPMedia?
     @State private var deleteError: String?
@@ -87,7 +87,7 @@ struct MediaLibraryView: View {
     private var galleryWithOverlays: some View {
         gallery
             .overlay {
-                if isUploading {
+                if uploadsInFlight > 0 {
                     ProgressView()
                         .controlSize(.small)
                         .padding(12)
@@ -283,12 +283,11 @@ extension MediaLibraryView {
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         guard let creds = appState.credentials else { return }
-        isUploading = true
-        // Serialized: overlapping uploads share `isUploading` — see the drop queue in PostEditorView.
+        uploadsInFlight += 1
         let previous = uploadTask
         uploadTask = Task {
             await previous?.value
-            defer { isUploading = false }
+            defer { uploadsInFlight -= 1 }
             do {
                 // Off the main actor — see the same call in PostEditorView.
                 let prepared = await Task.detached(priority: .userInitiated) {

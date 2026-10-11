@@ -94,6 +94,7 @@ was green in jsdom while invalidating every coloured block in WordPress.
 Not round-trip fixtures, and not globbed by any jsdom suite (the globs are not
 recursive). Each file carries an `<img onerror>` that counts itself in
 `window.__quillScriptRan`, placed where post markup takes a path the corpus does not
-cover: a nested preserved block, an image caption, a gallery caption.
+cover: a nested preserved block, an image caption, a gallery caption, an inline
+image in a line of text and in a table cell.
 `--check-fixtures` runs them through load, save, code view, copy, a gallery rebuild and
 paste (`window.__runScriptSinkProbes` in `editor.html`) and fails if any handler ran.

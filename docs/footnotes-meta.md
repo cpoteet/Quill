@@ -47,8 +47,10 @@ the wire format never sees one.
 - **Load** — `setContent(html, footnotesJSON)` runs `inlineFootnotes` *before*
   `wrapUnsupportedBlocks`. Order matters: a bare `<!-- wp:footnotes /-->` has no
   inner markup, so `blockNeedsWrapping` would otherwise freeze it into a
-  passthrough card. A post whose meta *is* empty gets exactly that, which is the
-  right outcome — there is nothing to edit. The list is spliced into the string at
+  passthrough card. A post whose meta *is* empty and has no markers gets exactly
+  that, which is the right outcome — there is nothing to edit. If it has markers,
+  their notes are missing, so each marker gets an empty note in the list to write
+  it in. The list is spliced into the string at
   the delimiter, the way `extractFootnotes` splices it out; building it through
   `innerHTML` re-serialized the whole post first, so an unsupported block's source
   (single-quoted attributes, `<br/>`) was no longer byte for byte. A string match
@@ -77,8 +79,9 @@ no-op, and the inline list parses as it always did). The **first visual edit**
 extracts the bodies into meta and leaves the delimiter behind — so migration
 happens on save, per post, only when the post is actually edited.
 
-Legacy `<a class="footnote-backref">` anchors are stripped out of the bodies on
-the way into meta.
+Legacy `<a class="footnote-backref">` anchors, and the `<a href="#<id>-link">↩︎</a>`
+core renders (a list copied from a published page carries one), are stripped out
+of the bodies on the way into meta.
 
 ## Local storage
 

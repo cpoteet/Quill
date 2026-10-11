@@ -12,8 +12,8 @@ public final class EditorHandle {
         await coordinator?.flushPendingContent()
     }
 
-    func insertImage(url: String, mediaId: Int, alt: String) {
-        coordinator?.insertImage(url: url, mediaId: mediaId, alt: alt)
+    func insertImage(url: String, mediaId: Int, alt: String, width: Int?) {
+        coordinator?.insertImage(url: url, mediaId: mediaId, alt: alt, width: width)
     }
 }
 

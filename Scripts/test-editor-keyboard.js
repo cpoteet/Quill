@@ -29,7 +29,7 @@ let editor
 let win
 
 function key(view, k, mods = {}) {
-  const code = { Enter: 13, Backspace: 8, Delete: 46 }
+  const code = { Enter: 13, Backspace: 8, Delete: 46, ArrowLeft: 37, ArrowRight: 39 }
   const ev = new win.KeyboardEvent('keydown', {
     key: k, code: k, keyCode: code[k] || 0, which: code[k] || 0,
     bubbles: true, cancelable: true,
@@ -85,6 +85,13 @@ before(async () => {
   if (!win.matchMedia) win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
   if (!win.requestAnimationFrame) win.requestAnimationFrame = cb => setTimeout(cb, 0)
   if (!win.ResizeObserver) win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  // ProseMirror's arrow handling measures the caret to find the text direction.
+  const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+  for (const proto of [win.Text.prototype, win.Range.prototype]) {
+    if (proto.getClientRects) continue
+    proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+    proto.getBoundingClientRect = () => rect
+  }
 
   editor = await new Promise((resolve, reject) => {
     let tries = 0
@@ -124,6 +131,32 @@ describe('plain paragraphs', () => {
     editor.commands.focus('end')
     key(editor.view, 'Enter', { shift: true })
     assert.equal(doc(), 'paragraph("line",BR)')
+  })
+})
+
+describe('⌘← / ⌘→ beside a card', () => {
+  test('⌘→ at the end of a paragraph before a card keeps the caret in the paragraph', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    editor.commands.setTextSelection(6)
+    key(editor.view, 'ArrowRight', { meta: true })
+    assert.equal(editor.state.selection.node?.type.name, undefined)
+    assert.equal(editor.state.selection.head, 6)
+  })
+
+  test('⌘← at the start of a paragraph after a card keeps the caret in the paragraph', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    const start = paragraphStarts()[1]
+    editor.commands.setTextSelection(start)
+    key(editor.view, 'ArrowLeft', { meta: true })
+    assert.equal(editor.state.selection.node?.type.name, undefined)
+    assert.equal(editor.state.selection.head, start)
+  })
+
+  test('a plain → at the end of the paragraph still selects the card', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    editor.commands.setTextSelection(6)
+    key(editor.view, 'ArrowRight')
+    assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
   })
 })
 
@@ -878,12 +911,12 @@ describe('window.insertImage cursor placement', () => {
     assert.match(out, /<blockquote class="wp-block-quote">[\s\S]*<figure class="wp-block-image">[\s\S]*<\/blockquote>/)
   })
 
-  test('inside a table cell the image and its paragraph stay in that cell', () => {
+  test('inside a table cell the image goes inline in that cell, as core cells hold text', () => {
     editor.commands.setContent('<table><tbody><tr><td><p>cell</p></td><td><p>b</p></td></tr></tbody></table>', false)
     // Not focus('end') — a trailing table now carries a paragraph after it.
     editor.commands.setTextSelection(paragraphStarts()[1] + 1)
     win.insertImage('http://x/t.jpg')
-    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("cell")),tableCell(paragraph("b"),image[],paragraph()))) | paragraph()')
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("cell")),tableCell(paragraph("b",inlineImage())))) | paragraph()')
     assert.equal(selParent(), 'paragraph')
   })
 
@@ -946,5 +979,68 @@ describe('trailing paragraph after a block that holds no text', () => {
     editor.commands.focus('end')
     win.insertFootnote()
     assert.equal(editor.state.doc.lastChild.type.name, 'footnotesList')
+  })
+})
+
+describe('inline images', () => {
+  const IMG = '<img class="wp-image-42" style="width: 150px;" src="http://x/a.png" alt="alt x">'
+  const tableWith = cell => '<!-- wp:table -->\n<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><td>' + cell + '</td><td>b</td></tr></tbody></table></figure>\n<!-- /wp:table -->'
+  const para = text => '<!-- wp:paragraph -->\n<p>' + text + '</p>\n<!-- /wp:paragraph -->'
+  const editAtEnd = () => {
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, 'z')
+    win.syncContentToSwift()
+    return win.getContent()
+  }
+
+  test('one in a table cell is kept byte for byte when another block is edited', () => {
+    win.setContent(tableWith('a' + IMG) + '\n\n' + para('end'), '[]')
+    assert.equal(editAtEnd(), tableWith('a' + IMG) + '\n\n' + para('endz'))
+  })
+
+  test('one in a paragraph of text stays in the paragraph', () => {
+    win.setContent(para('Text ' + IMG + ' more'), '[]')
+    assert.equal(editAtEnd(), para('Text ' + IMG + ' morez'))
+  })
+
+  test('an image alone in a paragraph still becomes an image block', () => {
+    win.setContent('<p><img src="http://x/a.png" alt=""></p>', '[]')
+    assert.ok(editor.getJSON().content.some(n => n.type === 'image'))
+  })
+
+  test('a script handler on one is not carried into the editor or the save', () => {
+    win.setContent(para('Text <img src="http://x/a.png" alt="" onerror="alert(1)"> more'), '[]')
+    assert.equal(editor.view.dom.querySelector('[onerror]'), null)
+    assert.doesNotMatch(editAtEnd(), /onerror/)
+  })
+
+  test('insertImage in a table cell inserts one as the block editor does, no wider than 150px', () => {
+    win.setContent(tableWith('a'), '[]')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 1)
+    win.insertImage('http://x/a.png', 42, 'alt x', 800)
+    win.syncContentToSwift()
+    assert.equal(win.getContent(), tableWith('a' + IMG))
+  })
+
+  test('insertImage in a table cell keeps a narrower image at its own width', () => {
+    win.setContent(tableWith('a'), '[]')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 1)
+    win.insertImage('http://x/a.png', 42, 'alt x', 100)
+    win.syncContentToSwift()
+    assert.match(win.getContent(), /style="width: 100px;"/)
+  })
+
+  test('one copied on its own, with no line around it, pastes into a cell as one', () => {
+    win.setContent(tableWith('a'), '[]')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 1)
+    editor.commands.insertContent('<img class="wp-image-42" data-quill-style="width: 150px;" src="http://x/a.png" alt="alt x" data-quill-inline-image="">')
+    win.syncContentToSwift()
+    assert.equal(win.getContent(), tableWith('a' + IMG))
+  })
+
+  test('insertImage outside a table cell still inserts an image block', () => {
+    win.setContent('<p>a</p>', '[]')
+    editor.commands.setTextSelection(2)
+    win.insertImage('http://x/a.png', 42, 'alt x', 800)
+    assert.ok(editor.getJSON().content.some(n => n.type === 'image'))
   })
 })

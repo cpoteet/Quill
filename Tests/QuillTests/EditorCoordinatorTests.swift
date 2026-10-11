@@ -293,6 +293,13 @@ struct EditorPushDecisionTests {
         #expect(webView.scripts.count == evaluated, "the flushed content was pushed back into the editor")
     }
 
+    @Test func insertImagePassesTheMediaWidthForAnInlineImage() {
+        coordinator.insertImage(url: "https://x/a.png", mediaId: 42, alt: "Alt", width: 800)
+        #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, "Alt", 800)"#)
+        coordinator.insertImage(url: "https://x/a.png", mediaId: 42, alt: nil, width: nil)
+        #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, null, null)"#)
+    }
+
     @Test func flushWithNothingPendingChangesNothing() async {
         webView.replies["window.flushContent"] = NSNull()
         await coordinator.flushPendingContent()

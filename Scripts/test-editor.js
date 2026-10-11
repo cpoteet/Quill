@@ -1429,6 +1429,16 @@ describe('extractFootnotes', () => {
     assert.equal(r.footnotes[0].content, 'Note')
   })
 
+  test('strips the backref core renders, as on a list copied from a published page', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">Note <a href="#fn-a-link" aria-label="Jump to footnote reference 1">↩︎</a></li></ol>')
+    assert.equal(r.footnotes[0].content, 'Note')
+  })
+
+  test('keeps a link in the body that points somewhere else on the page', () => {
+    const r = split('<ol class="wp-block-footnotes"><li id="fn-a">See <a href="#intro">the intro</a></li></ol>')
+    assert.equal(r.footnotes[0].content, 'See <a href="#intro">the intro</a>')
+  })
+
   test('content with no footnotes is returned untouched', () => {
     const html = '<!-- wp:paragraph -->\n<p>x</p>\n<!-- /wp:paragraph -->'
     const r = split(html)
@@ -1495,6 +1505,11 @@ describe('inlineFootnotes', () => {
   test('empty meta leaves the delimiter alone for the passthrough card', () => {
     const html = '<p>x</p><!-- wp:footnotes /-->'
     assert.equal(inline(html, []), html)
+  })
+
+  test('empty meta with markers gives each marker an empty note at the delimiter', () => {
+    const html = '<p>x<sup data-fn="fn-a" class="fn" id="fn-a-link"><a href="#fn-a">1</a></sup></p><!-- wp:footnotes /-->'
+    assert.equal(inline(html, []), html.replace('<!-- wp:footnotes /-->', '<ol class="wp-block-footnotes"><li id="fn-a"></li></ol>'))
   })
 
   test('meta without a delimiter in the content changes nothing', () => {

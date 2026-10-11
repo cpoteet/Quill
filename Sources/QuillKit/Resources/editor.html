@@ -3975,6 +3975,59 @@
       },
     })
 
+    // ── Inline image ─────────────────────────────────
+    // The block editor's inline image (its core/image rich-text format): an <img>
+    // in a table cell, or in a line of text. Its attributes are kept as written.
+    // An image alone in a paragraph is still an image block.
+    const INLINE_IMAGE_HOSTS = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH'])
+    const INLINE_IMAGE_WRAPPERS = new Set(['A', 'SPAN', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'DEL', 'INS', 'MARK', 'SMALL', 'SUB', 'SUP', 'CODE', 'KBD', 'ABBR'])
+
+    function _isInlineImage(img) {
+      if (img.hasAttribute('data-quill-inline-image')) return true
+      let el = img.parentElement
+      while (el && INLINE_IMAGE_WRAPPERS.has(el.tagName)) el = el.parentElement
+      if (!el || !INLINE_IMAGE_HOSTS.has(el.tagName)) return false
+      return el.tagName === 'TD' || el.tagName === 'TH' || el.textContent.trim() !== ''
+    }
+
+    function _inlineImagePairs(node) {
+      try { return JSON.parse(node.attrs.attrs) } catch (e) { return [] }
+    }
+
+    function _inlineImageSrc(node) {
+      return (_inlineImagePairs(node).find(([name]) => name === 'src') || [])[1] || null
+    }
+
+    const InlineImage = TiptapNode.create({
+      name: 'inlineImage',
+      inline: true,
+      group: 'inline',
+      atom: true,
+      draggable: true,
+      addAttributes() {
+        return {
+          attrs: { default: '[]', parseHTML: el => JSON.stringify(elementAttrPairs(el)), renderHTML: () => ({}) },
+        }
+      },
+      parseHTML() {
+        return [{ tag: 'img[src]', priority: 60, getAttrs: el => _isInlineImage(el) ? {} : false }]
+      },
+      // The marker keeps the save from self-closing it: rich text writes <img …>, not <img …/>.
+      renderHTML({ node }) {
+        const out = {}
+        for (const [name, value] of _inlineImagePairs(node)) out[name === 'style' ? 'data-quill-style' : name] = value
+        out['data-quill-inline-image'] = ''
+        return ['img', out]
+      },
+      addNodeView() {
+        return ({ node }) => {
+          const dom = document.createElement('img')
+          for (const [name, value] of _inlineImagePairs(node)) dom.setAttribute(name, value)
+          return { dom }
+        }
+      },
+    })
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
@@ -4011,6 +4064,7 @@
           renderHTML: () => ['span', { style: 'text-decoration: underline;' }, 0],
         }),
         RawInline,
+        InlineImage,
         withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
         withBlockAttrs(withClassAttr(TableRowWithSection)),
         withBlockAttrs(withClassAttr(TableHeader)),
@@ -4058,6 +4112,10 @@
             const { state, dispatch } = view
             const br = state.schema.nodes.hardBreak
             if (br) { dispatch(state.tr.replaceSelectionWith(br.create()).scrollIntoView()); return true }
+          }
+          // ProseMirror would node-select the neighbouring card; ⌘ only moves within the line.
+          if (event.metaKey && !event.shiftKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+            return view.state.selection.empty && view.endOfTextblock(event.key === 'ArrowRight' ? 'right' : 'left')
           }
           return false
         },
@@ -4241,7 +4299,7 @@
       const pending = new Set(_pendingPastedImages.values())
       const sources = new Set()
       editor.state.doc.descendants(node => {
-        const src = node.type.name === 'image' ? node.attrs.src : null
+        const src = node.type.name === 'image' ? node.attrs.src : node.type.name === 'inlineImage' ? _inlineImageSrc(node) : null
         if (src && /^(?:data:image\/|blob:)/.test(src) && !pending.has(src)) sources.add(src)
       })
       const images = []
@@ -4265,6 +4323,13 @@
       const tr = editor.state.tr
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'image' && node.attrs.src === src) tr.setNodeMarkup(pos, null, { ...node.attrs, src: url, mediaId })
+        if (node.type.name === 'inlineImage' && _inlineImageSrc(node) === src) {
+          const idClass = `wp-image-${mediaId}`
+          const pairs = _inlineImagePairs(node).map(([name, value]) => [name,
+            name === 'src' ? url : name === 'class' ? [...value.split(/\s+/).filter(c => c && !/^wp-image-\d+$/.test(c)), idClass].join(' ') : value])
+          if (!pairs.some(([name]) => name === 'class')) pairs.push(['class', idClass])
+          tr.setNodeMarkup(pos, null, { attrs: JSON.stringify(pairs) })
+        }
       })
       if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false))
     }
@@ -6002,8 +6067,16 @@
 
     window.isInFootnote = () => _isInFootnote()
 
-    window.insertImage = (url, mediaId, alt) => {
+    window.insertImage = (url, mediaId, alt, width) => {
       if (_isInFootnote()) return
+      // A table cell holds rich text, so the block editor puts an inline image there, never an image block.
+      const { $from: $at } = editor.state.selection
+      if (_ancestorDepth($at, 'tableCell') !== -1 || _ancestorDepth($at, 'tableHeader') !== -1) {
+        const pairs = mediaId != null ? [['class', `wp-image-${mediaId}`]] : []
+        pairs.push(['style', `width: ${Math.min(width || 150, 150)}px;`], ['src', url], ['alt', alt || ''])
+        editor.chain().focus().insertContent({ type: 'inlineImage', attrs: { attrs: JSON.stringify(pairs) } }).run()
+        return
+      }
       const attrs = { src: url }
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt

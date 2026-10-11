@@ -211,6 +211,7 @@ public struct PostEditorView: View {
                         "mediaId": selected.id,
                     ]
                     if !selected.altText.isEmpty { info["alt"] = selected.altText }
+                    if let width = selected.mediaDetails?.width { info["width"] = width }
                     NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                     showImagePicker = false
                 }, onCancel: {
@@ -1271,7 +1272,7 @@ public struct PostEditorView: View {
     private func insertAtCursor(ifStillOn postID: PostItem.ID?) -> (WPMedia) -> Bool {
         { [editorHandle, editorWebView] media in
             guard isOpen(postID), editorWebView?.window != nil else { return false }
-            editorHandle.insertImage(url: media.sourceURL, mediaId: media.id, alt: media.altText)
+            editorHandle.insertImage(url: media.sourceURL, mediaId: media.id, alt: media.altText, width: media.mediaDetails?.width)
             return true
         }
     }

@@ -197,7 +197,10 @@ public final class AppState: ObservableObject {
         guard let updated = try? draftStore.fetchAll(),
               let newDraft = updated.first(where: { $0.id == id }) else { return }
         localDrafts = updated
-        switchSection(to: .localDrafts) { self.selectedItem = .local(newDraft) }
+        switchSection(to: .localDrafts) {
+            self.searchText = ""
+            self.selectedItem = .local(newDraft)
+        }
     }
 
     // An inspector torn down in the same layout pass as a section switch makes the sidebar picker slide — see Views/Sidebar/CLAUDE.md.

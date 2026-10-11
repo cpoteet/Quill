@@ -127,6 +127,7 @@ public struct PreferencesView: View {
         .onChange(of: apiKeyFocused) { _, focused in
             if !focused { Task { await fetchModels() } }
         }
+        .onChange(of: currentKey) { modelFetchError = nil }
     }
 
     // MARK: - Model and reasoning
@@ -204,6 +205,9 @@ public struct PreferencesView: View {
     private func saveAll() async {
         saveError = nil
         saveSuccess = false
+        isSaving = true
+        await fetchModels()
+        isSaving = false
 
         // Detect site URL change before saving — stale sample IDs and style guide
         // from a previous site must be cleared when the user switches WordPress sites.
