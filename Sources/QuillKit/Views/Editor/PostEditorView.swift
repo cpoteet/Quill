@@ -1012,6 +1012,7 @@ public struct PostEditorView: View {
         let savedContent = htmlContent
         let savedFootnotes = footnotesMeta
         let baseline = lastSavedServerModified
+        let serverDateGmt = serverPost?.id == remotePost?.id ? serverPost?.dateGmt : nil
         let wasPublished = isPublishedRemote
         var saved = settings
         // A section switch rebuilds this view, leaving the old one's loadedItem unchanged; the selection moves in both cases.
@@ -1060,7 +1061,8 @@ public struct PostEditorView: View {
             content: savedContent,
             excerpt: Self.plainExcerpt(saved.excerpt),
             status: status.rawValue,
-            dateGmt: saved.publishDate.map { Self.iso8601Formatter.string(from: $0) },
+            dateGmt: Self.payloadDate(for: status, settings: saved, serverDateGmt: serverDateGmt)
+                .map { Self.iso8601Formatter.string(from: $0) },
             featuredMedia: saved.featuredMediaID,
             categories: Array(saved.categoryIDs),
             tags: Array(saved.tagIDs),
@@ -1072,6 +1074,7 @@ public struct PostEditorView: View {
 
         var cleanupWarning: String?
         do {
+            let result: WPPost
             switch item {
             case .remote(let post):
                 if !force {
@@ -1103,6 +1106,14 @@ public struct PostEditorView: View {
                         appState.posts[idx] = updated
                     }
                 }
+                // Mid-switch the view still holds this post, and the pending switch-away flush stashes against this baseline.
+                if loadedItem?.id == savedItemID {
+                    serverPost = updated
+                    lastSavedServerModified = updated.modified
+                    cleanTitle = savedTitle
+                    cleanContent = savedContent
+                    cleanFootnotes = savedFootnotes
+                }
                 guard stillOnPost() else {
                     let stash = try? services.autosaveStore.load(site: site, postID: post.id)
                     if let kept = Self.stashAfterSave(stash, title: savedTitle, content: savedContent,
@@ -1112,15 +1123,11 @@ public struct PostEditorView: View {
                     } else {
                         try? services.autosaveStore.delete(site: site, postID: post.id)
                     }
-                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: status, isPublishedRemote: wasPublished))")
+                    presentToast("“\(savedTitle)”: \(Self.toastMessage(forStatus: PostSettings(post: updated).status, isPublishedRemote: wasPublished))")
                     return
                 }
+                result = updated
                 try? services.autosaveStore.delete(site: site, postID: post.id)
-                serverPost = updated
-                lastSavedServerModified = updated.modified
-                cleanTitle = savedTitle
-                cleanContent = savedContent
-                cleanFootnotes = savedFootnotes
             case .local(let draft):
                 let created =
                     draft.type == "page"
@@ -1134,13 +1141,15 @@ public struct PostEditorView: View {
                 } else {
                     appState.posts.insert(created, at: 0)
                 }
+                let createdStatus = PostSettings(post: created).status
                 if !draftRemoved {
-                    cleanupWarning = "\(Self.toastMessage(forStatus: status, isLocal: true)). The local draft couldn't be removed; delete it so it isn't published twice."
+                    cleanupWarning = "\(Self.toastMessage(forStatus: createdStatus, isLocal: true)). The local draft couldn't be removed; delete it so it isn't published twice."
                 }
                 guard stillOnPost() else {
-                    presentToast("“\(savedTitle)”: \(cleanupWarning ?? Self.toastMessage(forStatus: status, isLocal: true))", isError: cleanupWarning != nil)
+                    presentToast("“\(savedTitle)”: \(cleanupWarning ?? Self.toastMessage(forStatus: createdStatus, isLocal: true))", isError: cleanupWarning != nil)
                     return
                 }
+                result = created
                 // Typing during the request is newer than the created post; stash it so the remote load restores it.
                 await editorHandle.flushPendingContent()
                 if title != savedTitle || htmlContent != savedContent || footnotesMeta != savedFootnotes {
@@ -1152,10 +1161,13 @@ public struct PostEditorView: View {
                 appState.selectedSection = draft.type == "page" ? .pages : .posts
                 appState.selectedItem = .remote(created)
             }
-            settings.status = status
-            if status != .future { settings.publishDate = nil }
-            saved.status = status
-            if status != .future { saved.publishDate = nil }
+            let stored = PostSettings(post: result)
+            if settings.status == saved.status && settings.publishDate == saved.publishDate {
+                settings.status = stored.status
+                settings.publishDate = stored.publishDate
+            }
+            saved.status = stored.status
+            saved.publishDate = stored.publishDate
             cleanSettings = saved
             if let alarm = blockRiskAlarm {
                 blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
@@ -1163,7 +1175,7 @@ public struct PostEditorView: View {
             if let cleanupWarning {
                 presentToast(cleanupWarning, isError: true)
             } else {
-                presentToast(Self.toastMessage(forStatus: status, isLocal: !isRemote, isPublishedRemote: wasPublished))
+                presentToast(Self.toastMessage(forStatus: stored.status, isLocal: !isRemote, isPublishedRemote: wasPublished))
             }
         } catch {
             report(error.localizedDescription)
@@ -1472,6 +1484,13 @@ public struct PostEditorView: View {
     // WordPress publishes a past-dated "future" post at once, so it is sent as what it becomes.
     nonisolated static func effectiveStatus(_ status: PostStatus, settings: PostSettings, now: Date = Date()) -> PostStatus {
         status == .future && settings.scheduledDateHasPassed(now: now) ? .publish : status
+    }
+
+    // WordPress turns a published post with a future date back into "future", so publishing one sends the current time.
+    nonisolated static func payloadDate(for status: PostStatus, settings: PostSettings, serverDateGmt: String?, now: Date = Date()) -> Date? {
+        if let date = settings.publishDate { return date }
+        guard status == .publish, let server = serverDateGmt.flatMap(PostSettings.parseWPDate), server > now else { return nil }
+        return now
     }
 
     nonisolated static func pastScheduleMessage(for date: Date) -> String {

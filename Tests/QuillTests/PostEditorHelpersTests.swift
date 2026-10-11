@@ -318,6 +318,34 @@ import Testing
         #expect(PostEditorView.effectiveStatus(.draft, settings: s, now: now) == .draft)
     }
 
+    // MARK: - Payload date (run-log issue 3)
+
+    @Test func publishingAScheduledPostSendsTheCurrentTime() {
+        let now = Date()
+        let future = ISO8601DateFormatter().string(from: now.addingTimeInterval(86_400))
+        #expect(PostEditorView.payloadDate(for: .publish, settings: PostSettings(), serverDateGmt: future, now: now) == now)
+    }
+
+    @Test func publishingAPastDatedPostSendsNoDate() {
+        let now = Date()
+        let past = ISO8601DateFormatter().string(from: now.addingTimeInterval(-86_400))
+        #expect(PostEditorView.payloadDate(for: .publish, settings: PostSettings(), serverDateGmt: past, now: now) == nil)
+        #expect(PostEditorView.payloadDate(for: .publish, settings: PostSettings(), serverDateGmt: nil, now: now) == nil)
+    }
+
+    @Test func draftOfAScheduledPostKeepsTheServerDate() {
+        let now = Date()
+        let future = ISO8601DateFormatter().string(from: now.addingTimeInterval(86_400))
+        #expect(PostEditorView.payloadDate(for: .draft, settings: PostSettings(), serverDateGmt: future, now: now) == nil)
+    }
+
+    @Test func chosenScheduleDateIsSent() {
+        let now = Date()
+        var s = PostSettings()
+        s.publishDate = now.addingTimeInterval(7200)
+        #expect(PostEditorView.payloadDate(for: .future, settings: s, serverDateGmt: nil, now: now) == s.publishDate)
+    }
+
     // MARK: - Settings from a WordPress post
 
     private func settingsPost(status: String, dateGmt: String = "2026-10-01T09:30:00") throws -> WPPost {
