@@ -3367,7 +3367,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 ### Running the manual pass with an agent
 
-Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has its results). Most of §7 can be driven by computer use plus the REST API; a few items need a person.
+Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-10.md`, which the "run-log issue N" notes in this file refer to, was deleted once every issue was closed; `git show 8cb26e2:docs/manual-test-run-2026-10-10.md` prints its final version. Most of §7 can be driven by computer use plus the REST API; a few items need a person.
 
 - **Full-screen control is required** for the editor, the Media gallery and Finder drags. Background clicks do not reach the WKWebView or the `NSCollectionView`. Grant Quill, Finder and TextEdit; grant no browser (browsers are read-only for computer use).
 - **Check what was saved from outside the app.** For a remote post, fetch `…/wp-json/wp/v2/posts/<id>?context=edit` with an application password; for a local draft, read SQLite (`docs/gotchas.md`). Run `Scripts/wp-validator.js` (`problems(html)`) on the bytes. Keep the REST helper out of the transcript: read `credentials.json` inside the script and never print it.
