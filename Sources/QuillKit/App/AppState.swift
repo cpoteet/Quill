@@ -193,7 +193,7 @@ public final class AppState: ObservableObject {
     }
 
     @MainActor public func createNewDraft(type: String, draftStore: DraftStore) {
-        guard let id = try? draftStore.create(title: "Untitled", content: "", excerpt: "", type: type) else { return }
+        guard let id = try? draftStore.create(title: "", content: "", excerpt: "", type: type) else { return }
         guard let updated = try? draftStore.fetchAll(),
               let newDraft = updated.first(where: { $0.id == id }) else { return }
         localDrafts = updated

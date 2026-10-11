@@ -206,6 +206,13 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.selectedSection == .localDrafts)
         #expect(state.filteredItems.map(\.id) == [state.selectedItem?.id])
     }
+
+    @MainActor @Test func newDraftStartsWithAnEmptyTitle() async throws {
+        let state = AppState()
+        let store = DraftStore(db: try AppDatabase.inMemory())
+        state.createNewDraft(type: "post", draftStore: store)
+        #expect(try store.fetchAll().map(\.title) == [""])
+    }
 }
 
 // MARK: - AppState status filter

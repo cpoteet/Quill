@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 742 Swift tests + 1,750 JS tests (1,749 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 743 Swift tests + 1,750 JS tests (1,749 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (742 tests)
+1. **Swift tests** — `swift test` (743 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (70 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (116 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (742 tests, 48 suites)
+## Swift test suite (743 tests, 48 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -138,7 +138,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
-| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 11 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search |
+| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 12 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search and starting with an empty title |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 55 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `adoptSavedSettings` (status, date and slug from the save response); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
@@ -713,7 +713,7 @@ Tests that `AppState` initializes with loading flags set correctly — `isLoadin
 | `initialListStateWaitsForFirstLoad` | `isLoadingList == true`, `hasLoadedList == false` on fresh `AppState` |
 | `initialMediaStateWaitsForFirstLoad` | `isLoadingMedia == true`, `hasLoadedMedia == false` on fresh `AppState` |
 
-### 17. View-model — `AppStateFilteredItemsTests` (11 tests)
+### 17. View-model — `AppStateFilteredItemsTests` (12 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -730,6 +730,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `whitespaceOnlySearchFiltersOutAllNormalTitles` | `"   "` is non-empty so filtering applies; normal titles have no 3-space run → empty result |
 | `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
 | `newDraftClearsTheSearchSoItIsListed` | `createNewDraft` (⌘N) clears the search, so the new draft is listed in Drafts rather than hidden behind "No Results" (run-log issue 1) |
+| `newDraftStartsWithAnEmptyTitle` | A new draft is stored with an empty title, so the editor shows the "Title" placeholder and WordPress never receives a literal "Untitled" |
 
 ---
 
@@ -3778,7 +3779,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Open a post, then toggle the inspector open and closed → the toolbar does not dim or fade. This is what `InspectorTitlebarFix` suppresses; watch the toolbar, do not glance away.
 - [ ] Re-expand the inspector after collapsing it → the content pane's titlebar background does not paint over the inspector's first 52pt.
 - [ ] Open a long post and open the inspector → the post body never goes blank during the animation, and the editor narrows smoothly, the way closing the inspector widens it.
-- [ ] **One selection colour in the editor.** Select an image, an embed, a gallery, an unsupported-block card, a separator and a range of table cells, and focus the settings dropdown → each draws the same app-accent outline (`#C77700` light, `#BF801E` dark). The find bar, table-size picker and embed menu use the same accent, with dark text on filled buttons, and highlighted table-size cells keep their border in dark mode.
+- [ ] **One selection colour in the editor.** Select an image, an embed, a gallery, an unsupported-block card, a separator and a range of table cells, and focus the settings dropdown → each draws the same editor-accent outline (`#C77700` light, `#F0B450` dark). The find bar, table-size picker and embed menu use the same accent. Filled buttons (embed Insert, inline-image Apply, the find bar's active toggle) match the link picker's native Apply button: white text on `#C77700` light / `#BF801E` dark. Highlighted table-size cells keep their border in dark mode.
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
 - [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.

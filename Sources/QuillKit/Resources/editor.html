@@ -10,6 +10,8 @@
        these two and nothing else. */
     :root { --link: #a26814; --accent: #c77700; --caret: #bf801e; }
     body.dark { --link: #f0b450; --accent: #f0b450; --caret: #eea737; }
+    /* Matches the native .borderedProminent button (Assets.xcassets AccentColor). */
+    :root { --accent-fill: #c77700; } body.dark { --accent-fill: #bf801e; }
     /* Shared by the second toolbar row, the image toolbar and the inline image popover. */
     :root { --tb-gap: 6px; --tb-pad: 0 8px; --tb-h: 26px; --tb-radius: 6px; --tb-divider: #ddd; }
     body.dark { --tb-divider: #444; }
@@ -720,7 +722,6 @@
     #inline-image-popover .iip-actions { align-items: flex-end; }
     #inline-image-popover .iip-help { margin: 0; font-size: 11px; line-height: 1.4; color: #999; }
     #inline-image-popover .iip-help a { color: var(--link); }
-    #inline-image-popover #iip-apply { background: var(--accent); color: #fff; padding: 0 12px; }
     body.dark #image-toolbar, body.dark #inline-image-popover {
       background: rgba(44,44,46,0.96);
       border-color: rgba(255,255,255,0.12);
@@ -930,7 +931,7 @@
       background: #fff;
       cursor: pointer;
     }
-    #find-bar button.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); }
+    #find-bar button.active { background: var(--accent-fill); color: #fff; border-color: var(--accent-fill); }
     #find-count { color: #888; min-width: 52px; text-align: center; }
     .find-sep { width: 1px; height: 16px; background: rgba(0,0,0,0.12); margin: 0 4px; }
     .find-match { background: rgba(255, 200, 0, 0.35); border-radius: 2px; }
@@ -938,7 +939,7 @@
     body.dark #find-bar { background: #2a2a2a; }
     body.dark #find-bar input,
     body.dark #find-bar button { background: #3a3a3a; border-color: rgba(255,255,255,0.15); color: #eee; }
-    body.dark #find-bar button.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; }
+    body.dark #find-bar button.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
     body.dark .find-match { background: rgba(255, 200, 0, 0.30); }
     body.dark .find-match-active { background: rgba(255, 145, 0, 0.55); }
 
@@ -1023,7 +1024,7 @@
       border-radius: 8px;
       box-shadow: 0 4px 18px rgba(0,0,0,0.14);
     }
-    #embed-menu.visible { display: flex; }
+    #embed-menu.visible { display: flex; align-items: center; }
     #embed-menu input {
       width: 260px;
       padding: 4px 8px;
@@ -1033,13 +1034,15 @@
       outline: none;
     }
     #embed-menu input:focus { border-color: var(--accent); }
-    #embed-menu button {
-      padding: 4px 10px;
-      font-size: 12px;
+    #embed-menu #embed-insert-btn, #inline-image-popover #iip-apply {
+      height: 20px;
+      padding: 0 9px;
+      font-size: 11px;
+      font-weight: 400;
       border: none;
       border-radius: 5px;
-      background: var(--accent);
-      color: #1a1a1a;
+      background: var(--accent-fill);
+      color: #fff;
       cursor: pointer;
     }
     body.dark #embed-menu { background: #2e2e2e; border-color: rgba(255,255,255,0.15); }
