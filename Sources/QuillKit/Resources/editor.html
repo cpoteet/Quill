@@ -4389,12 +4389,14 @@
     // A block inserted into one of these titles splits its container, so it goes after the whole container.
     const TITLE_CONTAINERS = { accordionHeading: 'accordionBlock', tabButton: 'tabsBlock', buttonBlock: 'buttonsBlock' }
 
-    function _blockInsertChain() {
+    // A table cell holds rich text in the block editor, whose inserter puts a new block after the table.
+    function _blockInsertChain({ intoTableCell = false } = {}) {
       const chain = editor.chain().focus()
       const { $from } = editor.state.selection
-      const container = TITLE_CONTAINERS[$from.parent.type.name]
-      if (!container) return chain
-      const after = $from.after(_ancestorDepth($from, container))
+      const container = TITLE_CONTAINERS[$from.parent.type.name] ?? (intoTableCell ? null : 'table')
+      const depth = container ? _ancestorDepth($from, container) : -1
+      if (depth === -1) return chain
+      const after = $from.after(depth)
       return chain.insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1)
     }
 
@@ -6244,7 +6246,7 @@
       }
       // A selected block (often the gallery just edited or cancelled) stays; the new gallery goes after it.
       const { selection } = editor.state
-      ;(selection.node
+      ;(selection.node && _ancestorDepth(selection.$from, 'table') === -1
         ? editor.chain().focus().insertContentAt(selection.to, gallery)
         : _blockInsertChain().insertContent(gallery)).run()
     }
@@ -6337,7 +6339,7 @@
       const clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
 
-      _blockInsertChain().insertContent(clean, {
+      _blockInsertChain({ intoTableCell: true }).insertContent(clean, {
         parseOptions: { preserveWhitespace: false },
       }).run()
       return 'ok'

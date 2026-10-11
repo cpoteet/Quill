@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 742 Swift tests + 1,706 JS tests (1,705 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 742 Swift tests + 1,727 JS tests (1,726 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (100 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (355 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (376 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
@@ -2646,7 +2646,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (355 tests)
+## JS container tests (376 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2724,6 +2724,15 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `<Tabs/Accordion/Columns> inserted mid-paragraph takes the caret into the new block` (3 tests) | Inserting in the middle of `abc` puts the caret in the new block, not in the split-off `bc` |
 | `<Tabs/Accordion/Columns> inserted inside another … takes the caret into the inner one` (3 tests) | A container inserted inside one of its own kind gets the caret, not the outer one's first child |
 | `one undo removes the insert and its landing paragraph` | The paragraph `_blockInsertChain` adds and the insert are one undo step |
+
+### `block inserts from a table cell` (21 tests)
+
+| Test | What it checks |
+|---|---|
+| `<insert> from a tableHeader/tableCell goes after the table` (18 tests) | Each block insert except Image and Markdown (Table, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Embed), from a header cell and a body cell, leaves the table and its text unchanged and puts the new block straight after it, as the block editor's inserter does; a gallery or embed in a cell is deleted by core's next save |
+| `the caret lands in the new block, not the cell it came from` | Tabs, Accordion and Columns inserted from a cell put the caret in the new block's first panel, heading or column |
+| `a gallery inserted with an inline image selected in a cell goes after the table` | A node-selected inline image in a cell does not take the gallery into the cell |
+| `Paste as Markdown stays in the cell` | Markdown pasted in a cell is still inserted at the caret |
 
 ### `accordion block` (7 tests)
 
@@ -4276,6 +4285,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 225 | The "in the Media Library but wasn't set as the featured image" toast vanished after 2 seconds. It is an error toast now (6 seconds) | 👁 §7.7 |
 | 226 | An emptied tab title collapsed to a stub with no placeholder. Tab titles get the same `is-untitled` hint as accordion and details titles | ✅ `test-editor-containers.js` `'an emptied tab title is marked as untitled'` + 👁 §7.23 |
 | 227 | After a tab title was emptied and retyped, WebKit left a second, stale caret above the text. The editor renders tab titles as spans; saved markup keeps the buttons | ✅ `test-editor-containers.js` `'a tab title is edited as a span and still saved as a button'` (structure) + 👁 §7.23 (the caret) |
+| 228 | A gallery or embed inserted with the caret in a table cell was saved inside the cell, where core reads its block comment as a nested block the table cannot hold and deletes it on its next save; other block inserts became plain HTML in the cell. With the caret in a cell, `_blockInsertChain` puts every block insert after the table, as the block editor's inserter does (Image stays an inline image, Markdown stays at the caret) | ✅ `test-editor-containers.js` `'block inserts from a table cell'` (21 tests) + 👁 §7.4 |
 | 218 | A styled `<div>` wrapped around block markup became an empty Custom HTML card: the parser splits it across freeform slices, so its opener parses as an empty element. `isSlicedWrapperOpener` skips an empty grouping element whose closing tag is not in its slice | ✅ `test-block-serializer.js` `'a styled wrapper around blocks is not kept as an empty Custom HTML block'` and `'an empty styled div that closes in its own slice is still kept'` + 👁 §7.3 |
 | 219 | The Custom HTML sheet offered CSS and JavaScript tabs to users whose code WordPress strips on save: `capabilities.unfiltered_html` is the role's capability, which a multisite non-super-admin or a site with `DISALLOW_UNFILTERED_HTML` still reports. `canPostUnfilteredHTML` also requires the `action-unfiltered-html` link on a post fetched with `context=edit`, and falls back to the capability when the site has no posts (`Sources/QuillKit/API/CLAUDE.md`) | ✅ `WordPressClientTests` `canPostUnfilteredHTML` (5 tests) + 👁 §7.23 |
 | 220 | A cut-off AI reply always suggested a lower reasoning level, even when the request sent no thinking. `AnthropicError.cutOff` carries `reasoned`, and the message offers that advice only when it is true | ✅ `AnthropicClientTests.cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` + 👁 §7.11 |

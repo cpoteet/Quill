@@ -406,32 +406,33 @@ describe('buttons toolbar controls', () => {
   })
 })
 
+const sig = n => n.isText ? '' : n.type.name + (n.childCount
+  ? '(' + Array.from({ length: n.childCount }, (_, i) => sig(n.child(i))).filter(Boolean).join(',') + ')'
+  : '')
+const inserts = {
+  table: [() => win.insertTable(2, 2), 'table'],
+  image: [() => win.insertImage('http://x/b.jpg', null, ''), 'image'],
+  gallery: [() => win.insertGallery(JSON.stringify({ images: [{ id: 1, url: 'http://x/a.jpg', alt: '' }] })), 'galleryBlock'],
+  tabs: [() => win.insertTabs(2), 'tabsBlock'],
+  accordion: [() => win.insertAccordion(), 'accordionBlock'],
+  buttons: [() => win.insertButtons(), 'buttonsBlock'],
+  details: [() => win.insertDetails(), 'detailsBlock'],
+  separator: [() => win.insertSeparator(), 'horizontalRule'],
+  columns: [() => win.insertColumns(2), 'columnsBlock'],
+  markdown: [() => win.insertMarkdown('- a\n- b'), 'bulletList'],
+  embed: [() => {
+    win.document.getElementById('embed-url-input').value = 'https://www.youtube.com/watch?v=abc'
+    win.document.getElementById('embed-insert-btn').click()
+  }, 'embedBlock'],
+}
+
 describe('block inserts from a container title', () => {
   before(() => { editor.commands.setContent('<p></p>', false) })
 
-  const sig = n => n.isText ? '' : n.type.name + (n.childCount
-    ? '(' + Array.from({ length: n.childCount }, (_, i) => sig(n.child(i))).filter(Boolean).join(',') + ')'
-    : '')
   const hosts = {
     accordionHeading: () => win.insertAccordion(),
     tabButton: () => win.insertTabs(2),
     buttonBlock: () => win.insertButtons(),
-  }
-  const inserts = {
-    table: [() => win.insertTable(2, 2), 'table'],
-    image: [() => win.insertImage('http://x/b.jpg', null, ''), 'image'],
-    gallery: [() => win.insertGallery(JSON.stringify({ images: [{ id: 1, url: 'http://x/a.jpg', alt: '' }] })), 'galleryBlock'],
-    tabs: [() => win.insertTabs(2), 'tabsBlock'],
-    accordion: [() => win.insertAccordion(), 'accordionBlock'],
-    buttons: [() => win.insertButtons(), 'buttonsBlock'],
-    details: [() => win.insertDetails(), 'detailsBlock'],
-    separator: [() => win.insertSeparator(), 'horizontalRule'],
-    columns: [() => win.insertColumns(2), 'columnsBlock'],
-    markdown: [() => win.insertMarkdown('- a\n- b'), 'bulletList'],
-    embed: [() => {
-      win.document.getElementById('embed-url-input').value = 'https://www.youtube.com/watch?v=abc'
-      win.document.getElementById('embed-insert-btn').click()
-    }, 'embedBlock'],
   }
   const caretInto = (host, text) => {
     editor.commands.setContent('<p></p>', false)
@@ -505,6 +506,60 @@ describe('block inserts from a container title', () => {
     win.insertTabs(2)
     editor.commands.undo()
     assert.deepEqual(editor.getJSON(), before)
+  })
+})
+
+describe('block inserts from a table cell', () => {
+  const caretInCell = cellType => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTable(2, 2)
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === cellType) at = pos + 2 })
+    editor.commands.setTextSelection(at)
+    editor.commands.insertContent('A')
+  }
+
+  for (const cellType of ['tableHeader', 'tableCell']) {
+    for (const [name, [insert, type]] of Object.entries(inserts)) {
+      if (name === 'image' || name === 'markdown') continue
+      test(`${name} from a ${cellType} goes after the table`, () => {
+        caretInCell(cellType)
+        const table = sig(editor.state.doc.child(0))
+        insert()
+        assert.equal(sig(editor.state.doc.child(0)), table)
+        assert.equal(editor.state.doc.child(0).textContent, 'A')
+        assert.equal(editor.state.doc.child(1).type.name, type)
+      })
+    }
+  }
+
+  test('the caret lands in the new block, not the cell it came from', () => {
+    for (const [insert, firstOf] of [[() => win.insertTabs(2), 'tabPanel'], [() => win.insertAccordion(), 'accordionHeading'], [() => win.insertColumns(2), 'columnBlock']]) {
+      caretInCell('tableCell')
+      insert()
+      const $head = editor.state.selection.$head
+      assert.equal($head.before(1), editor.state.doc.child(0).nodeSize)
+      assert.ok(_depthOf($head, firstOf) > 0)
+    }
+  })
+
+  test('a gallery inserted with an inline image selected in a cell goes after the table', () => {
+    caretInCell('tableCell')
+    win.insertImage('http://x/b.jpg', 7, '')
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'inlineImage') at = pos })
+    editor.commands.setNodeSelection(at)
+    inserts.gallery[0]()
+    assert.equal(editor.state.doc.child(1).type.name, 'galleryBlock')
+    let nested = false
+    editor.state.doc.child(0).descendants(n => { if (n.type.name === 'galleryBlock') nested = true })
+    assert.equal(nested, false)
+  })
+
+  test('Paste as Markdown stays in the cell', () => {
+    caretInCell('tableCell')
+    win.insertMarkdown('Plain **text**')
+    assert.match(editor.state.doc.child(0).textContent, /Plain text/)
   })
 })
 
