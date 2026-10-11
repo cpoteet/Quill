@@ -563,6 +563,31 @@ describe('block inserts from a table cell', () => {
   })
 })
 
+describe('the embed card names its provider', () => {
+  const labelFor = url => {
+    editor.commands.setContent('<p></p>', false)
+    win.document.getElementById('embed-url-input').value = url
+    win.document.getElementById('embed-insert-btn').click()
+    return Array.from(win.document.querySelectorAll('#editor .embed-card-provider'), el => el.textContent)
+  }
+
+  for (const [url, label] of [
+    ['https://www.youtube.com/watch?v=abc', 'YouTube embed'],
+    ['https://vimeo.com/123', 'Vimeo embed'],
+    ['https://x.com/user/status/1', 'Twitter embed'],
+    ['https://soundcloud.com/a/b', 'SoundCloud embed'],
+    ['https://www.tiktok.com/@a/video/1', 'TikTok embed'],
+  ]) {
+    test(`${url} reads ${label}`, () => {
+      assert.deepEqual(labelFor(url), [label])
+    })
+  }
+
+  test('a site Quill has no provider for reads Embed', () => {
+    assert.deepEqual(labelFor('https://example.com/post'), ['Embed'])
+  })
+})
+
 describe('accordion block', () => {
   before(() => { editor.commands.setContent('<p></p>', false) })
 

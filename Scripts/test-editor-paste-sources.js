@@ -292,6 +292,17 @@ describe('pasted images the site does not host yet', () => {
     assert.match(saved, /Chart <img src="https:\/\/example.com\/wp-content\/uploads\/chart.png" alt="Chart" class="wp-image-321"><\/h2>/)
   })
 
+  test('a data: image kept inline in a heading is swapped, and an earlier wp-image class is replaced', async () => {
+    uploads.length = 0
+    pasteData({ 'text/html': `<h2>Text <img class="size-full wp-image-5" src="${pixel}" alt="Chart"> more</h2>`, 'text/plain': 'Text more' })
+    await uploadsReach(1)
+    win.resolvePastedImage(uploads[0].token, 'https://example.com/wp-content/uploads/chart.png', 321)
+    win.syncContentToSwift()
+    const saved = sentToSwift.at(-1)
+    assert.doesNotMatch(saved, /data:image|wp-image-5/)
+    assert.match(saved, /<h2[^>]*>Text <img [^>]*class="size-full wp-image-321"[^>]*> more<\/h2>/)
+  })
+
   test('an image Swift gave up on is sent again when it is pasted again', async () => {
     uploads.length = 0
     const html = `<p>Before</p><p><img src="${pixel}" alt="Chart"></p>`

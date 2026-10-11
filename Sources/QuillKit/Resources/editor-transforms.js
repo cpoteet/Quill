@@ -657,7 +657,7 @@ function toWordPressHTML(html, doc) {
   // Image figures: renderHTML produces <figure><img ...><figcaption/></figure>.
   // Add wp-block-image class, move alignment from img to figure, handle caption.
   div.querySelectorAll('figure:not(.wp-block-table):not(.wp-block-embed):not(.wp-block-gallery)').forEach(figure => {
-    const img = figure.querySelector('img')
+    const img = figure.querySelector('img:not([data-quill-inline-image])')
     if (!img) return
     const align = ['alignleft', 'alignright', 'aligncenter']
       .find(c => img.classList.contains(c))

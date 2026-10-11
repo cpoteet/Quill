@@ -1518,6 +1518,18 @@ describe('inlineFootnotes', () => {
     assert.equal(inline(html, []), html.replace('<!-- wp:footnotes /-->', '<ol class="wp-block-footnotes"><li id="fn-a"></li></ol>'))
   })
 
+  test('empty meta gives one empty note per distinct marker, in document order', () => {
+    const sup = id => `<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup>`
+    const html = `<p>x${sup('fn-b')}${sup('fn-a')}${sup('fn-b')}</p><!-- wp:footnotes /-->`
+    assert.equal(inline(html, []),
+      html.replace('<!-- wp:footnotes /-->', '<ol class="wp-block-footnotes"><li id="fn-b"></li><li id="fn-a"></li></ol>'))
+  })
+
+  test('empty meta and markers but no delimiter changes nothing', () => {
+    const html = '<p>x<sup data-fn="fn-a" class="fn" id="fn-a-link"><a href="#fn-a">1</a></sup></p>'
+    assert.equal(inline(html, []), html)
+  })
+
   test('meta without a delimiter in the content changes nothing', () => {
     const html = '<p>x</p>'
     assert.equal(inline(html, [{ id: 'fn-a', content: 'N' }]), html)
@@ -1798,6 +1810,34 @@ describe('block delimiters', () => {
       const out = wp('<figure class="wp-block-image"><img src="a.jpg"/></figure>')
       assert.doesNotMatch(out, /\/\/>/)
       assert.equal((out.match(/<img /g) || []).length, 1)
+    })
+
+    test('an inline image keeps core\'s open tag and loses its marker', () => {
+      const out = wp('<p>a <img src="x.png" alt="" data-quill-inline-image=""> b</p>')
+      assert.match(out, /<p>a <img src="x\.png" alt=""> b<\/p>/)
+      assert.doesNotMatch(out, /data-quill-inline-image/)
+    })
+
+    test('an inline image does not stop a separator or a block image closing themselves', () => {
+      const out = wp('<p>a <img src="x.png" alt="" data-quill-inline-image=""></p><hr><figure class="wp-block-image"><img src="b.jpg"></figure>')
+      assert.match(out, /<img src="x\.png" alt="">/)
+      assert.match(out, /<hr class="wp-block-separator has-alpha-channel-opacity"\/>/)
+      assert.match(out, /<img src="b\.jpg"\/>/)
+    })
+
+    test('an inline image in a pullquote leaves the pullquote a pullquote', () => {
+      const out = wp('<figure class="wp-block-pullquote"><blockquote><p>a <img src="x.png" style="width: 90px;" alt="" data-quill-inline-image=""></p></blockquote></figure>')
+      assert.match(out, /<figure class="wp-block-pullquote">/)
+      assert.doesNotMatch(out, /wp-block-image|wp:image/)
+      assert.match(out, /<p>a <img src="x\.png" style="width: ?90px;?" alt=""><\/p>/)
+    })
+  })
+
+  describe('a carried style', () => {
+    test('replaces the drawn style at the carried style\'s own position', () => {
+      const out = wp('<p><mark style="color:red" class="has-inline-color" data-quill-style="color:#cf2e2e">r</mark></p>')
+      assert.match(out, /<mark class="has-inline-color" style="color:#cf2e2e">r<\/mark>/)
+      assert.doesNotMatch(out, /color:red|data-quill-style/)
     })
   })
 })

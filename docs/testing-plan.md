@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 743 Swift tests + 1,750 JS tests (1,749 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 756 Swift tests + 1,776 JS tests (1,775 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,19 +16,19 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (743 tests)
+1. **Swift tests** — `swift test` (756 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (70 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (116 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (280 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (286 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (111 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (124 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (376 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (382 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (59 tests — live Tiptap editor in jsdom)
-13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (60 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (240 tests — live Tiptap editor in jsdom)
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (743 tests, 48 suites)
+## Swift test suite (756 tests, 48 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -138,10 +138,10 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 14 | `PostItemTests` | `AppStateTests.swift` | 11 | `PostItem.id`, `.title`, `.statusBadge`, `.isRemote` computed properties |
 | 15 | `SidebarSectionTests` | `AppStateTests.swift` | 8 | `SidebarSection.icon` and `.shortTitle` for all cases |
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
-| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 12 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search and starting with an empty title |
+| 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 15 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search and starting with an empty title; `switchSection` closing the inspector first and running the follow-up after the switch, or at once for the section already showing |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 55 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `adoptSavedSettings` (status, date and slug from the save response); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 61 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `adoptSavedSettings` (status, date and slug from the save response, and what a status or date chosen during the save keeps); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`, a chosen date over the server's, a future server date reset only when publishing); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -151,7 +151,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
-| 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 9 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`/`dateText`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated, the date is `date_gmt` in local time (falling back to `date`) |
+| 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 10 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`/`dateText`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated, the date is `date_gmt` in local time (falling back to `date`, and to the site date when `date_gmt` is WordPress's zero date) |
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
@@ -169,7 +169,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 14 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, each list's count and loading state |
 | 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 8 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
 | 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 6 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
-| 48 | `LinkPickerModelTests` | `LinkPickerModelTests.swift` | 2 | A failed link search sets `searchError` (shown as an `InlineError`), and clearing the field removes it |
+| 48 | `LinkPickerModelTests` | `LinkPickerModelTests.swift` | 5 | A failed link search sets `searchError` (shown as an `InlineError`) and empties the earlier results; clearing the field, a later successful search, or typing a URL removes the error |
 
 ---
 
@@ -713,7 +713,7 @@ Tests that `AppState` initializes with loading flags set correctly — `isLoadin
 | `initialListStateWaitsForFirstLoad` | `isLoadingList == true`, `hasLoadedList == false` on fresh `AppState` |
 | `initialMediaStateWaitsForFirstLoad` | `isLoadingMedia == true`, `hasLoadedMedia == false` on fresh `AppState` |
 
-### 17. View-model — `AppStateFilteredItemsTests` (12 tests)
+### 17. View-model — `AppStateFilteredItemsTests` (15 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -731,6 +731,9 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `searchOnlyAppliesToActiveSection` | Search on `.posts` doesn't bleed into `.pages` data |
 | `newDraftClearsTheSearchSoItIsListed` | `createNewDraft` (⌘N) clears the search, so the new draft is listed in Drafts rather than hidden behind "No Results" (run-log issue 1) |
 | `newDraftStartsWithAnEmptyTitle` | A new draft is stored with an empty title, so the editor shows the "Title" placeholder and WordPress never receives a literal "Untitled" |
+| `switchingSectionClosesTheInspectorNowAndSwitchesAfterwards` | `switchSection(to:then:)` closes the open inspector and bumps `inspectorCloseToken` at once, leaves `selectedSection` alone until the close has played, then switches and runs the follow-up (the section picker no longer slides after an open inspector) |
+| `switchingSectionWithoutAFollowUpStillSwitches` | The default empty follow-up still ends on the new section |
+| `switchingToTheCurrentSectionRunsTheFollowUpAndLeavesTheInspectorOpen` | A switch to the section already showing runs the follow-up at once and neither closes the inspector nor bumps the token, so Upload Media… from Media keeps Media Info open |
 
 ---
 
@@ -778,7 +781,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (55 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (61 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -816,7 +819,7 @@ A restored autosave keeps the server `modified` it was edited from as the confli
 | `stashWithLaterEditsIsKeptOnTheSavedVersion` | A stash whose content differs from what was saved is kept, with `serverModified` set to the saved post's |
 | `stashDifferingOnlyInFootnotesIsKept` | A stash that matches in title and content but not footnotes is kept, so an edited note is not lost |
 
-#### `adoptSavedSettings` (2 tests)
+#### `adoptSavedSettings` (6 tests)
 
 After a save the server's status, date and slug replace what was sent, unless the user changed that field while the save ran.
 
@@ -824,6 +827,10 @@ After a save the server's status, date and slug replace what was sent, unless th
 |---|---|
 | `publishingShowsTheSlugWordPressAssigned` | A slug the server assigned on publish reaches both the inspector and the clean copy |
 | `aSlugTypedDuringTheSaveIsKept` | A slug typed during the save stays in the inspector; the clean copy takes the server's |
+| `theStatusAndDateWordPressStoredReplaceTheOnesSent` | A post sent as `publish` that WordPress stored as `future` with a date shows `future` and that date in the inspector and in the clean copy |
+| `aStatusPickedDuringTheSaveIsKeptButTheBaselineMovesToWhatWasStored` | A status changed in the inspector during the save stays; the clean copy takes the stored status, so the change still counts as unsaved |
+| `aDateChosenDuringTheSaveKeepsBothItAndTheStatus` | A date chosen during the save stays in the inspector with the status chosen alongside it; the clean copy keeps the stored status and no date |
+| `publishingOverAFutureDateClearsTheDateOnceWordPressStoresNone` | Publishing a post that had a date, where WordPress stores none, clears the date in both copies |
 
 #### Preview conflict check (1 test)
 
@@ -841,7 +848,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | `readingTimeShortTextIsOneMinute` | Word count ≤ 238 → `readingMinutes == 1` |
 | `readingTimeRoundsUp` | Word count that doesn't divide evenly → reading time rounds up (e.g. 239 words → 2 min) |
 
-#### Status helpers (7 tests)
+#### Status helpers (9 tests)
 
 | Test | What it checks |
 |---|---|
@@ -863,6 +870,8 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 | `publishingAPastDatedPostSendsNoDate` | Publishing with a past or missing server date sends no date, so WordPress keeps its own |
 | `draftOfAScheduledPostKeepsTheServerDate` | Only `publish` replaces a future server date; a draft keeps it |
 | `chosenScheduleDateIsSent` | A `publishDate` chosen in the panel is sent as it is |
+| `aChosenDateWinsOverTheServerDateWhenPublishing` | Publishing with a date chosen in the panel sends that date, not the current time, even when the server's date is in the future |
+| `updatingAPublishedPostWhoseServerDateIsInTheFutureOnlyResetsItWhenPublishing` | With a future server date, `private` and `pending` send no date; only `publish` replaces it |
 
 #### Pasted-image file extension (2 tests)
 
@@ -1394,7 +1403,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `dropsTheListWhenTheKeyChangedDuringTheFetch` | A result for a key that's no longer current is neither applied nor saved |
 | `aFailedFetchChangesNothing` | A network failure leaves the settings as they were |
 
-### 48. Editor — `LinkPickerModelTests` (2 tests)
+### 48. Editor — `LinkPickerModelTests` (5 tests)
 
 File: `Tests/QuillTests/LinkPickerModelTests.swift`
 
@@ -1402,6 +1411,9 @@ File: `Tests/QuillTests/LinkPickerModelTests.swift`
 |---|---|
 | `aFailedSearchSaysWhy` | A search that throws leaves `searchError` holding the reason and `isSearching` false |
 | `clearingTheFieldRemovesTheError` | An empty field clears the error |
+| `aSearchThatWorksAgainClearsTheErrorAndListsTheResults` | After a failed search, a later search that succeeds lists its results and clears `searchError` |
+| `aFailedSearchEmptiesTheResultsTheLastOneListed` | A failed search empties the results the previous search listed, so the picker never shows old hits next to the error |
+| `typingAURLRemovesTheErrorAndSearchesNothing` | Typing a URL clears `searchError` and runs no search |
 
 ---
 
@@ -1757,7 +1769,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (280 tests)
+## JS editor tests (286 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -2060,7 +2072,7 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `a list beside a delimiter leaves one delimiter` | A delimiter typed along with the list is not doubled |
 | `a list the splice cannot find is swapped through the DOM, beside a delimiter or not` | A single-quoted class takes the DOM path: beside a delimiter the list is removed, alone it becomes the delimiter |
 
-### `inlineFootnotes` (12 tests)
+### `inlineFootnotes` (14 tests)
 
 The inverse, run on load so the notes are editable in the editor.
 
@@ -2072,6 +2084,8 @@ The inverse, run on load so the notes are editable in the editor.
 | `extractFootnotes leaves the rest of the saved markup byte for byte` | The list is spliced out of the string; re-serializing the DOM undid the save's self-closed `<hr/>` and `<img/>` |
 | `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta and no markers is shown as a non-editable card rather than an empty list |
 | `empty meta with markers gives each marker an empty note at the delimiter` | A post whose notes are missing gets one empty, editable note per marker, so the author can write them (run-log issue 12) |
+| `empty meta gives one empty note per distinct marker, in document order` | A marker used twice makes one note, and the notes follow the order the markers first appear in |
+| `empty meta and markers but no delimiter changes nothing` | Markers alone, with no `<!-- wp:footnotes /-->` to fill, leave the HTML as it was |
 | `meta without a delimiter in the content changes nothing` | |
 | `only the delimiter is replaced; the markup around it keeps its exact bytes` | The whole output is compared: single-quoted attributes, `<br/>` and `<img/>` around the delimiter are not re-serialized |
 | `a delimiter nested inside a block is left alone; the top-level one becomes the list` | The splice picks the top-level comment's own occurrence in the string, not the first match |
@@ -2209,7 +2223,7 @@ Every delimiter goes through `serializeAttributes`, which the block serializer s
 | `angle brackets in a carried value are escaped` | |
 | `a block with no attributes still gets no trailing space` | `<!-- wp:paragraph -->`, not `<!-- wp:paragraph  -->` |
 
-### `img and hr self-close, br does not` (5 tests)
+### `img and hr self-close, br does not` (8 tests)
 
 Core self-closes the void tags in the two blocks whose markup it owns. Without this, an edited post diffs on every image and separator in its history.
 
@@ -2220,6 +2234,15 @@ Core self-closes the void tags in the two blocks whose markup it owns. Without t
 | `a line break is left alone` | `<br>` stays as core writes it |
 | `an angle bracket inside an attribute does not truncate the tag` | The pass is a regex over the serialized string, so `>` inside an attribute value has to be treated as data |
 | `an already self-closed tag does not gain a second slash` | |
+| `an inline image keeps core's open tag and loses its marker` | `<img src alt data-quill-inline-image>` in a paragraph is written without `/>` and without `data-quill-inline-image`, as the block editor writes an inline image |
+| `an inline image does not stop a separator or a block image closing themselves` | In one document the inline image stays open while the `<hr>` and the block image still self-close |
+| `an inline image in a pullquote leaves the pullquote a pullquote` | The image-figure pass skips `[data-quill-inline-image]`, so the pullquote keeps `wp-block-pullquote` and gets no `wp-block-image` class or `wp:image` delimiter, and the image keeps its `style` |
+
+### `a carried style` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `replaces the drawn style at the carried style's own position` | A `<mark>` carrying `data-quill-style` is written with the carried value in the drawn style's place, after `class`, and the marker attribute is gone |
 
 ### `anchor and className supports` (23 tests)
 
@@ -2306,7 +2329,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
-## JS keyboard tests (111 tests)
+## JS keyboard tests (124 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2477,7 +2500,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
 | `inside a footnote the insert is refused and the document is unchanged` | Footnote entries reject image insertion outright |
 
-### `inline images` (8 tests)
+### `inline images` (14 tests)
 
 The block editor's inline image (its `core/image` rich-text format, `<img class="wp-image-N" style="width: Npx;" src alt>`), the `inlineImage` node (run-log issue 10). Gutenberg deletes an image block from a table cell on its next save, so a cell only ever holds this.
 
@@ -2491,14 +2514,21 @@ The block editor's inline image (its `core/image` rich-text format, `<img class=
 | `insertImage in a table cell keeps a narrower image at its own width` | |
 | `one copied on its own, with no line around it, pastes into a cell as one` | ProseMirror serializes a lone inline image as a bare `<img data-quill-inline-image>`; the marker is enough to parse it back inline |
 | `insertImage outside a table cell still inserts an image block` | |
+| `insertImage in a table cell without a media id or width writes a 150px image and no wp-image class` | `<img style="width: 150px;" src alt="">`, with no `class` to point at a media item |
+| `insertImage in a header cell inserts one there too` | A `tableHeader` cell takes the inline image the way a body cell does |
+| `a linked one in a paragraph of text keeps its link` | `<a href><img></a>` inside text stays inline and comes back byte for byte after an edit |
+| `a linked image alone in a paragraph still becomes an image block` | A paragraph holding only a linked image is still an image block, with no inline image left in a paragraph |
+| `one in a list item of text and one in a heading stay inline` | The image sits in a paragraph inside the `<li>` and in the `<h3>` |
+| `a javascript: source is dropped with the script handlers` | Neither `javascript:` nor `onerror` reaches the saved markup |
 
-### `the inline image popover` (9 tests)
+### `the inline image popover` (16 tests)
 
-Clicking an inline image opens Width and Alternative text with Apply, as the block editor's inline image popover does. The four Apply tests compare Quill's saved paragraph with core's own Apply, run by `Scripts/core-formats.js` through `@wordpress/rich-text` with `@wordpress/format-library` registered.
+Clicking an inline image opens Width and Alternative text with Apply, as the block editor's inline image popover does. The Apply tests that name the block editor compare Quill's saved paragraph with core's own Apply, run by `Scripts/core-formats.js` through `@wordpress/rich-text` with `@wordpress/format-library` registered.
 
 | Test | What it checks |
 |---|---|
-| `selecting one opens it with the width and alt text the image has` | The width is the digits of `style`, as core reads it |
+| `selecting one opens it with the width and alt text the image has` | The width is the `width:` declaration of `style`, as core reads it |
+| `a style with more than a width shows only the width and keeps the rest on Apply` | `style="width:150px;height:100px"` shows 150, not 150100; Apply writes `width: 150px; height:100px;` and keeps the `height` declaration |
 | `Apply stays off until a value changes` | Changing a value back turns it off again |
 | `Apply writes what the block editor writes for a new width and alt text` | Existing `style` and `alt` replaced in place |
 | `Apply writes what the block editor writes for a width on an image that had none` | `style` appended after the existing attributes |
@@ -2507,6 +2537,12 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `the image stays selected after Apply` | The popover stays open on the updated image |
 | `Escape closes it` | |
 | `moving the caret off the image closes it` | |
+| `Escape in the editor closes it and leaves the table the image is in` | Escape on a selected inline image in a table cell closes the popover; the image stays selected and the caret stays in the cell instead of leaving the table |
+| `deleting the image closes it` | |
+| `opening code view closes it` | |
+| `the help link opens through Swift and does not navigate` | A click posts the W3C decision-tree URL to `openLink` and is `preventDefault`ed |
+| `alt text with quotes and an ampersand is written as core writes it` | Matches `applyInlineImage` from `Scripts/core-formats.js` |
+| `after Apply the popover shows the applied values and Apply is off again` | The fields keep the applied width and alt text; Apply is disabled |
 
 ---
 
@@ -2665,7 +2701,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (376 tests)
+## JS container tests (382 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2752,6 +2788,19 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `the caret lands in the new block, not the cell it came from` | Tabs, Accordion and Columns inserted from a cell put the caret in the new block's first panel, heading or column |
 | `a gallery inserted with an inline image selected in a cell goes after the table` | A node-selected inline image in a cell does not take the gallery into the cell |
 | `Paste as Markdown stays in the cell` | Markdown pasted in a cell is still inserted at the caret |
+
+### `the embed card names its provider` (6 tests)
+
+Inserting a URL from the embed field gives a card whose `.embed-card-provider` label names the provider.
+
+| Test | What it checks |
+|---|---|
+| `https://www.youtube.com/watch?v=abc reads YouTube embed` | |
+| `https://vimeo.com/123 reads Vimeo embed` | |
+| `https://x.com/user/status/1 reads Twitter embed` | |
+| `https://soundcloud.com/a/b reads SoundCloud embed` | |
+| `https://www.tiktok.com/@a/video/1 reads TikTok embed` | |
+| `a site Quill has no provider for reads Embed` | `https://example.com/post` gets the plain label `Embed` |
 
 ### `accordion block` (7 tests)
 
@@ -3249,7 +3298,7 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 
 ---
 
-## JS paste source tests (60 tests)
+## JS paste source tests (61 tests)
 
 File: `Scripts/test-editor-paste-sources.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3261,7 +3310,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 | `every captured clipboard pastes as valid, clean Gutenberg markup` | 16 | One per source: no validation problem, WordPress would save it back unchanged, no foreign style, attribute, class, bare span or empty paragraph, and every word of the plain-text flavor is kept (the chat apps' "Copy code" and language labels excepted) |
 | `what each source becomes` | 9 | Word lists become nested core lists with a lettered sub-level; Word and Docs alignment becomes core's `textAlign`; Word's formatting becomes plain marks; VS Code becomes one code block; chat-app code keeps its code and drops the label and copy button; Docs' not-bold wrapper does not bold everything; WordPress emoji become the character; a phrase lands inside a paragraph with its word spaces; a front-end copy loses its render-only classes and gets its embed back |
 | `paste fallbacks` | 7 | WebKit's empty HTML for a closed `<details>` falls back to the plain text, short or long; its extra wrapper around an open `<details>` is dropped; a YouTube URL in an empty paragraph becomes an embed, and stays a link in a sentence or for an unknown host; plain text pasted into an empty formatted paragraph keeps that paragraph's alignment, since `transformPasted` leaves a plain-text slice open |
-| `pasted images the site does not host yet` | 7 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id, and so is one a pasted heading keeps inline (an `inlineImage`, run-log issue 10); an unreadable `file:` image is dropped; an image Swift gave up on (`forgetPastedImage`) is sent again when pasted again; one undo after the upload lands takes back the whole paste, not just the swap from base64 to the uploaded file; a redo brings back the uploaded file, not the base64 |
+| `pasted images the site does not host yet` | 8 | A screenshot is sent for upload with no token and nothing inserted yet; a `data:` image in pasted HTML is sent with a token and `resolvePastedImage` swaps in the upload's URL and id, and so is one a pasted heading keeps inline (an `inlineImage`, run-log issue 10), where the swap replaces an earlier `wp-image-N` class with the upload's and keeps the other classes; an unreadable `file:` image is dropped; an image Swift gave up on (`forgetPastedImage`) is sent again when pasted again; one undo after the upload lands takes back the whole paste, not just the swap from base64 to the uploaded file; a redo brings back the uploaded file, not the base64 |
 | `outside HTML cannot reach Quill internals` | 1 | Pasted `data-quill-block-attrs`, event handlers and `javascript:` links never reach the save |
 | `pasting into a list item` | 5 | Pasted blocks become further items, not paragraphs packed into one `<li>`; a single pasted paragraph joins the item; a quote's paragraphs pasted with other blocks become items of their own; a quote pasted alone becomes items too; a quote's citation, bare text, headings and nested lists all survive as items |
 | `pasting blocks into a paragraph` | 2 | The first block pasted into an empty top-level paragraph replaces it and keeps its attributes, as in the block editor; pasted into a paragraph with text, it still joins that paragraph |
@@ -3399,6 +3448,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Enter a site URL without `https://` (e.g. `example.com`) → app either adds the scheme automatically or shows a clear error.
 - [ ] Try a site URL with a trailing slash, a subdirectory install (`example.com/blog`), and a non-standard port → all connect successfully.
 - [ ] Enter a wrong password → a readable error message appears (not a silent failure or crash). Quit and relaunch → the app still shows the Welcome panel (bad credentials were never written to disk, since validation now happens before the save).
+- [ ] In the manual panel, enter an address that does not exist (a misspelled domain) → the error reads "Couldn't reach {host}. Check the address and your connection.", the same wording as the Welcome panel, not raw system text.
 - [ ] Enter a URL for a non-WordPress site or one with the REST API disabled → a clear error appears.
 - [ ] Paste an app password that contains spaces → authentication succeeds (WordPress app passwords normally have spaces).
 - [ ] No macOS Keychain password prompt appears during normal use.
@@ -3415,6 +3465,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Save a remote post, and publish a local draft → the row for the saved post stays highlighted in the sidebar afterwards.
 - [ ] Clicking a sidebar item highlights it with Quill's amber accent (not the default macOS blue). This holds only while the user's System Settings accent is "Multicolor" — see the root `CLAUDE.md`.
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
+- [ ] **New draft with a search active.** Type a word in the search field, then choose File → New Post (⌘N) → the search clears, the new draft is listed in Local Drafts and selected, and the title field is empty and shows the "Title" placeholder (the sidebar row and window title still read "Untitled"). Save it to WordPress without typing a title → the post's title on the site is empty, not "Untitled".
+- [ ] **The section picker does not slide.** Open Media Info on Media (or Post Settings on a post), then click Posts or Pages in the section picker, and repeat from the + menu and File → New Post → the inspector closes, then the section changes, and the selected picker button stays where it is instead of sliding up into place. Switching back to Media does not reopen the inspector.
 - [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
 - [ ] The search prompt names the section: Search Posts, Search Pages, Search Drafts, Search Media.
 - [ ] **Status filter.** On Posts and Pages, the filter button right of the search field opens a menu of All, Published, Draft, Scheduled (plus Pending and Private when the site has any) with counts that match WordPress admin. Scheduled is always listed (with no count when none exist). Pick one → the list narrows and the button turns solid amber; search narrows it further. Switch to Pages and back → each section kept its own filter. Scheduled lists soonest first. The button is absent on Drafts and Media.
@@ -3475,6 +3527,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **An empty paragraph the author wrote at the end of a post** is still there after an edit and a save. (Quill keeps its own empty paragraph after a table or image so the caret has somewhere to land; that one is chrome and should not be saved.)
 - [ ] Confirm the four blocks Quill *does* model still behave normally in the same post: an image is still selectable/resizable, a gallery still shows its thumbnail grid, an embed still renders, and a table is still editable.
 
+- [ ] **⌘← / ⌘→ beside a card.** Put the caret at the start of a paragraph that follows a gallery, embed or preserved-block card and press ⌘← → the caret stays in the paragraph and the card is not selected. Do the same at the end of a paragraph that precedes a card with ⌘→.
+
 ### 7.4 Editor — images
 
 - [ ] Click the insert image button in the toolbar → select an image from the picker → it appears at the cursor position in the editor.
@@ -3493,6 +3547,11 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Save a post with an inserted image and check code view → no `<p></p>` follows the `<!-- /wp:image -->` block: Quill's own empty paragraph after an image is chrome and is not saved (one you typed into, or that sits inside a quote or table cell, is saved).
 - [ ] Insert an image with the cursor inside a list item and a blockquote → in each case the image and its new paragraph stay inside that container. In a table cell → the image goes inline in the cell's text (at most 150 px wide, its own width if narrower), and saves as `<img class="wp-image-N" style="width: Npx;" …>` with no `wp:image` comment.
 - [ ] Open a post whose table cell or paragraph holds an inline image written by the block editor, edit another block, save → the image is still inline and its markup is unchanged.
+- [ ] **Inline images in text.** Open a post where the block editor put an image inside a paragraph of text, a heading, a list item and a linked image inside text → each stays inline (the paragraph is not split around an image block), a linked one keeps its link, and a save after an unrelated edit leaves their markup unchanged. A paragraph holding only an image still opens as an image block.
+- [ ] **Inline image popover.** Click an inline image in a table cell → a popover opens beside it with Width and Alternative text and an Apply button, and Apply is disabled. Change Width to 200 and the alternative text, click Apply → the image is 200 px wide, the popover stays open with the new values, Apply is disabled again, and code view shows `style="width: 200px;"` and the new `alt` and no `wp:image` comment. Clear the width and Apply → `style=""`. Type alt text with a double quote and `&` → code view escapes them as core does. Escape closes the popover, the image stays selected and the caret stays in the cell, not outside the table. Press Delete with the image selected, or switch to code view → the popover closes. Click the help link → it opens the W3C decision tree in the default browser and the editor does not navigate. Compare with the same image in the block editor's popover.
+- [ ] **Inline image with a longer style.** In code view, change an inline image to `style="width:150px;height:100px"` and switch back, then click the image → Width shows 150 (not 150100). Change the alt text and Apply → the saved `style` still contains `height:100px`.
+- [ ] **Inline image in a pullquote.** In a pullquote, insert an image inline in its text (paste one into the quote, or load a pullquote with `<img>` in its paragraph), save and read the code view → the block is still `wp:pullquote` with no `wp-block-image` class and no `wp:image` comment, and Gutenberg shows no invalid-block warning.
+- [ ] **Action buttons in dark appearance.** The embed Insert button, the inline image popover's Apply button and the find bar's active toggle show white text on the accent fill (amber), readable in light and in dark, and match the link popover's Apply button.
 - [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
 - [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
@@ -3590,6 +3649,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 ### 7.7 Save / publish / draft / schedule
 
 - [ ] Save a local draft → it persists locally only (no network call); toast shows "Saved locally". The toolbar button is **Save Locally** and the primary button reads **Save to WordPress** with the upload icon, not the paperplane.
+- [ ] On a local draft, click **Save to WordPress** with Status set to Draft → the toast reads "Saved to WordPress" (not "Draft saved"). Press ⌘S on a draft that is already on WordPress → "Draft saved", unchanged.
 - [ ] If the local draft save fails (e.g. disk full) → the editor banner reads "Couldn't save the draft: …" with the failure reason.
 - [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
 - [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.
@@ -3597,6 +3657,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Press ⌘⇧P or click Publish on a remote post → the post publishes. The button label matches the action: "Publish" for drafts, "Update" for published posts, "Schedule" for future-dated posts, "Submit for Review" for pending posts, "Publish Privately" for private posts.
 - [ ] Set a future date on a post → status changes to "future" and the post is scheduled. Check on the WordPress server that the scheduled time matches (particularly important for sites in non-UTC timezones).
 - [ ] Close and reopen a scheduled post → the correct future date appears in the settings panel.
+- [ ] **Unscheduling.** On a scheduled post, set Status to Published and click Publish/Update → the post publishes now: WordPress shows it as Published with the current date (not still Scheduled), and the inspector and the sidebar row show Published with that date. Choose a date in the panel first and publish → the chosen date is kept. Set a scheduled post to Private or Pending and save → no date is sent and it does not publish.
+- [ ] **The title badge follows the saved status.** On a draft, open the Status menu and choose Published without saving → the badge next to the title and its tooltip still say Draft, as does the sidebar row. Publish → both change to Published once the save succeeds.
 - [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
 - [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
 - [ ] Open a post while offline (or force the full-post fetch to fail) → the editor banner explains the post may be missing content; attempting to save shows "Can't save: this post never finished loading" instead of silently publishing empty content over the real post.
@@ -3839,6 +3901,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 ### 7.19 Embeds
 
 - [ ] Paste a YouTube, Vimeo, or Twitter/X URL into the editor → it displays as an embed card showing the provider name and URL.
+- [ ] Insert YouTube, Vimeo, X, SoundCloud and TikTok URLs through the toolbar Embed button → the cards read "YouTube embed", "Vimeo embed", "Twitter embed", "SoundCloud embed" and "TikTok embed"; an address on another site reads "Embed".
 - [ ] Save and fetch the raw HTML → the embed is a valid Gutenberg `wp-block-embed` block with correct provider classes (e.g. `is-type-video is-provider-youtube wp-block-embed-youtube`).
 - [ ] Close and reopen the post → the embed card still renders correctly.
 - [ ] View the post on the live WordPress site → the embed renders as the expected player/widget.
@@ -3996,6 +4059,7 @@ human is required.
 - [ ] Switch between filters quickly (Images, Documents, Audio, back to All Media) → each shows a spinner while it loads and never flashes "No media yet" before its items arrive. A filter that really has nothing still ends on the empty state.
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
 - [ ] Toolbar + menu → Upload Media… opens the file picker and does NOT create a post.
+- [ ] With Media Info open on a selected item, choose Upload Media… from the + menu, then cancel or finish the upload → the section stays Media and Media Info stays open (the menu does not run the section-switch animation when Media is already showing). From Posts, Upload Media… switches to Media, and Media Info is not open on arrival.
 - [ ] File → New Media… (⌘⌥N) opens the same file picker.
 - [ ] Right-clicking a thumbnail selects it and offers Copy URL, Open in Browser, Delete.
 - [ ] Deleting removes the thumbnail and clears the selection.
@@ -4304,20 +4368,32 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 221 | The embed card titled a YouTube embed "Youtube embed". Each provider has a `name` with WordPress's spelling | ✅ `test-editor.js` `'each provider carries the name WordPress spells it with'` + 👁 §7.19 |
 | 222 | After a draft was published the Slug field stayed empty until the post was reopened, because only status and date were taken from the save response | ✅ `PostEditorHelpersTests` `publishingShowsTheSlugWordPressAssigned`, `aSlugTypedDuringTheSaveIsKept` + 👁 §7.7 |
 | 223 | The sidebar showed the site's date while the inspector showed local time, so a scheduled post could show different days in each. The row uses `date_gmt` in local time | ✅ `PostListRowSubtitleTests` `theDateShownIsTheUTCDateInLocalTime`, `aPostWithoutAUTCDateShowsItsSiteDate` + 👁 §7.7 |
-| 224 | Link search with the site unreachable showed an empty popover. The failure is shown as an `InlineError` | ✅ `LinkPickerModelTests` (2 tests) |
+| 224 | Link search with the site unreachable showed an empty popover. The failure is shown as an `InlineError`, replaces the earlier results, and is cleared by a later successful search or by typing a URL | ✅ `LinkPickerModelTests` (5 tests) |
 | 225 | The "in the Media Library but wasn't set as the featured image" toast vanished after 2 seconds. It is an error toast now (6 seconds) | 👁 §7.7 |
 | 226 | An emptied tab title collapsed to a stub with no placeholder. Tab titles get the same `is-untitled` hint as accordion and details titles | ✅ `test-editor-containers.js` `'an emptied tab title is marked as untitled'` + 👁 §7.23 |
 | 227 | After a tab title was emptied and retyped, WebKit left a second, stale caret above the text. The editor renders tab titles as spans; saved markup keeps the buttons | ✅ `test-editor-containers.js` `'a tab title is edited as a span and still saved as a button'` (structure) + 👁 §7.23 (the caret) |
 | 228 | A gallery or embed inserted with the caret in a table cell was saved inside the cell, where core reads its block comment as a nested block the table cannot hold and deletes it on its next save; other block inserts became plain HTML in the cell. With the caret in a cell, `_blockInsertChain` puts every block insert after the table, as the block editor's inserter does (Image stays an inline image, Markdown stays at the caret) | ✅ `test-editor-containers.js` `'block inserts from a table cell'` (21 tests) + 👁 §7.4 |
-| 218 | A styled `<div>` wrapped around block markup became an empty Custom HTML card: the parser splits it across freeform slices, so its opener parses as an empty element. `isSlicedWrapperOpener` skips an empty grouping element whose closing tag is not in its slice | ✅ `test-block-serializer.js` `'a styled wrapper around blocks is not kept as an empty Custom HTML block'` and `'an empty styled div that closes in its own slice is still kept'` + 👁 §7.3 |
-| 219 | The Custom HTML sheet offered CSS and JavaScript tabs to users whose code WordPress strips on save: `capabilities.unfiltered_html` is the role's capability, which a multisite non-super-admin or a site with `DISALLOW_UNFILTERED_HTML` still reports. `canPostUnfilteredHTML` also requires the `action-unfiltered-html` link on a post fetched with `context=edit`, and falls back to the capability when the site has no posts (`Sources/QuillKit/API/CLAUDE.md`) | ✅ `WordPressClientTests` `canPostUnfilteredHTML` (5 tests) + 👁 §7.23 |
-| 220 | A cut-off AI reply always suggested a lower reasoning level, even when the request sent no thinking. `AnthropicError.cutOff` carries `reasoned`, and the message offers that advice only when it is true | ✅ `AnthropicClientTests.cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` + 👁 §7.11 |
-| 221 | Generate removed the space before `; : ! ?`, which French typography requires. `parseGenerated` always closes a space before `,` and `.`, and before `; : ! ?` only where a stripped citation tag left one | ✅ `AIPromptBuilderTests.parseGeneratedKeepsFrenchSpacingBeforeHighPunctuation` and `.parseGeneratedClosesSpaceBeforePunctuation` + 👁 §7.11 |
-| 222 | Saving Settings wrote its own copy of the AI settings over the model list and web-search tool versions the app stored while Settings was open. `keepStateStoredElsewhere` merges both from the stored file (same API key only) before each save (`Sources/QuillKit/Views/Settings/CLAUDE.md`) | 👁 §7.11 — `PreferencesView` has no harness |
-| 223 | Evaluate clicked on a post under 100 words, then typed past 100 words, showed "Reviewing…" with nothing running. The panel's new `.ready` state shows an Evaluate button when there is no evaluation yet | 👁 §7.11 — `evaluationPanelState` is private view state |
-| 224 | A fact-check source opened any URL scheme Claude returned. The link shows only for `http` and `https`; fact-check rows also gained VoiceOver's "Show in Post" action, which Fixes and Ideas rows already had | 👁 §7.11 — `EvaluationPanel` has no harness |
-| 225 | Web search tool versions: a remembered version Quill does not list is tried first and then the list from the newest; a rejected remembered version moves only to older ones; when every version is rejected, the API's last 400 is shown after one try each | ✅ `AnthropicClientTests` `knownToolOutsideTheListIsTriedFirstThenTheList`, `rejectedKnownVersionFallsBackOnlyToOlderOnes`, `oldestVersionRejectedSurfacesTheAPIError` |
-| 226 | A reasoning level the chosen model does not offer must not be sent: an adaptive model gets adaptive thinking with no `effort`, and `xhigh`/`max` on an enabled-thinking-only model send no thinking. A fetched model list without the pinned model clears the pin and fits the reasoning to the new default | ✅ `AnthropicClientTests` `adaptiveLevelTheModelDoesNotOfferSendsNoEffort`, `enabledOnlyLevelWithoutABudgetSendsNoThinking`; `AIModelLoadingTests.aFetchDropsAPinnedModelThatIsGoneAndFitsTheReasoningToTheNewDefault` + 👁 §7.11 |
+| 229 | A styled `<div>` wrapped around block markup became an empty Custom HTML card: the parser splits it across freeform slices, so its opener parses as an empty element. `isSlicedWrapperOpener` skips an empty grouping element whose closing tag is not in its slice | ✅ `test-block-serializer.js` `'a styled wrapper around blocks is not kept as an empty Custom HTML block'` and `'an empty styled div that closes in its own slice is still kept'` + 👁 §7.3 |
+| 230 | The Custom HTML sheet offered CSS and JavaScript tabs to users whose code WordPress strips on save: `capabilities.unfiltered_html` is the role's capability, which a multisite non-super-admin or a site with `DISALLOW_UNFILTERED_HTML` still reports. `canPostUnfilteredHTML` also requires the `action-unfiltered-html` link on a post fetched with `context=edit`, and falls back to the capability when the site has no posts (`Sources/QuillKit/API/CLAUDE.md`) | ✅ `WordPressClientTests` `canPostUnfilteredHTML` (5 tests) + 👁 §7.23 |
+| 231 | A cut-off AI reply always suggested a lower reasoning level, even when the request sent no thinking. `AnthropicError.cutOff` carries `reasoned`, and the message offers that advice only when it is true | ✅ `AnthropicClientTests.cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` + 👁 §7.11 |
+| 232 | Generate removed the space before `; : ! ?`, which French typography requires. `parseGenerated` always closes a space before `,` and `.`, and before `; : ! ?` only where a stripped citation tag left one | ✅ `AIPromptBuilderTests.parseGeneratedKeepsFrenchSpacingBeforeHighPunctuation` and `.parseGeneratedClosesSpaceBeforePunctuation` + 👁 §7.11 |
+| 233 | Saving Settings wrote its own copy of the AI settings over the model list and web-search tool versions the app stored while Settings was open. `keepStateStoredElsewhere` merges both from the stored file (same API key only) before each save (`Sources/QuillKit/Views/Settings/CLAUDE.md`) | 👁 §7.11 — `PreferencesView` has no harness |
+| 234 | Evaluate clicked on a post under 100 words, then typed past 100 words, showed "Reviewing…" with nothing running. The panel's new `.ready` state shows an Evaluate button when there is no evaluation yet | 👁 §7.11 — `evaluationPanelState` is private view state |
+| 235 | A fact-check source opened any URL scheme Claude returned. The link shows only for `http` and `https`; fact-check rows also gained VoiceOver's "Show in Post" action, which Fixes and Ideas rows already had | 👁 §7.11 — `EvaluationPanel` has no harness |
+| 236 | Web search tool versions: a remembered version Quill does not list is tried first and then the list from the newest; a rejected remembered version moves only to older ones; when every version is rejected, the API's last 400 is shown after one try each | ✅ `AnthropicClientTests` `knownToolOutsideTheListIsTriedFirstThenTheList`, `rejectedKnownVersionFallsBackOnlyToOlderOnes`, `oldestVersionRejectedSurfacesTheAPIError` |
+| 237 | A reasoning level the chosen model does not offer must not be sent: an adaptive model gets adaptive thinking with no `effort`, and `xhigh`/`max` on an enabled-thinking-only model send no thinking. A fetched model list without the pinned model clears the pin and fits the reasoning to the new default | ✅ `AnthropicClientTests` `adaptiveLevelTheModelDoesNotOfferSendsNoEffort`, `enabledOnlyLevelWithoutABudgetSendsNoThinking`; `AIModelLoadingTests.aFetchDropsAPinnedModelThatIsGoneAndFitsTheReasoningToTheNewDefault` + 👁 §7.11 |
+| 238 | Choosing Published on a scheduled post left it `future`, and the status and date shown after a save were the ones sent rather than the ones WordPress stored. `adoptSavedSettings` takes both from the reply unless the user changed them during the save, and `payloadDate` sends the current time only when publishing over a future server date (a chosen date still wins; Private and Pending send none) | ✅ `PostEditorHelpersTests` `theStatusAndDateWordPressStoredReplaceTheOnesSent`, `aStatusPickedDuringTheSaveIsKeptButTheBaselineMovesToWhatWasStored`, `aDateChosenDuringTheSaveKeepsBothItAndTheStatus`, `publishingOverAFutureDateClearsTheDateOnceWordPressStoresNone`, `aChosenDateWinsOverTheServerDateWhenPublishing`, `updatingAPublishedPostWhoseServerDateIsInTheFutureOnlyResetsItWhenPublishing` + 👁 §7.7 |
+| 239 | A draft's `date_gmt` can be WordPress's zero date (`0000-00-00T00:00:00`), which does not parse. The sidebar row then shows the site `date` instead of dropping the date | ✅ `PostListRowSubtitleTests.aDraftWithWordPressesZeroDateShowsItsSiteDate` |
+| 240 | The section picker button slid up after leaving an open inspector, because the inspector tore down in the same layout pass as the section change. `switchSection` closes inspectors first and switches 10 ms later, and a switch to the section already showing only runs the follow-up, so Upload Media… from Media no longer closes Media Info | ✅ `AppStateFilteredItemsTests` `switchingSectionClosesTheInspectorNowAndSwitchesAfterwards`, `switchingSectionWithoutAFollowUpStillSwitches`, `switchingToTheCurrentSectionRunsTheFollowUpAndLeavesTheInspectorOpen` + 👁 §7.2 (the slide itself), §7.26 |
+| 241 | An inline image inside a pullquote's paragraph turned the pullquote into a `wp-block-image` / `wp:image`, because the image-figure pass took the first `img` in any figure. The pass skips `img[data-quill-inline-image]` | ✅ `test-editor.js` `'an inline image in a pullquote leaves the pullquote a pullquote'` + 👁 §7.4 |
+| 242 | The inline image popover read Width as every digit in `style`, so `width:150px;height:100px` showed 150100, and Apply dropped the other declarations. Width comes from the `width:` declaration only and Apply keeps the rest; a core-written style (width only) is unchanged | ✅ `test-editor-keyboard.js` `'a style with more than a width shows only the width and keeps the rest on Apply'`, `'Apply writes what the block editor writes for a new width and alt text'` + 👁 §7.4 |
+| 243 | An inline image has to keep core's bytes: no self-closing slash, no `data-quill-inline-image`, a link kept, no `wp-image` class when there is no media id, `javascript:` sources and `on*` handlers dropped, and a paragraph holding only a linked image still an image block | ✅ `test-editor.js` `'an inline image keeps core\'s open tag and loses its marker'`, `'an inline image does not stop a separator or a block image closing themselves'`; `test-editor-keyboard.js` `'insertImage in a table cell without a media id or width writes a 150px image and no wp-image class'`, `'a linked one in a paragraph of text keeps its link'`, `'a linked image alone in a paragraph still becomes an image block'`, `'one in a list item of text and one in a heading stay inline'`, `'a javascript: source is dropped with the script handlers'` + 👁 §7.4 |
+| 244 | The inline image popover has to close when its image goes away (deleted, or code view opened), Escape has to close it without moving the caret out of the table cell, and after Apply the fields must show the applied values with Apply disabled | ✅ `test-editor-keyboard.js` `'Escape in the editor closes it and leaves the table the image is in'`, `'deleting the image closes it'`, `'opening code view closes it'`, `'after Apply the popover shows the applied values and Apply is off again'`, `'the help link opens through Swift and does not navigate'`, `'alt text with quotes and an ampersand is written as core writes it'` + 👁 §7.4 |
+| 245 | A pasted `data:` image kept inline in a heading that already carries a `wp-image-N` class gets the upload's id: `resolvePastedImage` replaces the old `wp-image-N` and keeps the other classes | ✅ `test-editor-paste-sources.js` `'a data: image kept inline in a heading is swapped, and an earlier wp-image class is replaced'` |
+| 246 | Footnote markers with no `footnotes` meta load as editable empty notes: `inlineFootnotes` makes one note per distinct marker in document order, and only where the `<!-- wp:footnotes /-->` delimiter is | ✅ `test-editor.js` `'empty meta gives one empty note per distinct marker, in document order'`, `'empty meta and markers but no delimiter changes nothing'` |
+| 247 | A text colour's carried `data-quill-style` replaces the drawn `style` at the drawn style's own position (after `class`), so Gutenberg's stored `<mark>` still validates | ✅ `test-editor.js` `'replaces the drawn style at the carried style\'s own position'` (the rest of this guard is row 117) |
+| 248 | The embed card names each provider the way WordPress spells it (row 221 covers YouTube) and reads `Embed` for a host Quill has no provider for | ✅ `test-editor-containers.js` `'the embed card names its provider'` (6 tests) + 👁 §7.19 |
+| 249 | The title badge and its tooltip followed the Status menu, so choosing Published turned it green before anything was saved; a first save of a local draft said "Draft saved" rather than "Saved to WordPress" | 👁 §7.7 — view state in `PostEditorView` has no harness |
 
 ---
 

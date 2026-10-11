@@ -122,8 +122,8 @@
           </li>
           <li>Click <strong>Connect</strong>.</li>
         </ol>
-        <p class="docs-body">Quill tries the credentials against your site before it saves them. If the test fails, the error appears above Connect and nothing is saved. Once they're accepted, your posts and pages load in the sidebar.</p>
-        <p class="docs-body">To change your site or credentials later, choose <strong>Quill → Settings</strong> (⌘,), edit the fields under <strong>WordPress Credentials</strong> and click <strong>Save</strong>. Settings tests them the same way.</p>
+        <p class="docs-body">Quill tries the credentials against your site before it saves them. If the test fails, the error appears above Connect and nothing is saved. When Quill can't reach your site at all, the error reads "Couldn't reach" followed by the site's address, and asks you to check the address and your connection. Once they're accepted, your posts and pages load in the sidebar.</p>
+        <p class="docs-body">To change your site or credentials later, choose <strong>Quill → Settings</strong> (⌘,), edit the fields under <strong>WordPress Credentials</strong> and click <strong>Save</strong>. Settings tests them the same way and shows any error under the credentials fields.</p>
         <p class="docs-body">Credentials are stored in a file on your Mac that only your user account can read, not in the system keychain, so Quill never asks for your Mac password.</p>
         <h3 class="docs-h3">If Quill Can't Load Your Site</h3>
         <p class="docs-body">When a section fails to load, the sidebar shows the error with a <strong>Retry</strong> button, and the editor area reads "Couldn't load posts" (or pages, or media). <strong>Retry</strong> and ⌘R both try again.</p>
@@ -172,7 +172,7 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">The icon to the left of the title shows the post's status (see <a href="#status" class="content-link">Status</a>). When there are unsaved changes, the window's close button shows a dot, the same as in TextEdit or Pages.</p>
+        <p class="docs-body">The icon to the left of the title shows the post's status (see <a href="#status" class="content-link">Status</a>). It shows the status last saved to WordPress, so a change in the Status menu appears there after you save. When there are unsaved changes, the window's close button shows a dot, the same as in TextEdit or Pages.</p>
         <p class="docs-body">The editor's buttons are also in the menus: <strong>File → Save</strong> (⌘S), <strong>File → Publish</strong> (⇧⌘P, named to match the publish button), <strong>File → Revert to Saved</strong> and <strong>File → Preview in Browser</strong>. <strong>View → Refresh</strong> (⌘R) reloads the current section.</p>
         <h3 class="docs-h3">Messages and Errors</h3>
         <p class="docs-body">Confirmations and short notices, such as "Saved locally" or "Image inserted", appear at the bottom of the window and fade after a couple of seconds.</p>
@@ -191,7 +191,7 @@
           <li><strong>New Media…</strong> (⌥⌘N), called <strong>Upload Media…</strong> in the + menu</li>
         </ul>
         <p class="docs-body">A new post or page starts as a <strong>local draft</strong> in the Drafts section. It stays on your Mac until you send it to WordPress.</p>
-        <p class="docs-body">Type the title in the <strong>Title</strong> field at the top of the editor, and the body below it. Headings, lists, quotes and other blocks show their formatting as you write. Your theme's fonts and colors apply only on the published site.</p>
+        <p class="docs-body">Type the title in the <strong>Title</strong> field at the top of the editor, and the body below it. A new draft has no title until you type one, and the sidebar lists it as Untitled. Headings, lists, quotes and other blocks show their formatting as you write. Your theme's fonts and colors apply only on the published site.</p>
         <h3 class="docs-h3">The Formatting Toolbar</h3>
         <p class="docs-body">The formatting toolbar runs across the top of the editor. If the window is too narrow to fit every button, the toolbar scrolls sideways.</p>
         <h4 class="docs-h4">Text and Blocks</h4>
@@ -262,7 +262,7 @@
         </div>
         <p class="docs-body">These settings are saved as real WordPress block settings, the same as choosing them in the WordPress editor's sidebar, not as hand-written markup.</p>
         <h3 class="docs-h3" id="links">Links</h3>
-        <p class="docs-body">Select some text and click the <strong>Link</strong> button to open the link picker. Start typing to search your site's posts, pages, categories, tags and media by title, or paste any URL. Click a result or press Return to apply it. With the cursor on an existing link, the picker also has a <strong>Remove link</strong> button.</p>
+        <p class="docs-body">Select some text and click the <strong>Link</strong> button to open the link picker. Start typing to search your site's posts, pages, categories, tags and media by title, or paste any URL. Click a result or press Return to apply it. With the cursor on an existing link, the picker also has a <strong>Remove link</strong> button. If the search fails, the picker says "Couldn't search" and gives the reason; you can still paste a URL.</p>
         <p class="docs-body">To follow a link from the editor, hold ⌘ and click it. Links show an underline and a pointing-hand cursor while ⌘ is held down.</p>
         <p class="docs-body">A link opens in the same tab unless you turn on <strong>New tab</strong> in the second toolbar row.</p>
         <h3 class="docs-h3" id="markdown-shortcuts">Markdown Shortcuts</h3>
@@ -334,7 +334,7 @@
               <tr><td>A video or audio player with a web address</td><td>A WordPress video or audio block</td></tr>
               <tr><td>Any other <code>&lt;iframe&gt;</code>, such as a map</td><td>Removed. Nothing is inserted</td></tr>
               <tr><td>A definition list</td><td>A bold paragraph for each term, followed by its definition</td></tr>
-              <tr><td>An image inside a table cell or list item</td><td>Its description (alt text). WordPress table cells and list items hold text, not images</td></tr>
+              <tr><td>An image inside a table cell or list item</td><td>Its description (alt text)</td></tr>
               <tr><td>Several paragraphs, lists or a table inside one table cell</td><td>Lines in that cell, one per paragraph or list item</td></tr>
             </tbody>
           </table>
@@ -357,7 +357,7 @@
         <h3 class="docs-h3">Saving and Publishing</h3>
         <h4 class="docs-h4">Local Drafts</h4>
         <p class="docs-body">Click <strong>Save Locally</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
-        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Save to WordPress</strong> and creates a draft on WordPress that readers can't see. Set the status to Published first if you want it to go live straight away.</p>
+        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Save to WordPress</strong> and creates a draft on WordPress that readers can't see; a "Saved to WordPress" message confirms it. Set the status to Published first if you want it to go live straight away.</p>
         <p class="docs-body">Once the draft is on WordPress, it moves from Drafts to Posts or Pages. Anything you type while it's being sent is kept and comes back as unsaved changes on the new post. If the post is created but Quill can't remove the local draft, a message says so; delete the draft yourself so it isn't published twice.</p>
         <h4 class="docs-h4">Posts and Pages on WordPress</h4>
         <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>; on a draft, <strong>Save Draft</strong>. If you set a published post's status back to Draft, the button reads <strong>Switch to Draft</strong>, and saving takes the post off your site.</p>
@@ -419,6 +419,14 @@
         <p class="docs-body">A caption is optional. To add one, click the space just below the image and type. Press Return to leave the caption and start a new paragraph. Because the cursor lands below the image after you insert it, typing straight away adds body text, not a caption.</p>
         <h4 class="docs-h4">Linking to the Full-Size Image</h4>
         <p class="docs-body">Click <strong>Link to Full Image</strong> in the image toolbar to make the image a link to its original, full-size file. Readers who click it on your site see (or download) the full-size version. Click the button again to remove the link. This works whatever size the image is shown at in the post.</p>
+        <h4 class="docs-h4" id="inline-images">Inline Images</h4>
+        <p class="docs-body">An image can also sit inside a line of text, in a paragraph, heading, list item or table cell, instead of on its own line. Posts written in the WordPress editor can contain these, and Quill keeps them where they are. Quill inserts one itself only when the cursor is in a table cell; everywhere else, <strong>Image</strong> adds an image on its own line.</p>
+        <p class="docs-body">Click an inline image to select it. A panel opens beside it with two fields:</p>
+        <ul class="docs-list">
+          <li><strong>Width:</strong> the image's width in pixels. Leave it empty to show the image at its own size.</li>
+          <li><strong>Alternative text:</strong> the description screen readers read. Leave it empty if the image is decorative.</li>
+        </ul>
+        <p class="docs-body">Change either field and click <strong>Apply</strong> to set both together. Apply stays turned off until something changes. Press Esc to close the panel. The image toolbar, alignment buttons and captions are for images on their own line and don't apply to inline images. Drag a selected inline image to move it within the text, or press Delete to remove it.</p>
         <h3 class="docs-h3" id="gallery">Galleries</h3>
         <p class="docs-body">Click <strong>Gallery</strong> in the toolbar to open the gallery picker. Click images in the grid to select them. Each one gets a checkmark and is added to the Selected list, in the order it will appear. Drag an image in that list by its handle to move it, or click its <strong>✕</strong> to take it out.</p>
         <p class="docs-body">Click the arrow next to a selected image to give it <strong>Alt Text</strong> and a <strong>Caption</strong>. Alt text from the media library is filled in for you. What you type here applies only to this gallery. The image in your media library, and any other post that uses it, isn't changed.</p>
@@ -444,7 +452,7 @@
         <h3 class="docs-h3" id="blockquotes">Quotes</h3>
         <p class="docs-body">Press ⇧⌘B or click <strong>Blockquote</strong> to turn the current block into a quote. Do the same again to turn it back into ordinary paragraphs.</p>
         <p class="docs-body">Inside a quote, the second toolbar row has a <strong>Cite</strong> button. Click it to add a line at the bottom of the quote for the author or source, and click it again to remove the line. An empty citation isn't saved.</p>
-        <p class="docs-body">Pressing Return inside a quote starts a new paragraph in the quote. Pressing Return on an empty line leaves the quote.</p>
+        <p class="docs-body">Pressing Return inside a quote starts a new paragraph in the quote. Pressing Return on an empty line leaves the quote. If the quote has a citation, an empty line just above the citation works the same way: the cursor moves to a new paragraph after the quote, and the citation stays with the quote.</p>
         <p class="docs-body">A <strong>Pullquote</strong> is a separate block for a quote that stands apart from the text around it. Insert it from the <strong>+</strong> menu. It gets a citation from the same Cite button.</p>
         <h3 class="docs-h3" id="container-blocks">Container Blocks</h3>
         <p class="docs-body">Columns, Details, Buttons, Accordion, Tabs, Pullquote and Preformatted are blocks that hold other content. Insert them from the <strong>+</strong> menu in the toolbar, then type in them as you would anywhere else.</p>
@@ -467,7 +475,7 @@
         <p class="docs-body" id="custom-html"><strong>Custom HTML.</strong> Choose <strong>Custom HTML</strong> from the <strong>+</strong> menu to add HTML of your own, such as an embed code or a styled box. Type or paste the HTML in the window that opens and click <strong>Insert</strong> (⌘Return). Quotes and dashes you type there stay exactly as typed. If your WordPress account is allowed to add unfiltered HTML (on most sites, administrators and editors), the window also has <strong>CSS</strong> and <strong>JavaScript</strong> tabs, which save the same way the WordPress editor's Custom HTML block does. A block that already has CSS or JavaScript always shows those tabs.</p>
         <p class="docs-body">In the editor, the block is a card with a preview of its HTML and the note "Renders as Custom HTML in WordPress". The HTML isn't rendered in the editor, but it is on your site. To change it, double-click the card or click <strong>Edit…</strong>. The window opens as <strong>Edit Custom HTML</strong>, and <strong>Save</strong> (⌘Return) updates the block. This works for Custom HTML blocks made in the WordPress editor too. Custom HTML always goes in at the top level of the post: with the cursor inside a container block, it's added after that block. It can't be added to a footnote.</p>
         <p class="docs-body">The controls for adding and removing columns, buttons, accordion sections and tabs are in the <a href="#block-settings" class="content-link">second toolbar row</a>, along with each block's settings.</p>
-        <p class="docs-body">A new Accordion or Details block starts without a title. Quill shows a gray hint where the title goes, which appears only in the editor, never on your site. A new accordion puts the cursor in its title so you can type it straight away; in a Details block, click the hint to type the title.</p>
+        <p class="docs-body">A new Accordion or Details block, or a new tab, starts without a title. Quill shows a gray hint where the title goes ("Tab title" on a tab), which appears only in the editor, never on your site. A new accordion puts the cursor in its title so you can type it straight away; in a Details block, click the hint to type the title.</p>
         <p class="docs-body">If the cursor is in an accordion heading, a tab title or a button when you insert a block, such as a table or an image, the new block goes after the whole Accordion, Tabs or Buttons block instead of splitting it.</p>
         <p class="docs-body">To see how an accordion section or a Details block looks closed, click its heading row outside the title text. This only affects the editor. Whether it starts open on your site is the <strong>Open</strong> setting. In a Tabs block, the panel you see follows the cursor; the <strong>Default</strong> setting decides which tab readers see first.</p>
         <p class="docs-body"><strong>Leaving a block.</strong> Press Esc to move the cursor to the paragraph below the block. Quill adds a paragraph if there isn't one. Pressing Return twice does the same. In nested blocks, each press moves out one level. This is how you carry on writing after a block at the end of a post.</p>
@@ -485,6 +493,7 @@
         </ul>
         <p class="docs-body">Quill saves footnotes the way current WordPress does, with the note text stored alongside the post rather than in its body. On your site they look exactly as they would from the WordPress editor. In <a href="#code-view" class="content-link">code view</a>, the notes aren't part of the HTML; a <code>&lt;!-- wp:footnotes /--&gt;</code> line marks where the list goes. If you type or paste a footnote list (<code>&lt;ol class="wp-block-footnotes"&gt;</code>) in code view, its notes become the post's footnotes.</p>
         <p class="docs-body">Footnotes written by older versions of Quill were stored differently. Quill leaves such a post as it is until you edit it, and the first edit moves the notes to the current format. Nothing is lost either way.</p>
+        <p class="docs-body">If a post has footnote markers but WordPress has no text stored for them, Quill shows an empty note for each marker so you can type the text in.</p>
         <h3 class="docs-h3" id="tables">Tables</h3>
         <p class="docs-body">Click <strong>Table</strong> in the toolbar to open a size grid. As you move across it, the label reads back the size, so "4×3 Table" is four columns by three rows. Click to insert. You can also use the arrow keys, Return to insert and Esc to close.</p>
         <p class="docs-body">A new table has a header row, saved as a proper table header on your site. With the cursor in a table, the second toolbar row has:</p>
@@ -504,7 +513,7 @@
           </table>
         </div>
         <p class="docs-body">Press Tab to move to the next cell and ⇧Tab to move back. Tab in the last cell adds a new row. To delete the whole table, click <strong>✕</strong> at the end of the second row or press ⇧⌘⌫.</p>
-        <p class="docs-body">A table cell holds text, as in the WordPress editor. <strong>Image</strong> with the cursor in a cell puts a small image in the text. Click that image to change its width or its alternative text, then choose <strong>Apply</strong>; any other block you insert from a cell, such as a gallery or an embed, goes after the table.</p>
+        <p class="docs-body">A table cell holds text, as in the WordPress editor. <strong>Image</strong> with the cursor in a cell puts a small <a href="#inline-images" class="content-link">inline image</a> in the text, up to 150 pixels wide. Click that image to change its width or its alternative text, then choose <strong>Apply</strong>; any other block you insert from a cell, such as a gallery or an embed, goes after the table.</p>
         <p class="docs-body">A table from WordPress keeps whatever header and footer rows it had. A table caption written in the WordPress editor is kept as it is, but Quill can't add or change captions; do that in WordPress.</p>
         <h3 class="docs-h3" id="embeds">Embeds</h3>
         <p class="docs-body">Embeds put a video, social post or audio player from another site into your post.</p>
@@ -557,17 +566,18 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">The icon appears next to the title in the editor. In the sidebar, each row shows the status as a colored dot and in words, so you never have to rely on color alone. A local draft's row also says whether it's a post or a page.</p>
+        <p class="docs-body">The icon appears next to the title in the editor and shows the saved status. In the sidebar, each row shows the status as a colored dot and in words, so you never have to rely on color alone. A local draft's row also says whether it's a post or a page.</p>
         <h3 class="docs-h3">Publish Date</h3>
         <p class="docs-body">The Publish Date section appears for every status except Private. Turn on <strong>Schedule</strong> to set the status to Scheduled and show a date and time picker, set to an hour from now. Turn it off to go back to Draft.</p>
         <p class="docs-body">Choosing <strong>Scheduled</strong> in the Status menu does the same thing.</p>
+        <p class="docs-body">To publish a scheduled post right away, change its Status to <strong>Published</strong> and save. The post goes live with the current date and time instead of staying scheduled, and its status icon changes to Published.</p>
         <p class="docs-body">When the date and time are right, click the publish button, which now reads <strong>Schedule</strong>, or press ⇧⌘P. WordPress publishes the post at that time.</p>
         <p class="docs-body">If the date and time have passed, or are less than a minute away, WordPress publishes the post immediately instead of scheduling it. The picker then shows "This time has passed. The post will publish immediately." When you save or publish, a <strong>Publish Now?</strong> alert states the date the post will carry. <strong>Publish Now</strong> continues and the post goes live. <strong>Cancel</strong> keeps it unsaved so you can change the time.</p>
         <h3 class="docs-h3">Parent Page <span class="docs-meta">(Pages only)</span></h3>
         <p class="docs-body">Choose a parent to put this page under another one in your site's structure and web address, or leave it at <strong>None (top-level)</strong>.</p>
         <h3 class="docs-h3">Categories <span class="docs-meta">(Posts only)</span></h3>
-        <p class="docs-body">Every category on your site is listed here in alphabetical order. Tick a category to assign it; ticked categories move to the top of the list. Type in the field above the list to filter it.</p>
-        <p class="docs-body">To add a new category, type its name and press Return, or click <strong>Add "<em>name</em>"</strong>. It's marked "new" and is created on your site when you save or publish the post.</p>
+        <p class="docs-body">Every category on your site is listed here in alphabetical order. Tick a category to assign it; ticked categories move to the top of the list, below any new categories you've added. Type in the field above the list to filter it.</p>
+        <p class="docs-body">To add a new category, type its name and press Return, or click <strong>Add "<em>name</em>"</strong>. It's marked "new", appears at the top of the list, and is created on your site when you save or publish the post.</p>
         <h3 class="docs-h3">Tags <span class="docs-meta">(Posts only)</span></h3>
         <p class="docs-body">Tags assigned to the post appear above the search field; click the <strong>×</strong> on one to remove it. Type to find an existing tag and click it to add it, or press Return to create a new tag. New tags are created on your site when you save or publish the post.</p>
         <h3 class="docs-h3">Featured Image</h3>
@@ -644,9 +654,9 @@
           <li>Paste the key into <strong>Anthropic API Key</strong> and click <strong>Save</strong>.</li>
         </ol>
         <p class="docs-body">The first time you connect a site, Quill offers to add a key right away. It checks that key with Anthropic before saving it. You can click <strong>Skip for Now</strong> and add a key here later.</p>
-        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key when you save it, but it uses the key to load the <a href="#model-and-reasoning" class="content-link">Model</a> menu, and a key Anthropic doesn't accept shows its error under that menu. Errors from Anthropic say what went wrong, such as a key it didn't accept, its rate limit, or its service being busy. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
+        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. Settings doesn't test the key on its own, but it uses the key to load the <a href="#model-and-reasoning" class="content-link">Model</a> menu, including when you click <strong>Save</strong>, and a key Anthropic doesn't accept shows its error under that menu. Errors from Anthropic say what went wrong, such as a key it didn't accept, its rate limit, or its service being busy. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
         <h3 class="docs-h3" id="model-and-reasoning">Model and Reasoning</h3>
-        <p class="docs-body">The <strong>Model</strong> menu lists every Claude model your API key can use, newest first. Quill loads the list when you open Settings and when you finish typing a key, so a new model appears without a Quill update. The menu stays empty until you enter a key. Until you pick one, Quill uses the newest Claude Haiku, which is fast and inexpensive, and follows it when a newer Haiku comes out. If the model you picked is retired, Quill switches back to that default and tells you.</p>
+        <p class="docs-body">The <strong>Model</strong> menu lists every Claude model your API key can use, newest first. Quill loads the list when you open Settings, when you finish typing a key and when you click Save, so a new model appears without a Quill update. The menu stays empty until you enter a key. Until you pick one, Quill uses the newest Claude Haiku, which is fast and inexpensive, and follows it when a newer Haiku comes out. If the model you picked is retired, Quill switches back to that default and tells you.</p>
         <p class="docs-body"><strong>Reasoning</strong> sets how long Claude thinks before it answers. <strong>Model default</strong> lets the model decide; the other levels are Low, Medium, High, Extra High and Max. Higher levels take more time and cost more; Low is the quickest. The menu lists only the levels the selected model offers. Some older models offer Off, Low, Medium and High and start at Off, and a model that can't reason has only Off. If Claude's reply is cut off before it finishes, the error says so; a lower reasoning level leaves more room for the answer.</p>
         <h3 class="docs-h3" id="writing-style">Writing Style</h3>
         <p class="docs-body">Quill can learn how you write from your own posts. In the AI Writing section of Settings, click <strong>Choose Posts…</strong> and pick up to five posts that sound like you. When you click Save, Quill sends them to Claude with their titles, headings, lists and captions, and Claude writes a style guide of about 500 words. Quill uses that guide whenever it writes, rewrites or reviews for you.</p>

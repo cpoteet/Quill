@@ -207,6 +207,41 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
         #expect(state.filteredItems.map(\.id) == [state.selectedItem?.id])
     }
 
+    @MainActor @Test func switchingSectionClosesTheInspectorNowAndSwitchesAfterwards() async throws {
+        final class Seen { var section: SidebarSection? }
+        let state = AppState()
+        state.selectedSection = .media
+        state.isMediaInspectorOpen = true
+        let token = state.inspectorCloseToken
+        let seen = Seen()
+        state.switchSection(to: .posts) { seen.section = state.selectedSection }
+        #expect(state.isMediaInspectorOpen == false)
+        #expect(state.inspectorCloseToken == token + 1)
+        #expect(state.selectedSection == .media)
+        for _ in 0..<100 where seen.section == nil { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(state.selectedSection == .posts)
+        #expect(seen.section == .posts)
+    }
+
+    @MainActor @Test func switchingSectionWithoutAFollowUpStillSwitches() async throws {
+        let state = AppState()
+        state.switchSection(to: .pages)
+        for _ in 0..<100 where state.selectedSection != .pages { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(state.selectedSection == .pages)
+    }
+
+    @MainActor @Test func switchingToTheCurrentSectionRunsTheFollowUpAndLeavesTheInspectorOpen() {
+        let state = AppState()
+        state.selectedSection = .media
+        state.isMediaInspectorOpen = true
+        let token = state.inspectorCloseToken
+        var ran = false
+        state.switchSection(to: .media) { ran = true }
+        #expect(ran)
+        #expect(state.isMediaInspectorOpen)
+        #expect(state.inspectorCloseToken == token)
+    }
+
     @MainActor @Test func newDraftStartsWithAnEmptyTitle() async throws {
         let state = AppState()
         let store = DraftStore(db: try AppDatabase.inMemory())

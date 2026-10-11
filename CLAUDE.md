@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 743 Swift + 1,750 JS tests, all passing as of 2026-10-11 (1,749 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 756 Swift + 1,776 JS tests, all passing as of 2026-10-11 (1,775 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -23,6 +23,8 @@ Runs everything — 743 Swift + 1,750 JS tests, all passing as of 2026-10-11 (1,
 **The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
 
 **Dependencies:** the `update-dependencies` skill (`.claude/skills/update-dependencies/`); `./Scripts/check-dependencies.sh` is its read-only report.
+
+**Manual test pass:** the `manual-test-pass` skill (`.claude/skills/manual-test-pass/`) runs `docs/testing-plan.md` §7 with computer use and the REST API against the local Studio site; `Scripts/qa-fault-injector.php` is the throw-away mu-plugin it uses to inject server faults (see "Running the manual pass with an agent" in the testing plan).
 
 **Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 

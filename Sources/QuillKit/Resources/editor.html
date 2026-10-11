@@ -4125,7 +4125,7 @@
     function _inlineImageValues(node) {
       const pairs = _inlineImagePairs(node)
       const style = (pairs.find(([name]) => name === 'style') || [])[1] || ''
-      return { width: style.replace(/\D/g, ''), alt: (pairs.find(([name]) => name === 'alt') || [])[1] ?? '' }
+      return { width: (style.match(/(?:^|;)\s*width\s*:\s*(\d+)px/i) || [])[1] || '', alt: (pairs.find(([name]) => name === 'alt') || [])[1] ?? '' }
     }
 
     function _positionInlineImagePopover() {
@@ -4176,7 +4176,9 @@
           else pairs.push([name, value])
         }
         const width = parseInt(widthIn.value, 10)
-        set('style', width >= 1 ? `width: ${width}px;` : '')
+        const others = ((pairs.find(([n]) => n === 'style') || [])[1] || '').split(';')
+          .map(d => d.trim()).filter(d => d && !/^width\s*:/i.test(d))
+        set('style', [...(width >= 1 ? [`width: ${width}px`] : []), ...others].map(d => d + ';').join(' '))
         set('alt', altIn.value)
         editor.chain().command(({ tr }) => { tr.setNodeMarkup(pos, null, { attrs: JSON.stringify(pairs) }); return true })
           .setNodeSelection(pos).run()

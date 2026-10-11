@@ -127,6 +127,59 @@ import Testing
         #expect(sent.slug == "assigned")
     }
 
+    @Test func theStatusAndDateWordPressStoredReplaceTheOnesSent() {
+        var sent = PostSettings()
+        sent.status = .publish
+        var current = sent
+        var stored = sent
+        stored.status = .future
+        stored.publishDate = Date(timeIntervalSince1970: 2_000_000_000)
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.status == .future)
+        #expect(current.publishDate == stored.publishDate)
+        #expect(sent.status == .future)
+        #expect(sent.publishDate == stored.publishDate)
+    }
+
+    @Test func aStatusPickedDuringTheSaveIsKeptButTheBaselineMovesToWhatWasStored() {
+        var sent = PostSettings()
+        sent.status = .publish
+        var current = sent
+        current.status = .draft
+        var stored = sent
+        stored.status = .publish
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.status == .draft)
+        #expect(sent.status == .publish)
+    }
+
+    @Test func aDateChosenDuringTheSaveKeepsBothItAndTheStatus() {
+        var sent = PostSettings()
+        sent.status = .publish
+        var current = sent
+        current.status = .future
+        current.publishDate = Date(timeIntervalSince1970: 2_100_000_000)
+        var stored = sent
+        stored.status = .publish
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.status == .future)
+        #expect(current.publishDate == Date(timeIntervalSince1970: 2_100_000_000))
+        #expect(sent.status == .publish)
+        #expect(sent.publishDate == nil)
+    }
+
+    @Test func publishingOverAFutureDateClearsTheDateOnceWordPressStoresNone() {
+        var sent = PostSettings()
+        sent.status = .publish
+        sent.publishDate = Date(timeIntervalSince1970: 2_000_000_000)
+        var current = sent
+        var stored = sent
+        stored.publishDate = nil
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.publishDate == nil)
+        #expect(sent.publishDate == nil)
+    }
+
     // MARK: - Preview conflict check
 
     @Test func previewOverwritesOnlyADraft() {
@@ -368,6 +421,21 @@ import Testing
         var s = PostSettings()
         s.publishDate = now.addingTimeInterval(7200)
         #expect(PostEditorView.payloadDate(for: .future, settings: s, serverDateGmt: nil, now: now) == s.publishDate)
+    }
+
+    @Test func aChosenDateWinsOverTheServerDateWhenPublishing() {
+        let now = Date()
+        let future = ISO8601DateFormatter().string(from: now.addingTimeInterval(86_400))
+        var s = PostSettings()
+        s.publishDate = now.addingTimeInterval(-3600)
+        #expect(PostEditorView.payloadDate(for: .publish, settings: s, serverDateGmt: future, now: now) == s.publishDate)
+    }
+
+    @Test func updatingAPublishedPostWhoseServerDateIsInTheFutureOnlyResetsItWhenPublishing() {
+        let now = Date()
+        let future = ISO8601DateFormatter().string(from: now.addingTimeInterval(86_400))
+        #expect(PostEditorView.payloadDate(for: .private, settings: PostSettings(), serverDateGmt: future, now: now) == nil)
+        #expect(PostEditorView.payloadDate(for: .pending, settings: PostSettings(), serverDateGmt: future, now: now) == nil)
     }
 
     // MARK: - Settings from a WordPress post

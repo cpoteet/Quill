@@ -29,7 +29,7 @@ let editor
 let win
 
 function key(view, k, mods = {}) {
-  const code = { Enter: 13, Backspace: 8, Delete: 46, ArrowLeft: 37, ArrowRight: 39 }
+  const code = { Enter: 13, Escape: 27, Backspace: 8, Delete: 46, ArrowLeft: 37, ArrowRight: 39 }
   const ev = new win.KeyboardEvent('keydown', {
     key: k, code: k, keyCode: code[k] || 0, which: code[k] || 0,
     bubbles: true, cancelable: true,
@@ -1069,6 +1069,47 @@ describe('inline images', () => {
     assert.equal(win.getContent(), tableWith('a' + IMG))
   })
 
+  test('insertImage in a table cell without a media id or width writes a 150px image and no wp-image class', () => {
+    win.setContent(tableWith('a'), '[]')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 1)
+    win.insertImage('http://x/a.png')
+    win.syncContentToSwift()
+    assert.equal(win.getContent(), tableWith('a<img style="width: 150px;" src="http://x/a.png" alt="">'))
+  })
+
+  test('insertImage in a header cell inserts one there too', () => {
+    win.setContent('<table><tbody><tr><th><p>h</p></th><td><p>b</p></td></tr></tbody></table>', '[]')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 1)
+    win.insertImage('http://x/a.png', 42, 'alt x', 800)
+    assert.equal(doc(), 'table(tableRow(tableHeader(paragraph("h",inlineImage())),tableCell(paragraph("b")))) | paragraph()')
+  })
+
+  test('a linked one in a paragraph of text keeps its link', () => {
+    const linked = '<a href="http://x/big.png">' + IMG + '</a>'
+    win.setContent(para('Text ' + linked + ' more'), '[]')
+    assert.equal(doc(), 'paragraph("Text ",inlineImage()," more")')
+    assert.equal(editAtEnd(), para('Text ' + linked + ' morez'))
+  })
+
+  test('a linked image alone in a paragraph still becomes an image block', () => {
+    win.setContent('<p><a href="http://x/big.png"><img src="http://x/a.png" alt=""></a></p>', '[]')
+    const types = editor.getJSON().content.map(n => n.type)
+    assert.ok(types.includes('image'))
+    assert.equal(editor.view.dom.querySelector('p img, p [data-quill-inline-image]'), null)
+  })
+
+  test('one in a list item of text and one in a heading stay inline', () => {
+    win.setContent('<ul><li>Item <img src="http://x/a.png" alt=""></li></ul><h3>Head <img src="http://x/b.png" alt=""></h3>', '[]')
+    const found = []
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'inlineImage') found.push(editor.state.doc.resolve(pos).parent.type.name) })
+    assert.deepEqual(found, ['paragraph', 'heading'])
+  })
+
+  test('a javascript: source is dropped with the script handlers', () => {
+    win.setContent(para('Text <img src="javascript:alert(1)" alt="" onerror="alert(1)"> more'), '[]')
+    assert.doesNotMatch(editAtEnd(), /javascript:|onerror/)
+  })
+
   test('insertImage outside a table cell still inserts an image block', () => {
     win.setContent('<p>a</p>', '[]')
     editor.commands.setTextSelection(2)
@@ -1109,6 +1150,13 @@ describe('the inline image popover', () => {
     assert.equal($('iip-alt').value, 'alt x')
   })
 
+  test('a style with more than a width shows only the width and keeps the rest on Apply', () => {
+    select('Text <img style="width:150px;height:100px" src="http://x/a.png" alt="a"> more')
+    assert.equal($('iip-width').value, '150')
+    type('iip-alt', 'b')
+    assert.match(apply(), /style="width: 150px; height:100px;"/)
+  })
+
   test('Apply stays off until a value changes', () => {
     select('Text ' + IMG + ' more')
     assert.equal($('iip-apply').disabled, true)
@@ -1139,6 +1187,60 @@ describe('the inline image popover', () => {
     apply()
     assert.equal(editor.state.selection.node?.type.name, 'inlineImage')
     assert.ok($('inline-image-popover').classList.contains('visible'))
+  })
+
+  test('Escape in the editor closes it and leaves the table the image is in', () => {
+    win.setContent('<!-- wp:table -->\n<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><td>a' + IMG + '</td><td>b</td></tr></tbody></table></figure>\n<!-- /wp:table -->', '[]')
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'inlineImage') at = pos })
+    editor.commands.setNodeSelection(at)
+    assert.ok($('inline-image-popover').classList.contains('visible'))
+    key(editor.view, 'Escape')
+    $('inline-image-popover').dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    assert.equal($('inline-image-popover').classList.contains('visible'), false)
+    assert.equal(editor.state.selection.node?.type.name, 'inlineImage')
+    assert.ok(editor.state.selection.$from.depth > 1, 'the caret left the table')
+  })
+
+  test('deleting the image closes it', () => {
+    select('Text ' + IMG + ' more')
+    editor.commands.deleteSelection()
+    assert.equal($('inline-image-popover').classList.contains('visible'), false)
+  })
+
+  test('opening code view closes it', () => {
+    select('Text ' + IMG + ' more')
+    $('btn-code-view').click()
+    assert.equal($('inline-image-popover').classList.contains('visible'), false)
+    $('btn-code-view').click()
+  })
+
+  test('the help link opens through Swift and does not navigate', () => {
+    const opened = []
+    win.webkit = { messageHandlers: { openLink: { postMessage: href => opened.push(href) } } }
+    const ev = new win.MouseEvent('click', { bubbles: true, cancelable: true })
+    $('iip-help-link').dispatchEvent(ev)
+    delete win.webkit
+    assert.deepEqual(opened, ['https://www.w3.org/WAI/tutorials/images/decision-tree/'])
+    assert.equal(ev.defaultPrevented, true)
+  })
+
+  test('alt text with quotes and an ampersand is written as core writes it', () => {
+    const html = 'Text ' + IMG + ' more'
+    const alt = 'The "big" one & more'
+    select(html)
+    type('iip-alt', alt)
+    assert.equal(apply(), applyInlineImage(html, '150', alt))
+  })
+
+  test('after Apply the popover shows the applied values and Apply is off again', () => {
+    select('Text ' + IMG + ' more')
+    type('iip-width', '200')
+    type('iip-alt', 'changed')
+    apply()
+    assert.equal($('iip-width').value, '200')
+    assert.equal($('iip-alt').value, 'changed')
+    assert.equal($('iip-apply').disabled, true)
   })
 
   test('Escape closes it', () => {

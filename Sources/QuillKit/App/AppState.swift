@@ -205,6 +205,7 @@ public final class AppState: ObservableObject {
 
     // An inspector torn down in the same layout pass as a section switch makes the sidebar picker slide — see Views/Sidebar/CLAUDE.md.
     @MainActor public func switchSection(to section: SidebarSection, then: @escaping @MainActor () -> Void = {}) {
+        guard section != selectedSection else { return then() }
         var closing = Transaction()
         closing.disablesAnimations = true
         withTransaction(closing) {
