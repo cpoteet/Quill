@@ -3277,6 +3277,24 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 
 > Tip: use a disposable WordPress instance so destructive tests (delete, trash, publish) don't pollute a real site.
 
+### Running the manual pass with an agent
+
+Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has its results). Most of §7 can be driven by computer use plus the REST API; a few items need a person.
+
+- **Full-screen control is required** for the editor, the Media gallery and Finder drags. Background clicks do not reach the WKWebView or the `NSCollectionView`. Grant Quill, Finder and TextEdit; grant no browser (browsers are read-only for computer use).
+- **Check what was saved from outside the app.** For a remote post, fetch `…/wp-json/wp/v2/posts/<id>?context=edit` with an application password; for a local draft, read SQLite (`docs/gotchas.md`). Run `Scripts/wp-validator.js` (`problems(html)`) on the bytes. Keep the REST helper out of the transcript: read `credentials.json` inside the script and never print it.
+- **Seed posts from the fixtures** instead of building blocks by hand: `POST /posts` with `Scripts/fixtures/*.html` as `content`, then open the post in Quill, type one character in the first paragraph, ⌘S, and diff the raw content. This covers most of §7.3 and §7.24 in minutes. Start every fixture post with an ordinary paragraph to type into.
+- **Test files.** Make a folder with a PNG, a JPEG, a GIF, a TIFF, `IMG_1234.HEIC` and `other.heic` (`sips -s format heic in.png --out x.heic`), a 12 MB PNG, a `.pdf`, a `.docx` (`textutil -convert docx`), a `.txt` and a `.csv`.
+- **Drag from Finder** with `left_mouse_down`, three or four `mouse_move` steps with a 0.2–0.3 s `wait` between them, and `left_mouse_up`; without the waits Finder rubber-bands a selection instead of dragging, and `left_click_drag` is too fast. (`left_click_drag` does work for the image resize handles and for a gallery-sheet row grip dragged downwards.) Click a Finder row once to select it, then drag at once. A second click on an already-selected row starts a rename. Drop where the Quill editor is visible, not under the Finder window.
+- **Slow or failing network without touching Wi-Fi.** `Scripts/qa-fault-injector.php` is a throw-away mu-plugin: copy it to `wp-content/mu-plugins/`, then write `wp-content/qa-fault.json` (`{"status":503,"match":"/media","method":"POST"}`, `{"delay_ms":5000,"match":"/posts/297","method":"PUT"}`, `{"warn":true}` for a PHP warning in the reply, `"log":true` to log requests to `qa-fault.log`). Quill saves with PUT and uploads with POST. Delete `qa-fault.json` to switch it off, and remove the plugin afterwards. `studio site stop` and `start` give a true "can't connect".
+- **Needs a person.** WordPress's Authorize Application page (browsers are read-only for the agent; replay the redirect instead: `open "quill://authorize?nonce=<nonce from the authorize URL>&site_url=…&user_login=admin&password=<new application password>"`), switching System Settings to Dark (a system setting), VoiceOver, and any step that needs a second site.
+- **Timing.** A toolbar click within about a second of typing was ignored on several runs; pause a second after typing before clicking Save Draft, Connect or similar. A Finder `open` leaves Quill behind Finder's window: click Quill's sidebar or press the Finder Dock icon to bring the right one forward before the next drag. In an open panel the first click on **Open** after selecting a row is swallowed; click it twice.
+- **Clipboards.** Plain text: `write_clipboard`. A PNG: `osascript -e 'set the clipboard to (read (POSIX file "…/second.png") as «class PNGf»)'`. HTML with its plain-text flavor (what a web page or app puts there): `swiftc -O Scripts/paste-harness/setpb.swift -o setpb`, then `setpb clip.html clip.txt`; the pairs in `Scripts/fixtures/paste/` work as they are. Overwrite the clipboard when you are done with anything secret on it.
+- **Typed paths.** `⌘⇧G` in an open panel takes a path (`~/Documents/…/file.png`), then Return.
+- **Server down.** `cd ~/Dev/Studio && studio site stop`, and `studio site start` (it prints the admin password; do not copy it into notes, and it may open Safari). The fault injector holds one rule at a time, so a case that needs two faults (a failing save plus a slow upload) cannot be built from it.
+- **Toasts are short.** An error toast shows for about 6 s and the featured-image "wasn't set" toast for 2–3 s; take a screenshot every second, not every five.
+- Restore `credentials.json` and `ai_settings.json` byte-for-byte after §7.1 or §7.11 (keep a copy before you start; Quill rewrites the files with a different key order), quit the installed `/Applications/Quill.app` if it opened (a `quill://` URL launches it when only the dev build is running), and revoke the application passwords the pass created.
+
 ### 7.1 Authentication & onboarding
 
 **First run.** Move `~/Library/Application Support/Quill/credentials.json` and `ai_settings.json` aside before these checks (never delete them), and put them back afterwards. Dev and release builds both register `quill://`. Chunk 1 of the onboarding plan checked this on 2026-10-02: with an installed copy also declaring the scheme and launched first, every callback still reached the dev build, and each running copy kept one window. After a pass, revoke the "Quill on {Mac} ({date and time})" application passwords it created on the site's profile.
@@ -3310,7 +3328,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Type in the search field → the current section filters case-insensitively; clearing the search restores all items.
 - [ ] **Search field focus.** On launch the search field does *not* hold focus (no caret, typing does not land in it). Click it → it takes focus. Then press Tab from elsewhere, or turn on Full Keyboard Access → the field is reachable without the mouse.
 - [ ] The search prompt names the section: Search Posts, Search Pages, Search Drafts, Search Media.
-- [ ] **Status filter.** On Posts and Pages, the filter button right of the search field opens a menu of All, Published, Draft, Scheduled (plus Pending and Private when the site has any) with counts that match WordPress admin. Pick one → the list narrows and the button turns solid amber; search narrows it further. Switch to Pages and back → each section kept its own filter. Scheduled lists soonest first. The button is absent on Drafts and Media.
+- [ ] **Status filter.** On Posts and Pages, the filter button right of the search field opens a menu of All, Published, Draft, Scheduled (plus Pending and Private when the site has any) with counts that match WordPress admin. Scheduled is always listed (with no count when none exist). Pick one → the list narrows and the button turns solid amber; search narrows it further. Switch to Pages and back → each section kept its own filter. Scheduled lists soonest first. The button is absent on Drafts and Media.
 
 **Sidebar focus — the three checks.** Nothing here is automatable: the bug only appears once the WKWebView holds first responder, and scripted clicks cannot put it there (see the scripted-clicks gotcha in `docs/gotchas.md`). A selected row draws *emphasized* (solid amber, white text) when the list has focus and *unemphasized* (flat grey) when it does not. Grey is the failure. Last run green on 2026-09-20.
 
@@ -3383,14 +3401,14 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] **A section round-trip does not insert into a dead editor.** Drop a large image on post A, click Media and then back to A before the upload finishes → the image is not in A, and it is in the Media Library. Known limit: the "not inserted" toast is drawn on the editor the section switch tore down, so no message shows.
 - [ ] After any image insert (toolbar button, media picker, or Finder drop), start typing immediately → the text goes into a new paragraph **below** the image, not into the caption. Click the caption area under the image → the caret moves there and a caption can be typed.
 - [ ] Insert two images back to back → only one empty paragraph sits between/after them (blank paragraphs don't stack).
-- [ ] Save a post with an inserted image and check code view → an empty `<p></p>` follows the `<!-- /wp:image -->` block. This is expected, not a bug.
+- [ ] Save a post with an inserted image and check code view → no `<p></p>` follows the `<!-- /wp:image -->` block: Quill's own empty paragraph after an image is chrome and is not saved (one you typed into, or that sits inside a quote or table cell, is saved).
 - [ ] Insert an image with the cursor inside a list item, a blockquote, and a table cell → in each case the image and its new paragraph stay inside that container.
 - [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
 - [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
 - [ ] Add a caption to an image, then click the image → resize handles should align to the image edges, not extend down to the bottom of the caption.
 - [ ] Click inside an image caption and press Enter → a new paragraph is created below the image; the cursor moves to it. The image and caption remain intact.
-- [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumbnail, Medium, Large, Full). Click each → the image swaps to that size.
+- [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumb, Medium, Full, plus Large when the media has that size). Click each → the image swaps to that size.
 - [ ] Click Reset on an image with sizes loaded → the image returns to its original full-size dimensions. On an image without media sizes, Reset removes custom width/height constraints.
 - [ ] Click a classic-editor image (no explicit width/height attributes) → the image toolbar shows the image's natural dimensions (not blank fields).
 - [ ] Set image alignment to left, center, and right → text wraps correctly for each. Save and fetch the raw HTML → the figure has `wp-block-image alignleft/aligncenter/alignright`.
@@ -3402,7 +3420,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Confirm the converted photo is right-side up and at full resolution (EXIF orientation and pixel dimensions are preserved), and that the original `.heic` file on disk is untouched.
 - [ ] Drag a large HEIC photo (10+ MB) onto the editor → the editor stays responsive while it converts and uploads (no beachball).
 - [ ] Upload a `.jpg`, `.png` and `.pdf` → each uploads unchanged, with no conversion toast and no extension change.
-- [ ] **Decorative images:** in WordPress, mark an image as decorative (the image block's "Mark as decorative" toggle, WP 7.1+). Open that post in Quill, make an unrelated edit, save → re-fetch the raw content and confirm the `<img>` still carries `role="none"`. Do the same for a decorative image that also links to its full size → the `role` stays on the `<img>`, not on the `<a>`.
+- [ ] **Decorative images:** in WordPress, mark an image as decorative (the image block's "Mark as decorative" toggle, WP 7.1+; REST-seeding `role="none"` images does the same). Open that post in Quill, make an unrelated edit, save → re-fetch the raw content and confirm the `<img>` still carries `role="none"` (Quill also adds `"isDecorative":true` to the block comment). Do the same for a decorative image that also links to its full size → the `role` stays on the `<img>`, not on the `<a>`.
 - [ ] Insert a fresh image in Quill and save → its `<img>` has no `role` attribute at all (Quill never invents one).
 - [ ] Open the insert image picker from the editor toolbar → the file dialog only shows image files; PDFs and movies are not selectable.
 - [ ] Open the upload dialog from the Media tab → the file dialog accepts images, PDFs, Word/Excel/PowerPoint files, `.txt` and `.csv`; movies are not selectable.
@@ -3438,10 +3456,10 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] Select text, click the link button → a link popover appears anchored near the selected text. With no selection, the popover anchors to the toolbar button instead.
 - [ ] Type a search query in the link popover → results from posts, pages, categories, tags, and media appear.
 - [ ] As search results appear, the popover grows taller to fit them (results are not clipped or hidden).
-- [ ] Select a search result → a link is inserted on the selected text. Manually typing a URL also works.
+- [ ] Select a search result → the URL field fills with that result's address; **Apply** puts the link on the selected text. Manually typing a URL also works.
 - [ ] Search for something with no matches → an empty state is shown; no crash.
 - [ ] Search while offline → the popover handles the error gracefully (no crash or hang).
-- [ ] Insert links with `http://` and `https://` URLs → Cmd+clicking them in the editor opens the system browser. Hold Cmd → links show an underline and pointer cursor. Release Cmd → cursor returns to normal. Insert a `mailto:` link → Cmd+clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link via code view → Cmd+clicking it does nothing (blocked for security).
+- [ ] Insert links with `http://` and `https://` URLs → Cmd+clicking them in the editor opens the system browser. Hold Cmd → links show an underline and pointer cursor. Release Cmd → cursor returns to normal. Insert a `mailto:` link → Cmd+clicking it opens Mail. Insert a `file:///` or `javascript:alert(1)` link in the post → Quill strips the `href` when the post loads (code view shows the text without a link), so there is nothing to Cmd+click.
 - [ ] Clicking a link without holding Cmd places the cursor inside the link text (for editing) — it does not open the link.
 - [ ] **The editor never navigates away.** Cmd+click an external link → it opens in the browser and the editor still shows the post (toolbar present, content intact, not a blank or remote page). Paste a `<meta http-equiv="refresh">` via code view → the editor stays put. This is the `decidePolicyFor` guard in `EditorCoordinator`; it is only wired up while that method matches `WKNavigationDelegate` exactly, so a "nearly matches" build warning means this test will fail.
 
@@ -3617,7 +3635,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 - [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and the banner reads "Claude couldn't finish that rewrite. Try again."; no Accept/Discard bar is shown over the placeholder.
 - [ ] **Edits made while Claude responds are kept.** Start Make Longer on one paragraph and, while "✶ Rewriting…" shows, type in another paragraph → the typing stays after the result arrives, after Accept and after Discard.
 - [ ] **Typing next to the pending text in real WebKit.** While "✶ Rewriting…" shows, click at the very start of the dimmed text and type a few words → every keystroke appears (WebKit drops keystrokes next to a widget decoration in some positions; jsdom cannot show this, see the "widget decoration next to the caret" entry in `docs/editor-gotchas.md`).
-- [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty.
+- [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty. (2026-10-11: with a triple-click selection and Backspace, the empty paragraph that is left receives the original text on Discard; ⌘A + Delete leaves the post empty. See the run log, issue 14.)
 - [ ] **Discard a table at the end of the post.** Select the last paragraph of a post, run To Table, then Discard → the post ends with the original paragraph and no extra empty paragraph below it, and the edited dot is not lit if the post was clean before.
 
 **AI result bar**
@@ -3674,7 +3692,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
 - [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.
-- [ ] Narrow the window until the editor toolbar runs out of room → buttons collapse into the overflow menu rather than crushing together or clipping their labels. Widen it again → they come back in the same order.
+- [ ] Narrow the window to its 900pt minimum with the sidebar open → the editor toolbar keeps every button at full size and scrolls sideways (trackpad or wheel), with a fade on its right edge while more is hidden. Widen it again → the buttons all fit. (There is no overflow menu: the toolbar is `overflow-x: auto` in `editor.html`.)
 - [ ] The editor action buttons read as one icon capsule, and the Publish/Update button keeps its colour rather than washing out when the window loses focus.
 
 **Pickers across an appearance switch** — through macOS 26, SwiftUI stamped a fixed `NSAppearance` on the AppKit popup button behind every `Picker` and never refreshed it, so a picker kept drawing its old bezel and label color after a switch (light pill with dark text in a dark panel; pale, near-invisible text in a light one). Quill carried a `.rebuildsOnAppearanceChange()` modifier for this. macOS 27 fixes it: retested 2026-09-18 with the modifier reduced to a true no-op that never reads `colorScheme`, and the sidebar section picker and the inspector's Status picker both repainted correctly in both directions without a relaunch. The modifier is deleted. Keep checking both directions as a regression guard, since each leaves a picker wrong in a different way.
@@ -3733,7 +3751,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Save and fetch the raw HTML → the embed is a valid Gutenberg `wp-block-embed` block with correct provider classes (e.g. `is-type-video is-provider-youtube wp-block-embed-youtube`).
 - [ ] Close and reopen the post → the embed card still renders correctly.
 - [ ] View the post on the live WordPress site → the embed renders as the expected player/widget.
-- [ ] Paste an unrecognized URL → it saves as a generic embed block without provider-specific classes.
+- [ ] Paste an unrecognized URL alone on a line → it stays a plain link paragraph (only known hosts become embeds on paste; `docs/paste.md`). Enter the same URL through the toolbar Embed button → it saves as a generic `wp-block-embed` block without provider-specific classes.
 - [ ] An embed card does not show resize handles or get treated as an image.
 
 ### 7.20 Footnotes
@@ -3750,7 +3768,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] **Preview sends the notes.** On a draft with footnotes, edit a note and click Preview → the preview shows the edited note. Undo the edit back to the saved text and Preview again → the preview, and the draft on the server (`?context=edit`), show the saved note, not the edited one.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
 - [ ] **Edit only a footnote body** — change nothing else in the post. The window's unsaved-changes dot appears, the autosave fires, and switching to another post and back keeps the edit. (Before this was fixed the post never read dirty and the edit was lost.)
-- [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone.
+- [ ] **A post that has a footnotes delimiter but no meta behind it** shows a non-editable card rather than an empty list, and saving without touching it leaves it alone. (2026-10-11: the card shows, with an empty "1." line under it; run-log issue 12.)
 - [ ] **Legacy migration:** open a post whose footnotes were written as an inline list by an older build. Save it without editing → unchanged. Now type one character and save → the bodies move into `meta.footnotes`, the list leaves the content, and no stray backref is stored.
 - [ ] Open a post with footnotes in code view → the source shows the delimiter, not the list. Leave code view without editing → the notes are still there.
 - [ ] With the cursor inside a footnote entry, toolbar buttons for block operations (headings, blockquote, code block, lists, table, image, embed) are disabled.
@@ -3776,7 +3794,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 Run this on a **new local draft**, never a published post.
 
 - [ ] Open a post containing a block Quill cannot model and does not preserve → no banner. Preservation is the normal case; the banner means content actually went missing.
-- [ ] Force the failure case: in code view, paste a block, leave code view, and delete the card it became. A banner appears naming the block, in the singular if it is one block and the plural if it is more, and it says this is Quill's limitation rather than something you did.
+- [ ] Force the failure case: in code view of a new draft, replace everything with `<!-- wp:paragraph --><p>Keep me</p><!-- /wp:paragraph -->` and `<!-- wp:heading --><p>Not a heading</p><!-- /wp:heading -->` (a delimiter around markup Quill cannot read as that block), and leave code view. A banner appears naming the block ("A **Heading** block didn't survive loading into Quill…"), in the singular if it is one block and the plural if it is more, and it says this is Quill's limitation rather than something you did. Pasting a supported-but-unmodeled block and deleting its card does **not** raise it: the check runs only when content loads and when code view exits with an edit.
 - [ ] **While the banner is unacknowledged, saving is refused** — ⌘S, Publish/Update, Save Draft and Save Locally all show the "Can't save yet" message.
 - [ ] Switching to another post while the banner is up does **not** write the squashed content (check the draft in SQLite, not through the UI — see the root `CLAUDE.md`).
 - [ ] Closing the editor while the banner is up does not write it either.
@@ -3795,7 +3813,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Insert each of Columns, Details, Buttons, Accordion, Tabs, Pullquote, Preformatted and Separator → each appears, the caret lands somewhere sensible inside it (the first tab panel, the first column, the accordion title), and the menu closes.
 - [ ] Type into each one, save, reopen → the text is there and the block still renders as a block.
 - [ ] Open each in Gutenberg → no validation warning.
-- [ ] **Delete gesture:** with the caret inside a container, the ✕ appears at the far right of the contextual toolbar row and names the block it would remove. Press it → the block goes, the caret lands in the block after it (or the one before, if nothing follows), and deleting the only block in the post leaves an empty paragraph to type in.
+- [ ] **Delete gesture:** with the caret inside a container, the ✕ appears at the far right of the contextual toolbar row (its tooltip reads "Delete block"). Press it → the block goes, the caret lands in the block after it (or the one before, if nothing follows), and deleting the only block in the post leaves an empty paragraph to type in.
 - [ ] ⌘⇧⌫ does the same thing. Neither offers itself in ordinary body text.
 - [ ] Inside nested containers, the gesture removes the innermost block first.
 - [ ] **Exit gesture:** Esc leaves a tab panel, a column, a table, a details body, a blockquote, a code block and a preformatted block, landing in the paragraph below — creating one if the block is last, reusing the one already there if not. Nested containers step out one level at a time.
@@ -3867,7 +3885,7 @@ human is required.
 
 - [ ] Media opens on a gallery in the content column, not a sidebar grid.
 - [ ] The sidebar lists five filters: All Media, Images, Documents, Audio, Video.
-- [ ] Single-clicking a thumbnail selects it and opens the inspector.
+- [ ] Single-clicking a thumbnail selects it; the inspector shows it if the inspector was already open (with it closed, selecting does not open it).
 - [ ] Arrow keys move the selection left, right, up and down.
 - [ ] The inspector follows the selection and shows the right filename.
 - [ ] The toolbar's Media Info button is disabled when nothing is selected and the inspector is closed. Open the inspector, then deselect → the button stays enabled, so it can still close the inspector.
@@ -3883,7 +3901,7 @@ human is required.
 - [ ] Scrolling to the bottom loads the next page.
 - [ ] **A first page that fits the window still pages.** Make the window tall enough (or wide enough) that all 30 thumbnails are visible with no scrollbar → page 2 loads anyway. Paging hangs off the last cell being displayed, not off scrolling, so an unscrollable first page must not strand the library at 30 items.
 - [ ] Each filter returns the right items; Documents covers PDFs but not `.txt` — a `.txt`/`.csv`/`.vtt` file appears under All Media only (WordPress's `media_type` takes one value; see `docs/gotchas.md`).
-- [ ] A filter with no results shows "No media yet"; a search with none shows "No matches found".
+- [ ] A filter with no results shows "No media yet"; a search with none shows "No Results" and "Check the spelling or try a new search.".
 - [ ] Switch between filters quickly (Images, Documents, Audio, back to All Media) → each shows a spinner while it loads and never flashes "No media yet" before its items arrive. A filter that really has nothing still ends on the empty state.
 - [ ] The toolbar Refresh button reloads and keeps the active filter.
 - [ ] Toolbar + menu → Upload Media… opens the file picker and does NOT create a post.
@@ -3893,7 +3911,7 @@ human is required.
 - [ ] **Paging survives a local change.** Delete an item, then scroll to the bottom → the next page continues from where the grid ends, with nothing skipped. Upload an item, then scroll to the bottom → nothing appears twice. Paging sends an offset taken from the item count, so both cases self-correct; a page number would not.
 - [ ] Uploading adds a thumbnail, selects it, and shows a spinner while it runs.
 - [ ] Upload a file the active filter excludes (select Images, upload a PDF) → the sidebar switches to All Media and the new item is visible and selected, rather than vanishing into a view that cannot show it.
-- [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is.
+- [ ] Start a second upload before the first finishes → the spinner runs until both are done, not until the shorter one is. (2026-10-11: the spinner stops when the first upload finishes; run-log issue 11.)
 - [ ] Change the filter or the search while a page is loading (throttle the network) → the grid shows only the new filter's items; the old page never lands in it.
 - [ ] Upload a file while a search is active → the search clears and the new item is shown and selected.
 - [ ] Open the media picker (Insert Image) and the gallery sheet on a site whose newest uploads are PDFs or audio → both show images only, with no empty first page. Upload an image from the picker, then scroll to the bottom → no image appears twice (the sheets page by offset).
