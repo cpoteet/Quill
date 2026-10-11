@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 735 Swift tests + 1,700 JS tests (1,699 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 741 Swift tests + 1,704 JS tests (1,703 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,15 +16,15 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (735 tests)
+1. **Swift tests** — `swift test` (741 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (115 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (279 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (280 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (98 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (353 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (355 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
@@ -32,7 +32,7 @@ This document is the authoritative reference for Quill's automated test suite an
 14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
 16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (72 tests — checked by WordPress's own block validator)
+17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
 
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (735 tests, 47 suites)
+## Swift test suite (741 tests, 48 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -141,7 +141,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 11 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
 | 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
-| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 53 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
+| 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 55 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `adoptSavedSettings` (status, date and slug from the save response); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
@@ -151,7 +151,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
 | 29 | `StatusBadgeTests` | `StatusBadgeTests.swift` | 5 | `statusSymbol(_:)` and `Color.statusColor(_:)` cover the same badge set, `local-post`/`local-page` share one pair, and an unknown status falls back rather than crashing |
-| 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 7 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated |
+| 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 9 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`/`dateText`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated, the date is `date_gmt` in local time (falling back to `date`) |
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
@@ -169,6 +169,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 45 | `EvaluationStateTests` | `EvaluationStateTests.swift` | 14 | The Evaluate panel's state: either half can fail while the other shows, Facts unavailable without web search, Applied marking, statuses from `findingStatus`, Apply All skipping changed text, each list's count and loading state |
 | 46 | `SelectionPromptsTests` | `SelectionPromptsTests.swift` | 8 | The right-click rewrites' prompt: the length targets tiered at 40 and 150 words, the tag order around the selection, each command's instruction, list and table variants that return the whole container, the system prompt with and without a guide, and the JSON reply |
 | 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 6 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
+| 48 | `LinkPickerModelTests` | `LinkPickerModelTests.swift` | 2 | A failed link search sets `searchError` (shown as an `InlineError`), and clearing the field removes it |
 
 ---
 
@@ -776,7 +777,7 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 
 ---
 
-### 20. Editor helpers — `PostEditorHelpersTests` (53 tests)
+### 20. Editor helpers — `PostEditorHelpersTests` (55 tests)
 
 File: `Tests/QuillTests/PostEditorHelpersTests.swift`
 
@@ -813,6 +814,15 @@ A restored autosave keeps the server `modified` it was edited from as the confli
 | `stashMatchingTheSaveIsDeleted` | A stash with the saved title, content and footnotes → `nil` (delete it); no stash → `nil` |
 | `stashWithLaterEditsIsKeptOnTheSavedVersion` | A stash whose content differs from what was saved is kept, with `serverModified` set to the saved post's |
 | `stashDifferingOnlyInFootnotesIsKept` | A stash that matches in title and content but not footnotes is kept, so an edited note is not lost |
+
+#### `adoptSavedSettings` (2 tests)
+
+After a save the server's status, date and slug replace what was sent, unless the user changed that field while the save ran.
+
+| Test | What it checks |
+|---|---|
+| `publishingShowsTheSlugWordPressAssigned` | A slug the server assigned on publish reaches both the inspector and the clean copy |
+| `aSlugTypedDuringTheSaveIsKept` | A slug typed during the save stays in the inspector; the clean copy takes the server's |
 
 #### Preview conflict check (1 test)
 
@@ -1382,6 +1392,15 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `dropsTheListWhenTheKeyChangedDuringTheFetch` | A result for a key that's no longer current is neither applied nor saved |
 | `aFailedFetchChangesNothing` | A network failure leaves the settings as they were |
 
+### 48. Editor — `LinkPickerModelTests` (2 tests)
+
+File: `Tests/QuillTests/LinkPickerModelTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `aFailedSearchSaysWhy` | A search that throws leaves `searchError` holding the reason and `isSearching` false |
+| `clearingTheFieldRemovesTheError` | An empty field clears the error |
+
 ---
 
 ## JS block parser tests (69 tests)
@@ -1539,7 +1558,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 
 ---
 
-## JS AI output validity tests (72 tests)
+## JS AI output validity tests (73 tests)
 
 `Scripts/test-ai-output-validity.js` runs each `Scripts/fixtures/ai/*.html` sample through the editor exactly as the app does (`setContent` + `syncContentToSwift` for Generate Post; `beginAIOperation` / `showAIResult` / `acceptAIResult` for right-click rewrites), captures the bytes posted to Swift, and judges them with WordPress's own `@wordpress/blocks` validator (pinned versions; see `Scripts/fixtures/ai/README.md`). Its Swift half is `AIOutputFixtureTests` (2 tests, 7 cases), which keeps each `.html` equal to what Swift's cleanup makes of its JSON `.raw.txt`. The replacement tests compare the whole document through `topLevelTexts()` (the text of each top-level block, in order), so a split, merged or emptied paragraph fails the test.
 
@@ -1560,7 +1579,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | ↳ `a selection with a leading space keeps the space` | Selecting ` Middle…` (with the space) still leaves `stays. Short.` with one space between |
 | ↳ `showAIResult reports whether it inserted anything` | A whitespace-only result returns `null` and Discard restores the text; a real result returns `true` |
 | ↳ `a result that arrives after the post changed leaves the new post alone` | `setContent` between `beginAIOperation` and `showAIResult` makes `showAIResult` return `null` and leaves the new doc unchanged |
-| `editing while Claude responds` (15 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text, and the view shows the label right before the dimmed (`.ai-pending`) text until Accept; typing at the collapsed caret lands after the result; a result for text deleted meanwhile is not inserted, and Discard then frees the next operation; Discard after the paragraph holding the result, or the whole document, was deleted brings none of it back; Discard after a table result that ends the post leaves no empty trailing paragraph; a list rewrite still replaces its own list, and only it, after text is typed above; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
+| `editing while Claude responds` (16 tests) | The "✶ Rewriting…" placeholder is a decoration, so a save during the operation holds the original text, and the view shows the label right before the dimmed (`.ai-pending`) text until Accept; typing at the collapsed caret lands after the result; a result for text deleted meanwhile is not inserted, and Discard then frees the next operation; Discard after the paragraph holding the result, exactly the result text, or the whole document was deleted brings none of it back; Discard after a table result that ends the post leaves no empty trailing paragraph; a list rewrite still replaces its own list, and only it, after text is typed above; an edit in another paragraph survives Accept and Discard, whether made before the result arrives or while it is shown; an edit before the selection moves the result with it; Discard before a result leaves the document as edited; a second operation is refused with `{ busy: true }` while one is pending or waiting for Accept/Discard, the first still lands in its own range, and a new one starts once the first is settled |
 
 | `a selection goes to Claude as reduced HTML with stubs` (13 tests) | `beginAIOperation` sends the selection as HTML with links as `<a id="L1">` and footnote markers as `<sup id="F1"></sup>` and no other attribute, a list or table as its whole container, and the rest of the paragraph plus one paragraph on each side as `before`/`after`; `showAIResult` restores link attributes and the marker by ID (its footnote body kept), unwraps an unknown or repeated stub, one on the wrong tag, or an invented footnote marker with no stub id, survives a dropped marker, puts a plain-text result in as text with its whitespace collapsed, and puts an inline result inside its paragraph without splitting it or losing the spaces around it; a plain `<sup>` with no stub id (`E=mc<sup>2</sup>`) goes to Claude and comes back intact |
 
@@ -1736,7 +1755,7 @@ The raw-attribute carrier snapshots a loaded element's attributes and replays th
 
 ---
 
-## JS editor tests (279 tests)
+## JS editor tests (280 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -1972,13 +1991,14 @@ Guards block comment preservation: WordPress block comments (`<!-- wp:paragraph 
 | `collapses a leading space before punctuation into \\s*` | `"DSPM , Content"` → same regex as without the space |
 | `requires a gap between plain words` | `"quick brown"` → `quick\\s+brown` (not optional) |
 
-### `detectEmbedProvider` (5 tests)
+### `detectEmbedProvider` (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `youtube.com and youtu.be map to youtube` | Both `youtube.com` and `youtu.be` → `"youtube"` |
 | `vimeo maps to vimeo with video type` | `https://vimeo.com/…` → `"vimeo"` |
 | `x.com and twitter.com map to twitter` | Both `x.com` and `twitter.com` → `"twitter"` |
+| `each provider carries the name WordPress spells it with` | `name` is YouTube, Vimeo, Twitter, Spotify, SoundCloud, TikTok, Instagram; the embed card title uses it |
 | `unknown host returns null` | `https://example.com/…` → `null` |
 | `invalid URL returns null` | `"not a url"` → `null` |
 
@@ -2623,7 +2643,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (353 tests)
+## JS container tests (355 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2898,14 +2918,16 @@ The toggle used to be a narrow hit zone — the right 32px of an accordion heade
 | `pressing a header row with an empty title places the caret instead of collapsing` | An empty title has no text to aim at, so the row must yield the click or a new accordion could never be named |
 | `collapse state still never reaches saved markup` | A press-driven collapse leaves no `is-collapsed` in the save |
 
-### `empty titles show a hint` (15 tests)
+### `empty titles show a hint` (17 tests)
 
-An accordion heading or details summary with no text is zero-width, so there is nothing to click and nothing to see. The hint is a node decoration plus CSS, never text in the document.
+An accordion heading, details summary or tab title with no text is zero-width, so there is nothing to click and nothing to see. The hint is a node decoration plus CSS, never text in the document.
 
 | Test | What it checks |
 |---|---|
 | `a freshly inserted accordion marks its own title as untitled` | The `is-untitled` decoration |
 | `a freshly inserted details marks its own title as untitled` | |
+| `an emptied tab title is marked as untitled` | Deleting a tab's title marks it `is-untitled`, and the CSS draws 'Tab title' |
+| `a tab title is edited as a span and still saved as a button` | The live tab titles are `<span role="tab">`; the saved markup still has `<button type="button" role="tab">` (WebKit left a stale caret in an editable button) |
 | `a loaded title with text is not marked` | |
 | `typing a title clears the mark and an empty one brings it back` | |
 | `every empty title in a multi-item accordion is marked, not just the focused one` | |
@@ -3658,6 +3680,7 @@ Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has it
 **Result handling**
 - [ ] AI-generated content replaces the selected text cleanly — no empty paragraphs appear before or after the inserted content. Save and check the raw HTML for stray `<p></p>` tags.
 - [ ] Click Accept → the AI content is kept; click Discard → the original content is restored.
+- [ ] With the result showing, click elsewhere in the post (or another paragraph, the toolbar or the sidebar) → the bar goes and the AI content is kept; ⌘Z then removes it and brings the original back.
 - [ ] If the AI returns tables, lists, or headings, save and fetch the raw HTML → it has proper WordPress classes (`wp-block-table`, `wp-block-list`, `wp-block-heading`, etc.).
 - [ ] If Claude errors or times out → the original text is restored, the editor banner gives the reason (offline, key rejected, rate limit, overloaded), and the editor is not corrupted.
 - [ ] Disconnect from the internet and trigger an AI operation → the error message reads as a clear "couldn't reach the Anthropic API" message, not a raw NSURLError string.
@@ -3668,7 +3691,7 @@ Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has it
 - [ ] If Claude's reply is empty after cleanup (for example only whitespace or an empty code fence) → the original text is restored and the banner reads "Claude couldn't finish that rewrite. Try again."; no Accept/Discard bar is shown over the placeholder.
 - [ ] **Edits made while Claude responds are kept.** Start Make Longer on one paragraph and, while "✶ Rewriting…" shows, type in another paragraph → the typing stays after the result arrives, after Accept and after Discard.
 - [ ] **Typing next to the pending text in real WebKit.** While "✶ Rewriting…" shows, click at the very start of the dimmed text and type a few words → every keystroke appears (WebKit drops keystrokes next to a widget decoration in some positions; jsdom cannot show this, see the "widget decoration next to the caret" entry in `docs/editor-gotchas.md`).
-- [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty. (2026-10-11: with a triple-click selection and Backspace, the empty paragraph that is left receives the original text on Discard; ⌘A + Delete leaves the post empty. See the run log, issue 14.)
+- [ ] **Discard after deleting the result.** Let a result arrive, select the whole paragraph holding it and delete it, then Discard → nothing comes back (no fragment of the original reappears). Repeat after ⌘A and Delete → the post stays empty. Repeat with exactly the rewritten text selected from the keyboard (Shift+arrows) and Delete, then Esc → the empty paragraph stays empty.
 - [ ] **Discard a table at the end of the post.** Select the last paragraph of a post, run To Table, then Discard → the post ends with the original paragraph and no extra empty paragraph below it, and the edited dot is not lit if the post was clean before.
 
 **AI result bar**
@@ -4205,7 +4228,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 180 | The image toolbar's H field must show the height a width-only image implies, and a typed H must keep its ratio (or scale from natural size when the image has no dimensions) | ✅ `test-editor-keyboard.js` `'image dimensions round-trip'` height-field tests (3) |
 | 181 | A link to a rotated copy of the same upload, even with `?ver=`, must record `linkDestination` `media` (a different upload records `custom`), and `align` follows `linkDestination` in the `wp:image` comment as in core | ✅ `test-editor.js` `'standalone image block comments'` (rotated copy, different upload, key order) |
 | 182 | An event-handler attribute on a gallery image, its link or its figure must never run in the editor, through load, save, code view, copy, a gallery rebuild or paste | ✅ `--check-fixtures` script handler probe `Scripts/fixtures/script-sinks/gallery-img-handler.html` (real WebKit) |
-| 183 | An AI operation kept the whole document and put it back on Discard (and silently before inserting the result), so every edit made while Claude responded was lost, and the "✶ Rewriting…" placeholder was real content an autosave or post switch could save. The pending range is now plugin state mapped through later edits, the placeholder a decoration, and Discard inverts only the insertion step | ✅ `test-ai-output-validity.js` `'editing while Claude responds'` (15 tests) |
+| 183 | An AI operation kept the whole document and put it back on Discard (and silently before inserting the result), so every edit made while Claude responded was lost, and the "✶ Rewriting…" placeholder was real content an autosave or post switch could save. The pending range is now plugin state mapped through later edits, the placeholder a decoration, and Discard inverts only the insertion step | ✅ `test-ai-output-validity.js` `'editing while Claude responds'` (16 tests) |
 | 184 | Typing inside the editor's 500ms `contentChanged` debounce was lost on a save, preview, post switch or quit, and quitting lost everything since the last autosave. Swift now awaits `flushPendingContent()` (→ `window.flushContent()`) before each of them, quit waits on `persistOpenPost`, and `contentChanged`/`footnotesChanged` from a document `setContent` has replaced are dropped until it answers | ✅ `test-editor-bridge.js` (8 tests) + `EditorCoordinatorBridgeTests` (5 tests) + 👁 §7.8, §7.9 (the quit and the call sites are SwiftUI) |
 | 185 | Preview skipped Save's guards, so a draft preview (which WordPress writes into the post) could publish a failed load's empty content or a post the block-risk banner was holding back. `openPreview()` checks `writeBlockedReason` like Save | 👁 §7.8 — `PostEditorView` is private view state |
 | 186 | A draft preview writes the post and WordPress drops its meta, so the post held new markers against old notes. `openPreview()` sends the notes with `updateFootnotes` on every preview that overwrites the post; it sent them only when they differed from the clean state, which left the notes of an earlier preview on the server after an undo | ✅ `WordPressClientTests.updateFootnotesSendsOnlyMetaToTheRightEndpoint` (the request) + 👁 §7.20 (the call) |
@@ -4214,7 +4237,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 189 | Changing the site kept the old site's open post, lists and media, and site A's autosave could restore into site B's post with the same ID. `AppState.connect` flushes the open post under the old credentials and then clears the old site's state; autosaves are keyed by site, and unsited rows are adopted once | ✅ `SiteSwitchTests` (3 tests), `AutosaveStoreTests.samePostIDOnTwoSitesIsTwoStashes`, `unsitedStashesBelongToTheFirstSiteThatAdoptsThem`, `adoptionKeepsTheSitedStashWhenBothExist`, `AppDatabaseTests.autosavesTableRebuiltWithASiteKey` + 👁 §7.1 |
 | 190 | An alt-text save that returned after a site switch could overwrite the new site's item with the same media ID. `AppState.replaceMedia(_:fromSite:)` ignores a result from a site other than the connected one; the save also reports failure, and finds the item by ID rather than an index held across the request | ✅ `MediaReplaceTests` (3 tests) + 👁 §7.1, §7.26 |
 | 191 | A second right-click AI operation overwrote the first's range, so the first reply landed in the wrong place and its Accept/Discard was orphaned. `beginAIOperation` returns `{ busy: true }` while one is held, and Swift shows `aiBusyMessage` | ✅ `test-ai-output-validity.js` `'a second operation is refused …'` (2 tests) + 👁 §7.11 (the toast) |
-| 192 | Discard after the author deleted across the AI result put the original back as a fragment where the paragraph had been. `_mapAIOperation` marks the record `deleted` when both ends are `deletedAcross`, and `discardAIResult` then restores nothing | ✅ `test-ai-output-validity.js` `'discarding after the paragraph holding the result was deleted brings none of it back'` and `'discarding after the whole document was deleted leaves it empty'` |
+| 192 | Discard after the author deleted across the AI result put the original back as a fragment where the paragraph had been. `_mapAIOperation` marks the record `deleted` when both ends are `deletedAcross` or the range is emptied (deleting exactly the result text left an empty paragraph that Discard refilled; run-log issue 14), and `discardAIResult` then restores nothing | ✅ `test-ai-output-validity.js` `'discarding after the paragraph holding the result was deleted brings none of it back'`, `'discarding after exactly the result text was deleted brings none of it back'` and `'discarding after the whole document was deleted leaves it empty'` |
 | 193 | Discarding a table or rule result that ends the post left `TrailingParagraph`'s empty `<p>` behind and marked the post dirty. `_trailingAfterResult` records that appended paragraph, and Discard deletes it while it is still empty and last | ✅ `test-ai-output-validity.js` `'discarding a table result that ends the post leaves no empty paragraph behind'` + 👁 §7.11 |
 | 194 | WebKit can drop keystrokes next to a widget decoration, and the AI operation's "✶ Rewriting…" label is one beside the caret's likely position; jsdom and Chromium never show it | 👁 §7.11 (typing at the start of the dimmed text) |
 | 195 | Settings-only changes did not read as unsaved, so they showed no dot or Revert, and Revert left changed settings in place. `cleanSettings` sits beside `cleanTitle`/`cleanContent`, `isDirty` compares it, and Revert applies the fetched post through `applyRemotePost` | ✅ `PostEditorHelpersTests` `Settings from a WordPress post` (5 tests: the `PostSettings(post:)` that the settings baseline and Revert are built from) + 👁 §7.9 (the dot, Revert and the stash are view state) |
@@ -4240,6 +4263,16 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 215 | A right-click AI rewrite stripped every ordinary superscript (`E=mc<sup>2</sup>`), because `_restoreAIStubs` treated any `<sup>` as a footnote stub. It now leaves a `<sup>` with no attributes alone and still unwraps an invented footnote marker that has no stub id | ✅ `test-ai-output-validity.js` `'a plain superscript survives the rewrite'`, `'an invented footnote marker without a stub id is unwrapped'` + 👁 §7.11 |
 | 216 | Custom HTML Edit… then Save with no change rewrote the block and marked the post edited. `insertCustomHTML` returns early when the HTML sent back equals the block's current HTML | ✅ `test-editor-preservation.js` `'saving the editor unchanged leaves the post byte-exact and unedited'` + 👁 §7.23 |
 | 217 | `<big>` and `<strike>` in classic content were kept as Custom HTML cards instead of editable text | ✅ `test-block-serializer.js` `'big and strike are inline prose, not Custom HTML'` + 👁 §7.3 |
+| 218 | The "Finish the current AI rewrite first" toast drew under the Accept/Discard bar, a child window, which cut its text in two. While the bar is up the toast sits above it (`AIResultPanel.topInset`) | 👁 §7.11 — the position of a child window has no test harness |
+| 219 | A click anywhere outside the Accept/Discard bar silently discarded the AI result. A click away now accepts it; Escape and Discard still discard, and ⌘Z removes an accepted rewrite | 👁 §7.11 — `NSEvent` monitor in `AIResultPanel` |
+| 220 | Deleting exactly the AI result text left an empty paragraph that Discard refilled with the original. An emptied result range counts as deleted | ✅ `test-ai-output-validity.js` `'discarding after exactly the result text was deleted brings none of it back'` |
+| 221 | The embed card titled a YouTube embed "Youtube embed". Each provider has a `name` with WordPress's spelling | ✅ `test-editor.js` `'each provider carries the name WordPress spells it with'` + 👁 §7.19 |
+| 222 | After a draft was published the Slug field stayed empty until the post was reopened, because only status and date were taken from the save response | ✅ `PostEditorHelpersTests` `publishingShowsTheSlugWordPressAssigned`, `aSlugTypedDuringTheSaveIsKept` + 👁 §7.7 |
+| 223 | The sidebar showed the site's date while the inspector showed local time, so a scheduled post could show different days in each. The row uses `date_gmt` in local time | ✅ `PostListRowSubtitleTests` `theDateShownIsTheUTCDateInLocalTime`, `aPostWithoutAUTCDateShowsItsSiteDate` + 👁 §7.7 |
+| 224 | Link search with the site unreachable showed an empty popover. The failure is shown as an `InlineError` | ✅ `LinkPickerModelTests` (2 tests) |
+| 225 | The "in the Media Library but wasn't set as the featured image" toast vanished after 2 seconds. It is an error toast now (6 seconds) | 👁 §7.7 |
+| 226 | An emptied tab title collapsed to a stub with no placeholder. Tab titles get the same `is-untitled` hint as accordion and details titles | ✅ `test-editor-containers.js` `'an emptied tab title is marked as untitled'` + 👁 §7.23 |
+| 227 | After a tab title was emptied and retyped, WebKit left a second, stale caret above the text. The editor renders tab titles as spans; saved markup keeps the buttons | ✅ `test-editor-containers.js` `'a tab title is edited as a span and still saved as a button'` (structure) + 👁 §7.23 (the caret) |
 | 218 | A styled `<div>` wrapped around block markup became an empty Custom HTML card: the parser splits it across freeform slices, so its opener parses as an empty element. `isSlicedWrapperOpener` skips an empty grouping element whose closing tag is not in its slice | ✅ `test-block-serializer.js` `'a styled wrapper around blocks is not kept as an empty Custom HTML block'` and `'an empty styled div that closes in its own slice is still kept'` + 👁 §7.3 |
 | 219 | The Custom HTML sheet offered CSS and JavaScript tabs to users whose code WordPress strips on save: `capabilities.unfiltered_html` is the role's capability, which a multisite non-super-admin or a site with `DISALLOW_UNFILTERED_HTML` still reports. `canPostUnfilteredHTML` also requires the `action-unfiltered-html` link on a post fetched with `context=edit`, and falls back to the capability when the site has no posts (`Sources/QuillKit/API/CLAUDE.md`) | ✅ `WordPressClientTests` `canPostUnfilteredHTML` (5 tests) + 👁 §7.23 |
 | 220 | A cut-off AI reply always suggested a lower reasoning level, even when the request sent no thinking. `AnthropicError.cutOff` carries `reasoned`, and the message offers that advice only when it is true | ✅ `AnthropicClientTests.cutOffMessageSuggestsLowerReasoningOnlyWhenThinkingWasSent` + 👁 §7.11 |

@@ -1145,7 +1145,8 @@
       margin: 0 -6px;
     }
     body.dark .ProseMirror .wp-block-tab-list { border-bottom-color: rgba(255,255,255,0.13); }
-    .ProseMirror .wp-block-tab-list button[role="tab"] {
+    .ProseMirror .wp-block-tab-list [role="tab"] {
+      position: relative;
       background: none;
       border: none;
       font: inherit;
@@ -1159,11 +1160,11 @@
       border-bottom: 2px solid transparent;
       transition: color 0.13s ease, border-color 0.13s ease;
     }
-    .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #1a1a1a; border-bottom-color: #32323a; }
-    body.dark .ProseMirror .wp-block-tab-list button[role="tab"].is-active-tab { color: #f4f4f5; border-bottom-color: #e7e7ea; }
+    .ProseMirror .wp-block-tab-list [role="tab"].is-active-tab { color: #1a1a1a; border-bottom-color: #32323a; }
+    body.dark .ProseMirror .wp-block-tab-list [role="tab"].is-active-tab { color: #f4f4f5; border-bottom-color: #e7e7ea; }
     /* isDefaultTab is a publishing choice, so it is a label here and never the
        tab the editor shows. */
-    .ProseMirror .wp-block-tab-list button[role="tab"].is-default-tab::after {
+    .ProseMirror .wp-block-tab-list [role="tab"].is-default-tab::after {
       content: 'default';
       margin-left: 7px;
       font-size: 8.5px;
@@ -1224,7 +1225,8 @@
 
     /* An empty title is invisible chrome otherwise, so the hint is the only cue it can be typed into. */
     .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
-    .ProseMirror .wp-block-details > summary.is-untitled::after {
+    .ProseMirror .wp-block-details > summary.is-untitled::after,
+    .ProseMirror .wp-block-tab-list [role="tab"].is-untitled::before {
       position: absolute;
       pointer-events: none;
       user-select: none;
@@ -1233,6 +1235,7 @@
       white-space: nowrap;
     }
     body.dark .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before,
+    body.dark .ProseMirror .wp-block-tab-list [role="tab"].is-untitled::before,
     body.dark .ProseMirror .wp-block-details > summary.is-untitled::after { color: #56565e; }
     .ProseMirror .wp-block-accordion-heading.is-untitled .wp-block-accordion-heading__toggle-title::before {
       content: 'Accordion title';
@@ -1245,6 +1248,14 @@
       left: 20px;
       top: 2px;
     }
+    .ProseMirror .wp-block-tab-list [role="tab"].is-untitled { min-width: 82px; }
+    .ProseMirror .wp-block-tab-list [role="tab"].is-untitled::before {
+      content: 'Tab title';
+      left: 13px;
+      top: 7px;
+    }
+    .ProseMirror .wp-block-tab-list [role="tab"].is-untitled.is-default-tab { min-width: 136px; }
+    .ProseMirror .wp-block-tab-list [role="tab"].is-untitled.is-default-tab::after { position: absolute; left: 76px; top: 11px; margin-left: 0; }
 
     /* Buttons */
     .ProseMirror .wp-block-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
@@ -2202,9 +2213,7 @@
         const p = detectEmbedProvider(node.attrs.url)
         const provider = document.createElement('div')
         provider.className = 'embed-card-provider'
-        provider.textContent = p
-          ? p.slug.charAt(0).toUpperCase() + p.slug.slice(1) + ' embed'
-          : 'Embed'
+        provider.textContent = p ? `${p.name} embed` : 'Embed'
         const url = document.createElement('div')
         url.className = 'embed-card-url'
         url.textContent = node.attrs.url
@@ -2702,6 +2711,14 @@
       priority: 210,
       parseHTML() { return [{ tag: 'button[role="tab"]' }] },
       renderHTML() { return ['button', { type: 'button', role: 'tab' }, 0] },
+      // WebKit leaves a stale caret behind in an editable <button>, so the editor shows a span; saved HTML keeps the button.
+      addNodeView() {
+        return () => {
+          const dom = document.createElement('span')
+          dom.setAttribute('role', 'tab')
+          return { dom, contentDOM: dom }
+        }
+      },
     })
 
     const TabList = TiptapNode.create({
@@ -3554,7 +3571,7 @@
 
     // A class, never a widget: a contenteditable=false node next to the caret
     // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
-    const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary'])
+    const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary', 'tabButton'])
 
     // The whole accordion row toggles, so its title is the one place a press
     // must fall through and land a caret instead.
@@ -3798,7 +3815,7 @@
         const from = tr.mapping.map(op.from, 1)
         return { ...op, from, to: Math.max(from, tr.mapping.map(op.to, -1)) }
       }
-      // Deleted across both ends is ReplaceStep.map's test for an inverse step with nothing left to restore.
+      // Deleted across both ends is ReplaceStep.map's test for an inverse step with nothing left to restore; an emptied range counts too.
       const start = tr.mapping.mapResult(op.from, 1)
       const end = tr.mapping.mapResult(op.to, -1)
       const from = start.pos
@@ -3806,7 +3823,7 @@
       return {
         ...op, from, to,
         caret: Math.min(Math.max(tr.mapping.map(op.caret, -1), from), to),
-        deleted: op.deleted || (start.deletedAcross && end.deletedAcross),
+        deleted: op.deleted || (start.deletedAcross && end.deletedAcross) || end.pos <= start.pos,
         trailing: _trailingAfterResult(tr) ?? (op.trailing == null ? null : tr.mapping.map(op.trailing, 1)),
       }
     }

@@ -67,6 +67,7 @@ public struct PostEditorView: View {
     @State private var hasTextSelection: Bool = false
     @State private var editorWebView: WKWebView? = nil
     @State private var resultPanel: AIResultPanel = AIResultPanel()
+    @State private var aiResultShowing = false
 
     // Evaluation state
     @State private var evaluation: EvaluationState? = nil
@@ -245,7 +246,8 @@ public struct PostEditorView: View {
             }
         }
         .uploadStatus($uploadStatus)
-        .toast(message: $toastMessage, style: $toastStyle, token: toastToken)
+        .toast(message: $toastMessage, style: $toastStyle, token: toastToken,
+               bottomPadding: aiResultShowing ? resultPanel.topInset + 4 : 20)
         .onChange(of: bannerError) { _, banner in
             if let banner { AccessibilityNotification.Announcement(banner.message).post() }
         }
@@ -692,7 +694,7 @@ public struct PostEditorView: View {
                 if isOpen(itemID), editorWebView?.window != nil {
                     settings.featuredMediaID = media.id
                 } else {
-                    presentToast("The image is in the Media Library but wasn't set as the featured image.", style: .info)
+                    presentToast("The image is in the Media Library but wasn't set as the featured image.", isError: true)
                 }
             } catch {
                 reportError("Couldn't upload the featured image: \(error.localizedDescription)", from: .featuredImage, about: itemID)
@@ -755,6 +757,7 @@ public struct PostEditorView: View {
         aiTask?.cancel()
         aiTask = nil
         resultPanel.dismiss()
+        aiResultShowing = false
 
         // Flush dirty state for the previously-loaded item before overwriting editor state
         if let prev = loadedItem, prev.id != item.id {
@@ -1163,12 +1166,7 @@ public struct PostEditorView: View {
                 appState.selectedItem = .remote(created)
             }
             let stored = PostSettings(post: result)
-            if settings.status == saved.status && settings.publishDate == saved.publishDate {
-                settings.status = stored.status
-                settings.publishDate = stored.publishDate
-            }
-            saved.status = stored.status
-            saved.publishDate = stored.publishDate
+            Self.adoptSavedSettings(stored, saved: &saved, settings: &settings)
             cleanSettings = saved
             if let alarm = blockRiskAlarm {
                 blockRiskAlarm = BlockRiskAlarm(names: alarm.names, stage: .saved)
@@ -1181,6 +1179,18 @@ public struct PostEditorView: View {
         } catch {
             report(error.localizedDescription)
         }
+    }
+
+    // The server decides status, date and slug; a field the user changed during the save keeps the edit.
+    nonisolated static func adoptSavedSettings(_ stored: PostSettings, saved: inout PostSettings, settings: inout PostSettings) {
+        if settings.status == saved.status && settings.publishDate == saved.publishDate {
+            settings.status = stored.status
+            settings.publishDate = stored.publishDate
+        }
+        if settings.slug == saved.slug { settings.slug = stored.slug }
+        saved.status = stored.status
+        saved.publishDate = stored.publishDate
+        saved.slug = stored.slug
     }
 
     // nil deletes the stash; otherwise it holds edits newer than the save, re-based on the version the save made.
@@ -1810,14 +1820,17 @@ public struct PostEditorView: View {
             resultPanel.show(
                 in: webView,
                 onAccept: {
+                    aiResultShowing = false
                     webView.evaluateJavaScript("acceptAIResult()", completionHandler: nil)
                     // Trigger contentChanged so Swift gets the accepted HTML
                     webView.evaluateJavaScript("window.pushContentToSwift?.()", completionHandler: nil)
                 },
                 onDiscard: {
+                    aiResultShowing = false
                     webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
                 }
             )
+            aiResultShowing = true
         } catch {
             guard !Task.isCancelled else { return }
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)

@@ -156,3 +156,4 @@ onto it" — its children are still replayed.
 - Quill's `cite` node is a quote's citation block, so an inline `<cite>` must never reach the parser
 - Tiptap's code mark excludes every other mark, so a link or bold around inline code was dropped on the first edit
 - `extractFootnotes` splices the list out of the string; re-serializing the DOM undoes the save
+- A tab title is edited as a `span`; WebKit leaves a stale caret behind in an editable `<button>`

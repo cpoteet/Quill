@@ -49,6 +49,20 @@ private func makeLocal(type: String) -> PostItem {
         #expect(PostListRow.formattedDate("not-a-date-at-all") == "not-a-date")
     }
 
+    @Test func theDateShownIsTheUTCDateInLocalTime() throws {
+        let json = #"{"id":1,"type":"post","title":{"rendered":"T"},"content":{"rendered":""},"excerpt":{"rendered":""},"status":"future","date":"2026-03-20T12:00:00","date_gmt":"2026-03-04T12:00:00","modified":"2026-03-04T09:00:00","slug":"s","link":"https://example.com"}"#
+        let post = try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
+        let utcNoon = try #require(ISO8601DateFormatter().date(from: "2026-03-04T12:00:00Z"))
+        #expect(PostListRow.dateText(for: post) == utcNoon.formatted(date: .abbreviated, time: .omitted))
+    }
+
+    @Test func aPostWithoutAUTCDateShowsItsSiteDate() throws {
+        let json = #"{"id":1,"type":"post","title":{"rendered":"T"},"content":{"rendered":""},"excerpt":{"rendered":""},"status":"draft","date":"2026-03-04T02:00:00","modified":"2026-03-04T02:00:00","slug":"s","link":"https://example.com"}"#
+        let post = try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
+        let siteDay = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 4)))
+        #expect(PostListRow.dateText(for: post) == siteDay.formatted(date: .abbreviated, time: .omitted))
+    }
+
     @Test func anISODateIsFormattedRatherThanTruncated() {
         let out = PostListRow.formattedDate("2026-03-04T09:00:00")
         #expect(out != "2026-03-04")

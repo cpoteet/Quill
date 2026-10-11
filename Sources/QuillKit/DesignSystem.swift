@@ -191,12 +191,12 @@ extension View {
     /// message string alone can't distinguish "still showing the first toast" from "a second,
     /// textually-identical toast just replaced it", so an unchanged string would inherit
     /// whatever time was left on the first toast's timer instead of a fresh `ToastStyle.duration`.
-    func toast(message: Binding<String?>, style: Binding<ToastStyle> = .constant(.success), token: Int = 0) -> some View {
+    func toast(message: Binding<String?>, style: Binding<ToastStyle> = .constant(.success), token: Int = 0, bottomPadding: CGFloat = 20) -> some View {
         ZStack(alignment: .bottom) {
             self
             if let msg = message.wrappedValue {
                 ToastView(message: msg, style: style.wrappedValue)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, bottomPadding)
                     .transition(
                         .asymmetric(
                             insertion: .move(edge: .bottom).combined(with: .opacity),

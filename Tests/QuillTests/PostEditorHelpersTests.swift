@@ -103,6 +103,30 @@ import Testing
         #expect(kept?.serverModified == "new")
     }
 
+    // MARK: - Settings after a save
+
+    @Test func publishingShowsTheSlugWordPressAssigned() {
+        var sent = PostSettings()
+        sent.status = .publish
+        var current = sent
+        var stored = sent
+        stored.slug = "manual-qa-alpha"
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.slug == "manual-qa-alpha")
+        #expect(sent.slug == "manual-qa-alpha")
+    }
+
+    @Test func aSlugTypedDuringTheSaveIsKept() {
+        var sent = PostSettings()
+        var current = sent
+        current.slug = "typed"
+        var stored = sent
+        stored.slug = "assigned"
+        PostEditorView.adoptSavedSettings(stored, saved: &sent, settings: &current)
+        #expect(current.slug == "typed")
+        #expect(sent.slug == "assigned")
+    }
+
     // MARK: - Preview conflict check
 
     @Test func previewOverwritesOnlyADraft() {

@@ -621,7 +621,7 @@ describe('the tabs default tab', () => {
 
   // The visibly active tab follows the caret, so the default needs its own mark.
   describe('the default tab is marked on the canvas', () => {
-    const tabButtons = () => [...win.document.querySelectorAll('.ProseMirror .wp-block-tab-list button[role="tab"]')]
+    const tabButtons = () => [...win.document.querySelectorAll('.ProseMirror .wp-block-tab-list [role="tab"]')]
     const marked = () => tabButtons().map(b => b.classList.contains('is-default-tab'))
 
     test('with no attribute written the first tab is marked', () => {

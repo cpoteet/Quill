@@ -1022,6 +1022,12 @@ describe('detectEmbedProvider', () => {
     assert.equal(detectEmbedProvider('https://twitter.com/user/status/1').slug, 'twitter')
   })
 
+  test('each provider carries the name WordPress spells it with', () => {
+    const names = ['youtube.com', 'vimeo.com', 'x.com', 'open.spotify.com', 'soundcloud.com', 'tiktok.com', 'instagram.com']
+      .map(host => detectEmbedProvider(`https://${host}/a`).name)
+    assert.deepEqual(names, ['YouTube', 'Vimeo', 'Twitter', 'Spotify', 'SoundCloud', 'TikTok', 'Instagram'])
+  })
+
   test('unknown host returns null', () => {
     assert.equal(detectEmbedProvider('https://example.com/video'), null)
   })

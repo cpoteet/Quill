@@ -2,12 +2,15 @@ import AppKit
 import SwiftUI
 
 /// Non-activating floating bar, fixed at the bottom of the editor, with Accept / Discard buttons for an AI result.
-/// Return accepts, Escape discards, clicking outside the panel discards.
+/// Return accepts, Escape discards, clicking outside the panel accepts.
 final class AIResultPanel: NSPanel {
 
     private var onAccept: (() -> Void)?
     private var onDiscard: (() -> Void)?
     private var eventMonitor: Any?
+    private static let bottomInset: CGFloat = 16
+
+    var topInset: CGFloat { Self.bottomInset + frame.height }
 
     init() {
         super.init(
@@ -59,7 +62,7 @@ final class AIResultPanel: NSPanel {
             eventMonitor = nil
         }
 
-        // Local event monitor: Return = accept, Escape = discard, click outside = discard
+        // Local event monitor: Return = accept, Escape = discard, click outside = accept
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] event in
             guard let self else { return event }
             if event.type == .keyDown {
@@ -74,8 +77,7 @@ final class AIResultPanel: NSPanel {
                     break
                 }
             } else if event.type == .leftMouseDown, event.window !== self {
-                // Click outside this panel → discard
-                self.finish(accepted: false)
+                self.finish(accepted: true)
             }
             return event
         }
@@ -102,7 +104,7 @@ final class AIResultPanel: NSPanel {
         let webViewOnScreen = window.convertToScreen(webView.convert(webView.bounds, to: nil))
         setFrameOrigin(NSPoint(
             x: webViewOnScreen.midX - frame.width / 2,
-            y: webViewOnScreen.minY + 16
+            y: webViewOnScreen.minY + Self.bottomInset
         ))
     }
 }

@@ -5,6 +5,7 @@ final class LinkPickerModel: ObservableObject {
     @Published var fieldText: String
     @Published var results: [LinkSearchResult] = []
     @Published var isSearching = false
+    @Published var searchError: String?
 
     let currentHref: String
     let onApply: (String) -> Void
@@ -35,6 +36,7 @@ final class LinkPickerModel: ObservableObject {
         searchTask?.cancel()
         if text.isEmpty || looksLikeURL {
             results = []
+            searchError = nil
             isSearching = false
             return
         }
@@ -42,9 +44,16 @@ final class LinkPickerModel: ObservableObject {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             isSearching = true
-            let found = (try? await onSearch(text)) ?? []
-            guard !Task.isCancelled else { return }
-            results = found
+            do {
+                let found = try await onSearch(text)
+                guard !Task.isCancelled else { return }
+                results = found
+                searchError = nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                results = []
+                searchError = "Couldn't search: \(error.localizedDescription)"
+            }
             isSearching = false
         }
     }
@@ -86,6 +95,12 @@ struct LinkPickerView: View {
                     .disabled(model.fieldText.isEmpty)
             }
             .padding(8)
+
+            if let error = model.searchError {
+                InlineError(message: error)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+            }
 
             // ── Search results ────────────────────────────
             if !model.results.isEmpty {

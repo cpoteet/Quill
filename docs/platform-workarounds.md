@@ -111,6 +111,14 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `Sources/QuillKit/Views/Sidebar/CLAUDE.md`, "Section switches go through `AppState.switchSection`".
 - **Last checked:** macOS 27.0, 2026-10-08.
 
+### Stale caret in an emptied tab title
+
+- **Bug:** in an editable `<button>`, WebKit draws the caret of an empty title above the text line and does not erase it once a character is typed, so a second caret stays on screen.
+- **Code:** `TabButton.addNodeView` in `editor.html` renders the tab title as a `<span role="tab">` in the editor; saved markup keeps the `<button>`.
+- **Test:** on a new local draft insert Tabs, select a tab title, delete it and type a few characters one at a time, then do the same in the other tab. Only one caret may show, after the typed text. To bypass, delete `addNodeView` from `TabButton` and change the tab CSS selectors back to `button[role="tab"]`.
+- **Detail:** `docs/editor-gotchas.md`, "A tab title is edited as a `span`".
+- **Last checked:** macOS 27.0, 2026-10-11.
+
 ## Retired
 
 - **`Picker` appearance workaround** — removed in `4bc933a` once macOS 27 fixed the stale appearance (`docs/superpowers/plans/2026-09-18-native-ui.md`, Task 9).

@@ -1809,13 +1809,13 @@ function pastedBlocksAsListItems(html, doc) {
 
 // Embed provider table. `aspect: true` providers get Gutenberg's 16:9 classes.
 const EMBED_PROVIDERS = [
-  { slug: 'youtube',    type: 'video', aspect: true,  hosts: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'] },
-  { slug: 'vimeo',      type: 'video', aspect: true,  hosts: ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'] },
-  { slug: 'twitter',    type: 'rich',  aspect: false, hosts: ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'] },
-  { slug: 'spotify',    type: 'rich',  aspect: false, hosts: ['open.spotify.com', 'spotify.com'] },
-  { slug: 'soundcloud', type: 'rich',  aspect: false, hosts: ['soundcloud.com', 'www.soundcloud.com'] },
-  { slug: 'tiktok',     type: 'video', aspect: false, hosts: ['tiktok.com', 'www.tiktok.com'] },
-  { slug: 'instagram',  type: 'rich',  aspect: false, hosts: ['instagram.com', 'www.instagram.com'] },
+  { slug: 'youtube',    name: 'YouTube',    type: 'video', aspect: true,  hosts: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'] },
+  { slug: 'vimeo',      name: 'Vimeo',      type: 'video', aspect: true,  hosts: ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'] },
+  { slug: 'twitter',    name: 'Twitter',    type: 'rich',  aspect: false, hosts: ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'] },
+  { slug: 'spotify',    name: 'Spotify',    type: 'rich',  aspect: false, hosts: ['open.spotify.com', 'spotify.com'] },
+  { slug: 'soundcloud', name: 'SoundCloud', type: 'rich',  aspect: false, hosts: ['soundcloud.com', 'www.soundcloud.com'] },
+  { slug: 'tiktok',     name: 'TikTok',     type: 'video', aspect: false, hosts: ['tiktok.com', 'www.tiktok.com'] },
+  { slug: 'instagram',  name: 'Instagram',  type: 'rich',  aspect: false, hosts: ['instagram.com', 'www.instagram.com'] },
 ]
 
 function detectEmbedProvider(url) {

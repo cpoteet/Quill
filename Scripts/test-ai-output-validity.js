@@ -571,6 +571,20 @@ describe('editing while Claude responds', () => {
     win.discardAIResult()
   })
 
+  test('discarding after exactly the result text was deleted brings none of it back', () => {
+    win.setContent('<p>Keep this.</p><p>Alpha beta gamma delta epsilon.</p><p>Tail para.</p>')
+    selectText('Alpha beta gamma delta epsilon.')
+    assert.ok(win.beginAIOperation())
+    assert.equal(win.showAIResult('<p>A much longer rewrite of the paragraph.</p>'), true)
+    selectText('A much longer rewrite of the paragraph.')
+    editor.commands.deleteSelection()
+    win.discardAIResult()
+    assert.deepEqual(topLevelTexts(), ['Keep this.', '', 'Tail para.'])
+    selectText('Tail para.')
+    assert.ok(win.beginAIOperation().text, 'the discard did not clear the operation')
+    win.discardAIResult()
+  })
+
   test('discarding after the whole document was deleted leaves it empty', () => {
     win.setContent('<p>Keep this.</p><p>Alpha beta gamma delta epsilon.</p><p>Tail para.</p>')
     selectText('beta gamma delta')

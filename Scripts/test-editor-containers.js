@@ -1433,7 +1433,7 @@ describe('editor chrome stays out of saved markup', () => {
   test('the first tab is active when the cursor is elsewhere', () => {
     editor.commands.setContent('<p>outside</p>' + TABS, false)
     editor.commands.setTextSelection(1)
-    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list button[role="tab"]')
+    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list [role="tab"]')
     assert.equal(btns[0].classList.contains('is-active-tab'), true)
     assert.equal(btns[1].classList.contains('is-active-tab'), false)
   })
@@ -1441,7 +1441,7 @@ describe('editor chrome stays out of saved markup', () => {
   test('putting the cursor in a tab panel activates that tab', () => {
     editor.commands.setContent(TABS, false)
     editor.commands.setTextSelection(posInside('tabPanel', 1) + 1)
-    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list button[role="tab"]')
+    const btns = win.document.querySelectorAll('#editor .wp-block-tab-list [role="tab"]')
     const panels = win.document.querySelectorAll('#editor .wp-block-tab-panel')
     assert.equal(btns[1].classList.contains('is-active-tab'), true)
     assert.equal(panels[1].classList.contains('is-active-tab'), true)
@@ -1663,8 +1663,8 @@ describe('container rows read as clickable', () => {
   })
 
   test('tab labels are pointer targets', () => {
-    assert.match(source, /button\[role="tab"\]\s*\{[^}]*cursor:\s*pointer/)
-    assert.doesNotMatch(source, /button\[role="tab"\]\s*\{[^}]*cursor:\s*text/)
+    assert.match(source, /\[role="tab"\]\s*\{[^}]*cursor:\s*pointer/)
+    assert.doesNotMatch(source, /\[role="tab"\]\s*\{[^}]*cursor:\s*text/)
   })
 
   test('pressing an accordion header row collapses the item', () => {
@@ -1721,6 +1721,24 @@ describe('empty titles show a hint', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertDetails()
     assert.deepEqual(hinted().map(el => el.tagName), ['SUMMARY'])
+  })
+
+  test('an emptied tab title is marked as untitled', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    let first = null
+    editor.state.doc.descendants((node, at) => { if (first === null && node.type.name === 'tabButton') first = { at, size: node.content.size } })
+    editor.commands.deleteRange({ from: first.at + 1, to: first.at + 1 + first.size })
+    assert.deepEqual(hinted().map(el => el.tagName), ['SPAN'])
+    assert.match(source, /\[role="tab"\]\.is-untitled::before\s*\{[^}]*content:\s*'Tab title'/)
+  })
+
+  // WebKit left a stale caret behind in an editable <button>, which jsdom cannot show.
+  test('a tab title is edited as a span and still saved as a button', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    assert.deepEqual([...win.document.querySelectorAll('#editor [role="tab"]')].map(el => el.tagName), ['SPAN', 'SPAN'])
+    assert.match(win.toWordPressHTML(editor.getHTML(), win.document), /<button type="button" role="tab">Tab 1<\/button><button type="button" role="tab">Tab 2<\/button>/)
   })
 
   test('a loaded title with text is not marked', () => {

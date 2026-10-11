@@ -43,7 +43,7 @@ public struct PostListRow: View {
 
     private var subtitle: String {
         guard case .remote(let post) = item else { return Self.subtitle(for: item, dateText: "") }
-        return Self.subtitle(for: item, dateText: Self.formattedDate(post.date))
+        return Self.subtitle(for: item, dateText: Self.dateText(for: post))
     }
 
     nonisolated static func statusLabel(_ status: String) -> String {
@@ -65,6 +65,11 @@ public struct PostListRow: View {
         case .local(let draft):
             return "\(draft.type.capitalized) Draft"
         }
+    }
+
+    nonisolated static func dateText(for post: WPPost) -> String {
+        guard !post.dateGmt.isEmpty, let date = PostSettings.parseWPDate(post.dateGmt) else { return formattedDate(post.date) }
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 
     nonisolated private static let dateFormatters: [DateFormatter] = {
