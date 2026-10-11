@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 741 Swift tests + 1,704 JS tests (1,703 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 742 Swift tests + 1,706 JS tests (1,705 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,13 +16,13 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (741 tests)
+1. **Swift tests** — `swift test` (742 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (115 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (280 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (98 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (100 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (355 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
@@ -112,7 +112,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (741 tests, 48 suites)
+## Swift test suite (742 tests, 48 suites)
 
 One file holds more than one suite: `EditorCoordinatorTests.swift` holds three (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`), which get a row each.
 
@@ -158,7 +158,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
-| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 28 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
+| 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 6 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
@@ -1153,7 +1153,7 @@ File: `Tests/QuillTests/ConnectSiteTests.swift`, with its own `ConnectSiteMockUR
 | `savesCredentialsAfterASuccessfulCheck` | One request to `/wp-json/wp/v2/posts`, then the same credentials are saved |
 | `savesNothingWhenTheCheckFails` | A 401 throws and nothing is saved |
 
-### 37. Onboarding — `OnboardingModelTests` (28 tests)
+### 37. Onboarding — `OnboardingModelTests` (29 tests)
 
 File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through recording fake `Dependencies`, so the suite makes no requests and writes nothing. It uses a real `AppState()` and sets `aiSettings` explicitly after creating it.
 
@@ -1184,6 +1184,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `manualConnectAfterDiscoveryUsesTheDiscoveredAddressAndName` | Manual entry after discovery verifies the discovered (`www`) address and shows the AI step with the site name |
 | `manualConnectWithAnEditedAddressIgnoresTheEarlierDiscovery` | Once the address field changes, the typed address is verified, no name is shown, and the profile link follows the new address |
 | `aFailedManualConnectStaysOnTheFormWithTheReason` | A failed check stays on the manual form with the error, not busy, and leaves `AppState` without credentials |
+| `aManualConnectThatCannotReachTheSiteSaysWhatTheWelcomePanelSays` | A transport failure on the manual form (a TLS error from an HTTP-only host) shows the Welcome panel's "Couldn't reach ‹host›" message, not the system text |
 | `aManualConnectToAnUnusableAddressChecksNothing` | An `http://` address shows the HTTPS error without a check; an invalid address has no profile link and opens nothing |
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
@@ -2304,7 +2305,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
-## JS keyboard tests (98 tests)
+## JS keyboard tests (100 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2352,6 +2353,8 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 | `Enter on an empty paragraph inside a blockquote lifts out` | Empty paragraph → exit blockquote |
 | `Enter with a selection deletes it before splitting (regression: 8a4f00f)` | Selection deleted before `tr.split`; re-derives depth after delete |
 | `Enter inside a cite exits the blockquote to a new paragraph` | Cite Enter → new paragraph below blockquote |
+| `Enter on an empty paragraph just before the cite leaves the quote below the cite` | The empty line is removed and the caret lands in a new paragraph after the quote and its cite (was: the quote split in two) |
+| `Enter on the only, empty paragraph of a quote with a cite leaves the quote and keeps its line` | The quote keeps its one (empty) line, since it needs a body, and the caret leaves to a new paragraph below |
 
 ### `footnotes` (2 tests)
 
@@ -4248,7 +4251,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 200 | The REST index's site name holds HTML entities, which the onboarding panels showed raw | ✅ `SiteDiscoveryTests.discoverDecodesEntitiesInTheSiteName` + 👁 §7.1 |
 | 201 | Discovery adopted any address the index redirected to, so an http downgrade or another host or port became the address Quill sends credentials to. `sameSite` adopts only HTTPS (or loopback http) on the same scheme and port, on the typed host or its `www`/bare twin | ✅ `SiteDiscoveryTests.discoverKeepsTheTypedAddressWhenTheIndexRedirectsOffSite` (4 cases) |
 | 202 | WordPress refuses a duplicate application-password name, so a retry after a failed check dead-ended on the Authorize page. `approvalURL` names each attempt with the date and time to the second | ✅ `AppAuthorizationTests.approvalURLNamesEachAttemptUniquelyForWordPress` + 👁 §7.1 |
-| 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (28 tests) + 👁 §7.1 |
+| 203 | A stale or replayed approval callback must not verify or save credentials, a decline must return to Welcome with a notice, and the onboarding panel must stay up through the AI step after the site connects | ✅ `OnboardingModelTests` (29 tests) + 👁 §7.1 |
 | 204 | A button's `href`, the editor web view's `file:` loads and Preview/Open in Browser accepted script or local URLs; the credentials file was written before it was made owner-only | ✅ `test-editor-containers.js` `'a button link with a script URL loses the URL but keeps its label'`, `EditorCoordinatorTests.onlyTheEditorsOwnFileMayLoad`, `PostEditorHelpersTests.previewURLRefusesANonWebScheme`, `JSONFileStoreTests.savingLeavesOnlyTheOwnerOnlyFileBehind` |
 | 205 | Connectivity errors were recognised by English phrases in `localizedDescription`, so they were missed on every non-English system and "not found" matched unrelated errors. `NetworkFailure.isConnectivity` checks `URLError` codes, and `APIError` tells a Mac with no connection that it is offline instead of telling it to check the site URL | ✅ `NetworkFailureTests` (8 tests) |
 | 206 | Errors about the open post appeared in toasts that vanished after 2 seconds, an AI rewrite failure never said why, and the sidebar's load error always pointed at Settings. Errors about the open post go to the banner, error toasts stay 6 seconds and are announced, AI failures show Anthropic's reason, and the sidebar row offers Retry, with Settings only for sign-in or address problems | ✅ `ErrorMessageTests` (15 tests) + 👁 §7.7 |

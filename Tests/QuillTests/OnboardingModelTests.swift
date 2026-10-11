@@ -344,6 +344,16 @@ private func makeModel(_ effects: FakeEffects, aiKey: String? = nil) -> (Onboard
         #expect(appState.credentials == nil)
     }
 
+    @Test func aManualConnectThatCannotReachTheSiteSaysWhatTheWelcomePanelSays() async {
+        let effects = FakeEffects()
+        effects.verifyError = APIError.networkError(URLError(.secureConnectionFailed))
+        let (model, _) = makeModel(effects)
+        model.address = "localhost"
+        model.useManualEntry()
+        await model.connectManually()
+        #expect(model.errorMessage == SiteDiscoveryError.unreachable(host: "localhost").localizedDescription)
+    }
+
     @Test func aManualConnectToAnUnusableAddressChecksNothing() async {
         let effects = FakeEffects()
         let (model, _) = makeModel(effects)

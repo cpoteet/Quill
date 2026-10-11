@@ -254,6 +254,12 @@ public struct PostSettingsPanel: View {
             searchField(placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(settings.newCategoryNames, id: \.self) { name in
+                        newTaxonomyRow(name: name) {
+                            settings.newCategoryNames.removeAll { $0 == name }
+                        }
+                    }
+
                     ForEach(filteredCategories) { cat in
                         Toggle(
                             cat.name,
@@ -272,12 +278,6 @@ public struct PostSettingsPanel: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                    }
-
-                    ForEach(settings.newCategoryNames, id: \.self) { name in
-                        newTaxonomyRow(name: name) {
-                            settings.newCategoryNames.removeAll { $0 == name }
-                        }
                     }
 
                     let trimmed = categorySearch.trimmingCharacters(in: .whitespaces)

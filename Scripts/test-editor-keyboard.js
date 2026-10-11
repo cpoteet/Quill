@@ -226,6 +226,22 @@ describe('blockquotes & cite', () => {
     key(editor.view, 'Enter')
     assert.equal(doc(), 'blockquote(paragraph("q"),cite("src")) | paragraph()')
   })
+
+  test('Enter on an empty paragraph just before the cite leaves the quote below the cite', () => {
+    editor.commands.setContent('<blockquote><p>q</p><p></p><cite>src</cite></blockquote>')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Enter')
+    assert.equal(doc(), 'blockquote(paragraph("q"),cite("src")) | paragraph()')
+    assert.equal(editor.state.selection.$from.depth, 1)
+  })
+
+  test('Enter on the only, empty paragraph of a quote with a cite leaves the quote and keeps its line', () => {
+    editor.commands.setContent('<blockquote><p></p><cite>src</cite></blockquote>')
+    editor.commands.setTextSelection(paragraphStarts()[0])
+    key(editor.view, 'Enter')
+    assert.equal(doc(), 'blockquote(paragraph(),cite("src")) | paragraph()')
+    assert.equal(editor.state.selection.$from.depth, 1)
+  })
 })
 
 describe('footnotes', () => {

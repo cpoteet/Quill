@@ -165,6 +165,9 @@ import Foundation
             let site = discoveredSiteForAddress
             let credentials = Credentials(siteURL: site?.siteURL ?? url, username: username, appPassword: appPassword)
             try await connect(credentials, siteName: site?.name)
+        } catch APIError.networkError {
+            let host = (try? SiteDiscovery.normalize(address))?.host() ?? address
+            errorMessage = SiteDiscoveryError.unreachable(host: host).localizedDescription
         } catch {
             errorMessage = error.localizedDescription
         }

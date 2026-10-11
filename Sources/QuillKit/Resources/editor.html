@@ -3912,6 +3912,16 @@
             if ($from.node($from.depth).type.name === 'cite') return false
             if ($from.depth > bqDepth + 2) return false
             if (empty && $from.parent.content.size === 0) {
+              const bq = $from.node(bqDepth)
+              if ($from.depth === bqDepth + 1 && bq.lastChild.type.name === 'cite'
+                  && $from.index(bqDepth) === bq.childCount - 2) {
+                const after = $from.after(bqDepth)
+                const tr = state.tr.insert(after, state.schema.nodes.paragraph.create())
+                tr.setSelection(state.selection.constructor.near(tr.doc.resolve(after + 1)))
+                if (bq.childCount > 2) tr.delete($from.before(), $from.after())
+                this.editor.view.dispatch(tr.scrollIntoView())
+                return true
+              }
               return this.editor.commands.liftEmptyBlock()
             }
             const { tr } = state
