@@ -1436,8 +1436,8 @@ describe('the whole settings fixture corpus', () => {
   const dir = path.resolve(__dirname, 'fixtures')
   const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
 
-  test('the corpus is the twenty-three settings fixtures', () => {
-    assert.equal(names.length, 23)
+  test('the corpus is the twenty-four settings fixtures', () => {
+    assert.equal(names.length, 24)
   })
 
   for (const name of names) {
@@ -1546,4 +1546,40 @@ describe('every registry entry is covered', () => {
       })
     }
   }
+})
+
+// Issue 20: the second row groups its controls with dividers, as the image toolbar does.
+describe('the second toolbar row divides the groups it shows', () => {
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0))
+  const order = el => parseInt(win.getComputedStyle(el).order, 10) || 0
+  const shown = () => Array.from(win.document.querySelectorAll('#toolbar-row2 > .tb-group'))
+    .filter(el => el.style.display !== 'none')
+    .sort((a, b) => order(a) - order(b))
+
+  async function assertDivided() {
+    await settle()
+    const groups = shown()
+    assert.ok(groups.length >= 2, `only ${groups.length} group shown`)
+    assert.equal(groups[0].classList.contains('tb-divided'), false, `${groups[0].id} leads with a divider`)
+    for (const g of groups.slice(1)) assert.ok(g.classList.contains('tb-divided'), `${g.id} has no divider`)
+    for (const g of win.document.querySelectorAll('#toolbar-row2 > .tb-group')) {
+      if (g.style.display === 'none') assert.equal(g.classList.contains('tb-divided'), false, `hidden ${g.id} is marked`)
+    }
+  }
+
+  test('each group after the first shown in a table is divided from the one before', async () => {
+    win.setContent(fixture('settings-table.html'))
+    let cell = null
+    editor.state.doc.descendants((node, pos) => { if (cell === null && node.type.name === 'tableCell') cell = pos })
+    editor.commands.setTextSelection(cell + 2)
+    await assertDivided()
+  })
+
+  test('the group drawn last is divided though it comes earlier in the markup', async () => {
+    win.setContent(fixture('settings-separator.html'))
+    let rule = null
+    editor.state.doc.descendants((node, pos) => { if (rule === null && node.type.name === 'horizontalRule') rule = pos })
+    editor.commands.setNodeSelection(rule)
+    await assertDivided()
+  })
 })

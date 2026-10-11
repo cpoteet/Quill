@@ -10,6 +10,9 @@
        these two and nothing else. */
     :root { --link: #a26814; --accent: #c77700; --caret: #bf801e; }
     body.dark { --link: #f0b450; --accent: #f0b450; --caret: #eea737; }
+    /* Shared by the second toolbar row, the image toolbar and the inline image popover. */
+    :root { --tb-gap: 6px; --tb-pad: 0 8px; --tb-h: 26px; --tb-radius: 6px; --tb-divider: #ddd; }
+    body.dark { --tb-divider: #444; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -87,9 +90,9 @@
       font-size: 12px;
       font-weight: 500;
       border: 1px solid transparent;
-      border-radius: 6px;
-      min-width: 26px;
-      height: 26px;
+      border-radius: var(--tb-radius);
+      min-width: var(--tb-h);
+      height: var(--tb-h);
       padding: 0 4px;
       cursor: pointer;
       background: transparent;
@@ -149,21 +152,11 @@
       stroke-linejoin: round;
       fill: none;
     }
-    /* A setting and the one it gates share a track, so the pair reads as one
-       control rather than two unrelated pills. */
-    /* The track recesses; the selected segment keeps the toolbar's own active
-       fill, so the pair introduces no colour the rest of the toolbar lacks. */
     #toolbar-row2 .setting-pair {
       display: inline-flex;
       align-items: center;
-      gap: 1px;
-      padding: 1px;
-      border-radius: 8px;
-      background: rgba(0,0,0,0.10);
+      gap: var(--tb-gap);
     }
-    body.dark #toolbar-row2 .setting-pair { background: rgba(0,0,0,0.22); }
-    /* Alone it is just a setting again, so the track would only mislead. */
-    #toolbar-row2 .setting-pair.is-solo { background: none; padding: 0; }
 
     #toolbar-row2 .setting-select {
       appearance: none;
@@ -402,11 +395,17 @@
     /* Metrics key off the group class, so a group cannot be added without them. */
     #toolbar-row2 .tb-group {
       align-items: center;
-      gap: 8px;
+      gap: var(--tb-gap);
+    }
+    #toolbar-row2 .tb-group.tb-divided::before {
+      content: '';
+      width: 1px;
+      height: 14px;
+      background: var(--tb-divider);
     }
     #toolbar-row2 .tb-group button {
       min-width: auto;
-      padding: 0 9px;
+      padding: var(--tb-pad);
     }
     #toolbar-row2 .tb-group-icons button {
       min-width: 26px;
@@ -415,7 +414,7 @@
     #toolbar-row2 {
       display: none;
       align-items: center;
-      gap: 8px;
+      gap: var(--tb-gap);
       min-height: 34px;
       padding: 4px 16px;
       background: rgba(255, 255, 255, 0.96);
@@ -425,7 +424,7 @@
     }
     #toolbar-row2.visible { display: flex; }
     /* Generated setting groups append after this span, so pin it last visually. */
-    #block-controls { order: 1; margin-left: 8px; }
+    #block-controls { order: 1; }
     body.dark #toolbar-row2 {
       background: rgba(30, 30, 30, 0.96);
     }
@@ -697,7 +696,7 @@
     body.dark .image-wrapper figcaption.caption-placeholder:empty::before { color: #666; }
 
     /* ── Image toolbar ──────────────────────────────── */
-    #image-toolbar {
+    #image-toolbar, #inline-image-popover {
       display: none;
       position: fixed;
       flex-direction: column;
@@ -714,7 +713,15 @@
       user-select: none;
       backdrop-filter: blur(18px);
     }
-    body.dark #image-toolbar {
+    #inline-image-popover { width: 236px; margin: 0; white-space: normal; }
+    #inline-image-popover.visible { display: flex; }
+    #inline-image-popover .img-tb-row { flex-direction: column; align-items: stretch; gap: 4px; padding: 7px 9px; }
+    #inline-image-popover .iip-field { display: flex; align-items: center; gap: var(--tb-gap); }
+    #inline-image-popover .iip-actions { align-items: flex-end; }
+    #inline-image-popover .iip-help { margin: 0; font-size: 11px; line-height: 1.4; color: #999; }
+    #inline-image-popover .iip-help a { color: var(--link); }
+    #inline-image-popover #iip-apply { background: var(--accent); color: #fff; padding: 0 12px; }
+    body.dark #image-toolbar, body.dark #inline-image-popover {
       background: rgba(44,44,46,0.96);
       border-color: rgba(255,255,255,0.12);
       color: #f0f0f0;
@@ -722,50 +729,53 @@
     .img-tb-row {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--tb-gap);
       padding: 5px 7px;
     }
     .img-tb-row + .img-tb-row { border-top: 1px solid rgba(0,0,0,0.08); }
     body.dark .img-tb-row + .img-tb-row { border-top-color: rgba(255,255,255,0.1); }
-    #image-toolbar input[type="text"] {
+    #image-toolbar input[type="text"], #inline-image-popover textarea {
       flex: 1;
       min-width: 140px;
-      height: 26px;
+      height: var(--tb-h);
       padding: 0 7px;
       border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 6px;
+      border-radius: var(--tb-radius);
       font-size: 12px;
       background: rgba(255,255,255,0.58);
       color: inherit;
     }
-    body.dark #image-toolbar input[type="text"] {
+    #inline-image-popover textarea { height: auto; padding: 5px 7px; font: inherit; resize: none; }
+    body.dark #image-toolbar input[type="text"], body.dark #inline-image-popover textarea {
       background: rgba(255,255,255,0.06);
       border-color: rgba(255,255,255,0.12);
     }
-    #image-toolbar input[type="number"] {
+    #image-toolbar input[type="number"], #inline-image-popover input[type="number"] {
       width: 52px;
-      height: 26px;
+      height: var(--tb-h);
       padding: 0 5px;
       border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 6px;
+      border-radius: var(--tb-radius);
       font-size: 12px;
       text-align: center;
       background: rgba(255,255,255,0.58);
       color: inherit;
     }
-    body.dark #image-toolbar input[type="number"] {
+    body.dark #image-toolbar input[type="number"], body.dark #inline-image-popover input[type="number"] {
       background: rgba(255,255,255,0.06);
       border-color: rgba(255,255,255,0.12);
     }
     #image-toolbar input[type="number"]::-webkit-inner-spin-button,
-    #image-toolbar input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
-    #image-toolbar button {
+    #image-toolbar input[type="number"]::-webkit-outer-spin-button,
+    #inline-image-popover input[type="number"]::-webkit-inner-spin-button,
+    #inline-image-popover input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    #image-toolbar button, #inline-image-popover button {
       font-size: 12px;
       font-weight: 600;
-      height: 26px;
-      padding: 0 8px;
+      height: var(--tb-h);
+      padding: var(--tb-pad);
       border: 1px solid transparent;
-      border-radius: 6px;
+      border-radius: var(--tb-radius);
       cursor: pointer;
       background: transparent;
       color: inherit;
@@ -778,7 +788,7 @@
       background: rgba(255,255,255,0.09);
       border-color: rgba(255,255,255,0.1);
     }
-    #image-toolbar button:disabled { opacity: 0.4; cursor: default; }
+    #image-toolbar button:disabled, #inline-image-popover button:disabled { opacity: 0.4; cursor: default; }
     #image-toolbar button.active {
       background: #ececef;
       color: #3f434d;
@@ -788,9 +798,8 @@
       background: rgba(255,255,255,0.12);
       color: #f4f4f5;
     }
-    #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: #ddd; margin: 0 2px; }
-    body.dark #image-toolbar .img-tb-sep { background: #444; }
-    #image-toolbar .img-tb-label { color: #999; }
+    #image-toolbar .img-tb-sep { width: 1px; height: 14px; background: var(--tb-divider); }
+    #image-toolbar .img-tb-label, #inline-image-popover .img-tb-label { color: #999; }
 
 
     /* Tables */
@@ -1552,6 +1561,20 @@
       <button id="img-tb-link" style="display:none">Link to Full Image</button>
     </div>
   </div>
+  <form id="inline-image-popover" role="dialog" aria-label="Inline image">
+    <div class="img-tb-row">
+      <label class="img-tb-label" for="iip-width">Width</label>
+      <span class="iip-field"><input type="number" id="iip-width" min="1"><span class="img-tb-label">px</span></span>
+    </div>
+    <div class="img-tb-row">
+      <label class="img-tb-label" for="iip-alt">Alternative text</label>
+      <textarea id="iip-alt" rows="2"></textarea>
+      <p class="iip-help"><a id="iip-help-link" href="https://www.w3.org/WAI/tutorials/images/decision-tree/">Describe the purpose of the image.</a><br>Leave empty if decorative.</p>
+    </div>
+    <div class="img-tb-row iip-actions">
+      <button type="submit" id="iip-apply" disabled>Apply</button>
+    </div>
+  </form>
   <div id="find-bar">
     <input id="find-input" type="text" placeholder="Find" spellcheck="false">
     <span id="find-count">0 of 0</span>
@@ -2930,6 +2953,7 @@
       for (const attr of Array.from(element.attributes)) {
         if (attr.name === 'data-quill-style') { attrs.push(['style', attr.value]); continue }
         if (attr.name.startsWith('data-quill-')) continue
+        if (attr.name === 'style' && element.hasAttribute('data-quill-style')) continue
         if (!isCarryableAttr(attr.name, attr.value)) continue
         attrs.push([attr.name, attr.value])
       }
@@ -3504,7 +3528,7 @@
 
     // Esc belongs to whatever overlay is open before it belongs to the editor.
     function _overlayOpen() {
-      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible, #table-size-menu.visible')
+      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible, #table-size-menu.visible, #inline-image-popover.visible')
     }
 
     // Land the caret in typable space just past the container, making that
@@ -3541,10 +3565,11 @@
       // the middle of one would surprise more than it helps.
       if (!target || target.node.type.name === 'table') return false
 
+      const lastLine = $from.node(-1).childCount - ($from.node(-1).lastChild.type.name === 'cite' ? 2 : 1)
       if ($from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
-          && $from.after() === $from.end(-1)) {
+          && $from.index(-1) === lastLine) {
         const tr = editor.state.tr
-        if ($from.node(-1).childCount > 1) tr.delete($from.before(), $from.after())
+        if (lastLine > 0) tr.delete($from.before(), $from.after())
         return _exitContainerBlock(tr, target)
       }
 
@@ -3945,10 +3970,15 @@
       'mark', 'q', 'samp', 'small', 'sub', 'sup', 'time', 'var',
     ]
 
-    const _attrMap = el => Object.fromEntries(
-      Array.from(el.attributes)
-        .filter(a => isCarryableAttr(a.name, a.value))
-        .map(a => [a.name, a.value]))
+    const _attrMap = el => Object.fromEntries(elementAttrPairs(el))
+
+    // Saved from data-quill-style, which ProseMirror leaves alone; style only draws it.
+    function _drawnStyleAttrs(attrs) {
+      const out = {}
+      for (const [name, value] of Object.entries(attrs)) out[name === 'style' ? 'data-quill-style' : name] = value
+      if (attrs.style) out.style = attrs.style
+      return out
+    }
 
     const RawInline = Mark.create({
       name: 'rawInline',
@@ -3974,7 +4004,7 @@
         }])
       },
       renderHTML({ mark }) {
-        return [mark.attrs.tag || 'span', mark.attrs.rawAttrs || {}, 0]
+        return [mark.attrs.tag || 'span', _drawnStyleAttrs(mark.attrs.rawAttrs || {}), 0]
       },
     })
 
@@ -4047,13 +4077,118 @@
         return ['img', out]
       },
       addNodeView() {
-        return ({ node }) => {
+        return ({ node, getPos }) => {
           const dom = document.createElement('img')
-          for (const [name, value] of _inlineImagePairs(node)) dom.setAttribute(name, value)
-          return { dom }
+          const draw = next => {
+            for (const attr of Array.from(dom.attributes)) dom.removeAttribute(attr.name)
+            for (const [name, value] of _inlineImagePairs(next)) dom.setAttribute(name, value)
+          }
+          draw(node)
+          const view = {
+            dom, node, getPos,
+            update(next) {
+              if (next.type !== view.node.type) return false
+              view.node = next
+              const selected = dom.classList.contains('ProseMirror-selectednode')
+              draw(next)
+              dom.classList.toggle('ProseMirror-selectednode', selected)
+              if (_inlineImageView === view) _showInlineImagePopover(view)
+              return true
+            },
+            selectNode() {
+              dom.classList.add('ProseMirror-selectednode')
+              _showInlineImagePopover(view)
+            },
+            // The delay lets a click into the popover take focus before this checks it.
+            deselectNode() {
+              dom.classList.remove('ProseMirror-selectednode')
+              setTimeout(() => {
+                if (document.getElementById('inline-image-popover').contains(document.activeElement)) return
+                if (dom.classList.contains('ProseMirror-selectednode')) return
+                if (_inlineImageView === view) _hideInlineImagePopover()
+              }, 80)
+            },
+            destroy() { if (_inlineImageView === view) _hideInlineImagePopover() },
+          }
+          return view
         }
       },
     })
+
+    // ── Inline image popover ─────────────────────────
+    // The block editor's inline image popover: Width and Alternative text, applied together.
+    let _inlineImageView = null
+
+    function _inlineImageValues(node) {
+      const pairs = _inlineImagePairs(node)
+      const style = (pairs.find(([name]) => name === 'style') || [])[1] || ''
+      return { width: style.replace(/\D/g, ''), alt: (pairs.find(([name]) => name === 'alt') || [])[1] ?? '' }
+    }
+
+    function _positionInlineImagePopover() {
+      const pop = document.getElementById('inline-image-popover')
+      const rect = _inlineImageView.dom.getBoundingClientRect()
+      const tbWrap = document.getElementById('toolbar-wrap')
+      const minTop = tbWrap ? tbWrap.getBoundingClientRect().bottom : 0
+      let top = rect.bottom + 6
+      if (top + pop.offsetHeight > window.innerHeight) top = rect.top - 6 - pop.offsetHeight
+      pop.style.top = Math.max(top, minTop) + 'px'
+      pop.style.left = Math.max(0, Math.min(rect.left, window.innerWidth - pop.offsetWidth)) + 'px'
+    }
+
+    function _showInlineImagePopover(view) {
+      const pop = document.getElementById('inline-image-popover')
+      _inlineImageView = view
+      const { width, alt } = _inlineImageValues(view.node)
+      pop._shown = { width, alt }
+      document.getElementById('iip-width').value = width
+      document.getElementById('iip-alt').value = alt
+      document.getElementById('iip-apply').disabled = true
+      pop.classList.add('visible')
+      _positionInlineImagePopover()
+      document.getElementById('editor-wrap').addEventListener('scroll', _positionInlineImagePopover)
+    }
+
+    function _hideInlineImagePopover() {
+      document.getElementById('inline-image-popover').classList.remove('visible')
+      document.getElementById('editor-wrap').removeEventListener('scroll', _positionInlineImagePopover)
+      _inlineImageView = null
+    }
+
+    ;(function () {
+      const pop = document.getElementById('inline-image-popover')
+      const widthIn = document.getElementById('iip-width')
+      const altIn = document.getElementById('iip-alt')
+      pop.addEventListener('input', () => {
+        document.getElementById('iip-apply').disabled = widthIn.value === pop._shown.width && altIn.value === pop._shown.alt
+      })
+      pop.addEventListener('submit', e => {
+        e.preventDefault()
+        const pos = _inlineImageView?.getPos()
+        if (typeof pos !== 'number') return
+        const pairs = _inlineImagePairs(_inlineImageView.node)
+        const set = (name, value) => {
+          const hit = pairs.find(([n]) => n === name)
+          if (hit) hit[1] = value
+          else pairs.push([name, value])
+        }
+        const width = parseInt(widthIn.value, 10)
+        set('style', width >= 1 ? `width: ${width}px;` : '')
+        set('alt', altIn.value)
+        editor.chain().command(({ tr }) => { tr.setNodeMarkup(pos, null, { attrs: JSON.stringify(pairs) }); return true })
+          .setNodeSelection(pos).run()
+      })
+      document.getElementById('iip-help-link').addEventListener('click', e => {
+        e.preventDefault()
+        window.webkit?.messageHandlers?.openLink?.postMessage(e.currentTarget.href)
+      })
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !pop.classList.contains('visible')) return
+        e.preventDefault()
+        _hideInlineImagePopover()
+        editor.commands.focus()
+      })
+    })()
 
     const editor = new Editor({
       element: document.getElementById('editor'),
@@ -4088,7 +4223,7 @@
         CustomBlockquote,
         Cite,
         Underline.extend({
-          renderHTML: () => ['span', { style: 'text-decoration: underline;' }, 0],
+          renderHTML: () => ['span', _drawnStyleAttrs({ style: 'text-decoration: underline;' }), 0],
         }),
         RawInline,
         InlineImage,
@@ -5110,6 +5245,23 @@
 
     const _settingGroups = _buildSettingGroups()
 
+    // Every shown group but the first on screen gets a divider; #block-controls is drawn last by CSS order.
+    ;(function () {
+      const row = document.getElementById('toolbar-row2')
+      const orders = new Map()
+      const order = el => {
+        if (!orders.has(el)) orders.set(el, parseInt(getComputedStyle(el).order, 10) || 0)
+        return orders.get(el)
+      }
+      const divide = () => {
+        const groups = Array.from(row.children).filter(el => el.classList.contains('tb-group'))
+        const shown = groups.filter(el => el.style.display !== 'none').sort((a, b) => order(a) - order(b))
+        for (const g of groups) g.classList.toggle('tb-divided', shown.indexOf(g) > 0)
+      }
+      new MutationObserver(divide).observe(row, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] })
+      divide()
+    })()
+
     function _updateSettingControls() {
       for (const group of _settingGroups) {
         const target = _settingBlockAt(editor.state, group.typeName)
@@ -5870,6 +6022,7 @@
       if (codeViewActive) return
       _closeFindBar()
       _hideImageToolbar()
+      _hideInlineImagePopover()
       _closeEmbedMenu()
       codeViewActive = true
       // _rawHTML is cleared (set to null) on every Tiptap update event, so null means

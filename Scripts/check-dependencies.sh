@@ -46,7 +46,7 @@ section "WordPress release the @wordpress test packages must match"
 WP=$(curl -s https://api.wordpress.org/core/version-check/1.7/ | python3 -c "import sys,json; print(json.load(sys.stdin)['offers'][0]['current'])")
 SHA=$(curl -s "https://raw.githubusercontent.com/WordPress/wordpress-develop/$WP/package.json" | python3 -c "import sys,json; print(json.load(sys.stdin)['gutenberg']['sha'])")
 print "  WordPress $WP (Gutenberg $SHA)"
-for p in block-serialization-default-parser blocks block-library block-editor components compose data private-apis rich-text; do
+for p in block-serialization-default-parser blocks block-library format-library block-editor components compose data private-apis rich-text; do
   want=$(curl -s "https://raw.githubusercontent.com/WordPress/gutenberg/$SHA/packages/$p/package.json" | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
   have=$(node -p "require('./Scripts/package-lock.json').packages['node_modules/@wordpress/$p']?.version ?? '-'")
   [[ $want == $have ]] && mark="" || mark="  MISMATCH"

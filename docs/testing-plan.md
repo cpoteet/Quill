@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 742 Swift tests + 1,727 JS tests (1,726 pass, 1 skipped), no failures._
+_Last updated: 2026-10-11 — 742 Swift tests + 1,750 JS tests (1,749 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -17,24 +17,24 @@ This document is the authoritative reference for Quill's automated test suite an
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
 1. **Swift tests** — `swift test` (742 tests)
-2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (69 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (115 tests — pure Node; `serializeAttributes` compared with WordPress)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (70 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (116 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (280 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (100 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (111 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (376 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
-12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (58 tests — live Tiptap editor in jsdom)
+12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (59 tests — live Tiptap editor in jsdom)
 13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (60 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
-14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (22 tests — live Tiptap editor in jsdom)
+14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (235 tests — live Tiptap editor in jsdom)
+16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (240 tests — live Tiptap editor in jsdom)
 17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
-19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (64 tests — same validator, over every fixture)
+19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (66 tests — same validator, over every fixture)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nineteen passed.
 
@@ -1404,7 +1404,7 @@ File: `Tests/QuillTests/LinkPickerModelTests.swift`
 
 ---
 
-## JS block parser tests (69 tests)
+## JS block parser tests (70 tests)
 
 File: `Scripts/test-block-parser.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`
@@ -1432,7 +1432,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (115 tests)
+## JS block serializer tests (116 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1594,7 +1594,7 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `findingStatus` (1 test) | Reports `ok`, `missing` and `ambiguous` for a list of originals without editing |
 | `the editor search text` (1 test) | `_editorSearchText()` for `Scripts/fixtures/evaluate/post.html` equals `post.editor-text.txt`, the fixture `EvaluationPromptsTests.postTextMatchesEditorText` checks against |
 
-## JS fixture validity sweep (64 tests)
+## JS fixture validity sweep (66 tests)
 
 `Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture, then the block-comment attributes WordPress parses from each.
 
@@ -2305,7 +2305,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
-## JS keyboard tests (100 tests)
+## JS keyboard tests (111 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2355,6 +2355,8 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 | `Enter inside a cite exits the blockquote to a new paragraph` | Cite Enter → new paragraph below blockquote |
 | `Enter on an empty paragraph just before the cite leaves the quote below the cite` | The empty line is removed and the caret lands in a new paragraph after the quote and its cite (was: the quote split in two) |
 | `Enter on the only, empty paragraph of a quote with a cite leaves the quote and keeps its line` | The quote keeps its one (empty) line, since it needs a body, and the caret leaves to a new paragraph below |
+| `Enter on an empty paragraph just before a pullquote cite leaves the pullquote below the cite` | The same rule for a pullquote, which `_containerEnter` handles (was: each Enter added another empty line) |
+| `Enter on the only, empty paragraph of a pullquote with a cite leaves it and keeps its line` | The pullquote keeps its one (empty) line and the caret leaves to a new paragraph below |
 
 ### `footnotes` (2 tests)
 
@@ -2488,6 +2490,22 @@ The block editor's inline image (its `core/image` rich-text format, `<img class=
 | `insertImage in a table cell keeps a narrower image at its own width` | |
 | `one copied on its own, with no line around it, pastes into a cell as one` | ProseMirror serializes a lone inline image as a bare `<img data-quill-inline-image>`; the marker is enough to parse it back inline |
 | `insertImage outside a table cell still inserts an image block` | |
+
+### `the inline image popover` (9 tests)
+
+Clicking an inline image opens Width and Alternative text with Apply, as the block editor's inline image popover does. The four Apply tests compare Quill's saved paragraph with core's own Apply, run by `Scripts/core-formats.js` through `@wordpress/rich-text` with `@wordpress/format-library` registered.
+
+| Test | What it checks |
+|---|---|
+| `selecting one opens it with the width and alt text the image has` | The width is the digits of `style`, as core reads it |
+| `Apply stays off until a value changes` | Changing a value back turns it off again |
+| `Apply writes what the block editor writes for a new width and alt text` | Existing `style` and `alt` replaced in place |
+| `Apply writes what the block editor writes for a width on an image that had none` | `style` appended after the existing attributes |
+| `Apply writes what the block editor writes for a cleared width` | `style=""`, as core writes it |
+| `Apply writes what the block editor writes for cleared alt text` | `alt=""` |
+| `the image stays selected after Apply` | The popover stays open on the updated image |
+| `Escape closes it` | |
+| `moving the caret off the image closes it` | |
 
 ---
 
@@ -3160,7 +3178,7 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ---
 
-## JS paste tests (58 tests)
+## JS paste tests (59 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3275,7 +3293,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 
 ---
 
-## JS inline format tests (22 tests)
+## JS inline format tests (24 tests)
 
 `Scripts/test-editor-inline-formats.js` — the real `editor.html` in jsdom. Covers the
 inline marks Quill has no toolbar control for, and the Link mark's attribute carrier.
@@ -3283,6 +3301,9 @@ inline marks Quill has no toolbar control for, and the Link mark's attribute car
 | Test | Checks |
 |---|---|
 | `<sub>`, `<sup>`, `<kbd>`, `<mark>`, `<abbr>` survive a load → edit → save | the `rawInline` mark preserves a tag and its attributes |
+| a custom text colour saves exactly as core wrote it | core's `<mark style="…;color:#cf2e2e" class="has-inline-color">` comes back byte for byte after an edit: the style rides as `data-quill-style`, so it is neither re-serialized to `rgb()` nor moved after `class` (issue 16) |
+| a custom text colour still shows in the editor | the mark also draws its `style`, which the save drops |
+| a custom text colour keeps core's bytes when Quill's own HTML is parsed again | the path a copy and paste inside Quill takes: the carried style wins over the drawn one |
 | a blockquote cite still parses as a cite node | the mark does not steal `<cite>` |
 | bold, italic, strike, code and links are untouched | the mark does not shadow the core marks |
 | the `inline-formats.html` fixture round-trips byte-identically | whole-fixture guard, no edit |
@@ -3303,7 +3324,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (235 tests)
+## JS block settings tests (240 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3321,10 +3342,11 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
 | `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
 | `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
-| `the whole settings fixture corpus` | All twenty-three `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
+| `the whole settings fixture corpus` | All twenty-four `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
 | `an unlinked image keeps the "none" core wrote` | An unlinked image whose comment says `"linkDestination":"none"` keeps it; one that says `"custom"` still loses it (`an unlinked image writes no linkDestination`) |
 | `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |
 | `every class-writing setting claims its class` | A drift guard with no runtime symptom: a setting that writes a class on its node's own root needs that node to claim `class` in `RAW_ATTRS_MODELED`, or the raw-attribute replay puts the source's class list back and resurrects the token the user just turned off |
+| `the second toolbar row divides the groups it shows` | GitHub issue 20: every shown group but the first on screen (in CSS `order`, so `#block-controls` counts as last) carries `tb-divided`, and no hidden group does. Two cases: a table cell, and a selected separator, whose `#block-controls` comes before its settings group in the markup |
 | `every registry entry is covered` | Fails if a registry entry is named by no test in this file (before this check) or the containers suite — the drift guard. A block-style setting must have each of its option classes (`is-style-outline`, …) mentioned, since the name `className` is everywhere |
 
 **Recorded limit — sections plus colspan.** When a table has explicit `<thead>`/`<tfoot>` *and* a colspanned body cell, ProseMirror pads every row to a uniform cell count at parse time, so the header and footer each gain a phantom empty cell. This is upstream of anything the save transform can reach; in isolation colspan round-trips correctly and sections round-trip correctly, and only the combination fails. `test-editor-containers.js`'s `RECORDED LIMIT: sections plus a colspan gain a phantom cell` **asserts the phantom cell**, so if it is ever fixed upstream that test fails and points here.
@@ -3412,7 +3434,7 @@ Notes from the 2026-10-10 agent run (`docs/manual-test-run-2026-10-10.md` has it
 - [ ] **Sidebar width.** Delete the `sidebarWidth` and `NSSplitView Subview Frames …` keys in `com.siolon.quill` defaults → the sidebar opens at 260pt. Drag it narrower → it stops at 260pt. In a window at least 1300pt wide, drag it to about 300pt, quit, delete only the `NSSplitView Subview Frames …` keys (what a reboot does) and relaunch → it opens at the dragged width.
 - [ ] **Sidebar drag-collapse.** With the window at 900pt and the inspector hidden, drag the sidebar divider all the way left until it collapses, keep holding, drag back out → the sidebar returns and the window stays 900pt wide.
 - [ ] **Offline, Local Drafts shows the drafts and no error.** Turn off Wi-Fi and launch → Local Drafts lists every saved draft. The sidebar shows no error row, the empty-state overlay does not appear, and the detail placeholder does not say "Couldn't load…". Switch to Posts → the error row and "Couldn't load posts" appear there.
-- [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The error triangle lines up with the first line of the error text, not the middle of a wrapped message.
+- [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The red error icon lines up with the first line of the error text, not the middle of a wrapped message.
 - [ ] **Retry after a failed launch load fills every section.** Turn off Wi-Fi and launch → Posts shows the error row. Turn Wi-Fi back on and click Retry → Posts loads; switch to Pages → the pages are listed, not "No pages yet". Repeat with ⌘R and with the toolbar Refresh button instead of Retry.
 - [ ] **Open Blog Settings… only when Settings can fix it.** In Settings, change the site URL to a domain that does not exist and relaunch → the sidebar error says to check the URL and the row offers Open Blog Settings… beside Retry. Turn off Wi-Fi and relaunch with the correct URL → the error says the Mac is offline and the row offers only Retry. (An HTTP 400 also offers Settings; `ErrorMessageTests.settingsFixableErrors` covers it.)
 

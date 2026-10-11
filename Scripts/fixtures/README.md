@@ -39,6 +39,7 @@ an unedited capture.
 | `settings-tabs.html` | A `core/tabs` with two tabs |
 | `settings-embed.html` | A responsive YouTube `core/embed`, whose URL holds the `\u0026` escape |
 | `settings-gallery.html` | Hand-written, not a site capture, then passed through core's own `serialize(parse())` so the bytes are what WordPress writes: a `core/gallery` linked to attachment pages at Medium with a gallery caption and an image class, and one with mixed sizes, a custom link and a formatted caption |
+| `settings-inline-formats.html` | Hand-written, not a site capture: a paragraph holding core's text-colour format with a custom colour and with a palette colour, and core's underline format, each as `@wordpress/rich-text`'s `toHTMLString` writes them with the two formats registered as `@wordpress/format-library` declares them |
 
 The twelve `settings-*.html` files were captured together from one throwaway
 draft on WordPress 7.1 (`block-library.js` of 2026-08-20), which was deleted

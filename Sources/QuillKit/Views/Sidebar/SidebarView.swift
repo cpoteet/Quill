@@ -413,15 +413,13 @@ struct SidebarErrorRow: View {
     @Environment(\.openSettings) private var openSettings
 
     nonisolated private static let capHeight = NSFont.preferredFont(forTextStyle: .subheadline).capHeight
-    // Measured gap between the large-scale symbol's frame top and the triangle's apex.
-    nonisolated private static let triangleTopInset: CGFloat = 1.5
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .symbolRenderingMode(.multicolor)
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
                 .imageScale(.large)
-                .alignmentGuide(.firstTextBaseline) { $0[.top] + Self.triangleTopInset + Self.capHeight }
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.capHeight / 2 }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
                 Text(failure.message)

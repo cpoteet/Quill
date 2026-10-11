@@ -242,6 +242,22 @@ describe('blockquotes & cite', () => {
     assert.equal(doc(), 'blockquote(paragraph(),cite("src")) | paragraph()')
     assert.equal(editor.state.selection.$from.depth, 1)
   })
+
+  test('Enter on an empty paragraph just before a pullquote cite leaves the pullquote below the cite', () => {
+    editor.commands.setContent('<figure class="wp-block-pullquote"><blockquote><p>q</p><p></p><cite>src</cite></blockquote></figure>')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Enter')
+    assert.equal(doc(), 'pullquote(paragraph("q"),cite("src")) | paragraph()')
+    assert.equal(editor.state.selection.$from.depth, 1)
+  })
+
+  test('Enter on the only, empty paragraph of a pullquote with a cite leaves it and keeps its line', () => {
+    editor.commands.setContent('<figure class="wp-block-pullquote"><blockquote><p></p><cite>src</cite></blockquote></figure>')
+    editor.commands.setTextSelection(paragraphStarts()[0])
+    key(editor.view, 'Enter')
+    assert.equal(doc(), 'pullquote(paragraph(),cite("src")) | paragraph()')
+    assert.equal(editor.state.selection.$from.depth, 1)
+  })
 })
 
 describe('footnotes', () => {
@@ -1058,5 +1074,83 @@ describe('inline images', () => {
     editor.commands.setTextSelection(2)
     win.insertImage('http://x/a.png', 42, 'alt x', 800)
     assert.ok(editor.getJSON().content.some(n => n.type === 'image'))
+  })
+})
+
+describe('the inline image popover', () => {
+  const { applyInlineImage } = require('./core-formats')
+  const IMG = '<img class="wp-image-42" style="width: 150px;" src="http://x/a.png" alt="alt x">'
+  const para = text => '<!-- wp:paragraph -->\n<p>' + text + '</p>\n<!-- /wp:paragraph -->'
+  const $ = id => win.document.getElementById(id)
+  const settle = () => new Promise(resolve => setTimeout(resolve, 120))
+
+  function select(html) {
+    win.setContent(para(html), '[]')
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'inlineImage') at = pos })
+    editor.commands.setNodeSelection(at)
+  }
+
+  function type(id, value) {
+    $(id).value = value
+    $(id).dispatchEvent(new win.Event('input', { bubbles: true }))
+  }
+
+  function apply() {
+    $('inline-image-popover').dispatchEvent(new win.Event('submit', { bubbles: true, cancelable: true }))
+    win.syncContentToSwift()
+    return win.getContent().match(/<p>([\s\S]*)<\/p>/)[1]
+  }
+
+  test('selecting one opens it with the width and alt text the image has', () => {
+    select('Text ' + IMG + ' more')
+    assert.ok($('inline-image-popover').classList.contains('visible'))
+    assert.equal($('iip-width').value, '150')
+    assert.equal($('iip-alt').value, 'alt x')
+  })
+
+  test('Apply stays off until a value changes', () => {
+    select('Text ' + IMG + ' more')
+    assert.equal($('iip-apply').disabled, true)
+    type('iip-width', '300')
+    assert.equal($('iip-apply').disabled, false)
+    type('iip-width', '150')
+    assert.equal($('iip-apply').disabled, true)
+  })
+
+  for (const [name, img, width, alt] of [
+    ['a new width and alt text', IMG, '300', 'new alt'],
+    ['a width on an image that had none', '<img src="http://x/a.png" alt="alt x">', '120', 'alt x'],
+    ['a cleared width', IMG, '', 'alt x'],
+    ['cleared alt text', IMG, '150', ''],
+  ]) {
+    test(`Apply writes what the block editor writes for ${name}`, () => {
+      const html = 'Text ' + img + ' more'
+      select(html)
+      type('iip-width', width)
+      type('iip-alt', alt)
+      assert.equal(apply(), applyInlineImage(html, width, alt))
+    })
+  }
+
+  test('the image stays selected after Apply', () => {
+    select('Text ' + IMG + ' more')
+    type('iip-width', '200')
+    apply()
+    assert.equal(editor.state.selection.node?.type.name, 'inlineImage')
+    assert.ok($('inline-image-popover').classList.contains('visible'))
+  })
+
+  test('Escape closes it', () => {
+    select('Text ' + IMG + ' more')
+    $('iip-alt').dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    assert.equal($('inline-image-popover').classList.contains('visible'), false)
+  })
+
+  test('moving the caret off the image closes it', async () => {
+    select('Text ' + IMG + ' more')
+    editor.commands.setTextSelection(2)
+    await settle()
+    assert.equal($('inline-image-popover').classList.contains('visible'), false)
   })
 })

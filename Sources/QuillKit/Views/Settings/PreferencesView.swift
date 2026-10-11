@@ -7,7 +7,7 @@ public struct PreferencesView: View {
     @State private var username: String = ""
     @State private var appPassword: String = ""
     @State private var isSaving: Bool = false
-    @State private var saveError: String?
+    @State private var credentialsError: String?
     @State private var saveSuccess: Bool = false
 
     // AI Writing settings
@@ -16,6 +16,7 @@ public struct PreferencesView: View {
     @State private var isAnalyzing: Bool = false
     @State private var modelFetchError: String?
     @State private var modelNotice: String?
+    @State private var saveError: String?
     @State private var fetchedKey: String?
     @FocusState private var apiKeyFocused: Bool
     var onSave: (Credentials) -> Void
@@ -45,10 +46,13 @@ public struct PreferencesView: View {
                 } header: {
                     Text("WordPress Credentials")
                 } footer: {
-                    Text("Generate an application password in WordPress Admin \u{2192} Users \u{2192} Profile.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let credentialsError { InlineError(message: credentialsError) }
+                        Text("Generate an application password in WordPress Admin \u{2192} Users \u{2192} Profile.")
+                    }
                 }
 
-                Section("AI Writing") {
+                Section {
                     SecureField("Anthropic API Key", text: $ai.apiKey)
                         .focused($apiKeyFocused)
                         .onSubmit { Task { await fetchModels() } }
@@ -84,13 +88,10 @@ public struct PreferencesView: View {
                         if !modelSearches { Text("This model can't search the web.") }
                     }
                     .disabled(!modelSearches)
-                }
-
-                if let error = saveError {
-                    Section {
-                        InlineError(message: error)
-                            .font(.caption)
-                    }
+                } header: {
+                    Text("AI Writing")
+                } footer: {
+                    if let saveError { InlineError(message: saveError) }
                 }
             }
             .formStyle(.grouped)
@@ -120,6 +121,8 @@ public struct PreferencesView: View {
             )
         }
         .onAppear {
+            credentialsError = nil
+            saveError = nil
             loadExisting()
             loadExistingAI()
         }
@@ -203,6 +206,7 @@ public struct PreferencesView: View {
     }
 
     private func saveAll() async {
+        credentialsError = nil
         saveError = nil
         saveSuccess = false
         isSaving = true
@@ -213,20 +217,17 @@ public struct PreferencesView: View {
         // from a previous site must be cleared when the user switches WordPress sites.
         let previousCreds = try? CredentialsStore.load()
         let siteURLChanged = previousCreds != nil && previousCreds?.siteURL.absoluteString != siteURL
-        if siteURLChanged {
-            ai.samplePostIDs = []
-        }
 
         // Save WordPress credentials if any field is filled
         if !siteURL.isEmpty || !username.isEmpty || !appPassword.isEmpty {
             guard let url = URL(string: siteURL), let scheme = url.scheme?.lowercased() else {
-                saveError = "Invalid URL. Include https://"
+                credentialsError = "Invalid URL. Include https://"
                 return
             }
             let host = url.host?.lowercased() ?? ""
             let isLocalHost = host == "localhost" || host == "127.0.0.1" || host == "::1"
             guard scheme == "https" || (scheme == "http" && isLocalHost) else {
-                saveError = "Site URL must use HTTPS (HTTP is allowed only for localhost)."
+                credentialsError = "Site URL must use HTTPS (HTTP is allowed only for localhost)."
                 return
             }
             isSaving = true
@@ -234,14 +235,22 @@ public struct PreferencesView: View {
 
             do {
                 try await ConnectSite.verifyAndSave(creds)
+            } catch APIError.networkError {
+                credentialsError = SiteDiscoveryError.unreachable(host: host).localizedDescription
+                isSaving = false
+                return
             } catch {
-                saveError = error.localizedDescription
+                credentialsError = error.localizedDescription
                 isSaving = false
                 return
             }
 
             onSave(creds)
             isSaving = false
+        }
+
+        if siteURLChanged {
+            ai.samplePostIDs = []
         }
 
         // Determine whether the style guide needs regeneration:

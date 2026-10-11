@@ -74,13 +74,24 @@ describe('inline formats Quill has no control for survive an edit', () => {
     assert.match(out, /<kbd>Cmd\+S<\/kbd>/)
   })
 
-  test('highlight survives with its colour class', () => {
-    const src = '<!-- wp:paragraph -->\n<p>A <mark style="background-color:rgba(0,0,0,0);color:#cf2e2e" class="has-inline-color has-vivid-red-color">red</mark> word.</p>\n<!-- /wp:paragraph -->'
-    const out = editAndSave(src)
-    assert.match(out, /<mark[^>]*>red<\/mark>/)
-    assert.match(out, /has-vivid-red-color/)
-    // the DOM re-serialises style values, so assert the colour, not its spelling
-    assert.match(out, /#cf2e2e|rgb\(207, ?46, ?46\)/)
+  test('a custom text colour saves exactly as core wrote it', () => {
+    const mark = '<mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">red</mark>'
+    const out = editAndSave(`<!-- wp:paragraph -->\n<p>A ${mark} word.</p>\n<!-- /wp:paragraph -->`)
+    assert.ok(out.includes(mark), out)
+  })
+
+  test('a custom text colour still shows in the editor', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>A <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">red</mark> word.</p>\n<!-- /wp:paragraph -->')
+    assert.match(editor.view.dom.querySelector('mark').style.color, /#cf2e2e|rgb\(207, ?46, ?46\)/)
+  })
+
+  test("a custom text colour keeps core's bytes when Quill's own HTML is parsed again", () => {
+    const mark = '<mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">red</mark>'
+    win.setContent(`<!-- wp:paragraph -->\n<p>A ${mark} word.</p>\n<!-- /wp:paragraph -->`)
+    editor.commands.setContent(editor.getHTML())
+    editor.commands.setTextSelection(1)
+    editor.commands.insertContent('X')
+    assert.ok(win.getContent().includes(mark), win.getContent())
   })
 
   test('an abbreviation keeps its title attribute', () => {
@@ -120,7 +131,7 @@ describe('underline saves the markup Gutenberg wrote', () => {
     const src = '<!-- wp:paragraph -->\n<p>An <span style="text-decoration: underline;">underlined</span> phrase.</p>\n<!-- /wp:paragraph -->'
     const out = editAndSave(src)
     assert.doesNotMatch(out, /<u>/)
-    assert.match(out, /<span style="text-decoration: ?underline;?">underlined<\/span>/)
+    assert.match(out, /<span style="text-decoration: underline;">underlined<\/span>/)
   })
 
   test('the Mod-U shortcut still underlines with no toolbar button for it', () => {
@@ -131,7 +142,7 @@ describe('underline saves the markup Gutenberg wrote', () => {
       // jsdom reports a non-Mac platform, so prosemirror-keymap binds Mod to Ctrl
       key: 'u', code: 'KeyU', bubbles: true, cancelable: true, ctrlKey: true,
     }))
-    assert.match(win.getContent(), /<span style="text-decoration: ?underline;?">Plain<\/span>/)
+    assert.match(win.getContent(), /<span style="text-decoration: underline;">Plain<\/span>/)
   })
 })
 

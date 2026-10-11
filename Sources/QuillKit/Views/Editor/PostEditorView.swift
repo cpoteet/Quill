@@ -503,8 +503,7 @@ public struct PostEditorView: View {
         return cleanSettings.status.rawValue
     }
 
-    // Distinct danger styling, not the amber of a recoverable save error:
-    // this is content about to be deleted.
+    // A tinted red band, unlike a save error's plain banner: this is content about to be deleted.
     private func blockRiskBanner(_ alarm: BlockRiskAlarm) -> some View {
         let danger = alarm.stage != .saved
         return HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -559,8 +558,8 @@ public struct PostEditorView: View {
     // #1 Dismissible error banner
     private var errorBanner: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .symbolRenderingMode(.multicolor)
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
                 .font(.system(size: 13))
                 .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + Self.calloutCapHeight / 2 }
             Text(bannerError?.message ?? "")

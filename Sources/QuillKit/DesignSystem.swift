@@ -69,8 +69,8 @@ struct InlineError: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .symbolRenderingMode(.multicolor)
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(.red)
                 .accessibilityHidden(true)
             Text(message)
                 .foregroundStyle(.secondary)
@@ -88,8 +88,11 @@ struct PaneError: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(title, systemImage: "exclamationmark.triangle.fill")
-                .symbolRenderingMode(.multicolor)
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+            }
         } description: {
             Text(message)
         } actions: {

@@ -981,6 +981,7 @@ function toWordPressHTML(html, doc) {
   })
   // Rename the carried style back in place, keeping its position; see Resources/CLAUDE.md.
   div.querySelectorAll('[data-quill-style]').forEach(el => {
+    el.removeAttribute('style')
     const attrs = Array.from(el.attributes).map(a => [a.name, a.value])
     attrs.forEach(([name]) => el.removeAttribute(name))
     attrs.forEach(([name, value]) => el.setAttribute(name === 'data-quill-style' ? 'style' : name, value))

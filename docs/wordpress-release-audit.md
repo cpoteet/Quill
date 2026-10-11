@@ -42,12 +42,12 @@ The comparison and validator suites run WordPress's own packages as test-only re
   ```bash
   V=7.2.0   # the new release
   SHA=$(curl -s https://raw.githubusercontent.com/WordPress/wordpress-develop/$V/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['gutenberg']['sha'])")
-  for p in block-serialization-default-parser blocks block-library block-editor components compose data private-apis rich-text; do
+  for p in block-serialization-default-parser blocks block-library format-library block-editor components compose data private-apis rich-text; do
     echo "$p $(curl -s https://raw.githubusercontent.com/WordPress/gutenberg/$SHA/packages/$p/package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")"
   done
   ```
 
-- [ ] **4. Pin them.** In `Scripts/`, run `npm install --save-dev --save-exact` with those four versions (`@wordpress/block-serialization-default-parser@…`, `@wordpress/blocks@…`, `@wordpress/block-library@…`, and `@wordpress/block-editor@…` only if it is listed), then set the same `blocks` and `block-editor` versions, plus the `components`, `compose`, `data`, `private-apis` and `rich-text` versions, in the `overrides` block of `Scripts/package.json`. Then delete `Scripts/node_modules` and `Scripts/package-lock.json` and run `npm install`, so the overrides reach every nested copy. The transitive five must match the release too: newer ones on npm use `private-apis` 2.x, and a second `private-apis` copy fails every validator suite with "Cannot unlock an object that was not locked before".
+- [ ] **4. Pin them.** In `Scripts/`, run `npm install --save-dev --save-exact` with those five versions (`@wordpress/block-serialization-default-parser@…`, `@wordpress/blocks@…`, `@wordpress/block-library@…`, `@wordpress/format-library@…`, and `@wordpress/block-editor@…` only if it is listed), then set the same `blocks` and `block-editor` versions, plus the `components`, `compose`, `data`, `private-apis` and `rich-text` versions, in the `overrides` block of `Scripts/package.json`. Then delete `Scripts/node_modules` and `Scripts/package-lock.json` and run `npm install`, so the overrides reach every nested copy. The transitive five must match the release too: newer ones on npm use `private-apis` 2.x, and a second `private-apis` copy fails every validator suite with "Cannot unlock an object that was not locked before".
 
 ### Check that Quill reads blocks as WordPress does
 
