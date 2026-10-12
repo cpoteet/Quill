@@ -131,6 +131,7 @@ public final class AppState: ObservableObject {
     @Published public var triggerPreview: Bool = false
     @Published public var triggerRevert: Bool = false
     @Published public var triggerRefresh: Bool = false
+    @Published public var editorReloadToken: Int = 0
 
     // Mirrored from PostEditorView so the File menu can enable its items; the editor is
     // the only writer.

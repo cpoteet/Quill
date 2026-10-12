@@ -311,6 +311,7 @@ public struct SidebarView: View {
     }
 
     private func refresh() async {
+        appState.editorReloadToken += 1
         if appState.credentials != appState.lastLoadedCredentials {
             if appState.selectedSection == .media { appState.mediaRefreshToken += 1 }
             await loadAllSections()

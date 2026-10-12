@@ -389,6 +389,7 @@ public struct PostEditorView: View {
             }
         }
         .task(id: item.id) { await loadItem() }
+        .onChange(of: appState.editorReloadToken) { Task { await reloadIfClean() } }
         .onAppear {
             appState.persistOpenPost = (quitToken, { await persistOpenPost() })
         }
@@ -865,6 +866,25 @@ public struct PostEditorView: View {
             cleanSettings = settings
             contentLoaded = true
         }
+    }
+
+    private func reloadIfClean() async {
+        guard let itemID = loadedItem?.id, case .remote(let post)? = loadedItem,
+              contentLoaded, !contentLoadFailed,
+              let creds = appState.credentials, creds.siteKey == loadedSite else { return }
+        await editorHandle.flushPendingContent()
+        let baseline = lastSavedServerModified
+        func canApply() -> Bool {
+            isOpen(itemID) && !isDirty && !isSaving && lastSavedServerModified == baseline
+        }
+        guard canApply() else { return }
+        let client = WordPressClient(credentials: creds)
+        guard let fresh = try? await (post.type == "page"
+            ? client.fetchPage(id: post.id)
+            : client.fetchPost(id: post.id)) else { return }
+        await editorHandle.flushPendingContent()
+        guard canApply(), fresh != serverPost else { return }
+        applyRemotePost(fresh)
     }
 
     private func applyRemotePost(_ post: WPPost) {
