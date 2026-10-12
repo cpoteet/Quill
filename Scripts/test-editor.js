@@ -1643,6 +1643,26 @@ describe('standalone image block comments', () => {
     assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
   })
 
+  test('figure classes come out in core order: wp-block-image, align, size, is-resized, then className', () => {
+    const html = '<figure class="is-style-rounded size-medium my-class"><img class="aligncenter" src="https://example.com/p.jpg" alt="" width="200"></figure>'
+    assert.match(wp(html), /<figure class="wp-block-image aligncenter size-medium is-resized is-style-rounded my-class">/)
+  })
+
+  test('core-ordered figure classes are left as they are', () => {
+    const html = '<figure class="wp-block-image aligncenter size-medium is-style-rounded"><img src="https://example.com/p.jpg" alt=""></figure>'
+    assert.match(wp(html), /<figure class="wp-block-image aligncenter size-medium is-style-rounded">/)
+  })
+
+  test('a link to the full file of an image edited in WordPress records linkDestination media', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/p-scaled-e1715028060251.jpg"><img src="https://example.com/p-683x1024.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
+  test('a link from an edited image size to its full file records linkDestination media', () => {
+    const html = '<figure class="wp-block-image"><a href="https://example.com/p-e1715028060251.jpg"><img src="https://example.com/p-e1715028060251-1024x683.jpg" alt="" data-media-id="7"></a></figure>'
+    assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'media' })
+  })
+
   test('a link to a different upload records linkDestination custom', () => {
     const html = '<figure class="wp-block-image"><a href="https://example.com/q.jpg"><img src="https://example.com/p-1024x683.jpg" alt="" data-media-id="7"></a></figure>'
     assert.deepEqual(attrsOf(nodesOf(wp(html))[0]), { id: 7, linkDestination: 'custom' })

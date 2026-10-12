@@ -193,6 +193,56 @@ describe('lists', () => {
   })
 })
 
+describe('Tab outside lists and tables', () => {
+  function tab(mods = {}) {
+    const ev = new win.KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', keyCode: 9, which: 9, bubbles: true, cancelable: true, shiftKey: !!mods.shift })
+    editor.view.dom.dispatchEvent(ev)
+    return ev
+  }
+
+  test('Tab in a paragraph is kept from moving focus and changes nothing', () => {
+    editor.commands.setContent('<p>text</p>')
+    editor.commands.focus('end')
+    assert.equal(tab().defaultPrevented, true)
+    assert.equal(doc(), 'paragraph("text")')
+  })
+
+  test('Shift-Tab in a paragraph is kept from moving focus and changes nothing', () => {
+    editor.commands.setContent('<p>text</p>')
+    editor.commands.focus('end')
+    assert.equal(tab({ shift: true }).defaultPrevented, true)
+    assert.equal(doc(), 'paragraph("text")')
+  })
+
+  test('Tab in a code block inserts a tab character', () => {
+    editor.commands.setContent('<pre><code>x</code></pre>')
+    editor.commands.setTextSelection(posOfFirst('codeBlock') + 1)
+    tab()
+    assert.equal(doc(), 'codeBlock("\\tx")')
+  })
+
+  test('Tab in a preformatted block inserts a tab character', () => {
+    editor.commands.setContent('<pre class="wp-block-preformatted">x</pre>')
+    editor.commands.setTextSelection(posOfFirst('preformatted') + 1)
+    tab()
+    assert.equal(doc(), 'preformatted("\\tx")')
+  })
+
+  test('Tab in a second list item still nests it', () => {
+    editor.commands.setContent('<ul><li><p>one</p></li><li><p>two</p></li></ul>')
+    editor.commands.focus('end')
+    tab()
+    assert.equal(doc(), 'bulletList(listItem(paragraph("one"),bulletList(listItem(paragraph("two")))))')
+  })
+
+  test('Tab in a table cell still moves to the next cell', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table>')
+    editor.commands.setTextSelection(posOfFirst('paragraph') + 1)
+    tab()
+    assert.equal(editor.state.selection.$from.parent.textContent, 'b')
+  })
+})
+
 describe('blockquotes & cite', () => {
   test('Enter in a blockquote creates a paragraph inside the quote', () => {
     editor.commands.setContent('<blockquote><p>quoted</p></blockquote>')
@@ -810,6 +860,58 @@ describe('image toolbar visibility', () => {
     assert.equal(editor.state.selection.node?.attrs.linkTo, 'media')
   })
 
+  function withWrapperBottom(bottom, fn) {
+    const proto = win.HTMLElement.prototype
+    const original = proto.getBoundingClientRect
+    proto.getBoundingClientRect = function () {
+      return this.classList.contains('image-wrapper') ? { left: 40, top: bottom - 100, bottom, right: 340, width: 300, height: 100 } : original.call(this)
+    }
+    try { fn() } finally { proto.getBoundingClientRect = original }
+  }
+
+  test('the toolbar follows the image when its attributes change', () => {
+    selectImage()
+    withWrapperBottom(500, () => {
+      const node = editor.state.selection.node
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(0, null, { ...node.attrs, width: 120 }))
+    })
+    assert.equal(tb().style.top, '506px')
+  })
+
+  test('the toolbar follows the image when a new size finishes loading', () => {
+    selectImage()
+    withWrapperBottom(300, () => {
+      win.document.querySelector('#editor .image-wrapper img').dispatchEvent(new win.Event('load'))
+    })
+    assert.equal(tb().style.top, '306px')
+  })
+
+  function setNaturalSize(img, width, height) {
+    Object.defineProperty(img, 'naturalWidth', { value: width, configurable: true })
+    Object.defineProperty(img, 'naturalHeight', { value: height, configurable: true })
+  }
+  const dims = () => [win.document.getElementById('img-tb-w').value, win.document.getElementById('img-tb-h').value]
+
+  test('W and H keep showing the natural size after a size change on an image with no stored width', () => {
+    selectImage()
+    setNaturalSize(win.document.querySelector('#editor .image-wrapper img'), 300, 200)
+    const node = editor.state.selection.node
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(0, null, { ...node.attrs, src: 'http://x/p-300x200.jpg' }))
+    assert.deepEqual(dims(), ['300', '200'])
+  })
+
+  test('W and H update when the new size finishes loading', () => {
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', false)
+    const img = win.document.querySelector('#editor .image-wrapper img')
+    setNaturalSize(img, 300, 200)
+    editor.commands.setNodeSelection(0)
+    const node = editor.state.selection.node
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(0, null, { ...node.attrs, src: 'http://x/p-1024x683.jpg' }))
+    setNaturalSize(img, 1024, 683)
+    img.dispatchEvent(new win.Event('load'))
+    assert.deepEqual(dims(), ['1024', '683'])
+  })
+
   test('an alignment button keeps the image selected and the toolbar open', async () => {
     selectImage()
     win.document.querySelector('[data-cmd="alignCenter"]')
@@ -1004,6 +1106,27 @@ describe('trailing paragraph after a block that holds no text', () => {
     const out = win.toWordPressHTML(editor.getHTML())
     assert.ok(!out.includes('<p></p>'), out)
     assert.ok(!out.includes('wp:paragraph'), out)
+  })
+
+  const tableThenFootnotes = () => {
+    editor.commands.setContent('<p>body</p><table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.setTextSelection(5)
+    win.insertFootnote()
+  }
+
+  test('a loaded table followed only by the footnotes list gains one before the list', () => {
+    tableThenFootnotes()
+    editor.commands.setContent(editor.getHTML().replace('<p></p>', ''), false)
+    const names = []
+    editor.state.doc.forEach(n => names.push(n.type.name + (n.type.name === 'paragraph' ? `(${n.textContent})` : '')))
+    assert.deepEqual(names, ['paragraph(body)', 'table', 'paragraph()', 'footnotesList'])
+  })
+
+  test('the paragraph added before the footnotes list is stripped again on save', () => {
+    tableThenFootnotes()
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.equal(out.match(/<!-- wp:paragraph -->/g).length, 1, out)
+    assert.ok(!out.includes('<p></p>'), out)
   })
 
   test('a footnotes list stays last', () => {

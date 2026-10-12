@@ -679,6 +679,60 @@ describe('accordion toolbar controls', () => {
   })
 })
 
+describe('adding an item moves the caret into it', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  const caretIndexIn = typeName => {
+    const { $from } = editor.state.selection
+    for (let d = $from.depth; d > 0; d--) if ($from.node(d).type.name === typeName) return $from.index(d)
+    return -1
+  }
+  const caretInside = typeName => {
+    const { $from } = editor.state.selection
+    for (let d = $from.depth; d > 0; d--) if ($from.node(d).type.name === typeName) return true
+    return false
+  }
+
+  test('+Col puts the caret in the new column', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertColumns(2)
+    press('addColumnBlock')
+    assert.equal(caretIndexIn('columnsBlock'), 2)
+  })
+
+  test('+Item puts the caret in the new section title', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertAccordion()
+    press('addAccordionItem')
+    assert.equal(caretIndexIn('accordionBlock'), 1)
+    assert.ok(caretInside('accordionHeading'))
+  })
+
+  test('+Button puts the caret in the new button', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    press('addButton')
+    assert.equal(caretIndexIn('buttonsBlock'), 1)
+  })
+
+  test('+Tab puts the caret in the new tab panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    press('addTab')
+    assert.equal(caretIndexIn('tabPanels'), 2)
+  })
+
+  test('+Tab puts the caret in the new tab panel when a paragraph follows the tabs', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    const tabs = editor.state.doc.child(0)
+    editor.view.dispatch(editor.state.tr.insert(tabs.nodeSize, editor.schema.nodes.paragraph.create(null, editor.schema.text('after'))))
+    editor.commands.setTextSelection(4)
+    press('addTab')
+    assert.equal(caretIndexIn('tabPanels'), 2)
+  })
+})
+
 // Real WP 7.1 structure: tabs > tab-list (a button per tab) + tab-panels >
 // tab-panel. The label is stored twice — as the button's text and as each
 // panel's `label` attribute — so the save transform keeps the two in sync.
@@ -1468,6 +1522,16 @@ describe('editor chrome stays out of saved markup', () => {
     assert.doesNotMatch(save(), /<details[^>]*\sopen/)
   })
 
+  test('code, preformatted and inline code opt out of smart quotes in the DOM only', () => {
+    editor.commands.setContent('<pre class="wp-block-code"><code>x = 1</code></pre>' +
+      '<pre class="wp-block-preformatted">pre</pre><p>a <code>b</code> c</p>', false)
+    const ed = win.document.querySelector('#editor')
+    assert.equal(ed.querySelector('pre.wp-block-code').getAttribute('spellcheck'), 'false')
+    assert.equal(ed.querySelector('pre.wp-block-preformatted').getAttribute('spellcheck'), 'false')
+    assert.equal(ed.querySelector('p [spellcheck="false"]')?.textContent, 'b')
+    assert.equal(ed.querySelector('p').getAttribute('spellcheck'), null)
+    assert.doesNotMatch(save(), /spellcheck/)
+  })
   test('showContent true still saves the open attribute', () => {
     editor.commands.setContent('<details class="wp-block-details" open><summary>S</summary><p>Body</p></details>', false)
     assert.match(save(), /<details[^>]*\sopen/)

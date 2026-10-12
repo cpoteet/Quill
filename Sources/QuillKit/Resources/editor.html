@@ -1740,6 +1740,7 @@
         this.frame.contentEditable = 'false'
 
         this.img = document.createElement('img')
+        this.img.addEventListener('load', () => this._syncToolbar())
         this._applyAttrs(node.attrs)
         this.frame.appendChild(this.img)
 
@@ -1802,13 +1803,20 @@
         // Sync toolbar inputs if this image is currently selected
         const tb = document.getElementById('image-toolbar')
         if (tb?._activeNodeView === this) {
-          document.getElementById('img-tb-w').value   = node.attrs.width  ?? ''
-          document.getElementById('img-tb-h').value   = node.attrs.height ?? _impliedHeight(this.img, node.attrs.width) ?? ''
+          _fillImageDims(this)
           document.getElementById('img-tb-alt').value = node.attrs.alt    ?? ''
           const linkBtn = document.getElementById('img-tb-link')
           if (linkBtn) linkBtn.classList.toggle('active', node.attrs.linkTo === 'media')
+          _positionImageToolbar(tb, this.wrapper)
         }
         return true
+      }
+
+      _syncToolbar() {
+        const tb = document.getElementById('image-toolbar')
+        if (tb?._activeNodeView !== this) return
+        _fillImageDims(this)
+        _positionImageToolbar(tb, this.wrapper)
       }
 
       selectNode() {
@@ -1941,25 +1949,20 @@
       tb.style.top  = Math.max(wRect.bottom + 6, minTop) + 'px'
     }
 
+    function _fillImageDims(nv) {
+      let w = nv.node.attrs.width
+      let h = nv.node.attrs.height
+      if (w == null && nv.img.naturalWidth)  w = nv.img.naturalWidth
+      if (h == null) h = _impliedHeight(nv.img, w)
+      document.getElementById('img-tb-w').value = w ?? ''
+      document.getElementById('img-tb-h').value = h ?? ''
+    }
+
     function _showImageToolbar(nv) {
       const tb = document.getElementById('image-toolbar')
       if (!tb) return
       tb._activeNodeView = nv
-      function fillDims() {
-        let w = nv.node.attrs.width
-        let h = nv.node.attrs.height
-        if (w == null && nv.img.naturalWidth)  w = nv.img.naturalWidth
-        if (h == null) h = _impliedHeight(nv.img, w)
-        document.getElementById('img-tb-w').value = w ?? ''
-        document.getElementById('img-tb-h').value = h ?? ''
-      }
-      fillDims()
-      if (nv.node.attrs.width == null && !nv.img.naturalWidth) {
-        nv.img.addEventListener('load', function onLoad() {
-          nv.img.removeEventListener('load', onLoad)
-          if (tb._activeNodeView === nv) fillDims()
-        })
-      }
+      _fillImageDims(nv)
       document.getElementById('img-tb-alt').value = nv.node.attrs.alt    ?? ''
       _updateNamedSizeButtons(null)
 
@@ -3597,6 +3600,21 @@
       },
     })
 
+    // Priority 1 lets lists and tables take Tab first; unhandled, WebKit moves focus inside the post.
+    const TabKey = Extension.create({
+      name: 'tabKey',
+      priority: 1,
+      addKeyboardShortcuts() {
+        return {
+          Tab: ({ editor }) => {
+            if (editor.isActive('codeBlock') || editor.isActive('preformatted')) editor.commands.insertContent('\t')
+            return true
+          },
+          'Shift-Tab': () => true,
+        }
+      },
+    })
+
     // A class, never a widget: a contenteditable=false node next to the caret
     // is where WebKit stops accepting keystrokes, so the hint is drawn in CSS.
     const HINTED_TITLES = new Set(['accordionHeading', 'detailsSummary', 'tabButton'])
@@ -3655,6 +3673,13 @@
           }
         }
         if (name === 'tabsBlock') _tabDecorations(node, pos, head, decos)
+        // WebKit skips smart quotes and dashes inside spellcheck="false".
+        if (name === 'codeBlock' || name === 'preformatted') {
+          decos.push(Decoration.node(pos, pos + node.nodeSize, { spellcheck: 'false' }))
+        }
+        if (node.isText && node.marks.some(m => m.type.name === 'code')) {
+          decos.push(Decoration.inline(pos, pos + node.nodeSize, { spellcheck: 'false' }, { inclusiveEnd: true }))
+        }
         if (HINTED_TITLES.has(name) && node.content.size === 0) {
           decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'is-untitled' }))
         }
@@ -3913,9 +3938,12 @@
           new Plugin({
             key: new PluginKey('trailingParagraph'),
             appendTransaction(_trs, _oldState, state) {
-              const last = state.doc.lastChild
+              const { doc } = state
+              const footnotes = doc.lastChild?.type.name === 'footnotesList'
+              const last = footnotes ? (doc.childCount > 1 ? doc.child(doc.childCount - 2) : null) : doc.lastChild
               if (!last || !TRAILING_PARAGRAPH_AFTER.has(last.type.name)) return null
-              return state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph.create())
+              const at = footnotes ? doc.content.size - doc.lastChild.nodeSize : doc.content.size
+              return state.tr.insert(at, state.schema.nodes.paragraph.create())
             },
           }),
         ]
@@ -4268,6 +4296,7 @@
         Placeholder.configure({ placeholder: 'Start writing…' }),
         ContainerChrome,
         ContainerExit,
+        TabKey,
         SpellCheck,
         FindHighlight,
         AIOperation,
@@ -4571,6 +4600,13 @@
       return true
     }
 
+    // Puts the caret at the first text position of the item just inserted at `at`.
+    function _dispatchInto(tr, at) {
+      tr.setSelection(editor.state.selection.constructor.near(tr.doc.resolve(at + 1)))
+      editor.view.dispatch(tr)
+      editor.commands.focus()
+    }
+
     const BLOCK_CMDS = ['blockquote','codeBlock','bulletList','orderedList',
                         'insertTable','image','gallery']
 
@@ -4624,12 +4660,11 @@
         const panels = list + tabs.node.child(0).nodeSize
         const label = `Tab ${tabs.node.child(0).childCount + 1}`
         const tr = editor.state.tr
-        tr.insert(panels + tabs.node.child(1).nodeSize - 1,
-          editor.schema.nodes.tabPanel.createAndFill({ label }))
+        const panelAt = panels + tabs.node.child(1).nodeSize - 1
+        tr.insert(panelAt, editor.schema.nodes.tabPanel.createAndFill({ label }))
         tr.insert(list + tabs.node.child(0).nodeSize - 1,
           editor.schema.nodes.tabButton.create(null, editor.schema.text(label)))
-        editor.view.dispatch(tr)
-        editor.commands.focus()
+        _dispatchInto(tr, tr.mapping.map(panelAt, -1))
       },
       deleteTab: () => {
         const tabs = _ancestorOfType('tabsBlock')
@@ -4658,8 +4693,8 @@
         const info = _ancestorOfType('accordionBlock')
         if (!info) return
         const item = editor.schema.nodes.accordionItem.createAndFill(null, _inheritedAccordionHeading(info.node))
-        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, item))
-        editor.commands.focus()
+        const at = info.pos + info.node.nodeSize - 1
+        _dispatchInto(editor.state.tr.insert(at, item), at)
       },
       deleteAccordionItem: () => {
         const group = _ancestorOfType('accordionBlock')
@@ -4672,8 +4707,8 @@
         const info = _ancestorOfType('buttonsBlock')
         if (!info) return
         const btn = editor.schema.nodes.buttonBlock.createAndFill()
-        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, btn))
-        editor.commands.focus()
+        const at = info.pos + info.node.nodeSize - 1
+        _dispatchInto(editor.state.tr.insert(at, btn), at)
       },
       deleteButton: () => {
         const group = _ancestorOfType('buttonsBlock')
@@ -4686,8 +4721,8 @@
         const info = _ancestorOfType('columnsBlock')
         if (!info) return
         const col = editor.schema.nodes.columnBlock.createAndFill()
-        editor.view.dispatch(editor.state.tr.insert(info.pos + info.node.nodeSize - 1, col))
-        editor.commands.focus()
+        const at = info.pos + info.node.nodeSize - 1
+        _dispatchInto(editor.state.tr.insert(at, col), at)
       },
       deleteColumnBlock: () => {
         const cols = _ancestorOfType('columnsBlock')

@@ -542,9 +542,18 @@ function applyImageDimensions(figure, img) {
   if (width != null || height != null) figure.classList.add('is-resized')
 }
 
-// WordPress names every size of one upload after it: p.jpg, p-scaled.jpg, p-1024x683.jpg.
+// core/image's save() order: wp-block-image, align, size, is-resized, then the block's className.
+function orderImageFigureClasses(figure) {
+  const rank = c => c === 'wp-block-image' ? 0 : /^align(?:left|right|center|wide|full|none)$/.test(c) ? 1
+    : c.startsWith('size-') ? 2 : c === 'is-resized' ? 3 : 4
+  const ordered = Array.from(figure.classList).map((c, i) => [rank(c), i, c])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, , c]) => c)
+  figure.setAttribute('class', ordered.join(' '))
+}
+
+// WordPress names every size of one upload after it: p.jpg, p-scaled.jpg, p-1024x683.jpg, and p-e1715028060251.jpg once edited.
 function uploadStem(url) {
-  return String(url || '').split(/[?#]/)[0].replace(/(?:-(?:\d+x\d+|scaled|rotated))+(?=\.\w+$)/, '')
+  return String(url || '').split(/[?#]/)[0].replace(/(?:-(?:\d+x\d+|scaled|rotated|e\d{13}))+(?=\.\w+$)/, '')
 }
 
 function imageBlockAttrs(figure, img) {
@@ -595,7 +604,8 @@ function toWordPressHTML(html, doc) {
   // past it so the caret has somewhere to land; it is chrome, not content.
   // Scoped to exactly TRAILING_PARAGRAPH_AFTER's shapes (editor.html), or an
   // empty paragraph the author wrote at the end of a post is deleted too.
-  const tail = div.lastElementChild
+  const last = div.lastElementChild
+  const tail = last && last.matches('ol.wp-block-footnotes') ? last.previousElementSibling : last
   const beforeTail = tail && tail.previousElementSibling
   if (tail && tail.tagName === 'P' && beforeTail &&
       !tail.children.length && !tail.textContent.trim() &&
@@ -678,6 +688,7 @@ function toWordPressHTML(html, doc) {
       }
     }
     applyImageDimensions(figure, img)
+    orderImageFigureClasses(figure)
   })
 
   const IMAGE_OWNED_ATTRS = ['id', 'sizeSlug', 'width', 'height', 'align', 'linkDestination', 'isDecorative']

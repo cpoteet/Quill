@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-11 — 756 Swift tests + 1,776 JS tests (1,775 pass, 1 skipped), no failures._
+_Last updated: 2026-10-12 — 756 Swift tests + 1,798 JS tests (1,797 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -20,11 +20,11 @@ This document is the authoritative reference for Quill's automated test suite an
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (70 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (116 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (72 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (286 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (124 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (136 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (382 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (388 tests — live Tiptap editor in jsdom)
 10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (38 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (59 tests — live Tiptap editor in jsdom)
@@ -2170,7 +2170,7 @@ The inverse, run on load so the notes are editable in the editor.
 
 ---
 
-### standalone image block comments (14 tests)
+### standalone image block comments (18 tests)
 
 | Test | What it checks |
 |---|---|
@@ -2182,6 +2182,10 @@ The inverse, run on load so the notes are editable in the editor.
 | a link to the full-size file of a sized image records linkDestination media | `p-scaled.jpg` linked from `p-1024x683.jpg` is the same upload, so still `media` |
 | a link to another page records linkDestination custom | An href that is not the image's file becomes `linkDestination:'custom'`, as core's paste converter and link control write it |
 | a link to a rotated copy with a query string still records linkDestination media | `p-rotated.jpg?ver=2` linked from `p-300x200.jpg` is the same upload, so `media`; the version query does not make it another file |
+| figure classes come out in core order: wp-block-image, align, size, is-resized, then className | A figure Quill rendered with `is-style-rounded size-medium` and `aligncenter` on the `<img>` saves as `wp-block-image aligncenter size-medium is-resized is-style-rounded my-class`, the order core's `save()` writes, so a Gutenberg-saved post does not change on every Quill save |
+| core-ordered figure classes are left as they are | Guard: markup already in core's order passes through unchanged |
+| a link to the full file of an image edited in WordPress records linkDestination media | `p-scaled-e1715028060251.jpg` linked from `p-683x1024.jpg` is the same upload; WordPress names an edited file `-e` plus 13 digits |
+| a link from an edited image size to its full file records linkDestination media | `p-e1715028060251.jpg` linked from `p-e1715028060251-1024x683.jpg` is the same upload |
 | a link to a different upload records linkDestination custom | A link to `q.jpg` from `p-1024x683.jpg` is a different file, so `custom` |
 | an aligned image records its alignment | `alignleft` (moved to the figure by the pass above) becomes `align:'left'` |
 | align is written after linkDestination, in core order | A linked, large, left-aligned image writes exactly `{"id":7,"sizeSlug":"large","linkDestination":"media","align":"left"}`, the string as core writes it, not just the same keys |
@@ -2369,6 +2373,19 @@ Tests load the real `editor.html` in jsdom, instantiate the live Tiptap editor v
 | `Enter in an empty trailing item exits the list` | Empty item → lift out to paragraph |
 | `Backspace at start of the sole list item lifts it to a paragraph` | Boundary backspace in lists |
 
+### `Tab outside lists and tables` (6 tests)
+
+An unhandled Tab runs WebKit's focus navigation inside the post, which lands on the next image caption (each is its own editing host under the read-only image wrapper), a Details `<summary>` or a button. `TabKey` runs at priority 1, after the list and table keymaps.
+
+| Test | What it checks |
+|---|---|
+| `Tab in a paragraph is kept from moving focus and changes nothing` | The keydown is default-prevented and the document is unchanged |
+| `Shift-Tab in a paragraph is kept from moving focus and changes nothing` | Same for Shift-Tab |
+| `Tab in a code block inserts a tab character` | `\t` lands at the caret |
+| `Tab in a preformatted block inserts a tab character` | Same in Preformatted |
+| `Tab in a second list item still nests it` | Guard: the list keymap still runs first |
+| `Tab in a table cell still moves to the next cell` | Guard: the table keymap still runs first |
+
 ### `blockquotes & cite` (4 tests)
 
 | Test | What it checks |
@@ -2468,7 +2485,7 @@ Quill saves an image's width the way core does: a width with `height:auto`, and 
 | `typing a height on a width-only image keeps its ratio` | H `200` on that image saves width `320` and height `200`, and the W field follows |
 | `typing a height on an unresized image scales from its natural size` | H `400` on a 1200×800 image with no dimensions saves 600×400 |
 
-### `image toolbar visibility` (4 tests)
+### `image toolbar visibility` (8 tests)
 
 Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAttrs`, which reselects the image after `setNodeMarkup`. Without that, ProseMirror maps the NodeSelection as deleted, `deselectNode` runs while focus is still in the toolbar, and the toolbar is never hidden afterwards.
 
@@ -2477,6 +2494,10 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `committing alt text keeps the image selected` | Blurring the Alt field commits the text and leaves a NodeSelection on the image |
 | `moving the caret out after editing alt text hides the toolbar` | After an alt edit, moving the caret into the next paragraph hides the toolbar |
 | `the Link to Full Image toggle keeps the image selected` | A toolbar button commit leaves the image selected |
+| `the toolbar follows the image when its attributes change` | `ImageNodeView.update` repositions the fixed toolbar, so a size or alignment change does not leave it floating over other content |
+| `the toolbar follows the image when a new size finishes loading` | The `<img>` `load` event repositions it too, since a size button's new file changes the height only once it loads |
+| `W and H keep showing the natural size after a size change on an image with no stored width` | `update()` fills the fields through `_fillImageDims`, the same fallback to the natural size the toolbar uses when it opens, instead of blanking them |
+| `W and H update when the new size finishes loading` | The `<img>` `load` event refills them, since the new file's natural size is known only once it loads |
 | `an alignment button keeps the image selected and the toolbar open` | Alignment keeps the NodeSelection, so row 2's alignment group and the image toolbar stay up; also covers `deselectNode`'s timer skipping an image reselected within 80 ms |
 
 ### `window.insertImage cursor placement` (14 tests)
@@ -2499,6 +2520,21 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `inside a table cell the image goes inline in that cell, as core cells hold text` | A cell gets an inline image in its paragraph, not an image block (run-log issue 10) |
 | `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
 | `inside a footnote the insert is refused and the document is unchanged` | Footnote entries reject image insertion outright |
+
+### `trailing paragraph after a block that holds no text` (8 tests)
+
+`TrailingParagraph` keeps an empty paragraph after a body that ends in a block with nowhere to type past it, and `toWordPressHTML` strips it on save. The footnotes list is not body content, so both halves look at the last block before it.
+
+| Test | What it checks |
+|---|---|
+| `a document ending in a table gains one` | An empty paragraph follows the table |
+| `typing in it reaches the document, not the table` | Text typed at the end lands in that paragraph |
+| `an image figure gains none — its caption is a text position already` | Images are not in `TRAILING_PARAGRAPH_AFTER` |
+| `a document already ending in a paragraph gains nothing` | No second paragraph |
+| `the added paragraph is stripped again on save` | No empty `<p>` or `wp:paragraph` in the save |
+| `a loaded table followed only by the footnotes list gains one before the list` | The paragraph goes between the table and the footnotes list, so ↓ out of the last cell no longer lands in a footnote |
+| `the paragraph added before the footnotes list is stripped again on save` | The strip skips a trailing `ol.wp-block-footnotes`, so no empty paragraph block is saved before the footnotes |
+| `a footnotes list stays last` | Guard: inserting a footnote still appends the list at the end |
 
 ### `inline images` (14 tests)
 
@@ -2820,6 +2856,16 @@ Inserting a URL from the embed field gives a card whose `.embed-card-provider` l
 |---|---|
 | `+Item adds a section and -Item never removes the last` | 1 → 2 → 1, then a further press is refused |
 
+### `adding an item moves the caret into it` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `+Col puts the caret in the new column` | The caret lands in the third column |
+| `+Item puts the caret in the new section title` | The caret lands in the second item's accordion heading |
+| `+Button puts the caret in the new button` | The caret lands in the second button |
+| `+Tab puts the caret in the new tab panel` | The caret lands in the third panel, which also makes that tab the visible one |
+| `+Tab puts the caret in the new tab panel when a paragraph follows the tabs` | The panel's insert position is mapped with left association; mapped rightward it lands past the new panel and the caret jumps to the paragraph below |
+
 ### `tabs block` (7 tests)
 
 Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > tab-panel`. The label is stored twice — as the button's text and as each panel's `label` attribute — so the save transform reads it back off the button to keep the two in sync.
@@ -2947,7 +2993,7 @@ The carrier preserves every attribute the delimiter held, which is what keeps un
 | `turning an owned attribute back on restores it` | The delimiter comes back with `{"autoclose":true}` |
 | `a column width is not owned and survives an edit` | `columnBlock` deliberately does not own `width` — Quill has no UI for it, so the carried value is the only copy |
 
-### `editor chrome stays out of saved markup` (11 tests)
+### `editor chrome stays out of saved markup` (12 tests)
 
 Accordion, tabs and details carry editor-only chrome: a forced-open `<details>`, a collapsed-for-preview class, the active tab. All of it is applied as ProseMirror decorations, which live outside the document — this group is the guard that none of it can reach a save.
 
@@ -2964,6 +3010,7 @@ Accordion, tabs and details carry editor-only chrome: a forced-open `<details>`,
 | `putting the cursor in a tab label activates that tab` | Same from the tab-list side |
 | `the active tab class never reaches saved markup` | No `is-active-tab` in the output |
 | `an accordion survives collapse, edit and save without losing an item` | Both items and the edit are present, with no chrome classes |
+| `code, preformatted and inline code opt out of smart quotes in the DOM only` | The code block and Preformatted carry `spellcheck="false"` as a node decoration, inline code text sits in a `spellcheck="false"` span, a plain paragraph has none, and nothing reaches the save. WebKit skips smart quotes and dashes inside `spellcheck="false"` |
 
 ### `accordion headings match current core save markup` (9 tests)
 
