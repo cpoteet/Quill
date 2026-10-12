@@ -317,6 +317,7 @@ public struct PostEditorView: View {
             editorWebView?.evaluateJavaScript("window.setEvaluationPanelOpen?.(\(open))", completionHandler: nil)
         }
         .background(SplitItemCollapseFix(behavior: .inspector).frame(width: 0, height: 0))
+        .background(SplitItemSizePin().frame(width: 0, height: 0))
         .inspector(isPresented: Binding(
             get: { inspectorPane != nil },
             set: { if !$0 { inspectorPane = nil } }

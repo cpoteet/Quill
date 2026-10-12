@@ -35,6 +35,7 @@ public struct ContentView: View {
                     detailContent
                         .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.wpContentSurface.ignoresSafeArea())
+                        .background(SplitItemSizePin().frame(width: 0, height: 0))
                 }
             }
         }

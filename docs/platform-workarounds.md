@@ -39,6 +39,14 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `docs/gotchas.md`, "A split item's default uncollapse grows the split view".
 - **Last checked:** macOS 27.0, 2026-10-05.
 
+### Resizing the window makes the editor flash blank
+
+- **Bug:** SwiftUI's split item wrappers have no engine constraint to their `NSSplitView`, so each window layout pass solves the detail column and the editor pane to their minimum sizes before the split view restores the real frames. The web view drops to 100×52 or 229×104 once per resize step, and WebKit paints the post body blank on those frames.
+- **Code:** `.background(SplitItemSizePin())` on `detailContent` in `ContentView` and on the editor content in `PostEditorView`. The helper is `Views/SplitItemSizePin.swift`.
+- **Test:** temporarily log `DroppableWebView.setFrameSize`, open a post, and step the window size with System Events (`set size of window 1`) with Post Settings never opened, open, and closed again. Each step must log one web view size; without the fix every step logs 100×52 or 229×104 first. Then drag-resize the window by its corner with text in the editor: the text must not blank out.
+- **Detail:** `docs/gotchas.md`, "SwiftUI leaves a split item's size free in the layout engine".
+- **Last checked:** macOS 27.0, 2026-10-12.
+
 ### Dragging the sidebar back out grows the window
 
 - **Bug:** the same AppKit default as above, on the sidebar item. After a drag-collapse, dragging the sidebar back out adds its width to the window instead of taking it from the detail column.

@@ -120,6 +120,7 @@ These two fail silently with the whole test suite green:
 - **Post markup is parsed only into `inertDocument()`, never into an element of the live page**
 - **The toolbar-wide fade on inspector toggle is an implicit `sublayers` CATransition on the toolbar's glass hosting view, and `InspectorTitlebarFix` nulls that action**
 - **A split item's default uncollapse grows the split view instead of shrinking its siblings, so `SplitItemCollapseFix` sets `collapseBehavior = .useConstraints` on the sidebar and the inspector**
+- **SwiftUI leaves a split item's size free in the layout engine, so `SplitItemSizePin` pins the detail column and the editor pane to their frames**
 - **Measure the region the user is describing, not the whole strip**
 - **`AppState` orders taxonomies once, on assignment — the settings panel never sorts**
 - **The unsupported-block sentinel is a per-save random nonce, and must stay one**
