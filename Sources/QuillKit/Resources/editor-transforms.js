@@ -546,17 +546,19 @@ function parsePassthroughBlock(el) {
 // between the two comments is replaced, not added to, so repeated saves cannot
 // stack a second blank line on the first.
 // A wrapper is a whole block in one element, so it both ends and begins one.
-function isUnsupportedWrapper(node) {
-  return node.nodeType === 1 && node.hasAttribute('data-quill-unsupported-source')
+// So is a passthrough card with no name, which gets no comments of its own.
+function isWholeBlockElement(node) {
+  return node.nodeType === 1 && (node.hasAttribute('data-quill-unsupported-source') ||
+    (node.hasAttribute('data-quill-passthrough') && !node.hasAttribute('data-quill-passthrough-name')))
 }
 
 function opensBlock(node) {
-  return isUnsupportedWrapper(node) ||
+  return isWholeBlockElement(node) ||
     (node.nodeType === 8 && node.textContent.trim().startsWith('wp:'))
 }
 
 function closesBlock(node) {
-  return isUnsupportedWrapper(node) ||
+  return isWholeBlockElement(node) ||
     (node.nodeType === 8 && node.textContent.trim().startsWith('/wp:'))
 }
 
@@ -1034,19 +1036,21 @@ function toWordPressHTML(html, doc) {
   // conversion above); this pass wraps the element in fresh
   // <!-- wp:name --> comments using those attributes (if the original had
   // none, no comments are added — see the "no data-quill-passthrough-name"
-  // test), then strips the temporary attributes so they never appear in the
-  // saved HTML. DOM-level insertion, not string replace, so repeated saves
+  // test). DOM-level insertion, not string replace, so repeated saves
   // don't double-wrap — same approach as the embed/gallery wrapping above.
   div.querySelectorAll('[data-quill-passthrough-name]').forEach(el => {
     const name = el.getAttribute('data-quill-passthrough-name')
     const attrsJSON = el.getAttribute('data-quill-passthrough-attrs')
-    el.removeAttribute('data-quill-passthrough-name')
-    el.removeAttribute('data-quill-passthrough-attrs')
     wrapElementWithComments(doc, el, attrsJSON ? ` wp:${name} ${attrsJSON} ` : ` wp:${name} `, ` /wp:${name} `)
   })
 
+  // Reads data-quill-passthrough-name, so it runs before that is stripped.
   separateSiblingBlocks(div, doc)
 
+  div.querySelectorAll('[data-quill-passthrough-name]').forEach(el => {
+    el.removeAttribute('data-quill-passthrough-name')
+    el.removeAttribute('data-quill-passthrough-attrs')
+  })
   div.querySelectorAll('[data-quill-block-attrs]').forEach(el => {
     el.removeAttribute('data-quill-block-attrs')
   })

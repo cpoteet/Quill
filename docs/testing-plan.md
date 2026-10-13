@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-12 — 770 Swift tests + 1,920 JS tests (1,919 pass, 1 skipped), no failures._
+_Last updated: 2026-10-13 — 770 Swift tests + 1,923 JS tests (1,922 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -19,7 +19,7 @@ This document is the authoritative reference for Quill's automated test suite an
 1. **Swift tests** — `swift test` (770 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (151 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (79 tests — live Tiptap editor in jsdom)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (136 tests — live Tiptap editor in jsdom)
@@ -1684,7 +1684,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 
 ---
 
-## JS preservation tests (79 tests)
+## JS preservation tests (82 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -1845,6 +1845,16 @@ Over `Scripts/fixtures/group-unsupported-children.html`, one Group per reason a 
 ### `a group with no block comments stays a card` (3 tests)
 
 A `<div class="wp-block-group">` with no `wp:group` comment holding a `<video>`, an `<iframe>`, or nothing loads as a card and comes back whole after an edit elsewhere. Only a delimited Group has passed the fully-supported check, so only a delimited one may open; before the gate, the first edit dropped the video.
+
+### `a class-only card is separated like any other block` (3 tests)
+
+A class-only card is a `wp-block-*` element with no block comment, which loads as a `gutenbergPassthrough` card through the class catch-all and saves with no comments around it. `separateSiblingBlocks` joins sibling blocks with core's blank line by looking for a closing comment followed by an opening one, so it saw neither around this card and the first edit glued it to its neighbours (issue 22). It now counts the card as a whole block in one element, as it already did the unsupported-block wrapper.
+
+| Test | What it checks |
+|---|---|
+| `an edit elsewhere keeps the blank line on both sides of the card` | Issue 22's post: a reusable block, an undelimited Group card and a paragraph. After editing the paragraph, the save is the source byte for byte apart from that edit |
+| `saving twice is idempotent` | A second load and save adds no further blank lines |
+| `two class-only cards in a row are separated from each other` | The card counts as both the end of one block and the start of the next |
 
 ---
 
@@ -4570,6 +4580,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 247 | A text colour's carried `data-quill-style` replaces the drawn `style` at the drawn style's own position (after `class`), so Gutenberg's stored `<mark>` still validates | ✅ `test-editor.js` `'replaces the drawn style at the carried style\'s own position'` (the rest of this guard is row 117) |
 | 248 | The embed card names each provider the way WordPress spells it (row 221 covers YouTube) and reads `Embed` for a host Quill has no provider for | ✅ `test-editor-containers.js` `'the embed card names its provider'` (6 tests) + 👁 §7.19 |
 | 249 | The title badge and its tooltip followed the Status menu, so choosing Published turned it green before anything was saved; a first save of a local draft said "Draft saved" rather than "Saved to WordPress" | 👁 §7.7 — view state in `PostEditorView` has no harness |
+| 250 | After any edit, the save dropped the blank lines on both sides of a class-only card (a `wp-block-*` element with no block comment), because `separateSiblingBlocks` only recognised a block boundary by its comment or the unsupported wrapper. A passthrough element with no `data-quill-passthrough-name` now counts as a whole block, and that attribute is stripped after the separator pass instead of before it (issue 22) | ✅ `test-editor-preservation.js` `'a class-only card is separated like any other block'` (3 tests) |
 
 ---
 

@@ -840,3 +840,41 @@ describe('a group with no block comments stays a card', () => {
     })
   }
 })
+
+// Issue 22.
+describe('a class-only card is separated like any other block', () => {
+  const GROUP = '<div class="wp-block-group"><p>Undelimited group.</p><video src="https://example.com/a.mp4" controls=""></video></div>'
+  const SRC = '<!-- wp:block {"ref":968} /-->\n\n' + GROUP + '\n\n' +
+    '<!-- wp:paragraph -->\n<p>Closing paragraph.</p>\n<!-- /wp:paragraph -->'
+  const editClosingParagraph = () => {
+    let pos = null
+    editor.state.doc.descendants((node, p) => {
+      if (pos === null && node.isText && node.text === 'Closing paragraph.') pos = p
+    })
+    editor.commands.setTextSelection(pos + 1)
+    editor.commands.insertContent('X')
+  }
+
+  test('an edit elsewhere keeps the blank line on both sides of the card', () => {
+    win.setContent(SRC)
+    editClosingParagraph()
+    assert.equal(win.getContent(), SRC.replace('Closing paragraph.', 'CXlosing paragraph.'))
+  })
+
+  test('saving twice is idempotent', () => {
+    win.setContent(SRC)
+    editClosingParagraph()
+    const once = win.getContent()
+    win.setContent(once)
+    assert.equal(win.getContent(), once)
+  })
+
+  test('two class-only cards in a row are separated from each other', () => {
+    const P = '<!-- wp:paragraph -->\n<p>Opening.</p>\n<!-- /wp:paragraph -->'
+    const src = P + '\n\n' + GROUP + '\n\n' + GROUP
+    win.setContent(src)
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('X')
+    assert.equal(win.getContent(), src.replace('Opening.', 'OXpening.'))
+  })
+})
