@@ -2979,6 +2979,65 @@ describe('group block', () => {
     assert.ok(!topLevelTypes().includes('groupBlock'), topLevelTypes().join(','))
     assert.match(editor.getHTML(), /<p>Hello<\/p>/)
   })
+
+  const LOCKED = '<div class="wp-block-group"><p>a</p><video src="a.mp4" controls=""></video></div>'
+  const emptyParagraph = '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->'
+
+  test("pasting Quill's own copy of a locked group keeps it a card", () => {
+    win.setContent(LOCKED)
+    const clipboard = copyAll()
+    win.setContent(emptyParagraph)
+    editor.commands.focus('end')
+    paste(clipboard)
+    assert.ok(!topLevelTypes().includes('groupBlock'), topLevelTypes().join(','))
+    const cards = []
+    editor.state.doc.descendants(n => { if (n.type.name === 'gutenbergPassthrough') cards.push(n.attrs.sourceHTML) })
+    assert.equal(cards.length, 1)
+    assert.match(cards[0], /^<div class="wp-block-group"[^>]*><p>a<\/p><video src="a.mp4" controls=""><\/video><\/div>$/)
+  })
+
+  test('a paste does not make the next load open a group that has no comments', () => {
+    win.setContent(emptyParagraph)
+    editor.commands.focus('end')
+    paste({ 'text/html': '<p>Before</p><div class="wp-block-group"><p>Hello</p></div><p>After</p>', 'text/plain': 'Before Hello After' })
+    assert.ok(topLevelTypes().includes('groupBlock'))
+    win.setContent(LOCKED)
+    assert.deepEqual(topLevelTypes().slice(0, 1), ['gutenbergPassthrough'])
+    assert.equal(win.getContent(), LOCKED)
+  })
+
+  test('a group whose comments are present opens even when its markup came from a code view edit', () => {
+    win.setContent(fixture('settings-group.html'))
+    win.document.getElementById('btn-code-view').dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    const ta = win.document.getElementById('code-editor')
+    ta.value = ta.value + '\n\n' + emptyParagraph
+    win.document.getElementById('btn-code-view').dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    assert.equal(topLevelTypes()[0], 'groupBlock')
+  })
+
+  test('the corpus runner reports a card count, zero for every group that opens and non-zero for a locked one', () => {
+    const dir = path.resolve(__dirname, 'fixtures')
+    const rows = JSON.parse(JSON.stringify(win.__runFixtureCorpus(JSON.stringify(
+      fs.readdirSync(dir).filter(f => /^(settings-group|group-unsupported)/.test(f))
+        .map(f => ({ name: f.replace(/\.html$/, ''), source: fixture(f) }))))))
+    const byName = Object.fromEntries(rows.map(r => [r.name, r]))
+    assert.ok(rows.length >= 6)
+    for (const r of rows.filter(r => r.name.startsWith('settings-group'))) assert.equal(r.cards, 0, r.name)
+    assert.ok(byName['group-unsupported-children'].cards > 0)
+    for (const r of rows) assert.ok(r.untouched && r.identical && r.idempotent, r.name)
+  })
+
+  test('editing the label text outside the content does not touch the saved group', () => {
+    win.setContent(fixture('settings-group.html'))
+    const before = win.getContent()
+    const label = win.document.querySelector('#editor .group-label')
+    label.textContent = 'Changed'
+    return new Promise(resolve => setTimeout(resolve, 50)).then(() => {
+      assert.equal(win.getContent(), before)
+      assert.equal(editor.state.doc.child(0).type.name, 'groupBlock')
+      assert.equal(win.document.querySelectorAll('#editor .group-label').length, 1)
+    })
+  })
 })
 
 describe('group label and editing', () => {

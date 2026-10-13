@@ -325,6 +325,41 @@ describe('blockNeedsWrapping', () => {
     const src = '<!-- wp:query --><div class="wp-block-query"><!-- wp:post-title /--></div><!-- /wp:query -->'
     assert.deepEqual(decide(src), [true])
   })
+
+  const P = '<!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->'
+  const group = inner => `<!-- wp:group -->\n<div class="wp-block-group">${inner}</div>\n<!-- /wp:group -->`
+  const column = inner => `<!-- wp:column -->\n<div class="wp-block-column">${inner}</div>\n<!-- /wp:column -->`
+  const columns = inner => `<!-- wp:columns -->\n<div class="wp-block-columns">${column(inner)}</div>\n<!-- /wp:columns -->`
+
+  test('a group whose blocks Quill models is left alone', () => {
+    assert.deepEqual(decide(group(P)), [false])
+  })
+
+  test('a group Quill cannot open is wrapped whole', () => {
+    assert.deepEqual(decide(group('')), [true])
+    assert.deepEqual(decide(group('<!-- wp:calendar /-->')), [true])
+  })
+
+  test('columns holding a group that opens are left alone', () => {
+    assert.deepEqual(decide(columns(group(P))), [false])
+  })
+
+  test('columns holding a group that cannot open are wrapped whole', () => {
+    assert.deepEqual(decide(columns(group(''))), [true])
+  })
+
+  test('a group holding columns holding a group that cannot open is wrapped whole', () => {
+    assert.deepEqual(decide(group(columns(group('')))), [true])
+  })
+
+  test('a group holding columns holding a group that opens is left alone', () => {
+    assert.deepEqual(decide(group(columns(group(P)))), [false])
+  })
+
+  test('only the group that cannot open is wrapped among its siblings', () => {
+    const slices = blockSourceSlices([group(P), group(''), P].join('\n\n'), parse).filter(slice => slice.blockName)
+    assert.deepEqual(slices.map(slice => blockNeedsWrapping(slice, doc)), [false, true, false])
+  })
 })
 
 describe('wrapUnsupportedBlocks', () => {

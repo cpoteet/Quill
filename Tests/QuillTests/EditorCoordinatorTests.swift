@@ -257,6 +257,11 @@ struct EditorPushDecisionTests {
     override var body: Any { messageBody }
 }
 
+private final class Box<T>: @unchecked Sendable {
+    var value: T
+    init(_ value: T) { self.value = value }
+}
+
 @MainActor @Suite struct EditorCoordinatorBridgeTests {
     private let webView = ScriptedWebView()
     private let coordinator: EditorCoordinator
@@ -298,6 +303,53 @@ struct EditorPushDecisionTests {
         #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, "Alt", 800)"#)
         coordinator.insertImage(url: "https://x/a.png", mediaId: 42, alt: nil, width: nil)
         #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, null, null)"#)
+    }
+
+    private func waitForScripts(_ count: Int) async {
+        for _ in 0..<200 where webView.scripts.count < count {
+            await drainMainQueue()
+            await Task.yield()
+        }
+    }
+
+    @Test func aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration() async {
+        coordinator.onRequestSyncedPattern = { ref in
+            ref == 1 ? .loaded(WPSyncedPattern(id: 1, status: "publish", title: "One")) : .notFound
+        }
+        deliver("requestSyncedPatterns", ["generation": 4, "refs": [1, 2]])
+        await waitForScripts(2)
+        #expect(webView.scripts.count == 2)
+        #expect(webView.scripts.contains { $0.hasPrefix("setSyncedPattern(4, 1, ") && $0.contains("One") })
+        #expect(webView.scripts.contains { $0.hasPrefix("setSyncedPattern(4, 2, ") && $0.contains("notFound") })
+    }
+
+    @Test func aSyncedPatternRequestWithoutAHandlerSendsNothing() async {
+        deliver("requestSyncedPatterns", ["generation": 4, "refs": [1]])
+        await drainMainQueue()
+        #expect(webView.scripts.isEmpty)
+    }
+
+    @Test func aMalformedSyncedPatternRequestIsIgnored() async {
+        let asked = Box<[Int]>([])
+        coordinator.onRequestSyncedPattern = { ref in asked.value.append(ref); return .failed }
+        deliver("requestSyncedPatterns", ["generation": 4])
+        deliver("requestSyncedPatterns", ["refs": [1]])
+        deliver("requestSyncedPatterns", ["generation": 4, "refs": ["1"]])
+        deliver("requestSyncedPatterns", "nope")
+        await drainMainQueue()
+        await Task.yield()
+        #expect(asked.value.isEmpty)
+        #expect(webView.scripts.isEmpty)
+    }
+
+    @Test func openingASyncedPatternHandsTheRefToTheHandler() async {
+        let opened = Box<[Int]>([])
+        coordinator.onOpenSyncedPattern = { opened.value.append($0) }
+        deliver("openSyncedPattern", ["ref": 123])
+        deliver("openSyncedPattern", ["ref": "123"])
+        deliver("openSyncedPattern", [:] as [String: Any])
+        await drainMainQueue()
+        #expect(opened.value == [123])
     }
 
     @Test func flushWithNothingPendingChangesNothing() async {

@@ -14,7 +14,7 @@ pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && o
 ./test.sh
 ```
 
-Runs everything — 770 Swift + 1,911 JS tests, all passing as of 2026-10-13 (1,910 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs everything — 775 Swift + 1,928 JS tests, all passing as of 2026-10-13 (1,927 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
@@ -52,12 +52,12 @@ Deferred design decisions are tracked as GitHub issues on `cpoteet/Quill`, not i
 Sources/QuillKit/
   App/              AppState, AppServices, QuillApp, AppSupportDirectory, UpdateChecker
   Auth/             CredentialsStore (file-based, not system keychain), AppAuthorization, ConnectSite
-  API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy), MimeType, ImageConversion
+  API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy, WPSyncedPattern), MimeType, ImageConversion
                     APIError, NetworkFailure (connectivity by URLError code)
   AI/               AnthropicClient, AISettings (+ AISettingsStore), AIPromptBuilder, EvaluationPrompts, EvaluationState, SelectionPrompts
   Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
   Views/
-    ContentView.swift, SplitItemCollapseFix.swift
+    ContentView.swift, SplitItemCollapseFix.swift, SplitItemSizePin.swift
     Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
                     TitleTextField, LinkPickerView, BlockRiskAlarm, EditorBanner
                     CustomHTMLSheet (+ CodeTextView, a plain-text NSTextView)
@@ -84,12 +84,13 @@ Sources/QuillKit/
 - `Sources/QuillKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles the insert-image notification
 - `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
 - `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
+- Refresh reloads the open post — `SidebarView`'s refresh bumps `appState.editorReloadToken`; `PostEditorView.reloadIfClean()` fetches the post and applies it only when nothing is unsaved, no save is running and the server copy changed (`applyRemotePost`). A post load is hidden behind `EditorLoadingCover` (private to `PostEditorView.swift`)
 - `Sources/QuillKit/API/ImageConversion.swift` — HEIC/HEIF → JPEG before upload (WP 7.1 accepts HEIC but can't generate sub-sizes for it); used by all three upload paths
 - `Sources/QuillKit/Views/Media/GallerySheet.swift` — native gallery picker, also opened in edit mode by `window.editGallery` (`GalleryEdit.swift`); posts `.insertGalleryData` with `PostEditorView.galleryPayload(...)`, which `EditorCoordinator` forwards whole to `window.insertGallery(json)`
 
 Concepts that have their own doc:
 
-- **Block model** — adding a block setting, the raw-attribute carrier, unsupported-block preservation, the `gutenbergPassthrough` node: `docs/block-model.md`
+- **Block model** — adding a block setting, the raw-attribute carrier, unsupported-block preservation, the `gutenbergPassthrough` node, Groups (`groupBlock`, which Groups open and which stay locked cards) and synced-pattern cards (`WPSyncedPattern`, `requestSyncedPatterns`): `docs/block-model.md`
 - **Footnotes live in post meta, not `post_content`**: `docs/footnotes-meta.md`
 - **Code view** — the `</>` toggle and its `_rawHTML` / `_rawHTMLOnLoad` / `_codeViewOriginal` state: `docs/code-view.md`
 - **Paste (⌘V)** — HTML from outside Quill is reduced to what Quill models before it is parsed (`cleanPastedHTML`); a copy made inside Quill is recognised by ProseMirror's `data-pm-slice` plus the remembered text of Quill's last copy, and left alone (the marker alone is not enough, other ProseMirror apps write it); pasted images upload through the drop queue: `docs/paste.md`

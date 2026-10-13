@@ -1129,6 +1129,18 @@ describe('trailing paragraph after a block that holds no text', () => {
     assert.ok(!out.includes('<p></p>'), out)
   })
 
+  test('an empty paragraph the author wrote before the footnotes list is kept on save', () => {
+    editor.commands.setContent('<p>body</p>', false)
+    editor.commands.setTextSelection(5)
+    win.insertFootnote()
+    const list = editor.state.doc.lastChild
+    const at = editor.state.doc.content.size - list.nodeSize
+    editor.view.dispatch(editor.state.tr.insert(at, editor.schema.nodes.paragraph.create()))
+    const out = win.toWordPressHTML(editor.getHTML())
+    assert.equal(out.match(/<!-- wp:paragraph -->/g).length, 2, out)
+    assert.equal(out.match(/<p><\/p>/g).length, 1, out)
+  })
+
   test('a footnotes list stays last', () => {
     editor.commands.setContent('<p>body</p>', false)
     editor.commands.focus('end')

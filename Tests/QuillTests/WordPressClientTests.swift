@@ -1161,6 +1161,21 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         }
     }
 
+    @Test func fetchSyncedPatternToleratesMissingStatusAndTitle() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":123,"title":{}}"#.data(using: .utf8)!)
+        }
+        let pattern = try await client.fetchSyncedPattern(id: 123)
+        #expect(pattern.status == "")
+        #expect(pattern.title == "")
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":123,"status":"publish"}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.fetchSyncedPattern(id: 123).title == "")
+    }
+
     @Test func syncedPatternEditURLAtDomainRoot() {
         #expect(client.syncedPatternEditURL(id: 123)?.absoluteString == "https://example.com/wp-admin/post.php?post=123&action=edit")
     }

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-13 — 770 Swift tests + 1,911 JS tests (1,910 pass, 1 skipped), no failures._
+_Last updated: 2026-10-13 — 775 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,16 +16,16 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (770 tests)
+1. **Swift tests** — `swift test` (775 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (142 tests — pure Node; `serializeAttributes` compared with WordPress)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (136 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (410 tests — live Tiptap editor in jsdom)
-10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (61 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
+10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
 13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
@@ -114,7 +114,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (770 tests, 50 suites)
+## Swift test suite (775 tests, 50 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -128,7 +128,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 74 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPattern` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 75 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPattern` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -161,7 +161,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 6 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 10 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
@@ -300,7 +300,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (74 tests)
+### 5. Networking — `WordPressClientTests` (75 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -409,13 +409,14 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 | `searchLinksUnknownTermSubtypeFallsToCategory` | Unknown term subtype → `.category` |
 | `searchQueryPlusCharacterIsPercentEscaped` | A `+` in the search term is escaped to `%2B` in the query string (WordPress/PHP decodes a literal `+` as a space) |
 
-#### Synced patterns (6 tests)
+#### Synced patterns (7 tests)
 
 | Test | What it checks |
 |---|---|
 | `fetchSyncedPatternRequestsBlocksEndpointWithEditContext` | `GET /wp-json/wp/v2/blocks/{id}` with `context=edit` and `_fields=id,status,title` |
 | `fetchSyncedPatternDecodesStatusAndRawTitle` | `status` and `title.raw` |
 | `fetchSyncedPatternDecodesEntitiesInTheTitle` | A raw title stored as `Q&amp;A &#8211; live` reads `Q&A – live` on the card |
+| `fetchSyncedPatternToleratesMissingStatusAndTitle` | A response with `title: {}` or no `title`, and no `status`, decodes as empty strings rather than throwing, so a pattern the REST API describes sparsely still gets a card |
 | `fetchSyncedPatternThrowsHTTPErrorOn404` | A missing pattern throws `APIError.httpError(404, _)`, which the editor shows as not found |
 | `syncedPatternEditURLAtDomainRoot` / `syncedPatternEditURLInSubdirectory` | `{site}/wp-admin/post.php?post={id}&action=edit`, with no doubled slash for a site at `/blog/` |
 
@@ -1213,7 +1214,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (6 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (10 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1225,6 +1226,10 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
 | `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
 | `insertImagePassesTheMediaWidthForAnInlineImage` | `insertImage` hands the editor the media's width (or `null`), which an inline image in a table cell is capped by (run-log issue 10) |
+| `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration` | `requestSyncedPatterns` with refs `[1, 2]` and generation 4 calls `onRequestSyncedPattern` once per ref and runs two `setSyncedPattern(4, ref, …)` scripts, one loaded (with the title) and one `notFound` |
+| `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPattern`, no script is run |
+| `aMalformedSyncedPatternRequestIsIgnored` | A body missing `refs` or `generation`, with a string ref, or that is not a dictionary asks the handler nothing and runs no script |
+| `openingASyncedPatternHandsTheRefToTheHandler` | `openSyncedPattern` passes `onOpenSyncedPattern` the ref only when it is an `Int`; a string ref or an empty body is dropped |
 
 ### 39. API — `NetworkFailureTests` (8 tests)
 
@@ -1459,7 +1464,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (142 tests)
+## JS block serializer tests (149 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1521,7 +1526,7 @@ One test per `Scripts/fixtures/*.html`: the slices concatenate to the file byte 
 
 See `Scripts/fixtures/README.md` before changing a fixture — they are recordings of what one WordPress version wrote, never a specification of what core emits now, and `accordion-block.html` deliberately holds the old heading shape.
 
-### `blockNeedsWrapping` (12 tests)
+### `blockNeedsWrapping` (19 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1536,6 +1541,13 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `a page break is wrapped` | |
 | `freeform prose is never wrapped` | |
 | `a nested block inside a claimed block does not make the parent wrap` | A `wp:query` holding a `wp:post-title` is one top-level block, not two |
+| `a group whose blocks Quill models is left alone` | A Group of modeled blocks is not wrapped; the `groupBlock` node holds it |
+| `a group Quill cannot open is wrapped whole` | An empty Group, and a Group holding `wp:calendar`, take the exact-slice path |
+| `columns holding a group that opens are left alone` | |
+| `columns holding a group that cannot open are wrapped whole` | `holdsUnsupportedGroup` looks through Columns, so the unopenable Group is not rewritten through the Columns node |
+| `a group holding columns holding a group that cannot open is wrapped whole` | Group > Columns > Group, wrapped when the inner Group cannot open |
+| `a group holding columns holding a group that opens is left alone` | Same nesting, inner Group opens: nothing wraps |
+| `only the group that cannot open is wrapped among its siblings` | A list of three top-level blocks flags only the empty Group |
 
 ### `wrapUnsupportedBlocks` (19 tests)
 
@@ -2406,7 +2418,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
 
-## JS keyboard tests (124 tests)
+## JS keyboard tests (137 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2594,7 +2606,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
 | `inside a footnote the insert is refused and the document is unchanged` | Footnote entries reject image insertion outright |
 
-### `trailing paragraph after a block that holds no text` (8 tests)
+### `trailing paragraph after a block that holds no text` (9 tests)
 
 `TrailingParagraph` keeps an empty paragraph after a body that ends in a block with nowhere to type past it, and `toWordPressHTML` strips it on save. The footnotes list is not body content, so both halves look at the last block before it.
 
@@ -2607,6 +2619,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `the added paragraph is stripped again on save` | No empty `<p>` or `wp:paragraph` in the save |
 | `a loaded table followed only by the footnotes list gains one before the list` | The paragraph goes between the table and the footnotes list, so ↓ out of the last cell no longer lands in a footnote |
 | `the paragraph added before the footnotes list is stripped again on save` | The strip skips a trailing `ol.wp-block-footnotes`, so no empty paragraph block is saved before the footnotes |
+| `an empty paragraph the author wrote before the footnotes list is kept on save` | The strip removes only the paragraph the editor added after a table or image; an author's own empty `wp:paragraph` before the footnotes list stays |
 | `a footnotes list stays last` | Guard: inserting a footnote still appends the list at the end |
 
 ### `inline images` (14 tests)
@@ -2810,7 +2823,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (410 tests)
+## JS container tests (415 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3240,7 +3253,7 @@ A table's `<thead>`/`<tfoot>` are document structure, not a setting, so they are
 | `a foot row carries a marker the CSS can reach` / `the marker never reaches saved markup` | |
 | `it is tinted like the header row, in both themes` / `a heavier top border separates it from the body` | Editor preview only |
 
-### `group block` (17 tests)
+### `group block` (22 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3251,6 +3264,11 @@ A table's `<thead>`/`<tfoot>` are document structure, not a setting, so they are
 | `pasting Quill's own copy of a group yields a groupBlock` | |
 | `an outside div group is kept by the paste cleaner and pastes as a groupBlock` | Pasted between paragraphs: a lone container pasted into an empty paragraph is opened into it by ProseMirror, as any container is |
 | `an outside section group still flattens to its contents` | `cleanPastedHTML` keeps only `div` wrappers |
+| `pasting Quill's own copy of a locked group keeps it a card` | A copy of a class-only Group holding a `<video>` pastes back as one `gutenbergPassthrough` with its markup byte for byte, not a `groupBlock` |
+| `a paste does not make the next load open a group that has no comments` | After an outside div Group is pasted as a `groupBlock`, a comment-less Group loaded next is still a byte-exact card |
+| `a group whose comments are present opens even when its markup came from a code view edit` | Editing `settings-group.html` in code view and leaving it reloads as a `groupBlock` |
+| `the corpus runner reports a card count, zero for every group that opens and non-zero for a locked one` | `window.__runFixtureCorpus` returns `cards` per fixture: 0 for every `settings-group*`, above 0 for `group-unsupported-children`, and every row untouched, identical and idempotent |
+| `editing the label text outside the content does not touch the saved group` | Changing `.group-label` text leaves `getContent()` and the doc unchanged and keeps one label (`ignoreMutation`) |
 
 ### `group label and editing` (5 tests)
 
@@ -3280,7 +3298,7 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
-## JS passthrough tests (61 tests)
+## JS passthrough tests (65 tests)
 
 File: `Scripts/test-editor-passthrough.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3378,7 +3396,7 @@ A top-level card and a card nested in a Column read the block type then its `met
 
 A Cover card, top-level or nested in a Column, shows no text from inside it and is drawn as a single row; a Custom HTML card still shows its markup in the monospaced box (`has-peek`).
 
-### `synced pattern cards` (16 tests)
+### `synced pattern cards` (20 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3393,6 +3411,10 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 | `a late result from an earlier load cannot overwrite the next post's card` | Load generation, with both posts using the same pattern |
 | `a result from the last post never shows on the next one's card before its own arrives` | Results are cleared before the next `setContent`, since ProseMirror may reuse an identical card's view |
 | `the synced pattern saves back byte for byte after an edit elsewhere` | |
+| `a code view edit that adds a synced pattern asks for it and shows it loading` | Leaving code view after an edit posts one `requestSyncedPatterns` for the new ref; the card reads `Synced pattern` until `setSyncedPattern` titles it |
+| `a code view edit retires the results of the load before it` | The edit bumps the generation, redraws the card as loading, and ignores a late result from the earlier generation |
+| `opening and closing code view without an edit asks for nothing` | No `requestSyncedPatterns` post |
+| `a shortcode card shows its text as a preview and a synced pattern card does not` | The shortcode card has `has-peek` and its text; the synced pattern card has neither |
 
 ---
 
@@ -3657,6 +3679,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Offline, Local Drafts shows the drafts and no error.** Turn off Wi-Fi and launch → Local Drafts lists every saved draft. The sidebar shows no error row, the empty-state overlay does not appear, and the detail placeholder does not say "Couldn't load…". Switch to Posts → the error row and "Couldn't load posts" appear there.
 - [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The red error icon lines up with the first line of the error text, not the middle of a wrapped message.
 - [ ] **Retry after a failed launch load fills every section.** Turn off Wi-Fi and launch → Posts shows the error row. Turn Wi-Fi back on and click Retry → Posts loads; switch to Pages → the pages are listed, not "No pages yet". Repeat with ⌘R and with the toolbar Refresh button instead of Retry.
+- [ ] **Refresh reloads the open post when it has no unsaved changes.** Open a post, change its title and body in the WordPress admin, return to Quill and click the toolbar Refresh (or press ⌘R) → the editor shows the new title and body without reselecting the post. Then type a character in Quill and click Refresh → your text stays and nothing reloads. Click Refresh right after Save, while the request is still running → the editor keeps the saved text. Click Refresh with an unchanged post open → the caret and scroll position stay where they were. Open a local draft and click Refresh → the draft is untouched. (`reloadIfClean`'s checks on `isDirty`, `isSaving`, `lastSavedServerModified` and an unchanged server copy have no automated test.)
 - [ ] **Open Blog Settings… only when Settings can fix it.** In Settings, change the site URL to a domain that does not exist and relaunch → the sidebar error says to check the URL and the row offers Open Blog Settings… beside Retry. Turn off Wi-Fi and relaunch with the correct URL → the error says the Mac is offline and the row offers only Retry. (An HTTP 400 also offers Settings; `ErrorMessageTests.settingsFixableErrors` covers it.)
 
 ### 7.3 Editor — content & Gutenberg round-trip
@@ -3674,6 +3697,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] A post containing a Media & Text shows a single-row "Media Text" card reading "Edit in Code View (</>)", with none of its text, and saving without touching it leaves the post byte-identical. A Cover renamed "Hero" in Gutenberg's List View reads "Cover: Hero".
 - [ ] **Groups.** Insert a Twenty Twenty-Five pattern built from headings, paragraphs, lists, images and buttons inside a Group. Open it in Quill → the Group is outlined with a small "Group", "Row", "Stack" or "Grid" label (followed by its custom name, as "Group: Hero") and everything in it is editable. Type one character inside it, save, reopen in Gutenberg → no invalid block, and the Group's colours, spacing and layout are unchanged. A Group holding a Spacer, Cover or any other block Quill does not model stays one locked card.
 - [ ] **Synced patterns.** In WordPress, create a synced pattern and insert it into a post. Open the post in Quill → the card is one row reading "Synced pattern: {title}", with none of the pattern's text, and "Shared across posts · Edit in WordPress"; the button opens the pattern in the block editor. Trash the pattern, reopen the post → "Synced pattern #{id} (not found)" with no button. Delete it permanently, reopen → the same. Saving the post never changes the `<!-- wp:block … /-->` line.
+- [ ] **Synced pattern added in code view.** Open a post in code view, add `<!-- wp:block {"ref":N} /-->` with the ID of a real synced pattern, and leave code view → the card reads "Synced pattern" while it loads, then "Synced pattern: {title}". Open and close code view without typing → no request goes out and the cards are unchanged.
+- [ ] **Group label colour and pasted Groups.** In light and dark mode, read the small Group, Row, Stack or Grid label above an open Group → it is legible against the page (`#737373` light, `#8f8f8f` dark, the same as a locked card's hint). Click the label text and try to type in it → nothing in the saved post changes. Copy a locked Group (one holding a Spacer or Cover) in Quill and paste it between two paragraphs → it stays one locked card. To observe, not yet judged a bug: copy a Group from the WordPress block editor and paste it into an empty paragraph by itself → note whether it arrives as a Group or flattens to paragraph text (the `groupBlock` node may lack `defining: true`).
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
   - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.
@@ -4011,6 +4036,8 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Open a post, then toggle the inspector open and closed → the toolbar does not dim or fade. This is what `InspectorTitlebarFix` suppresses; watch the toolbar, do not glance away.
 - [ ] Re-expand the inspector after collapsing it → the content pane's titlebar background does not paint over the inspector's first 52pt.
 - [ ] Open a long post and open the inspector → the post body never goes blank during the animation, and the editor narrows smoothly, the way closing the inspector widens it.
+- [ ] **Loading cover.** Click a long post in the sidebar → the editor area is covered while the post loads (`EditorLoadingCover`), with no half-drawn page, no blank white flash and none of the previous post's text, and the cover lifts once the content is in place. Click through several posts quickly, in light and dark mode → each one ends on its own content, and the cover matches the page colour. The space under the last paragraph is no taller than a few lines.
+- [ ] **No blank flash while resizing.** Open a long post and drag the window edge wider and narrower for several seconds, with and without the inspector open → the editor never flashes blank or white (`SplitItemSizePin`), and the text reflows as the window moves.
 - [ ] **One selection colour in the editor.** Select an image, an embed, a gallery, an unsupported-block card, a separator and a range of table cells, and focus the settings dropdown → each draws the same editor-accent outline (`#C77700` light, `#F0B450` dark). The find bar, table-size picker and embed menu use the same accent. Filled buttons (embed Insert, inline-image Apply, the find bar's active toggle) match the link picker's native Apply button: white text on `#C77700` light / `#BF801E` dark. Highlighted table-size cells keep their border in dark mode.
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
@@ -4565,6 +4592,18 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 248 | The embed card names each provider the way WordPress spells it (row 221 covers YouTube) and reads `Embed` for a host Quill has no provider for | ✅ `test-editor-containers.js` `'the embed card names its provider'` (6 tests) + 👁 §7.19 |
 | 249 | The title badge and its tooltip followed the Status menu, so choosing Published turned it green before anything was saved; a first save of a local draft said "Draft saved" rather than "Saved to WordPress" | 👁 §7.7 — view state in `PostEditorView` has no harness |
 | 250 | After any edit, the save dropped the blank lines on both sides of a class-only card (a `wp-block-*` element with no block comment), because `separateSiblingBlocks` only recognised a block boundary by its comment or the unsupported wrapper. A passthrough element with no `data-quill-passthrough-name` now counts as a whole block, and that attribute is stripped after the separator pass instead of before it (issue 22) | ✅ `test-editor-preservation.js` `'a class-only card is separated like any other block'` (3 tests) |
+| 251 | A copy of a class-only Group Quill cannot open (a `<video>` inside it, no block comments) pasted back as a `groupBlock`, which would have rewritten it. Quill's own copy stays one `gutenbergPassthrough` card, byte for byte, and an outside div Group pasted earlier does not make the next comment-less Group load as an open one | ✅ `test-editor-containers.js` `'pasting Quill\'s own copy of a locked group keeps it a card'`, `'a paste does not make the next load open a group that has no comments'` + 👁 §7.3 |
+| 252 | A Group that cannot open, nested in Columns or in a Group inside Columns, was rewritten through its container's node. `blockNeedsWrapping` also asks `holdsUnsupportedGroup`, so any top-level block holding such a Group at any depth is wrapped whole, and a Group that opens, or one that sits among siblings, is left alone | ✅ `test-block-serializer.js` `'blockNeedsWrapping'` (7 added tests) + `settings-group*.html`, `group-unsupported-children.html` + 👁 `--check-fixtures` |
+| 253 | A Group opens for editing only when `groupFullySupported`; one that should open falling back to a card, or a locked one opening, is invisible to the byte-identity tests. `__runFixtureCorpus` reports `cards` per fixture: 0 for every `settings-group*`, above 0 for `group-unsupported-children` | ✅ `test-editor-containers.js` `'the corpus runner reports a card count, zero for every group that opens and non-zero for a locked one'` + 👁 `--check-fixtures` |
+| 254 | A code view edit that produced a Group with comments must open it as a `groupBlock`, and the Group's label (drawn by the node view, outside the content) must not enter the saved markup when its text is edited: `ignoreMutation` on the label | ✅ `test-editor-containers.js` `'a group whose comments are present opens even when its markup came from a code view edit'`, `'editing the label text outside the content does not touch the saved group'` |
+| 255 | The Group label was `#999` light / `#777` dark, below WCAG AA contrast on the page colour. It is `#737373` / `#8f8f8f`, the same as `.passthrough-card-hint` | 👁 §7.3 (CSS colour; no automated test) |
+| 256 | A synced pattern added in code view has to ask for its title, and a result from the load before the edit must not title a card. Leaving code view after an edit posts `requestSyncedPatterns` and bumps the generation, so earlier results are ignored; leaving without an edit posts nothing | ✅ `test-editor-passthrough.js` `'a code view edit that adds a synced pattern asks for it and shows it loading'`, `'a code view edit retires the results of the load before it'`, `'opening and closing code view without an edit asks for nothing'` + 👁 §7.3 |
+| 257 | A synced pattern card shows none of the pattern's content. Only Custom HTML and shortcode cards get `has-peek` and a text preview; a synced pattern card does not | ✅ `test-editor-passthrough.js` `'a shortcode card shows its text as a preview and a synced pattern card does not'` |
+| 258 | The `requestSyncedPatterns` and `openSyncedPattern` messages come from the page, so Swift checks their shape: a missing or non-integer `generation` or ref sends nothing, no handler sends nothing, each ref is answered under the request's generation, and only an `Int` ref reaches the open handler | ✅ `EditorCoordinatorBridgeTests` `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration`, `aSyncedPatternRequestWithoutAHandlerSendsNothing`, `aMalformedSyncedPatternRequestIsIgnored`, `openingASyncedPatternHandsTheRefToTheHandler` |
+| 259 | The blocks REST response for a pattern can omit `status` or `title.raw`. Both decode as an empty string instead of throwing, so the card falls back to the ref rather than reading as a failed fetch | ✅ `WordPressClientTests.fetchSyncedPatternToleratesMissingStatusAndTitle` |
+| 260 | An empty paragraph the author wrote just before the footnotes list must survive `toWordPressHTML`. Only the paragraph the editor adds after a table or image is stripped on save | ✅ `test-editor-keyboard.js` `'an empty paragraph the author wrote before the footnotes list is kept on save'` |
+| 261 | Refresh left a post open in the editor stale after it changed on the server. `reloadIfClean` fetches the post and applies it only if nothing is unsaved, no save is running, `lastSavedServerModified` did not move during the fetch, and the fetched post differs from the loaded one; a dirty, saving or unchanged post is left alone | 👁 §7.2 (the guards have no automated test) |
+| 262 | The editor flashed blank while the window resized (`SplitItemSizePin`) and showed a half-built page while a post loaded (`EditorLoadingCover`) | 👁 §7.13 (AppKit and view state, no harness) |
 
 ---
 
@@ -4581,6 +4620,7 @@ The automatable Swift and JS layers are covered. The remaining gaps require a li
 - **The save paths' block-risk guard (§7.22):** `alarmBlocksSaving` and the four call sites that read it (`save(status:)`, `performAutosave`, `flushToDB`, `saveLocalOnly`) are SwiftUI view state with no test harness. The banner stages it reads, and `nextAlarm`'s clear/preserve/raise decision, *are* unit-tested; only the wiring into the save paths is manual.
 - **Menu commands and the Help links (§7.27):** `CommandGroup` items in `QuillApp.swift` only exist once AppKit builds the menu bar, and the Help/About links leave the app entirely. Nothing here has a harness — the destinations must be clicked.
 - **Saves that finish off-post (§7.7):** `save()`'s `stillOnPost()` check, the toast naming the post and the `appState`-only category and tag writes are SwiftUI view state. `stashAfterSave`, the stash decision, is unit-tested; the switching is manual.
+- **Refresh reloading a clean post, the loading cover and the resize pin (§7.2, §7.13):** `PostEditorView.reloadIfClean` (its `isDirty`, `isSaving`, `lastSavedServerModified` and `fresh != serverPost` guards), `EditorLoadingCover` and `SplitItemSizePin` are SwiftUI/AppKit view state with no harness. The guards are checked by hand in §7.2; the cover and the resize pin only show in the running app.
 - **Flushes, Preview and upload placement in `PostEditorView` (§7.4, §7.8, §7.9, §7.20):** the quit wait, the `flushPendingContent` call sites, Preview's `writeBlockedReason` check and its `updateFootnotes` call, and the upload placement closures' post and window checks are private view state. `window.flushContent`, `EditorCoordinator.flushPendingContent`, `updateFootnotes`'s request and the not-inserted message are tested; the wiring is manual.
 - **A pasted image's real upload (§7.28):** the editor's `uploadPastedImages` message is checked in jsdom and in real WebKit (the harness answers each token itself), `PastedImage.decode`, `PastedImage.forgetScript` and the extension sniffing are unit-tested, the undo and redo of the source swap are checked in jsdom, and the upload loop is the one drops use. The round trip to a live media library, the pill and the source swap after it are manual, and need a test site: pasting an image uploads it.
 - **UI flows, SwiftUI/AppKit rendering, WKWebView bridge interactions, conflict detection, autosave restoration, AI result panel visual correctness:** Documented in §7, run before each release.

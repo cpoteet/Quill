@@ -756,4 +756,51 @@ describe('synced pattern cards', () => {
     editor.commands.insertContent('X')
     assert.match(win.getContent(), /\n\n<!-- wp:block \{"ref":123\} \/-->$/)
   })
+
+  const toggleCodeView = () => win.document.getElementById('btn-code-view').dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+
+  test('a code view edit that adds a synced pattern asks for it and shows it loading', () => {
+    win.setContent(P)
+    requests.length = 0
+    toggleCodeView()
+    const ta = win.document.getElementById('code-editor')
+    ta.value = ta.value + '\n\n' + SYNCED(321)
+    toggleCodeView()
+    assert.equal(requests.length, 1)
+    assert.deepEqual(requests[0].refs, [321])
+    assert.equal(labelOf(cards()[0]), 'Synced pattern')
+    win.setSyncedPattern(requests[0].generation, 321, LOADED)
+    assert.equal(labelOf(cards()[0]), 'Synced pattern: Newsletter signup')
+  })
+
+  test('a code view edit retires the results of the load before it', () => {
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    const first = generation()
+    win.setSyncedPattern(first, 123, LOADED)
+    toggleCodeView()
+    const ta = win.document.getElementById('code-editor')
+    ta.value = ta.value + '\n\n' + P
+    toggleCodeView()
+    assert.ok(generation() > first)
+    assert.equal(labelOf(cards()[0]), 'Synced pattern')
+    win.setSyncedPattern(first, 123, { failed: true })
+    assert.equal(labelOf(cards()[0]), 'Synced pattern')
+  })
+
+  test('opening and closing code view without an edit asks for nothing', () => {
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    requests.length = 0
+    toggleCodeView()
+    toggleCodeView()
+    assert.equal(requests.length, 0)
+  })
+
+  test('a shortcode card shows its text as a preview and a synced pattern card does not', () => {
+    win.setContent('<!-- wp:shortcode -->[gallery ids="1,2"]<!-- /wp:shortcode -->\n\n' + SYNCED(123))
+    const [shortcode, synced] = cards()
+    assert.ok(shortcode.classList.contains('has-peek'))
+    assert.equal(peekOf(shortcode).textContent, '[gallery ids="1,2"]')
+    assert.ok(!synced.classList.contains('has-peek'))
+    assert.equal(peekOf(synced), null)
+  })
 })
