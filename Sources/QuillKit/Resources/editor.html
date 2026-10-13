@@ -989,23 +989,22 @@
     body.dark .gallery-card-hint { color: #777; }
     /* ── Passthrough card (unsupported Gutenberg block) ─── */
     .passthrough-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 2px 12px;
       margin: 1em 0;
-      padding: 14px 16px;
+      padding: 8px 12px;
       border: 1px solid rgba(0,0,0,0.14);
-      border-radius: 8px;
+      border-radius: 6px;
       background: rgba(0,0,0,0.025);
       cursor: default;
       user-select: none;
     }
+    .passthrough-card.has-peek { display: block; padding: 14px 16px; border-radius: 8px; }
     .passthrough-card.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+    .passthrough-card-label { font-weight: 600; font-size: 13px; }
     .passthrough-card-peek {
-      font-size: 13px;
-      line-height: 1.5;
-      color: #555;
-      margin-top: 4px;
-    }
-    .passthrough-card-peek.is-code {
       font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
       background: rgba(0,0,0,0.04);
       border-radius: 4px;
@@ -1014,11 +1013,11 @@
       white-space: pre-wrap;
       word-break: break-all;
     }
-    .passthrough-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
+    .passthrough-card-hint { font-size: 11px; color: #737373; margin-left: auto; }
+    .passthrough-card.has-peek .passthrough-card-hint { margin-top: 6px; font-style: italic; }
     body.dark .passthrough-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
-    body.dark .passthrough-card-peek { color: #aaa; }
-    body.dark .passthrough-card-peek.is-code { background: rgba(255,255,255,0.06); }
-    body.dark .passthrough-card-hint { color: #777; }
+    body.dark .passthrough-card-peek { background: rgba(255,255,255,0.06); }
+    body.dark .passthrough-card-hint { color: #8f8f8f; }
     #embed-menu {
       display: none;
       position: fixed;
@@ -2536,8 +2535,8 @@
     // Catches any wp-block-* classed element (other than a <figure>, which
     // Quill's own image/gallery/embed/table rules already own or
     // transparently pass through) that no other, higher-priority parse rule
-    // claimed. Renders as a static, non-editable card labeled "Not editable
-    // in the visual editor"; saves the original markup back byte-for-byte,
+    // claimed. Renders as a static, non-editable one-row card pointing to
+    // Code View; saves the original markup back byte-for-byte,
     // regenerating any original wp:name comments. See docs/superpowers/specs/
     // 2026-07-12-gutenberg-passthrough-block-design.md.
     function _peekText(source) {
@@ -2551,6 +2550,11 @@
     const _syncedPatternViews = new Map()
     const _syncedPatternsRequested = new Set()
     let _syncedPatternGeneration = 0
+
+    function isShortcodeBlock(source) {
+      const blocks = parseBlocks(source).filter(b => b.blockName || b.innerHTML.trim())
+      return blocks.length === 1 && blocks[0].blockName === 'core/shortcode'
+    }
 
     function syncedPatternRef(source) {
       const blocks = parseBlocks(source).filter(b => b.blockName || b.innerHTML.trim())
@@ -2571,21 +2575,21 @@
           this._buildSyncedPattern(label)
           return
         }
-        const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
-        const isCustomHTML = !!node.attrs.unsupportedSource && !!customHTMLBlock(node.attrs.unsupportedSource, parseBlocks)
-        const preview = isCustomHTML ? _peekText(source) : cardPreviewText(source || '')
-        if (preview) {
+        const source = node.attrs.unsupportedSource
+        const isCustomHTML = !!source && !!customHTMLBlock(source, parseBlocks)
+        if (isCustomHTML || (source && isShortcodeBlock(source))) {
           const peek = document.createElement('div')
-          peek.className = isCustomHTML ? 'passthrough-card-peek is-code' : 'passthrough-card-peek'
+          peek.className = 'passthrough-card-peek'
           // textContent, never innerHTML: the peek may show markup, it must not become it.
-          peek.textContent = preview
+          peek.textContent = _peekText(source)
           this.dom.append(peek)
+          this.dom.classList.add('has-peek')
         }
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
         this.dom.append(hint)
         if (!isCustomHTML) {
-          hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
+          hint.textContent = 'Edit in Code View (</>)'
           return
         }
         hint.textContent = 'Renders as Custom HTML in WordPress · '
@@ -2598,8 +2602,6 @@
       }
       _buildSyncedPattern(label) {
         this.label = label
-        this.peek = document.createElement('div')
-        this.peek.className = 'passthrough-card-peek'
         this.hint = document.createElement('div')
         this.hint.className = 'passthrough-card-hint'
         this.hintText = document.createTextNode('')
@@ -2626,10 +2628,6 @@
         else if (notFound) this.label.textContent = `Synced pattern #${ref} (not found)`
         else if (loaded && result.title) this.label.textContent = `Synced pattern: ${result.title}`
         else this.label.textContent = `Synced pattern #${ref}`
-        // textContent, never innerHTML: fetched content is post markup.
-        this.peek.textContent = loaded ? cardPreviewText(String(result.content || '')) : ''
-        if (this.peek.textContent) this.hint.before(this.peek)
-        else this.peek.remove()
         this.hintText.data = notFound ? 'Shared across posts' : 'Shared across posts · '
         if (notFound) this.edit.remove()
         else this.hint.append(this.edit)
@@ -6446,7 +6444,7 @@
       window.insertCustomHTML(JSON.stringify({ html: source, replace: false }))
       editor.view.pasteHTML(source)
       window.setContent('<!-- wp:block {"ref":1} /-->')
-      window.setSyncedPattern(_syncedPatternGeneration, 1, { title: source, content: source })
+      window.setSyncedPattern(_syncedPatternGeneration, 1, { title: source })
     })
     window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {

@@ -1115,32 +1115,31 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         MockURLProtocol.requestHandler = { request in
             captured = request
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                    #"{"id":123,"status":"publish","title":{"raw":"T"},"content":{"raw":"C"}}"#.data(using: .utf8)!)
+                    #"{"id":123,"status":"publish","title":{"raw":"T"}}"#.data(using: .utf8)!)
         }
         _ = try await client.fetchSyncedPattern(id: 123)
         let url = try #require(captured?.url)
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         #expect(url.path == "/wp-json/wp/v2/blocks/123")
         #expect(items.first { $0.name == "context" }?.value == "edit")
-        #expect(items.first { $0.name == "_fields" }?.value == "id,status,title,content")
+        #expect(items.first { $0.name == "_fields" }?.value == "id,status,title")
     }
 
-    @Test func fetchSyncedPatternDecodesStatusRawTitleAndContent() async throws {
+    @Test func fetchSyncedPatternDecodesStatusAndRawTitle() async throws {
         MockURLProtocol.requestHandler = { request in
             (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"status":"trash","title":{"raw":"Newsletter signup"},"content":{"raw":"<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->","protected":false}}"#.data(using: .utf8)!)
+             #"{"id":123,"status":"trash","title":{"raw":"Newsletter signup"}}"#.data(using: .utf8)!)
         }
         let pattern = try await client.fetchSyncedPattern(id: 123)
         #expect(pattern.id == 123)
         #expect(pattern.status == "trash")
         #expect(pattern.title == "Newsletter signup")
-        #expect(pattern.content == "<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->")
     }
 
     @Test func fetchSyncedPatternDecodesEntitiesInTheTitle() async throws {
         MockURLProtocol.requestHandler = { request in
             (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"status":"publish","title":{"raw":"Q&amp;A &#8211; live"},"content":{"raw":"C"}}"#.data(using: .utf8)!)
+             #"{"id":123,"status":"publish","title":{"raw":"Q&amp;A &#8211; live"}}"#.data(using: .utf8)!)
         }
         #expect(try await client.fetchSyncedPattern(id: 123).title == "Q&A \u{2013} live")
     }

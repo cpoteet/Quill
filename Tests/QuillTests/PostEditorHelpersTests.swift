@@ -872,7 +872,7 @@ import Testing
 }
 
 @Suite struct SyncedPatternResultTests {
-    private let pattern = { (status: String) in WPSyncedPattern(id: 1, status: status, title: "T", content: "C") }
+    private let pattern = { (status: String) in WPSyncedPattern(id: 1, status: status, title: "T") }
 
     @Test func aTrashedPatternIsNotFound() {
         guard case .notFound = PostEditorView.syncedPatternResult(for: .success(pattern("trash"))) else {

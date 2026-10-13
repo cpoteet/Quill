@@ -539,9 +539,9 @@ describe('a locked card is labelled by its custom name', () => {
   const COVER = attrs => `<!-- wp:cover ${attrs}-->\n<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><div class="wp-block-cover__inner-container"><!-- wp:paragraph -->\n<p>On a cover.</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover -->`
   const labels = () => Array.from(win.document.querySelectorAll('#editor .passthrough-card-label')).map(el => el.textContent)
 
-  test('a top-level card with a name reads its name', () => {
+  test('a top-level card with a name reads its type and name', () => {
     win.setContent(COVER('{"metadata":{"name":"Hero"}} '))
-    assert.deepEqual(labels(), ['Hero'])
+    assert.deepEqual(labels(), ['Cover: Hero'])
   })
 
   test('a top-level card without a name reads its block type', () => {
@@ -549,56 +549,40 @@ describe('a locked card is labelled by its custom name', () => {
     assert.deepEqual(labels(), ['Cover'])
   })
 
-  test('a card nested in a column reads its name', () => {
+  test('a card nested in a column reads its type and name', () => {
     win.setContent(`<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column">${COVER('{"metadata":{"name":"Hero"}} ')}</div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->`)
-    assert.deepEqual(labels(), ['Hero'])
+    assert.deepEqual(labels(), ['Cover: Hero'])
   })
 
   test('a name holding markup shows as text', () => {
     win.setContent(COVER('{"metadata":{"name":"\\u003cb\\u003eHero\\u003c/b\\u003e"}} '))
     const label = win.document.querySelector('#editor .passthrough-card-label')
-    assert.equal(label.textContent, '<b>Hero</b>')
+    assert.equal(label.textContent, 'Cover: <b>Hero</b>')
     assert.equal(label.children.length, 0)
   })
 })
 
-describe('a locked card previews its text', () => {
+describe('a locked card is one row without its text', () => {
   const peek = () => win.document.querySelector('#editor .passthrough-card-peek')
+  const card = () => win.document.querySelector('#editor .passthrough-card')
 
-  test('a Cover card shows its joined text', () => {
-    win.setContent('<!-- wp:cover -->\n<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><div class="wp-block-cover__inner-container"><!-- wp:heading -->\n<h2 class="wp-block-heading">Become a member</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Join <strong>today</strong></p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover -->')
-    assert.equal(peek().textContent, 'Become a member · Join today')
+  test('a Cover card shows no text', () => {
+    win.setContent('<!-- wp:cover -->\n<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><div class="wp-block-cover__inner-container"><!-- wp:heading -->\n<h2 class="wp-block-heading">Become a member</h2>\n<!-- /wp:heading --></div></div>\n<!-- /wp:cover -->')
+    assert.equal(peek(), null)
+    assert.doesNotMatch(card().textContent, /Become a member/)
+    assert.ok(!card().classList.contains('has-peek'))
   })
 
-  test('a Media & Text card shows its text, not its markup', () => {
-    win.setContent('<!-- wp:media-text -->\n<div class="wp-block-media-text is-stacked-on-mobile"><figure class="wp-block-media-text__media"></figure><div class="wp-block-media-text__content"><!-- wp:paragraph -->\n<p>Beside the picture</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:media-text -->')
-    assert.equal(peek().textContent, 'Beside the picture')
-  })
-
-  test('a Spacer card has no preview line', () => {
-    win.setContent('<!-- wp:spacer -->\n<div style="height:40px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->')
-    assert.equal(win.document.querySelectorAll('#editor .passthrough-card').length, 1)
+  test('a card nested in a column shows no text', () => {
+    win.setContent('<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:cover -->\n<div class="wp-block-cover"><div class="wp-block-cover__inner-container"><!-- wp:paragraph -->\n<p>Nested cover</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->')
     assert.equal(peek(), null)
   })
 
   test('a Custom HTML card still shows its markup, styled as code', () => {
     win.setContent('<!-- wp:html -->\n<div class="promo"><b>Hi</b></div>\n<!-- /wp:html -->')
     assert.equal(peek().textContent, '<div class="promo"><b>Hi</b></div>')
-    assert.ok(peek().classList.contains('is-code'))
-  })
-
-  test('a text preview is styled like the text around it, not as code', () => {
-    win.setContent('<!-- wp:media-text -->\n<div class="wp-block-media-text"><div class="wp-block-media-text__content"><!-- wp:paragraph -->\n<p>Words</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:media-text -->')
-    assert.ok(!peek().classList.contains('is-code'))
-    const css = win.document.querySelector('style').textContent
-    const rule = css.match(/\.passthrough-card-peek \{[^}]*\}/)[0]
-    assert.doesNotMatch(rule, /monospace/)
-    assert.match(css, /\.passthrough-card-peek\.is-code \{[^}]*monospace/)
-  })
-
-  test('a card nested in a column previews its text too', () => {
-    win.setContent('<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:cover -->\n<div class="wp-block-cover"><div class="wp-block-cover__inner-container"><!-- wp:paragraph -->\n<p>Nested cover</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->')
-    assert.equal(peek().textContent, 'Nested cover')
+    assert.ok(card().classList.contains('has-peek'))
+    assert.match(win.document.querySelector('style').textContent, /\.passthrough-card-peek \{[^}]*monospace/)
   })
 })
 
@@ -608,7 +592,7 @@ describe('synced pattern cards', () => {
   const changed = []
   const SYNCED = ref => `<!-- wp:block {"ref":${ref}} /-->`
   const P = '<!-- wp:paragraph -->\n<p>Text</p>\n<!-- /wp:paragraph -->'
-  const LOADED = { title: 'Newsletter signup', content: '<!-- wp:paragraph --><p>Get new posts by email</p><!-- /wp:paragraph -->' }
+  const LOADED = { title: 'Newsletter signup' }
   const cards = () => Array.from(win.document.querySelectorAll('#editor .passthrough-card'))
   const labelOf = card => card.querySelector('.passthrough-card-label').textContent
   const peekOf = card => card.querySelector('.passthrough-card-peek')
@@ -663,20 +647,19 @@ describe('synced pattern cards', () => {
     assert.deepEqual(opened, [{ ref: 123 }])
   })
 
-  test('a loaded result titles and previews every card with that ref', () => {
+  test('a loaded result titles every card with that ref', () => {
     win.setContent([SYNCED(123), P, SYNCED(123)].join('\n\n'))
     win.setSyncedPattern(generation(), 123, LOADED)
     for (const card of cards()) {
       assert.equal(labelOf(card), 'Synced pattern: Newsletter signup')
-      assert.equal(peekOf(card).textContent, 'Get new posts by email')
+      assert.equal(peekOf(card), null)
     }
   })
 
   test('an empty title falls back to the ref', () => {
     win.setContent(SYNCED(123))
-    win.setSyncedPattern(generation(), 123, { title: '', content: LOADED.content })
+    win.setSyncedPattern(generation(), 123, { title: '' })
     assert.equal(labelOf(cards()[0]), 'Synced pattern #123')
-    assert.equal(peekOf(cards()[0]).textContent, 'Get new posts by email')
   })
 
   test('a pattern that is gone says so and has no button', () => {

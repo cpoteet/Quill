@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-13 — 770 Swift tests + 1,923 JS tests (1,922 pass, 1 skipped), no failures._
+_Last updated: 2026-10-13 — 770 Swift tests + 1,911 JS tests (1,910 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -18,14 +18,14 @@ This document is the authoritative reference for Quill's automated test suite an
 
 1. **Swift tests** — `swift test` (770 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (151 tests — pure Node; `serializeAttributes` compared with WordPress)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (142 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (136 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (410 tests — live Tiptap editor in jsdom)
-10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (64 tests — live Tiptap editor in jsdom)
+10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (61 tests — live Tiptap editor in jsdom)
 11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
 13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
@@ -413,8 +413,8 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 
 | Test | What it checks |
 |---|---|
-| `fetchSyncedPatternRequestsBlocksEndpointWithEditContext` | `GET /wp-json/wp/v2/blocks/{id}` with `context=edit` and `_fields=id,status,title,content` |
-| `fetchSyncedPatternDecodesStatusRawTitleAndContent` | `status`, `title.raw` and `content.raw` |
+| `fetchSyncedPatternRequestsBlocksEndpointWithEditContext` | `GET /wp-json/wp/v2/blocks/{id}` with `context=edit` and `_fields=id,status,title` |
+| `fetchSyncedPatternDecodesStatusAndRawTitle` | `status` and `title.raw` |
 | `fetchSyncedPatternDecodesEntitiesInTheTitle` | A raw title stored as `Q&amp;A &#8211; live` reads `Q&A – live` on the card |
 | `fetchSyncedPatternThrowsHTTPErrorOn404` | A missing pattern throws `APIError.httpError(404, _)`, which the editor shows as not found |
 | `syncedPatternEditURLAtDomainRoot` / `syncedPatternEditURLInSubdirectory` | `{site}/wp-admin/post.php?post={id}&action=edit`, with no doubled slash for a site at `/blog/` |
@@ -1459,7 +1459,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (151 tests)
+## JS block serializer tests (142 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1574,34 +1574,18 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `an opener with no closer reads to the end` | An unclosed `wp:html` comment yields the HTML after it |
 | `anything but a single Custom HTML block is null` | Another block, two blocks, or prose around one, is not editable as Custom HTML |
 
-### `cardPreviewText` (9 tests)
-
-A locked card's preview: the block's visible text, not its markup.
-
-| Test | What it checks |
-|---|---|
-| `text from separate blocks is joined, inline formatting is not split` | A Cover's heading and paragraph read `Become a member · Join today` |
-| `a block with no text has no preview` | A Spacer gives `''`, so its card draws no preview line |
-| `script, style, template and noscript text never appears` | |
-| `block comments never appear` | Including the attribute JSON in a delimiter |
-| `runs of whitespace collapse to one space` | |
-| `a line break separates words` | `<br>` reads as a space, not `Line oneLine two` |
-| `SVG titles, frame fallbacks and form fields never appear` | `title`, `iframe`, `noembed` and `textarea` are dropped with `script` and `style` |
-| `a long block is cut at 120 characters` | Plus `…` |
-| `an image handler gives no text and never runs` | Parsed into an inert document |
-
 ### `cardLabel` (2 tests)
 
 | Test | What it checks |
 |---|---|
-| `a custom name is the label` | `metadata.name` (List View's Rename) |
+| `a custom name follows the block type` | `metadata.name` (List View's Rename) reads `Cover: Hero` |
 | `an empty, non-string or missing name falls back to the block type` | |
 
 ### `groupLabel` (5 tests)
 
 | Test | What it checks |
 |---|---|
-| `a custom name wins` | |
+| `a custom name follows the layout` | `Group: Hero`, `Row: Nav` |
 | `an empty custom name falls back to the layout` | |
 | `a flex layout without a vertical orientation is a Row` | `flexWrap` alone, or `orientation: horizontal` |
 | `a vertical flex layout is a Stack` | |
@@ -1705,7 +1689,7 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `the card shows the label and a peek at the content` | A bare "Shortcode" label cannot tell two shortcodes apart, so the card carries the text |
 | `the peek is truncated for a long block` | Capped at 120 characters plus an ellipsis |
 | `the peek renders markup as text, never as live DOM` | `textContent`, not `innerHTML` — a Custom HTML block must not execute in the editor |
-| `the card keeps the existing hint line` | The Code View hint is unchanged |
+| `the card points to Code View` | The hint reads `Edit in Code View (</>)` |
 | `an ordinary unmodeled block with no text renders a labelled card without a preview` | The common case: a block Quill has no node for is shown as a named, non-editable card; a Spacer has no text, so no preview line |
 | `an unmodeled block nested in a modeled container still matches by class` | The class-based card is what is left of the old path, and it is the only thing covering a block nested inside a container Quill does model |
 
@@ -3273,7 +3257,7 @@ A table's `<thead>`/`<tfoot>` are document structure, not a setting, so they are
 | Test | What it checks |
 |---|---|
 | `each group is labelled by its layout` | Group, Row, Stack, Grid |
-| `a custom name is the label, shown as text` | `"<b>Hero</b>"` stays literal |
+| `a custom name follows the type, shown as text` | `"Group: <b>Hero</b>"` stays literal |
 | `the label never reaches the saved markup` | It is drawn by the node view, outside `contentDOM` |
 | `Enter on an empty last line leaves the group` | |
 | `the ✕ removes the whole group` | `groupBlock` is in `DELETABLE_BLOCKS` |
@@ -3296,7 +3280,7 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
-## JS passthrough tests (64 tests)
+## JS passthrough tests (61 tests)
 
 File: `Scripts/test-editor-passthrough.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3388,11 +3372,11 @@ Specificity guards for the new figure rule: the four figures Quill does model mu
 
 ### `a locked card is labelled by its custom name` (4 tests)
 
-A top-level card and a card nested in a Column read the block's `metadata.name`; without one they read the block type; a name holding markup shows as text.
+A top-level card and a card nested in a Column read the block type then its `metadata.name` (`Cover: Hero`); without one they read the block type; a name holding markup shows as text.
 
-### `a locked card previews its text` (6 tests)
+### `a locked card is one row without its text` (3 tests)
 
-A Cover and a Media & Text show their joined text, a Spacer has no preview line, a Custom HTML card still shows its markup in the code box (`is-code`), a text preview is styled like the card's text rather than as code, and a card nested in a Column previews its text too.
+A Cover card, top-level or nested in a Column, shows no text from inside it and is drawn as a single row; a Custom HTML card still shows its markup in the monospaced box (`has-peek`).
 
 ### `synced pattern cards` (16 tests)
 
@@ -3400,7 +3384,7 @@ A Cover and a Media & Text show their joined text, a Spacer has no preview line,
 |---|---|
 | `a load posts each ref once` / `a post without synced patterns posts nothing` / `each load posts a higher generation` | `requestSyncedPatterns({ generation, refs })` |
 | `before a result the card is loading, with a working edit button` | The button posts `openSyncedPattern({ ref })` before any fetch answers |
-| `a loaded result titles and previews every card with that ref` / `an empty title falls back to the ref` / `a pattern that is gone says so and has no button` / `a failed fetch keeps the button` | The spec's table of states |
+| `a loaded result titles every card with that ref` / `an empty title falls back to the ref` / `a pattern that is gone says so and has no button` / `a failed fetch keeps the button` | The spec's table of states |
 | `a result changes neither the content nor the history` | `editor.state` is the same object: no transaction at all |
 | `a result for a ref not on the page changes nothing` | |
 | `a ref too large to be an ID is not a synced pattern` | `syncedPatternRef` takes a positive safe integer, so one bad ref cannot make Swift's `[Int]` cast drop the whole request |
@@ -3687,9 +3671,9 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Open a **classic** (pre-Gutenberg) post, type one character, save → the post is converted to blocks. Expected, not a bug; confirm no prose is lost. A `<div>` with a class, style or id shows as a "Custom HTML" card and saves as a `wp:html` block with its markup intact; a bare `<div>` is unwrapped and its paragraphs become paragraph blocks.
 - [ ] In the same kind of classic post, text in `<big>` or `<strike>` stays ordinary editable text, not a Custom HTML card.
 - [ ] A post where a styled `<div>` wraps block markup (the `<div class="…">` opens before a `<!-- wp:paragraph -->` and closes after it) loads its blocks normally, with no empty Custom HTML card.
-- [ ] A post containing a Media & Text shows a "Not editable in the visual editor" card with a preview of its text (not its markup), and saving without touching it leaves the post byte-identical. A block renamed in Gutenberg's List View shows that name as the card's label.
-- [ ] **Groups.** Insert a Twenty Twenty-Five pattern built from headings, paragraphs, lists, images and buttons inside a Group. Open it in Quill → the Group is outlined with a small "Group", "Row", "Stack" or "Grid" label (or its custom name) and everything in it is editable. Type one character inside it, save, reopen in Gutenberg → no invalid block, and the Group's colours, spacing and layout are unchanged. A Group holding a Spacer, Cover or any other block Quill does not model stays one locked card.
-- [ ] **Synced patterns.** In WordPress, create a synced pattern and insert it into a post. Open the post in Quill → the card reads "Synced pattern: {title}", previews its text, and says "Shared across posts · Edit in WordPress"; the button opens the pattern in the block editor. Trash the pattern, reopen the post → "Synced pattern #{id} (not found)" with no button. Delete it permanently, reopen → the same. Saving the post never changes the `<!-- wp:block … /-->` line.
+- [ ] A post containing a Media & Text shows a single-row "Media Text" card reading "Edit in Code View (</>)", with none of its text, and saving without touching it leaves the post byte-identical. A Cover renamed "Hero" in Gutenberg's List View reads "Cover: Hero".
+- [ ] **Groups.** Insert a Twenty Twenty-Five pattern built from headings, paragraphs, lists, images and buttons inside a Group. Open it in Quill → the Group is outlined with a small "Group", "Row", "Stack" or "Grid" label (followed by its custom name, as "Group: Hero") and everything in it is editable. Type one character inside it, save, reopen in Gutenberg → no invalid block, and the Group's colours, spacing and layout are unchanged. A Group holding a Spacer, Cover or any other block Quill does not model stays one locked card.
+- [ ] **Synced patterns.** In WordPress, create a synced pattern and insert it into a post. Open the post in Quill → the card is one row reading "Synced pattern: {title}", with none of the pattern's text, and "Shared across posts · Edit in WordPress"; the button opens the pattern in the block editor. Trash the pattern, reopen the post → "Synced pattern #{id} (not found)" with no button. Delete it permanently, reopen → the same. Saving the post never changes the `<!-- wp:block … /-->` line.
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
   - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.

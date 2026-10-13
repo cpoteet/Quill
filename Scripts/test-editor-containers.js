@@ -3001,10 +3001,10 @@ describe('group label and editing', () => {
     assert.deepEqual(labels(), ['Group', 'Row', 'Stack', 'Grid'])
   })
 
-  test('a custom name is the label, shown as text', () => {
+  test('a custom name follows the type, shown as text', () => {
     win.setContent(NAMED)
     const label = win.document.querySelector('#editor .group-label')
-    assert.equal(label.textContent, '<b>Hero</b>')
+    assert.equal(label.textContent, 'Group: <b>Hero</b>')
     assert.equal(label.children.length, 0)
   })
 

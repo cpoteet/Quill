@@ -77,7 +77,7 @@ public struct WordPressClient: Sendable {
     }
 
     public func fetchSyncedPattern(id: Int) async throws -> WPSyncedPattern {
-        let url = try endpoint("blocks/\(id)", query: ["context": "edit", "_fields": "id,status,title,content"])
+        let url = try endpoint("blocks/\(id)", query: ["context": "edit", "_fields": "id,status,title"])
         return try await get(url)
     }
 

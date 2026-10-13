@@ -93,14 +93,12 @@ describe('unsupported blocks become passthrough cards', () => {
     assert.match(peek.textContent, /<b>Hi<\/b>/)
   })
 
-  test('the card keeps the existing hint line', () => {
+  test('the card points to Code View', () => {
     load('<!-- wp:calendar /-->')
     const hint = win.document.querySelector('#editor .passthrough-card-hint').textContent
-    assert.equal(hint, 'Not editable in the visual editor; use Code View (</>)')
+    assert.equal(hint, 'Edit in Code View (</>)')
   })
 
-  // Every top-level block Quill does not model now goes through the same
-  // wrapper, so every card is labelled and shows a peek of its own source.
   test('an ordinary unmodeled block with no text renders a labelled card without a preview', () => {
     const src = '<!-- wp:spacer --><div class="wp-block-spacer" style="height:8px"></div><!-- /wp:spacer -->'
     win.setContent(src)
@@ -360,7 +358,7 @@ describe('Custom HTML insert and edit', () => {
 
   test('other cards keep the Code View hint', () => {
     win.setContent('<p>Intro</p><!-- wp:calendar /-->')
-    assert.equal(hint().textContent, 'Not editable in the visual editor; use Code View (</>)')
+    assert.equal(hint().textContent, 'Edit in Code View (</>)')
     assert.equal(hint().querySelector('button'), null)
   })
 

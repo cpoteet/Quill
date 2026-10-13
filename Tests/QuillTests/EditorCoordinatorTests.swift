@@ -346,17 +346,17 @@ struct EditorPushDecisionTests {
     }
 
     @Test func syncedPatternJSLoaded() throws {
-        let pattern = WPSyncedPattern(id: 123, status: "publish", title: "Newsletter signup", content: "<p>Hi</p>")
+        let pattern = WPSyncedPattern(id: 123, status: "publish", title: "Newsletter signup")
         let script = EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern))
         #expect(script.contains("setSyncedPattern(7, 123,"))
         let arg = try argument(script)
         #expect(arg["title"] as? String == "Newsletter signup")
-        #expect(arg["content"] as? String == "<p>Hi</p>")
+        #expect(arg.count == 1)
     }
 
     @Test func syncedPatternJSEscapesQuotesAndScriptClose() throws {
         let title = #"A "quoted" </script> title"#
-        let pattern = WPSyncedPattern(id: 123, status: "publish", title: title, content: "")
+        let pattern = WPSyncedPattern(id: 123, status: "publish", title: title)
         let arg = try argument(EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern)))
         #expect(arg["title"] as? String == title)
     }

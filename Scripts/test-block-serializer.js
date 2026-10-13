@@ -522,58 +522,11 @@ describe('Custom HTML source', () => {
   })
 })
 
-describe('cardPreviewText', () => {
-  const { cardPreviewText } = loadTransforms()
-  const { JSDOM } = require('jsdom')
-  const doc = new JSDOM('<body></body>').window.document
-  const preview = src => cardPreviewText(src, doc)
-
-  test('text from separate blocks is joined, inline formatting is not split', () => {
-    const src = '<!-- wp:cover --><div class="wp-block-cover"><div class="wp-block-cover__inner-container"><!-- wp:heading --><h2>Become a member</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Join <strong>today</strong></p><!-- /wp:paragraph --></div></div><!-- /wp:cover -->'
-    assert.equal(preview(src), 'Become a member · Join today')
-  })
-
-  test('a block with no text has no preview', () => {
-    assert.equal(preview('<!-- wp:spacer --><div style="height:40px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->'), '')
-  })
-
-  test('script, style, template and noscript text never appears', () => {
-    const src = '<div><p>Seen</p><script>hidden1()</script><style>.hidden2{}</style><template><p>hidden3</p></template><noscript>hidden4</noscript></div>'
-    assert.equal(preview(src), 'Seen')
-  })
-
-  test('block comments never appear', () => {
-    assert.equal(preview('<!-- wp:acme/x {"note":"hidden"} --><p>Seen</p><!-- /wp:acme/x -->'), 'Seen')
-  })
-
-  test('runs of whitespace collapse to one space', () => {
-    assert.equal(preview('<p>  One \n\t two   </p>'), 'One two')
-  })
-
-  test('a long block is cut at 120 characters', () => {
-    const out = preview(`<p>${'x'.repeat(200)}</p>`)
-    assert.equal(out, 'x'.repeat(120) + '…')
-  })
-
-  test('a line break separates words', () => {
-    assert.equal(preview('<p>Line one<br>Line two</p>'), 'Line one Line two')
-  })
-
-  test('SVG titles, frame fallbacks and form fields never appear', () => {
-    assert.equal(preview('<svg><title>Icon</title></svg><iframe>fallback</iframe><noembed>old</noembed><textarea>typed</textarea><p>ok</p>'), 'ok')
-  })
-
-  test('an image handler gives no text and never runs', () => {
-    assert.equal(preview('<img src=x onerror="globalThis.__ran=1">'), '')
-    assert.equal(globalThis.__ran, undefined)
-  })
-})
-
 describe('cardLabel', () => {
   const { cardLabel } = loadTransforms()
 
-  test('a custom name is the label', () => {
-    assert.equal(cardLabel({ metadata: { name: 'Hero' } }, 'Cover'), 'Hero')
+  test('a custom name follows the block type', () => {
+    assert.equal(cardLabel({ metadata: { name: 'Hero' } }, 'Cover'), 'Cover: Hero')
   })
 
   test('an empty, non-string or missing name falls back to the block type', () => {
@@ -586,8 +539,9 @@ describe('cardLabel', () => {
 describe('groupLabel', () => {
   const { groupLabel } = loadTransforms()
 
-  test('a custom name wins', () => {
-    assert.equal(groupLabel({ metadata: { name: 'Hero' } }), 'Hero')
+  test('a custom name follows the layout', () => {
+    assert.equal(groupLabel({ metadata: { name: 'Hero' } }), 'Group: Hero')
+    assert.equal(groupLabel({ metadata: { name: 'Nav' }, layout: { type: 'flex' } }), 'Row: Nav')
   })
 
   test('an empty custom name falls back to the layout', () => {

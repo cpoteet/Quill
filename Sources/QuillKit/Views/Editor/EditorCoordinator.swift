@@ -367,7 +367,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     static func syncedPatternJS(generation: Int, ref: Int, result: SyncedPatternResult) -> String {
         let payload: [String: Any]
         switch result {
-        case .loaded(let pattern): payload = ["title": pattern.title, "content": pattern.content]
+        case .loaded(let pattern): payload = ["title": pattern.title]
         case .notFound: payload = ["notFound": true]
         case .failed: payload = ["failed": true]
         }

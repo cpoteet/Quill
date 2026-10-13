@@ -216,31 +216,10 @@ function passthroughLabelFromBlockName(name) {
   return titleCaseHyphenated(base)
 }
 
-// A block's custom name (List View's Rename) outranks its type.
-function cardLabel(attrs, fallback) {
+// A block's custom name (List View's Rename) follows its type.
+function cardLabel(attrs, type) {
   const name = attrs && attrs.metadata && attrs.metadata.name
-  return typeof name === 'string' && name ? name : fallback
-}
-
-const PREVIEW_BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, div, figure, figcaption, blockquote, pre, td, th, a.wp-block-button__link, summary, section, article, header, footer, aside'
-
-// A locked card's visible text, one segment per block-level element: docs/block-model.md.
-function cardPreviewText(source, doc) {
-  doc = doc || inertDocument()
-  const root = doc.createElement('div')
-  root.innerHTML = source.replace(/<!--[\s\S]*?-->/g, '')
-  root.querySelectorAll('script, style, template, noscript, title, iframe, noembed, textarea').forEach(el => el.remove())
-  root.querySelectorAll('br').forEach(br => br.replaceWith(doc.createTextNode(' ')))
-  const segments = []
-  let block = null
-  const walker = doc.createTreeWalker(root, 4)
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const owner = node.parentElement.closest(PREVIEW_BLOCK_SELECTOR)
-    if (owner !== block || !segments.length) { segments.push(''); block = owner }
-    segments[segments.length - 1] += node.data
-  }
-  const text = segments.map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ')
-  return text.length > 120 ? text.slice(0, 120) + '…' : text
+  return typeof name === 'string' && name ? `${type}: ${name}` : type
 }
 
 function parsedAttrs(json) {
@@ -1942,5 +1921,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { groupFullySupported, groupTags, groupLabel, cardLabel, cardPreviewText, extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
+  module.exports = { groupFullySupported, groupTags, groupLabel, cardLabel, extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
 }
