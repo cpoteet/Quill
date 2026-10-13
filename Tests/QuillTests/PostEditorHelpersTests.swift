@@ -872,34 +872,38 @@ import Testing
 }
 
 @Suite struct SyncedPatternResultTests {
-    private let pattern = { (status: String) in WPSyncedPattern(id: 1, status: status, title: "T") }
-
-    @Test func aTrashedPatternIsNotFound() {
-        guard case .notFound = PostEditorView.syncedPatternResult(for: .success(pattern("trash"))) else {
-            Issue.record("expected notFound"); return
-        }
+    private func results(_ refs: [Int], _ outcome: Result<[WPSyncedPattern], Error>) -> [Int: SyncedPatternResult] {
+        PostEditorView.syncedPatternResults(for: refs, outcome: outcome)
     }
 
-    @Test func aPublishedPatternIsLoaded() {
-        guard case .loaded(let loaded) = PostEditorView.syncedPatternResult(for: .success(pattern("publish"))) else {
-            Issue.record("expected loaded"); return
-        }
+    @Test func aReturnedPatternIsLoadedUnderItsRef() {
+        let mapped = results([7], .success([WPSyncedPattern(id: 7, title: "T")]))
+        guard case .loaded(let loaded) = mapped[7] else { Issue.record("expected loaded"); return }
         #expect(loaded.title == "T")
     }
 
-    @Test func a404Or410IsNotFound() {
-        for code in [404, 410] {
-            guard case .notFound = PostEditorView.syncedPatternResult(for: .failure(APIError.httpError(statusCode: code, body: ""))) else {
-                Issue.record("expected notFound for \(code)"); continue
+    @Test func aRefWordPressLeftOutIsNotFound() {
+        let mapped = results([7, 8], .success([WPSyncedPattern(id: 7, title: "T")]))
+        guard case .notFound = mapped[8] else { Issue.record("expected notFound"); return }
+        #expect(mapped.count == 2)
+    }
+
+    @Test func aPasswordProtectedPatternIsNotFound() {
+        let mapped = results([7], .success([WPSyncedPattern(id: 7, title: "T", hasPassword: true)]))
+        guard case .notFound = mapped[7] else { Issue.record("expected notFound"); return }
+    }
+
+    @Test func anErrorFailsEveryRef() {
+        for error: Error in [APIError.httpError(statusCode: 404, body: ""), URLError(.notConnectedToInternet)] {
+            let mapped = results([7, 8], .failure(error))
+            #expect(mapped.count == 2)
+            for ref in [7, 8] {
+                guard case .failed = mapped[ref] else { Issue.record("expected failed for \(ref) on \(error)"); continue }
             }
         }
     }
 
-    @Test func anyOtherErrorIsFailed() {
-        for error: Error in [APIError.httpError(statusCode: 500, body: ""), URLError(.notConnectedToInternet)] {
-            guard case .failed = PostEditorView.syncedPatternResult(for: .failure(error)) else {
-                Issue.record("expected failed for \(error)"); continue
-            }
-        }
+    @Test func aRepeatedRefDoesNotTrap() {
+        #expect(results([7, 7], .success([WPSyncedPattern(id: 7, title: "T")])).count == 1)
     }
 }

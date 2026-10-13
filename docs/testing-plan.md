@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-13 — 775 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
+_Last updated: 2026-10-13 — 779 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (775 tests)
+1. **Swift tests** — `swift test` (779 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -114,7 +114,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (775 tests, 50 suites)
+## Swift test suite (779 tests, 50 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -128,7 +128,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 75 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPattern` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 77 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -161,7 +161,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 10 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 11 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
@@ -173,7 +173,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 47 | `AIModelLoadingTests` | `AppStateTests.swift` | 6 | `AppState.loadAIModelsIfNeeded`: an empty model list is fetched and saved as soon as there's a key; an existing list, a missing key or a failed fetch changes nothing; a key changed during the fetch drops the result |
 | 48 | `LinkPickerModelTests` | `LinkPickerModelTests.swift` | 5 | A failed link search sets `searchError` (shown as an `InlineError`) and empties the earlier results; clearing the field, a later successful search, or typing a URL removes the error |
 | 49 | `SyncedPatternScriptTests` | `EditorCoordinatorTests.swift` | 4 | `EditorCoordinator.syncedPatternJS`: the `setSyncedPattern(generation, ref, …)` call for a loaded, not-found and failed result, with a title holding quotes and `</script>` JSON-encoded |
-| 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 4 | `PostEditorView.syncedPatternResult(for:)`: status `trash` and HTTP 404/410 are not found, a published pattern is loaded, any other error is failed |
+| 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 5 | `PostEditorView.syncedPatternResults(for:outcome:)`: a returned pattern is loaded under its ref; a ref WordPress left out, or a pattern with a password, is not found (WordPress renders neither); any error fails every ref; a repeated ref does not trap |
 
 ---
 
@@ -300,7 +300,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (75 tests)
+### 5. Networking — `WordPressClientTests` (77 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -409,15 +409,17 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 | `searchLinksUnknownTermSubtypeFallsToCategory` | Unknown term subtype → `.category` |
 | `searchQueryPlusCharacterIsPercentEscaped` | A `+` in the search term is escaped to `%2B` in the query string (WordPress/PHP decodes a literal `+` as a space) |
 
-#### Synced patterns (7 tests)
+#### Synced patterns (9 tests)
 
 | Test | What it checks |
 |---|---|
-| `fetchSyncedPatternRequestsBlocksEndpointWithEditContext` | `GET /wp-json/wp/v2/blocks/{id}` with `context=edit` and `_fields=id,status,title` |
-| `fetchSyncedPatternDecodesStatusAndRawTitle` | `status` and `title.raw` |
-| `fetchSyncedPatternDecodesEntitiesInTheTitle` | A raw title stored as `Q&amp;A &#8211; live` reads `Q&A – live` on the card |
-| `fetchSyncedPatternToleratesMissingStatusAndTitle` | A response with `title: {}` or no `title`, and no `status`, decodes as empty strings rather than throwing, so a pattern the REST API describes sparsely still gets a card |
-| `fetchSyncedPatternThrowsHTTPErrorOn404` | A missing pattern throws `APIError.httpError(404, _)`, which the editor shows as not found |
+| `fetchSyncedPatternsAsksForPublishedPatternsInViewContext` | `GET /wp-json/wp/v2/blocks` with `include` (the ids in order), `per_page` equal to the count, `status=publish`, `_fields=id,title,content.protected` and no `context=edit`, which would silently drop every pattern an Author or Contributor can't edit |
+| `fetchSyncedPatternsSendsNothingForNoIds` | No ids, no request (an empty `include` would return every pattern) |
+| `fetchSyncedPatternsBatchesPastOneHundred` | 150 ids go out as two requests of 100 and 50, WordPress's `per_page` cap, and the results are joined |
+| `fetchSyncedPatternsDecodesRawTitleAndProtection` | `title.raw`, and `hasPassword` from `content.protected` (WordPress's `(bool) post_password`, which reads a password of `"0"` as none, as the renderer's `empty()` does) |
+| `fetchSyncedPatternsDecodesEntitiesInTheTitle` | A raw title stored as `Q&amp;A &#8211; live` reads `Q&A – live` on the card |
+| `fetchSyncedPatternsToleratesMissingTitleAndContent` | `title: {}`, `content: {}`, no `title` and no `content` decode as an empty title and no password rather than throwing, so a sparsely described pattern still gets a card |
+| `fetchSyncedPatternsThrowsHTTPError` | A 404 (`rest_no_route`) throws `APIError.httpError(404, _)`, which the editor shows as failed, not as not found |
 | `syncedPatternEditURLAtDomainRoot` / `syncedPatternEditURLInSubdirectory` | `{site}/wp-admin/post.php?post={id}&action=edit`, with no doubled slash for a site at `/blog/` |
 
 ---
@@ -1214,7 +1216,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (10 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (11 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1226,8 +1228,9 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
 | `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
 | `insertImagePassesTheMediaWidthForAnInlineImage` | `insertImage` hands the editor the media's width (or `null`), which an inline image in a table cell is capped by (run-log issue 10) |
-| `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration` | `requestSyncedPatterns` with refs `[1, 2]` and generation 4 calls `onRequestSyncedPattern` once per ref and runs two `setSyncedPattern(4, ref, …)` scripts, one loaded (with the title) and one `notFound` |
-| `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPattern`, no script is run |
+| `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration` | `requestSyncedPatterns` with refs `[1, 2]` and generation 4 calls `onRequestSyncedPatterns` once with `[1, 2]` and runs two `setSyncedPattern(4, ref, …)` scripts, one loaded (with the title) and one `notFound` |
+| `aRefTheHandlerLeftOutIsAnsweredAsFailed` | A ref missing from the handler's answer still gets a `setSyncedPattern` script, as `failed`, so its card never stays loading |
+| `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPatterns`, no script is run |
 | `aMalformedSyncedPatternRequestIsIgnored` | A body missing `refs` or `generation`, with a string ref, or that is not a dictionary asks the handler nothing and runs no script |
 | `openingASyncedPatternHandsTheRefToTheHandler` | `openSyncedPattern` passes `onOpenSyncedPattern` the ref only when it is an `Int`; a string ref or an empty body is dropped |
 
@@ -4600,10 +4603,11 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 256 | A synced pattern added in code view has to ask for its title, and a result from the load before the edit must not title a card. Leaving code view after an edit posts `requestSyncedPatterns` and bumps the generation, so earlier results are ignored; leaving without an edit posts nothing | ✅ `test-editor-passthrough.js` `'a code view edit that adds a synced pattern asks for it and shows it loading'`, `'a code view edit retires the results of the load before it'`, `'opening and closing code view without an edit asks for nothing'` + 👁 §7.3 |
 | 257 | A synced pattern card shows none of the pattern's content. Only Custom HTML and shortcode cards get `has-peek` and a text preview; a synced pattern card does not | ✅ `test-editor-passthrough.js` `'a shortcode card shows its text as a preview and a synced pattern card does not'` |
 | 258 | The `requestSyncedPatterns` and `openSyncedPattern` messages come from the page, so Swift checks their shape: a missing or non-integer `generation` or ref sends nothing, no handler sends nothing, each ref is answered under the request's generation, and only an `Int` ref reaches the open handler | ✅ `EditorCoordinatorBridgeTests` `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration`, `aSyncedPatternRequestWithoutAHandlerSendsNothing`, `aMalformedSyncedPatternRequestIsIgnored`, `openingASyncedPatternHandsTheRefToTheHandler` |
-| 259 | The blocks REST response for a pattern can omit `status` or `title.raw`. Both decode as an empty string instead of throwing, so the card falls back to the ref rather than reading as a failed fetch | ✅ `WordPressClientTests.fetchSyncedPatternToleratesMissingStatusAndTitle` |
+| 259 | The blocks REST response for a pattern can omit `title.raw` or `content.protected`. They decode as an empty title and no password instead of throwing, so the card falls back to the ref rather than reading as a failed fetch | ✅ `WordPressClientTests.fetchSyncedPatternsToleratesMissingTitleAndContent` |
 | 260 | An empty paragraph the author wrote just before the footnotes list must survive `toWordPressHTML`. Only the paragraph the editor adds after a table or image is stripped on save | ✅ `test-editor-keyboard.js` `'an empty paragraph the author wrote before the footnotes list is kept on save'` |
 | 261 | Refresh left a post open in the editor stale after it changed on the server. `reloadIfClean` fetches the post and applies it only if nothing is unsaved, no save is running, `lastSavedServerModified` did not move during the fetch, and the fetched post differs from the loaded one; a dirty, saving or unchanged post is left alone | 👁 §7.2 (the guards have no automated test) |
 | 262 | The editor flashed blank while the window resized (`SplitItemSizePin`) and showed a half-built page while a post loaded (`EditorLoadingCover`) | 👁 §7.13 (AppKit and view state, no harness) |
+| 263 | A draft, private or password-protected synced pattern showed a normal card, though WordPress renders nothing for it (`render_block_core_block` needs `publish` and no password); only a trashed one read as not found. Patterns are now fetched as published only, one request per 100, in view context (edit context drops another user's pattern for an Author, which would read as not found), and a missing or protected one is not found | ✅ `WordPressClientTests.fetchSyncedPatternsAsksForPublishedPatternsInViewContext`, `SyncedPatternResultTests.aRefWordPressLeftOutIsNotFound` / `aPasswordProtectedPatternIsNotFound` |
 
 ---
 

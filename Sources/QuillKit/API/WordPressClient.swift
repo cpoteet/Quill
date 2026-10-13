@@ -76,9 +76,21 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
-    public func fetchSyncedPattern(id: Int) async throws -> WPSyncedPattern {
-        let url = try endpoint("blocks/\(id)", query: ["context": "edit", "_fields": "id,status,title"])
-        return try await get(url)
+    /// Published patterns only, one request per 100. View context, because edit context drops patterns the user can't edit.
+    public func fetchSyncedPatterns(ids: [Int]) async throws -> [WPSyncedPattern] {
+        var patterns: [WPSyncedPattern] = []
+        for start in stride(from: 0, to: ids.count, by: 100) {
+            let batch = ids[start..<min(start + 100, ids.count)]
+            let query = [
+                "include": batch.map(String.init).joined(separator: ","),
+                "per_page": "\(batch.count)",
+                "status": "publish",
+                "_fields": "id,title,content.protected",
+            ]
+            let page: [WPSyncedPattern] = try await get(try endpoint("blocks", query: query))
+            patterns.append(contentsOf: page)
+        }
+        return patterns
     }
 
     /// Opens the pattern in the block editor, on block and classic themes alike.

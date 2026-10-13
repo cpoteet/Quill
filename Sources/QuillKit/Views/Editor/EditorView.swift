@@ -31,7 +31,7 @@ public struct EditorView: NSViewRepresentable {
     var onDropRejected: ((String) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
-    var onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)?
+    var onRequestSyncedPatterns: (([Int]) async -> [Int: SyncedPatternResult])?
     var onOpenSyncedPattern: ((Int) -> Void)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
@@ -60,7 +60,7 @@ public struct EditorView: NSViewRepresentable {
         onDropRejected: ((String) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
-        onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)? = nil,
+        onRequestSyncedPatterns: (([Int]) async -> [Int: SyncedPatternResult])? = nil,
         onOpenSyncedPattern: ((Int) -> Void)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
         onStatsChanged: ((Int, Int) -> Void)? = nil,
@@ -88,7 +88,7 @@ public struct EditorView: NSViewRepresentable {
         self.onDropRejected = onDropRejected
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
-        self.onRequestSyncedPattern = onRequestSyncedPattern
+        self.onRequestSyncedPatterns = onRequestSyncedPatterns
         self.onOpenSyncedPattern = onOpenSyncedPattern
         self.onSelectionChanged = onSelectionChanged
         self.onStatsChanged = onStatsChanged
@@ -146,7 +146,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onCustomHTML = onCustomHTML
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
-        context.coordinator.onRequestSyncedPattern = onRequestSyncedPattern
+        context.coordinator.onRequestSyncedPatterns = onRequestSyncedPatterns
         context.coordinator.onOpenSyncedPattern = onOpenSyncedPattern
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
@@ -174,7 +174,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onCustomHTML = onCustomHTML
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
-        context.coordinator.onRequestSyncedPattern = onRequestSyncedPattern
+        context.coordinator.onRequestSyncedPatterns = onRequestSyncedPatterns
         context.coordinator.onOpenSyncedPattern = onOpenSyncedPattern
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged

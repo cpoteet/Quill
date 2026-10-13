@@ -1,25 +1,26 @@
 import Foundation
 
-/// A synced pattern (`wp_block`), read with `context=edit` for its raw title.
+/// A synced pattern (`wp_block`). Its controller exposes `title.raw` in view context.
 public struct WPSyncedPattern: Decodable, Sendable {
     public let id: Int
-    public let status: String
     public let title: String
+    public let hasPassword: Bool
 
-    init(id: Int, status: String, title: String) {
+    init(id: Int, title: String, hasPassword: Bool = false) {
         self.id = id
-        self.status = status
         self.title = title
+        self.hasPassword = hasPassword
     }
 
     private struct Raw: Decodable { let raw: String? }
-    private enum CodingKeys: String, CodingKey { case id, status, title }
+    private struct Content: Decodable { let protected: Bool? }
+    private enum CodingKeys: String, CodingKey { case id, title, content }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(Int.self, forKey: .id)
-        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         title = (try c.decodeIfPresent(Raw.self, forKey: .title)?.raw ?? "").decodingHTMLEntities()
+        hasPassword = try c.decodeIfPresent(Content.self, forKey: .content)?.protected ?? false
     }
 }
 

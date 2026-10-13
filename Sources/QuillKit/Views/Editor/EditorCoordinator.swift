@@ -70,7 +70,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onCustomHTML: ((CustomHTMLRequest) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
-    var onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)?
+    var onRequestSyncedPatterns: (([Int]) async -> [Int: SyncedPatternResult])?
     var onOpenSyncedPattern: ((Int) -> Void)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
@@ -355,11 +355,11 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
 
     // The editor drops a result whose generation is stale, so no selection check is needed here.
     private func handleRequestSyncedPatterns(generation: Int, refs: [Int]) {
-        guard let wv = webView, let fetch = onRequestSyncedPattern else { return }
-        for ref in refs {
-            Task {
-                let result = await fetch(ref)
-                wv.evaluateJavaScript(Self.syncedPatternJS(generation: generation, ref: ref, result: result), completionHandler: nil)
+        guard let wv = webView, let fetch = onRequestSyncedPatterns else { return }
+        Task {
+            let results = await fetch(refs)
+            for ref in refs {
+                wv.evaluateJavaScript(Self.syncedPatternJS(generation: generation, ref: ref, result: results[ref] ?? .failed), completionHandler: nil)
             }
         }
     }

@@ -313,14 +313,26 @@ private final class Box<T>: @unchecked Sendable {
     }
 
     @Test func aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration() async {
-        coordinator.onRequestSyncedPattern = { ref in
-            ref == 1 ? .loaded(WPSyncedPattern(id: 1, status: "publish", title: "One")) : .notFound
+        let asked = Box<[[Int]]>([])
+        coordinator.onRequestSyncedPatterns = { refs in
+            asked.value.append(refs)
+            return [1: .loaded(WPSyncedPattern(id: 1, title: "One")), 2: .notFound]
         }
         deliver("requestSyncedPatterns", ["generation": 4, "refs": [1, 2]])
         await waitForScripts(2)
         #expect(webView.scripts.count == 2)
         #expect(webView.scripts.contains { $0.hasPrefix("setSyncedPattern(4, 1, ") && $0.contains("One") })
         #expect(webView.scripts.contains { $0.hasPrefix("setSyncedPattern(4, 2, ") && $0.contains("notFound") })
+        #expect(asked.value == [[1, 2]], "the refs went out as one request")
+    }
+
+    @Test func aRefTheHandlerLeftOutIsAnsweredAsFailed() async {
+        coordinator.onRequestSyncedPatterns = { _ in [:] }
+        deliver("requestSyncedPatterns", ["generation": 4, "refs": [9]])
+        await waitForScripts(1)
+        #expect(webView.scripts.count == 1)
+        #expect(webView.scripts.first?.hasPrefix("setSyncedPattern(4, 9, ") == true)
+        #expect(webView.scripts.first?.contains(#""failed":true"#) == true)
     }
 
     @Test func aSyncedPatternRequestWithoutAHandlerSendsNothing() async {
@@ -331,7 +343,7 @@ private final class Box<T>: @unchecked Sendable {
 
     @Test func aMalformedSyncedPatternRequestIsIgnored() async {
         let asked = Box<[Int]>([])
-        coordinator.onRequestSyncedPattern = { ref in asked.value.append(ref); return .failed }
+        coordinator.onRequestSyncedPatterns = { refs in asked.value += refs; return [:] }
         deliver("requestSyncedPatterns", ["generation": 4])
         deliver("requestSyncedPatterns", ["refs": [1]])
         deliver("requestSyncedPatterns", ["generation": 4, "refs": ["1"]])
@@ -398,7 +410,7 @@ private final class Box<T>: @unchecked Sendable {
     }
 
     @Test func syncedPatternJSLoaded() throws {
-        let pattern = WPSyncedPattern(id: 123, status: "publish", title: "Newsletter signup")
+        let pattern = WPSyncedPattern(id: 123, title: "Newsletter signup")
         let script = EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern))
         #expect(script.contains("setSyncedPattern(7, 123,"))
         let arg = try argument(script)
@@ -408,7 +420,7 @@ private final class Box<T>: @unchecked Sendable {
 
     @Test func syncedPatternJSEscapesQuotesAndScriptClose() throws {
         let title = #"A "quoted" </script> title"#
-        let pattern = WPSyncedPattern(id: 123, status: "publish", title: title)
+        let pattern = WPSyncedPattern(id: 123, title: title)
         let arg = try argument(EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern)))
         #expect(arg["title"] as? String == title)
     }

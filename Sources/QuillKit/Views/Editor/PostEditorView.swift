@@ -137,13 +137,13 @@ public struct PostEditorView: View {
                         }
                         return fetched
                     },
-                    onRequestSyncedPattern: { ref in
-                        guard let creds = appState.credentials else { return .failed }
+                    onRequestSyncedPatterns: { refs in
+                        guard let creds = appState.credentials else { return Self.syncedPatternResults(for: refs, outcome: .failure(APIError.notConnected)) }
                         do {
-                            let pattern = try await WordPressClient(credentials: creds).fetchSyncedPattern(id: ref)
-                            return Self.syncedPatternResult(for: .success(pattern))
+                            let patterns = try await WordPressClient(credentials: creds).fetchSyncedPatterns(ids: refs)
+                            return Self.syncedPatternResults(for: refs, outcome: .success(patterns))
                         } catch {
-                            return Self.syncedPatternResult(for: .failure(error))
+                            return Self.syncedPatternResults(for: refs, outcome: .failure(error))
                         }
                     },
                     onOpenSyncedPattern: { ref in
@@ -1490,16 +1490,13 @@ public struct PostEditorView: View {
         total == 1 ? "Upload failed: \(firstError)" : "\(failed) of \(total) images failed to upload"
     }
 
-    /// A trashed pattern still reads back for an editor, but WordPress renders nothing for it.
-    nonisolated static func syncedPatternResult(for outcome: Result<WPSyncedPattern, Error>) -> SyncedPatternResult {
-        switch outcome {
-        case .success(let pattern):
-            return pattern.status == "trash" ? .notFound : .loaded(pattern)
-        case .failure(APIError.httpError(let code, _)) where code == 404 || code == 410:
-            return .notFound
-        case .failure:
-            return .failed
+    /// WordPress renders a synced pattern only when it is published with no password (`render_block_core_block`).
+    nonisolated static func syncedPatternResults(for refs: [Int], outcome: Result<[WPSyncedPattern], Error>) -> [Int: SyncedPatternResult] {
+        guard case .success(let patterns) = outcome else {
+            return Dictionary(refs.map { ($0, .failed) }, uniquingKeysWith: { first, _ in first })
         }
+        let rendered = Dictionary(patterns.filter { !$0.hasPassword }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return Dictionary(refs.map { ($0, rendered[$0].map(SyncedPatternResult.loaded) ?? .notFound) }, uniquingKeysWith: { first, _ in first })
     }
 
     nonisolated static func previewURL(from link: String) -> URL? {

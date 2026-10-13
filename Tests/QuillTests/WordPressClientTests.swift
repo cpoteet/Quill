@@ -1110,47 +1110,83 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
 
     // MARK: - Synced patterns
 
-    @Test func fetchSyncedPatternRequestsBlocksEndpointWithEditContext() async throws {
+    private func respondWithPatterns(_ json: String) {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
+        }
+    }
+
+    @Test func fetchSyncedPatternsAsksForPublishedPatternsInViewContext() async throws {
         nonisolated(unsafe) var captured: URLRequest?
         MockURLProtocol.requestHandler = { request in
             captured = request
-            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                    #"{"id":123,"status":"publish","title":{"raw":"T"}}"#.data(using: .utf8)!)
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("[]".utf8))
         }
-        _ = try await client.fetchSyncedPattern(id: 123)
+        _ = try await client.fetchSyncedPatterns(ids: [123, 45])
         let url = try #require(captured?.url)
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        #expect(url.path == "/wp-json/wp/v2/blocks/123")
-        #expect(items.first { $0.name == "context" }?.value == "edit")
-        #expect(items.first { $0.name == "_fields" }?.value == "id,status,title")
+        let value = { (name: String) in items.first { $0.name == name }?.value }
+        #expect(url.path == "/wp-json/wp/v2/blocks")
+        #expect(value("include") == "123,45")
+        #expect(value("per_page") == "2")
+        #expect(value("status") == "publish")
+        #expect(value("context") == nil, "edit context drops patterns the user can't edit")
+        #expect(value("_fields") == "id,title,content.protected")
     }
 
-    @Test func fetchSyncedPatternDecodesStatusAndRawTitle() async throws {
+    @Test func fetchSyncedPatternsSendsNothingForNoIds() async throws {
+        nonisolated(unsafe) var requests = 0
         MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"status":"trash","title":{"raw":"Newsletter signup"}}"#.data(using: .utf8)!)
+            requests += 1
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("[]".utf8))
         }
-        let pattern = try await client.fetchSyncedPattern(id: 123)
-        #expect(pattern.id == 123)
-        #expect(pattern.status == "trash")
-        #expect(pattern.title == "Newsletter signup")
+        #expect(try await client.fetchSyncedPatterns(ids: []).isEmpty)
+        #expect(requests == 0)
     }
 
-    @Test func fetchSyncedPatternDecodesEntitiesInTheTitle() async throws {
+    @Test func fetchSyncedPatternsBatchesPastOneHundred() async throws {
+        nonisolated(unsafe) var queries: [[String: String]] = []
         MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"status":"publish","title":{"raw":"Q&amp;A &#8211; live"}}"#.data(using: .utf8)!)
+            let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            queries.append(Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first }))
+            let id = queries.count
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    Data(#"[{"id":\#(id),"title":{"raw":"P"}}]"#.utf8))
         }
-        #expect(try await client.fetchSyncedPattern(id: 123).title == "Q&A \u{2013} live")
+        let patterns = try await client.fetchSyncedPatterns(ids: Array(1...150))
+        #expect(queries.map { $0["per_page"] } == ["100", "50"])
+        #expect(queries.first?["include"] == (1...100).map(String.init).joined(separator: ","))
+        #expect(queries.last?["include"] == (101...150).map(String.init).joined(separator: ","))
+        #expect(patterns.map(\.id) == [1, 2])
     }
 
-    @Test func fetchSyncedPatternThrowsHTTPErrorOn404() async throws {
+    @Test func fetchSyncedPatternsDecodesRawTitleAndProtection() async throws {
+        respondWithPatterns(#"[{"id":1,"title":{"raw":"Newsletter signup"},"content":{"protected":false}},{"id":2,"title":{"raw":"Members"},"content":{"protected":true}}]"#)
+        let patterns = try await client.fetchSyncedPatterns(ids: [1, 2])
+        #expect(patterns.map(\.id) == [1, 2])
+        #expect(patterns.map(\.title) == ["Newsletter signup", "Members"])
+        #expect(patterns.map(\.hasPassword) == [false, true])
+    }
+
+    @Test func fetchSyncedPatternsDecodesEntitiesInTheTitle() async throws {
+        respondWithPatterns(#"[{"id":1,"title":{"raw":"Q&amp;A &#8211; live"}}]"#)
+        #expect(try await client.fetchSyncedPatterns(ids: [1]).first?.title == "Q&A \u{2013} live")
+    }
+
+    @Test func fetchSyncedPatternsToleratesMissingTitleAndContent() async throws {
+        respondWithPatterns(#"[{"id":1,"title":{},"content":{}},{"id":2}]"#)
+        let patterns = try await client.fetchSyncedPatterns(ids: [1, 2])
+        #expect(patterns.map(\.title) == ["", ""])
+        #expect(patterns.map(\.hasPassword) == [false, false])
+    }
+
+    @Test func fetchSyncedPatternsThrowsHTTPError() async throws {
         MockURLProtocol.requestHandler = { request in
             (HTTPURLResponse(url: request.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!,
-             #"{"code":"rest_post_invalid_id"}"#.data(using: .utf8)!)
+             #"{"code":"rest_no_route"}"#.data(using: .utf8)!)
         }
         do {
-            _ = try await client.fetchSyncedPattern(id: 123)
+            _ = try await client.fetchSyncedPatterns(ids: [1])
             Issue.record("Expected APIError.httpError to be thrown")
         } catch let error as APIError {
             guard case .httpError(let code, _) = error else {
@@ -1159,21 +1195,6 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             }
             #expect(code == 404)
         }
-    }
-
-    @Test func fetchSyncedPatternToleratesMissingStatusAndTitle() async throws {
-        MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"title":{}}"#.data(using: .utf8)!)
-        }
-        let pattern = try await client.fetchSyncedPattern(id: 123)
-        #expect(pattern.status == "")
-        #expect(pattern.title == "")
-        MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-             #"{"id":123,"status":"publish"}"#.data(using: .utf8)!)
-        }
-        #expect(try await client.fetchSyncedPattern(id: 123).title == "")
     }
 
     @Test func syncedPatternEditURLAtDomainRoot() {
