@@ -191,14 +191,8 @@ public struct PostEditorView: View {
                     hasTextSelection: hasTextSelection
                 )
                 if !editorReady || !contentLoaded {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                        Text("Loading editor…")
-                            .font(.callout)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
+                    EditorLoadingCover()
+                        .transition(.opacity)
                 }
             }
             .sheet(isPresented: $showImagePicker) {
@@ -842,7 +836,7 @@ public struct PostEditorView: View {
                     try? services.autosaveStore.delete(site: loadedSite, postID: post.id)
                 }
             }
-            contentLoaded = true
+            withAnimation(.easeOut(duration: 0.15)) { contentLoaded = true }
 
         case .local(let draft):
             // Read directly from SQLite to pick up any navigate-flush that updated the draft
@@ -865,7 +859,7 @@ public struct PostEditorView: View {
             cleanContent = htmlContent
             cleanFootnotes = footnotesMeta
             cleanSettings = settings
-            contentLoaded = true
+            withAnimation(.easeOut(duration: 0.15)) { contentLoaded = true }
         }
     }
 
@@ -1855,6 +1849,31 @@ public struct PostEditorView: View {
             guard !Task.isCancelled else { return }
             webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
             bannerError = EditorBanner(message: Self.aiFailureMessage(for: error), source: .ai)
+        }
+    }
+}
+
+/// Hides the editor while a post loads, so its empty-body placeholder never shows; the spinner waits out fast loads.
+private struct EditorLoadingCover: View {
+    @State private var showsSpinner = false
+
+    var body: some View {
+        ZStack {
+            Color.wpContentSurface
+            if showsSpinner {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading editor…")
+                        .font(.callout)
+                        .foregroundStyle(.tertiary)
+                }
+                .transition(.opacity)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.15)) { showsSpinner = true }
         }
     }
 }
