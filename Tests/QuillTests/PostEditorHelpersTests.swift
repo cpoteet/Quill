@@ -870,3 +870,36 @@ import Testing
         #expect(images(payload).compactMap { $0["url"] as? String } == [second.url, first.url])
     }
 }
+
+@Suite struct SyncedPatternResultTests {
+    private let pattern = { (status: String) in WPSyncedPattern(id: 1, status: status, title: "T", content: "C") }
+
+    @Test func aTrashedPatternIsNotFound() {
+        guard case .notFound = PostEditorView.syncedPatternResult(for: .success(pattern("trash"))) else {
+            Issue.record("expected notFound"); return
+        }
+    }
+
+    @Test func aPublishedPatternIsLoaded() {
+        guard case .loaded(let loaded) = PostEditorView.syncedPatternResult(for: .success(pattern("publish"))) else {
+            Issue.record("expected loaded"); return
+        }
+        #expect(loaded.title == "T")
+    }
+
+    @Test func a404Or410IsNotFound() {
+        for code in [404, 410] {
+            guard case .notFound = PostEditorView.syncedPatternResult(for: .failure(APIError.httpError(statusCode: code, body: ""))) else {
+                Issue.record("expected notFound for \(code)"); continue
+            }
+        }
+    }
+
+    @Test func anyOtherErrorIsFailed() {
+        for error: Error in [APIError.httpError(statusCode: 500, body: ""), URLError(.notConnectedToInternet)] {
+            guard case .failed = PostEditorView.syncedPatternResult(for: .failure(error)) else {
+                Issue.record("expected failed for \(error)"); continue
+            }
+        }
+    }
+}

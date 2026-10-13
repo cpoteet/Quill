@@ -34,6 +34,7 @@ const NODE_FOR_BLOCK_CLASS = [
   ['wp-block-tab-panels', 'tabPanels'],
   ['wp-block-tab-panel', 'tabPanel'],
   ['wp-block-tabs', 'tabsBlock'],
+  ['wp-block-group', 'groupBlock'],
 ]
 
 function nodeNameForElement(el) {
@@ -215,6 +216,37 @@ function passthroughLabelFromBlockName(name) {
   return titleCaseHyphenated(base)
 }
 
+// A block's custom name (List View's Rename) outranks its type.
+function cardLabel(attrs, fallback) {
+  const name = attrs && attrs.metadata && attrs.metadata.name
+  return typeof name === 'string' && name ? name : fallback
+}
+
+const PREVIEW_BLOCK_SELECTOR = 'p, h1, h2, h3, h4, h5, h6, li, div, figure, figcaption, blockquote, pre, td, th, a.wp-block-button__link, summary, section, article, header, footer, aside'
+
+// A locked card's visible text, one segment per block-level element: docs/block-model.md.
+function cardPreviewText(source, doc) {
+  doc = doc || inertDocument()
+  const root = doc.createElement('div')
+  root.innerHTML = source.replace(/<!--[\s\S]*?-->/g, '')
+  root.querySelectorAll('script, style, template, noscript, title, iframe, noembed, textarea').forEach(el => el.remove())
+  root.querySelectorAll('br').forEach(br => br.replaceWith(doc.createTextNode(' ')))
+  const segments = []
+  let block = null
+  const walker = doc.createTreeWalker(root, 4)
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const owner = node.parentElement.closest(PREVIEW_BLOCK_SELECTOR)
+    if (owner !== block || !segments.length) { segments.push(''); block = owner }
+    segments[segments.length - 1] += node.data
+  }
+  const text = segments.map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ')
+  return text.length > 120 ? text.slice(0, 120) + '…' : text
+}
+
+function parsedAttrs(json) {
+  try { return JSON.parse(json) } catch (e) { return null }
+}
+
 // Gutenberg blocks Quill models with a dedicated Tiptap node whose parse rule
 // matches a *non-figure* tag. gutenbergPassthrough's rule out-ranks the core
 // nodes (priority 200, above bulletList/codeBlock/blockquote/etc. at 100 and
@@ -234,6 +266,22 @@ const QUILL_MODELED_BLOCK_CLASSES = new Set([
   'wp-block-code',
   'wp-block-separator',
 ])
+
+// The tags the Group node parses; a function so editor.html can reach it (root CLAUDE.md).
+function groupTags() {
+  return ['div', 'section', 'header', 'footer', 'main', 'aside', 'article']
+}
+
+// Named as Gutenberg names a Group's variations.
+function groupLabel(attrs) {
+  const layout = (attrs && attrs.layout) || {}
+  if (layout.type === 'flex') return cardLabel(attrs, layout.orientation === 'vertical' ? 'Stack' : 'Row')
+  return cardLabel(attrs, layout.type === 'grid' ? 'Grid' : 'Group')
+}
+
+function isParsedGroupElement(el) {
+  return el.classList.contains('wp-block-group') && groupTags().includes(el.tagName.toLowerCase())
+}
 
 // Figure-rooted Gutenberg blocks Quill already handles. Image, gallery and
 // embed each have their own `figure.wp-block-*` parse rule. Table has none —
@@ -275,7 +323,47 @@ function blockSourceSlices(html, parse) {
     blockName: block.blockName,
     attrsJSON: block.attrs && Object.keys(block.attrs).length ? JSON.stringify(block.attrs) : null,
     source: html.slice(block.start, block.end) + missingClosers(block),
+    block,
   }))
+}
+
+function savesNoMarkup(source, doc) {
+  const probe = doc.createElement('div')
+  probe.innerHTML = source.replace(/<!--[\s\S]*?-->/g, '')
+  return probe.children.length === 0
+}
+
+// With its inner blocks cut out, a Group's markup must be one bare wrapper the node parses and the carrier keeps whole.
+function bareGroupWrapper(innerHTML, doc) {
+  const probe = doc.createElement('div')
+  probe.innerHTML = innerHTML
+  const isBlank = node => node.nodeType === 3 && node.textContent.trim() === ''
+  const el = probe.firstElementChild
+  if (!el || !Array.from(probe.childNodes).every(n => n === el || isBlank(n))) return null
+  if (!isParsedGroupElement(el) || !Array.from(el.childNodes).every(isBlank)) return null
+  const dropped = Array.from(el.attributes).some(a => /^on/i.test(a.name) || a.name.startsWith('data-quill-'))
+  return dropped ? null : el
+}
+
+// Rule: docs/block-model.md (Groups).
+function groupFullySupported(block, doc) {
+  doc = doc || inertDocument()
+  const el = block.innerBlocks.length ? bareGroupWrapper(block.innerHTML, doc) : null
+  if (!el) return false
+  // A save writes tagName from the element, so a delimiter that disagrees would change on edit.
+  const tag = el.tagName.toLowerCase()
+  if ((block.attrs && block.attrs.tagName) !== (tag === 'div' ? undefined : tag)) return false
+  return block.innerBlocks.every(function supported(inner) {
+    if (!blockDescriptorRegistry.modelsBlockName(inner.blockName)) return false
+    if (savesNoMarkup(inner.innerHTML, doc)) return false
+    if (inner.blockName === 'core/group') return groupFullySupported(inner, doc)
+    return inner.innerBlocks.every(supported)
+  })
+}
+
+function holdsUnsupportedGroup(block, doc) {
+  if (block.blockName === 'core/group' && !groupFullySupported(block, doc)) return true
+  return block.innerBlocks.some(inner => holdsUnsupportedGroup(inner, doc))
 }
 
 // One preservation path per CLAUDE.md: freeform is prose, everything unmodeled wraps.
@@ -283,9 +371,8 @@ function blockNeedsWrapping(slice, doc) {
   if (!slice.blockName) return false
   if (!blockDescriptorRegistry.modelsBlockName(slice.blockName)) return true
   // A modeled name that saved no markup has nothing for its node to parse.
-  const probe = doc.createElement('div')
-  probe.innerHTML = slice.source.replace(/<!--[\s\S]*?-->/g, '')
-  return probe.children.length === 0
+  if (savesNoMarkup(slice.source, doc)) return true
+  return !!slice.block && holdsUnsupportedGroup(slice.block, doc)
 }
 
 // Every block at every depth: a heading lost from inside a quote is still lost.
@@ -311,11 +398,11 @@ function unrepresentedBlockNames(expectedCounts, accountedCounts) {
   return missing
 }
 
-function unsupportedWrapper(doc, source, blockName) {
+function unsupportedWrapper(doc, source, blockName, attrs) {
   const el = doc.createElement('div')
   el.className = 'wp-block-quill-unsupported'
   el.setAttribute('data-quill-unsupported-source', source)
-  el.setAttribute('data-quill-unsupported-label', passthroughLabelFromBlockName(blockName))
+  el.setAttribute('data-quill-unsupported-label', cardLabel(attrs, passthroughLabelFromBlockName(blockName)))
   return el
 }
 
@@ -381,7 +468,7 @@ function wrapUnsupportedBlocks(html, parse, doc) {
   const wrapped = slices.map(slice => {
     if (!slice.blockName) return wrapFreeformHTML(slice.source, doc)
     if (!blockNeedsWrapping(slice, doc)) return slice.source
-    return unsupportedWrapper(doc, slice.source, slice.blockName).outerHTML
+    return unsupportedWrapper(doc, slice.source, slice.blockName, slice.block.attrs).outerHTML
   })
   return wrapped.some((s, i) => s !== slices[i].source) ? wrapped.join('') : html
 }
@@ -431,7 +518,7 @@ function parsePassthroughBlock(el) {
 
   if (openMatch && closeMatch && openMatch[1] === closeMatch[1]) {
     return {
-      blockLabel: passthroughLabelFromBlockName(openMatch[1]),
+      blockLabel: cardLabel(parsedAttrs(openMatch[2]), passthroughLabelFromBlockName(openMatch[1])),
       blockName: openMatch[1],
       attrsJSON: openMatch[2] || null,
       sourceHTML: sourceHTMLOf(el),
@@ -1851,5 +1938,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
+  module.exports = { groupFullySupported, groupTags, groupLabel, cardLabel, cardPreviewText, extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
 }

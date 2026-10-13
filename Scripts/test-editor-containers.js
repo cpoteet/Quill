@@ -2876,3 +2876,163 @@ describe('the footer row reads as a footer', () => {
     assert.doesNotMatch(out, /data-quill-row/)
   })
 })
+
+describe('group block', () => {
+  const fixture = name => fs.readFileSync(path.resolve(__dirname, 'fixtures', name), 'utf8')
+  const GROUP_FIXTURES = fs.readdirSync(path.resolve(__dirname, 'fixtures')).filter(f => /^settings-group.*\.html$/.test(f)).sort()
+
+  function firstGroupParagraph() {
+    let at = -1
+    editor.state.doc.descendants((node, pos, parent) => {
+      if (at !== -1) return false
+      if (node.type.name === 'paragraph' && parent.type.name === 'groupBlock') at = pos
+    })
+    return at
+  }
+
+  function paste(data) {
+    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => data[t] || '', types: Object.keys(data), files: [] } })
+    editor.view.dom.dispatchEvent(ev)
+  }
+
+  function copyAll() {
+    editor.commands.focus()
+    editor.commands.selectAll()
+    const data = {}
+    const ev = new win.Event('copy', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', {
+      value: { setData: (t, v) => { data[t] = v }, getData: t => data[t] || '', clearData: () => {}, types: [] },
+    })
+    editor.view.dom.dispatchEvent(ev)
+    return data
+  }
+
+  const topLevelTypes = () => { const out = []; editor.state.doc.forEach(n => out.push(n.type.name)); return out }
+
+  test('a plain group loads as a groupBlock holding its blocks', () => {
+    win.setContent(fixture('settings-group.html'))
+    const group = editor.state.doc.child(0)
+    assert.equal(group.type.name, 'groupBlock')
+    const children = []
+    group.forEach(n => children.push(n.type.name))
+    assert.deepEqual(children, ['heading', 'paragraph'])
+  })
+
+  test('a group with a list loads its list too', () => {
+    win.setContent(fixture('settings-group-styled.html'))
+    const children = []
+    editor.state.doc.child(0).forEach(n => children.push(n.type.name))
+    assert.deepEqual(children, ['heading', 'paragraph', 'bulletList'])
+  })
+
+  test('a group that opens draws no locked card', () => {
+    win.setContent(fixture('settings-group.html'))
+    assert.equal(win.document.querySelectorAll('#editor .passthrough-card').length, 0)
+  })
+
+  test('a section group keeps its tag', () => {
+    win.setContent(fixture('settings-group-tags.html'))
+    assert.equal(editor.state.doc.child(0).attrs.tagName, 'section')
+  })
+
+  for (const name of GROUP_FIXTURES) {
+    test(`${name} saves back unchanged before any edit`, () => {
+      const src = fixture(name)
+      win.setContent(src)
+      assert.equal(win.getContent(), src)
+    })
+
+    test(`${name} saves back unchanged after an edit inside a group`, () => {
+      const src = fixture(name)
+      win.setContent(src)
+      const at = firstGroupParagraph()
+      assert.notEqual(at, -1, 'a paragraph inside a group')
+      editor.commands.setTextSelection(at + 1)
+      editor.commands.insertContent('X')
+      editor.commands.deleteRange({ from: at + 1, to: at + 2 })
+      assert.equal(win.getContent(), src)
+    })
+  }
+
+  test("pasting Quill's own copy of a group yields a groupBlock", () => {
+    win.setContent(fixture('settings-group.html'))
+    const clipboard = copyAll()
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste(clipboard)
+    assert.ok(topLevelTypes().includes('groupBlock'), topLevelTypes().join(','))
+  })
+
+  test('an outside div group is kept by the paste cleaner and pastes as a groupBlock', () => {
+    assert.match(win.cleanPastedHTML('<div class="wp-block-group"><p>Hello</p></div>'), /<div class="wp-block-group"><p>Hello<\/p><\/div>/)
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste({ 'text/html': '<p>Before</p><div class="wp-block-group"><p>Hello</p></div><p>After</p>', 'text/plain': 'Before Hello After' })
+    assert.ok(topLevelTypes().includes('groupBlock'), topLevelTypes().join(','))
+  })
+
+  test('an outside section group still flattens to its contents', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    editor.commands.focus('end')
+    paste({ 'text/html': '<section class="wp-block-group"><p>Hello</p></section>', 'text/plain': 'Hello' })
+    assert.ok(!topLevelTypes().includes('groupBlock'), topLevelTypes().join(','))
+    assert.match(editor.getHTML(), /<p>Hello<\/p>/)
+  })
+})
+
+describe('group label and editing', () => {
+  const fixture = name => fs.readFileSync(path.resolve(__dirname, 'fixtures', name), 'utf8')
+  const P = '<!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->'
+  const NAMED = `<!-- wp:group {"metadata":{"name":"\\u003cb\\u003eHero\\u003c/b\\u003e"}} -->\n<div class="wp-block-group">${P}</div>\n<!-- /wp:group -->`
+  const labels = () => Array.from(win.document.querySelectorAll('#editor .group-label')).map(el => el.textContent)
+
+  before(() => {
+    const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+    for (const proto of [win.Text.prototype, win.Range.prototype]) {
+      if (proto.getClientRects) continue
+      proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+      proto.getBoundingClientRect = () => rect
+    }
+  })
+
+  test('each group is labelled by its layout', () => {
+    win.setContent(fixture('settings-group-layouts.html'))
+    assert.deepEqual(labels(), ['Group', 'Row', 'Stack', 'Grid'])
+  })
+
+  test('a custom name is the label, shown as text', () => {
+    win.setContent(NAMED)
+    const label = win.document.querySelector('#editor .group-label')
+    assert.equal(label.textContent, '<b>Hero</b>')
+    assert.equal(label.children.length, 0)
+  })
+
+  test('the label never reaches the saved markup', () => {
+    win.setContent(fixture('settings-group-layouts.html'))
+    editor.commands.setTextSelection(3)
+    editor.commands.insertContent('X')
+    assert.doesNotMatch(win.getContent(), /group-label/)
+  })
+
+  test('Enter on an empty last line leaves the group', () => {
+    win.setContent(`<!-- wp:group -->\n<div class="wp-block-group">${P}\n\n<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->`)
+    const group = editor.state.doc.child(0)
+    const lastParagraph = 1 + group.child(0).nodeSize
+    editor.commands.setTextSelection(lastParagraph + 1)
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }))
+    const $from = editor.state.selection.$from
+    assert.equal($from.depth, 1)
+    assert.equal(editor.state.doc.child(0).childCount, 1)
+  })
+
+  test('the ✕ removes the whole group', () => {
+    win.setContent(`<!-- wp:group -->\n<div class="wp-block-group">${P}</div>\n<!-- /wp:group -->\n\n${P}`)
+    editor.commands.setTextSelection(3)
+    win.document.querySelector('[data-cmd="deleteBlock"]')
+      .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    let found = false
+    editor.state.doc.descendants(n => { if (n.type.name === 'groupBlock') found = true })
+    assert.equal(found, false)
+  })
+})

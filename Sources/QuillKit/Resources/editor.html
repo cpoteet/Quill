@@ -1000,8 +1000,13 @@
     .passthrough-card.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
     .passthrough-card-label { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
     .passthrough-card-peek {
-      font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.5;
       color: #555;
+      margin-top: 4px;
+    }
+    .passthrough-card-peek.is-code {
+      font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
       background: rgba(0,0,0,0.04);
       border-radius: 4px;
       padding: 6px 8px;
@@ -1011,7 +1016,8 @@
     }
     .passthrough-card-hint { font-size: 11px; color: #999; margin-top: 6px; font-style: italic; }
     body.dark .passthrough-card { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
-    body.dark .passthrough-card-peek { color: #aaa; background: rgba(255,255,255,0.06); }
+    body.dark .passthrough-card-peek { color: #aaa; }
+    body.dark .passthrough-card-peek.is-code { background: rgba(255,255,255,0.06); }
     body.dark .passthrough-card-hint { color: #777; }
     #embed-menu {
       display: none;
@@ -1053,13 +1059,15 @@
     .ProseMirror .wp-block-accordion,
     .ProseMirror .wp-block-tabs,
     .ProseMirror .wp-block-buttons,
-    .ProseMirror .wp-block-details {
+    .ProseMirror .wp-block-details,
+    .ProseMirror .wp-block-group {
       position: relative;
       margin: 1.35em 0;
     }
     .ProseMirror .wp-block-accordion,
     .ProseMirror .wp-block-tabs,
-    .ProseMirror .wp-block-details {
+    .ProseMirror .wp-block-details,
+    .ProseMirror .wp-block-group {
       padding: 12px 14px;
       border: 1px solid rgba(0,0,0,0.085);
       border-radius: 7px;
@@ -1067,10 +1075,20 @@
     }
     body.dark .ProseMirror .wp-block-accordion,
     body.dark .ProseMirror .wp-block-tabs,
-    body.dark .ProseMirror .wp-block-details {
+    body.dark .ProseMirror .wp-block-details,
+    body.dark .ProseMirror .wp-block-group {
       border-color: rgba(255,255,255,0.11);
       background: rgba(255,255,255,0.022);
     }
+    .ProseMirror .group-label {
+      font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #999;
+      margin-bottom: 6px;
+      user-select: none;
+    }
+    body.dark .ProseMirror .group-label { color: #777; }
+    .ProseMirror .wp-block-group > div > :first-child { margin-top: 0; }
+    .ProseMirror .wp-block-group > div > :last-child { margin-bottom: 0; }
 
     .ProseMirror .wp-block-column > :last-child,
     .ProseMirror .wp-block-accordion-panel > :last-child,
@@ -2528,6 +2546,18 @@
       return text.length > 120 ? text.slice(0, 120) + '…' : text
     }
 
+    // Synced-pattern data lives outside the document, so a fetch never edits the post: docs/block-model.md.
+    const _syncedPatterns = new Map()
+    const _syncedPatternViews = new Map()
+    const _syncedPatternsRequested = new Set()
+    let _syncedPatternGeneration = 0
+
+    function syncedPatternRef(source) {
+      const blocks = parseBlocks(source).filter(b => b.blockName || b.innerHTML.trim())
+      const ref = blocks.length === 1 && blocks[0].blockName === 'core/block' && blocks[0].attrs ? blocks[0].attrs.ref : null
+      return Number.isSafeInteger(ref) && ref > 0 ? ref : null
+    }
+
     class PassthroughNodeView {
       constructor(node, getPos) {
         this.dom = document.createElement('div')
@@ -2536,17 +2566,25 @@
         label.className = 'passthrough-card-label'
         label.textContent = node.attrs.blockLabel
         this.dom.append(label)
-        if (node.attrs.unsupportedSource) {
+        this.syncedRef = node.attrs.unsupportedSource ? syncedPatternRef(node.attrs.unsupportedSource) : null
+        if (this.syncedRef !== null) {
+          this._buildSyncedPattern(label)
+          return
+        }
+        const source = node.attrs.unsupportedSource || node.attrs.sourceHTML
+        const isCustomHTML = !!node.attrs.unsupportedSource && !!customHTMLBlock(node.attrs.unsupportedSource, parseBlocks)
+        const preview = isCustomHTML ? _peekText(source) : cardPreviewText(source || '')
+        if (preview) {
           const peek = document.createElement('div')
-          peek.className = 'passthrough-card-peek'
-          // textContent, never innerHTML: the peek shows markup, it must not become it.
-          peek.textContent = _peekText(node.attrs.unsupportedSource)
+          peek.className = isCustomHTML ? 'passthrough-card-peek is-code' : 'passthrough-card-peek'
+          // textContent, never innerHTML: the peek may show markup, it must not become it.
+          peek.textContent = preview
           this.dom.append(peek)
         }
         const hint = document.createElement('div')
         hint.className = 'passthrough-card-hint'
         this.dom.append(hint)
-        if (!node.attrs.unsupportedSource || !customHTMLBlock(node.attrs.unsupportedSource, parseBlocks)) {
+        if (!isCustomHTML) {
           hint.textContent = 'Not editable in the visual editor; use Code View (</>)'
           return
         }
@@ -2558,8 +2596,104 @@
         hint.appendChild(edit)
         this.dom.addEventListener('dblclick', event => { if (!edit.contains(event.target)) window.editCustomHTML(getPos()) })
       }
+      _buildSyncedPattern(label) {
+        this.label = label
+        this.peek = document.createElement('div')
+        this.peek.className = 'passthrough-card-peek'
+        this.hint = document.createElement('div')
+        this.hint.className = 'passthrough-card-hint'
+        this.hintText = document.createTextNode('')
+        this.edit = document.createElement('button')
+        this.edit.type = 'button'
+        this.edit.textContent = 'Edit in WordPress'
+        this.edit.addEventListener('click', () => {
+          window.webkit?.messageHandlers?.openSyncedPattern?.postMessage({ ref: this.syncedRef })
+        })
+        this.hint.append(this.hintText)
+        this.dom.append(this.hint)
+        if (!_syncedPatternViews.has(this.syncedRef)) _syncedPatternViews.set(this.syncedRef, new Set())
+        _syncedPatternViews.get(this.syncedRef).add(this)
+        this.renderSyncedPattern()
+        // A card pasted in after the load has not been asked for yet.
+        queueMicrotask(_requestMissingSyncedPatterns)
+      }
+      renderSyncedPattern() {
+        const ref = this.syncedRef
+        const result = _syncedPatterns.get(ref)
+        const loaded = !!result && !result.notFound && !result.failed
+        const notFound = !!result && !!result.notFound
+        if (!result) this.label.textContent = 'Synced pattern'
+        else if (notFound) this.label.textContent = `Synced pattern #${ref} (not found)`
+        else if (loaded && result.title) this.label.textContent = `Synced pattern: ${result.title}`
+        else this.label.textContent = `Synced pattern #${ref}`
+        // textContent, never innerHTML: fetched content is post markup.
+        this.peek.textContent = loaded ? cardPreviewText(String(result.content || '')) : ''
+        if (this.peek.textContent) this.hint.before(this.peek)
+        else this.peek.remove()
+        this.hintText.data = notFound ? 'Shared across posts' : 'Shared across posts · '
+        if (notFound) this.edit.remove()
+        else this.hint.append(this.edit)
+      }
+      destroy() {
+        if (this.syncedRef === null) return
+        const views = _syncedPatternViews.get(this.syncedRef)
+        views.delete(this)
+        if (!views.size) _syncedPatternViews.delete(this.syncedRef)
+      }
       selectNode()   { this.dom.classList.add('selected') }
       deselectNode() { this.dom.classList.remove('selected') }
+    }
+
+    // Before a load: forget the last post's results, so a reused card shows loading, not stale data.
+    function _resetSyncedPatterns() {
+      _syncedPatternGeneration++
+      _syncedPatterns.clear()
+      _syncedPatternsRequested.clear()
+      _syncedPatternViews.forEach(views => views.forEach(view => view.renderSyncedPattern()))
+    }
+
+    function _requestSyncedPatterns() {
+      const refs = new Set()
+      editor.state.doc.forEach(node => {
+        if (node.type.name !== 'gutenbergPassthrough' || !node.attrs.unsupportedSource) return
+        const ref = syncedPatternRef(node.attrs.unsupportedSource)
+        if (ref !== null) refs.add(ref)
+      })
+      _postSyncedPatternRequest([...refs])
+    }
+
+    function _requestMissingSyncedPatterns() {
+      _postSyncedPatternRequest([..._syncedPatternViews.keys()].filter(ref => !_syncedPatternsRequested.has(ref)))
+    }
+
+    function _postSyncedPatternRequest(refs) {
+      if (!refs.length) return
+      refs.forEach(ref => _syncedPatternsRequested.add(ref))
+      window.webkit?.messageHandlers?.requestSyncedPatterns?.postMessage({ generation: _syncedPatternGeneration, refs })
+    }
+
+    // Kept even with no card showing, so a card deleted mid-fetch comes back loaded on undo.
+    window.setSyncedPattern = (generation, ref, result) => {
+      if (generation !== _syncedPatternGeneration || !_syncedPatternsRequested.has(ref)) return
+      _syncedPatterns.set(ref, result)
+      _syncedPatternViews.get(ref)?.forEach(view => view.renderSyncedPattern())
+    }
+
+    // The label is outside contentDOM, so it is never document content or saved markup.
+    class GroupNodeView {
+      constructor(node) {
+        this.dom = document.createElement(node.attrs.tagName)
+        this.dom.className = 'wp-block-group'
+        this.label = document.createElement('div')
+        this.label.className = 'group-label'
+        this.label.contentEditable = 'false'
+        let attrs = null
+        try { attrs = JSON.parse(node.attrs.blockAttrs) } catch (e) {}
+        this.label.textContent = groupLabel(attrs)
+        this.contentDOM = document.createElement('div')
+        this.dom.append(this.label, this.contentDOM)
+      }
+      ignoreMutation(mutation) { return this.label.contains(mutation.target) }
     }
 
     // Priority 210 out-ranks gutenbergPassthrough (200) so the catch-all stops
@@ -2580,6 +2714,28 @@
       priority: 210,
       parseHTML() { return [{ tag: 'div.wp-block-columns' }] },
       renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] },
+    })
+
+    // A loaded Group opens only with its own wp:group comment (the load check vetted it); a paste is already reduced, except a copied card.
+    let _parsingPaste = false
+    function _opensGroup(el) {
+      if (!isParsedGroupElement(el) || el.hasAttribute('data-quill-passthrough')) return false
+      return _parsingPaste || alreadyDelimited(el, 'group')
+    }
+
+    const GroupBlock = TiptapNode.create({
+      name: 'groupBlock',
+      group: 'block',
+      content: 'block+',
+      priority: 210,
+      addAttributes() {
+        return {
+          tagName: { default: 'div', parseHTML: el => el.tagName.toLowerCase(), renderHTML: () => ({}) },
+        }
+      },
+      parseHTML() { return groupTags().map(tag => ({ tag: `${tag}.wp-block-group`, getAttrs: el => (_opensGroup(el) ? {} : false) })) },
+      renderHTML({ node }) { return [node.attrs.tagName, { class: 'wp-block-group' }, 0] },
+      addNodeView() { return ({ node }) => new GroupNodeView(node) },
     })
 
     const DetailsSummary = TiptapNode.create({
@@ -3235,7 +3391,7 @@
           },
           {
             tag: '[class*="wp-block-"]:not(figure)',
-            getAttrs: el => parsePassthroughBlock(el) || false,
+            getAttrs: el => (_opensGroup(el) ? false : parsePassthroughBlock(el) || false),
           },
           {
             // Figures too. Only image/gallery/embed/table have figure rules of
@@ -3484,6 +3640,7 @@
       ['accordionBlock', 'accordion'],
       ['detailsBlock', 'details'],
       ['columnsBlock', 'columns'],
+      ['groupBlock', 'group'],
       ['buttonsBlock', 'buttons'],
       ['pullquote', 'pullquote'],
       ['preformatted', 'preformatted'],
@@ -4270,6 +4427,7 @@
         withBlockAttrs(GalleryBlock),
         withBlockAttrs(ColumnsBlock),
         withBlockAttrs(ColumnBlock),
+        withBlockAttrs(GroupBlock),
         withBlockAttrs(DetailsBlock),
         DetailsSummary,
         withBlockAttrs(ButtonsBlock),
@@ -4361,6 +4519,7 @@
         },
         // Blocks pasted into an empty paragraph replace it, as in the block editor, rather than the first taking its attributes.
         transformPasted(slice, view, plain) {
+          _parsingPaste = false
           if (plain || slice.openStart === 0 || !slice.content.firstChild?.isTextblock || !_inEmptyTopLevelParagraph(view.state)) return slice
           return new slice.constructor(slice.content, 0, slice.openEnd)
         },
@@ -4375,6 +4534,7 @@
           return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
         },
         transformPastedHTML(html) {
+          _parsingPaste = true
           // The cleanup must never be the reason a paste fails; unclean beats nothing.
           const quillCopy = _pasteIsQuillCopy
           _pasteIsQuillCopy = false
@@ -6104,9 +6264,12 @@
         let stored = split.footnotes
         if (!split.found) try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
         editor.commands.setTextSelection(0)
+        _parsingPaste = false
+        _resetSyncedPatterns()
         editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), false)
         editor.commands.setTextSelection(0)
         _reportBlocksAtRisk(html)
+        _requestSyncedPatterns()
       }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
@@ -6236,11 +6399,14 @@
       // Clear any NodeSelection before replacing the whole document: under jsdom
       // a stale one makes the replace drop incoming figure content.
       editor.commands.setTextSelection(0)
+      _parsingPaste = false
+      _resetSyncedPatterns()
       editor.commands.setContent(wrapped || '', false)
       // setContent maps the old caret into the new doc, and a landing next to an
       // atom block becomes a NodeSelection that outlines it before any click.
       editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
+      _requestSyncedPatterns()
       document.getElementById('editor-wrap').scrollTop = 0
       _cancelPost()  // cancel any contentChanged the setContent may have triggered
       _postStats()
@@ -6256,11 +6422,13 @@
     // Debug entry point for --check-fixtures: the jsdom corpus, run in WebKit.
     window.__runFixtureCorpus = json => JSON.parse(json).map(({ name, source }) => {
       window.setContent(source)
+      let cards = 0
+      editor.state.doc.descendants(node => { if (node.type.name === 'gutenbergPassthrough') cards++ })
       const untouched = window.getContent()
       const edited = extractFootnotes(toWordPressHTML(editor.getHTML())).content
       window.setContent(edited)
       const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
-      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, saved: edited }
+      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, cards, saved: edited }
     })
     // Every path post markup takes through the editor, for FixtureCheck to prove no handler in it runs.
     window.__runScriptSinkProbes = json => JSON.parse(json).forEach(source => {
@@ -6277,6 +6445,8 @@
       window.setContent('<p></p>')
       window.insertCustomHTML(JSON.stringify({ html: source, replace: false }))
       editor.view.pasteHTML(source)
+      window.setContent('<!-- wp:block {"ref":1} /-->')
+      window.setSyncedPattern(_syncedPatternGeneration, 1, { title: source, content: source })
     })
     window.pushContentToSwift = () => _postContent(window.getContent(), _rawHTML === null)
     window.syncContentToSwift = () => {

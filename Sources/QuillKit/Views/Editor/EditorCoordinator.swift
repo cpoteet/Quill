@@ -70,6 +70,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var onCustomHTML: ((CustomHTMLRequest) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
+    var onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)?
+    var onOpenSyncedPattern: ((Int) -> Void)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
     var onBlocksAtRisk: (([String]) -> Void)?
@@ -172,6 +174,16 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             if let body = message.body as? [String: Any],
                let mediaId = body["mediaId"] as? Int {
                 DispatchQueue.main.async { self.handleRequestMediaSizes(mediaId: mediaId) }
+            }
+        case "requestSyncedPatterns":
+            if let body = message.body as? [String: Any],
+               let generation = body["generation"] as? Int,
+               let refs = body["refs"] as? [Int] {
+                DispatchQueue.main.async { self.handleRequestSyncedPatterns(generation: generation, refs: refs) }
+            }
+        case "openSyncedPattern":
+            if let body = message.body as? [String: Any], let ref = body["ref"] as? Int {
+                DispatchQueue.main.async { self.onOpenSyncedPattern?(ref) }
             }
         case "selectionChanged":
             DispatchQueue.main.async {
@@ -339,6 +351,28 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             else { return }
             wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
         }
+    }
+
+    // The editor drops a result whose generation is stale, so no selection check is needed here.
+    private func handleRequestSyncedPatterns(generation: Int, refs: [Int]) {
+        guard let wv = webView, let fetch = onRequestSyncedPattern else { return }
+        for ref in refs {
+            Task {
+                let result = await fetch(ref)
+                wv.evaluateJavaScript(Self.syncedPatternJS(generation: generation, ref: ref, result: result), completionHandler: nil)
+            }
+        }
+    }
+
+    static func syncedPatternJS(generation: Int, ref: Int, result: SyncedPatternResult) -> String {
+        let payload: [String: Any]
+        switch result {
+        case .loaded(let pattern): payload = ["title": pattern.title, "content": pattern.content]
+        case .notFound: payload = ["notFound": true]
+        case .failed: payload = ["failed": true]
+        }
+        let data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data(#"{"failed":true}"#.utf8)
+        return "setSyncedPattern(\(generation), \(ref), \(String(decoding: data, as: UTF8.self)))"
     }
 
     func insertImage(url: String, mediaId: Int? = nil, alt: String? = nil, width: Int? = nil) {

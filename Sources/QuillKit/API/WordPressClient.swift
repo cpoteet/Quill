@@ -76,6 +76,18 @@ public struct WordPressClient: Sendable {
         return try await get(url)
     }
 
+    public func fetchSyncedPattern(id: Int) async throws -> WPSyncedPattern {
+        let url = try endpoint("blocks/\(id)", query: ["context": "edit", "_fields": "id,status,title,content"])
+        return try await get(url)
+    }
+
+    /// Opens the pattern in the block editor, on block and classic themes alike.
+    public func syncedPatternEditURL(id: Int) -> URL? {
+        var base = credentials.siteURL.absoluteString
+        if base.hasSuffix("/") { base = String(base.dropLast()) }
+        return URL(string: "\(base)/wp-admin/post.php?post=\(id)&action=edit")
+    }
+
     public func createPost(_ payload: PostPayload) async throws -> WPPost {
         let url = try endpoint("posts")
         return try await post(url, body: payload)

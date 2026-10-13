@@ -342,7 +342,7 @@ describe('wrapUnsupportedBlocks', () => {
   // The fixtures that deliberately hold blocks Quill does not model; every
   // other one is supported end to end and must come through the wrap untouched.
   const HOLDS_UNMODELED = new Set([
-    'unsupported-blocks.html', 'settings-group.html', 'settings-media-text.html', 'settings-spacer.html', 'settings-script-handlers.html', 'freeform-custom-html.html',
+    'unsupported-blocks.html', 'group-unsupported-children.html', 'settings-media-text.html', 'settings-spacer.html', 'settings-script-handlers.html', 'freeform-custom-html.html',
   ])
 
   test('leaves every fully supported fixture untouched', () => {
@@ -356,10 +356,8 @@ describe('wrapUnsupportedBlocks', () => {
 
   test('each unmodeled block in a mixed fixture is wrapped exactly once', () => {
     const dir = path.resolve(__dirname, 'fixtures')
-    for (const name of ['settings-group.html', 'settings-media-text.html']) {
-      const out = wrap(fs.readFileSync(path.join(dir, name), 'utf8'))
-      assert.equal((out.match(/wp-block-quill-unsupported/g) || []).length, 1, name)
-    }
+    const mediaText = wrap(fs.readFileSync(path.join(dir, 'settings-media-text.html'), 'utf8'))
+    assert.equal((mediaText.match(/wp-block-quill-unsupported/g) || []).length, 1, 'media & text')
     const spacer = wrap(fs.readFileSync(path.join(dir, 'settings-spacer.html'), 'utf8'))
     assert.equal((spacer.match(/wp-block-quill-unsupported/g) || []).length, 2, 'spacer and calendar')
   })
@@ -521,6 +519,166 @@ describe('Custom HTML source', () => {
     assert.equal(customHTMLBlock('<!-- wp:shortcode -->[x]<!-- /wp:shortcode -->', parse), null)
     assert.equal(customHTMLBlock('<!-- wp:html --><p>a</p><!-- /wp:html --><!-- wp:html --><p>b</p><!-- /wp:html -->', parse), null)
     assert.equal(customHTMLBlock('<p>loose</p><!-- wp:html --><p>a</p><!-- /wp:html -->', parse), null)
+  })
+})
+
+describe('cardPreviewText', () => {
+  const { cardPreviewText } = loadTransforms()
+  const { JSDOM } = require('jsdom')
+  const doc = new JSDOM('<body></body>').window.document
+  const preview = src => cardPreviewText(src, doc)
+
+  test('text from separate blocks is joined, inline formatting is not split', () => {
+    const src = '<!-- wp:cover --><div class="wp-block-cover"><div class="wp-block-cover__inner-container"><!-- wp:heading --><h2>Become a member</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Join <strong>today</strong></p><!-- /wp:paragraph --></div></div><!-- /wp:cover -->'
+    assert.equal(preview(src), 'Become a member · Join today')
+  })
+
+  test('a block with no text has no preview', () => {
+    assert.equal(preview('<!-- wp:spacer --><div style="height:40px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->'), '')
+  })
+
+  test('script, style, template and noscript text never appears', () => {
+    const src = '<div><p>Seen</p><script>hidden1()</script><style>.hidden2{}</style><template><p>hidden3</p></template><noscript>hidden4</noscript></div>'
+    assert.equal(preview(src), 'Seen')
+  })
+
+  test('block comments never appear', () => {
+    assert.equal(preview('<!-- wp:acme/x {"note":"hidden"} --><p>Seen</p><!-- /wp:acme/x -->'), 'Seen')
+  })
+
+  test('runs of whitespace collapse to one space', () => {
+    assert.equal(preview('<p>  One \n\t two   </p>'), 'One two')
+  })
+
+  test('a long block is cut at 120 characters', () => {
+    const out = preview(`<p>${'x'.repeat(200)}</p>`)
+    assert.equal(out, 'x'.repeat(120) + '…')
+  })
+
+  test('a line break separates words', () => {
+    assert.equal(preview('<p>Line one<br>Line two</p>'), 'Line one Line two')
+  })
+
+  test('SVG titles, frame fallbacks and form fields never appear', () => {
+    assert.equal(preview('<svg><title>Icon</title></svg><iframe>fallback</iframe><noembed>old</noembed><textarea>typed</textarea><p>ok</p>'), 'ok')
+  })
+
+  test('an image handler gives no text and never runs', () => {
+    assert.equal(preview('<img src=x onerror="globalThis.__ran=1">'), '')
+    assert.equal(globalThis.__ran, undefined)
+  })
+})
+
+describe('cardLabel', () => {
+  const { cardLabel } = loadTransforms()
+
+  test('a custom name is the label', () => {
+    assert.equal(cardLabel({ metadata: { name: 'Hero' } }, 'Cover'), 'Hero')
+  })
+
+  test('an empty, non-string or missing name falls back to the block type', () => {
+    assert.equal(cardLabel({ metadata: { name: '' } }, 'Cover'), 'Cover')
+    assert.equal(cardLabel({ metadata: { name: 7 } }, 'Cover'), 'Cover')
+    assert.equal(cardLabel(null, 'Cover'), 'Cover')
+  })
+})
+
+describe('groupLabel', () => {
+  const { groupLabel } = loadTransforms()
+
+  test('a custom name wins', () => {
+    assert.equal(groupLabel({ metadata: { name: 'Hero' } }), 'Hero')
+  })
+
+  test('an empty custom name falls back to the layout', () => {
+    assert.equal(groupLabel({ metadata: { name: '' }, layout: { type: 'grid' } }), 'Grid')
+  })
+
+  test('a flex layout without a vertical orientation is a Row', () => {
+    assert.equal(groupLabel({ layout: { type: 'flex', flexWrap: 'nowrap' } }), 'Row')
+    assert.equal(groupLabel({ layout: { type: 'flex', orientation: 'horizontal' } }), 'Row')
+  })
+
+  test('a vertical flex layout is a Stack', () => {
+    assert.equal(groupLabel({ layout: { type: 'flex', orientation: 'vertical' } }), 'Stack')
+  })
+
+  test('anything else is a Group', () => {
+    assert.equal(groupLabel({ layout: { type: 'constrained' } }), 'Group')
+    assert.equal(groupLabel(null), 'Group')
+  })
+})
+
+describe('groupFullySupported', () => {
+  const { groupFullySupported } = loadTransforms()
+  const parse = loadParser().parseBlocks
+  const { JSDOM } = require('jsdom')
+  const doc = new JSDOM('<body></body>').window.document
+  const P = '<!-- wp:paragraph -->\n<p>A</p>\n<!-- /wp:paragraph -->'
+  const H = '<!-- wp:heading -->\n<h2 class="wp-block-heading">H</h2>\n<!-- /wp:heading -->'
+  const group = (inner, tag = 'div', attrs = '') =>
+    `<!-- wp:group ${attrs}-->\n<${tag} class="wp-block-group">${inner}</${tag}>\n<!-- /wp:group -->`
+  const supported = src => groupFullySupported(parse(src).find(b => b.blockName), doc)
+
+  test('a group of a paragraph and a heading is supported', () => {
+    assert.equal(supported(group(P + '\n\n' + H)), true)
+  })
+
+  test('a group in a group is supported', () => {
+    assert.equal(supported(group(P + '\n\n' + group(P, 'section', '{"tagName":"section"} '))), true)
+  })
+
+  test('a group holding a spacer is not', () => {
+    assert.equal(supported(group('<!-- wp:spacer -->\n<div style="height:8px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->')), false)
+  })
+
+  test('a group holding a group holding a spacer is not', () => {
+    assert.equal(supported(group(group('<!-- wp:spacer -->\n<div class="wp-block-spacer"></div>\n<!-- /wp:spacer -->'))), false)
+  })
+
+  test('an empty group is not', () => {
+    assert.equal(supported(group('')), false)
+  })
+
+  test('an old inner-container group is not', () => {
+    assert.equal(supported(group(`<div class="wp-block-group__inner-container">${P}</div>`)), false)
+  })
+
+  test('a nav group is not', () => {
+    assert.equal(supported(group(P, 'nav', '{"tagName":"nav"} ')), false)
+  })
+
+  test('a group holding a modeled block that saves no markup is not', () => {
+    assert.equal(supported(group(P + '\n\n<!-- wp:image /-->')), false)
+  })
+
+  test('a group holding a column that holds a markup-less image is not', () => {
+    const columns = '<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:image /--></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->'
+    assert.equal(supported(group(columns)), false)
+  })
+
+  test('stray text inside the wrapper is not supported, before, between or after the blocks', () => {
+    assert.equal(supported(group('Stray' + P)), false)
+    assert.equal(supported(group(P + 'Stray' + H)), false)
+    assert.equal(supported(group(P + 'Stray')), false)
+  })
+
+  test('a stray element inside the wrapper is not supported', () => {
+    assert.equal(supported(group(P + '<span>stray</span>' + H)), false)
+  })
+
+  test('a wrapper with a script handler is not supported, since the carrier would drop it', () => {
+    assert.equal(supported(`<!-- wp:group -->\n<div class="wp-block-group" onclick="go()">${P}</div>\n<!-- /wp:group -->`), false)
+  })
+
+  test('a tagName the element does not match is not supported', () => {
+    assert.equal(supported(group(P, 'div', '{"tagName":"div"} ')), false)
+    assert.equal(supported(group(P, 'div', '{"tagName":"section"} ')), false)
+    assert.equal(supported(group(P, 'section')), false)
+  })
+
+  test('text outside the wrapper element is not supported', () => {
+    assert.equal(supported(`<!-- wp:group -->\nStray<div class="wp-block-group">${P}</div>\n<!-- /wp:group -->`), false)
   })
 })
 

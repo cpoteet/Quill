@@ -27,7 +27,7 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
         for name in ["contentChanged", "editorReady", "insertImage", "insertGallery",
                      "showLinkPicker", "requestMediaSizes", "selectionChanged", "statsChanged",
                      "blocksAtRisk", "footnotesChanged", "checkSpelling", "triggerGenerate",
-                     "triggerEvaluate", "openLink"] {
+                     "triggerEvaluate", "openLink", "requestSyncedPatterns", "openSyncedPattern"] {
             config.userContentController.add(self, name: name)
         }
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1200, height: 900), configuration: config)
@@ -93,7 +93,8 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
             let name = row["name"] as? String ?? "?"
             let checks = [("untouched", row["untouched"] as? Bool ?? false),
                           ("identical", row["identical"] as? Bool ?? false),
-                          ("idempotent", row["idempotent"] as? Bool ?? false)]
+                          ("idempotent", row["idempotent"] as? Bool ?? false),
+                          ("opens", !name.hasPrefix("settings-group") || row["cards"] as? Int == 0)]
             let bad = checks.filter { !$0.1 }.map(\.0)
             if bad.isEmpty {
                 print("  ok    \(name)")

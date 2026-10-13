@@ -101,12 +101,12 @@ describe('unsupported blocks become passthrough cards', () => {
 
   // Every top-level block Quill does not model now goes through the same
   // wrapper, so every card is labelled and shows a peek of its own source.
-  test('an ordinary unmodeled block renders a labelled card with a peek', () => {
+  test('an ordinary unmodeled block with no text renders a labelled card without a preview', () => {
     const src = '<!-- wp:spacer --><div class="wp-block-spacer" style="height:8px"></div><!-- /wp:spacer -->'
     win.setContent(src)
     const card = win.document.querySelector('#editor .passthrough-card')
     assert.equal(card.querySelector('.passthrough-card-label').textContent, 'Spacer')
-    assert.match(card.querySelector('.passthrough-card-peek').textContent, /wp-block-spacer/)
+    assert.equal(card.querySelector('.passthrough-card-peek'), null)
     assert.equal(win.getContent(), src)
   })
 
@@ -773,4 +773,70 @@ describe('preserved block bytes cannot be relocated by post text', () => {
       'the spacer keeps its own bytes in its own slot')
     assert.ok(out.indexOf('wp:spacer') > out.indexOf('QUILLUNSUPPORTED0QUILLEND'), 'and its original position')
   })
+})
+
+describe('a group with an unsupported block stays locked', () => {
+  const posted = []
+  const SRC = fs.readFileSync(path.resolve(__dirname, 'fixtures/group-unsupported-children.html'), 'utf8')
+  const topLevelSlices = () => Array.from(win.parseBlocks(SRC))
+    .filter(b => b.blockName === 'core/group' || b.blockName === 'core/columns')
+    .map(b => SRC.slice(b.start, b.end))
+
+  before(() => {
+    win.webkit = win.webkit || {}
+    win.webkit.messageHandlers = Object.assign({}, win.webkit.messageHandlers, {
+      blocksAtRisk: { postMessage: m => posted.push(m) },
+    })
+  })
+
+  test('every top-level group and the columns load as cards holding their exact source', () => {
+    win.setContent(SRC)
+    const cards = []
+    editor.state.doc.forEach(node => { if (node.type.name === 'gutenbergPassthrough') cards.push(node.attrs.unsupportedSource) })
+    assert.deepEqual(cards, topLevelSlices())
+  })
+
+  test('every slice survives an edit elsewhere byte for byte', () => {
+    win.setContent(SRC)
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('X')
+    const out = win.getContent()
+    assert.notEqual(out, SRC)
+    for (const slice of topLevelSlices()) assert.ok(out.includes(slice), slice)
+  })
+
+  test('the alarm posts nothing', () => {
+    posted.length = 0
+    win.setContent(SRC)
+    assert.deepEqual(reportedNames(posted), [])
+  })
+
+  test('a group that opens raises no alarm, on load or after an edit', () => {
+    posted.length = 0
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/settings-group.html'), 'utf8'))
+    editor.commands.setTextSelection(4)
+    editor.commands.insertContent('X')
+    win.setContent(win.getContent())
+    assert.equal(posted.length, 2)
+    assert.deepEqual(reportedNames(posted), [])
+  })
+})
+
+describe('a group with no block comments stays a card', () => {
+  const P = '<!-- wp:paragraph -->\n<p>Before.</p>\n<!-- /wp:paragraph -->\n\n'
+  const cards = () => { const out = []; editor.state.doc.forEach(n => out.push(n.type.name)); return out }
+
+  for (const [name, group] of [
+    ['a video', '<div class="wp-block-group"><p>a</p><video src="a.mp4" controls=""></video></div>'],
+    ['an iframe', '<div class="wp-block-group"><p>a</p><iframe src="https://x.test/"></iframe></div>'],
+    ['nothing', '<div class="wp-block-group"></div>'],
+  ]) {
+    test(`one holding ${name} loads as a card and survives an edit elsewhere`, () => {
+      win.setContent(P + group)
+      assert.ok(!cards().includes('groupBlock'), cards().join(','))
+      editor.commands.setTextSelection(2)
+      editor.commands.insertContent('X')
+      assert.ok(win.getContent().includes(group), win.getContent())
+    })
+  }
 })

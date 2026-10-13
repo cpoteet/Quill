@@ -55,6 +55,7 @@ const BLOCK_DESCRIPTORS = {
   accordionItem:    { blockName: 'core/accordion-item',    shape: 'container', childBlockName: null,                  noAnchor: true, attrsFrom: () => ({}) },
   accordionHeading: { blockName: 'core/accordion-heading', shape: 'text',      childBlockName: null,                  attrsFrom: () => ({}) },
   accordionPanel:   { blockName: 'core/accordion-panel',   shape: 'container', childBlockName: null,                  noAnchor: true, attrsFrom: () => ({}) },
+  groupBlock: { blockName: 'core/group', shape: 'container', childBlockName: null, ownedAttrs: ['tagName'], attrsFrom: el => (el.tagName === 'DIV' ? {} : { tagName: el.tagName.toLowerCase() }) },
   tabsBlock: { blockName: 'core/tabs',       shape: 'container', childBlockName: null,             attrsFrom: () => ({}) },
   tabList:   { blockName: 'core/tab-list',   shape: 'container', childBlockName: null,             noAnchor: true, attrsFrom: () => ({}) },
   tabPanels: { blockName: 'core/tab-panels', shape: 'container', childBlockName: 'core/tab-panel', noAnchor: true, attrsFrom: () => ({}) },

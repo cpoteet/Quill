@@ -534,3 +534,243 @@ describe('gutenbergPassthrough - figure blocks and the rest of the document', ()
     assert.equal(img.getAttribute('alt'), 'Classic')
   })
 })
+
+describe('a locked card is labelled by its custom name', () => {
+  const COVER = attrs => `<!-- wp:cover ${attrs}-->\n<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><div class="wp-block-cover__inner-container"><!-- wp:paragraph -->\n<p>On a cover.</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover -->`
+  const labels = () => Array.from(win.document.querySelectorAll('#editor .passthrough-card-label')).map(el => el.textContent)
+
+  test('a top-level card with a name reads its name', () => {
+    win.setContent(COVER('{"metadata":{"name":"Hero"}} '))
+    assert.deepEqual(labels(), ['Hero'])
+  })
+
+  test('a top-level card without a name reads its block type', () => {
+    win.setContent(COVER(''))
+    assert.deepEqual(labels(), ['Cover'])
+  })
+
+  test('a card nested in a column reads its name', () => {
+    win.setContent(`<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column">${COVER('{"metadata":{"name":"Hero"}} ')}</div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->`)
+    assert.deepEqual(labels(), ['Hero'])
+  })
+
+  test('a name holding markup shows as text', () => {
+    win.setContent(COVER('{"metadata":{"name":"\\u003cb\\u003eHero\\u003c/b\\u003e"}} '))
+    const label = win.document.querySelector('#editor .passthrough-card-label')
+    assert.equal(label.textContent, '<b>Hero</b>')
+    assert.equal(label.children.length, 0)
+  })
+})
+
+describe('a locked card previews its text', () => {
+  const peek = () => win.document.querySelector('#editor .passthrough-card-peek')
+
+  test('a Cover card shows its joined text', () => {
+    win.setContent('<!-- wp:cover -->\n<div class="wp-block-cover"><span aria-hidden="true" class="wp-block-cover__background has-background-dim"></span><div class="wp-block-cover__inner-container"><!-- wp:heading -->\n<h2 class="wp-block-heading">Become a member</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Join <strong>today</strong></p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover -->')
+    assert.equal(peek().textContent, 'Become a member · Join today')
+  })
+
+  test('a Media & Text card shows its text, not its markup', () => {
+    win.setContent('<!-- wp:media-text -->\n<div class="wp-block-media-text is-stacked-on-mobile"><figure class="wp-block-media-text__media"></figure><div class="wp-block-media-text__content"><!-- wp:paragraph -->\n<p>Beside the picture</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:media-text -->')
+    assert.equal(peek().textContent, 'Beside the picture')
+  })
+
+  test('a Spacer card has no preview line', () => {
+    win.setContent('<!-- wp:spacer -->\n<div style="height:40px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->')
+    assert.equal(win.document.querySelectorAll('#editor .passthrough-card').length, 1)
+    assert.equal(peek(), null)
+  })
+
+  test('a Custom HTML card still shows its markup, styled as code', () => {
+    win.setContent('<!-- wp:html -->\n<div class="promo"><b>Hi</b></div>\n<!-- /wp:html -->')
+    assert.equal(peek().textContent, '<div class="promo"><b>Hi</b></div>')
+    assert.ok(peek().classList.contains('is-code'))
+  })
+
+  test('a text preview is styled like the text around it, not as code', () => {
+    win.setContent('<!-- wp:media-text -->\n<div class="wp-block-media-text"><div class="wp-block-media-text__content"><!-- wp:paragraph -->\n<p>Words</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:media-text -->')
+    assert.ok(!peek().classList.contains('is-code'))
+    const css = win.document.querySelector('style').textContent
+    const rule = css.match(/\.passthrough-card-peek \{[^}]*\}/)[0]
+    assert.doesNotMatch(rule, /monospace/)
+    assert.match(css, /\.passthrough-card-peek\.is-code \{[^}]*monospace/)
+  })
+
+  test('a card nested in a column previews its text too', () => {
+    win.setContent('<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:cover -->\n<div class="wp-block-cover"><div class="wp-block-cover__inner-container"><!-- wp:paragraph -->\n<p>Nested cover</p>\n<!-- /wp:paragraph --></div></div>\n<!-- /wp:cover --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->')
+    assert.equal(peek().textContent, 'Nested cover')
+  })
+})
+
+describe('synced pattern cards', () => {
+  const requests = []
+  const opened = []
+  const changed = []
+  const SYNCED = ref => `<!-- wp:block {"ref":${ref}} /-->`
+  const P = '<!-- wp:paragraph -->\n<p>Text</p>\n<!-- /wp:paragraph -->'
+  const LOADED = { title: 'Newsletter signup', content: '<!-- wp:paragraph --><p>Get new posts by email</p><!-- /wp:paragraph -->' }
+  const cards = () => Array.from(win.document.querySelectorAll('#editor .passthrough-card'))
+  const labelOf = card => card.querySelector('.passthrough-card-label').textContent
+  const peekOf = card => card.querySelector('.passthrough-card-peek')
+  const buttonOf = card => card.querySelector('.passthrough-card-hint button')
+  const generation = () => requests.at(-1).generation
+
+  before(() => {
+    win.webkit = win.webkit || {}
+    win.webkit.messageHandlers = Object.assign({}, win.webkit.messageHandlers, {
+      requestSyncedPatterns: { postMessage: m => requests.push(JSON.parse(JSON.stringify(m))) },
+      openSyncedPattern: { postMessage: m => opened.push(JSON.parse(JSON.stringify(m))) },
+      contentChanged: { postMessage: m => changed.push(m) },
+      blocksAtRisk: { postMessage: () => {} },
+    })
+    // Undo scrolls the selection into view, and jsdom gives text no geometry.
+    const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+    for (const proto of [win.Text.prototype, win.Range.prototype]) {
+      if (proto.getClientRects) continue
+      proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+      proto.getBoundingClientRect = () => rect
+    }
+  })
+
+  beforeEach(() => { requests.length = 0; opened.length = 0; changed.length = 0 })
+
+  test('a load posts each ref once', () => {
+    win.setContent([SYNCED(123), P, SYNCED(456), SYNCED(123)].join('\n\n'))
+    assert.equal(requests.length, 1)
+    assert.deepEqual(requests[0].refs, [123, 456])
+    assert.equal(typeof requests[0].generation, 'number')
+  })
+
+  test('a post without synced patterns posts nothing', () => {
+    win.setContent(P)
+    assert.equal(requests.length, 0)
+  })
+
+  test('each load posts a higher generation', () => {
+    win.setContent(SYNCED(123))
+    win.setContent(SYNCED(123))
+    assert.equal(requests.length, 2)
+    assert.ok(requests[1].generation > requests[0].generation)
+  })
+
+  test('before a result the card is loading, with a working edit button', () => {
+    win.setContent(SYNCED(123))
+    const card = cards()[0]
+    assert.equal(labelOf(card), 'Synced pattern')
+    assert.equal(peekOf(card), null)
+    assert.equal(card.querySelector('.passthrough-card-hint').textContent, 'Shared across posts · Edit in WordPress')
+    buttonOf(card).dispatchEvent(new win.MouseEvent('click', { bubbles: true, detail: 1 }))
+    assert.deepEqual(opened, [{ ref: 123 }])
+  })
+
+  test('a loaded result titles and previews every card with that ref', () => {
+    win.setContent([SYNCED(123), P, SYNCED(123)].join('\n\n'))
+    win.setSyncedPattern(generation(), 123, LOADED)
+    for (const card of cards()) {
+      assert.equal(labelOf(card), 'Synced pattern: Newsletter signup')
+      assert.equal(peekOf(card).textContent, 'Get new posts by email')
+    }
+  })
+
+  test('an empty title falls back to the ref', () => {
+    win.setContent(SYNCED(123))
+    win.setSyncedPattern(generation(), 123, { title: '', content: LOADED.content })
+    assert.equal(labelOf(cards()[0]), 'Synced pattern #123')
+    assert.equal(peekOf(cards()[0]).textContent, 'Get new posts by email')
+  })
+
+  test('a pattern that is gone says so and has no button', () => {
+    win.setContent(SYNCED(123))
+    win.setSyncedPattern(generation(), 123, { notFound: true })
+    assert.equal(labelOf(cards()[0]), 'Synced pattern #123 (not found)')
+    assert.equal(peekOf(cards()[0]), null)
+    assert.equal(buttonOf(cards()[0]), null)
+  })
+
+  test('a failed fetch keeps the button', () => {
+    win.setContent(SYNCED(123))
+    win.setSyncedPattern(generation(), 123, { failed: true })
+    assert.equal(labelOf(cards()[0]), 'Synced pattern #123')
+    assert.ok(buttonOf(cards()[0]))
+  })
+
+  test('a result changes neither the content nor the history', () => {
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    const content = win.getContent()
+    const state = editor.state
+    win.setSyncedPattern(generation(), 123, LOADED)
+    assert.equal(editor.state, state)
+    assert.equal(win.getContent(), content)
+    assert.equal(changed.length, 0)
+  })
+
+  test('a ref too large to be an ID is not a synced pattern', () => {
+    win.setContent([SYNCED(123), SYNCED('1e21')].join('\n\n'))
+    assert.deepEqual(requests[0].refs, [123])
+  })
+
+  test('a card pasted in after the load asks for its pattern', async () => {
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    editor.commands.focus()
+    editor.commands.selectAll()
+    const data = {}
+    const copy = new win.Event('copy', { bubbles: true, cancelable: true })
+    Object.defineProperty(copy, 'clipboardData', { value: { setData: (t, v) => { data[t] = v }, getData: t => data[t] || '', clearData: () => {}, types: [] } })
+    editor.view.dom.dispatchEvent(copy)
+    win.setContent(P)
+    requests.length = 0
+    editor.commands.focus('end')
+    const paste = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(paste, 'clipboardData', { value: { getData: t => data[t] || '', types: Object.keys(data), files: [] } })
+    editor.view.dom.dispatchEvent(paste)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    assert.equal(requests.length, 1)
+    assert.deepEqual(requests[0].refs, [123])
+    win.setSyncedPattern(requests[0].generation, 123, LOADED)
+    assert.equal(labelOf(cards()[0]), 'Synced pattern: Newsletter signup')
+  })
+
+  // The wait keeps the delete out of the load's history group, as a person's delete always is.
+  test('a card deleted while its fetch is out shows the result once undo brings it back', async () => {
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    const g = generation()
+    await new Promise(resolve => setTimeout(resolve, 600))
+    const from = editor.state.doc.child(0).nodeSize
+    editor.view.dispatch(editor.state.tr.delete(from, from + editor.state.doc.child(1).nodeSize))
+    assert.equal(cards().length, 0)
+    win.setSyncedPattern(g, 123, LOADED)
+    editor.commands.undo()
+    assert.equal(labelOf(cards()[0]), 'Synced pattern: Newsletter signup')
+  })
+
+  test('a result for a ref not on the page changes nothing', () => {
+    win.setContent(SYNCED(123))
+    assert.doesNotThrow(() => win.setSyncedPattern(generation(), 999, LOADED))
+    assert.equal(labelOf(cards()[0]), 'Synced pattern')
+  })
+
+  test("a late result from an earlier load cannot overwrite the next post's card", () => {
+    win.setContent(SYNCED(123))
+    const first = generation()
+    win.setContent([P, SYNCED(123)].join('\n\n'))
+    win.setSyncedPattern(generation(), 123, LOADED)
+    win.setSyncedPattern(first, 123, { failed: true })
+    assert.equal(labelOf(cards()[0]), 'Synced pattern: Newsletter signup')
+  })
+
+  test("a result from the last post never shows on the next one's card before its own arrives", () => {
+    win.setContent(SYNCED(123))
+    win.setSyncedPattern(generation(), 123, LOADED)
+    win.setContent(SYNCED(123) + '\n\n' + P)
+    assert.equal(labelOf(cards()[0]), 'Synced pattern')
+  })
+
+  test('the synced pattern saves back byte for byte after an edit elsewhere', () => {
+    const src = [P, SYNCED(123)].join('\n\n')
+    win.setContent(src)
+    win.setSyncedPattern(generation(), 123, LOADED)
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('X')
+    assert.match(win.getContent(), /\n\n<!-- wp:block \{"ref":123\} \/-->$/)
+  })
+})

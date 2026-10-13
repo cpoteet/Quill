@@ -137,6 +137,21 @@ public struct PostEditorView: View {
                         }
                         return fetched
                     },
+                    onRequestSyncedPattern: { ref in
+                        guard let creds = appState.credentials else { return .failed }
+                        do {
+                            let pattern = try await WordPressClient(credentials: creds).fetchSyncedPattern(id: ref)
+                            return Self.syncedPatternResult(for: .success(pattern))
+                        } catch {
+                            return Self.syncedPatternResult(for: .failure(error))
+                        }
+                    },
+                    onOpenSyncedPattern: { ref in
+                        guard let creds = appState.credentials,
+                              let url = WordPressClient(credentials: creds).syncedPatternEditURL(id: ref),
+                              EditorCoordinator.isAllowedExternalURL(url) else { return }
+                        NSWorkspace.shared.open(url)
+                    },
                     onSelectionChanged: { rect in
                         handleSelectionChange(rect: rect)
                     },
@@ -1473,6 +1488,18 @@ public struct PostEditorView: View {
 
     nonisolated static func uploadFailureMessage(failed: Int, total: Int, firstError: String) -> String {
         total == 1 ? "Upload failed: \(firstError)" : "\(failed) of \(total) images failed to upload"
+    }
+
+    /// A trashed pattern still reads back for an editor, but WordPress renders nothing for it.
+    nonisolated static func syncedPatternResult(for outcome: Result<WPSyncedPattern, Error>) -> SyncedPatternResult {
+        switch outcome {
+        case .success(let pattern):
+            return pattern.status == "trash" ? .notFound : .loaded(pattern)
+        case .failure(APIError.httpError(let code, _)) where code == 404 || code == 410:
+            return .notFound
+        case .failure:
+            return .failed
+        }
     }
 
     nonisolated static func previewURL(from link: String) -> URL? {

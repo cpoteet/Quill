@@ -335,3 +335,37 @@ struct EditorPushDecisionTests {
         #expect(log.footnotes == ["[]"])
     }
 }
+
+@Suite struct SyncedPatternScriptTests {
+    private func argument(_ script: String) throws -> [String: Any] {
+        let prefix = "setSyncedPattern(7, 123, "
+        #expect(script.hasPrefix(prefix))
+        #expect(script.hasSuffix(")"))
+        let json = String(script.dropFirst(prefix.count).dropLast())
+        return try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+    }
+
+    @Test func syncedPatternJSLoaded() throws {
+        let pattern = WPSyncedPattern(id: 123, status: "publish", title: "Newsletter signup", content: "<p>Hi</p>")
+        let script = EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern))
+        #expect(script.contains("setSyncedPattern(7, 123,"))
+        let arg = try argument(script)
+        #expect(arg["title"] as? String == "Newsletter signup")
+        #expect(arg["content"] as? String == "<p>Hi</p>")
+    }
+
+    @Test func syncedPatternJSEscapesQuotesAndScriptClose() throws {
+        let title = #"A "quoted" </script> title"#
+        let pattern = WPSyncedPattern(id: 123, status: "publish", title: title, content: "")
+        let arg = try argument(EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .loaded(pattern)))
+        #expect(arg["title"] as? String == title)
+    }
+
+    @Test func syncedPatternJSNotFound() {
+        #expect(EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .notFound).contains(#""notFound":true"#))
+    }
+
+    @Test func syncedPatternJSFailed() {
+        #expect(EditorCoordinator.syncedPatternJS(generation: 7, ref: 123, result: .failed).contains(#""failed":true"#))
+    }
+}

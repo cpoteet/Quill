@@ -31,6 +31,8 @@ public struct EditorView: NSViewRepresentable {
     var onDropRejected: ((String) -> Void)?
     var onSearchLinks: ((String) async throws -> [LinkSearchResult])?
     var onRequestMediaSizes: ((Int) async -> WPMedia?)?
+    var onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)?
+    var onOpenSyncedPattern: ((Int) -> Void)?
     var onSelectionChanged: ((CGRect?) -> Void)?
     var onStatsChanged: ((Int, Int) -> Void)?
     var onBlocksAtRisk: (([String]) -> Void)?
@@ -58,6 +60,8 @@ public struct EditorView: NSViewRepresentable {
         onDropRejected: ((String) -> Void)? = nil,
         onSearchLinks: ((String) async throws -> [LinkSearchResult])? = nil,
         onRequestMediaSizes: ((Int) async -> WPMedia?)? = nil,
+        onRequestSyncedPattern: ((Int) async -> SyncedPatternResult)? = nil,
+        onOpenSyncedPattern: ((Int) -> Void)? = nil,
         onSelectionChanged: ((CGRect?) -> Void)? = nil,
         onStatsChanged: ((Int, Int) -> Void)? = nil,
         onBlocksAtRisk: (([String]) -> Void)? = nil,
@@ -84,6 +88,8 @@ public struct EditorView: NSViewRepresentable {
         self.onDropRejected = onDropRejected
         self.onSearchLinks = onSearchLinks
         self.onRequestMediaSizes = onRequestMediaSizes
+        self.onRequestSyncedPattern = onRequestSyncedPattern
+        self.onOpenSyncedPattern = onOpenSyncedPattern
         self.onSelectionChanged = onSelectionChanged
         self.onStatsChanged = onStatsChanged
         self.onBlocksAtRisk = onBlocksAtRisk
@@ -112,6 +118,8 @@ public struct EditorView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "customHTML")
         config.userContentController.add(context.coordinator, name: "showLinkPicker")
         config.userContentController.add(context.coordinator, name: "requestMediaSizes")
+        config.userContentController.add(context.coordinator, name: "requestSyncedPatterns")
+        config.userContentController.add(context.coordinator, name: "openSyncedPattern")
         config.userContentController.add(context.coordinator, name: "selectionChanged")
         config.userContentController.add(context.coordinator, name: "statsChanged")
         config.userContentController.add(context.coordinator, name: "blocksAtRisk")
@@ -138,6 +146,8 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onCustomHTML = onCustomHTML
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
+        context.coordinator.onRequestSyncedPattern = onRequestSyncedPattern
+        context.coordinator.onOpenSyncedPattern = onOpenSyncedPattern
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
         context.coordinator.onBlocksAtRisk = onBlocksAtRisk
@@ -164,6 +174,8 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onCustomHTML = onCustomHTML
         context.coordinator.onSearchLinks = onSearchLinks
         context.coordinator.onRequestMediaSizes = onRequestMediaSizes
+        context.coordinator.onRequestSyncedPattern = onRequestSyncedPattern
+        context.coordinator.onOpenSyncedPattern = onOpenSyncedPattern
         context.coordinator.onSelectionChanged = onSelectionChanged
         context.coordinator.onStatsChanged = onStatsChanged
         context.coordinator.onBlocksAtRisk = onBlocksAtRisk

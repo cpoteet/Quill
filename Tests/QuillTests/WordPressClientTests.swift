@@ -1107,4 +1107,68 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(value("offset") == "29")
         #expect(value("per_page") == "30")
     }
+
+    // MARK: - Synced patterns
+
+    @Test func fetchSyncedPatternRequestsBlocksEndpointWithEditContext() async throws {
+        nonisolated(unsafe) var captured: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            captured = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    #"{"id":123,"status":"publish","title":{"raw":"T"},"content":{"raw":"C"}}"#.data(using: .utf8)!)
+        }
+        _ = try await client.fetchSyncedPattern(id: 123)
+        let url = try #require(captured?.url)
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(url.path == "/wp-json/wp/v2/blocks/123")
+        #expect(items.first { $0.name == "context" }?.value == "edit")
+        #expect(items.first { $0.name == "_fields" }?.value == "id,status,title,content")
+    }
+
+    @Test func fetchSyncedPatternDecodesStatusRawTitleAndContent() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":123,"status":"trash","title":{"raw":"Newsletter signup"},"content":{"raw":"<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->","protected":false}}"#.data(using: .utf8)!)
+        }
+        let pattern = try await client.fetchSyncedPattern(id: 123)
+        #expect(pattern.id == 123)
+        #expect(pattern.status == "trash")
+        #expect(pattern.title == "Newsletter signup")
+        #expect(pattern.content == "<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->")
+    }
+
+    @Test func fetchSyncedPatternDecodesEntitiesInTheTitle() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"id":123,"status":"publish","title":{"raw":"Q&amp;A &#8211; live"},"content":{"raw":"C"}}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.fetchSyncedPattern(id: 123).title == "Q&A \u{2013} live")
+    }
+
+    @Test func fetchSyncedPatternThrowsHTTPErrorOn404() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!,
+             #"{"code":"rest_post_invalid_id"}"#.data(using: .utf8)!)
+        }
+        do {
+            _ = try await client.fetchSyncedPattern(id: 123)
+            Issue.record("Expected APIError.httpError to be thrown")
+        } catch let error as APIError {
+            guard case .httpError(let code, _) = error else {
+                Issue.record("Expected httpError, got \(error)")
+                return
+            }
+            #expect(code == 404)
+        }
+    }
+
+    @Test func syncedPatternEditURLAtDomainRoot() {
+        #expect(client.syncedPatternEditURL(id: 123)?.absoluteString == "https://example.com/wp-admin/post.php?post=123&action=edit")
+    }
+
+    @Test func syncedPatternEditURLInSubdirectory() {
+        let blog = WordPressClient(credentials: Credentials(
+            siteURL: URL(string: "https://example.com/blog/")!, username: "user", appPassword: "pass"))
+        #expect(blog.syncedPatternEditURL(id: 123)?.absoluteString == "https://example.com/blog/wp-admin/post.php?post=123&action=edit")
+    }
 }

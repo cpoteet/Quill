@@ -40,6 +40,11 @@ an unedited capture.
 | `settings-embed.html` | A responsive YouTube `core/embed`, whose URL holds the `\u0026` escape |
 | `settings-gallery.html` | Hand-written, not a site capture, then passed through core's own `serialize(parse())` so the bytes are what WordPress writes: a `core/gallery` linked to attachment pages at Medium with a gallery caption and an image class, and one with mixed sizes, a custom link and a formatted caption |
 | `settings-inline-formats.html` | Hand-written, not a site capture: a paragraph holding core's text-colour format with a custom colour and with a palette colour, and core's underline format, each as `@wordpress/rich-text`'s `toHTMLString` writes them with the two formats registered as `@wordpress/format-library` declares them |
+| `settings-group-tags.html` | Hand-written, checked against core's `serialize(parse())`: one `core/group` each with `tagName` `section`, `header`, `footer`, `main`, `aside` and `article` |
+| `settings-group-layouts.html` | Hand-written, checked the same way: a constrained Group, a Row (`flex`, `nowrap`), a Stack (`flex`, vertical) and a Grid |
+| `settings-group-styled.html` | Hand-written, checked the same way: a Group with a background colour, padding, a border, an anchor, an extra class and a custom name, holding a heading, a paragraph and a list |
+| `settings-group-nested.html` | Hand-written, checked the same way: a Group in a Group, and a Group inside a Column |
+| `group-unsupported-children.html` | Hand-written: Groups that must stay locked cards, one per reason (a Spacer, a Cover, a shortcode, Custom HTML, a synced pattern, a third-party block, a self-closing dynamic block, no inner blocks, the old inner container, a `nav` tag, a markup-less image, stray text, a stray element), and a Columns whose Column holds a Group with a Spacer. Several fail WordPress's validator on purpose; covered by byte preservation and the "nothing new" rule |
 
 The twelve `settings-*.html` files were captured together from one throwaway
 draft on WordPress 7.1 (`block-library.js` of 2026-08-20), which was deleted
@@ -86,7 +91,8 @@ bytes are the test.
 
 `./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"` runs
 every `settings-*.html` here through the real WKWebView — load, save untouched,
-save after an edit, and save again for idempotency. The jsdom suites cannot see
+save after an edit, and save again for idempotency. A `settings-group*.html` must also load with
+no locked card, since a Group wrapped as a card would pass the byte checks too. The jsdom suites cannot see
 a WebKit/jsdom divergence, and the inline-style bug that motivated this runner
 was green in jsdom while invalidating every coloured block in WordPress.
 

@@ -1436,8 +1436,8 @@ describe('the whole settings fixture corpus', () => {
   const dir = path.resolve(__dirname, 'fixtures')
   const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
 
-  test('the corpus is the twenty-four settings fixtures', () => {
-    assert.equal(names.length, 24)
+  test('the corpus is the twenty-eight settings fixtures', () => {
+    assert.equal(names.length, 28)
   })
 
   for (const name of names) {
