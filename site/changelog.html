@@ -49,6 +49,7 @@
       <details class="toc__disclosure" data-collapse-width="760" open>
         <summary class="toc__heading">Releases <span class="toc__count"></span></summary>
         <ul class="toc__list">
+          <li><a href="#v2.4.0" class="toc__link"><span>v2.4.0</span><span class="toc__date">Oct 13</span></a></li>
           <li><a href="#v2.3.0" class="toc__link"><span>v2.3.0</span><span class="toc__date">Oct 8</span></a></li>
           <li><a href="#v2.2.0" class="toc__link"><span>v2.2.0</span><span class="toc__date">Oct 3</span></a></li>
           <li><a href="#v2.1.0" class="toc__link"><span>v2.1.0</span><span class="toc__date">Sep 30</span></a></li>
@@ -71,11 +72,80 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.4.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.4.0</h2>
+          <span class="release__date">October 13, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(3)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Groups and Patterns Open for Editing</h4>
+            <p class="release__body">A Group, Row, Stack or Grid now opens for editing when everything inside it is a block Quill can edit, instead of always showing as a locked card. Most patterns are built from Groups, so posts that use them can now be edited in Quill. Each Group's colors, spacing and layout are kept exactly as they were.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Clearer Cards for Blocks Quill Can't Edit</h4>
+            <p class="release__body">Cards for blocks Quill can't edit are now one row that names the block type and the name you gave it in List View, such as "Cover: Membership hero", instead of a preview of the block's code. A synced pattern's card shows the pattern's title from your site and has an Edit in WordPress button, and it says "not found" when your site wouldn't display the pattern.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Inline Images and Table Cells</h4>
+            <p class="release__body">Images that sit inside a line of text, in a paragraph or a table cell, now stay where they are with their markup unchanged. Before, Quill turned them into image blocks, which split the paragraph around the image and caused WordPress to delete images in table cells the next time the post was saved there. Inserting an image into a table cell now adds an inline image, and other blocks inserted from a cell, such as a gallery or an embed, go after the table instead of being lost.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(7)</span></h3>
+          <ul class="release__list">
+            <li><strong>Refresh reloads the open post</strong> — Refresh now also reloads the open post or page when it changed on WordPress and you have no unsaved changes, so a post edited, scheduled or published elsewhere shows its current content and status without being reopened.</li>
+            <li><strong>AI results kept when you click away</strong> — Clicking elsewhere in the post while an AI result is waiting now keeps the result, which ⌘Z can still undo, instead of quietly restoring your original text.</li>
+            <li><strong>New drafts start untitled</strong> — A new draft's title field is empty and shows its "Title" placeholder, so WordPress never receives "Untitled" as a real title.</li>
+            <li><strong>Missing footnotes can be filled in</strong> — When a post has footnote markers but WordPress has no text stored for them, Quill now shows an empty note for each marker to type in, instead of a locked Footnotes card.</li>
+            <li><strong>Cursor goes into new items</strong> — Adding a column, button, accordion section or tab puts the cursor in it so you can start typing.</li>
+            <li><strong>Tab title placeholder</strong> — An empty tab title now shows a gray "Tab title" hint, as Accordion and Details titles do.</li>
+            <li><strong>"Saved to WordPress" confirmation</strong> — Sending a local draft to WordPress as a draft now says "Saved to WordPress" instead of the generic "Draft saved".</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(24)</span></summary>
+          <ul class="release__list">
+            <li>Changing a scheduled post's Status to Published and saving now publishes it right away instead of leaving it scheduled.</li>
+            <li>The status icon next to the title now changes only after a save succeeds, not as soon as you choose a new Status.</li>
+            <li>Switching to another post right after pressing ⌘S no longer causes a false "Conflict Detected" the next time you save that post.</li>
+            <li>The Slug field now shows the address WordPress assigned as soon as you publish, without reopening the post.</li>
+            <li>Dates in the sidebar now show your local time, matching Post Settings, instead of the server's date.</li>
+            <li>Resizing the window no longer makes the post flash blank.</li>
+            <li>Opening a post no longer briefly shows an empty "Start writing…" editor before the post appears.</li>
+            <li>Pressing Tab outside a list or table no longer moves the cursor to an image caption or button, and in a code block or Preformatted it inserts a tab.</li>
+            <li>Code blocks, Preformatted text and inline code now keep straight quotes and plain dashes.</li>
+            <li>⌘← and ⌘→ at the edge of a paragraph no longer select the card next to it, which made the next keystroke replace the card.</li>
+            <li>Pressing Return on an empty line just above a quote's or pullquote's citation now leaves the quote instead of splitting it.</li>
+            <li>A table just before the footnotes now has an empty line after it to type in, and ↓ from its last cell no longer lands in a footnote.</li>
+            <li>The image toolbar now stays with the image after a size change, and its W and H fields keep showing the size.</li>
+            <li>Saving a post written in the WordPress editor no longer rewrites its text color or underline markup, changes the order of its image classes, or changes the link setting of an image edited in WordPress.</li>
+            <li>A footnote list pasted in Code View no longer keeps the ↩︎ back link in the footnote text.</li>
+            <li>⌘N now clears the sidebar search, so the new draft appears in the list.</li>
+            <li>A category you add in Post Settings now appears at the top of the list instead of below every existing category.</li>
+            <li>In Media, the upload spinner now keeps going until every upload has finished.</li>
+            <li>A document, audio file or video uploaded while its Media filter is selected now stays in that filter.</li>
+            <li>Choosing Upload Media while Media is already showing no longer closes the inspector.</li>
+            <li>Link search now says "Couldn't search" and gives the reason when a search fails, instead of showing an empty list.</li>
+            <li>When Quill can't reach your site, Settings and the manual connection panel now say "Couldn't reach" with the site's address, instead of showing a raw system error.</li>
+            <li>Clicking Save in Settings now checks a newly entered Anthropic key and clears an earlier rejection message.</li>
+            <li>A failed save in Settings no longer clears your writing-style samples.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.3.0">
         <header class="release__header">
           <h2 class="release__version">v2.3.0</h2>
           <span class="release__date">October 8, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
