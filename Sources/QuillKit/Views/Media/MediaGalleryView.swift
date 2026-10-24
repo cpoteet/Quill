@@ -100,6 +100,31 @@ final class MediaGalleryItem: NSCollectionViewItem {
     }
 }
 
+// A plain flow layout puts the spare width into the gaps; this widens the tiles instead.
+final class StretchingFlowLayout: NSCollectionViewFlowLayout {
+    private let minimumTileWidth: CGFloat = 140
+    private let captionHeight: CGFloat = 22
+
+    // Read through the delegate: an itemSize set during a bounds-change pass is ignored.
+    var tileSize: NSSize {
+        guard let width = collectionView?.enclosingScrollView?.contentSize.width, width > 0 else { return itemSize }
+        let available = width - sectionInset.left - sectionInset.right
+        let columns = max(1, ((available + minimumInteritemSpacing) / (minimumTileWidth + minimumInteritemSpacing)).rounded(.down))
+        let tile = ((available - (columns - 1) * minimumInteritemSpacing) / columns).rounded(.down)
+        return NSSize(width: tile, height: tile + captionHeight)
+    }
+
+    override func shouldInvalidateLayout(forBoundsChange newBounds: NSRect) -> Bool {
+        newBounds.width != collectionView?.bounds.width
+    }
+
+    override func invalidationContext(forBoundsChange newBounds: NSRect) -> NSCollectionViewLayoutInvalidationContext {
+        let context = super.invalidationContext(forBoundsChange: newBounds)
+        (context as? NSCollectionViewFlowLayoutInvalidationContext)?.invalidateFlowLayoutDelegateMetrics = true
+        return context
+    }
+}
+
 final class MediaCollectionView: NSCollectionView {
     var itemAt: ((NSPoint) -> WPMedia?)?
     var onContextMenu: ((WPMedia) -> NSMenu?)?
@@ -165,8 +190,7 @@ struct MediaGalleryView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let layout = NSCollectionViewFlowLayout()
-        layout.itemSize = NSSize(width: 150, height: 172)
+        let layout = StretchingFlowLayout()
         layout.minimumInteritemSpacing = 10
         layout.minimumLineSpacing = 10
         layout.sectionInset = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
@@ -240,7 +264,7 @@ struct MediaGalleryView: NSViewRepresentable {
         context.coordinator.apply(items: items, selection: selection)
     }
 
-    @MainActor final class Coordinator: NSObject, NSCollectionViewDataSource, NSCollectionViewDelegate {
+    @MainActor final class Coordinator: NSObject, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
         var parent: MediaGalleryView
         var items: [WPMedia] = []
         let menuTarget = MediaMenuTarget()
@@ -281,6 +305,12 @@ struct MediaGalleryView: NSViewRepresentable {
             } else if !collectionView.selectionIndexPaths.isEmpty {
                 collectionView.deselectAll(nil)
             }
+        }
+
+        func collectionView(_ collectionView: NSCollectionView,
+                            layout collectionViewLayout: NSCollectionViewLayout,
+                            sizeForItemAt indexPath: IndexPath) -> NSSize {
+            (collectionViewLayout as? StretchingFlowLayout)?.tileSize ?? .zero
         }
 
         func collectionView(_ collectionView: NSCollectionView,

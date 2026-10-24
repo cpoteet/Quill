@@ -18,6 +18,7 @@ struct MediaLibraryView: View {
 
     var body: some View {
         galleryWithAlerts
+            .background(SplitItemCollapseFix(behavior: .inspector).frame(width: 0, height: 0))
             .navigationTitle(appState.selectedMedia?.title.decodedTitle ?? "Media")
             .toolbar {
                 if previewedMedia != nil {
@@ -65,12 +66,14 @@ struct MediaLibraryView: View {
                     )
                     .id(media.id)
                     .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                    .background(InspectorTitlebarFix().frame(width: 0, height: 0))
                 } else {
                     Text("No Selection")
                         .font(.body)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                        .background(InspectorTitlebarFix().frame(width: 0, height: 0))
                 }
             }
             .task(id: reloadKey) { await loadMedia() }

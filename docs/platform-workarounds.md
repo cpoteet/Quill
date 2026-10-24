@@ -18,7 +18,7 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 ### Inspector panel stops below the toolbar on reopen
 
 - **Bug:** after the first open, AppKit keeps the editor pane's titlebar background at full window width on each reopen. It paints over the top 52pt of the inspector.
-- **Code:** `InspectorTitlebarFix.trimContentTitlebar()` in `Views/Editor/InspectorTitlebarFix.swift`. It is attached in `PostEditorView`'s `.inspector` content.
+- **Code:** `InspectorTitlebarFix.trimContentTitlebar()` in `Views/Editor/InspectorTitlebarFix.swift`. It is attached in the `.inspector` content of `PostEditorView` and `MediaLibraryView`.
 - **Test:** open Post Settings, close it, then open it again. The panel's background must reach the top edge of the window.
 - **Detail:** `docs/gotchas.md`, "Re-expanding the inspector needs `InspectorTitlebarFix`".
 - **Last checked:** macOS 27.0, 2026-09-19.
@@ -34,7 +34,7 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 ### Opening the inspector makes the editor flash blank
 
 - **Bug:** the inspector's split item uncollapses with AppKit's default `preferResizingSplitViewWithFixedSiblings`. The window cannot grow, so the inner split view grows past the window edge. On every animation frame, Auto Layout then squashes the editor pane to its 100pt minimum height and SwiftUI restores it. That squashes the web view from 552pt to 52pt about 15 times per open, and WebKit paints the post body blank on any frame that catches the squash.
-- **Code:** `.background(SplitItemCollapseFix(behavior: .inspector))` in `PostEditorView`, placed before `.inspector`. The helper is `Views/SplitItemCollapseFix.swift`.
+- **Code:** `.background(SplitItemCollapseFix(behavior: .inspector))` in `PostEditorView` and `MediaLibraryView`, placed before `.inspector`. The helper is `Views/SplitItemCollapseFix.swift`. In the Media Library the same squash re-dequeues every visible grid cell on each frame, so thumbnails flash their placeholder and the panel pops in at the end of the animation instead of sliding.
 - **Test:** with text in the editor, record an inspector open. The post text must never vanish, and the text column must narrow over several frames. Without the fix the width does not animate and the text blanks out on about 3 frames. For a more precise check, temporarily log `DroppableWebView.setFrameSize`: the height must stay constant during the open.
 - **Detail:** `docs/gotchas.md`, "A split item's default uncollapse grows the split view".
 - **Last checked:** macOS 27.0, 2026-10-05.
