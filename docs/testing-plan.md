@@ -4286,6 +4286,7 @@ human is required.
 - [ ] **No thumbnail flash.** With 30+ images loaded, open and close Media Info, and drag the window edge wider and narrower → the thumbnails do not return to their gray placeholder, and the inspector slides in without a late pop (`SplitItemCollapseFix`, `InspectorTitlebarFix`, `SplitItemSizePin`).
 - [ ] Space opens the large preview. Space closes it. Escape closes it.
 - [ ] Double-clicking a thumbnail opens the large preview.
+- [ ] Closing the large preview (Space, Esc, Back to Media, or a click outside it) deselects the item, and the open inspector shows "No Selection". Esc with no preview open and nothing focused leaves the selection alone. Clicking another filter in the sidebar deselects the item; clicking the filter that is already selected does not. Uploading a PDF while Images is selected still switches to All Media with the upload selected.
 - [ ] Typing a space in the search field does NOT open the preview.
 - [ ] Scrolling to the bottom loads the next page.
 - [ ] **A first page that fits the window still pages.** Make the window tall enough (or wide enough) that all 30 thumbnails are visible with no scrollbar → page 2 loads anyway. Paging hangs off the last cell being displayed, not off scrolling, so an unscrollable first page must not strand the library at 30 items.
