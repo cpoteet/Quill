@@ -19,6 +19,7 @@ struct MediaLibraryView: View {
     var body: some View {
         galleryWithAlerts
             .background(SplitItemCollapseFix(behavior: .inspector).frame(width: 0, height: 0))
+            .background(SplitItemSizePin().frame(width: 0, height: 0))
             .navigationTitle(appState.selectedMedia?.title.decodedTitle ?? "Media")
             .toolbar {
                 if previewedMedia != nil {
