@@ -459,6 +459,26 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(media.count == 2)
     }
 
+    @Test func mediaMatchesSearchSendsIncludeAndSearch() async throws {
+        var query: [String: String] = [:]
+        MockURLProtocol.requestHandler = { request in
+            let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            query = Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[\(minimalMediaJSON)]".data(using: .utf8)!)
+        }
+        let matches = try await client.mediaMatchesSearch(id: 5, search: "sun set")
+        #expect(query == ["include": "5", "search": "sun set", "per_page": "1", "context": "edit"])
+        #expect(matches)
+    }
+
+    @Test func mediaMatchesSearchIsFalseForNoResults() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("[]".utf8))
+        }
+        #expect(try await client.mediaMatchesSearch(id: 5, search: "sunset") == false)
+    }
+
     @Test func updateMediaAltTextSendsPostToMediaEndpoint() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

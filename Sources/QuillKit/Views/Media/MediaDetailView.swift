@@ -131,6 +131,7 @@ private struct SavingTextFieldRow: View {
 
     @State private var draft: String
     @State private var lastSaved: String
+    @State private var savingText: String?
     @State private var saveState: SaveState = .idle
     @State private var isSaving = false
     @State private var saveAgain = false
@@ -160,7 +161,7 @@ private struct SavingTextFieldRow: View {
                 .accessibilityLabel(label)
                 .onSubmit { commit() }
                 .onExitCommand {
-                    draft = lastSaved
+                    draft = savingText ?? lastSaved
                     focused = false
                 }
                 .focused($focused)
@@ -203,6 +204,7 @@ private struct SavingTextFieldRow: View {
         guard draft != lastSaved else { return }
         let text = draft
         isSaving = true
+        savingText = text
         saveState = .saving
         Task {
             do {
@@ -210,6 +212,7 @@ private struct SavingTextFieldRow: View {
             } catch {
                 await MainActor.run {
                     isSaving = false
+                    savingText = nil
                     saveState = .failed(error.localizedDescription)
                     if saveAgain {
                         saveAgain = false
@@ -221,6 +224,7 @@ private struct SavingTextFieldRow: View {
             await MainActor.run {
                 lastSaved = text
                 isSaving = false
+                savingText = nil
                 saveState = .saved
                 if saveAgain {
                     saveAgain = false

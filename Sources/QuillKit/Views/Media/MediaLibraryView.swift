@@ -13,6 +13,7 @@ struct MediaLibraryView: View {
     @State private var mediaPendingDelete: WPMedia?
     @State private var deleteError: String?
     @State private var uploadError: String?
+    @State private var searchChecks: [Int: Int] = [:]
 
     private let perPage = 30
 
@@ -50,17 +51,17 @@ struct MediaLibraryView: View {
                     MediaDetailView(
                         media: media,
                         onSaveTitle: { [media] title in
-                            try await saveField(of: media, reloadingSearch: true) {
+                            try await saveField(of: media, recheckingSearch: true) {
                                 try await $0.updateMediaTitle(id: media.id, title: title)
                             } apply: { $0.title = $1.title }
                         },
                         onSaveAltText: { [media] altText in
-                            try await saveField(of: media, reloadingSearch: false) {
+                            try await saveField(of: media, recheckingSearch: false) {
                                 try await $0.updateMediaAltText(id: media.id, altText: altText)
                             } apply: { $0.altText = $1.altText }
                         },
                         onSaveCaption: { [media] caption in
-                            try await saveField(of: media, reloadingSearch: true) {
+                            try await saveField(of: media, recheckingSearch: true) {
                                 try await $0.updateMediaCaption(id: media.id, caption: caption)
                             } apply: { $0.caption = $1.caption }
                         }
@@ -165,14 +166,26 @@ struct MediaLibraryView: View {
     }
 
     // Applies only the saved field, so overlapping saves of different fields cannot undo each other.
-    private func saveField(of media: WPMedia, reloadingSearch: Bool,
+    private func saveField(of media: WPMedia, recheckingSearch: Bool,
                            _ send: (WordPressClient) async throws -> WPMedia,
                            apply: (inout WPMedia, WPMedia) -> Void) async throws {
         guard let creds = appState.credentials else { throw APIError.notConnected }
-        let updated = try await send(WordPressClient(credentials: creds))
+        let client = WordPressClient(credentials: creds)
+        let updated = try await send(client)
         appState.updateMedia(id: media.id, fromSite: creds.siteKey) { apply(&$0, updated) }
-        if reloadingSearch, !appState.mediaSearchText.isEmpty, appState.credentials?.siteKey == creds.siteKey {
-            appState.mediaRefreshToken += 1
+        guard recheckingSearch, !appState.mediaSearchText.isEmpty,
+              appState.credentials?.siteKey == creds.siteKey else { return }
+        let query = reloadKey
+        let check = (searchChecks[media.id] ?? 0) + 1
+        searchChecks[media.id] = check
+        let matches = try? await client.mediaMatchesSearch(id: media.id, search: appState.mediaSearchText)
+        // Only the latest check for an item counts; an earlier one can answer after it.
+        guard reloadKey == query, searchChecks[media.id] == check else { return }
+        let isListed = appState.mediaItems.contains { $0.id == media.id }
+        switch matches {
+        case false? where isListed: appState.mediaItems.removeAll { $0.id == media.id }
+        case true? where !isListed, nil: appState.mediaRefreshToken += 1
+        default: break
         }
     }
 
@@ -256,6 +269,11 @@ extension MediaLibraryView {
                             offset: offset)
             // A filter, search or site change during the request makes this page part of another list.
             guard reloadKey == query else { return }
+            // An insert or removal during the request moved the window, so this page may skip or repeat one.
+            guard appState.mediaItems.count == offset else {
+                Task { await loadMoreMedia() }
+                return
+            }
             appState.mediaItems.append(contentsOf: items)
             hasMore = items.count == perPage
         } catch is CancellationError {

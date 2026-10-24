@@ -192,4 +192,46 @@ describe('insertImage with a library caption', () => {
     assert.doesNotMatch(insert(null), /<figcaption/)
     assert.doesNotMatch(insert(''), /<figcaption/)
   })
+
+  const shape = () => {
+    const parts = []
+    editor.state.doc.forEach(n => parts.push(n.type.name === 'image' ? `image(${n.textContent})` : n.type.name))
+    return parts.join(' | ')
+  }
+
+  test('the image keeps its source, media id and alt, and the caret paragraph follows it', () => {
+    insert('Credit')
+    const [image] = images()
+    assert.equal(image.attrs.src, 'https://example.com/a.jpg')
+    assert.equal(image.attrs.mediaId, 7)
+    assert.equal(image.attrs.alt, 'Alt')
+    assert.equal(shape(), 'image(Credit) | paragraph')
+  })
+
+  test('two block paragraphs flatten into the one image caption', () => {
+    insert('<p>One</p><p>Two</p>')
+    assert.equal(shape(), 'image(OneTwo) | paragraph')
+  })
+
+  test('a caption that parses to nothing inserts a plain image', () => {
+    for (const caption of ['<p></p>', '   ', '<script>window.ran = true</script>']) {
+      insert(caption)
+      assert.equal(images().length, 1, caption)
+      assert.equal(images()[0].textContent, '', caption)
+      assert.doesNotMatch(win.getContent(), /<figcaption[^>]*>\S/, caption)
+    }
+  })
+
+  test('in a table cell the caption is dropped and an inline image goes in', () => {
+    win.setContent('<table><tbody><tr><td><p>cell</p></td></tr></tbody></table>', '')
+    editor.commands.setTextSelection(4)
+    win.insertImage('https://example.com/a.jpg', 7, 'Alt', 800, 'Dropped caption')
+    const inline = []
+    editor.state.doc.descendants((n, pos) => {
+      if (n.type.name === 'inlineImage') inline.push(editor.state.doc.resolve(pos).parent.type.name)
+    })
+    assert.deepEqual(inline, ['paragraph'])
+    assert.equal(images().length, 0)
+    assert.doesNotMatch(editor.state.doc.textContent, /Dropped caption/)
+  })
 })

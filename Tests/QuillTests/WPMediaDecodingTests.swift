@@ -48,6 +48,25 @@ import Testing
         #expect(media.mediaDetails?.filesize == nil)
     }
 
+    @Test func filesizeDecodesFromAFloat() throws {
+        let json = """
+        {"id":6,"source_url":"https://example.com/photo.png",
+         "media_details":{"width":10,"height":10,"filesize":44606.0}}
+        """
+        #expect(try decode(json).mediaDetails?.filesize == 44606)
+    }
+
+    @Test func aMalformedFilesizeIsNilAndKeepsTheOtherDetails() throws {
+        let json = """
+        {"id":7,"source_url":"https://example.com/photo.png",
+         "media_details":{"width":10,"height":20,"filesize":"large"}}
+        """
+        let details = try decode(json).mediaDetails
+        #expect(details?.filesize == nil)
+        #expect(details?.width == 10)
+        #expect(details?.height == 20)
+    }
+
     @Test func missingMediaDetailsIsNil() throws {
         let json = """
         {"id":3,"source_url":"https://example.com/doc.pdf",
@@ -205,6 +224,13 @@ import Testing
          "caption":{"rendered":"<p>x</p>","raw":"  Photo by <a href=\\"https://example.com\\">Jane</a> &amp; co\\n"}}
         """
         #expect(try decode(json).captionHTML == "Photo by <a href=\"https://example.com\">Jane</a> &amp; co")
+    }
+
+    @Test func captionHTMLIsEmptyForABlankRawCaption() throws {
+        let json = """
+        {"id":23,"source_url":"https://example.com/img.jpg","caption":{"rendered":"","raw":" \\n "}}
+        """
+        #expect(try decode(json).captionHTML == "")
     }
 
     @Test func captionHTMLIsEmptyWithoutARawCaption() throws {

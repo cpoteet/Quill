@@ -142,7 +142,7 @@
           <li><strong>Drafts</strong> lists local drafts: posts and pages that exist only on your Mac and haven't been sent to WordPress yet. They're available even when your site isn't.</li>
           <li><strong>Media</strong> turns the sidebar into a list of filters (All Media, Images, Documents, Audio, Video) and shows your media library as a grid in the main area.</li>
         </ul>
-        <p class="docs-body">The search field below the section buttons filters the current list by title. In Media, it searches the library by file name and title.</p>
+        <p class="docs-body">The search field below the section buttons filters the current list by title. In Media, it searches the library by file name, title and caption.</p>
         <p class="docs-body">In Posts and Pages, the filter button to the right of the search field shows only items with one status: Published, Draft or Scheduled, plus Pending and Private when your site has any. Each choice shows how many items it holds. While a filter is on, the button is filled in, and search works within the filtered list. Scheduled lists the next item to go out first. Choose <strong>All Posts</strong> (or <strong>All Pages</strong>) to turn the filter off. A filter with nothing in it reads "No scheduled posts", for example. Posts and Pages each remember their own filter until you quit Quill.</p>
         <p class="docs-body">Click an item to open it. To remove one, right-click it:</p>
         <ul class="docs-list">
@@ -418,7 +418,7 @@
         <p class="docs-body">With an image selected, the left, center and right buttons in the second toolbar row float it to one side with text wrapping around it, or center it. The image stays selected after you change its alignment, so the image toolbar stays open.</p>
         <h4 class="docs-h4" id="captions">Captions</h4>
         <p class="docs-body">A caption is optional. To add one, click the space just below the image and type. Press Return to leave the caption and start a new paragraph. Because the cursor lands below the image after you insert it, typing straight away adds body text, not a caption.</p>
-        <p class="docs-body">If an image you pick from the media library already has a caption, Quill fills it in, with its formatting and links. Change or delete it like any other caption; the image in your media library isn't changed.</p>
+        <p class="docs-body">If you insert a single image from the media library and it already has a caption there, Quill fills the caption in, with its formatting and links. Change or delete it like any other caption; the image in your media library isn't changed.</p>
         <h4 class="docs-h4">Linking to the Full-Size Image</h4>
         <p class="docs-body">Click <strong>Link to Full Image</strong> in the image toolbar to make the image a link to its original, full-size file. Readers who click it on your site see (or download) the full-size version. Click the button again to remove the link. This works whatever size the image is shown at in the post.</p>
         <h4 class="docs-h4" id="inline-images">Inline Images</h4>
@@ -602,7 +602,7 @@
         <h2 class="docs-h2">Media Library</h2>
         <p class="docs-body">Click <strong>Media</strong> at the top of the sidebar to browse everything uploaded to your site. The sidebar shows a list of filters and the library fills the main area as a grid, newest first.</p>
         <h3 class="docs-h3">Browsing</h3>
-        <p class="docs-body">Images show as thumbnails, and other files show a file icon. Click an item to select it, and use the arrow keys to move the selection. More items load as you scroll.</p>
+        <p class="docs-body">Images show as thumbnails, and other files show a file icon. The thumbnails grow or shrink with the window so each row fills its width. Click an item to select it, and use the arrow keys to move the selection. More items load as you scroll.</p>
         <p class="docs-body">The filters narrow the grid to one kind of file. <strong>Documents</strong> covers PDFs and office files. Plain-text files such as <code>.txt</code> and <code>.csv</code> aren't included there; you'll find them under <strong>All Media</strong>. The search field searches within the current filter, so if a file you expect is missing, clear the search or switch to All Media. A filter with nothing in it reads "No images" (or documents, audio, video) and suggests choosing <strong>All Media</strong>.</p>
         <p class="docs-body">Right-click an item for these commands:</p>
         <div class="docs-table-wrap">
@@ -640,8 +640,8 @@
             </tbody>
           </table>
         </div>
-        <p class="docs-body">To change the title, alt text or caption, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> under the field. If the save fails, it shows <strong>Not saved</strong> with the reason, and your text stays in the field so you can try again. To back out of an edit, press Esc: the field goes back to what was last saved, and nothing is sent.</p>
-        <p class="docs-body">Changing the title doesn't rename the file or change its address; WordPress can't rename a file once it's uploaded. A new caption or alt text is used the next time you insert the image. Posts that already use the image keep the caption and alt text they were given.</p>
+        <p class="docs-body">To change the title, alt text or caption, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> beside the field's name. If the save fails, it shows <strong>Not saved</strong> with the reason under the field, and your text stays in the field so you can try again. To back out of an edit, press Esc: the field goes back to what was last saved, and nothing is sent. If a save is already under way when you press Esc, the field keeps the text being saved.</p>
+        <p class="docs-body">Changing the title doesn't rename the file or change its address; WordPress can't rename a file once it's uploaded. While you're searching the library, an item whose new title or caption no longer matches the search drops out of the results. A new caption or alt text is used the next time you insert the image. Posts that already use the image keep the caption and alt text they were given.</p>
         <h3 class="docs-h3" id="uploading">Uploading</h3>
         <p class="docs-body">Choose <strong>Upload Media…</strong> from the <strong>+</strong> menu, or <strong>File → New Media…</strong> (⌥⌘N) from anywhere in Quill. Pick a file in the window that opens. You can upload images, PDFs, Word, Excel and PowerPoint files, and plain-text files such as <code>.txt</code> and <code>.csv</code>. Video and audio files can't be uploaded from Quill; upload them in WordPress and they'll appear here.</p>
         <p class="docs-body">The new item appears at the top of the grid, already selected. If the current filter wouldn't show it, for example a PDF uploaded while <strong>Images</strong> is selected, Quill switches to <strong>All Media</strong> so it's still in view. If a search is active, Quill clears it for the same reason.</p>
@@ -776,7 +776,7 @@
         <dl class="docs-keys">
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></dt><dd class="docs-keys__action">Move the selection</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Space</kbd></dt><dd class="docs-keys__action">Open or close the large preview</dd></div>
-          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Close the preview</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Close the preview, or undo an unsaved edit in a details field</dd></div>
         </dl>
         <h3 class="docs-h3">AI</h3>
         <dl class="docs-keys">

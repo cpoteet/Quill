@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-23 — 788 Swift tests + 1,934 JS tests (1,933 pass, 1 skipped), no failures._
+_Last updated: 2026-10-24 — 796 Swift tests + 1,938 JS tests (1,937 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,12 +16,12 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (788 tests)
+1. **Swift tests** — `swift test` (796 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (14 tests — live Tiptap editor in jsdom; `window.flushContent` and `window.insertImage`'s caption)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (18 tests — live Tiptap editor in jsdom; `window.flushContent` and `window.insertImage`'s caption)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
@@ -114,7 +114,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (788 tests, 50 suites)
+## Swift test suite (796 tests, 51 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -125,10 +125,10 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
-| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 23 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 26 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 80 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 82 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -174,6 +174,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 48 | `LinkPickerModelTests` | `LinkPickerModelTests.swift` | 5 | A failed link search sets `searchError` (shown as an `InlineError`) and empties the earlier results; clearing the field, a later successful search, or typing a URL removes the error |
 | 49 | `SyncedPatternScriptTests` | `EditorCoordinatorTests.swift` | 4 | `EditorCoordinator.syncedPatternJS`: the `setSyncedPattern(generation, ref, …)` call for a loaded, not-found and failed result, with a title holding quotes and `</script>` JSON-encoded |
 | 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 5 | `PostEditorView.syncedPatternResults(for:outcome:)`: a returned pattern is loaded under its ref; a ref WordPress left out, or a pattern with a password, is not found (WordPress renders neither); any error fails every ref; a repeated ref does not trap |
+| 51 | `StretchingFlowLayoutTests` | `StretchingFlowLayoutTests.swift` | 3 | `StretchingFlowLayout.tileSize`: tiles never fall under the 140pt minimum, the row's leftover width is under one point per column, a caption strip is added to the square tile, one column in a narrow view, and the layout's `itemSize` when there is no scroll view |
 
 ---
 
@@ -229,7 +230,7 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (23 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (26 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
@@ -240,6 +241,8 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `integerDimensionsDecode` | `"width": 2560` → `Int` |
 | `floatDimensionsDecodeToInt` | `"width": 2560.0` → `Int` via the fallback path (regression guard) |
 | `filesizeDecodes` | `media_details.filesize` decodes to bytes |
+| `filesizeDecodesFromAFloat` | `"filesize": 44606.0` decodes to `44606` bytes, so the inspector's File Size row survives a float payload |
+| `aMalformedFilesizeIsNilAndKeepsTheOtherDetails` | `"filesize": "large"` → `nil`, while `width` and `height` still decode |
 | `missingFilesizeIsNil` | No `filesize` (uploads from before WordPress 6.0) → `nil`, dimensions still decode |
 | `missingMediaDetailsIsNil` | `media_details` absent → `nil`, no throw |
 | `missingTitleDefaultsToEmpty` | `title` absent → empty `RenderedString` |
@@ -256,6 +259,7 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `sizedURLAlwaysUsesSourceURLForFullSlugEvenWhenAFullSizeEntryExists` | `sizedURL(for: "full")` always returns `sourceURL`, ignoring any `sizes["full"]` entry |
 | `captionDecodesPlainTextFromRaw` | `caption.raw` present → `captionText` returns the raw string, not the `<p>`-wrapped `rendered` one |
 | `captionHTMLKeepsTheRawMarkup` | `captionHTML` is `caption.raw` with its markup and entities, trimmed |
+| `captionHTMLIsEmptyForABlankRawCaption` | A whitespace-only `caption.raw` → `captionHTML == ""` after trimming |
 | `captionHTMLIsEmptyWithoutARawCaption` | A rendered-only or missing caption → `""` |
 | `captionRawHasHTMLStrippedAndEntitiesDecoded` | `caption.raw` with markup/entities (`Bob &amp; <em>Alice</em>`) → `"Bob & Alice"` via `RenderedString.excerptText` |
 | `captionWithOnlyRenderedYieldsEmptyText` | Rendered-only payload (no `raw`, the shape a non-`context=edit` fetch returns) → `caption != nil` but `captionText == ""`, so the sheet never prefills a field with HTML |
@@ -304,7 +308,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (80 tests)
+### 5. Networking — `WordPressClientTests` (82 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -347,6 +351,8 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `updateMediaTitleSendsTitleInPostToMediaEndpoint` | `POST /media/{id}` whose body has `title` and no `alt_text` |
 | `updateMediaTitleReturnsDecodedMedia` | Response decoded into `WPMedia`, with `title.raw` |
 | `updateMediaCaptionSendsCaptionInPostToMediaEndpoint` | `POST /media/{id}` whose body is only `caption`, markup included |
+| `mediaMatchesSearchSendsIncludeAndSearch` | `mediaMatchesSearch(id:search:)` sends `include=<id>`, `search`, `per_page=1` and `context=edit`, and returns true when the item comes back |
+| `mediaMatchesSearchIsFalseForNoResults` | An empty list for that id and search → false, so the library removes just that tile |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
@@ -2412,7 +2418,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (14 tests)
+## JS bridge tests (18 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2435,6 +2441,10 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `a script handler in the caption is not carried` | An `onclick` on a caption link is dropped by the load-time parse rules |
 | `inserted partway through a paragraph, the caption goes in the image, not the text after it` | The image is built with its caption, so a split paragraph keeps its own text |
 | `no caption leaves no figcaption` | `null` and `""` insert the image as before |
+| `the image keeps its source, media id and alt, and the caret paragraph follows it` | The captioned image carries `src`, `mediaId` and `alt`; the document is the image then an empty paragraph |
+| `two block paragraphs flatten into the one image caption` | `<p>One</p><p>Two</p>` gives one image whose text is `OneTwo`, then the caret paragraph |
+| `a caption that parses to nothing inserts a plain image` | `<p></p>`, whitespace and a lone `<script>` fall back to a plain image with an empty caption |
+| `in a table cell the caption is dropped and an inline image goes in` | A table-cell insert makes an `inlineImage` in the cell's paragraph, no image block, no caption text |
 
 ## JS keyboard tests (137 tests)
 
@@ -4269,6 +4279,11 @@ human is required.
 - [ ] The field under Alt Text is labeled Caption on an image and Short Description on any other file, as in WordPress's attachment details. Editing the Caption and clicking away saves it and shows "Saved". A caption with a link shows the raw HTML, as WordPress's own Caption field does, and saving it leaves the link intact in the WordPress Media Library.
 - [ ] On a new local draft, insert an image with a library caption from the media picker (toolbar image button) → the caption appears under the image with its link and formatting, the caret is in a new paragraph below, and code view shows the caption inside `<figcaption class="wp-element-caption">`. An image with no caption inserts with an empty caption, as before.
 - [ ] The inspector shows File Size under Dimensions (e.g. "45 KB"), matching the size in the WordPress attachment details. An item without a stored size shows no File Size row.
+- [ ] **Esc during a save puts back the submitted text.** Throttle the network, change a field, press Return, then press Esc while "Saving…" shows → the field keeps the text you submitted (not the older saved text), and once the save finishes the REST API has that text.
+- [ ] **A Title or Caption save during a search keeps your place.** Search a term that matches 30+ items, scroll to page 2 or later and select an item there, open its inspector and open the large preview. Rename the item (or edit its Caption) so it no longer matches the search → its tile disappears from the grid, the inspector still shows the item, the selection and preview are not closed, and the grid does not jump back to page 1. Scroll to the bottom → the next page continues with nothing skipped or repeated. Edit a Title so it still matches → the tile stays and nothing reloads. Alt Text saves never remove a tile.
+- [ ] During a search, rename an item so it stops matching (its tile disappears), then rename it back with the inspector still open → the search reloads and the tile is back in the grid.
+- [ ] **Tiles fill the row.** Resize the window and open and close Media Info → the thumbnails grow and shrink to use the full width (no more than a pixel of spare width at the right), never narrower than about 140 pt, and a very narrow window shows one column.
+- [ ] **No thumbnail flash.** With 30+ images loaded, open and close Media Info, and drag the window edge wider and narrower → the thumbnails do not return to their gray placeholder, and the inspector slides in without a late pop (`SplitItemCollapseFix`, `InspectorTitlebarFix`, `SplitItemSizePin`).
 - [ ] Space opens the large preview. Space closes it. Escape closes it.
 - [ ] Double-clicking a thumbnail opens the large preview.
 - [ ] Typing a space in the search field does NOT open the preview.
@@ -4628,6 +4643,12 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 261 | Refresh left a post open in the editor stale after it changed on the server. `reloadIfClean` fetches the post and applies it only if nothing is unsaved, no save is running, `lastSavedServerModified` did not move during the fetch, and the fetched post differs from the loaded one; a dirty, saving or unchanged post is left alone | 👁 §7.2 (the guards have no automated test) |
 | 262 | The editor flashed blank while the window resized (`SplitItemSizePin`) and showed a half-built page while a post loaded (`EditorLoadingCover`) | 👁 §7.13 (AppKit and view state, no harness) |
 | 263 | A draft, private or password-protected synced pattern showed a normal card, though WordPress renders nothing for it (`render_block_core_block` needs `publish` and no password); only a trashed one read as not found. Patterns are now fetched as published only, one request per 100, in view context (edit context drops another user's pattern for an Author, which would read as not found), and a missing or protected one is not found | ✅ `WordPressClientTests.fetchSyncedPatternsAsksForPublishedPatternsInViewContext`, `SyncedPatternResultTests.aRefWordPressLeftOutIsNotFound` / `aPasswordProtectedPatternIsNotFound` |
+| 264 | A Title or Caption save during a media search reloaded the whole search: the grid went back to page 1, a selection on page 2 or later was dropped and the preview closed. `MediaLibraryView.saveField(of:recheckingSearch:…)` now asks `WordPressClient.mediaMatchesSearch(id:search:)` whether the item still matches and removes only that tile when it does not (so offset paging stays aligned); a failed check falls back to the reload, and a site, filter or search change during the check discards the result | ✅ `WordPressClientTests.mediaMatchesSearchSendsIncludeAndSearch` + `.mediaMatchesSearchIsFalseForNoResults` + 👁 §7.26 (the view logic has no harness) |
+| 265 | Esc while a media field's save was in flight put back the older `lastSaved` text, reverting a value the user had already submitted with Return. `SavingTextFieldRow` puts back `savingText` while a save runs | 👁 §7.26 (SwiftUI view state) |
+| 266 | Inserting a single image from the media picker dropped its library caption. `window.insertImage`'s fifth argument builds the figcaption: the image keeps `src`, `mediaId` and `alt`, two block paragraphs flatten into one caption, an empty, whitespace or script-only caption inserts a plain image, and a table cell drops the caption and takes an `inlineImage`. `WPMedia.captionHTML` supplies the markup and is `""` for a blank raw caption | ✅ `test-editor-bridge.js` `'insertImage with a library caption'` (10 tests) + `WPMediaDecodingTests.captionHTMLIsEmptyForABlankRawCaption` + 👁 §7.26 |
+| 267 | The inspector's File Size row decodes `media_details.filesize` from an integer or a float and survives a malformed value without losing width and height | ✅ `WPMediaDecodingTests.filesizeDecodesFromAFloat` + `.aMalformedFilesizeIsNilAndKeepsTheOtherDetails` + 👁 §7.26 |
+| 268 | With the inspector open, the spare width of the Media grid collected in the gaps between tiles. `StretchingFlowLayout.tileSize` sizes tiles to the pane width: a minimum of 140 pt, under one point of leftover per column, one column when narrow, and the layout's `itemSize` when there is no scroll view | ✅ `StretchingFlowLayoutTests` (3 tests) + 👁 §7.26 |
+| 269 | Opening the Media inspector grew the split view past the window, so every visible cell was recycled (thumbnails flashed their placeholder) and the panel popped in late; resizing the window did the same through a 50x50 first layout. The inspector carries `SplitItemCollapseFix` and `InspectorTitlebarFix`, and the library pins its split item with `SplitItemSizePin` | 👁 §7.26 (AppKit layout, no harness) |
 
 ---
 

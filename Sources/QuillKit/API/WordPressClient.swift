@@ -172,6 +172,13 @@ public struct WordPressClient: Sendable {
         return media
     }
 
+    /// Whether WordPress's search still returns the item, which a Title or Caption change can alter.
+    public func mediaMatchesSearch(id: Int, search: String) async throws -> Bool {
+        let query = ["include": "\(id)", "search": search, "per_page": "1", "context": "edit"]
+        let media: [WPMedia] = try await get(try endpoint("media", query: query))
+        return media.contains { $0.id == id }
+    }
+
     public func fetchMediaItem(id: Int) async throws -> WPMedia {
         let url = try endpoint("media/\(id)", query: ["context": "edit"])
         return try await get(url)
