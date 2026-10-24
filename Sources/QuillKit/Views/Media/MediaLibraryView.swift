@@ -26,7 +26,7 @@ struct MediaLibraryView: View {
                 if previewedMedia != nil {
                     ToolbarItem(placement: .navigation) {
                         Button {
-                            previewedMedia = nil
+                            closePreview()
                         } label: {
                             Image(systemName: "chevron.backward")
                         }
@@ -114,11 +114,11 @@ struct MediaLibraryView: View {
             .overlay {
                 if let previewedMedia {
                     MediaPreviewOverlay(media: previewedMedia) {
-                        self.previewedMedia = nil
+                        closePreview()
                     }
                 }
             }
-            .onExitCommand { previewedMedia = nil }
+            .onExitCommand { if previewedMedia != nil { closePreview() } }
     }
 
     private var galleryWithAlerts: some View {
@@ -311,10 +311,15 @@ extension MediaLibraryView {
 
     func togglePreview() {
         if previewedMedia != nil {
-            previewedMedia = nil
+            closePreview()
         } else {
             previewedMedia = appState.selectedMedia
         }
+    }
+
+    func closePreview() {
+        previewedMedia = nil
+        appState.selectedMedia = nil
     }
 
     // NSOpenPanel.runModal() bails if called during a SwiftUI view update.

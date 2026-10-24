@@ -4,7 +4,7 @@ struct MediaSidebarSection: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        List(selection: $appState.mediaFilter) {
+        List(selection: filterSelection) {
             ForEach(MediaFilter.allCases) { filter in
                 Label(filter.title, systemImage: filter.icon)
                     .tag(filter)
@@ -14,5 +14,16 @@ struct MediaSidebarSection: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private var filterSelection: Binding<MediaFilter> {
+        Binding(
+            get: { appState.mediaFilter },
+            set: { filter in
+                guard filter != appState.mediaFilter else { return }
+                appState.selectedMedia = nil
+                appState.mediaFilter = filter
+            }
+        )
     }
 }
