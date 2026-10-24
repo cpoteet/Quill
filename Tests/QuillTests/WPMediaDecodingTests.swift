@@ -30,6 +30,24 @@ import Testing
         #expect(media.mediaDetails?.height == 1440)
     }
 
+    @Test func filesizeDecodes() throws {
+        let json = """
+        {"id":4,"source_url":"https://example.com/photo.png",
+         "media_details":{"width":1300,"height":292,"filesize":44606}}
+        """
+        #expect(try decode(json).mediaDetails?.filesize == 44606)
+    }
+
+    @Test func missingFilesizeIsNil() throws {
+        let json = """
+        {"id":5,"source_url":"https://example.com/old.jpg",
+         "media_details":{"width":800,"height":600}}
+        """
+        let media = try decode(json)
+        #expect(media.mediaDetails?.width == 800)
+        #expect(media.mediaDetails?.filesize == nil)
+    }
+
     @Test func missingMediaDetailsIsNil() throws {
         let json = """
         {"id":3,"source_url":"https://example.com/doc.pdf",

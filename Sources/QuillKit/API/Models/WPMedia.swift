@@ -64,9 +64,10 @@ public struct WPMedia: Identifiable, Codable, Sendable {
 public struct MediaDetails: Codable, Sendable {
     public var width: Int?
     public var height: Int?
+    public var filesize: Int?
     public var sizes: [String: MediaSize]?
 
-    enum CodingKeys: String, CodingKey { case width, height, sizes }
+    enum CodingKeys: String, CodingKey { case width, height, filesize, sizes }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -76,6 +77,8 @@ public struct MediaDetails: Codable, Sendable {
             ?? (try? c.decodeIfPresent(Double.self, forKey: .width)).map(Int.init)
         height = (try? c.decodeIfPresent(Int.self, forKey: .height))
             ?? (try? c.decodeIfPresent(Double.self, forKey: .height)).map(Int.init)
+        filesize = (try? c.decodeIfPresent(Int.self, forKey: .filesize))
+            ?? (try? c.decodeIfPresent(Double.self, forKey: .filesize)).map(Int.init)
         sizes = try? c.decodeIfPresent([String: MediaSize].self, forKey: .sizes)
     }
 }

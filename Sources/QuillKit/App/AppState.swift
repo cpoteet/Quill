@@ -187,10 +187,13 @@ public final class AppState: ObservableObject {
     }
 
     // Looked up by ID after the request, since the list can change while it runs.
-    public func replaceMedia(_ updated: WPMedia, fromSite site: String) {
+    public func updateMedia(id: Int, fromSite site: String, _ change: (inout WPMedia) -> Void) {
         guard credentials?.siteKey == site else { return }
-        if let index = mediaItems.firstIndex(where: { $0.id == updated.id }) { mediaItems[index] = updated }
-        if selectedMedia?.id == updated.id { selectedMedia = updated }
+        if let index = mediaItems.firstIndex(where: { $0.id == id }) { change(&mediaItems[index]) }
+        if var selected = selectedMedia, selected.id == id {
+            change(&selected)
+            selectedMedia = selected
+        }
     }
 
     @MainActor public func createNewDraft(type: String, draftStore: DraftStore) {

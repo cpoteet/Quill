@@ -256,7 +256,12 @@ struct MediaGalleryView: NSViewRepresentable {
             let oldIDs = items.map(\.id)
             let newIDs = newItems.map(\.id)
             if oldIDs == newIDs {
+                let oldItems = items
                 items = newItems
+                for path in collectionView.indexPathsForVisibleItems()
+                where oldItems[path.item].title != items[path.item].title {
+                    (collectionView.item(at: path) as? MediaGalleryItem)?.configure(with: items[path.item])
+                }
             } else if !oldIDs.isEmpty, newIDs.count > oldIDs.count, Array(newIDs.prefix(oldIDs.count)) == oldIDs {
                 // Paging appends; inserting keeps the existing cells and their hosted thumbnails.
                 let appended = (oldIDs.count..<newIDs.count).map { IndexPath(item: $0, section: 0) }

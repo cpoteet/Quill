@@ -573,9 +573,9 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
     }
 }
 
-// MARK: - Replacing a media item after a save
+// MARK: - Updating a media item after a save
 
-@Suite struct MediaReplaceTests {
+@Suite struct MediaUpdateTests {
     private let site = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
     private func media(id: Int, alt: String = "") throws -> WPMedia { try makeMedia(id: id, alt: alt) }
 
@@ -586,7 +586,7 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         state.selectedMedia = try media(id: 2)
         state.mediaItems.remove(at: 0)
 
-        state.replaceMedia(try media(id: 2, alt: "New"), fromSite: site.siteKey)
+        state.updateMedia(id: 2, fromSite: site.siteKey) { $0.altText = "New" }
 
         #expect(state.mediaItems.map(\.id) == [2, 3])
         #expect(state.mediaItems[0].altText == "New")
@@ -599,7 +599,7 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         state.mediaItems = [try media(id: 1)]
         state.selectedMedia = try media(id: 1)
 
-        state.replaceMedia(try media(id: 2, alt: "New"), fromSite: site.siteKey)
+        state.updateMedia(id: 2, fromSite: site.siteKey) { $0.altText = "New" }
 
         #expect(state.mediaItems.map(\.id) == [1])
         #expect(state.selectedMedia?.id == 1)
@@ -611,10 +611,27 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         state.mediaItems = [try media(id: 2, alt: "B's image")]
         state.selectedMedia = try media(id: 2, alt: "B's image")
 
-        state.replaceMedia(try media(id: 2, alt: "A's alt"), fromSite: site.siteKey)
+        state.updateMedia(id: 2, fromSite: site.siteKey) { $0.altText = "A's alt" }
 
         #expect(state.mediaItems[0].altText == "B's image")
         #expect(state.selectedMedia?.altText == "B's image")
+    }
+
+    @Test func aLateTitleSaveKeepsANewerAltText() throws {
+        let state = AppState()
+        state.credentials = site
+        state.mediaItems = [try media(id: 2, alt: "Old")]
+        state.selectedMedia = try media(id: 2, alt: "Old")
+        let titleResponse = try media(id: 2, alt: "Old")
+
+        state.updateMedia(id: 2, fromSite: site.siteKey) { $0.altText = "New" }
+        state.updateMedia(id: 2, fromSite: site.siteKey) { $0.title = RenderedString(raw: "Renamed") }
+
+        #expect(titleResponse.altText == "Old")
+        #expect(state.mediaItems[0].altText == "New")
+        #expect(state.mediaItems[0].title.raw == "Renamed")
+        #expect(state.selectedMedia?.altText == "New")
+        #expect(state.selectedMedia?.title.raw == "Renamed")
     }
 }
 

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-13 — 779 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
+_Last updated: 2026-10-23 — 784 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (779 tests)
+1. **Swift tests** — `swift test` (784 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -114,7 +114,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (779 tests, 50 suites)
+## Swift test suite (784 tests, 50 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -125,10 +125,10 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
-| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 19 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 21 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 77 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 79 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -156,7 +156,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 30 | `PostListRowSubtitleTests` | `PostListRowTests.swift` | 10 | `PostListRow.subtitle`/`statusLabel`/`formattedDate`/`dateText`: date·status for posts, bare status for pages, type-named local drafts, unknown statuses capitalised, unparseable dates truncated, the date is `date_gmt` in local time (falling back to `date`, and to the site date when `date_gmt` is WordPress's zero date) |
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
-| 33 | `MediaReplaceTests` | `AppStateTests.swift` | 3 | `AppState.replaceMedia` finds the item by ID after an alt-text save, whatever moved meanwhile, does not add back one that left the list, and ignores a save from a site other than the connected one |
+| 33 | `MediaUpdateTests` | `AppStateTests.swift` | 4 | `AppState.updateMedia` finds the item by ID after a save, whatever moved meanwhile, does not add back one that left the list, ignores a save from a site other than the connected one, and changes only the saved field |
 | 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
@@ -229,7 +229,7 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (19 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (21 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
@@ -239,6 +239,8 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 |---|---|
 | `integerDimensionsDecode` | `"width": 2560` → `Int` |
 | `floatDimensionsDecodeToInt` | `"width": 2560.0` → `Int` via the fallback path (regression guard) |
+| `filesizeDecodes` | `media_details.filesize` decodes to bytes |
+| `missingFilesizeIsNil` | No `filesize` (uploads from before WordPress 6.0) → `nil`, dimensions still decode |
 | `missingMediaDetailsIsNil` | `media_details` absent → `nil`, no throw |
 | `missingTitleDefaultsToEmpty` | `title` absent → empty `RenderedString` |
 | `sizesMapDecodes` | `sizes` dict with named sizes → `[String: MediaSize]` |
@@ -300,7 +302,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (77 tests)
+### 5. Networking — `WordPressClientTests` (79 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -340,6 +342,8 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `updateMediaAltTextSendsPostToMediaEndpoint` | `POST /media/{id}` with `application/json` |
 | `updateMediaAltTextBodyContainsAltText` | Request body has `{"alt_text":"…"}` |
 | `updateMediaAltTextReturnsDecodedMedia` | Response decoded into `WPMedia` |
+| `updateMediaTitleSendsTitleInPostToMediaEndpoint` | `POST /media/{id}` whose body has `title` and no `alt_text` |
+| `updateMediaTitleReturnsDecodedMedia` | Response decoded into `WPMedia`, with `title.raw` |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
@@ -1102,15 +1106,16 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `theSameSiteWithNewCredentialsKeepsTheOpenPost` | A new password for the same site (trailing slash aside) runs no flush and keeps the selection |
 | `connectingForgetsWhetherTheAccountCanPostUnfilteredHTML` | Another account on the same site may not have `unfiltered_html`, so every connection asks again |
 
-### 33. App — `MediaReplaceTests` (3 tests)
+### 33. App — `MediaUpdateTests` (4 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
 | Test | What it checks |
 |---|---|
-| `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still replaced in the list and as the selection |
+| `theItemIsFoundByIDWhereverItNowSits` | After an item before it was removed, the saved item is still updated in the list and as the selection |
 | `anItemNoLongerListedIsNotAddedBack` | A save for an item that left the list changes neither the list nor another item's selection |
 | `aSaveThatReturnsAfterASiteSwitchLeavesTheNewSiteAlone` | An alt-text save from the old site that returns after a switch changes neither the new site's list nor its selection, even when the IDs match |
+| `aLateTitleSaveKeepsANewerAltText` | A Title save applied after a newer Alt Text save changes only the title, so the newer alt text stays |
 
 ### 34. API — `SiteDiscoveryTests` (35 tests)
 
@@ -4249,6 +4254,8 @@ human is required.
 - [ ] Right-clicking offers Show Details above the other items.
 - [ ] Show Details opens the panel on the right-clicked image, with the panel closed beforehand.
 - [ ] Editing alt text and clicking away saves, and shows "Saved". With the network off, the field shows "Not saved: …" with the reason instead.
+- [ ] Editing the Title and pressing Return saves it, shows "Saved", and the grid tile and window title change to the new title. The WordPress Media Library shows the same title. The Filename row and the URL do not change. Clear the Title and save → the grid tile shows the file name.
+- [ ] The inspector shows File Size under Dimensions (e.g. "45 KB"), matching the size in the WordPress attachment details. An item without a stored size shows no File Size row.
 - [ ] Space opens the large preview. Space closes it. Escape closes it.
 - [ ] Double-clicking a thumbnail opens the large preview.
 - [ ] Typing a space in the search field does NOT open the preview.
@@ -4534,7 +4541,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 187 | Typing while a local draft published was written to the draft row the publish deletes. It is stashed as the new post's autosave and restored on open; a failed draft delete after a successful create is a warning, so a retry cannot publish twice | 👁 §7.7 |
 | 188 | A slow drop or paste landed in whichever post was open when the upload finished. The placement closures insert only while `loadedItem` and `appState.selectedItem` still hold the dropped-on post and the editor web view is still in a window (a section round-trip keeps the selection but tears the view down). Otherwise the toast says it was not inserted; after a section switch that toast draws on the dead view and does not show | ✅ `PostEditorHelpersTests.uploadNotInsertedMessageNamesTheMediaLibrary` (the message) + 👁 §7.4 (the closures) |
 | 189 | Changing the site kept the old site's open post, lists and media, and site A's autosave could restore into site B's post with the same ID. `AppState.connect` flushes the open post under the old credentials and then clears the old site's state; autosaves are keyed by site, and unsited rows are adopted once | ✅ `SiteSwitchTests` (3 tests), `AutosaveStoreTests.samePostIDOnTwoSitesIsTwoStashes`, `unsitedStashesBelongToTheFirstSiteThatAdoptsThem`, `adoptionKeepsTheSitedStashWhenBothExist`, `AppDatabaseTests.autosavesTableRebuiltWithASiteKey` + 👁 §7.1 |
-| 190 | An alt-text save that returned after a site switch could overwrite the new site's item with the same media ID. `AppState.replaceMedia(_:fromSite:)` ignores a result from a site other than the connected one; the save also reports failure, and finds the item by ID rather than an index held across the request | ✅ `MediaReplaceTests` (3 tests) + 👁 §7.1, §7.26 |
+| 190 | An alt-text save that returned after a site switch could overwrite the new site's item with the same media ID. `AppState.updateMedia(id:fromSite:_:)` ignores a result from a site other than the connected one; the save also reports failure, and finds the item by ID rather than an index held across the request | ✅ `MediaUpdateTests` + 👁 §7.1, §7.26 |
 | 191 | A second right-click AI operation overwrote the first's range, so the first reply landed in the wrong place and its Accept/Discard was orphaned. `beginAIOperation` returns `{ busy: true }` while one is held, and Swift shows `aiBusyMessage` | ✅ `test-ai-output-validity.js` `'a second operation is refused …'` (2 tests) + 👁 §7.11 (the toast) |
 | 192 | Discard after the author deleted across the AI result put the original back as a fragment where the paragraph had been. `_mapAIOperation` marks the record `deleted` when both ends are `deletedAcross` or the range is emptied (deleting exactly the result text left an empty paragraph that Discard refilled; run-log issue 14), and `discardAIResult` then restores nothing | ✅ `test-ai-output-validity.js` `'discarding after the paragraph holding the result was deleted brings none of it back'`, `'discarding after exactly the result text was deleted brings none of it back'` and `'discarding after the whole document was deleted leaves it empty'` |
 | 193 | Discarding a table or rule result that ends the post left `TrailingParagraph`'s empty `<p>` behind and marked the post dirty. `_trailingAfterResult` records that appended paragraph, and Discard deletes it while it is still empty and last | ✅ `test-ai-output-validity.js` `'discarding a table result that ends the post leaves no empty paragraph behind'` + 👁 §7.11 |

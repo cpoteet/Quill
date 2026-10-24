@@ -45,12 +45,19 @@ struct MediaLibraryView: View {
             }
             .inspector(isPresented: $appState.isMediaInspectorOpen) {
                 if let media = appState.selectedMedia {
-                    MediaDetailView(media: media) { [media] altText in
-                        guard let creds = appState.credentials else { throw APIError.notConnected }
-                        let updated = try await WordPressClient(credentials: creds)
-                            .updateMediaAltText(id: media.id, altText: altText)
-                        appState.replaceMedia(updated, fromSite: creds.siteKey)
-                    }
+                    MediaDetailView(
+                        media: media,
+                        onSaveTitle: { [media] title in
+                            try await saveField(of: media, reloadingSearch: true) {
+                                try await $0.updateMediaTitle(id: media.id, title: title)
+                            } apply: { $0.title = $1.title }
+                        },
+                        onSaveAltText: { [media] altText in
+                            try await saveField(of: media, reloadingSearch: false) {
+                                try await $0.updateMediaAltText(id: media.id, altText: altText)
+                            } apply: { $0.altText = $1.altText }
+                        }
+                    )
                     .id(media.id)
                     .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
                 } else {
@@ -146,6 +153,18 @@ struct MediaLibraryView: View {
             } message: {
                 Text(uploadError ?? "")
             }
+    }
+
+    // Applies only the saved field, so overlapping saves of different fields cannot undo each other.
+    private func saveField(of media: WPMedia, reloadingSearch: Bool,
+                           _ send: (WordPressClient) async throws -> WPMedia,
+                           apply: (inout WPMedia, WPMedia) -> Void) async throws {
+        guard let creds = appState.credentials else { throw APIError.notConnected }
+        let updated = try await send(WordPressClient(credentials: creds))
+        appState.updateMedia(id: media.id, fromSite: creds.siteKey) { apply(&$0, updated) }
+        if reloadingSearch, !appState.mediaSearchText.isEmpty, appState.credentials?.siteKey == creds.siteKey {
+            appState.mediaRefreshToken += 1
+        }
     }
 
     private var reloadKey: String {
