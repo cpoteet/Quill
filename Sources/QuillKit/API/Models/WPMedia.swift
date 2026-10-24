@@ -36,6 +36,11 @@ public struct WPMedia: Identifiable, Codable, Sendable {
         caption?.excerptText ?? ""
     }
 
+    /// The caption as stored, markup included: what the inspector edits and a single-image insert copies.
+    public var captionHTML: String {
+        caption?.raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, title
         case sourceURL = "source_url"

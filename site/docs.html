@@ -418,6 +418,7 @@
         <p class="docs-body">With an image selected, the left, center and right buttons in the second toolbar row float it to one side with text wrapping around it, or center it. The image stays selected after you change its alignment, so the image toolbar stays open.</p>
         <h4 class="docs-h4" id="captions">Captions</h4>
         <p class="docs-body">A caption is optional. To add one, click the space just below the image and type. Press Return to leave the caption and start a new paragraph. Because the cursor lands below the image after you insert it, typing straight away adds body text, not a caption.</p>
+        <p class="docs-body">If an image you pick from the media library already has a caption, Quill fills it in, with its formatting and links. Change or delete it like any other caption; the image in your media library isn't changed.</p>
         <h4 class="docs-h4">Linking to the Full-Size Image</h4>
         <p class="docs-body">Click <strong>Link to Full Image</strong> in the image toolbar to make the image a link to its original, full-size file. Readers who click it on your site see (or download) the full-size version. Click the button again to remove the link. This works whatever size the image is shown at in the post.</p>
         <h4 class="docs-h4" id="inline-images">Inline Images</h4>
@@ -627,16 +628,20 @@
               <tr><th class="docs-table__col--label">Field</th><th>Shows</th></tr>
             </thead>
             <tbody>
-              <tr><td>Filename</td><td>The item's title, or its file name if it has no title</td></tr>
+              <tr><td>Title</td><td>The item's title in WordPress, which you can edit. The grid shows it under the thumbnail, or the file name if there's no title</td></tr>
+              <tr><td>Alt Text</td><td>The image's alt text, which you can edit (images only)</td></tr>
+              <tr><td>Caption</td><td>The item's caption, which you can edit. Formatting and links show as HTML, as in WordPress's own Caption field. For files other than images it's labeled Short Description, as WordPress labels it</td></tr>
+              <tr><td>Filename</td><td>The name of the file on your site</td></tr>
               <tr><td>Type</td><td>The file extension, such as JPG or PDF</td></tr>
               <tr><td>Dimensions</td><td>Width and height in pixels (images only)</td></tr>
-              <tr><td>Alt Text</td><td>The image's alt text, which you can edit (images only)</td></tr>
+              <tr><td>File Size</td><td>The size of the file. Not shown for files uploaded before WordPress 6.0, which didn't record it</td></tr>
               <tr><td>Uploaded</td><td>The date the file was uploaded</td></tr>
               <tr><td>URL</td><td>The file's address, with a button to copy it</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-body">To change an image's alt text, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> under the field. If the save fails, it shows <strong>Not saved</strong> with the reason, and your text stays in the field so you can try again.</p>
+        <p class="docs-body">To change the title, alt text or caption, edit the field and press Return or click elsewhere. Quill saves it to WordPress straight away and shows <strong>Saved</strong> under the field. If the save fails, it shows <strong>Not saved</strong> with the reason, and your text stays in the field so you can try again. To back out of an edit, press Esc: the field goes back to what was last saved, and nothing is sent.</p>
+        <p class="docs-body">Changing the title doesn't rename the file or change its address; WordPress can't rename a file once it's uploaded. A new caption or alt text is used the next time you insert the image. Posts that already use the image keep the caption and alt text they were given.</p>
         <h3 class="docs-h3" id="uploading">Uploading</h3>
         <p class="docs-body">Choose <strong>Upload Media…</strong> from the <strong>+</strong> menu, or <strong>File → New Media…</strong> (⌥⌘N) from anywhere in Quill. Pick a file in the window that opens. You can upload images, PDFs, Word, Excel and PowerPoint files, and plain-text files such as <code>.txt</code> and <code>.csv</code>. Video and audio files can't be uploaded from Quill; upload them in WordPress and they'll appear here.</p>
         <p class="docs-body">The new item appears at the top of the grid, already selected. If the current filter wouldn't show it, for example a PDF uploaded while <strong>Images</strong> is selected, Quill switches to <strong>All Media</strong> so it's still in view. If a search is active, Quill clears it for the same reason.</p>

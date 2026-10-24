@@ -6457,7 +6457,14 @@
 
     window.isInFootnote = () => _isInFootnote()
 
-    window.insertImage = (url, mediaId, alt, width) => {
+    // A library caption is post markup: parsed inert, by the rules a post load uses, into the image's inline content.
+    function _captionContent(html) {
+      const div = inertDocument().createElement('div')
+      div.innerHTML = html
+      return editor.schema.cached.domParser.parse(div, { topNode: editor.schema.nodes.image.create() }).content
+    }
+
+    window.insertImage = (url, mediaId, alt, width, caption) => {
       if (_isInFootnote()) return
       // A table cell holds rich text, so the block editor puts an inline image there, never an image block.
       const { $from: $at } = editor.state.selection
@@ -6470,7 +6477,12 @@
       const attrs = { src: url }
       if (mediaId != null) attrs.mediaId = mediaId
       if (alt)             attrs.alt     = alt
-      _blockInsertChain().setImage(attrs).run()
+      const captionContent = caption ? _captionContent(caption) : null
+      if (captionContent?.size) {
+        _blockInsertChain().insertContent({ type: 'image', attrs, content: captionContent.toJSON() }).run()
+      } else {
+        _blockInsertChain().setImage(attrs).run()
+      }
       // setImage leaves the cursor inside the figure's empty figcaption. Move it
       // to a fresh paragraph after the image instead; the caption stays clickable.
       const { $from } = editor.state.selection

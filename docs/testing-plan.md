@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-23 — 784 Swift tests + 1,928 JS tests (1,927 pass, 1 skipped), no failures._
+_Last updated: 2026-10-23 — 788 Swift tests + 1,934 JS tests (1,933 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,12 +16,12 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (784 tests)
+1. **Swift tests** — `swift test` (788 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (8 tests — live Tiptap editor in jsdom; `window.flushContent`)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (14 tests — live Tiptap editor in jsdom; `window.flushContent` and `window.insertImage`'s caption)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
@@ -114,7 +114,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (784 tests, 50 suites)
+## Swift test suite (788 tests, 50 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -125,10 +125,10 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
 | 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
-| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 21 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding |
+| 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 23 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 79 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 80 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -161,7 +161,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 11 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 12 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call (caption included), driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
@@ -229,7 +229,7 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 
 ---
 
-### 2. Model decoding — `WPMediaDecodingTests` (21 tests)
+### 2. Model decoding — `WPMediaDecodingTests` (23 tests)
 
 File: `Tests/QuillTests/WPMediaDecodingTests.swift`
 
@@ -255,6 +255,8 @@ Guards the float-dimensions gotcha: WordPress returns `width`/`height` as JSON f
 | `sizedURLFallsBackToSourceURLWhenMatchedSizeHasBlankURL` | Matched size entry exists but its `source_url` is `""` → falls back to `sourceURL` (regression: a bare `??` on the optional chain would not catch this, since `""` is non-nil) |
 | `sizedURLAlwaysUsesSourceURLForFullSlugEvenWhenAFullSizeEntryExists` | `sizedURL(for: "full")` always returns `sourceURL`, ignoring any `sizes["full"]` entry |
 | `captionDecodesPlainTextFromRaw` | `caption.raw` present → `captionText` returns the raw string, not the `<p>`-wrapped `rendered` one |
+| `captionHTMLKeepsTheRawMarkup` | `captionHTML` is `caption.raw` with its markup and entities, trimmed |
+| `captionHTMLIsEmptyWithoutARawCaption` | A rendered-only or missing caption → `""` |
 | `captionRawHasHTMLStrippedAndEntitiesDecoded` | `caption.raw` with markup/entities (`Bob &amp; <em>Alice</em>`) → `"Bob & Alice"` via `RenderedString.excerptText` |
 | `captionWithOnlyRenderedYieldsEmptyText` | Rendered-only payload (no `raw`, the shape a non-`context=edit` fetch returns) → `caption != nil` but `captionText == ""`, so the sheet never prefills a field with HTML |
 | `missingCaptionIsNilAndTextIsEmpty` | `caption` absent → `caption == nil`, `captionText == ""`, no throw |
@@ -302,7 +304,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (79 tests)
+### 5. Networking — `WordPressClientTests` (80 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -344,6 +346,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `updateMediaAltTextReturnsDecodedMedia` | Response decoded into `WPMedia` |
 | `updateMediaTitleSendsTitleInPostToMediaEndpoint` | `POST /media/{id}` whose body has `title` and no `alt_text` |
 | `updateMediaTitleReturnsDecodedMedia` | Response decoded into `WPMedia`, with `title.raw` |
+| `updateMediaCaptionSendsCaptionInPostToMediaEndpoint` | `POST /media/{id}` whose body is only `caption`, markup included |
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
@@ -1221,7 +1224,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (11 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (12 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1233,6 +1236,7 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `aContentMessageAlreadyReceivedLandsBeforeTheFlush` | A `contentChanged` received before the flush is delivered first, so the older copy cannot overwrite the flushed one |
 | `messagesFromTheReplacedDocumentAreDroppedUntilSetContentAnswers` | `contentChanged` and `footnotesChanged` arriving while a `setContent` is unanswered are dropped; once it answers, messages flow again |
 | `insertImagePassesTheMediaWidthForAnInlineImage` | `insertImage` hands the editor the media's width (or `null`), which an inline image in a table cell is capped by (run-log issue 10) |
+| `insertImagePassesTheLibraryCaptionWhenThereIsOne` | A caption is passed as a fifth, JSON-escaped argument; an empty one is left off, so the call is unchanged |
 | `aSyncedPatternRequestAnswersEachRefWithItsOwnGeneration` | `requestSyncedPatterns` with refs `[1, 2]` and generation 4 calls `onRequestSyncedPatterns` once with `[1, 2]` and runs two `setSyncedPattern(4, ref, …)` scripts, one loaded (with the title) and one `notFound` |
 | `aRefTheHandlerLeftOutIsAnsweredAsFailed` | A ref missing from the handler's answer still gets a `setSyncedPattern` script, as `failed`, so its card never stays loading |
 | `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPatterns`, no script is run |
@@ -2408,12 +2412,12 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (8 tests)
+## JS bridge tests (14 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
 
-Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Swift calls before it saves, previews, switches posts or quits, so typing inside the 500ms `contentChanged` debounce is not lost.
+Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Swift calls before it saves, previews, switches posts or quits, so typing inside the 500ms `contentChanged` debounce is not lost, and the library caption `window.insertImage` copies into a picked image.
 
 | Test | Asserts |
 |---|---|
@@ -2425,6 +2429,12 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `the snapshot is exactly what the debounce would have posted` | The flushed HTML equals what `syncContentToSwift` posts for the same document |
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
 | `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
+| `links and bold in the caption are kept` | The saved `figcaption` holds the caption's link and `<strong>` as WordPress wrote them |
+| `the caret ends in a paragraph after the image, not in the caption` | The caption insert does not leave the caret in the figcaption |
+| `block markup in a caption stays inside one image` | `<p>One</p><p>Two</p>` becomes inline caption text; the image is not split |
+| `a script handler in the caption is not carried` | An `onclick` on a caption link is dropped by the load-time parse rules |
+| `inserted partway through a paragraph, the caption goes in the image, not the text after it` | The image is built with its caption, so a split paragraph keeps its own text |
+| `no caption leaves no figcaption` | `null` and `""` insert the image as before |
 
 ## JS keyboard tests (137 tests)
 
@@ -4253,8 +4263,11 @@ human is required.
 - [ ] Pressing the button again reopens it, showing the current selection.
 - [ ] Right-clicking offers Show Details above the other items.
 - [ ] Show Details opens the panel on the right-clicked image, with the panel closed beforehand.
-- [ ] Editing alt text and clicking away saves, and shows "Saved". With the network off, the field shows "Not saved: …" with the reason instead.
+- [ ] Editing alt text and clicking away saves, and shows "Saving…" then "Saved" at the right end of the field's label line. With the network off, "Not saved: …" with the reason appears under the field instead. Editable rows are spaced like the read-only rows when nothing is showing.
+- [ ] In Title, Alt Text or Caption, type a change and press Esc → the field goes back to its last saved text and loses focus, and nothing is saved (the item's `modified` date in the REST API does not change). Pressing Return or clicking away without changing the text sends nothing and shows no status. With the network throttled, change a field, press Return, change it back and click away before "Saving…" ends → once both saves finish, the REST API has the text the field shows. Esc with no field focused still closes the large preview.
 - [ ] Editing the Title and pressing Return saves it, shows "Saved", and the grid tile and window title change to the new title. The WordPress Media Library shows the same title. The Filename row and the URL do not change. Clear the Title and save → the grid tile shows the file name.
+- [ ] The field under Alt Text is labeled Caption on an image and Short Description on any other file, as in WordPress's attachment details. Editing the Caption and clicking away saves it and shows "Saved". A caption with a link shows the raw HTML, as WordPress's own Caption field does, and saving it leaves the link intact in the WordPress Media Library.
+- [ ] On a new local draft, insert an image with a library caption from the media picker (toolbar image button) → the caption appears under the image with its link and formatting, the caret is in a new paragraph below, and code view shows the caption inside `<figcaption class="wp-element-caption">`. An image with no caption inserts with an empty caption, as before.
 - [ ] The inspector shows File Size under Dimensions (e.g. "45 KB"), matching the size in the WordPress attachment details. An item without a stored size shows no File Size row.
 - [ ] Space opens the large preview. Space closes it. Escape closes it.
 - [ ] Double-clicking a thumbnail opens the large preview.

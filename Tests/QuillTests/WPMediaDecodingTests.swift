@@ -199,6 +199,25 @@ import Testing
         #expect(media.captionText == "A raw caption")
     }
 
+    @Test func captionHTMLKeepsTheRawMarkup() throws {
+        let json = """
+        {"id":20,"source_url":"https://example.com/img.jpg",
+         "caption":{"rendered":"<p>x</p>","raw":"  Photo by <a href=\\"https://example.com\\">Jane</a> &amp; co\\n"}}
+        """
+        #expect(try decode(json).captionHTML == "Photo by <a href=\"https://example.com\">Jane</a> &amp; co")
+    }
+
+    @Test func captionHTMLIsEmptyWithoutARawCaption() throws {
+        let rendered = """
+        {"id":21,"source_url":"https://example.com/img.jpg","caption":{"rendered":"<p>x</p>"}}
+        """
+        let none = """
+        {"id":22,"source_url":"https://example.com/img.jpg"}
+        """
+        #expect(try decode(rendered).captionHTML == "")
+        #expect(try decode(none).captionHTML == "")
+    }
+
     @Test func captionRawHasHTMLStrippedAndEntitiesDecoded() throws {
         let json = """
         {"id":17,"source_url":"https://example.com/img.jpg",

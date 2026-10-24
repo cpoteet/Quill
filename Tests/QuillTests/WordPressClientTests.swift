@@ -538,6 +538,34 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(body?["alt_text"] == nil)
     }
 
+    @Test func updateMediaCaptionSendsCaptionInPostToMediaEndpoint() async throws {
+        var capturedRequest: URLRequest?
+        var bodyData: Data?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            var body = Data()
+            if let stream = request.httpBodyStream {
+                stream.open()
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let n = stream.read(&buffer, maxLength: buffer.count)
+                    if n > 0 { body.append(contentsOf: buffer[..<n]) }
+                }
+                stream.close()
+            }
+            bodyData = body
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalMediaJSON.data(using: .utf8)!)
+        }
+        let caption = "Photo by <a href=\"https://example.com\">Jane</a>"
+        _ = try await client.updateMediaCaption(id: 42, caption: caption)
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.url?.path.contains("media/42") == true)
+        let body = try JSONSerialization.jsonObject(with: bodyData ?? Data()) as? [String: Any]
+        #expect(body?["caption"] as? String == caption)
+        #expect(body?.count == 1)
+    }
+
     @Test func updateMediaTitleReturnsDecodedMedia() async throws {
         let mediaJSON = """
         {"id":42,"title":{"raw":"Lake at dusk","rendered":"Lake at dusk"},\

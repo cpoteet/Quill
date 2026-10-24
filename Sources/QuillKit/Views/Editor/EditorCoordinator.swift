@@ -114,7 +114,8 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         let mediaId = note.userInfo?["mediaId"] as? Int
         let alt     = note.userInfo?["alt"]     as? String
         let width   = note.userInfo?["width"]   as? Int
-        insertImage(url: url, mediaId: mediaId, alt: alt, width: width)
+        let caption = note.userInfo?["caption"] as? String
+        insertImage(url: url, mediaId: mediaId, alt: alt, width: width, caption: caption)
     }
 
     @objc private func handleInsertGallery(_ note: Notification) {
@@ -375,7 +376,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         return "setSyncedPattern(\(generation), \(ref), \(String(decoding: data, as: UTF8.self)))"
     }
 
-    func insertImage(url: String, mediaId: Int? = nil, alt: String? = nil, width: Int? = nil) {
+    func insertImage(url: String, mediaId: Int? = nil, alt: String? = nil, width: Int? = nil, caption: String? = nil) {
         guard let wv = webView else { return }
         guard let jsonURL = try? JSONEncoder().encode(url),
             let urlStr = String(data: jsonURL, encoding: .utf8)
@@ -390,7 +391,9 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             altStr = "null"
         }
         let widthStr = width.map { String($0) } ?? "null"
-        wv.evaluateJavaScript("insertImage(\(urlStr), \(idStr), \(altStr), \(widthStr))", completionHandler: nil)
+        let captionArg = caption.flatMap { $0.isEmpty ? nil : try? JSONEncoder().encode($0) }
+            .map { ", " + String(decoding: $0, as: UTF8.self) } ?? ""
+        wv.evaluateJavaScript("insertImage(\(urlStr), \(idStr), \(altStr), \(widthStr)\(captionArg))", completionHandler: nil)
     }
 
     func insertGallery(payload: [String: Any]) {

@@ -5,6 +5,7 @@ struct MediaDetailView: View {
     let media: WPMedia
     var onSaveTitle: ((String) async throws -> Void)? = nil
     var onSaveAltText: ((String) async throws -> Void)? = nil
+    var onSaveCaption: ((String) async throws -> Void)? = nil
 
     var body: some View {
         metadataPanel
@@ -21,6 +22,25 @@ struct MediaDetailView: View {
                     lineLimit: 1...3,
                     onSave: onSaveTitle
                 )
+
+                if media.mediaType == "image" {
+                    SavingTextFieldRow(
+                        label: "Alt Text",
+                        initialText: media.altText,
+                        lineLimit: 2...4,
+                        onSave: onSaveAltText
+                    )
+                }
+
+                SavingTextFieldRow(
+                    label: media.mediaType == "image" ? "Caption" : "Short Description",
+                    initialText: media.captionHTML,
+                    lineLimit: 2...4,
+                    onSave: onSaveCaption
+                )
+
+                Divider()
+
                 if let filename = URL(string: media.sourceURL)?.lastPathComponent, !filename.isEmpty {
                     metadataRow(label: "Filename", value: filename)
                 }
@@ -40,15 +60,6 @@ struct MediaDetailView: View {
                 if let bytes = media.mediaDetails?.filesize, bytes > 0 {
                     metadataRow(label: "File Size",
                                 value: ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
-                }
-
-                if media.mediaType == "image" {
-                    SavingTextFieldRow(
-                        label: "Alt Text",
-                        initialText: media.altText,
-                        lineLimit: 2...4,
-                        onSave: onSaveAltText
-                    )
                 }
 
                 if !media.date.isEmpty {
@@ -119,7 +130,10 @@ private struct SavingTextFieldRow: View {
     let onSave: ((String) async throws -> Void)?
 
     @State private var draft: String
+    @State private var lastSaved: String
     @State private var saveState: SaveState = .idle
+    @State private var isSaving = false
+    @State private var saveAgain = false
     @FocusState private var focused: Bool
 
     private enum SaveState: Equatable { case idle, saving, saved, failed(String) }
@@ -130,60 +144,89 @@ private struct SavingTextFieldRow: View {
         self.lineLimit = lineLimit
         self.onSave = onSave
         self._draft = State(initialValue: initialText)
+        self._lastSaved = State(initialValue: initialText)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionLabel(label)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                SectionLabel(label)
+                Spacer(minLength: 8)
+                progress
+            }
             TextField("", text: $draft, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(lineLimit)
                 .accessibilityLabel(label)
                 .onSubmit { commit() }
+                .onExitCommand {
+                    draft = lastSaved
+                    focused = false
+                }
                 .focused($focused)
                 .onChange(of: focused) { _, isFocused in
                     if !isFocused { commit() }
                 }
-            HStack {
-                switch saveState {
-                case .saving:
-                    ProgressView().scaleEffect(0.6)
-                    Text("Saving\u{2026}").font(.subheadline).foregroundStyle(.secondary)
-                case .saved:
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.subheadline).foregroundStyle(.green)
-                        .accessibilityHidden(true)
-                    Text("Saved").font(.subheadline).foregroundStyle(.secondary)
-                case .failed(let message):
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(.subheadline).foregroundStyle(.red)
-                        .accessibilityHidden(true)
-                    Text("Not saved: \(message)").font(.subheadline).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.tail).help(message)
-                case .idle:
-                    EmptyView()
-                }
+            if case .failed(let message) = saveState {
+                InlineError(message: "Not saved: \(message)")
+                    .font(.subheadline)
             }
-            .frame(height: 14)
         }
         .onChange(of: draft) {
-            saveState = .idle
+            if !isSaving { saveState = .idle }
         }
     }
 
+    @ViewBuilder
+    private var progress: some View {
+        switch saveState {
+        case .saving:
+            ProgressView().controlSize(.mini)
+            Text("Saving\u{2026}").font(.subheadline).foregroundStyle(.secondary)
+        case .saved:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.subheadline).foregroundStyle(.green)
+                .accessibilityHidden(true)
+            Text("Saved").font(.subheadline).foregroundStyle(.secondary)
+        case .idle, .failed:
+            EmptyView()
+        }
+    }
+
+    // One save at a time; a commit made while one runs is replayed against the value that save stored.
     private func commit() {
-        guard saveState != .saving else { return }
         guard let save = onSave else { return }
+        if isSaving {
+            saveAgain = true
+            return
+        }
+        guard draft != lastSaved else { return }
         let text = draft
+        isSaving = true
         saveState = .saving
         Task {
             do {
                 try await save(text)
             } catch {
-                await MainActor.run { saveState = .failed(error.localizedDescription) }
+                await MainActor.run {
+                    isSaving = false
+                    saveState = .failed(error.localizedDescription)
+                    if saveAgain {
+                        saveAgain = false
+                        if draft == lastSaved { saveState = .idle } else { commit() }
+                    }
+                }
                 return
             }
-            await MainActor.run { saveState = .saved }
+            await MainActor.run {
+                lastSaved = text
+                isSaving = false
+                saveState = .saved
+                if saveAgain {
+                    saveAgain = false
+                    commit()
+                }
+            }
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             await MainActor.run { if saveState == .saved { saveState = .idle } }
         }

@@ -56,6 +56,11 @@ struct MediaLibraryView: View {
                             try await saveField(of: media, reloadingSearch: false) {
                                 try await $0.updateMediaAltText(id: media.id, altText: altText)
                             } apply: { $0.altText = $1.altText }
+                        },
+                        onSaveCaption: { [media] caption in
+                            try await saveField(of: media, reloadingSearch: true) {
+                                try await $0.updateMediaCaption(id: media.id, caption: caption)
+                            } apply: { $0.caption = $1.caption }
                         }
                     )
                     .id(media.id)

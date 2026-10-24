@@ -131,3 +131,65 @@ describe('flushContent', () => {
     assert.equal(snapshot.html, typed)
   })
 })
+
+function _depthOf($pos, typeName) {
+  for (let d = $pos.depth; d > 0; d--) if ($pos.node(d).type.name === typeName) return d
+  return -1
+}
+
+describe('insertImage with a library caption', () => {
+  const images = () => {
+    const found = []
+    editor.state.doc.descendants(n => { if (n.type.name === 'image') found.push(n) })
+    return found
+  }
+  const insert = caption => {
+    win.setContent('<p></p>', '')
+    win.insertImage('https://example.com/a.jpg', 7, 'Alt', 800, caption)
+    return win.getContent()
+  }
+
+  test('links and bold in the caption are kept', () => {
+    const html = insert('Photo by <a href="https://example.com/jane">Jane</a> and <strong>friends</strong>')
+    assert.match(html, /<figcaption class="wp-element-caption">Photo by <a href="https:\/\/example\.com\/jane">Jane<\/a> and <strong>friends<\/strong><\/figcaption>/)
+    assert.equal(images().length, 1)
+  })
+
+  test('the caret ends in a paragraph after the image, not in the caption', () => {
+    insert('A caption')
+    const { $from } = editor.state.selection
+    assert.equal($from.parent.type.name, 'paragraph')
+    assert.equal(_depthOf($from, 'image'), -1)
+  })
+
+  test('block markup in a caption stays inside one image', () => {
+    insert('<p>One</p><p>Two</p>')
+    const found = images()
+    assert.equal(found.length, 1)
+    assert.match(found[0].textContent, /One/)
+    assert.match(found[0].textContent, /Two/)
+  })
+
+  test('a script handler in the caption is not carried', () => {
+    const html = insert('<a href="https://example.com" onclick="window.ran = true">Credit</a>')
+    assert.match(html, />Credit<\/a>/)
+    assert.doesNotMatch(html, /onclick/)
+  })
+
+  test('inserted partway through a paragraph, the caption goes in the image, not the text after it', () => {
+    win.setContent('<p>Hello world</p>', '')
+    editor.commands.setTextSelection(4)
+    win.insertImage('https://example.com/a.jpg', 7, 'Alt', 800, 'NEWCAP')
+    const found = images()
+    assert.equal(found.length, 1)
+    assert.equal(found[0].textContent, 'NEWCAP')
+    assert.doesNotMatch(editor.state.doc.textContent.replace('NEWCAP', ''), /NEWCAP/)
+    assert.match(editor.state.doc.textContent, /Hel/)
+    assert.match(editor.state.doc.textContent, /lo world/)
+  })
+
+  test('no caption leaves no figcaption', () => {
+    assert.doesNotMatch(insert(null), /<figcaption/)
+    assert.doesNotMatch(insert(''), /<figcaption/)
+  })
+})

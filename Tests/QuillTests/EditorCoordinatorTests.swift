@@ -305,6 +305,14 @@ private final class Box<T>: @unchecked Sendable {
         #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, null, null)"#)
     }
 
+    @Test func insertImagePassesTheLibraryCaptionWhenThereIsOne() {
+        coordinator.insertImage(url: "https://x/a.png", mediaId: 42, alt: nil, width: nil,
+                                caption: #"By <a href="https://x">Jane</a>"#)
+        #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, null, null, "By <a href=\"https:\/\/x\">Jane<\/a>")"#)
+        coordinator.insertImage(url: "https://x/a.png", mediaId: 42, alt: nil, width: nil, caption: "")
+        #expect(webView.scripts.last == #"insertImage("https:\/\/x\/a.png", 42, null, null)"#)
+    }
+
     private func waitForScripts(_ count: Int) async {
         for _ in 0..<200 where webView.scripts.count < count {
             await drainMainQueue()

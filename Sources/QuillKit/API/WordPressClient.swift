@@ -226,6 +226,11 @@ public struct WordPressClient: Sendable {
         return try await post(url, body: MediaTitlePayload(title: title))
     }
 
+    public func updateMediaCaption(id: Int, caption: String) async throws -> WPMedia {
+        let url = try endpoint("media/\(id)")
+        return try await post(url, body: MediaCaptionPayload(caption: caption))
+    }
+
     // MARK: - Current user
 
     /// Without `unfiltered_html`, WordPress strips `<script>` and `<style>` on save; see API/CLAUDE.md for why a post's action link decides.
@@ -426,6 +431,10 @@ public struct WordPressClient: Sendable {
 
     private struct MediaTitlePayload: Encodable {
         let title: String
+    }
+
+    private struct MediaCaptionPayload: Encodable {
+        let caption: String
     }
 
     /// Sends a request, mapping cancellation and HTTP errors. Returns the body data and

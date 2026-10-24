@@ -221,6 +221,7 @@ public struct PostEditorView: View {
                         "mediaId": selected.id,
                     ]
                     if !selected.altText.isEmpty { info["alt"] = selected.altText }
+                    if !selected.captionHTML.isEmpty { info["caption"] = selected.captionHTML }
                     if let width = selected.mediaDetails?.width { info["width"] = width }
                     NotificationCenter.default.post(name: .insertMediaURL, object: nil, userInfo: info)
                     showImagePicker = false
