@@ -63,13 +63,13 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `Sources/QuillKit/Views/CLAUDE.md`, the `.toolbarBackgroundVisibility` entry.
 - **Last checked:** macOS 27.0, 2026-09-19.
 
-### Sidebar width is not restored between launches
+### Main window position and sidebar width are not restored after a reboot
 
-- **Bug:** SwiftUI's split-view autosave key embeds a framework address that changes between boots and rebuilds, so the saved width gets lost.
-- **Code:** `sidebarWidthKey`, `launchSidebarWidth` and the `onGeometryChange` writer in `ContentView`.
-- **Test:** remove the custom save, drag the sidebar to about 295pt, quit, rebuild, and relaunch. The sidebar must come back at 295pt. It also has to survive a reboot before the bug can count as fixed.
-- **Detail:** `Sources/QuillKit/Views/Sidebar/CLAUDE.md`, the `.navigationSplitViewColumnWidth` entry.
-- **Last checked:** macOS 27.0, 2026-10-05.
+- **Bug:** a `WindowGroup` without an `id` saves its window frame and its split-view widths under keys built from the full view type. That type includes a SwiftUI address that moves with the shared-cache slide on every boot, and the type also changes when `ContentView`'s modifier chain does, so both were lost after each reboot.
+- **Code:** `id: "main"` on the `WindowGroup` in `QuillApp`, which makes the keys `NSWindow Frame main-AppWindow-1` and `NSSplitView Subview Frames main-AppWindow-1, SidebarNavigationSplitView`.
+- **Test:** remove the `id`, move the window, drag the sidebar to about 295pt in a 1300pt window, quit, rebuild, relaunch, then reboot and relaunch. The window and the sidebar must come back as they were each time. Also check that `defaults read com.siolon.quill` has no new key containing `SwiftUI.WindowGroup<`.
+- **Detail:** `Sources/QuillKit/App/CLAUDE.md`, the `WindowGroup` id entry.
+- **Last checked:** macOS 27.0, 2026-10-25.
 
 ### Search field takes focus at launch and keeps it
 
@@ -129,4 +129,5 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 
 ## Retired
 
+- **Custom sidebar-width save** (`sidebarWidth` defaults key, written from `onGeometryChange` in `ContentView`) — removed 2026-10-25 on macOS 27.0, once `id: "main"` gave SwiftUI's own split-view key a stable name. Without it a dragged sidebar came back at its width after a quit, a rebuild and a reboot.
 - **`Picker` appearance workaround** — removed in `4bc933a` once macOS 27 fixed the stale appearance (`docs/superpowers/plans/2026-09-18-native-ui.md`, Task 9).

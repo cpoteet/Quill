@@ -31,6 +31,7 @@ public struct QuillApp: App {
             window.title = "About Quill"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            window.setContentSize(hosting.view.fittingSize)
             window.center()
             aboutWindow = window
         }
@@ -39,7 +40,7 @@ public struct QuillApp: App {
     }
 
     public var body: some Scene {
-        WindowGroup("Quill") {
+        WindowGroup("Quill", id: "main") {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(appServices)
