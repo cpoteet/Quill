@@ -49,6 +49,7 @@
       <details class="toc__disclosure" data-collapse-width="760" open>
         <summary class="toc__heading">Releases <span class="toc__count"></span></summary>
         <ul class="toc__list">
+          <li><a href="#v2.5.0" class="toc__link"><span>v2.5.0</span><span class="toc__date">Oct 24</span></a></li>
           <li><a href="#v2.4.0" class="toc__link"><span>v2.4.0</span><span class="toc__date">Oct 13</span></a></li>
           <li><a href="#v2.3.0" class="toc__link"><span>v2.3.0</span><span class="toc__date">Oct 8</span></a></li>
           <li><a href="#v2.2.0" class="toc__link"><span>v2.2.0</span><span class="toc__date">Oct 3</span></a></li>
@@ -72,11 +73,43 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.5.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.5.0</h2>
+          <span class="release__date">October 24, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(1)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Edit Media Titles and Captions</h4>
+            <p class="release__body">The Media Info inspector now edits an item's title and caption alongside its alt text, and each change saves to WordPress as you make it. When you insert a single image from the media library, Quill fills in its caption, with formatting and links, so you don't retype it in each post. The inspector also shows each file's size, and the inspector was reordered for better hierarchy.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(2)</span></h3>
+          <ul class="release__list">
+            <li><strong>Thumbnails fill the grid</strong> — Media library thumbnails now resize with the window so each row fills its width, instead of leaving the spare space in the gaps.</li>
+            <li><strong>Closing the preview deselects the item</strong> — Closing the large preview or switching media filters now deselects the item, and an open Media Info inspector shows "No Selection".</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(2)</span></summary>
+          <ul class="release__list">
+            <li>The Media Info inspector's Filename row shows the file's name instead of its WordPress title.</li>
+            <li>The Media Info inspector slides in smoothly when it opens, without a delay or the thumbnails flashing their placeholder.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.4.0">
         <header class="release__header">
           <h2 class="release__version">v2.4.0</h2>
           <span class="release__date">October 13, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
