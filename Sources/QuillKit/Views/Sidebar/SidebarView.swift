@@ -59,6 +59,10 @@ public struct SidebarView: View {
     /// The WKWebView keeps first responder across a row click, which leaves the selection drawn unemphasized.
     private func focusPostList() {
         guard appState.selectedSection != .media else { return }
+        focusSidebarList()
+    }
+
+    private func focusSidebarList() {
         guard let window = NSApp.keyWindow,
               let root = window.contentView,
               let table = Self.firstTableView(in: root) else { return }
@@ -120,6 +124,11 @@ public struct SidebarView: View {
             focusPostList()
         }
         .onChange(of: appState.selectedSection) { _, _ in releaseSearchFocus() }
+        .onChange(of: appState.mediaFilter) { _, _ in
+            guard appState.selectedSection == .media else { return }
+            releaseSearchFocus()
+            focusSidebarList()
+        }
         .onChange(of: appState.triggerRefresh) { _, newValue in
             guard newValue else { return }
             appState.triggerRefresh = false
