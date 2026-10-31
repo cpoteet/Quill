@@ -509,7 +509,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                 let fnStr = String(data: jsonFN, encoding: .utf8)
             else { return }
             unansweredSetContents += 1
-            wv.evaluateJavaScript("setContent(\(htmlStr), \(fnStr))") { _, _ in
+            wv.evaluateJavaScript("setContent(\(htmlStr), \(fnStr), \(needsSync))") { _, _ in
                 self.unansweredSetContents -= 1
             }
             if needsSync {

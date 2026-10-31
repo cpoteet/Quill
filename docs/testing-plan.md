@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-24 — 796 Swift tests + 1,938 JS tests (1,937 pass, 1 skipped), no failures._
+_Last updated: 2026-10-30 — 796 Swift tests + 1,941 JS tests (1,940 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -21,7 +21,7 @@ This document is the authoritative reference for Quill's automated test suite an
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (18 tests — live Tiptap editor in jsdom; `window.flushContent` and `window.insertImage`'s caption)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
@@ -2445,6 +2445,9 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `two block paragraphs flatten into the one image caption` | `<p>One</p><p>Two</p>` gives one image whose text is `OneTwo`, then the caret paragraph |
 | `a caption that parses to nothing inserts a plain image` | `<p></p>`, whitespace and a lone `<script>` fall back to a plain image with an empty caption |
 | `in a table cell the caption is dropped and an inline image goes in` | A table-cell insert makes an `inlineImage` in the cell's paragraph, no image block, no caption text |
+| `a freshly loaded post has nothing to undo` | After `window.setContent`, `can().undo()` is false and the toolbar's Undo button is disabled |
+| `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
+| `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
 ## JS keyboard tests (137 tests)
 

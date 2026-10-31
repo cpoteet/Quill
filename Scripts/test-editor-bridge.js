@@ -235,3 +235,28 @@ describe('insertImage with a library caption', () => {
     assert.doesNotMatch(editor.state.doc.textContent, /Dropped caption/)
   })
 })
+
+describe('setContent history', () => {
+  test('a freshly loaded post has nothing to undo', () => {
+    win.setContent('<p>Loaded post</p>', '[]')
+    assert.equal(editor.can().undo(), false)
+    assert.equal(win.document.querySelector('[data-cmd="undo"]').disabled, true)
+  })
+
+  test('loading another post drops the previous post\'s undo history', () => {
+    win.setContent('<p>Post A</p>', '[]')
+    typeAtEnd(' edited')
+    assert.equal(editor.can().undo(), true)
+    win.setContent('<p>Post B</p>', '[]')
+    assert.equal(editor.can().undo(), false)
+    assert.equal(win.document.querySelector('[data-cmd="undo"]').disabled, true)
+  })
+
+  test('keepHistory lets a replacement inside the open post be undone', () => {
+    win.setContent('<p>Original</p>', '[]')
+    win.setContent('<p>Generated</p>', '[]', true)
+    assert.equal(editor.can().undo(), true)
+    editor.commands.undo()
+    assert.equal(editor.getText(), 'Original')
+  })
+})

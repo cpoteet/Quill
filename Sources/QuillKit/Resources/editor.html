@@ -6376,7 +6376,14 @@
       window.webkit?.messageHandlers?.blocksAtRisk?.postMessage({ names })
     }
 
-    window.setContent = (html, footnotesJSON) => {
+    // Dropping and re-adding the history plugin re-initialises its state, which empties the undo stack.
+    function _clearHistory() {
+      const plugins = editor.state.plugins
+      editor.view.updateState(editor.state.reconfigure({ plugins: plugins.filter(p => p.key !== 'history$') }))
+      editor.view.updateState(editor.state.reconfigure({ plugins }))
+    }
+
+    window.setContent = (html, footnotesJSON, keepHistory) => {
       if (codeViewActive) {
         codeViewActive = false
         document.getElementById('editor').style.display = ''
@@ -6400,6 +6407,7 @@
       _parsingPaste = false
       _resetSyncedPatterns()
       editor.commands.setContent(wrapped || '', false)
+      if (!keepHistory) _clearHistory()
       // setContent maps the old caret into the new doc, and a landing next to an
       // atom block becomes a NodeSelection that outlines it before any click.
       editor.commands.setTextSelection(0)
