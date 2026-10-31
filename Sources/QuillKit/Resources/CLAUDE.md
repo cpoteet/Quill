@@ -165,6 +165,7 @@ onto it" — its children are still replayed.
 - A grip drag must leave the pasteboard empty
 - WebKit does not autoscroll `#editor-wrap` during a drag
 - A section drag uses ⌘ because WebKit never starts a drag from a ⇧-press
+- A click outside every line of a block seats the caret at the block's start or end, so `clickSeatTarget` puts it under the pointer
 
 ## Cross-cutting gotchas that apply here
 

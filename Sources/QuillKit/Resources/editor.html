@@ -1692,6 +1692,7 @@
   <script src="./block-settings.js"></script>
   <script src="./block-move.js"></script>
   <script src="./block-grip.js"></script>
+  <script src="./click-seat.js"></script>
   <script>
     const {
       Editor, Extension, TiptapNode, Mark,
@@ -3867,6 +3868,42 @@
       return false
     }
 
+    const CLICK_SEAT_BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'preformatted', 'cite', 'footnoteItem'])
+    let _pendingSeat = null
+
+    function _seatLine(view, $pos) {
+      return { start: $pos.start(), end: $pos.end(), first: view.coordsAtPos($pos.start()), last: view.coordsAtPos($pos.end()) }
+    }
+
+    // WebKit seats a click outside every line at the block's start or end, whatever the x.
+    function _seatForPress(view, event) {
+      if (event.button !== 0 || event.detail !== 1 || event.shiftKey || event.metaKey || event.altKey) return null
+      if (event.target.closest && event.target.closest('[contenteditable="false"]')) return null
+      const point = { left: event.clientX, top: event.clientY }
+      const hit = view.posAtCoords(point)
+      if (!hit) return null
+      const { doc, selection } = view.state
+      const $pos = doc.resolve(hit.pos)
+      const find = (at, dir) => selection.constructor.findFrom(at, dir, true)?.$head
+      const around = $pos.parent.isTextblock
+        ? [find(doc.resolve($pos.before()), -1), $pos, find(doc.resolve($pos.after()), 1)]
+        : [find($pos, -1), find($pos, 1)]
+      const within = hit.inside < 0 ? null : [hit.inside, hit.inside + doc.nodeAt(hit.inside).nodeSize]
+      const blocks = around.filter($p => {
+        if (!$p) return false
+        if (within && ($p.before() < within[0] || $p.after() > within[1])) return false
+        if (!CLICK_SEAT_BLOCKS.has($p.parent.type.name)) return true
+        const box = view.nodeDOM($p.before())?.getBoundingClientRect()
+        return box && point.left >= box.left && point.left <= box.right
+      })
+      const lines = blocks.map($p => _seatLine(view, $p))
+      const target = clickSeatTarget(lines, point.top)
+      if (!target || !CLICK_SEAT_BLOCKS.has(blocks[target.index].parent.type.name)) return null
+      const chosen = lines[target.index]
+      const seat = view.posAtCoords({ left: point.left, top: target.y })
+      return seat && seat.pos >= chosen.start && seat.pos <= chosen.end ? { pos: seat.pos, doc } : null
+    }
+
     function _tabDecorations(node, pos, head, decos) {
       if (node.childCount < 2) return
       const list = node.child(0)
@@ -4575,6 +4612,13 @@
       ],
       content: '',
       editorProps: {
+        // Read on the press: selecting the block can add a toolbar row and move everything before the click lands.
+        handleDOMEvents: {
+          mousedown(view, event) {
+            _pendingSeat = _seatForPress(view, event)
+            return false
+          },
+        },
         handleKeyDown(view, event) {
           if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && _isInFootnote()) {
             const { state, dispatch } = view
@@ -4588,6 +4632,12 @@
           return false
         },
         handleClick(view, pos, event) {
+          const seat = _pendingSeat
+          _pendingSeat = null
+          if (seat && seat.doc === view.state.doc) {
+            editor.chain().focus().setTextSelection(seat.pos).run()
+            return true
+          }
           if (!event.metaKey) return false
           let el = event.target
           while (el && el !== view.dom) {

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 804 Swift tests + 2,041 JS tests (2,040 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 804 Swift tests + 2,062 JS tests (2,061 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -36,8 +36,9 @@ This document is the authoritative reference for Quill's automated test suite an
 18. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 19. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 20. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
+21. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (21 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty-one passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -3486,6 +3487,44 @@ From the branch review on 2026-10-31.
 | `a mousedown in the text hides the grip` | A click can open a popover under a still pointer; the grip waits for the next move |
 | `clicking the grip on a codeBlock puts the caret in its text` | And the same for `preformatted`, `blockquote` and `pullquote` (4 tests) |
 
+## JS click seat tests (21 tests)
+
+File: `Scripts/test-click-seat.js`
+Editor files: `Sources/QuillKit/Resources/click-seat.js`, `editor.html` (`_seatForPress`)
+
+`clickSeatTarget(lines, y)` is pure. `_seatForPress` is driven in jsdom with a stubbed view (jsdom has no layout), so the stub supplies the rectangles and what `posAtCoords` returns. The press-to-click handoff and the real WebKit geometry need the app and are checked by hand (§7, "Clicking outside a line").
+
+### `clickSeatTarget` (10 tests)
+
+| Test | What it checks |
+|---|---|
+| `a click on a line is left to WebKit` | Returns null |
+| `a click in the padding above a line seats on that line` | Middle of the line |
+| `a click in the padding below a line seats on that line` | Middle of the line |
+| `a multi-line block seats on its first line from above and its last line from below` | And a click between its lines is left alone |
+| `a click between two blocks seats on the nearer one` | |
+| `a click midway between two blocks seats on the later one` | Matches WebKit's pick of the next block |
+| `a click farther than two lines from every line is left to WebKit` | Keeps a click far below the post at the end of the post |
+| `a click on any line leaves the whole click to WebKit` | |
+| `no candidate lines means nothing to seat` | |
+| `the reach above a block is measured in first-line heights` | |
+
+### `seating a press that lands outside every line` (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `a click in the gap seats on the nearer block at the click` | A gap resolves to a boundary position, not a position in a block |
+| `a click on a line is left to WebKit` | |
+| `a secondary button, a double click and a modifier are left to WebKit` | Right button, `detail` 2, shift, meta, alt |
+| `a click on non-editable chrome is left alone` | `[contenteditable="false"]` target |
+| `a click inside a node never seats in a block outside it` | Keeps accordion and details titles, images and separators out of a neighbour |
+| `a block that does not span the click horizontally is not a candidate` | A click in one column never seats in another |
+| `a position that lands outside the chosen block seats nothing` | |
+| `beside a block that keeps WebKit's default` (3 tests) | A click on a Buttons block's line, or nearer to it than to the paragraph above, is not seated in that paragraph; one nearer to the paragraph still is |
+| `the seat records the document it was measured against` | `handleClick` applies it only to the same document |
+
+---
+
 ## JS passthrough tests (65 tests)
 
 File: `Scripts/test-editor-passthrough.js`
@@ -3911,6 +3950,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **An empty paragraph the author wrote at the end of a post** is still there after an edit and a save. (Quill keeps its own empty paragraph after a table or image so the caret has somewhere to land; that one is chrome and should not be saved.)
 - [ ] Confirm the four blocks Quill *does* model still behave normally in the same post: an image is still selectable/resizable, a gallery still shows its thumbnail grid, an embed still renders, and a table is still editable.
 
+- [ ] **Clicking outside a line.** On a new local draft holding a heading, two paragraphs, a list, a Columns block, a table, a quote, a Preformatted block, a Group, a Pullquote and a last paragraph, with the caret in a plain paragraph first (selecting a quote, Preformatted block, Group, Pullquote or table adds a toolbar row that moves the layout, so look before each click): click the blank band above and below each block's text, inside a table cell's padding, in the margin between two blocks and between two list items, each once to the right of the text and once to the left → the caret lands on the nearest line at the click's x, right of the text at the line's end, left of it at the line's start; never at the start of the block whatever the x. In Columns, a click in one column never lands in the other. A click on a text line puts the caret under the pointer; double-click selects a word; shift-click extends the selection; a click well below the last block goes to the end of the post; a click on a separator selects it; clicking the row to the right of an untitled Details or accordion title still puts the caret in the title, not the body. A footnote entry follows the same rule as a paragraph. Buttons, image captions and tab, accordion and Details titles keep WebKit's default: a click to the right of a Button on its row, or of an image caption on its row, must not land in the paragraph above or below it, and a click on an image still selects it with its handles.
 - [ ] **Moving blocks.** On a new local draft with paragraphs, an H2 section with an H3 inside it, a list, a table, a Group or Columns block and an embed: point at each block → a grey type marker shows left of the column, level with the first line of text blocks and the top edge of media and cards; after a moment the tooltip reads "<Block> · Drag to move" ("Heading 2 · Drag to move, ⌘ for the section" on the H2). Drag a paragraph, a table, the Group and the embed by their markers, letting go over a column, a quote, a list and a table → each lands in the nearest gap between top-level blocks, never inside a container; an amber line shows the gap during the drag, the source is dimmed, and a small card follows the pointer. Let go with the pointer in the left margin → it still drops. ⌘Z undoes each move in one step. Repeat in dark mode.
 - [ ] **Section drag.** Hold ⌘ with the pointer on the H2's marker → the marker turns amber and the section (down to the next H2 or H1) is tinted; let go of ⌘ → both go. Do it once with the editor focused and once after clicking a post in the sidebar (⌘ then reaches the page through `DroppableWebView`'s `flagsChanged` monitor). Hold ⌘ and drag → the whole section moves and the card reads "+ N more". ⇧ on the marker does nothing: WebKit never starts a drag from a ⇧-press.
 - [ ] **Move Block Up / Down from the keyboard.** With the caret mid-paragraph, press ⌃⌘↑ and ⌃⌘↓ (not Edit menu clicks) → the paragraph moves and the caret keeps its place.

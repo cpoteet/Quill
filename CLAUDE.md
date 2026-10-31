@@ -49,7 +49,7 @@ Runs every Swift and JS test. Current counts, every suite, the test-suite gotcha
 - `AI/` — `AnthropicClient`, `AISettings`, prompt builders, `EvaluationState`
 - `Storage/` — `Database`, `DraftStore`, `AutosaveStore`, `TaxonomyCache`
 - `Views/` — `ContentView`, split-view fixes; `Editor/`, `Sidebar/`, `Settings/`, `Media/`, `AI/`, `Onboarding/`
-- `Resources/` — `editor.html` (the whole Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals), `editor-transforms.js`, `block-descriptors.js`, `block-settings.js` (one entry per block setting), `block-parser.js` (checked against WordPress's parser; used for unsupported-block preservation), `block-move.js` (moving top-level blocks) and `block-grip.js` (the drag grip beside each block)
+- `Resources/` — `editor.html` (the whole Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals), `editor-transforms.js`, `block-descriptors.js`, `block-settings.js` (one entry per block setting), `block-parser.js` (checked against WordPress's parser; used for unsupported-block preservation), `block-move.js` (moving top-level blocks), `block-grip.js` (the drag grip beside each block) and `click-seat.js` (seating a click that lands outside every line)
 - `DesignSystem.swift`
 
 Concepts with their own doc: block model, Groups and synced patterns (`docs/block-model.md`); footnotes in post meta (`docs/footnotes-meta.md`); code view (`docs/code-view.md`); paste and Paste as Markdown (`docs/paste.md`).

@@ -38,6 +38,7 @@ run "JS block settings tests"  node --test Scripts/test-editor-block-settings.js
 run "JS AI output validity tests"  node --test Scripts/test-ai-output-validity.js
 run "JS evaluate tests"  node --test Scripts/test-editor-evaluate.js
 run "JS fixture validity sweep"  node --test Scripts/test-fixture-validity.js
+run "JS click seat tests"  node --test Scripts/test-click-seat.js
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

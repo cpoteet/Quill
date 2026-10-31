@@ -135,6 +135,14 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** found by the preflight check in `docs/superpowers/plans/2026-10-31-drag-to-reorder-blocks.md` (Task 0).
 - **Last checked:** macOS 27.2, 2026-10-31.
 
+### A click outside every line seats the caret at the block's start or end
+
+- **Bug:** WebKit resolves a click in a block's padding or in the margin between two blocks to the start of the block below, or the end of the block above, whatever the click's x. TextEdit (AppKit's text view) does not do this: with 24pt before and after each paragraph, a click in the gap to the right of the text put the caret at the end of the nearest line (checked 2026-10-31), so this is WebKit's contenteditable behaviour, not the Mac convention. TextEdit puts paragraph spacing inside the line's own rectangle, so it is not a perfect analogue of a margin, and TextEdit has no inset above the first line to test.
+- **Code:** `_seatForPress` and the `handleClick` that applies it, in `editor.html`; `clickSeatTarget` in `click-seat.js`. Buttons, image captions and tab, accordion and Details titles are deliberately not covered.
+- **Test:** on a new local draft with a Pullquote, click the blank band above its text to the right of the text → the caret goes to the end of the line. Click the margin between two paragraphs near the right edge → the caret goes to the end of the nearer one, not the start of the next.
+- **Detail:** `docs/editor-gotchas.md`, "A click outside every line of a block seats the caret at the block's start or end".
+- **Last checked:** macOS 27.0, 2026-10-31.
+
 ## Retired
 
 - **Custom sidebar-width save** (`sidebarWidth` defaults key, written from `onGeometryChange` in `ContentView`) — removed 2026-10-25 on macOS 27.0, once `id: "main"` gave SwiftUI's own split-view key a stable name. Without it a dragged sidebar came back at its width after a quit, a rebuild and a reboot.
