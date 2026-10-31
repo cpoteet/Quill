@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 804 Swift tests + 2,070 JS tests (2,069 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 804 Swift tests + 2,079 JS tests (2,078 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -22,7 +22,7 @@ This document is the authoritative reference for Quill's automated test suite an
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (146 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (423 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
@@ -2457,7 +2457,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (137 tests)
+## JS keyboard tests (146 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2704,6 +2704,25 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `the help link opens through Swift and does not navigate` | A click posts the W3C decision-tree URL to `openLink` and is `preventDefault`ed |
 | `alt text with quotes and an ampersand is written as core writes it` | Matches `applyInlineImage` from `Scripts/core-formats.js` |
 | `after Apply the popover shows the applied values and Apply is off again` | The fields keep the applied width and alt text; Apply is disabled |
+
+### `find shortcut` (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `⌘F opens the find bar` | A `keydown` with `metaKey` opens it; Escape closes it |
+| `⌃⌘F is left to the system and does not open it` | The handler ignores a press with `ctrlKey`, so the system's full-screen shortcut is not swallowed |
+
+### `a press in the page gutter` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `seats the caret at the nearest line instead of dropping focus` | A `mousedown` on `#editor-wrap` is prevented and the selection moves to the position `posAtCoords` reports for the click's y, with x clamped to the column |
+| `a press on the editor container beside the column seats too` | The same for `#editor`, which is what a press beside the column hits |
+| `aims at the text block on the clicked line, not the column edge` | In an indented block (a list item, a quote) x is clamped into the text block under the click, so `posAtCoords` returns that line instead of a container boundary |
+| `Shift extends the selection from its anchor` | A Shift press keeps the anchor and moves the head |
+| `a block whose anchor is "editor" is not mistaken for the container` | The container is matched by element, not by id |
+| `a press on the editor itself is left alone` | A press inside `.ProseMirror` is not intercepted |
+| `a secondary button is left alone` | Right-click in the gutter keeps its default |
 
 ---
 
@@ -3959,6 +3978,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Move Block Up / Down from the keyboard.** With the caret mid-paragraph, press ⌃⌘↑ and ⌃⌘↓ (not Edit menu clicks) → the paragraph moves and the caret keeps its place.
 - [ ] **Autoscroll during a drag.** In a post with about 60 paragraphs, drag the last paragraph's marker to the top edge of the editor and hold → the editor scrolls up and the amber line follows; let go → the block lands at the top.
 - [ ] **Other drags are unchanged.** Drag selected text within the post → the normal thin drop cursor shows, not the amber line, and the text moves. Grab an embed itself (not its marker) and drop it inside a column → it lands inside the column as before. Drop an image from Finder → it still uploads.
+- [ ] **Clicking in the gutter.** In a post with a few paragraphs, click in the blank area to the left and right of the text column, level with a paragraph, and type → the caret lands at the start (left) or end (right) of that line and the text goes there. A click below the last line puts the caret in the last paragraph. A click on the editor's scroll bar still scrolls.
+- [ ] **⌃⌘F is not Find.** With the caret in the editor, press ⌃⌘F → the find bar does not open (macOS 27 shows full screen as 🌐F; View → Enter Full Screen works). ⌘F still opens it.
 - [ ] **Narrow window.** At the narrowest window with the sidebar and Post Settings open, point at blocks → the marker never covers text.
 - [ ] **Typing hides the marker.** Point at a block, then type → the marker disappears and comes back on the next mouse move. It never shows in code view.
 
@@ -4157,7 +4178,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 
 ### 7.10 Delete / trash
 
-- [ ] Right-click a remote post and choose Delete → a confirmation dialog appears. Confirm → the post moves to WordPress Trash (recoverable, not permanently deleted).
+- [ ] Right-click a remote post and choose Move to Trash → a confirmation dialog appears. Confirm → the post moves to WordPress Trash (recoverable, not permanently deleted).
 - [ ] Same test with a page → the page moves to Trash.
 - [ ] Trash the post that is open in the editor → its editor closes; it does not stay open and editable.
 - [ ] Delete a local draft → it disappears from the sidebar and is removed from local storage.
@@ -4319,7 +4340,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 
 ### 7.17 Publish status helpers
 
-- [ ] The publish button label matches the post status: draft → "Publish", published → "Update", future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
+- [ ] The publish button label (and File menu item) follows the Status picker, not the saved status: Draft → "Save Draft", Published → "Publish" on a draft or "Update" on a published post, future → "Schedule", pending → "Submit for Review", private → "Publish Privately".
 - [ ] The toast message after saving reflects what happened (e.g. "Published" vs "Updated" vs "Scheduled").
 - [ ] Set a future date → the status changes to "future" and the button changes to "Schedule".
 - [ ] Set visibility to Private → the status changes to "private" and the button changes to "Publish Privately".

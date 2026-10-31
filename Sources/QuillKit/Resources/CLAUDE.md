@@ -166,6 +166,8 @@ onto it" — its children are still replayed.
 - WebKit does not autoscroll `#editor-wrap` during a drag
 - A section drag uses ⌘ because WebKit never starts a drag from a ⇧-press
 - A click outside every line of a block seats the caret at the block's start or end, so `clickSeatTarget` puts it under the pointer
+- A press in the page gutter lands on `#editor` or `#editor-wrap`, outside the contenteditable, so it drops focus and typing goes nowhere
+- The find shortcut must reject ⌃, or ⌃⌘F opens Find instead of reaching the system
 
 ## Cross-cutting gotchas that apply here
 

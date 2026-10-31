@@ -1391,3 +1391,101 @@ describe('the inline image popover', () => {
     assert.equal($('inline-image-popover').classList.contains('visible'), false)
   })
 })
+
+describe('find shortcut', () => {
+  const press = mods => win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'f', bubbles: true, cancelable: true, ...mods }))
+  const bar = () => win.document.getElementById('find-bar').classList.contains('visible')
+
+  test('⌘F opens the find bar', () => {
+    press({ metaKey: true })
+    assert.equal(bar(), true)
+    win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    assert.equal(bar(), false)
+  })
+
+  test('⌃⌘F is left to the system and does not open it', () => {
+    press({ metaKey: true, ctrlKey: true })
+    assert.equal(bar(), false)
+  })
+})
+
+describe('a press in the page gutter', () => {
+  const wrap = () => win.document.getElementById('editor-wrap')
+  const press = (target, init = {}) => {
+    const ev = new win.MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5, bubbles: true, cancelable: true, ...init })
+    target.dispatchEvent(ev)
+    return ev
+  }
+
+  test('seats the caret at the nearest line instead of dropping focus', () => {
+    editor.commands.setContent('<p>one</p><p>two</p>')
+    const view = editor.view
+    const original = view.posAtCoords
+    view.posAtCoords = () => ({ pos: 6, inside: -1 })
+    Object.defineProperty(wrap(), 'clientWidth', { configurable: true, value: 800 })
+    try {
+      const ev = press(wrap())
+      assert.equal(ev.defaultPrevented, true)
+      assert.equal(view.state.selection.from, 6)
+    } finally { view.posAtCoords = original; delete wrap().clientWidth }
+  })
+
+  test('a press on the editor container beside the column seats too', () => {
+    const view = editor.view
+    const original = view.posAtCoords
+    view.posAtCoords = () => ({ pos: 1, inside: -1 })
+    Object.defineProperty(wrap(), 'clientWidth', { configurable: true, value: 800 })
+    try {
+      const ev = press(win.document.getElementById('editor'))
+      assert.equal(ev.defaultPrevented, true)
+      assert.equal(view.state.selection.from, 1)
+    } finally { view.posAtCoords = original; delete wrap().clientWidth }
+  })
+
+  test('aims at the text block on the clicked line, not the column edge', () => {
+    editor.commands.setContent('<ul><li><p>one</p></li></ul><p>two</p>')
+    const view = editor.view
+    const original = view.posAtCoords
+    const asked = []
+    const stub = (el, r) => { el.getBoundingClientRect = () => r }
+    stub(view.dom, { left: 100, right: 300, top: 0, bottom: 100 })
+    view.dom.querySelectorAll('p').forEach((el, i) => stub(el, i === 0 ? { left: 140, right: 300, top: 0, bottom: 40 } : { left: 100, right: 300, top: 50, bottom: 70 }))
+    view.posAtCoords = point => { asked.push(point.left); return { pos: 3, inside: -1 } }
+    Object.defineProperty(wrap(), 'clientWidth', { configurable: true, value: 800 })
+    try {
+      press(win.document.getElementById('editor'), { clientX: 20, clientY: 20 })
+      assert.equal(asked[0], 141)
+    } finally { view.posAtCoords = original; delete wrap().clientWidth }
+  })
+
+  test('Shift extends the selection from its anchor', () => {
+    editor.commands.setContent('<p>one</p><p>two</p>')
+    editor.commands.setTextSelection({ from: 2, to: 3 })
+    const view = editor.view
+    const original = view.posAtCoords
+    view.posAtCoords = () => ({ pos: 7, inside: -1 })
+    Object.defineProperty(wrap(), 'clientWidth', { configurable: true, value: 800 })
+    try {
+      press(wrap(), { shiftKey: true })
+      assert.equal(view.state.selection.anchor, 2)
+      assert.equal(view.state.selection.head, 7)
+    } finally { view.posAtCoords = original; delete wrap().clientWidth }
+  })
+
+  test('a block whose anchor is "editor" is not mistaken for the container', () => {
+    editor.commands.setContent('<p id="editor">anchored</p>')
+    const block = editor.view.dom.querySelector('p')
+    block.id = 'editor'
+    assert.equal(press(block).defaultPrevented, false)
+  })
+
+  test('a press on the editor itself is left alone', () => {
+    const ev = press(editor.view.dom)
+    assert.equal(ev.defaultPrevented, false)
+  })
+
+  test('a secondary button is left alone', () => {
+    const ev = press(wrap(), { button: 2 })
+    assert.equal(ev.defaultPrevented, false)
+  })
+})

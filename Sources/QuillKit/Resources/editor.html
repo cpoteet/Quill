@@ -6305,7 +6305,7 @@
     })
     document.addEventListener('keydown', e => {
       if (e.key === 'Meta') document.body.classList.add('cmd-held')
-      if (e.metaKey && !e.shiftKey && !e.altKey && e.key === 'f') {
+      if (e.metaKey && !e.shiftKey && !e.altKey && !e.ctrlKey && e.key === 'f') {
         e.preventDefault()
         _openFindBar()
       } else if (e.key === 'Escape' && _findOpen) {
@@ -6315,6 +6315,34 @@
     })
     document.addEventListener('keyup', e => {
       if (e.key === 'Meta') document.body.classList.remove('cmd-held')
+    })
+
+    // A press in the page gutter, outside the contenteditable, would drop focus and swallow typing.
+    document.getElementById('editor-wrap').addEventListener('mousedown', e => {
+      const wrap = e.currentTarget
+      if ((e.target !== wrap && e.target !== editor.options.element) || e.button !== 0 || codeViewActive) return
+      const wrapRect = wrap.getBoundingClientRect()
+      if (e.clientX - wrapRect.left >= wrap.clientWidth) return
+      const view = editor.view
+      const column = view.dom.getBoundingClientRect()
+      let left = Math.min(Math.max(e.clientX, column.left + 1), column.right - 1)
+      let nearest = null
+      view.dom.querySelectorAll('p, h1, h2, h3, h4, h5, h6, pre').forEach(el => {
+        if (el.closest('[contenteditable="false"]')) return
+        const r = el.getBoundingClientRect()
+        if (e.clientY < r.top || e.clientY > r.bottom) return
+        const gap = e.clientX < r.left ? r.left - e.clientX : Math.max(0, e.clientX - r.right)
+        if (!nearest || gap < nearest.gap) nearest = { gap, r }
+      })
+      if (nearest) left = Math.min(Math.max(e.clientX, nearest.r.left + 1), nearest.r.right - 1)
+      const hit = view.posAtCoords({ left, top: e.clientY })
+      if (!hit) return
+      e.preventDefault()
+      const { state } = view
+      view.focus()
+      const seat = state.selection.constructor.near(state.doc.resolve(hit.pos))
+      const next = e.shiftKey && seat.constructor.between ? seat.constructor.between(state.doc.resolve(state.selection.anchor), seat.$head) : seat
+      view.dispatch(state.tr.setSelection(next))
     })
     window.addEventListener('blur', () => document.body.classList.remove('cmd-held'))
 
