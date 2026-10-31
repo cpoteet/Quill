@@ -300,13 +300,21 @@ public struct WordPressClient: Sendable {
     }
 
     public func createTag(name: String) async throws -> WPTag {
-        let url = try endpoint("tags")
-        return try await post(url, body: TaxonomyPayload(name: name))
+        try await createTerm(name: name, in: "tags")
     }
 
     public func createCategory(name: String) async throws -> WPCategory {
-        let url = try endpoint("categories")
-        return try await post(url, body: TaxonomyPayload(name: name))
+        try await createTerm(name: name, in: "categories")
+    }
+
+    // A term created elsewhere since the lists were cached comes back as term_exists; use that term, as Gutenberg does.
+    private func createTerm<T: Decodable>(name: String, in taxonomy: String) async throws -> T {
+        do {
+            return try await post(try endpoint(taxonomy), body: TaxonomyPayload(name: name))
+        } catch let error as APIError {
+            guard let id = error.existingTermID else { throw error }
+            return try await get(try endpoint("\(taxonomy)/\(id)"))
+        }
     }
 
     // MARK: - Autosave (for Preview)
@@ -351,9 +359,13 @@ public struct WordPressClient: Sendable {
         async let termFetch: [WPSearchItem] = get(termsURL)
         async let mediaFetch: [WPMedia] = get(mediaURL)
 
-        let posts  = (try? await postFetch)  ?? []
-        let terms  = (try? await termFetch)  ?? []
-        let medias = (try? await mediaFetch) ?? []
+        var failures: [Error] = []
+        var posts: [WPSearchItem] = [], terms: [WPSearchItem] = [], medias: [WPMedia] = []
+        do { posts = try await postFetch } catch { failures.append(error) }
+        do { terms = try await termFetch } catch { failures.append(error) }
+        do { medias = try await mediaFetch } catch { failures.append(error) }
+        // Partial results beat an error; a search where every request failed is reported.
+        if failures.count == 3, let first = failures.first { throw first }
 
         var results: [LinkSearchResult] = []
 

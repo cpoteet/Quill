@@ -1077,7 +1077,7 @@ public struct PostEditorView: View {
         do {
             while let name = saved.newCategoryNames.first {
                 let cat = try await client.createCategory(name: name)
-                appState.categories.append(cat)
+                if !appState.categories.contains(where: { $0.id == cat.id }) { appState.categories.append(cat) }
                 saved.categoryIDs.insert(cat.id)
                 saved.newCategoryNames.removeFirst()
                 if stillOnPost() {
@@ -1088,7 +1088,7 @@ public struct PostEditorView: View {
 
             while let name = saved.newTagNames.first {
                 let tag = try await client.createTag(name: name)
-                appState.tags.append(tag)
+                if !appState.tags.contains(where: { $0.id == tag.id }) { appState.tags.append(tag) }
                 saved.tagIDs.insert(tag.id)
                 saved.newTagNames.removeFirst()
                 if stillOnPost() {

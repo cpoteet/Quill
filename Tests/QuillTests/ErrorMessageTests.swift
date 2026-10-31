@@ -31,6 +31,31 @@ import Testing
         #expect(!error.isFixedInSettings)
     }
 
+    // MARK: - WordPress's own reason for a 400
+
+    private static let termExistsBody =
+        #"{"code":"term_exists","message":"A term with the name provided already exists in this taxonomy.","data":{"status":400,"term_id":7}}"#
+
+    @Test func aRejectedRequestQuotesWordPresssOwnMessageAndDoesNotPointAtSettings() {
+        let error = APIError.httpError(statusCode: 400, body: Self.termExistsBody)
+        #expect(error.errorDescription
+                == "WordPress didn't accept the request: A term with the name provided already exists in this taxonomy.")
+        #expect(!error.isFixedInSettings)
+    }
+
+    @Test func aRejectedRequestWithoutAMessageKeepsTheGenericText() {
+        let generic = APIError.httpError(statusCode: 400, body: "").errorDescription
+        #expect(APIError.httpError(statusCode: 400, body: "<html>Bad Request</html>").errorDescription == generic)
+        #expect(APIError.httpError(statusCode: 400, body: #"{"code":"x","message":""}"#).errorDescription == generic)
+    }
+
+    @Test func onlyTermExistsCarriesAnExistingTermID() {
+        #expect(APIError.httpError(statusCode: 400, body: Self.termExistsBody).existingTermID == 7)
+        #expect(APIError.httpError(statusCode: 400, body: #"{"code":"rest_invalid_param","message":"Bad","data":{"term_id":7}}"#)
+                .existingTermID == nil)
+        #expect(APIError.httpError(statusCode: 400, body: "").existingTermID == nil)
+    }
+
     @Test func loadFailureCarriesTheMessageAndTheSettingsFlag() {
         let failure = LoadFailure(APIError.httpError(statusCode: 401, body: ""))
         #expect(failure.message == APIError.httpError(statusCode: 401, body: "").errorDescription)

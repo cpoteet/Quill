@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 799 Swift tests + 2,041 JS tests (2,040 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 804 Swift tests + 2,041 JS tests (2,040 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (799 tests)
+1. **Swift tests** — `swift test` (804 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -115,7 +115,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (799 tests, 52 suites)
+## Swift test suite (804 tests, 52 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -129,7 +129,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 26 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 82 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 84 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -164,7 +164,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
 | 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 12 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call (caption included), driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
-| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 15 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
+| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 18 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
 | 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
 | 43 | `AISettingsTests` | `AISettingsTests.swift` | 22 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
@@ -310,7 +310,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (82 tests)
+### 5. Networking — `WordPressClientTests` (84 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -361,7 +361,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `fetchAllPostsRequestIncludesFieldsFilter` | `fetchAllPosts` query includes `_fields=` (list fetch omits content body) |
 | `fetchPostRequestOmitsFieldsFilter` | `fetchPost` has no `_fields=` (full content required for editor) |
 
-#### Taxonomy (6 tests)
+#### Taxonomy (8 tests)
 
 | Test | What it checks |
 |---|---|
@@ -371,6 +371,8 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `fetchAllTagsPaginatesAcrossMultiplePages` | Tags pagination |
 | `createCategoryUsesPostMethodOnCategoriesEndpoint` | `POST /categories` with `{"name":…}` |
 | `createTagUsesPostMethodOnTagsEndpoint` | `POST /tags` with `{"name":…}` |
+| `createTagUsesTheExistingTermWhenWordPressSaysItExists` | A 400 `term_exists` (the tag was made elsewhere since the list was cached) fetches `GET /tags/{term_id}` and returns that tag instead of failing the save |
+| `createCategoryRethrowsAnyOtherRejection` | Any other refusal still throws |
 
 #### `canPostUnfilteredHTML` (6 tests)
 
@@ -417,7 +419,7 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 |---|---|
 | `searchLinksReturnsMergedResults` | All three sub-requests succeed → merged list |
 | `searchLinksIgnoresSubrequestFailures` | Media/term failure → others still returned |
-| `searchLinksAllSubrequestsFailReturnsEmptyArray` | All fail → `[]`, no throw |
+| `searchLinksAllSubrequestsFailThrows` | All fail (offline, expired password) → throws, so the link picker shows the error instead of "no results" |
 | `searchLinksPostsFailWhileTermsSucceed` | Posts sub-request fails → terms/media still returned |
 | `searchLinksPageSubtypeMapsToPageType` | `subtype == "page"` → `.page` result type |
 | `searchLinksTagSubtypeMapsToTagType` | `subtype == "tag"` → `.tag` result type |
@@ -1266,14 +1268,17 @@ File: `Tests/QuillTests/NetworkFailureTests.swift`
 | `apiErrorPassesThroughOtherNetworkErrors` | Any other error's own message is shown unchanged |
 | `anthropicErrorShowsFriendlyMessageForConnectivityFailure` | `AnthropicError.networkError(URLError(.notConnectedToInternet))` reads "Couldn't reach the Anthropic API…" |
 
-### 40. Errors — `ErrorMessageTests` (15 tests)
+### 40. Errors — `ErrorMessageTests` (18 tests)
 
 File: `Tests/QuillTests/ErrorMessageTests.swift`
 
 | Test | What it checks |
 |---|---|
-| `settingsFixableErrors` | 400, 401, 403, a host that can't be found or times out, an invalid URL, a web page instead of data, and no site connected are fixed in Settings — each of these messages points at the password or the URL |
+| `settingsFixableErrors` | 400 with no WordPress message, 401, 403, a host that can't be found or times out, an invalid URL, a web page instead of data, and no site connected are fixed in Settings — each of these messages points at the password or the URL |
 | `errorsSettingsCannotFix` | 404, 500, no internet connection, a bad server response and a decoding error are not, so the sidebar offers only Retry |
+| `aRejectedRequestQuotesWordPresssOwnMessageAndDoesNotPointAtSettings` | A 400 whose body is a WordPress error reads "WordPress didn't accept the request: …" with WordPress's message, and does not offer Settings |
+| `aRejectedRequestWithoutAMessageKeepsTheGenericText` | A 400 with an HTML body or an empty message keeps the generic text |
+| `onlyTermExistsCarriesAnExistingTermID` | `existingTermID` is set only for `term_exists` with a `data.term_id` |
 | `loadFailureCarriesTheMessageAndTheSettingsFlag` | `LoadFailure` keeps the error's message and `APIError.isFixedInSettings` |
 | `loadFailureFromANonAPIErrorDoesNotPointAtSettings` | A `URLError` never offers Settings |
 | `anthropicRateLimitSaysToWait` | HTTP 429 reads "You've hit Anthropic's rate limit…" |
@@ -3864,7 +3869,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] A failed load in Posts, Pages or Media says "Couldn't load …", not "No … yet". The red error icon lines up with the first line of the error text, not the middle of a wrapped message.
 - [ ] **Retry after a failed launch load fills every section.** Turn off Wi-Fi and launch → Posts shows the error row. Turn Wi-Fi back on and click Retry → Posts loads; switch to Pages → the pages are listed, not "No pages yet". Repeat with ⌘R and with the toolbar Refresh button instead of Retry.
 - [ ] **Refresh reloads the open post when it has no unsaved changes.** Open a post, change its title and body in the WordPress admin, return to Quill and click the toolbar Refresh (or press ⌘R) → the editor shows the new title and body without reselecting the post. Then type a character in Quill and click Refresh → your text stays and nothing reloads. Click Refresh right after Save, while the request is still running → the editor keeps the saved text. Click Refresh with an unchanged post open → the caret and scroll position stay where they were. Open a local draft and click Refresh → the draft is untouched. (`reloadIfClean`'s checks on `isDirty`, `isSaving`, `lastSavedServerModified` and an unchanged server copy have no automated test.)
-- [ ] **Open Blog Settings… only when Settings can fix it.** In Settings, change the site URL to a domain that does not exist and relaunch → the sidebar error says to check the URL and the row offers Open Blog Settings… beside Retry. Turn off Wi-Fi and relaunch with the correct URL → the error says the Mac is offline and the row offers only Retry. (An HTTP 400 also offers Settings; `ErrorMessageTests.settingsFixableErrors` covers it.)
+- [ ] **Open Blog Settings… only when Settings can fix it.** In Settings, change the site URL to a domain that does not exist and relaunch → the sidebar error says to check the URL and the row offers Open Blog Settings… beside Retry. Turn off Wi-Fi and relaunch with the correct URL → the error says the Mac is offline and the row offers only Retry. (An HTTP 400 with no WordPress message also offers Settings; `ErrorMessageTests.settingsFixableErrors` covers it.)
 
 ### 7.3 Editor — content & Gutenberg round-trip
 

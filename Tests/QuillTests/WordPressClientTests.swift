@@ -792,6 +792,33 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
     }
 
+    @Test func createTagUsesTheExistingTermWhenWordPressSaysItExists() async throws {
+        var requests: [String] = []
+        MockURLProtocol.requestHandler = { request in
+            requests.append("\(request.httpMethod ?? "") \(request.url?.path ?? "")")
+            if request.httpMethod == "POST" {
+                let body = #"{"code":"term_exists","message":"A term with the name provided already exists in this taxonomy.","data":{"status":400,"term_id":7}}"#
+                return (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+            }
+            let tag = #"{"id":7,"name":"Swift","slug":"swift","count":3}"#
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(tag.utf8))
+        }
+        let tag = try await client.createTag(name: "swift")
+        #expect(tag.id == 7)
+        #expect(tag.name == "Swift")
+        #expect(requests.count == 2)
+        #expect(requests.last?.hasPrefix("GET ") == true)
+        #expect(requests.last?.hasSuffix("/tags/7") == true)
+    }
+
+    @Test func createCategoryRethrowsAnyOtherRejection() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let body = #"{"code":"rest_cannot_create","message":"Sorry, you are not allowed to create terms in this taxonomy.","data":{"status":403}}"#
+            return (HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        await #expect(throws: APIError.self) { try await client.createCategory(name: "Tech") }
+    }
+
     // MARK: - §2.2 Response handling & error mapping
 
     @Test func httpErrorPreservesStatusCode() async throws {
@@ -921,13 +948,12 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
 
     // MARK: - §2.3 searchLinks extensions
 
-    @Test func searchLinksAllSubrequestsFailReturnsEmptyArray() async throws {
+    @Test func searchLinksAllSubrequestsFailThrows() async throws {
         MockURLProtocol.requestHandler = { request in
-            (HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil, headerFields: nil)!,
+            (HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!,
              Data())
         }
-        let results = try await client.searchLinks(query: "test")
-        #expect(results.isEmpty)
+        await #expect(throws: APIError.self) { try await client.searchLinks(query: "test") }
     }
 
     @Test func searchLinksPageSubtypeMapsToPageType() async throws {
