@@ -141,6 +141,7 @@ public final class AppState: ObservableObject {
     // the only writer.
     @Published public var editorIsDirty: Bool = false
     @Published public var editorIsSaving: Bool = false
+    @Published public var editorPreviewShowsEdits: Bool = true
     @Published public var editorPublishTitle: String = "Publish"
     @Published public var updateAvailable: UpdateInfo?
 

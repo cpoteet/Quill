@@ -609,7 +609,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalAutosaveJSON.data(using: .utf8)!)
         }
-        _ = try await client.createAutosave(postID: 10, payload: minimalPayload)
+        try await client.createAutosave(postID: 10, payload: minimalPayload)
         let path = capturedRequest?.url?.path ?? ""
         #expect(path.contains("posts/10/autosaves"))
         #expect(capturedRequest?.httpMethod == "POST")
@@ -622,7 +622,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
             return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
                     minimalAutosaveJSON.data(using: .utf8)!)
         }
-        _ = try await client.createPageAutosave(postID: 20, payload: minimalPayload)
+        try await client.createPageAutosave(postID: 20, payload: minimalPayload)
         let path = capturedRequest?.url?.path ?? ""
         #expect(path.contains("pages/20/autosaves"))
         #expect(capturedRequest?.httpMethod == "POST")

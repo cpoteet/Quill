@@ -360,8 +360,8 @@ public struct PostEditorView: View {
                     Button { Task { await openPreview() } } label: {
                         Image(systemName: "eye")
                     }
-                    .help("Preview")
-                    .accessibilityLabel("Preview")
+                    .help(previewLabel)
+                    .accessibilityLabel(previewLabel)
                     .disabled(isSaving)
                 }
                 if let url = shareURL {
@@ -457,6 +457,7 @@ public struct PostEditorView: View {
         }
         .onChange(of: isDirty, initial: true) { appState.editorIsDirty = isDirty }
         .onChange(of: isSaving, initial: true) { appState.editorIsSaving = isSaving }
+        .onChange(of: previewShowsEdits, initial: true) { appState.editorPreviewShowsEdits = previewShowsEdits }
         .onChange(of: publishButtonTitle, initial: true) { appState.editorPublishTitle = publishButtonTitle }
     }
 
@@ -1567,14 +1568,37 @@ public struct PostEditorView: View {
         }
     }
 
-    // WordPress writes an author's draft preview straight into the post; other statuses get a separate autosave.
+    // WordPress writes an author's draft preview straight into the post; other statuses can only be viewed as saved.
     nonisolated static func previewOverwritesPost(status: String) -> Bool {
         status == PostStatus.draft.rawValue
     }
 
+    // The list cache is refreshed only by a save; the post fetched on open can carry a newer status.
+    private var loadedRemotePost: WPPost? {
+        guard let cached = remotePost else { return nil }
+        return serverPost?.id == cached.id ? serverPost : cached
+    }
+
+    private var previewShowsEdits: Bool {
+        loadedRemotePost.map { Self.previewOverwritesPost(status: $0.status) } ?? true
+    }
+
+    private var previewLabel: String {
+        previewShowsEdits ? "Preview" : (loadedRemotePost?.type == "page" ? "View Page" : "View Post")
+    }
+
     private func openPreview(force: Bool = false) async {
-        guard let creds = appState.credentials, let post = remotePost else { return }
+        guard let creds = appState.credentials, let post = loadedRemotePost else { return }
         bannerError = bannerError?.clearing(.preview)
+        let previewedItemID = item.id
+        guard Self.previewOverwritesPost(status: post.status) else {
+            guard let url = PostEditorView.previewURL(from: post.link) else {
+                reportError("WordPress returned an invalid link: \(post.link)", from: .preview, about: previewedItemID)
+                return
+            }
+            NSWorkspace.shared.open(url)
+            return
+        }
         await editorHandle.flushPendingContent()
         if let reason = writeBlockedReason("preview") {
             bannerError = EditorBanner(message: reason, source: .preview)
@@ -1583,10 +1607,8 @@ public struct PostEditorView: View {
         let client = WordPressClient(credentials: creds)
         let payload = PostPayload(title: title, content: htmlContent, excerpt: Self.plainExcerpt(settings.excerpt),
                                   status: post.status, footnotes: footnotesMeta)
-        let overwritesPost = Self.previewOverwritesPost(status: post.status)
-        let previewedItemID = item.id
         do {
-            if overwritesPost && !force {
+            if !force {
                 let current =
                     post.type == "page"
                     ? try await client.fetchPage(id: post.id)
@@ -1598,26 +1620,22 @@ public struct PostEditorView: View {
                     return
                 }
             }
-            let autosave =
-                post.type == "page"
-                ? try await client.createPageAutosave(postID: post.id, payload: payload)
-                : try await client.createAutosave(postID: post.id, payload: payload)
-            // WordPress drops meta when a draft preview writes the post itself, leaving new markers with old notes.
-            if overwritesPost {
-                try await client.updateFootnotes(postID: post.id, type: post.type, footnotes: payload.footnotes ?? "")
+            if post.type == "page" {
+                try await client.createPageAutosave(postID: post.id, payload: payload)
+            } else {
+                try await client.createAutosave(postID: post.id, payload: payload)
             }
-            let linkBase = autosave.link ?? post.link
-            guard let url = PostEditorView.previewURL(from: linkBase) else {
-                reportError("WordPress returned an invalid preview URL: \(linkBase)", from: .preview, about: previewedItemID)
+            // WordPress drops meta when a draft preview writes the post itself, leaving new markers with old notes.
+            try await client.updateFootnotes(postID: post.id, type: post.type, footnotes: payload.footnotes ?? "")
+            guard let url = PostEditorView.previewURL(from: post.link) else {
+                reportError("WordPress returned an invalid preview URL: \(post.link)", from: .preview, about: previewedItemID)
                 return
             }
             NSWorkspace.shared.open(url)
-            if overwritesPost {
-                if let fresh = try? await (post.type == "page"
-                    ? client.fetchPage(id: post.id)
-                    : client.fetchPost(id: post.id)), loadedItem?.id == previewedItemID {
-                    lastSavedServerModified = fresh.modified
-                }
+            if let fresh = try? await (post.type == "page"
+                ? client.fetchPage(id: post.id)
+                : client.fetchPost(id: post.id)), loadedItem?.id == previewedItemID {
+                lastSavedServerModified = fresh.modified
             }
         } catch {
             reportError("Couldn't open the preview: \(error.localizedDescription)", from: .preview, about: previewedItemID)

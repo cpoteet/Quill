@@ -870,7 +870,7 @@ WordPress writes a preview of the author's own draft straight into the post, so 
 
 | Test | What it checks |
 |---|---|
-| `previewOverwritesOnlyADraft` | `previewOverwritesPost` is true for `draft` and false for `pending`, `publish`, `future` and `private`, which get a separate autosave revision |
+| `previewOverwritesOnlyADraft` | `previewOverwritesPost` is true for `draft` and false for `pending`, `publish`, `future` and `private`, which open the saved post without creating an autosave |
 
 #### `PostStats` (3 tests)
 
@@ -4074,6 +4074,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
   - [ ] Click "Cancel" → the dialog closes and editing continues; no data is lost.
 - [ ] Open a post, immediately save without anyone else changing it → no conflict alert appears.
 - [ ] Preview a draft post, then save → no spurious conflict alert appears.
+- [ ] **View Post on anything but a draft.** On a published post the toolbar button's tooltip reads View Post (View Page on a page) and File reads View in Browser; on a draft they read Preview and Preview in Browser. Edit a published post and click View Post → the browser opens the live post, and `GET /posts/<id>/autosaves` lists no new autosave.
 - [ ] On a site using plain permalinks (`?p=123` URLs), click Preview → the browser opens the correct URL with `&preview=true` appended (not a malformed double `?`).
 - [ ] On a site using pretty permalinks (`/my-post/` URLs), click Preview → the browser opens `…/?preview=true`.
 - [ ] **Preview is guarded like Save.** Open a post while offline (so its load fails), reconnect, and click Preview → an error ("Can't preview — this post never finished loading…"), and no browser opens. On a post that raises the block-risk banner, edit it and click Preview before acknowledging the banner → refused the same way.

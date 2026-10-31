@@ -100,7 +100,7 @@ public struct QuillApp: App {
                 }
                 .disabled(!appState.editorIsDirty || appState.selectedItem?.isRemote != true)
 
-                Button("Preview in Browser") {
+                Button(appState.editorPreviewShowsEdits ? "Preview in Browser" : "View in Browser") {
                     appState.triggerPreview = true
                 }
                 .disabled(appState.selectedItem?.isRemote != true || appState.editorIsSaving)

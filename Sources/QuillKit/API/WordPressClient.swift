@@ -311,14 +311,19 @@ public struct WordPressClient: Sendable {
 
     // MARK: - Autosave (for Preview)
 
-    public func createAutosave(postID: Int, payload: PostPayload) async throws -> AutosaveResponse {
-        let url = try endpoint("posts/\(postID)/autosaves")
-        return try await post(url, body: payload)
+    public func createAutosave(postID: Int, payload: PostPayload) async throws {
+        try await postAutosave(try endpoint("posts/\(postID)/autosaves"), payload: payload)
     }
 
-    public func createPageAutosave(postID: Int, payload: PostPayload) async throws -> AutosaveResponse {
-        let url = try endpoint("pages/\(postID)/autosaves")
-        return try await post(url, body: payload)
+    public func createPageAutosave(postID: Int, payload: PostPayload) async throws {
+        try await postAutosave(try endpoint("pages/\(postID)/autosaves"), payload: payload)
+    }
+
+    private func postAutosave(_ url: URL, payload: PostPayload) async throws {
+        var request = authorizedRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(payload)
+        try await performVoid(request)
     }
 
     // MARK: - Search

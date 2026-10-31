@@ -189,10 +189,6 @@ extension String {
     }
 }
 
-public struct AutosaveResponse: Decodable, Sendable {
-    public let link: String?
-}
-
 public struct PostPayload: Encodable, Sendable {
     public var title: String
     public var content: String
