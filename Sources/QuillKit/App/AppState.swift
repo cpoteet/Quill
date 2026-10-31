@@ -78,6 +78,8 @@ public enum PostItem: Identifiable, Hashable {
 public final class AppState: ObservableObject {
     @Published public var selectedSection: SidebarSection = .posts
     @Published public var selectedItem: PostItem?
+    /// Mirrors `ContentView.detailContent`: the editor shows outside Media whenever an item is selected.
+    public var editorIsMounted: Bool { selectedSection != .media && selectedItem != nil }
     @Published public var searchText: String = ""
     @Published private var postStatusFilter: PostStatusFilter = .all
     @Published private var pageStatusFilter: PostStatusFilter = .all
@@ -125,6 +127,8 @@ public final class AppState: ObservableObject {
     @Published public var inspectorCloseToken: Int = 0
     @Published public var triggerShowMediaDetails: Bool = false
     @Published public var triggerFindBar: Bool = false
+    @Published public var triggerMoveBlockUp: Bool = false
+    @Published public var triggerMoveBlockDown: Bool = false
     @Published public var triggerPasteMarkdown: Bool = false
     @Published public var triggerSave: Bool = false
     @Published public var triggerPublish: Bool = false

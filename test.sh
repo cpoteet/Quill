@@ -27,6 +27,7 @@ run "JS editor bridge tests"  node --test Scripts/test-editor-bridge.js
 run "JS editor keyboard tests"  node --test Scripts/test-editor-keyboard.js
 run "JS gallery tests"  node --test Scripts/test-editor-gallery.js
 run "JS container tests"  node --test Scripts/test-editor-containers.js
+run "JS block move tests"  node --test Scripts/test-editor-block-move.js
 run "JS passthrough tests"  node --test Scripts/test-editor-passthrough.js
 run "JS footnote tests"     node --test Scripts/test-editor-footnotes.js
 run "JS paste tests"  node --test Scripts/test-editor-paste.js

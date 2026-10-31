@@ -107,6 +107,28 @@ private func makeDraft(id: Int64 = 1, title: String = "Draft Title", type: Strin
     }
 }
 
+// A menu command whose trigger only the editor resets must be disabled while no editor is mounted.
+@Suite struct AppStateEditorMountedTests {
+
+    @Test func noEditorWithoutASelection() {
+        let state = AppState()
+        #expect(!state.editorIsMounted)
+    }
+
+    @Test func editorWithASelectedDraft() {
+        let state = AppState()
+        state.selectedItem = .local(makeDraft())
+        #expect(state.editorIsMounted)
+    }
+
+    @Test func noEditorInMediaEvenWithASelection() {
+        let state = AppState()
+        state.selectedItem = .local(makeDraft())
+        state.selectedSection = .media
+        #expect(!state.editorIsMounted)
+    }
+}
+
 @Suite struct AppStateFilteredItemsTests {
 
     @Test func postsSectionMapsRemotePosts() throws {

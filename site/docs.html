@@ -354,6 +354,12 @@
           <li>The command doesn't work inside footnotes, code blocks or code view. Quill explains why and inserts nothing.</li>
           <li>Checklist items (<code>- [ ]</code>) become ordinary list items.</li>
         </ul>
+        <h3 class="docs-h3" id="moving-blocks">Moving Blocks</h3>
+        <p class="docs-body">Point at a block and a small marker appears in the margin to its left. The marker shows what kind of block it is: ¶ for a paragraph, h2 for a heading, • for a bulleted list, and a small drawing for an image, table, gallery, embed, quote or container. Hold the pointer on it for a moment to see the block's name.</p>
+        <p class="docs-body">Drag the marker to move the block. An amber line shows where it will land. A block always lands between two blocks, never inside a column, Group, quote, list or table, even when you let go over one. A Group or Columns block moves with everything in it. Letting go where the block already is changes nothing.</p>
+        <p class="docs-body">To move a heading together with everything under it, hold ⌘ with the pointer on the heading's marker. The marker turns amber and the section is tinted: the heading and every block after it, up to the next heading of the same or a higher level. Keep holding ⌘ and drag. Letting go of ⌘ once the drag has started doesn't change what moves.</p>
+        <p class="docs-body">Click a marker to make that block the current one: the cursor goes to the start of a paragraph, heading or list, and any other block is selected. <strong>Edit → Move Block Up</strong> (⌃⌘↑) and <strong>Move Block Down</strong> (⌃⌘↓) then move it one place at a time. They move the block the cursor is in, so they work without the mouse too.</p>
+        <p class="docs-body">Each move is one step for ⌘Z. Footnotes are renumbered to follow the new order. The markers hide while you type and come back when you move the mouse; they don't appear in code view or while an AI result is waiting. The footnotes list can't be moved, and nothing can be moved below it.</p>
         <h3 class="docs-h3">Saving and Publishing</h3>
         <h4 class="docs-h4">Local Drafts</h4>
         <p class="docs-body">Click <strong>Save Locally</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
@@ -760,6 +766,8 @@
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘F</kbd></dt><dd class="docs-keys__action">Find and replace</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Move out of the block the cursor is in</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘⌫</kbd></dt><dd class="docs-keys__action">Delete the block the cursor is in</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌃⌘↑</kbd></dt><dd class="docs-keys__action">Move the block up</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌃⌘↓</kbd></dt><dd class="docs-keys__action">Move the block down</dd></div>
         </dl>
         <h3 class="docs-h3">Find and Replace</h3>
         <dl class="docs-keys">

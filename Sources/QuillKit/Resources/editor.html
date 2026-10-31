@@ -430,7 +430,7 @@
     body.dark #toolbar-row2 {
       background: rgba(30, 30, 30, 0.96);
     }
-    #toolbar-tooltip {
+    #toolbar-tooltip, #block-grip-tooltip {
       position: fixed;
       left: 0;
       top: 0;
@@ -449,11 +449,11 @@
       transition: opacity 0.12s ease, transform 0.12s ease;
       box-shadow: 0 4px 16px rgba(0,0,0,0.24);
     }
-    #toolbar-tooltip.visible {
+    #toolbar-tooltip.visible, #block-grip-tooltip.visible {
       opacity: 1;
       transform: translate(-50%, 0);
     }
-    #toolbar-tooltip::before {
+    #toolbar-tooltip::before, #block-grip-tooltip::before {
       content: "";
       position: absolute;
       left: var(--arrow-offset, 50%);
@@ -462,7 +462,7 @@
       background: rgba(24,24,27,0.96);
       transform: translateX(-50%) rotate(45deg);
     }
-    #toolbar-tooltip.below::before { top: -3px; }
+    #toolbar-tooltip.below::before, #block-grip-tooltip.below::before { top: -3px; }
     #toolbar-tooltip.above::before { bottom: -3px; }
 
     /* ── Editor area ─────────────────────────────────── */
@@ -477,6 +477,81 @@
       #editor-wrap { background: #1e1e1e; border-top-color: rgba(255,255,255,0.09); }
     }
     body.dark #editor-wrap { background: #1e1e1e; border-top-color: rgba(255,255,255,0.09); }
+
+    /* ── Block grip (block-grip.js) ──────────────────── */
+    #block-grip-layer { position: relative; height: 0; z-index: 5; }
+    #block-grip {
+      position: absolute;
+      display: none;
+      width: 26px;
+      height: 22px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      color: #b4b4b4;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #block-grip.visible { display: flex; }
+    #block-grip:hover, #block-grip.held { color: #5f5f5f; background: rgba(0,0,0,0.055); }
+    #block-grip.section { color: var(--accent); }
+    body.dark #block-grip { color: #636363; }
+    body.dark #block-grip:hover, body.dark #block-grip.held { color: #c4c4c4; background: rgba(255,255,255,0.07); }
+    body.dark #block-grip.section { color: var(--accent); }
+    .block-grip-mark-pilcrow { font-size: 13px; }
+    .block-grip-mark-bullet { font-size: 16px; }
+    .block-grip-mark-caps { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
+    .block-grip-mark-pullquote { font-size: 19px; transform: translateY(3px); }
+    #block-grip-tint {
+      position: absolute;
+      display: none;
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      pointer-events: none;
+    }
+    body.block-dragging, body.block-dragging #block-grip { cursor: grabbing; }
+    body.block-dragging .prosemirror-dropcursor-block, body.block-dragging .prosemirror-dropcursor-inline { display: none; }
+    .ProseMirror .block-drag-source { opacity: 0.32; }
+    #block-drop-line {
+      position: absolute;
+      display: none;
+      height: 2px;
+      border-radius: 1px;
+      background: var(--accent);
+      pointer-events: none;
+    }
+    #block-drag-card {
+      position: fixed;
+      left: -10000px;
+      top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 280px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      line-height: 1.35;
+      white-space: nowrap;
+      background: #ffffff;
+      color: #1a1a1a;
+      border: 1px solid rgba(0,0,0,0.14);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+    }
+    body.dark #block-drag-card { background: #1e1e1e; color: #f0f0f0; border-color: rgba(255,255,255,0.14); }
+    .block-drag-card-marker { display: flex; flex: none; color: #8a8a8a; font-weight: 600; font-size: 11px; }
+    .block-drag-card-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .block-drag-card-more { flex: none; color: #737373; }
+    body.dark .block-drag-card-more { color: #9a9a9a; }
+    /* Below this width the margin left of the column is narrower than the grip. */
+    @media (max-width: 700px) {
+      .ProseMirror { padding-left: 10px; }
+    }
 
     /* ── Code view textarea ──────────────────────────── */
     #code-editor {
@@ -1615,6 +1690,8 @@
   <script src="./block-parser.js"></script>
   <script src="./block-descriptors.js"></script>
   <script src="./block-settings.js"></script>
+  <script src="./block-move.js"></script>
+  <script src="./block-grip.js"></script>
   <script>
     const {
       Editor, Extension, TiptapNode, Mark,
@@ -4105,6 +4182,44 @@
       },
     })
 
+    // Grip drops only; every other drag keeps ProseMirror's default path.
+    const blockMoveKey = new PluginKey('blockMove')
+    const BlockMove = Extension.create({
+      name: 'blockMove',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: blockMoveKey,
+            state: {
+              init: () => null,
+              apply(tr, range) {
+                const meta = tr.getMeta(blockMoveKey)
+                if (meta !== undefined) return meta
+                return tr.docChanged ? null : range
+              },
+            },
+            props: {
+              handleDrop(view, event) {
+                if (!activeGripDrag()) return false
+                _dropGripDrag(event.clientY)
+                return true
+              },
+              decorations(state) {
+                const range = blockMoveKey.getState(state)
+                if (!range) return null
+                const decos = []
+                for (let i = range.from; i < range.to; i++) {
+                  const from = topLevelPos(state.doc, i)
+                  decos.push(Decoration.node(from, from + state.doc.child(i).nodeSize, { class: 'block-drag-source' }))
+                }
+                return DecorationSet.create(state.doc, decos)
+              },
+            },
+          }),
+        ]
+      },
+    })
+
     // Extended blockquote: allows an optional cite as its last child.
     const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
@@ -4447,6 +4562,7 @@
         FootnoteItem,
         FootnoteSync,
         TrailingParagraph,
+        BlockMove,
         withClassAttr(LinkWithRawAttrs).configure({ openOnClick: false, HTMLAttributes: { target: null, rel: null } }),
 
         Placeholder.configure({ placeholder: 'Start writing…' }),
@@ -4580,6 +4696,18 @@
       },
     })
     window._tiptapEditor = editor
+    window._blockGrip = installBlockGrip(editor, {
+      allowed: () => _blockMoveAllowed(),
+      trailingAfter: TRAILING_PARAGRAPH_AFTER,
+      onDragStart(event, range) {
+        gripDragStart(editor.view, event, range)
+        editor.view.dispatch(editor.state.tr.setMeta(blockMoveKey, range))
+      },
+      onDragEnd: _endGripDrag,
+      onDrop: clientY => _dropGripDrag(clientY),
+    })
+    // Swift reports ⌘ from AppKit, so the section shows even when the editor lacks keyboard focus.
+    window.setSectionKey = down => window._blockGrip.setSectionKey(!!down)
     // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
     for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste]]) {
       document.addEventListener(type, event => { if (editor.view.dom.contains(event.target)) handler(event) }, true)
@@ -6847,6 +6975,55 @@
 
     // ── AI writing bridge ─────────────────────────────
     function _aiOperation() { return aiOperationKey.getState(editor.state) }
+
+    // ── Block moves (block-move.js) ───────────────────
+    function _blockMoveAllowed() {
+      return !codeViewActive && !_aiOperation() && !_overlayOpen()
+    }
+
+    // The closeHistory$ meta keeps typing after a move out of the move's undo step.
+    function _selectAfterMove(start, offset, nodeSelected) {
+      const { doc } = editor.state
+      const node = doc.nodeAt(start)
+      const chain = editor.chain().focus()
+      if (typeof offset === 'number' && nodeSelected) chain.setNodeSelection(start + offset)
+      else if (typeof offset === 'number') chain.setTextSelection(start + offset)
+      else if (node && node.isAtom) chain.setNodeSelection(start)
+      else chain.setTextSelection(firstTextblockPos(doc, start) ?? start)
+      chain.command(({ tr }) => { tr.setMeta('closeHistory$', true); return true }).scrollIntoView().run()
+    }
+
+    function _endGripDrag() {
+      endGripDrag(editor.view)
+      if (blockMoveKey.getState(editor.state)) editor.view.dispatch(editor.state.tr.setMeta(blockMoveKey, null))
+    }
+
+    function _dropGripDrag(clientY) {
+      const range = activeGripDrag()
+      const gap = nearestGap(gapYs(editor.view), clientY)
+      _endGripDrag()
+      if (!range || !_blockMoveAllowed() || range.to > movableCount(editor.state.doc)) return
+      const result = moveTopLevelBlocks(editor.state, range.from, range.to, gap, TRAILING_PARAGRAPH_AFTER)
+      if (!result) return
+      editor.view.dispatch(result.tr)
+      _selectAfterMove(result.start, null)
+    }
+
+    window.moveBlock = direction => {
+      if (!_blockMoveAllowed()) return false
+      const { doc, selection } = editor.state
+      const index = topLevelIndexAt(doc, selection.from)
+      if (index < 0 || index === generatedTrailingIndex(doc, TRAILING_PARAGRAPH_AFTER)) return false
+      const gap = adjacentGap(doc, index, direction)
+      if (gap === null) return false
+      const carried = selection.node || selection.$from.parent.inlineContent
+      const offset = carried ? selection.from - topLevelPos(doc, index) : null
+      const result = moveTopLevelBlocks(editor.state, index, index + 1, gap, TRAILING_PARAGRAPH_AFTER)
+      if (!result) return false
+      editor.view.dispatch(result.tr)
+      _selectAfterMove(result.start, offset, !!selection.node)
+      return true
+    }
 
     // Report selection changes to Swift so it can show/hide AI context menu items.
     // Uses ProseMirror's selection (direction-independent) instead of

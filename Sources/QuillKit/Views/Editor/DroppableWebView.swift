@@ -10,6 +10,8 @@ public final class DroppableWebView: WKWebView {
     public var onAIOperation: ((AIWritingOperation) -> Void)?
     public var aiEnabled: Bool = false
     public var hasTextSelection: Bool = false
+    private var commandKeyMonitor: Any?
+    private var commandKeyDown = false
 
     // Covers the common image UTIs; "public.image" catches anything else
     private static let imageUTIs: [String] = [
@@ -207,6 +209,28 @@ public final class DroppableWebView: WKWebView {
             .urlReadingContentsConformToTypes: Self.imageUTIs
         ]
         return sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: options)
+    }
+
+    // ⌘ is the section-drag key, and key events reach the page only while it has focus: docs/editor-gotchas.md.
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let monitor = commandKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+            commandKeyMonitor = nil
+        }
+        guard window != nil else { return }
+        commandKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            MainActor.assumeIsolated { self?.forwardCommandKey(event) }
+            return event
+        }
+    }
+
+    private func forwardCommandKey(_ event: NSEvent) {
+        guard event.window === window else { return }
+        let down = event.modifierFlags.contains(.command)
+        guard down != commandKeyDown else { return }
+        commandKeyDown = down
+        evaluateJavaScript("window.setSectionKey?.(\(down))", completionHandler: nil)
     }
 
     public override func viewDidChangeEffectiveAppearance() {

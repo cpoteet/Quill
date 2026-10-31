@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-30 — 796 Swift tests + 1,941 JS tests (1,940 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 799 Swift tests + 2,034 JS tests (2,033 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (796 tests)
+1. **Swift tests** — `swift test` (799 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -25,18 +25,19 @@ This document is the authoritative reference for Quill's automated test suite an
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
-10. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
-11. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
-12. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
-13. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
-14. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
-15. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-16. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (252 tests — live Tiptap editor in jsdom)
-17. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
-18. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
-19. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
+10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (93 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
+11. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
+12. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
+13. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
+14. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+15. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
+16. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+17. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (252 tests — live Tiptap editor in jsdom)
+18. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
+19. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
+20. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the nineteen passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -114,7 +115,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (796 tests, 51 suites)
+## Swift test suite (799 tests, 52 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -175,6 +176,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 49 | `SyncedPatternScriptTests` | `EditorCoordinatorTests.swift` | 4 | `EditorCoordinator.syncedPatternJS`: the `setSyncedPattern(generation, ref, …)` call for a loaded, not-found and failed result, with a title holding quotes and `</script>` JSON-encoded |
 | 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 5 | `PostEditorView.syncedPatternResults(for:outcome:)`: a returned pattern is loaded under its ref; a ref WordPress left out, or a pattern with a password, is not found (WordPress renders neither); any error fails every ref; a repeated ref does not trap |
 | 51 | `StretchingFlowLayoutTests` | `StretchingFlowLayoutTests.swift` | 3 | `StretchingFlowLayout.tileSize`: tiles never fall under the 140pt minimum, the row's leftover width is under one point per column, a caption strip is added to the square tile, one column in a narrow view, and the layout's `itemSize` when there is no scroll view |
+| 52 | `AppStateEditorMountedTests` | `AppStateTests.swift` | 3 | `AppState.editorIsMounted`, which disables Move Block Up/Down: false with no selection and in Media, true with a selected draft. Without it, a menu move with no editor left its trigger stuck `true` |
 
 ---
 
@@ -3329,6 +3331,145 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
+## JS block move tests (93 tests)
+
+File: `Scripts/test-editor-block-move.js`
+Editor files: `Sources/QuillKit/Resources/block-move.js`, `block-grip.js`, `editor.html`
+
+Loads the real `editor.html` in jsdom. jsdom has no layout (every rect is zero) and no `DataTransfer` or `DragEvent`, so the grip is driven through the object `installBlockGrip` returns (`window._blockGrip.showFor`, `.click`), drags through `gripDragStart` with a stub `dataTransfer`, and drops through the `BlockMove` plugin's `handleDrop` or a synthetic `drop` event on `#editor-wrap`. Real drags are §7.3 manual steps. Design: `docs/superpowers/specs/2026-10-31-drag-to-reorder-blocks-design.md`.
+
+### top-level ranges (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `movableCount excludes a trailing footnotes list` | The footnotes list is not a movable block |
+| `topLevelIndexAt returns -1 inside the footnotes list` | A position inside the list maps to no block |
+| `sectionEnd: an H2 stops at the next H2 or H1, not at an H3` | H2 p H3 p H2 p → the section ends at index 4; an H1 also ends it |
+| `sectionEnd: the last H2 stops before the footnotes list` | The section never includes the list |
+| `sectionEnd: a heading inside a Group does not start a section` | The Group is one block |
+| `sectionEnd: a non-heading is one block` | `index + 1` |
+| `isNoOpMove: gaps from..to inclusive are no-ops` | Dropping in place or inside the moved range does nothing |
+| `adjacentGap: null at the top, null at the bottom, null next to the footnotes list` | Move Up/Down limits |
+
+### a move saves exactly what loading the post in that order saves (22 tests)
+
+One test per block: `paragraph`, `H2`, `bulleted list`, `numbered list (start=3)`, `quote`, `pullquote`, `code`, `preformatted`, `separator`, `image with caption and alignment`, `gallery`, `embed`, `table`, `columns`, `group`, `buttons`, `details`, `accordion`, `tabs`, `synced pattern card`, `Custom HTML card`, `unsupported block`. Each loads `A`, the block, `B`, moves the block below `B`, and compares the save with the save of a post loaded as `A`, `B`, block. The three cards also check that their source appears in the save byte for byte.
+
+### footnotes and undo (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `moving a paragraph with a footnote reference reorders getFootnotes()` | The notes follow the new marker order, and the list stays last |
+| `one undo restores the document and the notes order` | One step |
+| `a move straight after typing in the same block is its own undo step` | The move sets `closeHistory$`, so it does not merge into the typing |
+| `moving a final separator up does not leave a saved empty paragraph` | The generated trailing paragraph is removed when its block moves |
+| `moving a last section that ends in a separator drops the generated paragraph` | The same, when the paragraph moves inside a section |
+| `a block moved below a final table does not strand the generated paragraph` | Move Down onto a final table, and a drop after the generated paragraph, save no `<p></p>` |
+| `moving a final table down past only its generated paragraph is a no-op` | Returns `null` |
+| `generatedTrailingIndex finds the generated paragraph before a footnotes list` | |
+| `an author's empty paragraph after a plain paragraph is not treated as generated` | |
+| `the footnotes list stays the last child after any move` | Four moves, one list, always last |
+| `a no-op move returns null and adds no undo step` | |
+
+### blockMarker (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `maps every top-level node type to the spec marker` | Kind, value and tooltip label for every modeled block |
+| `headings use h1..h6 and a "Heading N" label` | |
+| `tells synced pattern, Custom HTML and unsupported cards apart` | Read from the card's `unsupportedSource` |
+
+### moveBlock (12 tests)
+
+| Test | What it checks |
+|---|---|
+| `moves the caret block up one place and keeps the caret offset` | |
+| `moves a node-selected embed down and keeps it node-selected` | |
+| `moves a whole Group past its neighbour as one unit` | The caret stays in the Group |
+| `does nothing at the top, at the bottom, or above the footnotes list` | |
+| `does nothing from the generated paragraph after a final table` | Moving it would save an empty paragraph |
+| `keeps a node-selected image node-selected` | An image is not an atom, so this needs the node-selection path |
+| `keeps a nested node selection on the nested node` | A separator in a Group stays selected when the Group moves |
+| `does nothing in code view` | |
+| `does nothing while an AI operation is pending` | A move would collapse the pending range |
+| `does nothing while the find bar is open` | `_overlayOpen()` |
+| `a move sends contentChanged to Swift` | The post is marked edited |
+| `typing straight after a move is its own undo step` | `_selectAfterMove` sets `closeHistory$` too |
+
+### grip overlay (15 tests)
+
+| Test | What it checks |
+|---|---|
+| `#block-grip exists outside .ProseMirror and is aria-hidden` | Not focusable either |
+| `getContent() never contains block-grip markup after hovering` | |
+| `blockGlyphSVG returns an <svg> for every glyph id blockMarker can return` | |
+| `Quote is drawn, so it cannot be mistaken for the Pullquote mark` | Quote is a glyph, Pullquote a typed ” |
+| `Details and Accordion get different glyphs` | |
+| `the bulleted-list marker has its own size class` | The • is set at 16px; at the grip's 11px it drew about 3px wide |
+| `the grip shows the block marker` | Text marker for a heading, SVG for a table |
+| `the grip hides on keydown` | |
+| `a ⌘ keydown leaves the grip visible` | Otherwise ⌘ for a section could never be used |
+| `the grip hides when the document changes` | A menu move, undo or AI accept leaves no stale grip |
+| `the grip stays hidden in code view, during an AI operation, and with the find bar open` | |
+| `no grip for the footnotes list or the generated trailing paragraph` | |
+| `clicking the grip on a paragraph puts the caret at its start` | |
+| `clicking the grip on a list puts the caret in its first item` | |
+| `clicking the grip on an embed node-selects it` | |
+
+### grip drag (10 tests)
+
+| Test | What it checks |
+|---|---|
+| `gripDragStart clears the pasteboard and never sets data` | Guards the empty-pasteboard gotcha in `docs/editor-gotchas.md` |
+| `gripDragStart sets view.dragging with move: true and the block slice` | And `endGripDrag` clears it |
+| `gripDragStart with a section range carries every block in the section` | |
+| `the drag card shows the marker, the first line and "+ N more" for a section` | The card is outside the document |
+| `handleDrop returns false for a drag the grip did not start` | Text drags and Finder drops keep ProseMirror's path |
+| `handleDrop for a grip drag moves the block and returns true` | One undo step |
+| `a grip drop on a no-op gap changes nothing and adds no undo step` | |
+| `a grip drop released over the margin moves the block once` | The `#editor-wrap` drop listener |
+| `nearestGap picks the closest gap, ties go to the earlier one` | |
+| `gapYs has one entry per gap, none after the footnotes list` | |
+
+### grip drag from the grip element (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `⌘ read from the mouse drags the section even when the web view never saw the key` | ⌘ comes from the mouse event, since key events miss the web view while the sidebar or title has focus |
+| `⇧ does not select the section` | WebKit never starts a drag from a ⇧-press, so ⇧ must never be the section key |
+| `window.setSectionKey shows the section while the pointer is on a heading's grip` | The entry point `DroppableWebView`'s `flagsChanged` monitor calls |
+| `a mousedown elsewhere ends a grip drag whose dragend never came` | A stale grip drag can never capture a later text drag |
+| `autoscroll during a grip drag does not hide the drag source` | |
+
+### the section range is fixed at mousedown (1 test)
+
+| Test | What it checks |
+|---|---|
+| `letting go of ⌘ between mousedown and dragstart still drags the section` | A mousemove with the button held and a `dragstart` without ⌘ cannot shrink the range read at mousedown |
+
+### Dropcursor during a grip drag (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `the CSS hides ProseMirror's drop cursor while body.block-dragging is set` | Hidden by ProseMirror's own `prosemirror-dropcursor-*` classes; the Dropcursor's `class` option does not reach it through the extended StarterKit |
+| `a drag from the grip sets body.block-dragging until dragend` | |
+
+### the press fixes the section range (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `leaving the grip between mousedown and dragstart still drags the section` | The range is captured at mousedown, so a `mouseleave` before `dragstart` cannot shrink it |
+| `a ⌘ key-up between mousedown and dragstart still drags the section` | Nor can letting go of ⌘ |
+
+### hover beside a floated image (2 tests)
+
+Rects are stubbed, since jsdom has no layout: a floated image and the paragraph wrapping beside it share a vertical band.
+
+| Test | What it checks |
+|---|---|
+| `the wrapped paragraph gets its grip from the margin` | Row boundaries clamp to the next block's top when two blocks overlap |
+| `pointing at the image itself shows the image grip` | The block under the pointer (`elementFromPoint`) wins over the row search |
+
 ## JS passthrough tests (65 tests)
 
 File: `Scripts/test-editor-passthrough.js`
@@ -3753,6 +3894,14 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Deliberate `&nbsp;` indentation** at the start of a paragraph survives an edit and a save.
 - [ ] **An empty paragraph the author wrote at the end of a post** is still there after an edit and a save. (Quill keeps its own empty paragraph after a table or image so the caret has somewhere to land; that one is chrome and should not be saved.)
 - [ ] Confirm the four blocks Quill *does* model still behave normally in the same post: an image is still selectable/resizable, a gallery still shows its thumbnail grid, an embed still renders, and a table is still editable.
+
+- [ ] **Moving blocks.** On a new local draft with paragraphs, an H2 section with an H3 inside it, a list, a table, a Group or Columns block and an embed: point at each block → a grey type marker shows left of the column, level with the first line of text blocks and the top edge of media and cards; after a moment the tooltip reads "<Block> · Drag to move" ("Heading 2 · Drag to move, ⌘ for the section" on the H2). Drag a paragraph, a table, the Group and the embed by their markers, letting go over a column, a quote, a list and a table → each lands in the nearest gap between top-level blocks, never inside a container; an amber line shows the gap during the drag, the source is dimmed, and a small card follows the pointer. Let go with the pointer in the left margin → it still drops. ⌘Z undoes each move in one step. Repeat in dark mode.
+- [ ] **Section drag.** Hold ⌘ with the pointer on the H2's marker → the marker turns amber and the section (down to the next H2 or H1) is tinted; let go of ⌘ → both go. Do it once with the editor focused and once after clicking a post in the sidebar (⌘ then reaches the page through `DroppableWebView`'s `flagsChanged` monitor). Hold ⌘ and drag → the whole section moves and the card reads "+ N more". ⇧ on the marker does nothing: WebKit never starts a drag from a ⇧-press.
+- [ ] **Move Block Up / Down from the keyboard.** With the caret mid-paragraph, press ⌃⌘↑ and ⌃⌘↓ (not Edit menu clicks) → the paragraph moves and the caret keeps its place.
+- [ ] **Autoscroll during a drag.** In a post with about 60 paragraphs, drag the last paragraph's marker to the top edge of the editor and hold → the editor scrolls up and the amber line follows; let go → the block lands at the top.
+- [ ] **Other drags are unchanged.** Drag selected text within the post → the normal thin drop cursor shows, not the amber line, and the text moves. Grab an embed itself (not its marker) and drop it inside a column → it lands inside the column as before. Drop an image from Finder → it still uploads.
+- [ ] **Narrow window.** At the narrowest window with the sidebar and Post Settings open, point at blocks → the marker never covers text.
+- [ ] **Typing hides the marker.** Point at a block, then type → the marker disappears and comes back on the next mouse move. It never shows in code view.
 
 - [ ] **⌘← / ⌘→ beside a card.** Put the caret at the start of a paragraph that follows a gallery, embed or preserved-block card and press ⌘← → the caret stays in the paragraph and the card is not selected. Do the same at the end of a paragraph that precedes a card with ⌘→.
 

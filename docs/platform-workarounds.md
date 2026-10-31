@@ -127,6 +127,14 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `docs/editor-gotchas.md`, "A tab title is edited as a `span`".
 - **Last checked:** macOS 27.0, 2026-10-11.
 
+### No autoscroll while dragging a block
+
+- **Bug:** during a native drag, WebKit does not scroll `#editor-wrap` (the editor's scroll container; `body` is `overflow: hidden`) when the pointer is held at or above its top or bottom edge, so a block cannot be dragged past the visible part of a long post.
+- **Code:** `autoscroll`, `scrollStep` and `stopAutoscroll` in `installBlockGrip` (`block-grip.js`). During a grip drag, a pointer within 48 px of the container's top or bottom edge scrolls it by up to 18 px per frame, in proportion to how far into that band it is. It stops on drop, `dragend`, or when the drag leaves the container.
+- **Test:** on a new local draft, paste about 60 paragraphs, select a word near the bottom and drag it to the top edge of the editor area. Hold it there for several seconds. If the editor scrolls, the bug is gone. The workaround only acts on grip drags, so this text-drag test needs no bypass.
+- **Detail:** found by the preflight check in `docs/superpowers/plans/2026-10-31-drag-to-reorder-blocks.md` (Task 0).
+- **Last checked:** macOS 27.2, 2026-10-31.
+
 ## Retired
 
 - **Custom sidebar-width save** (`sidebarWidth` defaults key, written from `onGeometryChange` in `ContentView`) — removed 2026-10-25 on macOS 27.0, once `id: "main"` gave SwiftUI's own split-view key a stable name. Without it a dragged sidebar came back at its width after a quit, a rebuild and a reboot.

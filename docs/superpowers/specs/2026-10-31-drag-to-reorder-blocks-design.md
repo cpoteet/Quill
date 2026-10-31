@@ -9,7 +9,7 @@ Today the only way to reorder a post is cut and paste. That is awkward for any b
 ## Goals
 
 - Hovering a top-level block shows a grip in the left margin. Dragging the grip moves the block; a drop line shows where it will land.
-- Holding ⇧ over a heading's grip selects the heading's whole section, and the drag moves the section.
+- Holding ⌘ over a heading's grip selects the heading's whole section, and the drag moves the section.
 - Move Up and Move Down commands move the current block without a mouse.
 - One move is one undo step, and marks the post as edited.
 - A moved block saves exactly as it did before the move, apart from its position.
@@ -67,13 +67,14 @@ A grip drag only drops into a gap between two top-level blocks, or before the fi
 
 The same snapping function decides the drop (in `handleDrop`) and the drop line (in drag-over handling). Both return `false` / do nothing for any drag the grip did not start, so text drags, drags from other apps and Finder image drops are unchanged.
 
-### Section drag (⇧)
+### Section drag (⌘)
 
-- Holding ⇧ while the pointer is over a heading's grip highlights the section before the drag starts, so the author sees what will move. Releasing ⇧ before pressing removes the highlight.
+- Holding ⌘ while the pointer is over a heading's grip highlights the section before the drag starts, so the author sees what will move. Releasing ⌘ before pressing removes the highlight.
 - A section is a top-level heading plus every following top-level block up to, but not including, the next top-level heading of the same or a higher level, or the footnotes list, or the end of the document.
 - A heading inside a Group, Columns or any other container does not start a section, and its grip is the container's grip.
-- ⇧ on any other block's grip moves just that block.
-- ⇧ is used because ⌥ during a drag is ProseMirror's "copy instead of move" modifier on macOS (`dragCopyModifier` is `altKey` on Mac), and ⌥-drag would duplicate the section.
+- ⌘ on any other block's grip moves just that block.
+- ⌘ is used because ⌥ during a drag is ProseMirror's "copy instead of move" modifier on macOS (`dragCopyModifier` is `altKey` on Mac), ⌃ opens the context menu, and WebKit never starts a drag from a ⇧-press: `EventHandler::handleMousePressEvent` sets `m_mouseDownMayStartDrag` only when Shift is up, unless the press is on a link or image. *(Chris's call, 2026-10-31: ⌘ replaces the original ⇧ after the in-app check found ⇧-drags never start.)*
+- Key events reach the page only while the editor has keyboard focus, so `DroppableWebView` forwards ⌘ from an AppKit `flagsChanged` monitor (`window.setSectionKey`), and mouse events carry it too.
 
 ### The grip: a type marker
 
@@ -85,14 +86,13 @@ Markers:
 |---|---|
 | Paragraph | ¶ |
 | Heading | h1 to h6, in small caps (`font-variant-caps: all-small-caps`) |
-| Bulleted list | • |
+| Bulleted list | • (set at 16px, since a bullet character draws far smaller than a letter) |
 | Numbered list | 1. |
-| Quote | “ |
-| Pullquote | ” (a larger closing quote, to tell it from Quote) |
+| Pullquote | ” (a larger closing quote) |
 | Code | {} |
 | Preformatted | pre, in small caps |
 | Separator | — |
-| Image, gallery, embed, table, Columns, Group, Buttons, Details, Accordion, Tabs | A line glyph drawn in SVG to match the text markers' weight: a frame with a horizon (image), two overlapping frames (gallery), a frame with a play triangle (embed), a 3×3 grid (table), two side-by-side columns (Columns), a bracketed box (Group), a rounded rect (Buttons), a chevron (Details, Accordion), a tabbed folder (Tabs) |
+| Image, gallery, embed, table, Quote, Columns, Group, Buttons, Details, Accordion, Tabs | A line glyph drawn in SVG to match the text markers' weight: a bar with three lines, the way Quill draws a quote (Quote; Chris's call, 2026-10-31: a typed “ was too close to Pullquote's ”, and a quote holds blocks like the other containers), a frame with a horizon (image), two overlapping frames (gallery), a frame with a play triangle (embed), a 3×3 grid (table), two side-by-side columns (Columns), a bracketed box (Group), a rounded rect (Buttons), a chevron (Details), two collapsed rows, each a chevron and a line (Accordion; Chris's call, 2026-10-31, so it differs from Details), a tabbed folder (Tabs) |
 | Synced pattern card | Two arrows in a loop |
 | Unsupported-block card, Custom HTML | Angle brackets `< >` drawn as a glyph, not set in a code font |
 
@@ -102,8 +102,8 @@ Look and behaviour:
 
 - About 13px glyphs in a 26 × 22 hit box, grey (`#b4b4b4` light, `#636363` dark), as in the mockup.
 - On hover: darker glyph (`#5f5f5f` / `#c4c4c4`), a faint rounded background, and a `grab` cursor.
-- With ⇧ over a heading's marker: the marker turns accent and the section gets an accent tint (accent at about 8% opacity) behind it.
-- After a short hover delay, a tooltip in Quill's existing tooltip style names the block and the action: "Paragraph · Drag to move", and on a top-level heading, "Heading 2 · Drag to move, ⇧ for the section". *(My call: a type marker is not a conventional drag handle, and the tooltip is how a first-time user finds out it moves.)*
+- With ⌘ over a heading's marker: the marker turns accent and the section gets an accent tint (accent at about 8% opacity) behind it.
+- After a short hover delay, a tooltip in Quill's existing tooltip style names the block and the action: "Paragraph · Drag to move", and on a top-level heading, "Heading 2 · Drag to move, ⌘ for the section". *(My call: a type marker is not a conventional drag handle, and the tooltip is how a first-time user finds out it moves.)*
 - While dragging, the card that follows the pointer shows the marker and the block's first line, cut off at about 280px, plus "+ N more" for a section.
 
 Placement and the rest:
@@ -163,7 +163,7 @@ Update the counts in `docs/testing-plan.md`.
 
 The `--check-fixtures` harness does not drive drags, so these go in `docs/testing-plan.md` §7 as manual steps:
 
-- A grip drag moves a block; a ⇧ grip drag on a heading moves its section.
+- A grip drag moves a block; a ⌘ grip drag on a heading moves its section.
 - A long post autoscrolls while dragging toward the top or bottom. `#editor-wrap` is the scroll container (`body` is `overflow: hidden`), and native drag autoscroll is not guaranteed inside it. **Check this first, before the rest of the build**: if it does not scroll, the drag needs its own autoscroll while the pointer is near the container's top or bottom edge.
 - The §7 Finder image drops still upload.
 - Dragging selected text within the post still works and still shows the normal drop cursor.
@@ -171,14 +171,15 @@ The `--check-fixtures` harness does not drive drags, so these go in `docs/testin
 
 ## Docs to update
 
-- `site/docs.html`: the grip, ⇧ for sections, and the two shortcuts in the Keyboard Shortcuts list under Editing.
+- `site/docs.html`: the grip, ⌘ for sections, and the two shortcuts in the Keyboard Shortcuts list under Editing.
 - `docs/testing-plan.md`: the new suite and its count, the §7 steps above.
 - `Sources/QuillKit/Resources/CLAUDE.md`: a gotcha entry for the empty-pasteboard rule, pointing at its test.
 - `docs/platform-workarounds.md`: only if autoscroll or the drag preview needs a WebKit workaround.
 
 ## Still open
 
-- **⌃⌘↑/↓** pending the clash check above.
+- **⌃⌘↑/↓:** free. Task 0 (2026-10-31): no macOS system shortcut uses either (none in `com.apple.symbolichotkeys`), and pressed in the editor with the caret mid-paragraph neither did anything. On Chris's Mac the key presses also started a VoiceInk recording, whose hotkey is a bare Left Control tap; that is a third-party app, not a clash in Quill.
+- **Native drag autoscroll:** Task 0 (2026-10-31) found none. A native text drag held at, then above, the top edge of `#editor-wrap` for about 8 seconds did not scroll it, so the grip drag has its own autoscroll (`docs/platform-workarounds.md`, "No autoscroll while dragging a block").
 
 ## Left to the builder
 

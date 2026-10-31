@@ -67,6 +67,16 @@ public struct QuillApp: App {
                     appState.triggerFindBar = true
                 }
                 .keyboardShortcut("f", modifiers: .command)
+                Button("Move Block Up") {
+                    appState.triggerMoveBlockUp = true
+                }
+                .keyboardShortcut(.upArrow, modifiers: [.command, .control])
+                .disabled(!appState.editorIsMounted)
+                Button("Move Block Down") {
+                    appState.triggerMoveBlockDown = true
+                }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .control])
+                .disabled(!appState.editorIsMounted)
             }
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {

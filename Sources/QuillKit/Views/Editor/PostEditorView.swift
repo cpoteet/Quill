@@ -416,6 +416,16 @@ public struct PostEditorView: View {
             appState.triggerFindBar = false
             editorWebView?.evaluateJavaScript("openFindBar()", completionHandler: nil)
         }
+        .onChange(of: appState.triggerMoveBlockUp) { _, newValue in
+            guard newValue else { return }
+            appState.triggerMoveBlockUp = false
+            editorWebView?.evaluateJavaScript("moveBlock('up')", completionHandler: nil)
+        }
+        .onChange(of: appState.triggerMoveBlockDown) { _, newValue in
+            guard newValue else { return }
+            appState.triggerMoveBlockDown = false
+            editorWebView?.evaluateJavaScript("moveBlock('down')", completionHandler: nil)
+        }
         .onChange(of: appState.triggerPasteMarkdown) { _, newValue in
             guard newValue else { return }
             appState.triggerPasteMarkdown = false

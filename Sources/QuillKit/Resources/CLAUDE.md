@@ -162,6 +162,9 @@ onto it" — its children are still replayed.
 - Tiptap's code mark excludes every other mark, so a link or bold around inline code was dropped on the first edit
 - `extractFootnotes` splices the list out of the string; re-serializing the DOM undoes the save
 - A tab title is edited as a `span`; WebKit leaves a stale caret behind in an editable `<button>`
+- A grip drag must leave the pasteboard empty
+- WebKit does not autoscroll `#editor-wrap` during a drag
+- A section drag uses ⌘ because WebKit never starts a drag from a ⇧-press
 
 ## Cross-cutting gotchas that apply here
 
