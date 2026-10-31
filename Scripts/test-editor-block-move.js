@@ -2,7 +2,7 @@
 
 // Loads the real editor.html in jsdom and checks moving top-level blocks.
 
-const { test, describe, before, after } = require('node:test')
+const { test, describe, before, after, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM, VirtualConsole } = require('jsdom')
 const fs = require('fs')
@@ -864,12 +864,19 @@ describe('hover beside a floated image', () => {
   const wrap = () => win.document.getElementById('editor-wrap')
   const rect = (top, bottom, left = 100, right = 600) => ({ top, bottom, left, right, width: right - left, height: bottom - top, x: left, y: top })
   const IMAGE = SAMPLES.find(s => s.type === 'image').html
+  let stubbed = []
+
+  // ProseMirror reuses DOM nodes across loads, so the stubs must not outlive the test.
+  afterEach(() => {
+    stubbed.forEach(el => { delete el.getBoundingClientRect })
+    stubbed = []
+  })
 
   function layout() {
     load([P('Before'), IMAGE, P('Wraps beside the image'), P('After')].join('\n\n'))
     const dom = i => editor.view.nodeDOM(win.topLevelPos(doc(), i))
     const rects = [rect(0, 30), rect(40, 200, 400, 600), rect(40, 80), rect(210, 240)]
-    rects.forEach((r, i) => { dom(i).getBoundingClientRect = () => r })
+    rects.forEach((r, i) => { dom(i).getBoundingClientRect = () => r; stubbed.push(dom(i)) })
     return dom
   }
 
@@ -894,4 +901,57 @@ describe('hover beside a floated image', () => {
     hover(500, 150, dom(1))
     assert.equal(grip().dataset.label, 'Image')
   })
+})
+
+describe('review fixes', () => {
+  const grip = () => win.document.getElementById('block-grip')
+  const texts = () => { const out = []; doc().forEach(n => out.push(n.textContent)); return out }
+  const transfer = () => ({ calls: [], clearData() {}, setData() {}, setDragImage(el) { this.calls.push(el) } })
+  const blockMovePlugin = () => editor.state.plugins.find(p => p.key.startsWith('blockMove$'))
+
+  test('a grip drop after the document changed mid-drag moves nothing', () => {
+    load([P('One'), P('Two'), P('Three')].join('\n\n'))
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('x')
+    const before = texts()
+    assert.equal(blockMovePlugin().props.handleDrop(editor.view, { clientY: 100 }, null, true), true)
+    assert.deepEqual(texts(), before)
+    assert.equal(win.activeGripDrag(), null)
+  })
+
+  test('a last section does not count the generated trailing paragraph', () => {
+    load([P('x'), H(2, 'S'), SEP].join('\n\n'))
+    assert.deepEqual(types(), ['paragraph', 'heading', 'horizontalRule', 'paragraph'])
+    win._blockGrip.showFor(1)
+    grip().dispatchEvent(new win.MouseEvent('mouseenter'))
+    grip().dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, metaKey: true }))
+    const dataTransfer = transfer()
+    const e = new win.Event('dragstart', { bubbles: true, cancelable: true })
+    Object.defineProperty(e, 'dataTransfer', { value: dataTransfer })
+    Object.defineProperty(e, 'metaKey', { value: true })
+    grip().dispatchEvent(e)
+    assert.equal(editor.view.dragging.slice.content.childCount, 2)
+    assert.match(dataTransfer.calls[0].textContent, /\+ 1 more/)
+    grip().dispatchEvent(new win.Event('dragend', { bubbles: true }))
+    win.setSectionKey(false)
+  })
+
+  test('a mousedown in the text hides the grip', () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    win._blockGrip.showFor(0)
+    editor.view.dom.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }))
+    assert.equal(grip().classList.contains('visible'), false)
+  })
+
+  for (const type of ['codeBlock', 'preformatted', 'blockquote', 'pullquote']) {
+    test(`clicking the grip on a ${type} puts the caret in its text`, () => {
+      load([P('One'), SAMPLES.find(s => s.type === type).html].join('\n\n'))
+      win._blockGrip.showFor(1)
+      win._blockGrip.click()
+      assert.equal(editor.state.selection.empty, true)
+      assert.equal(editor.state.selection.$from.parent.isTextblock, true)
+      assert.equal(win.topLevelIndexAt(doc(), editor.state.selection.from), 1)
+    })
+  }
 })

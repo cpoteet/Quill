@@ -63,10 +63,12 @@ public struct QuillApp: App {
                     appState.triggerPasteMarkdown = true
                 }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
+                .disabled(!appState.editorIsMounted)
                 Button("Find…") {
                     appState.triggerFindBar = true
                 }
                 .keyboardShortcut("f", modifiers: .command)
+                .disabled(!appState.editorIsMounted)
                 Button("Move Block Up") {
                     appState.triggerMoveBlockUp = true
                 }

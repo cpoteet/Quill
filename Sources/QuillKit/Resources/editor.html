@@ -7002,7 +7002,7 @@
       const range = activeGripDrag()
       const gap = nearestGap(gapYs(editor.view), clientY)
       _endGripDrag()
-      if (!range || !_blockMoveAllowed() || range.to > movableCount(editor.state.doc)) return
+      if (!range || range.doc !== editor.state.doc || !_blockMoveAllowed()) return
       const result = moveTopLevelBlocks(editor.state, range.from, range.to, gap, TRAILING_PARAGRAPH_AFTER)
       if (!result) return
       editor.view.dispatch(result.tr)

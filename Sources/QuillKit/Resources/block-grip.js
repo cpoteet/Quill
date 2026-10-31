@@ -105,7 +105,7 @@ function gripDragStart(view, event, range) {
   transfer.effectAllowed = 'move'
   view.dragging = { slice: doc.slice(topLevelPos(doc, range.from), topLevelPos(doc, range.to)), move: true }
   transfer.setDragImage(_gripDragCard(doc, range), 12, 12)
-  gripDragStart.active = { from: range.from, to: range.to }
+  gripDragStart.active = { from: range.from, to: range.to, doc }
 }
 
 function activeGripDrag() {
@@ -154,6 +154,11 @@ function installBlockGrip(editor, hooks) {
     return dom && dom.nodeType === 1 ? dom : null
   }
   const isHeading = () => index >= 0 && doc().child(index).type.name === 'heading'
+  // A last section stops before the empty paragraph TrailingParagraph adds, which saves as nothing.
+  const sectionEndFor = i => {
+    const end = sectionEnd(doc(), i)
+    return end - 1 > i && end - 1 === generatedTrailingIndex(doc(), hooks.trailingAfter) ? end - 1 : end
+  }
   const sectionShown = () => sectionKey && onGrip && isHeading()
 
   function hideTip() {
@@ -210,7 +215,7 @@ function installBlockGrip(editor, hooks) {
       tint.style.display = 'none'
       return
     }
-    const last = nodeDOMAt(sectionEnd(doc(), index) - 1) || dom
+    const last = nodeDOMAt(sectionEndFor(index) - 1) || dom
     Object.assign(tint.style, {
       display: 'block',
       left: (colRect.left - layerRect.left - 8) + 'px',
@@ -324,7 +329,8 @@ function installBlockGrip(editor, hooks) {
   function click() {
     if (index < 0) return
     const start = topLevelPos(doc(), index)
-    const textual = ['paragraph', 'heading', 'bulletList', 'orderedList'].includes(doc().child(index).type.name)
+    const textual = ['paragraph', 'heading', 'bulletList', 'orderedList', 'codeBlock', 'preformatted', 'blockquote', 'pullquote']
+      .includes(doc().child(index).type.name)
     const chain = editor.chain().focus()
     if (textual) chain.setTextSelection(firstTextblockPos(doc(), start) ?? start)
     else chain.setNodeSelection(start)
@@ -332,7 +338,7 @@ function installBlockGrip(editor, hooks) {
   }
 
   function dragRange() {
-    return sectionShown() ? { from: index, to: sectionEnd(doc(), index) } : { from: index, to: index + 1 }
+    return sectionShown() ? { from: index, to: sectionEndFor(index) } : { from: index, to: index + 1 }
   }
 
   // The range is fixed at the press; leaving the grip or letting go of ⌘ before dragstart does not shrink it.
@@ -340,7 +346,7 @@ function installBlockGrip(editor, hooks) {
     const range = pressRange || dragRange()
     pressRange = null
     if (!metaKey || range.to - range.from > 1 || doc().child(range.from).type.name !== 'heading') return range
-    return { from: range.from, to: sectionEnd(doc(), range.from) }
+    return { from: range.from, to: sectionEndFor(range.from) }
   }
 
   function drawDropLine(clientY) {
@@ -406,6 +412,8 @@ function installBlockGrip(editor, hooks) {
     track(e.clientX, e.clientY)
   })
   wrap.addEventListener('mouseleave', hide)
+  // A press in the text can open a popover under a still pointer, so the grip waits for the next move.
+  view.dom.addEventListener('mousedown', hide)
   wrap.addEventListener('scroll', () => { if (!activeGripDrag()) hide() })
   grip.addEventListener('mouseenter', () => {
     if (index < 0) return

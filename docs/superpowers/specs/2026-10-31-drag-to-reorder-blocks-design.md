@@ -74,7 +74,8 @@ The same snapping function decides the drop (in `handleDrop`) and the drop line 
 - A heading inside a Group, Columns or any other container does not start a section, and its grip is the container's grip.
 - ⌘ on any other block's grip moves just that block.
 - ⌘ is used because ⌥ during a drag is ProseMirror's "copy instead of move" modifier on macOS (`dragCopyModifier` is `altKey` on Mac), ⌃ opens the context menu, and WebKit never starts a drag from a ⇧-press: `EventHandler::handleMousePressEvent` sets `m_mouseDownMayStartDrag` only when Shift is up, unless the press is on a link or image. *(Chris's call, 2026-10-31: ⌘ replaces the original ⇧ after the in-app check found ⇧-drags never start.)*
-- Key events reach the page only while the editor has keyboard focus, so `DroppableWebView` forwards ⌘ from an AppKit `flagsChanged` monitor (`window.setSectionKey`), and mouse events carry it too.
+- Key events reach the page only while the editor has keyboard focus, so `DroppableWebView` forwards ⌘ from an AppKit `flagsChanged` monitor (`window.setSectionKey`) on every modifier change, and mouse events carry it too.
+- A section that runs to the end of the post stops before the empty paragraph Quill keeps after a final table, separator or card, so the tint and the card's "+ N more" count only blocks the author can see.
 
 ### The grip: a type marker
 
@@ -112,7 +113,7 @@ Placement and the rest:
 - It hides on any keypress in the editor and comes back on the next mouse movement.
 - The hover area is the whole row, margin included, so moving the pointer left toward the grip does not hide it.
 - Vertical position: aligned with the first line of text for text blocks, and with the top edge for media and cards. For left- or right-aligned (floated) images, it uses the column's left edge, not the image's box.
-- Clicking the grip makes that block current, so Move Up/Down act on it: a text block (paragraph, heading, list) gets the caret at its start; any other block gets a node selection, as clicking it would. *(My call: a node-selected paragraph would be replaced by the next keypress, and the grip hides on keypress, so the author might not see it happen. ⇧⌘⌫ still covers only the types in `DELETABLE_BLOCKS`; this feature does not widen it.)*
+- Clicking the grip makes that block current, so Move Up/Down act on it: a block that holds text you type into (paragraph, heading, list, code, preformatted, quote, pullquote) gets the caret at the start of its first line; any other block gets a node selection, as clicking it would. *(My call: a node-selected paragraph would be replaced by the next keypress, and the grip hides on keypress, so the author might not see it happen. Code, preformatted and the quotes were added after the branch review on 2026-10-31, for the same reason, with Chris's agreement. ⇧⌘⌫ still covers only the types in `DELETABLE_BLOCKS`; this feature does not widen it.)*
 - The grip is not in the tab order. Keyboard and VoiceOver users use the menu commands.
 
 ### Margin space

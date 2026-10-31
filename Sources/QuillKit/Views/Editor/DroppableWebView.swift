@@ -11,7 +11,6 @@ public final class DroppableWebView: WKWebView {
     public var aiEnabled: Bool = false
     public var hasTextSelection: Bool = false
     private var commandKeyMonitor: Any?
-    private var commandKeyDown = false
 
     // Covers the common image UTIs; "public.image" catches anything else
     private static let imageUTIs: [String] = [
@@ -225,12 +224,14 @@ public final class DroppableWebView: WKWebView {
         }
     }
 
+    // Sent on every change: a ⌘ released in another app never reaches Quill, so a cached state would go stale.
     private func forwardCommandKey(_ event: NSEvent) {
         guard event.window === window else { return }
-        let down = event.modifierFlags.contains(.command)
-        guard down != commandKeyDown else { return }
-        commandKeyDown = down
-        evaluateJavaScript("window.setSectionKey?.(\(down))", completionHandler: nil)
+        evaluateJavaScript("window.setSectionKey?.(\(event.modifierFlags.contains(.command)))", completionHandler: nil)
+    }
+
+    isolated deinit {
+        if let monitor = commandKeyMonitor { NSEvent.removeMonitor(monitor) }
     }
 
     public override func viewDidChangeEffectiveAppearance() {

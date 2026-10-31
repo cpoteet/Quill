@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 799 Swift tests + 2,034 JS tests (2,033 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 799 Swift tests + 2,041 JS tests (2,040 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -25,7 +25,7 @@ This document is the authoritative reference for Quill's automated test suite an
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
-10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (93 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
+10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 12. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
 13. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
@@ -176,7 +176,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 49 | `SyncedPatternScriptTests` | `EditorCoordinatorTests.swift` | 4 | `EditorCoordinator.syncedPatternJS`: the `setSyncedPattern(generation, ref, …)` call for a loaded, not-found and failed result, with a title holding quotes and `</script>` JSON-encoded |
 | 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 5 | `PostEditorView.syncedPatternResults(for:outcome:)`: a returned pattern is loaded under its ref; a ref WordPress left out, or a pattern with a password, is not found (WordPress renders neither); any error fails every ref; a repeated ref does not trap |
 | 51 | `StretchingFlowLayoutTests` | `StretchingFlowLayoutTests.swift` | 3 | `StretchingFlowLayout.tileSize`: tiles never fall under the 140pt minimum, the row's leftover width is under one point per column, a caption strip is added to the square tile, one column in a narrow view, and the layout's `itemSize` when there is no scroll view |
-| 52 | `AppStateEditorMountedTests` | `AppStateTests.swift` | 3 | `AppState.editorIsMounted`, which disables Move Block Up/Down: false with no selection and in Media, true with a selected draft. Without it, a menu move with no editor left its trigger stuck `true` |
+| 52 | `AppStateEditorMountedTests` | `AppStateTests.swift` | 3 | `AppState.editorIsMounted`, which disables Paste as Markdown, Find… and Move Block Up/Down: false with no selection and in Media, true with a selected draft. Without it, any of those chosen with no editor left its trigger stuck `true` |
 
 ---
 
@@ -3331,7 +3331,7 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
-## JS block move tests (93 tests)
+## JS block move tests (100 tests)
 
 File: `Scripts/test-editor-block-move.js`
 Editor files: `Sources/QuillKit/Resources/block-move.js`, `block-grip.js`, `editor.html`
@@ -3469,6 +3469,17 @@ Rects are stubbed, since jsdom has no layout: a floated image and the paragraph 
 |---|---|
 | `the wrapped paragraph gets its grip from the margin` | Row boundaries clamp to the next block's top when two blocks overlap |
 | `pointing at the image itself shows the image grip` | The block under the pointer (`elementFromPoint`) wins over the row search |
+
+### review fixes (7 tests)
+
+From the branch review on 2026-10-31.
+
+| Test | What it checks |
+|---|---|
+| `a grip drop after the document changed mid-drag moves nothing` | The drag records the document it started on; block indexes from another document are never used |
+| `a last section does not count the generated trailing paragraph` | The slice and the card's "+ N more" stop before the paragraph `TrailingParagraph` adds |
+| `a mousedown in the text hides the grip` | A click can open a popover under a still pointer; the grip waits for the next move |
+| `clicking the grip on a codeBlock puts the caret in its text` | And the same for `preformatted`, `blockquote` and `pullquote` (4 tests) |
 
 ## JS passthrough tests (65 tests)
 
@@ -4482,6 +4493,7 @@ window's licence link all point at `quill.siolon.com`, which is published from
 - [ ] File → New Media… (⌘⌥N) opens the file picker and does not create a post.
 - [ ] Edit → **Paste as Markdown** (⌘⇧V) converts Markdown on the clipboard into real blocks (a heading stays a heading, a list stays a list). Plain ⌘V in the same spot is unaffected and still pastes normally.
 - [ ] Edit → Find… (⌘F) opens the find bar; File → Save (⌘S) and Publish (⌘⇧P) match the buttons in the editor.
+- [ ] In Media, and with no post selected, Edit → Paste as Markdown and Find… are greyed out; open a post afterwards → both work at the first try.
 - [ ] File → Revert to Saved and Preview in Browser are enabled on a remote post and disabled on a local draft.
 - [ ] View → Refresh (⌘R) reloads the current section — including while the sidebar is collapsed.
 
