@@ -130,7 +130,7 @@ Dispatch **two subagents** in parallel. The user guide gets its own, because sha
 >
 > **`docs/testing-plan.md`** — three things, all of them: (a) add a row per new test to the relevant suite section and update that section's header count; (b) add a row to the regression matrix at the bottom linking each new behavioral guard to the scenario it guards; (c) add manual-checklist items under the relevant §7.x for any new feature or behavior change.
 >
-> **`CLAUDE.md`** — new gotchas or constraints discovered, architecture changes, new key files or patterns, and the test-count line under "Build & run".
+> **`CLAUDE.md`** — new gotchas or constraints discovered, architecture changes, new key files or patterns. Test counts live only in `docs/testing-plan.md`.
 >
 > Report back only a list of the edits you made.
 

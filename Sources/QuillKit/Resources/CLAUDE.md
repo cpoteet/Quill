@@ -162,3 +162,10 @@ onto it" — its children are still replayed.
 - Tiptap's code mark excludes every other mark, so a link or bold around inline code was dropped on the first edit
 - `extractFootnotes` splices the list out of the string; re-serializing the DOM undoes the save
 - A tab title is edited as a `span`; WebKit leaves a stale caret behind in an editable `<button>`
+
+## Cross-cutting gotchas that apply here
+
+Full text: `docs/gotchas.md`.
+
+- **Editor link colour is one CSS variable per theme**
+- **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**

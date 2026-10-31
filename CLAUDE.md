@@ -1,6 +1,6 @@
 # Quill
 
-Native macOS app for writing and managing WordPress content. Built with Swift Package Manager; `build.sh` also needs full Xcode for `actool` (see Requirements). Implementation complete and running; active polish/iteration phase.
+Native macOS app for writing and managing WordPress content. Built with Swift Package Manager. Implementation complete; active polish/iteration phase.
 
 ## Build & run
 
@@ -8,157 +8,87 @@ Native macOS app for writing and managing WordPress content. Built with Swift Pa
 pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && open Quill.app
 ```
 
-**Run exactly that after every code change.** `build.sh` replaces the binary under a running process, so skipping the quit leaves the old app running and shows no visible change. The quit matches the project's own binary by path, so it never closes the notarized copy in `/Applications` the user works in. If the build fails, report the error instead of opening.
+**Run exactly that after every code change.** `build.sh` replaces the binary under a running process, so skipping the quit leaves the old app running. The quit matches this project's binary by path, so it never closes the notarized copy in `/Applications`. If the build fails, report the error instead of opening.
 
 ```bash
 ./test.sh
 ```
 
-Runs everything — 796 Swift + 1,941 JS tests, all passing as of 2026-10-30 (1,940 JS pass and one is deliberately skipped; that skip is why this line reads one fewer than the total). Individual suites, what each one covers, the test-suite gotchas, and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
+Runs every Swift and JS test. Current counts, every suite, the test-suite gotchas and the manual release checklists: `docs/testing-plan.md`. If you touch a suite, re-run it and correct the counts there.
 
 ```bash
 ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
 ```
 
-**The only test that runs in real WebKit**, and required before release sign-off — the jsdom suites cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
+**The only test that runs in real WebKit**, required before release sign-off — jsdom cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
 
-**Dependencies:** the `update-dependencies` skill (`.claude/skills/update-dependencies/`); `./Scripts/check-dependencies.sh` is its read-only report.
+**Skills:** `update-dependencies` (read-only report: `./Scripts/check-dependencies.sh`), `manual-test-pass` (runs `docs/testing-plan.md` §7 against the local Studio site), `/release <version>`. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 
-**Manual test pass:** the `manual-test-pass` skill (`.claude/skills/manual-test-pass/`) runs `docs/testing-plan.md` §7 with computer use and the REST API against the local Studio site; `Scripts/qa-fault-injector.php` is the throw-away mu-plugin it uses to inject server faults (see "Running the manual pass with an agent" in the testing plan).
+**Requirements:** Swift 6.4, macOS 27, full Xcode (`build.sh` runs `actool`, which the Command Line Tools lack). `node` + `jsdom` are installed in **`Scripts/`**, not the project root, which has no `package.json` — an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
-**Releases:** `/release <version>` (`.claude/skills/release/`). `Scripts/notarize.sh` builds with `./build.sh --release` (Developer ID, hardened runtime), runs the fixture check, notarizes, staples and writes `~/Desktop/Quill.zip`; it refuses a version that is already tagged. It needs the `quill-notary` notarytool keychain profile. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
-
-Requirements: Swift 6.4, macOS 27, full **Xcode** (`build.sh` compiles `Assets.xcassets` with `actool`, which the Command Line Tools alone do not provide), and `node` + `jsdom` installed in **`Scripts/`** (`Scripts/package.json`; only `Scripts/node_modules/` is gitignored), *not* the project root, which has no `package.json` at all. Consequence: an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
-
-**Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many blows past the test edits and undoes the initial content load, emptying the editor.
+**Computer-use testing goes on a new local draft.** Click "+ New Post" first and discard it when done. Never test edits on a published post or page — one Cmd+Z too many undoes the initial content load and empties the editor. Read the testing gotchas under "Running the manual pass with an agent" in `docs/testing-plan.md` first.
 
 ## Key decisions
 
 - **Stack:** Swift 6, SwiftUI (macOS 27 only — no availability gates), WKWebView, URLSession async/await
-- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources). Bundled via `./Scripts/bundle-tiptap.sh` (requires `node`).
+- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources, built by `./Scripts/bundle-tiptap.sh`)
 - **API:** WordPress REST API with Application Passwords (no plugin required)
-- **Login:** first run connects through WordPress's browser approval (`authorize-application.php`), which calls back on `quill://authorize`; manual application-password entry is the fallback.
-- **Storage:** SQLite.swift for local drafts/autosaves; credentials stored as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
-- **Accent:** Quill owns its accent (amber `#C77700` light / `#BF801E` dark) via `Assets.xcassets` + `NSAccentColorName`, *not* a SwiftUI `.tint()` — `List` selection reads the bundle's accent and ignores the view tree, so a `.tint()` recolours the buttons and leaves the sidebar blue. macOS honours this only while the user's system accent is "Multicolor".
-- **URLSession:** Always use `URLSessionConfiguration.ephemeral` (default in `WordPressClient`) — prevents URLSession from touching the system keychain credential store
-
-## Future architecture options
-
-Deferred design decisions are tracked as GitHub issues on `cpoteet/Quill`, not in `docs/`. Open or comment on an issue rather than adding a design-notes file.
+- **Login:** WordPress's browser approval (`authorize-application.php`), calling back on `quill://authorize`; manual application-password entry is the fallback
+- **Storage:** SQLite.swift for local drafts/autosaves; credentials as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)
+- **Accent:** amber `#C77700` light / `#BF801E` dark via `Assets.xcassets` + `NSAccentColorName`, *not* `.tint()` — `List` selection reads the bundle's accent and ignores the view tree. macOS honours it only while the system accent is "Multicolor".
+- **URLSession:** always `URLSessionConfiguration.ephemeral` (default in `WordPressClient`) — keeps URLSession away from the keychain credential store
+- **Deferred design decisions** are GitHub issues on `cpoteet/Quill`, not files in `docs/`
 
 ## Architecture
 
-```
-Sources/QuillKit/
-  App/              AppState, AppServices, QuillApp, AppSupportDirectory, UpdateChecker
-  Auth/             CredentialsStore (file-based, not system keychain), AppAuthorization, ConnectSite
-  API/              WordPressClient, SiteDiscovery, Models (WPPost, WPMedia, WPTaxonomy, WPSyncedPattern), MimeType, ImageConversion
-                    APIError, NetworkFailure (connectivity by URLError code)
-  AI/               AnthropicClient, AISettings (+ AISettingsStore), AIPromptBuilder, EvaluationPrompts, EvaluationState, SelectionPrompts
-  Storage/          Database, DraftStore, AutosaveStore, TaxonomyCache
-  Views/
-    ContentView.swift, SplitItemCollapseFix.swift, SplitItemSizePin.swift
-    Editor/         PostEditorView, EditorView, EditorCoordinator, DroppableWebView
-                    TitleTextField, LinkPickerView, BlockRiskAlarm, EditorBanner
-                    CustomHTMLSheet (+ CodeTextView, a plain-text NSTextView)
-    Sidebar/        SidebarView, PostListRow, SidebarStatusFilterButton
-    Settings/       PreferencesView, PostSettingsPanel, FeaturedImageSection, AboutView
-    Media/          MediaLibraryView, MediaGalleryView, MediaPreviewOverlay
-                    MediaSidebarSection (filter list), MediaDetailView (inspector)
-                    MediaPickerView, GallerySheet
-    AI/             GeneratePostSheet, AIResultPanel, SamplePostPickerSheet, EvaluationPanel
-    Onboarding/     OnboardingModel, OnboardingView (+ Welcome, Waiting, Manual, AI)
-  Resources/        editor.html (Tiptap)
-                    editor-transforms.js (WordPress HTML transforms, shared with test suite)
-                    block-descriptors.js (Tiptap node → Gutenberg block map, used by the save transform)
-                    block-settings.js (one entry per block setting; drives the Tiptap attribute, the delimiter key and the toolbar control)
-                    block-parser.js (Quill's block parser, checked against WordPress's by Scripts/test-block-parser.js; loaded by editor.html for unsupported-block preservation)
-  DesignSystem.swift
-```
+`Sources/QuillKit/`, each directory with its own `CLAUDE.md` of file-specific gotchas:
 
-## Key files to know
+- `App/` — `AppState`, `AppServices`, `QuillApp`, `UpdateChecker`
+- `Auth/` — `CredentialsStore` (file-based), `AppAuthorization`, `ConnectSite`
+- `API/` — `WordPressClient` (all REST calls), `SiteDiscovery`, models (`WPPost`, `WPMedia`, `WPTaxonomy`, `WPSyncedPattern`), `ImageConversion`
+- `AI/` — `AnthropicClient`, `AISettings`, prompt builders, `EvaluationState`
+- `Storage/` — `Database`, `DraftStore`, `AutosaveStore`, `TaxonomyCache`
+- `Views/` — `ContentView`, split-view fixes; `Editor/`, `Sidebar/`, `Settings/`, `Media/`, `AI/`, `Onboarding/`
+- `Resources/` — `editor.html` (the whole Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals), `editor-transforms.js`, `block-descriptors.js`, `block-settings.js` (one entry per block setting), `block-parser.js` (checked against WordPress's parser; used for unsupported-block preservation)
+- `DesignSystem.swift`
 
-- `Sources/QuillKit/Resources/editor.html` — the entire Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals
-- `Sources/QuillKit/Resources/editor-transforms.js` — `toWordPressHTML`, `formatHTML`, `countStats`, `findMatches`, the passthrough parse helpers; shared between `editor.html` and the JS test suites, loaded as a plain `<script>` so everything in it is a global
-- `Sources/QuillKit/Resources/block-descriptors.js` — Tiptap node → Gutenberg block map; `block-settings.js` — one entry per block setting
-- `Sources/QuillKit/Views/Editor/EditorCoordinator.swift` — WKWebView delegate + message handler; handles the insert-image notification
-- `Sources/QuillKit/Views/Editor/DroppableWebView.swift` — WKWebView subclass intercepting Finder image drops
-- `Sources/QuillKit/API/WordPressClient.swift` — all REST API calls
-- Refresh reloads the open post — `SidebarView`'s refresh bumps `appState.editorReloadToken`; `PostEditorView.reloadIfClean()` fetches the post and applies it only when nothing is unsaved, no save is running and the server copy changed (`applyRemotePost`). A post load is hidden behind `EditorLoadingCover` (private to `PostEditorView.swift`)
-- `Sources/QuillKit/API/ImageConversion.swift` — HEIC/HEIF → JPEG before upload (WP 7.1 accepts HEIC but can't generate sub-sizes for it); used by all three upload paths
-- `Sources/QuillKit/Views/Media/GallerySheet.swift` — native gallery picker, also opened in edit mode by `window.editGallery` (`GalleryEdit.swift`); posts `.insertGalleryData` with `PostEditorView.galleryPayload(...)`, which `EditorCoordinator` forwards whole to `window.insertGallery(json)`
-
-Concepts that have their own doc:
-
-- **Block model** — adding a block setting, the raw-attribute carrier, unsupported-block preservation, the `gutenbergPassthrough` node, Groups (`groupBlock`, which Groups open and which stay locked cards) and synced-pattern cards (`WPSyncedPattern`, `requestSyncedPatterns`): `docs/block-model.md`
-- **Footnotes live in post meta, not `post_content`**: `docs/footnotes-meta.md`
-- **Code view** — the `</>` toggle and its `_rawHTML` / `_rawHTMLOnLoad` / `_codeViewOriginal` state: `docs/code-view.md`
-- **Paste (⌘V)** — HTML from outside Quill is reduced to what Quill models before it is parsed (`cleanPastedHTML`); a copy made inside Quill is recognised by ProseMirror's `data-pm-slice` plus the remembered text of Quill's last copy, and left alone (the marker alone is not enough, other ProseMirror apps write it); pasted images upload through the drop queue: `docs/paste.md`
-- **Paste as Markdown (⌘⇧V)** — `AppState.triggerPasteMarkdown` → `PostEditorView.pasteAsMarkdown()` → `window.insertMarkdown(text)`; bypasses ProseMirror's clipboard plumbing, but marked's HTML goes through the same `cleanPastedHTML`
+Concepts with their own doc: block model, Groups and synced patterns (`docs/block-model.md`); footnotes in post meta (`docs/footnotes-meta.md`); code view (`docs/code-view.md`); paste and Paste as Markdown (`docs/paste.md`).
 
 ## Maintaining Gutenberg HTML compatibility
 
 All WordPress/Gutenberg HTML compatibility lives in three files:
 
-1. **`toWordPressHTML(html)`** in `editor-transforms.js` — called on every save/content-change. Transforms Tiptap's internal HTML into Gutenberg-format HTML before sending to Swift. `renderHTML` on `ResizableImage` now always outputs `<figure><img ...><figcaption/></figure>`; `toWordPressHTML` annotates existing figures (adds classes, moves alignment, handles caption) rather than wrapping bare `<img>` tags. Edit this when WordPress changes expected output format.
+1. **`toWordPressHTML(html)`** in `editor-transforms.js` — runs on every save/content change and turns Tiptap's HTML into Gutenberg HTML. `ResizableImage.renderHTML` always outputs `<figure><img><figcaption/></figure>`; `toWordPressHTML` annotates those figures rather than wrapping bare `<img>`. `editor-transforms.js` is a plain `<script>` shared with the JS test suites, so everything in it is a global.
+2. **`ResizableImage.parseHTML()`** in `editor.html` — extracts image attrs (including alignment) from `<figure class="wp-block-image">` on load.
+3. **`block-descriptors.js`** — maps each Tiptap node to its Gutenberg block name, shape, `attrsFrom` and `ownedAttrs`. `wrapInDelimiters` emits `<!-- wp:name -->` for every descriptor, so a new modeled block is a descriptor entry, not another `toWordPressHTML` pass.
 
-2. **`ResizableImage.parseHTML()`** in `editor.html` — custom parse rule for `<figure class="wp-block-image">` that extracts image attrs (including alignment) from Gutenberg figure wrappers on load.
-
-3. **`block-descriptors.js`** — maps each Tiptap node name to its Gutenberg block name, shape, `attrsFrom`, and `ownedAttrs`. `wrapInDelimiters` in `editor-transforms.js` emits `<!-- wp:name -->` delimiters for every descriptor, so teaching Quill a new modeled block is a descriptor entry, not another `toWordPressHTML` pass.
-
-See `Sources/QuillKit/Resources/CLAUDE.md` for the current per-element output reference table, the `update-gutenberg-html-format` skill for fixing one block, and `docs/wordpress-release-audit.md` for the per-release checklist.
+Per-element output table: `Sources/QuillKit/Resources/CLAUDE.md`. Fixing one block: the `update-gutenberg-html-format` skill. Per-release checklist: `docs/wordpress-release-audit.md`.
 
 ## Gotchas
 
 These two fail silently with the whole test suite green:
 
-- **A top-level `const` in a Resources JS file is NOT reachable as `window.x` from `editor.html`; only `function` declarations are** — classic scripts share one global lexical scope, so a top-level `const` is reachable by *bare identifier* from another classic script but never as a property of `window`/`globalThis`. Since `editor-transforms.js` resolves `block-descriptors.js` as `globalThis` in the browser and as a CommonJS `require` under Node, a `const` reads `undefined` in the app while working perfectly in every Node test. Anything crossing that boundary must be a `function` declaration (`modelsBlockName` is the pattern) or explicitly assigned to `window`. Only the real-`editor.html`-in-jsdom harness catches this class of bug.
-- **WKWebView rewrites pasted HTML before the page sees it, and jsdom cannot** — HTML from another app or site arrives with every element's computed style inline and its comments stripped, and a selection holding `<details>` is mis-serialized. A paste fix proven only in jsdom proves nothing about that; run the real-WebKit harness (`Scripts/fixtures/paste/README.md`), and keep new captures of what WebKit delivered in `Scripts/fixtures/paste/`.
+- **A top-level `const` in a Resources JS file is NOT reachable as `window.x` from `editor.html`; only `function` declarations are** — classic scripts share one lexical scope, so a `const` is reachable by bare identifier but not on `globalThis`, which is how `editor-transforms.js` reads `block-descriptors.js` in the browser (Node uses `require`, so every Node test passes). Expose such values as a `function` declaration (`modelsBlockName`) or assign them to `window`.
+- **WKWebView rewrites pasted HTML before the page sees it, and jsdom cannot** — a paste fix proven only in jsdom proves nothing; run the real-WebKit harness (`Scripts/fixtures/paste/README.md`). Detail: `docs/paste.md`.
 
-**Full text of every cross-cutting gotcha below: `docs/gotchas.md`** — read it when a title looks relevant. File-specific gotchas live in the per-directory `CLAUDE.md` files (`Resources/`, `Views/Editor/`, `API/`, `Views/Media/`, `Views/Sidebar/`, `App/`, `AI/`, `Views/AI/`, `Views/Settings/`, `Views/`), which load only when working in that directory.
+Cross-cutting gotchas, full text in `docs/gotchas.md`. Titles that belong to one directory are listed in that directory's `CLAUDE.md`; the testing ones are in `docs/testing-plan.md`.
 
 - **A carried attribute is a script sink — everything the raw-attribute carrier snapshots gets replayed onto the live contenteditable**
 - **Post markup is parsed only into `inertDocument()`, never into an element of the live page**
-- **The toolbar-wide fade on inspector toggle is an implicit `sublayers` CATransition on the toolbar's glass hosting view, and `InspectorTitlebarFix` nulls that action**
-- **A split item's default uncollapse grows the split view instead of shrinking its siblings, so `SplitItemCollapseFix` sets `collapseBehavior = .useConstraints` on the sidebar and the inspector**
-- **SwiftUI leaves a split item's size free in the layout engine, so `SplitItemSizePin` pins the detail column and the editor pane to their frames**
-- **Measure the region the user is describing, not the whole strip**
-- **`AppState` orders taxonomies once, on assignment — the settings panel never sorts**
 - **The unsupported-block sentinel is a per-save random nonce, and must stay one**
-- **The block-risk banner only blocks saving once the body has been edited**
-- **`_reportBlocksAtRisk` posts its list on every load and code-view edit, empty list included**
 - **New JS dependencies get their own bundle script, not a `bundle-tiptap.sh` edit**
 - **Synchronous image work must not run on the main actor**
-- **Anything that writes `uploadStatus` must go through `dropTask`**
-- **A section switch rebuilds `PostEditorView`, so async work checks `appState.selectedItem` as well as `loadedItem`**
-- **WordPress's REST `media_type` takes one value, so the Documents filter cannot also cover text files**
-- **Media paging sends an offset, not a page number — the local item count is the window into the server's filtered list**
 - **Each browser-approval attempt needs its own application-password name**
 - **Ad-hoc signing for dev, Developer ID only for release**
-- **Editor link colour is one CSS variable per theme**
-- **Color tokens & surface components**
-- **`Color.wpContentSurface` and `editor.html`'s page colour are one value in two files and must move together**
-- **A view placed in an `.inspector` must not set its own width**
-- **`SectionLabel` is the one heading above an inspector or sheet section**
-- **Sheet actions go in a bottom bar, never in a top header row**
-- **Each kind of feedback has one job: alert, editor banner, toast, inline error**
-- **Inputs are system `.roundedBorder` fields; only a list gets a hand-drawn surface**
-- **Verify saved draft HTML straight from SQLite rather than through the UI**
-- **jsdom and Chrome both lie about ProseMirror's empty-node caret**
-- **Background computer-use clicks do not reach the WKWebView's DOM handlers**
-- **The computer-use tool's Cmd+click does not reach the editor as a Cmd+click**
-- **Scripted clicks do not focus an `NSViewRepresentable` — only real `CGEvent` clicks do**
 - **Unicode curly quotes in Swift strings**
 
 ## Docs
 
 - `docs/testing-plan.md` — every test by name, test-suite gotchas, manual release checklists
-- `docs/gotchas.md`, `docs/block-model.md`, `docs/code-view.md`, `docs/footnotes-meta.md`, `docs/paste.md`
-- `docs/platform-workarounds.md` — every workaround for an Apple or WebKit bug, with a test for whether it is still needed; work through it after each macOS release. A new workaround gets an entry here as well as its gotcha
-- `docs/editor-gotchas.md` — the 83 `editor.html` gotchas, indexed by title in `Sources/QuillKit/Resources/CLAUDE.md`
-- `site/docs.html` — end-user guide, published on the site; edit it directly (there is no Markdown source)
-- `docs/wordpress-release-audit.md` — the checklist to run once per WordPress major release
+- `docs/platform-workarounds.md` — every Apple/WebKit workaround with a test for whether it is still needed; work through it after each macOS release. A new workaround gets an entry here as well as its gotcha
+- `docs/editor-gotchas.md` — the `editor.html` gotchas, indexed in `Sources/QuillKit/Resources/CLAUDE.md`
+- `docs/wordpress-release-audit.md` — once per WordPress major release
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` — one spec + plan pair per feature, named by date
-- `Sources/QuillKit/Resources/CLAUDE.md` — per-element Gutenberg output reference table
+- `site/docs.html` — end-user guide, published on the site; edit it directly (no Markdown source)
 
-**After major changes:** run the `claude-md-management:revise-claude-md` skill to keep this file current. Keep it an index — detail belongs in `docs/`.
+**After major changes:** run `claude-md-management:revise-claude-md`. Keep this file an index — detail belongs in `docs/` or the per-directory `CLAUDE.md` files.

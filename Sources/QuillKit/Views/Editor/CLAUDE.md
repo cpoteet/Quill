@@ -39,3 +39,13 @@ Implementation gotchas specific to this directory. See the root `CLAUDE.md` for 
 - **A featured image dropped on Post Settings uses the same guard and has the same limit** — `uploadFeaturedImage` captures the post ID and `editorWebView` when the task starts and sets `settings.featuredMediaID` only while `isOpen(itemID)` holds and that web view is still in a window. Otherwise the image stays in the Media Library and an info toast says it wasn't set; after a section round-trip that toast draws on the torn-down view and does not show. `featuredUploadItemIDs` is `@State`, so the rebuilt view neither shows "Uploading…" nor blocks Save for an upload the old view started.
 - **Settings count toward `isDirty`; only the body goes in the autosave stash** — `cleanSettings` is the settings baseline, set wherever `cleanTitle`/`cleanContent` are (`applyRemotePost`, the local-draft load, Save Draft, and a save, where it is the settings that were sent). `isDirty` is `bodyIsDirty || settings != cleanSettings`, so a settings-only change shows the edited dot and Revert. The stash holds title, content and footnotes only, so `flushToDB` and `performAutosave` skip a remote post whose body is clean; writing an unchanged body would restore on the next open with an "Unsaved changes restored" toast. A settings-only change on a remote post is therefore still lost when the user leaves the post. `PostSettings(post:)` is the one mapping from a `WPPost`.
 - **`CodeTextView` switches tabs through `document`, never `.id`** — rebuilding it with `.id(tab)` left keystrokes going to the old text view, which still wrote into the HTML binding, so CSS typed after a switch landed in the HTML tab (seen in the app 2026-10-05; jsdom and Swift tests cannot see it). One view stays alive; a new `document` swaps in the text, clears the coordinator's own `UndoManager` so undo cannot carry one tab's edits into another, and takes focus.
+- **Refresh reloads the open post** — `SidebarView`'s refresh bumps `appState.editorReloadToken`; `PostEditorView.reloadIfClean()` fetches the post and applies it only when nothing is unsaved, no save is running and the server copy changed (`applyRemotePost`). A post load is hidden behind `EditorLoadingCover` (private to `PostEditorView.swift`).
+
+## Cross-cutting gotchas that apply here
+
+Full text: `docs/gotchas.md`.
+
+- **The block-risk banner only blocks saving once the body has been edited**
+- **`_reportBlocksAtRisk` posts its list on every load and code-view edit, empty list included**
+- **Anything that writes `uploadStatus` must go through `dropTask`**
+- **A section switch rebuilds `PostEditorView`, so async work checks `appState.selectedItem` as well as `loadedItem`**

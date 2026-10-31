@@ -1,6 +1,6 @@
 # Quill — cross-cutting gotchas
 
-Indexed by title in the root `CLAUDE.md`.
+Indexed by title in the root `CLAUDE.md`, in the per-directory `CLAUDE.md` an entry applies to, and (the testing entries) in `docs/testing-plan.md` under "Running the manual pass with an agent".
 
 Most file-specific gotchas moved to per-directory `CLAUDE.md` files on 2026-07-11 so they load only when Claude is working in that directory: `Sources/QuillKit/Resources/`, `Sources/QuillKit/Views/Editor/`, `Sources/QuillKit/API/`, `Sources/QuillKit/Views/Media/`, `Sources/QuillKit/Views/Sidebar/`, `Sources/QuillKit/App/`, `Sources/QuillKit/AI/`, `Sources/QuillKit/Views/AI/`, `Sources/QuillKit/Views/Settings/`, `Sources/QuillKit/Views/`. What's left here is cross-cutting or doesn't map to one directory.
 

@@ -53,7 +53,7 @@ After each one: `./test.sh`, and stop to fix before moving on, so a failure poin
 pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"
 ```
 
-Then update: test counts in `CLAUDE.md` and `docs/testing-plan.md` if they moved; `CLAUDE.md` Requirements if a toolchain version changed; any gotcha whose workaround changed. Summarize what moved, what was deferred and why, and wait for the user to ask for a commit.
+Then update: test counts in `docs/testing-plan.md` if they moved; `CLAUDE.md` Requirements if a toolchain version changed; any gotcha whose workaround changed. Summarize what moved, what was deferred and why, and wait for the user to ask for a commit.
 
 ## Traps
 

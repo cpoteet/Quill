@@ -49,4 +49,4 @@ Background: `docs/block-model.md` (the attribute carrier, unsupported-block pres
    - With Quill connected to the Studio site: click "+ New Post", paste the markup through code view, edit a paragraph, Save Locally, and read the saved HTML from SQLite (`docs/gotchas.md`, "Verify saved draft HTML straight from SQLite"). Computer-use clicks need `request_full_control` to reach the editor. Discard the draft.
    - A session that cannot drive the app reports this step as not verified rather than skipping it.
 
-7. **Update the docs:** the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`, and the test counts in the root `CLAUDE.md` and `docs/testing-plan.md`.
+7. **Update the docs:** the per-element table in `Sources/QuillKit/Resources/CLAUDE.md`, and the test counts in `docs/testing-plan.md`.

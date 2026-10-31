@@ -10,6 +10,8 @@ The copy, cut and paste listeners are on `document` in the capture phase. In rea
 
 `cleanPastedHTML` and `pastedBlocksAsListItems` do not check the marker themselves, so anything that reaches them is cleaned. That includes Paste as Markdown, whose raw HTML is always cleaned.
 
+**Paste as Markdown (⌘⇧V)** runs `AppState.triggerPasteMarkdown` → `PostEditorView.pasteAsMarkdown()` → `window.insertMarkdown(text)`. It bypasses ProseMirror's clipboard plumbing, but marked's HTML goes through the same `cleanPastedHTML`.
+
 ProseMirror reads the marker *after* `transformPastedHTML` returns, to rebuild how the slice was opened, so the marker must never be stripped in the hook. It is dropped where it would be saved instead: `isCarryableAttr` refuses it, and `sourceHTMLOf` removes it from the verbatim `sourceHTML` that galleries, embeds and passthrough blocks keep.
 
 **Anything else** is reduced to what Quill models. Every source leaves attributes Gutenberg's `save()` would not write, and the raw-attribute carrier (`docs/block-model.md`) would otherwise save them all. Gutenberg then reports the block as invalid. Before this cleanup existed, 14 of 21 sampled outside pastes saved invalid blocks.
