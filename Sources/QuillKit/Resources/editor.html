@@ -1170,7 +1170,7 @@
     .ProseMirror .wp-block-details > :last-child { margin-bottom: 0; }
 
     /* Columns */
-    .ProseMirror .wp-block-columns { display: flex; gap: 0; align-items: flex-start; }
+    .ProseMirror .wp-block-columns { display: flex; gap: 0; align-items: stretch; }
     .ProseMirror .wp-block-column { flex: 1 1 0; min-width: 0; padding: 0 18px; }
     .ProseMirror .wp-block-column:first-child { padding-left: 4px; }
     .ProseMirror .wp-block-column:last-child  { padding-right: 4px; }
@@ -3788,6 +3788,25 @@
     // Without this every container answers Enter differently: ProseMirror's
     // lift escapes only where the schema lets it, so an earlier tab panel
     // ignored it and a column split itself in half.
+    const UNSPLITTABLE_PARTS = new Set(['columnBlock', 'tabPanel'])
+
+    // Core's button Enter: the empty button gives way to a paragraph, splitting the Buttons block around it.
+    function _leaveButtons($from) {
+      const buttons = $from.node(-1)
+      const index = $from.index(-1)
+      const start = $from.before(-1)
+      const head = buttons.content.cut(0, $from.posAtIndex(index, -1) - start - 1)
+      const tail = buttons.content.cut($from.posAtIndex(index + 1, -1) - start - 1)
+      const parts = []
+      if (head.size) parts.push(buttons.copy(head))
+      parts.push(editor.schema.nodes.paragraph.create())
+      if (tail.size) parts.push(buttons.copy(tail))
+      editor.view.dispatch(editor.state.tr.replaceWith(start, start + buttons.nodeSize, parts))
+      editor.commands.setTextSelection(start + (head.size ? parts[0].nodeSize : 0) + 1)
+      editor.commands.focus()
+      return true
+    }
+
     function _containerEnter() {
       if (_isInFootnote()) return false
       const { $from, empty } = editor.state.selection
@@ -3803,6 +3822,8 @@
       // A cell legitimately holds paragraphs, and escaping a whole table from
       // the middle of one would surprise more than it helps.
       if (!target || target.node.type.name === 'table') return false
+      if ($from.node(-1).type.name === 'listItem') return false
+      if ($from.parent.type.name === 'buttonBlock' && $from.parent.content.size === 0) return _leaveButtons($from)
 
       const lastLine = $from.node(-1).childCount - ($from.node(-1).lastChild.type.name === 'cite' ? 2 : 1)
       if ($from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
@@ -3810,6 +3831,15 @@
         const tr = editor.state.tr
         if (lastLine > 0) tr.delete($from.before(), $from.after())
         return _exitContainerBlock(tr, target)
+      }
+
+      // The base keymap would split the column or panel itself, and neither can stand alone.
+      if ($from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
+          && UNSPLITTABLE_PARTS.has($from.node(-1).type.name)) {
+        const tr = editor.state.tr
+        tr.split($from.pos, 1, [{ type: editor.schema.nodes.paragraph }])
+        editor.view.dispatch(tr)
+        return true
       }
 
       if (target.node.type.name === 'pullquote' && $from.parent.type.name === 'paragraph'

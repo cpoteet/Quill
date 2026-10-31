@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 804 Swift tests + 2,062 JS tests (2,061 pass, 1 skipped), no failures._
+_Last updated: 2026-10-31 — 804 Swift tests + 2,070 JS tests (2,069 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (137 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (415 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (423 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 12. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
@@ -2862,7 +2862,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (415 tests)
+## JS container tests (423 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3212,7 +3212,7 @@ The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, 
 | `⌘⇧⌫ removes the block the cursor is in` / `…leaves ordinary body text alone` | |
 | `the minus buttons still refuse to remove the last part` | A columns block cannot be emptied of columns |
 
-### `leaving a container block` (26 tests)
+### `leaving a container block` (34 tests)
 
 Esc and double-Enter are the two ways out of a container. Both resolve through the same list as the delete gesture, so every container behaves the same way — and the behaviours deliberately left alone (table Enter, mid-panel splits, preformatted line breaks) are pinned so a future change has to be deliberate.
 
@@ -3228,6 +3228,9 @@ Esc and double-Enter are the two ways out of a container. Both resolve through t
 | `Enter twice leaves the first tab panel / a column / a details body / an accordion panel / a pullquote` | |
 | `Enter twice still lifts out of a blockquote` / `three Enters still leave a code block` | Pre-existing behaviour, unchanged |
 | `Enter on a panel's only empty paragraph leaves without emptying it` | |
+| `Enter on an empty line mid-column adds a line, never a column` / `…mid-panel adds a line, never a tab panel` | The base keymap's `liftEmptyBlock` would split the column or tab panel at the caret |
+| `Enter on an empty last bullet in a column ends the list, not the column` / `…in a quote ends the list, not the quote` | A paragraph in a list item is left to the list keymap |
+| `Enter in a button with text still makes a new button` / `Enter twice leaves a Buttons block, dropping the empty button` / `Enter in an empty middle button splits the Buttons block around a paragraph` / `Enter in the only button, empty, turns the Buttons block into a paragraph` | Core's button `useEnter`: an empty button gives way to a paragraph |
 | `Enter in a table cell still just adds a paragraph` / `Enter mid-panel still splits the paragraph normally` | Deliberately left alone |
 | `Enter in a preformatted block adds a line, not a paragraph` / `three Enters leave a preformatted block, trailing blank lines trimmed` | |
 | `Enter in a pullquote makes a paragraph, never a citation` | |
@@ -4408,6 +4411,8 @@ Run this on a **new local draft**, never a published post.
 - [ ] **Exit gesture:** Esc leaves a tab panel, a column, a table, a details body, a blockquote, a code block and a preformatted block, landing in the paragraph below — creating one if the block is last, reusing the one already there if not. Nested containers step out one level at a time.
 - [ ] Esc with a menu open closes the menu instead of leaving the block.
 - [ ] Enter twice does the same as Esc in a tab panel, a column, a details body, an accordion panel and a pullquote. Enter in a table cell still just adds a paragraph, and Enter mid-paragraph still splits it.
+- [ ] **Columns:** in a two-column block, press Enter after text in the left column and then in the right → each time the new line stays inside its column, and the dashed separator runs the full height of the taller column. An empty line in the middle of a column takes more Enters without creating a column, and an empty last bullet in a column ends the list without leaving the column.
+- [ ] **Buttons:** Enter in a button with text makes a new button; Enter in that empty button removes it and puts the caret in a paragraph below the block. With the caret in an empty button between two others, Enter leaves two Buttons blocks with an empty paragraph between them. Open the post in Gutenberg → no validation warning.
 - [ ] **Empty titles:** a freshly inserted accordion or details shows a greyed hint in place of its title. Clicking the row places the caret in the title rather than collapsing the block; typing clears the hint, emptying it brings it back. The hint never appears in the saved content, and the row is no taller for having one.
 - [ ] Clicking anywhere on an accordion header row or the details arrow collapses the block; clicking the title text places the caret.
 - [ ] **Cite:** inside a pullquote or a blockquote, the toolbar offers a "Cite" control. Adding one puts the caret in it ready to type; Enter leaves the quote; removing it takes the citation away cleanly. It saves inside the blockquote, where core puts it.
@@ -4861,6 +4866,10 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 267 | The inspector's File Size row decodes `media_details.filesize` from an integer or a float and survives a malformed value without losing width and height | ✅ `WPMediaDecodingTests.filesizeDecodesFromAFloat` + `.aMalformedFilesizeIsNilAndKeepsTheOtherDetails` + 👁 §7.26 |
 | 268 | With the inspector open, the spare width of the Media grid collected in the gaps between tiles. `StretchingFlowLayout.tileSize` sizes tiles to the pane width: a minimum of 140 pt, under one point of leftover per column, one column when narrow, and the layout's `itemSize` when there is no scroll view | ✅ `StretchingFlowLayoutTests` (3 tests) + 👁 §7.26 |
 | 269 | Opening the Media inspector grew the split view past the window, so every visible cell was recycled (thumbnails flashed their placeholder) and the panel popped in late; resizing the window did the same through a 50x50 first layout. The inspector carries `SplitItemCollapseFix` and `InspectorTitlebarFix`, and the library pins its split item with `SplitItemSizePin` | 👁 §7.26 (AppKit layout, no harness) |
+| 270 | Enter on an empty line in the middle of a column split the column in two, and a third Enter split the columns block; in a tab panel it made a panel with no tab. `_containerEnter` adds a plain paragraph there (`UNSPLITTABLE_PARTS`), as Gutenberg does | ✅ `test-editor-containers.js` `'Enter on an empty line mid-column adds a line, never a column'`, `'…mid-panel adds a line, never a tab panel'` |
+| 271 | Enter on an empty last bullet inside a column or quote left the whole container and kept the empty bullet. `_containerEnter` now leaves a paragraph in a list item to the list keymap, which ends the list | ✅ `test-editor-containers.js` `'Enter on an empty last bullet in a column ends the list, not the column'`, `'…in a quote ends the list, not the quote'` |
+| 272 | A new line in the left column of a Columns block looked like it had left the block: columns were top-aligned, so the separator (the right column's left border) stopped at the right column's last line. Columns now stretch to the tallest one | 👁 §7.23 (layout; jsdom has none). Checked in the browser pane: both columns 68 px after Enter in the left, against 68/27 before |
+| 273 | Enter in a button added another empty button on every press and never left the Buttons block. As in core, Enter in an empty button now removes it and puts a paragraph in its place: after the block for the last button, between two Buttons blocks for a middle one (`_leaveButtons`) | ✅ `test-editor-containers.js` `'Enter twice leaves a Buttons block, dropping the empty button'`, `'Enter in an empty middle button splits the Buttons block around a paragraph'`, `'Enter in the only button, empty, turns the Buttons block into a paragraph'` |
 
 ---
 

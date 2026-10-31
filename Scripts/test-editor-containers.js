@@ -2390,6 +2390,89 @@ describe('leaving a container block', () => {
     assert.equal(countOf('columnBlock'), 2)
   })
 
+  test('Enter on an empty line mid-column adds a line, never a column', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertColumns(2)
+    editor.commands.insertContent('left')
+    editor.commands.splitBlock()
+    editor.commands.insertContent('more')
+    editor.commands.setTextSelection(editor.state.selection.head - 6)
+    enter(3)
+    assert.equal(atTopLevel(), false)
+    assert.equal(countOf('columnsBlock'), 1)
+    assert.equal(countOf('columnBlock'), 2)
+    assert.equal(editor.state.doc.child(0).child(0).childCount, 5)
+  })
+
+  test('Enter on an empty line mid-panel adds a line, never a tab panel', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertTabs(2)
+    editor.commands.insertContent('one')
+    editor.commands.splitBlock()
+    editor.commands.insertContent('two')
+    editor.commands.setTextSelection(editor.state.selection.head - 5)
+    enter(3)
+    assert.equal(atTopLevel(), false)
+    assert.equal(countOf('tabPanel'), countOf('tabButton'))
+  })
+
+  test('Enter on an empty last bullet in a column ends the list, not the column', () => {
+    editor.commands.setContent('<div class="wp-block-columns"><div class="wp-block-column"><ul><li><p>item</p></li></ul></div><div class="wp-block-column"><p>right</p></div></div>', false)
+    editor.commands.setTextSelection(9)
+    enter(2)
+    assert.equal(atTopLevel(), false)
+    assert.equal(caretText(), '')
+    assert.equal(editor.state.selection.$head.node(-1).type.name, 'columnBlock')
+    assert.equal(countOf('listItem'), 1)
+  })
+
+  test('Enter on an empty last bullet in a quote ends the list, not the quote', () => {
+    editor.commands.setContent('<blockquote><ul><li><p>item</p></li></ul></blockquote>', false)
+    editor.commands.setTextSelection(8)
+    enter(2)
+    assert.equal(editor.state.selection.$head.node(-1).type.name, 'blockquote')
+    assert.equal(countOf('listItem'), 1)
+  })
+
+  test('Enter in a button with text still makes a new button', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Buy')
+    key('Enter')
+    assert.equal(countOf('buttonBlock'), 2)
+    assert.equal(editor.state.selection.$head.parent.type.name, 'buttonBlock')
+  })
+
+  test('Enter twice leaves a Buttons block, dropping the empty button', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    editor.commands.insertContent('Buy')
+    enter(2)
+    assert.equal(atTopLevel(), true)
+    assert.equal(countOf('buttonsBlock'), 1)
+    assert.equal(countOf('buttonBlock'), 1)
+    assert.equal(editor.state.doc.child(1).type.name, 'paragraph')
+  })
+
+  test('Enter in an empty middle button splits the Buttons block around a paragraph', () => {
+    editor.commands.setContent('<div class="wp-block-buttons"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button">One</a></div><div class="wp-block-button"><a class="wp-block-button__link wp-element-button">Two</a></div></div>', false)
+    editor.commands.setTextSelection(5)
+    enter(2)
+    const kinds = []
+    editor.state.doc.forEach(n => kinds.push(n.type.name + ':' + n.textContent))
+    assert.deepEqual(kinds, ['buttonsBlock:One', 'paragraph:', 'buttonsBlock:Two'])
+    assert.equal(atTopLevel(), true)
+    assert.equal(caretText(), '')
+  })
+
+  test('Enter in the only button, empty, turns the Buttons block into a paragraph', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertButtons()
+    key('Enter')
+    assert.equal(countOf('buttonsBlock'), 0)
+    assert.equal(atTopLevel(), true)
+  })
+
   test('Enter twice still leaves a details body', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertDetails()
