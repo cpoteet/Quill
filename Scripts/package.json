@@ -6,7 +6,7 @@
     "@wordpress/block-serialization-default-parser": "5.51.0",
     "@wordpress/blocks": "15.24.0",
     "@wordpress/format-library": "5.51.0",
-    "jsdom": "^30.1.2"
+    "jsdom": "^30.1.3"
   },
   "overrides": {
     "@wordpress/block-editor": "16.0.0",
