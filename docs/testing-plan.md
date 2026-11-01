@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (804 tests)
+1. **Swift tests** — `swift test` (810 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -26,19 +26,20 @@ This document is the authoritative reference for Quill's automated test suite an
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (423 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
-11. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
-12. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (47 tests — live Tiptap editor in jsdom)
-13. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
-14. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
-15. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
-16. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-17. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (252 tests — live Tiptap editor in jsdom)
-18. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
-19. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
-20. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
-21. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (21 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
+11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (37 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
+12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
+13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (48 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
+15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
+16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
+17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (252 tests — live Tiptap editor in jsdom)
+19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
+20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
+21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
+22. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (21 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
 
-`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty-one passed.
+`test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty-two passed.
 
 If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 
@@ -52,7 +53,9 @@ If either layer fails, `test.sh` exits non-zero and reports which suite failed.
 Loads the real `editor.html` in an offscreen WKWebView and runs every
 `Scripts/fixtures/settings-*.html` through load → save-untouched → save-after-edit →
 save-again, printing a per-fixture report and the first byte of any difference. It
-exits non-zero on a mismatch. A `settings-group*` fixture must also load with no locked
+exits non-zero on a mismatch. The `baseline` check fails if the change bars would mark any
+block of the fixture, as loaded or straight after its save (`_buildChangeBaseline` against the
+loaded document). A `settings-group*` fixture must also load with no locked
 card (the `opens` check): a Group wrapped as a card round-trips byte for byte too, so the
 byte checks alone cannot show that a Group opened. Proven to fail with a Group holding a Spacer.
 
@@ -116,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (804 tests, 52 suites)
+## Swift test suite (810 tests, 52 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -150,7 +153,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
-| 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 8 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact |
+| 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 11 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact; `BaselinePushState` and `changeBaselineJS` for the change bars |
 | 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerated` or `SelectionPrompts.parse` + `cleanOperationResult` make of its JSON `.raw.txt` — the Swift half of the AI output validity suite |
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
@@ -163,7 +166,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 12 | `EditorCoordinator.flushPendingContent`, the `setContent` guard and the `insertImage` call (caption included), driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 15 | `EditorCoordinator.flushPendingContent`, the `setContent` guard, the `insertImage` call (caption included) and the change-bar baseline and dirty flag, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
 | 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 18 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
@@ -1042,7 +1045,7 @@ Covers the banner Quill shows when its tripwire finds that content went missing 
 
 ---
 
-### 25. Editor — `EditorPushDecisionTests` (8 tests)
+### 25. Editor — `EditorPushDecisionTests` (11 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
 
@@ -1058,6 +1061,9 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
 | `recording the footnotes alone leaves the recorded HTML intact` | The mirror image, for `footnotesChanged` |
 | `switching between two posts with the same body still pushes each time` | A → B → A, where the two posts differ only in their notes, pushes all three times |
 | `an empty post is skipped on a fresh state and pushed after any load` | A fresh state matches an editor that has loaded nothing, so an empty post is legitimately skipped once — but only the first time |
+| `changeBaselineJSEscapesQuotesAndNewlines` | `changeBaselineJS` JSON-encodes the HTML into `window.setChangeBaseline?.(…)` |
+| `changeBaselineJSPassesFootnotesThrough` | Both arguments decode back to what was passed |
+| `firstEmptyBaselineIsSent` | `BaselinePushState`, unlike `EditorPushState`, counts nothing as sent until something is, so a new empty local draft still gets its `""` baseline and its first paragraph a bar |
 
 ---
 
@@ -1235,7 +1241,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (12 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (15 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1253,6 +1259,9 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPatterns`, no script is run |
 | `aMalformedSyncedPatternRequestIsIgnored` | A body missing `refs` or `generation`, with a string ref, or that is not a dictionary asks the handler nothing and runs no script |
 | `openingASyncedPatternHandsTheRefToTheHandler` | `openSyncedPattern` passes `onOpenSyncedPattern` the ref only when it is an `Int`; a string ref or an empty body is dropped |
+| `aRepeatedBaselineOrDirtyFlagIsSentOnce` | `setChangeBaseline` and `setBodyDirty` are deduped on the last value sent |
+| `newContentResendsAnUnchangedBaseline` | A content push resends the baseline even when it is unchanged (Revert), because `window.setContent` drops the editor's copy |
+| `theBaselineWaitsForReadyAndFollowsTheContent` | Before `editorReady` nothing is sent; on ready the scripts run as content, then baseline, then dirty flag |
 
 ### 39. API — `NetworkFailureTests` (8 tests)
 
@@ -3509,6 +3518,80 @@ From the branch review on 2026-10-31.
 | `a mousedown in the text hides the grip` | A click can open a popover under a still pointer; the grip waits for the next move |
 | `clicking the grip on a codeBlock puts the caret in its text` | And the same for `preformatted`, `blockquote` and `pullquote` (4 tests) |
 
+## JS change bar tests (37 tests)
+
+File: `Scripts/test-editor-change-bars.js`
+Editor files: `Sources/QuillKit/Resources/change-bars.js`, `editor.html` (`_buildChangeBaseline`, `_blockKey`, `_changeKeyOf`, `setChangeBaseline`, `setBodyDirty`, `_changeMarks`), `block-grip.js` (`isGripHidingKey`)
+Spec: `docs/superpowers/specs/2026-10-31-change-bars-design.md`
+
+jsdom has no layout, so these check which blocks are marked, the gating and the overlay's structure and state, not where the marks land. Placement, the tooltip and the gutter click are checked by hand (§7.29).
+
+### `baseline equals the loaded document` (6 tests)
+
+The gate: if any of these fails, the bars would show on unchanged blocks. Proven to fail with the whitespace-node strip removed from `_buildChangeBaseline` (every fixture) and with the editor's plugins left out (footnotes out of order).
+
+| Test | What it checks |
+|---|---|
+| `every post fixture` | For every `Scripts/fixtures/*.html` and `script-sinks/*.html`, the baseline built from the HTML has the same block keys as the document `setContent` loads |
+| `after a save, only the edited block is marked` | Per fixture, with no reload: append a paragraph, take `flushContent()`'s payload as the saved body, build a baseline from it → no marks; append another → only that one |
+| `accordion, gallery and post-17780 pass the save test` | The three fixtures whose nodes reparse with different attributes (why the keys are saved HTML, not `node.eq`) |
+| `a paragraph saved with trailing spaces is not marked when another block is edited` | The parse drops the trailing spaces the live node keeps; an unmatched block is keyed again as it reads after a reload (Codex review, 2026-10-31) |
+| `footnotes stored out of marker order` | `FootnoteSync` reorders the list on load and the baseline matches it; the save test passes too |
+| `a synced pattern` | A `wp:block` card, as loaded and after a save |
+
+### `changedBlocks` (9 tests)
+
+| Test | What it checks |
+|---|---|
+| `editing a paragraph: one bar, no dot` | |
+| `inserting at the top marks only the new block` | |
+| `deleting a block leaves a dot and no bars` | |
+| `deleting two adjacent blocks leaves one dot` | |
+| `a moved block: a bar at the new place, a dot at the old` | Moved across three blocks, so the LCS has no tie |
+| `undo back to the original: no marks` | |
+| `a change inside a Group marks the Group` | |
+| `editing a footnote marks the footnotes list` | |
+| `the generated trailing paragraph is never marked` | The empty paragraph after a separator |
+
+### `bridge` (10 tests)
+
+| Test | What it checks |
+|---|---|
+| `no marks before any baseline arrives` | |
+| `restored unsaved changes are marked` | `setContent(stash)` then `setChangeBaseline(server)`: the bar is on the restored block |
+| `no marks while the body is clean` | `setBodyDirty(false)` wins over the comparison |
+| `a second baseline replaces the first` | Two baselines in a row leave only the second's result (saving while typing) |
+| `marks follow edits after the baseline arrives` | |
+| `no marks in code view` | |
+| `no marks with an overlay open` | The find bar |
+| `the first paragraph typed in a new empty draft is marked` | Baseline `""` |
+| `loading another post drops the old baseline until its own arrives` | `window.setContent` clears it, so a frame drawn before Swift's next baseline marks nothing |
+| `marks never appear in getContent()` | |
+
+### `overlay` (11 tests)
+
+| Test | What it checks |
+|---|---|
+| `one .change-bar per changed block and one .change-bar-removed per gap` | And none once the body is clean |
+| `the layer is outside the contenteditable and aria-hidden` | The tooltip is on `body` |
+| `marks have pointer-events: none` | The layer, a bar and a dot — the gutter press handler needs `#editor-wrap` as the target |
+| `a keypress fades the layer; a mousemove with no buttons shows it` | A move with a button held does not count |
+| `a modifier key alone does not fade it` | |
+| `isGripHidingKey matches the grip: the grip also hides on "a" and not on "Meta"` | One key rule for both overlays |
+| `opening an overlay clears the drawn marks` | The `MutationObserver` on the overlays' `class`; proven to fail without it |
+| `a grip drag clears the drawn marks until it ends` | |
+| `a table wider than the column scrolls inside it, so nothing reaches the bars` | The `<table>` is a `display: block` scroller and its `<tbody>` lays out the rows at full width; the layout itself is checked by hand (§7.29) |
+| `a table that scrolls fades the edges it hides` | The mask reads two scroll-driven custom properties, so the fade follows `scroll(x self)` with no script; the look is checked by hand (§7.29) |
+| `no marks drawn in code view` | |
+
+### `the WebKit fixture corpus` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `reports whether the baseline matched, both as loaded and after a save` | `__runFixtureCorpus` returns the `baseline` flag `--check-fixtures` reads |
+
+---
+
 ## JS click seat tests (21 tests)
 
 File: `Scripts/test-click-seat.js`
@@ -3761,7 +3844,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (47 tests)
+## JS footnotes tests (48 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3778,6 +3861,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 | `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |
 | `code view shows what will actually be saved` | 8 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards; a list typed in code view sends its bodies to Swift (any ID, not only `fn-<uuid>`), a typed delimiter plus list gives one delimiter and no card, and code view shows the delimiter again afterwards |
 | `backref chrome in the editor` | 8 | The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
+| `code blocks in dark mode` | 1 | A code block's `<code>` has no inline-code shading in dark mode: `body.dark .ProseMirror code` outranked `.ProseMirror pre code` |
 | `link colour is defined once per theme` | 3 | Both themes declared as variables on `:root` and `body.dark`; prose links, footnote markers and backrefs all read the variable; nothing carries a hard-coded colour |
 
 ---
@@ -4590,6 +4674,20 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 - [ ] Copy a passage from another ProseMirror or Tiptap editor (a Confluence page, a Substack draft, GitLab) and paste it → it is cleaned like any outside paste: no inline styles, foreign classes or `data-pm-slice` in the saved HTML. Then copy a passage inside Quill and paste it back → it comes back exactly as saved, and stays exact after a second copy and paste. Quit and relaunch Quill and paste a copy made before the relaunch → it is treated as an outside paste and cleaned, which is expected.
 - [ ] Paste a screenshot, switch off the network before the upload finishes so it fails, then paste the same screenshot again with the network on → it uploads this time, rather than staying an inline base64 image. Do the same with an image pasted inside HTML from a web page.
 - [ ] Paste an image and wait for the upload to finish, then press ⌘Z once → the whole paste is undone, not just the swap back to the base64 image. Press ⌘⇧Z → the image returns with its uploaded URL, not the base64.
+
+### 7.29 Change bars
+
+On a new local draft, discarded afterwards, unless the step says otherwise. Spec: `docs/superpowers/specs/2026-10-31-change-bars-design.md`.
+
+- [ ] Edit a paragraph and move the mouse → a thin grey bar appears in the right margin beside that paragraph, 8px clear of the text. Delete a paragraph → a small grey dot sits in the gap where it was. Hover each for a moment → "Changed since the last save" and "Removed since the last save".
+- [ ] At the narrowest window with the sidebar and inspector open, the bars stay in the right margin, clear of the text. A wide table, a long code line and a wide or full-width image stay inside the column or scroll within it, and nothing renders past the column into the bars. A 10-column table scrolls sideways inside the column, its right edge fades while there is more to the right, both edges fade partway, and only the left fades at the end. A 2-column table still fills the column's width and has no fade.
+- [ ] Click on a bar, and in the margin beside a changed block → the caret lands on that line.
+- [ ] Type → the bars fade at once. Pause with the mouse still → they stay hidden. Move the mouse → they fade back in.
+- [ ] Save Locally → the bars go. Make an edit and Revert → the bars go. A published post that has just loaded (look only, do not edit) has none.
+- [ ] Bars follow their blocks while an image above them finishes loading.
+- [ ] Open the insert menu or the find bar, and switch to code view → no bars while they are open.
+- [ ] Light and dark.
+- [ ] **Restored unsaved changes** (remote posts only). Send a new local draft to WordPress as a draft, edit two of its paragraphs, switch to another post without saving, switch back → "Unsaved changes restored", and bars sit on exactly those two paragraphs. Delete that draft on WordPress when done.
 
 ---
 

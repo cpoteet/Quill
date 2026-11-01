@@ -108,6 +108,11 @@ function gripDragStart(view, event, range) {
   gripDragStart.active = { from: range.from, to: range.to, doc }
 }
 
+// Shared with the change bars (change-bars.js), so both overlays hide on the same keys.
+function isGripHidingKey(event) {
+  return !['Meta', 'Shift', 'Alt', 'Control', 'CapsLock'].includes(event.key)
+}
+
 function activeGripDrag() {
   return gripDragStart.active || null
 }
@@ -477,8 +482,7 @@ function installBlockGrip(editor, hooks) {
   }
   document.addEventListener('keydown', e => {
     if (e.key === 'Meta') return setSectionKey(true)
-    if (['Shift', 'Alt', 'Control', 'CapsLock'].includes(e.key)) return
-    hide()
+    if (isGripHidingKey(e)) hide()
   }, true)
   document.addEventListener('keyup', e => { if (e.key === 'Meta') setSectionKey(false) }, true)
   window.addEventListener('blur', () => setSectionKey(false))

@@ -168,6 +168,7 @@ onto it" — its children are still replayed.
 - A click outside every line of a block seats the caret at the block's start or end, so `clickSeatTarget` puts it under the pointer
 - A press in the page gutter lands on `#editor` or `#editor-wrap`, outside the contenteditable, so it drops focus and typing goes nowhere
 - The find shortcut must reject ⌃, or ⌃⌘F opens Find instead of reaching the system
+- Change bars compare against Swift's baseline, not the document the editor loaded
 
 ## Cross-cutting gotchas that apply here
 

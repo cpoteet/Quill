@@ -25,6 +25,19 @@ struct EditorPushState {
     }
 }
 
+// Unlike EditorPushState, nothing counts as sent until something is, so a new empty draft still gets its baseline.
+struct BaselinePushState {
+    private var sent: (html: String, footnotes: String)?
+
+    func shouldPush(html: String, footnotes: String) -> Bool {
+        sent.map { $0.html != html || $0.footnotes != footnotes } ?? true
+    }
+
+    mutating func record(html: String, footnotes: String) {
+        sent = (html, footnotes)
+    }
+}
+
 /// A pasted image the site does not host yet; a `token` means it is already in the document.
 public struct PastedImage: Sendable {
     public let token: String?
@@ -60,6 +73,10 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
     var pendingHTML: String?
     var pendingFootnotes: String?
     private var pushState = EditorPushState()
+    private var pendingBaseline: (html: String, footnotes: String)?
+    private var baselinePush = BaselinePushState()
+    private var pendingBodyDirty: Bool?
+    private var sentBodyDirty: Bool?
     // Content messages that arrive while a setContent is unanswered were posted by the replaced document.
     private var unansweredSetContents = 0
     var onContentChange: (String) -> Void
@@ -148,6 +165,14 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
                     self.setContent(html, footnotes: self.pendingFootnotes)
                     self.pendingHTML = nil
                     self.pendingFootnotes = nil
+                }
+                if let baseline = self.pendingBaseline {
+                    self.pendingBaseline = nil
+                    self.setChangeBaseline(baseline.html, footnotes: baseline.footnotes)
+                }
+                if let dirty = self.pendingBodyDirty {
+                    self.pendingBodyDirty = nil
+                    self.setBodyDirty(dirty)
                 }
                 self.onReady()
             }
@@ -503,6 +528,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             }
             syncAfterNextSetContent = false
             pushState.record(html: html, footnotes: footnotes)
+            baselinePush = BaselinePushState()
             guard let jsonHTML = try? JSONEncoder().encode(html),
                 let htmlStr = String(data: jsonHTML, encoding: .utf8),
                 let jsonFN = try? JSONEncoder().encode(footnotes ?? ""),
@@ -519,6 +545,40 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             pendingHTML = html
             pendingFootnotes = footnotes
         }
+    }
+
+    /// The saved body the change bars compare against; sent after any pending content.
+    func setChangeBaseline(_ html: String, footnotes: String) {
+        guard let wv = webView else { return }
+        guard isReady else {
+            pendingBaseline = (html, footnotes)
+            return
+        }
+        guard baselinePush.shouldPush(html: html, footnotes: footnotes),
+              let js = Self.changeBaselineJS(html: html, footnotes: footnotes)
+        else { return }
+        baselinePush.record(html: html, footnotes: footnotes)
+        wv.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    func setBodyDirty(_ dirty: Bool) {
+        guard let wv = webView else { return }
+        guard isReady else {
+            pendingBodyDirty = dirty
+            return
+        }
+        guard dirty != sentBodyDirty else { return }
+        sentBodyDirty = dirty
+        wv.evaluateJavaScript("window.setBodyDirty?.(\(dirty))", completionHandler: nil)
+    }
+
+    nonisolated static func changeBaselineJS(html: String, footnotes: String) -> String? {
+        guard let htmlData = try? JSONEncoder().encode(html),
+              let htmlStr = String(data: htmlData, encoding: .utf8),
+              let fnData = try? JSONEncoder().encode(footnotes),
+              let fnStr = String(data: fnData, encoding: .utf8)
+        else { return nil }
+        return "window.setChangeBaseline?.(\(htmlStr), \(fnStr))"
     }
 
     /// Brings Swift's copy of the content up to date with typing the editor has not posted yet.

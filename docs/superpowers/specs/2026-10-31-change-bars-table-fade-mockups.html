@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table edge fade</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1a1a; --muted: #737373; --rule: rgba(0,0,0,0.08);
+    --cell: #ccc; --head: #f5f5f5; --bar: rgba(0,0,0,0.17); --chrome: #f5f5f4;
+    --ctl: #ffffff; --ctl-border: rgba(0,0,0,0.14); --ctl-on: #1a1a1a; --ctl-on-ink: #fff;
+    --fade: 24px;
+  }
+  body.dark {
+    --bg: #1e1e1e; --ink: #f0f0f0; --muted: #9a9a9a; --rule: rgba(255,255,255,0.1);
+    --cell: #555; --head: #2a2a2a; --bar: rgba(255,255,255,0.2); --chrome: #262626;
+    --ctl: #2e2e2e; --ctl-border: rgba(255,255,255,0.14); --ctl-on: #f0f0f0; --ctl-on-ink: #1e1e1e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--ink); }
+
+  #bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; background: var(--chrome); border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .seg { display: inline-flex; border: 1px solid var(--ctl-border); border-radius: 6px; overflow: hidden; background: var(--ctl); }
+  .seg button { font: inherit; border: 0; background: none; color: var(--ink); padding: 5px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ctl-on-ink); }
+  #bar label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+
+  main { max-width: 640px; margin: 0 auto; padding: 32px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 36px 0 4px; }
+  h2:first-child { margin-top: 0; }
+  .note { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+  .block { position: relative; }
+  .block .change-bar { position: absolute; top: 0; bottom: 0; right: -10px; width: 2px; border-radius: 1px; background: var(--bar); }
+  p.text { font-size: 16.5px; line-height: 1.66; margin: 0 0 12px; }
+
+  .table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; font-size: 15px; }
+  .table > tbody { display: table; width: 100%; }
+  .table th, .table td { border: 1px solid var(--cell); padding: 6px 10px; text-align: left; white-space: nowrap; min-width: 60px; }
+  .table th { background: var(--head); font-weight: 600; }
+
+  .fade-right { mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
+  .fade-left { mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
+  .fade-both { mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }
+
+  @property --fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+  @property --fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+  @keyframes table-edge-fade {
+    from { --fade-start: 0px; --fade-end: var(--fade); }
+    2% { --fade-start: var(--fade); }
+    98% { --fade-end: var(--fade); }
+    to { --fade-start: var(--fade); --fade-end: 0px; }
+  }
+  .live {
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+    animation: table-edge-fade linear both;
+    animation-timeline: scroll(x self);
+  }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-theme="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+  </div>
+  <label>Fade width
+    <input id="width" type="range" min="12" max="48" step="4" value="24">
+    <output id="width-out">24px</output>
+  </label>
+</div>
+
+<main>
+  <h2>1. At the start: fade on the right</h2>
+  <p class="note">The table goes on to the right, so its right edge fades to the page. No fade on the left yet.</p>
+  <div class="block"><table class="table fade-right" data-cols="10"></table><span class="change-bar"></span></div>
+
+  <h2>2. Scrolled partway: both edges fade</h2>
+  <div class="block"><table class="table fade-both" data-cols="10" data-scroll="0.5"></table><span class="change-bar"></span></div>
+
+  <h2>3. Scrolled to the end: fade on the left only</h2>
+  <div class="block"><table class="table fade-left" data-cols="10" data-scroll="1"></table><span class="change-bar"></span></div>
+
+  <h2>4. A table that fits: no fade</h2>
+  <div class="block"><table class="table" data-cols="3"></table></div>
+
+  <h2>Try it</h2>
+  <p class="note">Scroll this one sideways. The fades follow the scroll position with no script, using CSS scroll-driven animation; the build would use this. If your viewer doesn't support it, this table shows no fade at all, which is also how a table that fits looks.</p>
+  <div class="block"><table class="table live" data-cols="10"></table><span class="change-bar"></span></div>
+  <p class="text" style="margin-top:16px">A paragraph after the table, for scale.</p>
+</main>
+
+<script>
+  const labels = ['Region', 'Q1 sales', 'Q2 sales', 'Q3 sales', 'Q4 sales', 'Growth', 'Margin', 'Returns', 'Notes', 'Owner']
+  for (const table of document.querySelectorAll('table[data-cols]')) {
+    const cols = Number(table.dataset.cols)
+    const body = document.createElement('tbody')
+    const head = document.createElement('tr')
+    for (let c = 0; c < cols; c++) { const th = document.createElement('th'); th.textContent = labels[c]; head.append(th) }
+    body.append(head)
+    for (const region of ['North', 'South']) {
+      const row = document.createElement('tr')
+      for (let c = 0; c < cols; c++) { const td = document.createElement('td'); td.textContent = c === 0 ? region : String(100 + c * 13); row.append(td) }
+      body.append(row)
+    }
+    table.append(body)
+  }
+  window.addEventListener('load', () => {
+    for (const table of document.querySelectorAll('table[data-scroll]')) {
+      table.scrollLeft = Math.round((table.scrollWidth - table.clientWidth) * Number(table.dataset.scroll))
+    }
+  })
+  for (const button of document.querySelectorAll('[data-theme]')) {
+    button.addEventListener('click', () => {
+      document.body.classList.toggle('dark', button.dataset.theme === 'dark')
+      for (const b of document.querySelectorAll('[data-theme]')) b.setAttribute('aria-pressed', String(b === button))
+    })
+  }
+  const width = document.getElementById('width')
+  width.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--fade', width.value + 'px')
+    document.getElementById('width-out').textContent = width.value + 'px'
+  })
+</script>
+</body>
+</html>

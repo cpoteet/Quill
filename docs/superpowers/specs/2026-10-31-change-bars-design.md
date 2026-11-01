@@ -116,6 +116,10 @@ Update the counts in `docs/testing-plan.md`.
 - `docs/testing-plan.md`: the new suite, its count, the §7 steps.
 - `Sources/QuillKit/Resources/CLAUDE.md`: a gotcha entry for "compare against Swift's baseline, not the loaded document", pointing at the stash-restore test.
 
+## Gate result
+
+Run on 2026-10-31 before the bridge and overlay were built. The baseline built from each fixture's HTML gives the same block keys as the loaded document for all 41 post fixtures (36 in `Scripts/fixtures`, 5 in `script-sinks/`). The after-save check passes for all of them, including the accordion, gallery and post-17780 fixtures whose nodes reparse with different attributes. The two extra fixtures the testing section asks for became cases inside the test instead: footnotes out of marker order need post meta, which a `.html` fixture cannot carry, and `unsupported-blocks.html` already holds a synced pattern. Removing the whitespace-node strip or the plugins from `_buildChangeBaseline` turns the gate red, so the tests can catch a wrong parse. `--check-fixtures` runs the same check in WebKit, and its 28 fixtures pass.
+
 ## Left to the builder
 
 - Where the comparison function lives (a new `change-bars.js` beside `block-grip.js` is the expected route) and what it is named.

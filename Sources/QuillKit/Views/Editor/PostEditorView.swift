@@ -91,6 +91,9 @@ public struct PostEditorView: View {
                     handle: editorHandle,
                     html: $htmlContent,
                     footnotes: footnotesMeta,
+                    baselineHTML: cleanContent,
+                    baselineFootnotes: cleanFootnotes,
+                    bodyDirty: bodyIsDirty,
                     contentSyncPending: $contentSyncPending,
                     onContentChange: { newHTML in
                         htmlContent = newHTML

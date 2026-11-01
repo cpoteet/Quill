@@ -428,6 +428,19 @@ describe('link colour is defined once per theme', () => {
   })
 })
 
+describe('code blocks in dark mode', () => {
+  test('a code block\'s text has no inline-code shading', () => {
+    win.setDarkMode(true)
+    try {
+      win.setContent('<!-- wp:code -->\n<pre class="wp-block-code"><code>let x = 1</code></pre>\n<!-- /wp:code -->', '[]')
+      const code = editor.view.dom.querySelector('pre code')
+      assert.equal(win.getComputedStyle(code).backgroundColor, 'rgba(0, 0, 0, 0)')
+    } finally {
+      win.setDarkMode(false)
+    }
+  })
+})
+
 // The selection ring, resize handles and caret all read these two. A theme that
 // declares only one leaves the other resolving to nothing in that theme.
 describe('accent and caret are defined once per theme', () => {

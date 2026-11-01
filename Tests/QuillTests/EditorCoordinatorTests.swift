@@ -183,6 +183,32 @@ struct EditorPushDecisionTests {
         #expect(state.shouldPush(html: "", footnotes: ""))
     }
 
+    // MARK: - Change bar baseline
+
+    @Test func changeBaselineJSEscapesQuotesAndNewlines() throws {
+        let js = try #require(EditorCoordinator.changeBaselineJS(html: "<p>\"a\"\n</p>", footnotes: "[]"))
+        #expect(js.hasPrefix("window.setChangeBaseline?.("))
+        #expect(js.contains(#"\"a\"\n"#))
+    }
+
+    @Test func changeBaselineJSPassesFootnotesThrough() throws {
+        let footnotes = #"[{"id":"x"}]"#
+        let js = try #require(EditorCoordinator.changeBaselineJS(html: "<p>A</p>", footnotes: footnotes))
+        let args = String(js.dropFirst("window.setChangeBaseline?.(".count).dropLast())
+        let decoded = try JSONDecoder().decode([String].self, from: Data("[\(args)]".utf8))
+        #expect(decoded == ["<p>A</p>", footnotes])
+    }
+
+    // A new empty local draft has "" as its baseline, and must still get one.
+    @Test func firstEmptyBaselineIsSent() {
+        var state = BaselinePushState()
+        #expect(state.shouldPush(html: "", footnotes: ""))
+        state.record(html: "", footnotes: "")
+        #expect(!state.shouldPush(html: "", footnotes: ""))
+        state.record(html: "<p>A</p>", footnotes: "[]")
+        #expect(state.shouldPush(html: "", footnotes: ""))
+    }
+
     // MARK: - Spell checking
 
     @MainActor @Test func misspelledWordsReturnsOnMainActorWithoutTrapping() async {
@@ -286,6 +312,37 @@ private final class Box<T>: @unchecked Sendable {
 
     private func drainMainQueue() async {
         await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+    }
+
+    @Test func aRepeatedBaselineOrDirtyFlagIsSentOnce() {
+        coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
+        coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
+        coordinator.setBodyDirty(true)
+        coordinator.setBodyDirty(true)
+        coordinator.setBodyDirty(false)
+        #expect(webView.scripts.filter { $0.hasPrefix("window.setChangeBaseline") }.count == 1)
+        #expect(webView.scripts.filter { $0.hasPrefix("window.setBodyDirty") } == ["window.setBodyDirty?.(true)", "window.setBodyDirty?.(false)"])
+    }
+
+    // The editor drops its baseline on every load, so an unchanged one (Revert) must go again.
+    @Test func newContentResendsAnUnchangedBaseline() {
+        coordinator.setContent("<p>A2</p>", footnotes: "[]")
+        coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
+        coordinator.setContent("<p>A</p>", footnotes: "[]")
+        coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
+        #expect(webView.scripts.filter { $0.hasPrefix("window.setChangeBaseline") }.count == 2)
+    }
+
+    @Test func theBaselineWaitsForReadyAndFollowsTheContent() async {
+        coordinator.isReady = false
+        coordinator.setContent("<p>A2</p>", footnotes: "[]")
+        coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
+        coordinator.setBodyDirty(true)
+        #expect(webView.scripts.isEmpty)
+        deliver("editorReady", "")
+        await drainMainQueue()
+        let order = webView.scripts.map { String($0.prefix(while: { $0 != "(" && $0 != "?" })) }
+        #expect(order == ["setContent", "window.setChangeBaseline", "window.setBodyDirty"])
     }
 
     @Test func flushHandsTheUnpostedTypingToSwiftAndRecordsIt() async {

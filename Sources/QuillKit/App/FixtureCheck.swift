@@ -94,6 +94,7 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
             let checks = [("untouched", row["untouched"] as? Bool ?? false),
                           ("identical", row["identical"] as? Bool ?? false),
                           ("idempotent", row["idempotent"] as? Bool ?? false),
+                          ("baseline", row["baseline"] as? Bool ?? false),
                           ("opens", !name.hasPrefix("settings-group") || row["cards"] as? Int == 0)]
             let bad = checks.filter { !$0.1 }.map(\.0)
             if bad.isEmpty {

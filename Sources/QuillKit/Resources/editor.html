@@ -430,7 +430,7 @@
     body.dark #toolbar-row2 {
       background: rgba(30, 30, 30, 0.96);
     }
-    #toolbar-tooltip, #block-grip-tooltip {
+    #toolbar-tooltip, #block-grip-tooltip, #change-bar-tooltip {
       position: fixed;
       left: 0;
       top: 0;
@@ -449,11 +449,11 @@
       transition: opacity 0.12s ease, transform 0.12s ease;
       box-shadow: 0 4px 16px rgba(0,0,0,0.24);
     }
-    #toolbar-tooltip.visible, #block-grip-tooltip.visible {
+    #toolbar-tooltip.visible, #block-grip-tooltip.visible, #change-bar-tooltip.visible {
       opacity: 1;
       transform: translate(-50%, 0);
     }
-    #toolbar-tooltip::before, #block-grip-tooltip::before {
+    #toolbar-tooltip::before, #block-grip-tooltip::before, #change-bar-tooltip::before {
       content: "";
       position: absolute;
       left: var(--arrow-offset, 50%);
@@ -462,7 +462,7 @@
       background: rgba(24,24,27,0.96);
       transform: translateX(-50%) rotate(45deg);
     }
-    #toolbar-tooltip.below::before, #block-grip-tooltip.below::before { top: -3px; }
+    #toolbar-tooltip.below::before, #block-grip-tooltip.below::before, #change-bar-tooltip.below::before { top: -3px; }
     #toolbar-tooltip.above::before { bottom: -3px; }
 
     /* ── Editor area ─────────────────────────────────── */
@@ -548,6 +548,13 @@
     .block-drag-card-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .block-drag-card-more { flex: none; color: #737373; }
     body.dark .block-drag-card-more { color: #9a9a9a; }
+    /* ── Change bars (change-bars.js) ────────────────── */
+    #change-bar-layer { position: relative; height: 0; z-index: 4; pointer-events: none; transition: opacity 0.35s ease; }
+    #change-bar-layer.faded { opacity: 0; transition-duration: 0.12s; }
+    .change-bar, .change-bar-removed { position: absolute; pointer-events: none; background: rgba(0,0,0,0.17); }
+    .change-bar { width: 2px; border-radius: 1px; }
+    .change-bar-removed { width: 6px; height: 6px; border-radius: 50%; }
+    body.dark .change-bar, body.dark .change-bar-removed { background: rgba(255,255,255,0.2); }
     /* Below this width the margin left of the column is narrower than the grip. */
     @media (max-width: 700px) {
       .ProseMirror { padding-left: 10px; }
@@ -693,7 +700,7 @@
     body.dark .ProseMirror pre { background: #2a2a2a; }
     .ProseMirror a { color: var(--link); }
     body.cmd-held .ProseMirror a { cursor: pointer; text-decoration: underline; }
-    .ProseMirror pre code { background: none; padding: 0; }
+    .ProseMirror pre code, body.dark .ProseMirror pre code { background: none; padding: 0; }
     .ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
     .ProseMirror li { margin: 0.2em 0; }
     .ProseMirror img { max-width: 100%; border-radius: 4px; }
@@ -879,11 +886,23 @@
 
 
     /* Tables */
+    /* A table can't scroll, so the <table> is the scroller and its <tbody> lays out the rows: keeps wide tables out of the change-bar margin. */
+    @property --table-fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+    @property --table-fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+    @keyframes table-fade-start { to { --table-fade-start: 24px; } }
+    @keyframes table-fade-end { from { --table-fade-end: 24px; } to { --table-fade-end: 0px; } }
     .ProseMirror table {
+      display: block;
+      overflow-x: auto;
       border-collapse: collapse;
       width: 100%;
       margin: 1em 0;
+      mask-image: linear-gradient(to right, transparent, #000 var(--table-fade-start), #000 calc(100% - var(--table-fade-end)), transparent);
+      animation: table-fade-start linear both, table-fade-end linear both;
+      animation-timeline: scroll(x self);
+      animation-range: 0px 24px, calc(100% - 24px) 100%;
     }
+    .ProseMirror table > tbody { display: table; width: 100%; }
     .ProseMirror th, .ProseMirror td {
       border: 1px solid #ccc;
       padding: 6px 10px;
@@ -1692,6 +1711,7 @@
   <script src="./block-settings.js"></script>
   <script src="./block-move.js"></script>
   <script src="./block-grip.js"></script>
+  <script src="./change-bars.js"></script>
   <script src="./click-seat.js"></script>
   <script>
     const {
@@ -3765,9 +3785,10 @@
       return true
     }
 
+    const _OVERLAY_IDS = ['insert-menu', 'embed-menu', 'find-bar', 'table-size-menu', 'inline-image-popover']
     // Esc belongs to whatever overlay is open before it belongs to the editor.
     function _overlayOpen() {
-      return !!document.querySelector('#insert-menu.visible, #embed-menu.visible, #find-bar.visible, #table-size-menu.visible, #inline-image-popover.visible')
+      return _OVERLAY_IDS.some(id => document.getElementById(id)?.classList.contains('visible'))
     }
 
     // Land the caret in typable space just past the container, making that
@@ -4782,10 +4803,14 @@
       onDragStart(event, range) {
         gripDragStart(editor.view, event, range)
         editor.view.dispatch(editor.state.tr.setMeta(blockMoveKey, range))
+        window._changeBars.redraw()
       },
       onDragEnd: _endGripDrag,
       onDrop: clientY => _dropGripDrag(clientY),
     })
+    window._changeBars = installChangeBars(editor, { marks: () => window._changeMarks() })
+    const _overlayWatch = new MutationObserver(() => window._changeBars.redraw())
+    _OVERLAY_IDS.forEach(id => { const el = document.getElementById(id); if (el) _overlayWatch.observe(el, { attributes: true, attributeFilter: ['class'] }) })
     // Swift reports ⌘ from AppKit, so the section shows even when the editor lacks keyboard focus.
     window.setSectionKey = down => window._blockGrip.setSectionKey(!!down)
     // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
@@ -6480,6 +6505,7 @@
       ta.selectionStart = ta.selectionEnd = 0
       ta.scrollTop = 0
       ta.focus()
+      window._changeBars.redraw()
     }
 
     function _exitCodeView() {
@@ -6514,6 +6540,7 @@
       // If not edited, getContent() returns the pre-code-view value unchanged.
       _postContent(userEdited ? html : window.getContent(), false)
       _postStats()
+      window._changeBars.redraw()
     }
 
     document.getElementById('btn-code-view').addEventListener('click', () => {
@@ -6619,6 +6646,104 @@
       editor.view.updateState(editor.state.reconfigure({ plugins }))
     }
 
+    // The doc the live editor would hold after setContent(html, footnotesJSON), built without touching it.
+    // Parsed as setContent parses: Tiptap's elementFromString drops these whitespace-only text nodes first.
+    function _parseSavedHTML(html) {
+      const parser = editor.schema.cached.domParser
+      if (!parser) throw new Error('_parseSavedHTML: the schema has no cached DOMParser yet')
+      const body = new DOMParser().parseFromString('<body>' + (_wrapIncoming(html) || '') + '</body>', 'text/html').body
+      const dropWhitespace = el => {
+        for (let i = el.childNodes.length - 1; i >= 0; i--) {
+          const child = el.childNodes[i]
+          if (child.nodeType === 3 && child.nodeValue && /^(\n\s\s|\n)$/.test(child.nodeValue)) el.removeChild(child)
+          else if (child.nodeType === 1) dropWhitespace(child)
+        }
+      }
+      dropWhitespace(body)
+      return parser.parse(body, { preserveWhitespace: false })
+    }
+
+    // The doc the live editor would hold after setContent(html, footnotesJSON), built without touching it.
+    function _buildChangeBaseline(html, footnotesJSON) {
+      let footnotes = []
+      try { footnotes = JSON.parse(footnotesJSON || '[]') } catch (e) { footnotes = [] }
+      const parsed = _parseSavedHTML(inlineFootnotes(html, footnotes))
+      const empty = editor.state.constructor.create({ schema: editor.schema, plugins: editor.state.plugins })
+      const { state, transactions } = empty.applyTransaction(empty.tr.replaceWith(0, empty.doc.content.size, parsed))
+      if (!transactions.length) throw new Error('_buildChangeBaseline: a plugin filtered out the load')
+      return state.doc
+    }
+    window._buildChangeBaseline = _buildChangeBaseline
+
+    function _savedBlockHTML(node) {
+      if (!editor.schema.cached.domSerializer) editor.getHTML()
+      const container = inertDocument().createElement('div')
+      container.appendChild(editor.schema.cached.domSerializer.serializeFragment(editor.state.doc.content.constructor.from(node), { document: inertDocument() }))
+      return extractFootnotes(toWordPressHTML(container.innerHTML)).content
+    }
+
+    const _blockKeys = new WeakMap()
+    // A node's saved Gutenberg HTML on its own, so reparse drift in its attributes never reads as a change.
+    function _blockKey(node) {
+      const cached = _blockKeys.get(node)
+      if (cached !== undefined) return cached
+      const key = node.type.name === 'footnotesList' ? JSON.stringify(node.toJSON()) : _savedBlockHTML(node)
+      _blockKeys.set(node, key)
+      return key
+    }
+
+    const _reloadedKeys = new WeakMap()
+    // The same, as the block reads after a save and reload, which drops whitespace the live node still holds.
+    function _reloadedBlockKey(node) {
+      if (node.type.name === 'footnotesList') return _blockKey(node)
+      const cached = _reloadedKeys.get(node)
+      if (cached !== undefined) return cached
+      const parts = []
+      _parseSavedHTML(_savedBlockHTML(node)).forEach(reloaded => parts.push(_savedBlockHTML(reloaded)))
+      const key = parts.join('\n\n')
+      _reloadedKeys.set(node, key)
+      return key
+    }
+
+    // Only a block that matches nothing in the baseline pays for the reload.
+    function _changeKeyOf(baseline) {
+      const saved = new Set()
+      baseline.forEach(node => saved.add(_blockKey(node)))
+      return node => {
+        const key = _blockKey(node)
+        return saved.has(key) ? key : _reloadedBlockKey(node)
+      }
+    }
+    window._changeKeyOf = _changeKeyOf
+
+    let _changeBaseline = null
+    let _changeBaselineKeyOf = null
+    let _bodyDirty = false
+    let _changeMarksCache = null
+    // A baseline that fails to build shows no bars rather than false ones.
+    window.setChangeBaseline = (html, footnotesJSON) => {
+      try {
+        _changeBaseline = _buildChangeBaseline(html || '', footnotesJSON)
+        _changeBaselineKeyOf = _changeKeyOf(_changeBaseline)
+      } catch (e) {
+        _changeBaseline = null
+      }
+      window._changeBars?.redraw()
+    }
+    window.setBodyDirty = dirty => {
+      _bodyDirty = !!dirty
+      window._changeBars?.redraw()
+    }
+    // Every transaction makes a new doc, so one comparison per doc and baseline pair.
+    window._changeMarks = () => {
+      if (!_changeBaseline || !_bodyDirty || codeViewActive || _overlayOpen() || activeGripDrag()) return { changed: [], removedGaps: [] }
+      const doc = editor.state.doc
+      if (_changeMarksCache?.doc !== doc || _changeMarksCache.baseline !== _changeBaseline) {
+        _changeMarksCache = { doc, baseline: _changeBaseline, marks: changedBlocks(_changeBaseline, doc, TRAILING_PARAGRAPH_AFTER, _changeBaselineKeyOf) }
+      }
+      return _changeMarksCache.marks
+    }
+
     window.setContent = (html, footnotesJSON, keepHistory) => {
       if (codeViewActive) {
         codeViewActive = false
@@ -6630,6 +6755,8 @@
       _closeFindBar()
       if (aiOperationKey.getState(editor.state)) editor.view.dispatch(editor.state.tr.setMeta(aiOperationKey, null))
       _footnotes = footnotesJSON || '[]'
+      // Swift sends this post's own baseline next; until then the last post's would mark every block.
+      _changeBaseline = null
       let storedFootnotes = []
       try { storedFootnotes = JSON.parse(_footnotes) } catch (e) { storedFootnotes = [] }
       const wrapped = _wrapIncoming(inlineFootnotes(html, storedFootnotes))
@@ -6668,14 +6795,21 @@
       editor.state.doc.descendants(node => { if (node.type.name === 'gutenbergPassthrough') cards++ })
       const untouched = window.getContent()
       const edited = extractFootnotes(toWordPressHTML(editor.getHTML())).content
+      const unmarked = html => {
+        const baseline = _buildChangeBaseline(html, '[]')
+        const marks = changedBlocks(baseline, editor.state.doc, TRAILING_PARAGRAPH_AFTER, _changeKeyOf(baseline))
+        return marks.changed.length === 0 && marks.removedGaps.length === 0
+      }
+      const baseline = unmarked(source) && unmarked(edited)
       window.setContent(edited)
       const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
-      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, cards, saved: edited }
+      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, baseline, cards, saved: edited }
     })
     // Every path post markup takes through the editor, for FixtureCheck to prove no handler in it runs.
     window.__runScriptSinkProbes = json => JSON.parse(json).forEach(source => {
       window.setContent(source)
       formatHTML(source)
+      _buildChangeBaseline(source, '[]').forEach(_reloadedBlockKey)
       formatHTML(extractFootnotes(toWordPressHTML(editor.getHTML())).content)
       editor.view.serializeForClipboard(editor.state.doc.slice(0, editor.state.doc.content.size))
       const tr = editor.state.tr
@@ -7104,6 +7238,7 @@
     function _endGripDrag() {
       endGripDrag(editor.view)
       if (blockMoveKey.getState(editor.state)) editor.view.dispatch(editor.state.tr.setMeta(blockMoveKey, null))
+      window._changeBars.redraw()
     }
 
     function _dropGripDrag(clientY) {

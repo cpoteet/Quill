@@ -21,6 +21,9 @@ public struct EditorView: NSViewRepresentable {
     var handle: EditorHandle?
     @Binding var html: String
     var footnotes: String
+    var baselineHTML: String
+    var baselineFootnotes: String
+    var bodyDirty: Bool
     @Binding var contentSyncPending: Bool
     var onContentChange: (String) -> Void
     var onEditorReady: (() -> Void)?
@@ -50,6 +53,9 @@ public struct EditorView: NSViewRepresentable {
         handle: EditorHandle? = nil,
         html: Binding<String>,
         footnotes: String = "",
+        baselineHTML: String = "",
+        baselineFootnotes: String = "",
+        bodyDirty: Bool = false,
         contentSyncPending: Binding<Bool> = .constant(false),
         onContentChange: @escaping (String) -> Void,
         onEditorReady: (() -> Void)? = nil,
@@ -78,6 +84,9 @@ public struct EditorView: NSViewRepresentable {
         self.handle = handle
         self._html = html
         self.footnotes = footnotes
+        self.baselineHTML = baselineHTML
+        self.baselineFootnotes = baselineFootnotes
+        self.bodyDirty = bodyDirty
         self._contentSyncPending = contentSyncPending
         self.onContentChange = onContentChange
         self.onEditorReady = onEditorReady
@@ -169,6 +178,8 @@ public struct EditorView: NSViewRepresentable {
             DispatchQueue.main.async { contentSyncPending = false }
         }
         context.coordinator.setContent(html, footnotes: footnotes)
+        context.coordinator.setChangeBaseline(baselineHTML, footnotes: baselineFootnotes)
+        context.coordinator.setBodyDirty(bodyDirty)
         context.coordinator.onInsertImage = onInsertImage
         context.coordinator.onInsertGallery = onInsertGallery
         context.coordinator.onCustomHTML = onCustomHTML
