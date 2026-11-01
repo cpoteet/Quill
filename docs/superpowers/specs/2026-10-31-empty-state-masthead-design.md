@@ -12,6 +12,7 @@ The page is built from native Mac parts: a header with the site's icon and name,
 
 - A header with the site's name and address, and its WordPress Site Icon when it has one.
 - **Continue writing:** up to three items, the things the author was most recently writing, newest first. One click opens one. *(Chris's call, 2026-11-01: the grouped list has room for more than one. On Drafts the three repeat the top of the sidebar, which is sorted the same way; he chose the same count in every section over avoiding that.)*
+- **Recently edited:** when there is nothing to continue, up to three posts or pages the author last edited, whatever their status. *(Chris's call, 2026-11-01: the page was too empty without it.)*
 - **Scheduled:** up to three posts due in the next two weeks, with their dates.
 - Posts, Pages and Drafts each get a version of the page. Media is unchanged.
 
@@ -46,7 +47,7 @@ One column, at most 480pt wide, starting about 72pt from the top. Every colour i
 - **Rows:** inset grouped rows in a box filled with `.fill.quaternary` at a 10pt radius, divided by separators. Each row is the status symbol (`statusSymbol(_:)`, palette white on `Color.statusColor(_:)`) at about 20pt, the title in `.body` medium on one line, a `.subheadline` `.secondary` line beneath, and a `.tertiary` chevron. On hover the row takes a light `.fill` highlight; the title keeps its colour.
 - **Continue writing:** up to three rows. Each row's second line is its meta line (see below).
 - **Scheduled:** one row per post. The second line is the date and time ("Tue, Nov 3 at 9:00 AM" in the user's locale), or "Missed schedule". A missed row uses the Pending colour with `exclamationmark.circle.fill`, so it stands apart from the blue scheduled rows.
-- **Nothing to show:** if there is no Continue writing item and nothing scheduled, the page is a `ContentUnavailableView` like "Couldn't load posts": the feather (`QuillMark.emptyStateIcon`), the site's name, and one line: "Select a post to edit" (page, draft) when the section has items, "No posts yet" (pages, drafts) when it has none. *(Chris's call, 2026-11-01: the page should not assume the author wants to start something new.)*
+- **Nothing to show:** if there is no Continue writing item, nothing recently edited and nothing scheduled, the page keeps the same header and puts one `.secondary` line where the groups would be: "Select a post to edit" (page, draft) when the section has items, "No posts yet" (pages, drafts) when it has none. *(Chris's call, 2026-11-01: the page should not assume the author wants to start something new.)* No feather: the header's identity stays the site's in every state, and the page does not jump from top-left to centred when its last item goes. *(Chris's call, 2026-11-01.)*
 
 ### Interaction
 
@@ -87,6 +88,16 @@ The three newest candidates are shown, newest first. These are all absolute time
 | Local draft | Post draft · on this Mac · edited yesterday, or Page draft · … |
 
 "Edited …" uses a named relative time ("2 hours ago", "yesterday") up to a week old, and the date after that ("12 Oct").
+
+### Recently edited
+
+Shown only when Continue writing has nothing, under its own label, so Continue writing keeps meaning unfinished work.
+
+- Posts page: posts. Pages page: pages. Drafts page: none, since every local draft is already a Continue writing item.
+- Any status except `future`, which belongs to Scheduled. A draft cannot appear: it would already be a Continue writing item.
+- Newest `modified_gmt` first, at most three. The sidebar sorts by publish date, so an old post edited last week is near the top here and far down there.
+- Only the author's own posts once the user's ID is known, by the post's `author`. `modified_gmt` does not say who made the edit, so a plugin migration or a bulk edit in wp-admin can put posts here that the author never touched.
+- Meta line: the status and the edit time, "Published · edited 3 days ago".
 
 ### Scheduled
 

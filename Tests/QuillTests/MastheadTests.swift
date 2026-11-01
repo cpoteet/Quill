@@ -153,6 +153,46 @@ private func lead(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPos
     }
 }
 
+@Suite struct MastheadRecentlyEditedTests {
+    private func recent(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPost] = [],
+                        userID: Int? = nil) -> [Masthead.Lead] {
+        Masthead.recentlyEdited(for: section, posts: posts, pages: pages, userID: userID, now: now, locale: gb)
+    }
+
+    @Test func listsAnyStatusNewestEditFirst() throws {
+        let old = try post(1, status: "publish", modified: -86400 * 3)
+        let newer = try post(2, status: "private", modified: -7200)
+        let result = recent(.posts, posts: [old, newer])
+        #expect(result.map(\.item) == [.remote(newer), .remote(old)])
+        #expect(result.first?.meta == "Private · edited 2 hours ago")
+        #expect(result.first?.section == .posts)
+    }
+
+    @Test func capsAtThree() throws {
+        let posts = try (1...5).map { try post($0, status: "publish", modified: TimeInterval(-60 * $0)) }
+        #expect(recent(.posts, posts: posts).map(\.item) == posts.prefix(3).map { .remote($0) })
+    }
+
+    @Test func leavesOutScheduledPosts() throws {
+        #expect(recent(.posts, posts: [try post(1, status: "future", scheduled: 86400)]).isEmpty)
+    }
+
+    @Test func leavesOutAnotherAuthorsPostOnceTheUserIsKnown() throws {
+        let theirs = try post(1, status: "publish", author: 2)
+        #expect(recent(.posts, posts: [theirs]).count == 1)
+        #expect(recent(.posts, posts: [theirs], userID: 1).isEmpty)
+    }
+
+    @Test func staysInsideItsOwnSection() throws {
+        let page = try post(3, status: "publish", type: "page")
+        let article = try post(1, status: "publish")
+        #expect(recent(.posts, posts: [article], pages: [page]).map(\.item) == [.remote(article)])
+        #expect(recent(.pages, posts: [article], pages: [page]).map(\.item) == [.remote(page)])
+        #expect(recent(.pages, pages: [page]).first?.section == .pages)
+        #expect(recent(.localDrafts, posts: [article], pages: [page]).isEmpty)
+    }
+}
+
 @Suite struct MastheadScheduledTests {
     private func scheduled(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPost] = [],
                            missed: Set<MissedKey> = []) -> [Masthead.ScheduledRow] {

@@ -86,6 +86,31 @@ enum Masthead {
         return formatter.localizedString(for: date, relativeTo: now)
     }
 
+    // MARK: - Recently edited
+
+    static func recentlyEdited(for section: SidebarSection, posts: [WPPost], pages: [WPPost], userID: Int?,
+                               now: Date, locale: Locale = .autoupdatingCurrent) -> [Lead] {
+        let list: [WPPost]
+        let home: SidebarSection
+        switch section {
+        case .posts: (list, home) = (posts, .posts)
+        case .pages: (list, home) = (pages, .pages)
+        case .localDrafts, .media: return []
+        }
+        let edits = list.compactMap { post -> (post: WPPost, edited: Date)? in
+            guard post.status != "future", userID == nil || post.author == userID,
+                  let edited = PostSettings.parseWPDate(post.modifiedGmt) else { return nil }
+            return (post, edited)
+        }
+        let newestFirst = edits.sorted { a, b in
+            a.edited != b.edited ? a.edited > b.edited : a.post.id < b.post.id
+        }
+        return newestFirst.prefix(leadLimit).map { post, edited in
+            let meta = "\(PostListRow.statusLabel(post.status)) · edited \(editedPhrase(edited, now: now, locale: locale))"
+            return Lead(item: .remote(post), section: home, edited: edited, meta: meta)
+        }
+    }
+
     // MARK: - Scheduled
 
     static func scheduled(for section: SidebarSection, posts: [WPPost], pages: [WPPost],

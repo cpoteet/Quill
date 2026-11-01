@@ -42,48 +42,36 @@ struct MastheadView: View {
                                    userID: appState.currentUserID, now: now)
         let scheduled = Masthead.scheduled(for: section, posts: appState.posts, pages: appState.pages,
                                            confirmedMissed: appState.confirmedMissed, now: now)
-        if leads.isEmpty && scheduled.isEmpty {
-            ContentUnavailableView {
-                Label {
-                    Text(name)
-                } icon: {
-                    QuillMark.emptyStateIcon
+        let recent = leads.isEmpty
+            ? Masthead.recentlyEdited(for: section, posts: appState.posts, pages: appState.pages,
+                                      userID: appState.currentUserID, now: now)
+            : []
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                header(name: name, host: credentials.siteURL.host() ?? "")
+
+                if leads.isEmpty && recent.isEmpty && scheduled.isEmpty {
+                    Text(Masthead.emptyLine(for: section, sectionIsEmpty: appState.sectionIsEmpty))
+                        .foregroundStyle(.secondary)
                 }
-            } description: {
-                Text(Masthead.emptyLine(for: section, sectionIsEmpty: appState.sectionIsEmpty))
-            }
-        } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    header(name: name, host: credentials.siteURL.host() ?? "")
 
-                    if !leads.isEmpty {
-                        group("Continue Writing") {
-                            ForEach(Array(leads.enumerated()), id: \.element.item.id) { index, lead in
-                                if index > 0 { Divider().padding(.leading, 40) }
-                                MastheadRow(badge: lead.item.statusBadge, title: lead.item.title, detail: lead.meta,
-                                            heading: "Continue writing") {
-                                    appState.openFromMasthead(lead.item, in: lead.section)
-                                }
-                            }
-                        }
-                    }
+                if !leads.isEmpty { leadGroup("Continue Writing", heading: "Continue writing", leads) }
+                if !recent.isEmpty { leadGroup("Recently Edited", heading: "Recently edited", recent) }
 
-                    if !scheduled.isEmpty {
-                        group("Scheduled") {
-                            ForEach(Array(scheduled.enumerated()), id: \.element.post.id) { index, row in
-                                if index > 0 { Divider().padding(.leading, 40) }
-                                scheduledRow(row)
-                            }
+                if !scheduled.isEmpty {
+                    group("Scheduled") {
+                        ForEach(Array(scheduled.enumerated()), id: \.element.post.id) { index, row in
+                            if index > 0 { Divider().padding(.leading, 40) }
+                            scheduledRow(row)
                         }
                     }
                 }
-                .frame(maxWidth: 480, alignment: .leading)
-                .padding(.horizontal, 32)
-                .padding(.top, 72)
-                .padding(.bottom, 48)
-                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: 480, alignment: .leading)
+            .padding(.horizontal, 32)
+            .padding(.top, 72)
+            .padding(.bottom, 48)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -117,6 +105,18 @@ struct MastheadView: View {
             VStack(spacing: 0, content: rows)
                 .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 10))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private func leadGroup(_ title: String, heading: String, _ leads: [Masthead.Lead]) -> some View {
+        group(title) {
+            ForEach(Array(leads.enumerated()), id: \.element.item.id) { index, lead in
+                if index > 0 { Divider().padding(.leading, 40) }
+                MastheadRow(badge: lead.item.statusBadge, title: lead.item.title, detail: lead.meta,
+                            heading: heading) {
+                    appState.openFromMasthead(lead.item, in: lead.section)
+                }
+            }
         }
     }
 

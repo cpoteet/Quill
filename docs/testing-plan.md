@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-01 — 882 Swift tests + 2,079 JS tests (2,078 pass, 1 skipped), no failures._
+_Last updated: 2026-11-01 — 887 Swift tests + 2,079 JS tests (2,078 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (882 tests)
+1. **Swift tests** — `swift test` (887 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -119,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (882 tests, 59 suites)
+## Swift test suite (887 tests, 60 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -188,6 +188,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 57 | `MastheadLeadTests` | `MastheadTests.swift` | 18 | `Masthead.leads`: the newest three Continue writing candidates per section, fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
 | 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 8 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
 | 59 | `MastheadCopyTests` | `MastheadTests.swift` | 4 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `spokenLabel` joins the VoiceOver label with commas |
+| 60 | `MastheadRecentlyEditedTests` | `MastheadTests.swift` | 5 | `Masthead.recentlyEdited`: the fallback when Continue writing is empty; any status but scheduled, newest `modified_gmt` first, at most three; another author's post left out once the user is known; Posts and Pages stay in their own section, Drafts has none |
 
 ---
 
@@ -1596,6 +1597,18 @@ File: `Tests/QuillTests/MastheadTests.swift`
 | `emptyLineAsksForASelectionWhenTheSectionHasItems` | "Select a post to edit", and the page and draft versions |
 | `emptyLineSaysTheSectionIsEmpty` | "No posts yet", "No pages yet", "No drafts yet" |
 | `spokenLabelReadsAsOnePhrase` | "Continue writing, Packing for the coast, Draft, edited 2 hours ago": the meta line's " · " becomes a comma |
+
+### 60. App — `MastheadRecentlyEditedTests` (5 tests)
+
+File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale.
+
+| Test | What it checks |
+|---|---|
+| `listsAnyStatusNewestEditFirst` | Published and private posts, newest `modified_gmt` first, with "Private · edited 2 hours ago" |
+| `capsAtThree` | Five candidates give the newest three |
+| `leavesOutScheduledPosts` | A `future` post is left to Scheduled |
+| `leavesOutAnotherAuthorsPostOnceTheUserIsKnown` | Shown before the user's ID arrives, left out after |
+| `staysInsideItsOwnSection` | Posts lists posts, Pages lists pages and opens them in Pages, Drafts lists nothing |
 
 ---
 
@@ -4134,7 +4147,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Continue writing at launch.** Launch with nothing open → the editor area shows the site's name and host, with its Site Icon beside them when the site has one. Under Continue Writing, up to three rows, the post last written first; click one → it opens.
 - [ ] **A newer local draft leads on Posts.** File → New Post, then switch to Posts → Continue Writing shows "Untitled", "Post draft · on this Mac · edited now"; click it → Drafts opens with that draft selected.
 - [ ] **Missed schedule.** With WP-Cron disabled on the Studio site (`define('DISABLE_WP_CRON', true)` in `wp-config.php`, restored afterwards), schedule a draft 3 minutes ahead. Leave the page open, without ⌘R or a section switch → it shows under Scheduled with its date and time, then "Missed schedule" in the Pending colour once 5 minutes have passed. With WP-Cron on, a post that publishes on time drops off instead, and its sidebar row reads Published.
-- [ ] **Nothing to show.** In a section with items but nothing to continue or schedule → the feather, the site's name and "Select a post to edit" (page, draft). In an empty section → "No posts yet" (pages, drafts).
+- [ ] **Recently edited.** On Pages, with no page draft of your own and no unsaved changes → a Recently Edited group lists up to three of your pages, last edited first, e.g. "Published · edited 3 days ago"; click one → it opens in Pages. Edit and save a published post, then switch to Posts with no drafts → it leads Recently Edited. Leave one draft → Continue Writing shows and Recently Edited does not.
+- [ ] **Nothing to show.** In a section with items but nothing to continue, recently edited or scheduled → the same header as a page with items (Site Icon, name, host, top-left, no feather) and "Select a post to edit" beneath it (page, draft). In an empty section → "No posts yet" (pages, drafts).
 - [ ] **Layout.** Give the site a long name and narrow the window to its minimum with the sidebar open → the name stays on one line and truncates; nothing is clipped. Check light and dark, with and without a Site Icon.
 - [ ] **Accessibility.** With Full Keyboard Access, Tab reaches each row and Return or Space opens it. VoiceOver reads each row as one element, e.g. "Continue writing, Packing for the coast, Draft, edited 2 hours ago".
 - [ ] **Nothing new in Media**, and offline Posts still says "Couldn't load posts" with the feather.
