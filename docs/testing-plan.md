@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-01 — 887 Swift tests + 2,121 JS tests (2,120 pass, 1 skipped), no failures._
+_Last updated: 2026-11-01 — 887 Swift tests + 2,122 JS tests (2,121 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -22,7 +22,7 @@ This document is the authoritative reference for Quill's automated test suite an
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (146 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (147 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (423 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
@@ -2607,7 +2607,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (146 tests)
+## JS keyboard tests (147 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2754,6 +2754,7 @@ Quill saves an image's width the way core does: a width with `height:auto`, and 
 | `a proportional drag saves the width with height:auto, as core does` | A drag on the natural ratio writes a width only |
 | `picking a size swaps the URL and size class and keeps the width, as core does` | A size button changes `src` and `size-*`, not the width |
 | `Reset restores the full-size URL and clears the dimensions` | Reset removes both dimensions |
+| `pressing Reset twice leaves the natural size in the W and H fields` | A second Reset, which changes no attribute and loads no new image, does not blank W and H |
 | `a drag that stretches the image off its natural ratio keeps an explicit height` | An off-ratio drag still saves a height |
 | `the height field shows the height a width-only image implies` | A 640-wide image on a 1280×800 file shows H `400`, not a blank field |
 | `typing a height on a width-only image keeps its ratio` | H `200` on that image saves width `320` and height `200`, and the W field follows |

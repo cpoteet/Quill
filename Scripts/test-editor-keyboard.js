@@ -776,6 +776,17 @@ describe('image dimensions round-trip', () => {
     assert.ok(!('width' in attrsOf(out)) && !('height' in attrsOf(out)))
   })
 
+  test('pressing Reset twice leaves the natural size in the W and H fields', () => {
+    selectWithNaturalSize(RESIZED, [4000, 3000])
+    sizeBtn('full')._sizeData = { url: 'http://x/p-orig.jpg', width: 4000, height: 3000 }
+    try {
+      win.document.getElementById('img-tb-reset').click()
+      win.document.getElementById('img-tb-reset').click()
+    } finally { sizeBtn('full')._sizeData = null }
+    assert.equal(win.document.getElementById('img-tb-w').value, '4000')
+    assert.equal(win.document.getElementById('img-tb-h').value, '3000')
+  })
+
   test('a drag that stretches the image off its natural ratio keeps an explicit height', () => {
     const attrs = drag('e', 100, 0)
     assert.equal(attrs.width, 400)
