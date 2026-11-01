@@ -486,6 +486,14 @@ describe('block styles', () => {
     })
   })
 
+  test('the image stays selected through a style change, so its toolbar and popover stay', () => {
+    win.setContent(cases[3].src)
+    selectNode('image')
+    choose('image', '')
+    assert.equal(editor.state.selection.node?.type.name, 'image')
+    assert.equal(win.document.getElementById('settings-image-controls').style.display, 'inline-flex')
+  })
+
   test('the image keeps its size class through a style change', () => {
     win.setContent(cases[3].src)
     selectNode('image')
@@ -611,6 +619,30 @@ describe('the tabs default tab', () => {
     const out = win.toWordPressHTML(editor.getHTML())
     assert.match(out, /"metadata":\{"name":"T"\}/)
     assert.match(out, /"activeTabIndex":1/)
+  })
+
+  test('the control is on in a tab title, for the tab the title belongs to', () => {
+    win.setContent(tabs.replace('<!-- wp:tabs -->', '<!-- wp:tabs {"activeTabIndex":1} -->'))
+    caretIn('Two')
+    assert.equal(win.document.getElementById('settings-tabPanel-controls').style.display, 'inline-flex')
+    assert.equal(toggle().classList.contains('active'), true)
+    caretIn('One')
+    assert.equal(toggle().classList.contains('active'), false)
+  })
+
+  test('pressing it with the caret in the second tab title writes that index', () => {
+    win.setContent(tabs)
+    caretIn('Two')
+    press(toggle())
+    assert.match(win.toWordPressHTML(editor.getHTML()), /wp:tabs \{"activeTabIndex":1\}/)
+  })
+
+  test('a tab title with no panel behind it neither throws nor offers the control', () => {
+    win.setContent(tabs)
+    caretIn('Two')
+    editor.commands.setTextSelection(editor.state.selection.$from.end())
+    editor.commands.splitBlock()
+    assert.equal(win.document.getElementById('settings-tabPanel-controls').style.display, 'none')
   })
 
   test('the control is absent outside a tab panel', () => {

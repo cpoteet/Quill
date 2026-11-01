@@ -4021,6 +4021,11 @@
       view.dispatch(view.state.tr.setMeta(containerChromeKey, {
         pos: target.pos, nodeSize: target.node.nodeSize,
       }))
+      const end = target.pos + target.node.nodeSize
+      const titleEnd = target.pos + 1 + target.node.firstChild.nodeSize
+      const collapsed = containerChromeKey.getState(view.state).find(target.pos, end).some(d => d.from === target.pos)
+      const { head } = view.state.selection
+      if (collapsed && head >= titleEnd && head < end) editor.commands.setTextSelection(titleEnd - 1)
       return true
     }
 
@@ -4947,7 +4952,7 @@
     }
 
     // A block inserted into one of these titles splits its container, so it goes after the whole container.
-    const TITLE_CONTAINERS = { accordionHeading: 'accordionBlock', tabButton: 'tabsBlock', buttonBlock: 'buttonsBlock' }
+    const TITLE_CONTAINERS = { accordionHeading: 'accordionBlock', detailsSummary: 'detailsBlock', tabButton: 'tabsBlock', buttonBlock: 'buttonsBlock' }
 
     // A table cell holds rich text in the block editor, whose inserter puts a new block after the table.
     function _blockInsertChain({ intoTableCell = false } = {}) {
@@ -5292,14 +5297,38 @@
       for (let d = $from.depth; d >= 1; d--) {
         if ($from.node(d).type.name === typeName) return { node: $from.node(d), pos: $from.before(d) }
       }
+      return typeName === 'tabPanel' ? _panelOfTitle(state) : null
+    }
+
+    // A tab's title sits in the tab list, outside its panel, so the panel is
+    // found by position.
+    function _panelOfTitle(state) {
+      const $from = state.selection.$from
+      for (let d = $from.depth; d >= 2; d--) {
+        if ($from.node(d).type.name !== 'tabButton') continue
+        const tabs = $from.node(d - 2)
+        const index = $from.index(d - 1)
+        const panels = tabs.child(1)
+        if (index >= panels.childCount) return null
+        let pos = $from.start(d - 2) + tabs.child(0).nodeSize + 1
+        for (let i = 0; i < index; i++) pos += panels.child(i).nodeSize
+        return { node: panels.child(index), pos, index, tabs, tabsPos: $from.before(d - 2) }
+      }
       return null
+    }
+
+    // setNodeMarkup maps a NodeSelection as deleted, so an atom block is reselected.
+    function _dispatchSetting(tr, pos) {
+      const { selection } = editor.state
+      const wasSelected = selection.node && selection.from === pos
+      editor.view.dispatch(wasSelected ? tr.setSelection(selection.constructor.create(tr.doc, pos)) : tr)
     }
 
     function _setSettingAttrs(typeName, attrs) {
       const target = _settingBlockAt(editor.state, typeName)
       if (!target) return
-      const { state, view } = editor
-      view.dispatch(state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, ...attrs }))
+      const tr = editor.state.tr.setNodeMarkup(target.pos, undefined, { ...target.node.attrs, ...attrs })
+      _dispatchSetting(tr, target.pos)
     }
 
     // A block carries exactly one style, so choosing one clears every other
@@ -5344,6 +5373,8 @@
     // shape for the tabs default tab, whose checkbox sits on the panel while
     // activeTabIndex lives on the tabs block.
     function _ancestorIndexTarget(state, typeName, control) {
+      const title = typeName === 'tabPanel' ? _panelOfTitle(state) : null
+      if (title) return { index: title.index, node: title.tabs, pos: title.tabsPos }
       const $from = state.selection.$from
       for (let d = $from.depth; d >= 1; d--) {
         if ($from.node(d).type.name !== typeName) continue
@@ -5389,8 +5420,7 @@
     function _setSettingValue(typeName, name, def, value) {
       const target = _settingBlockAt(editor.state, typeName)
       if (!target) return
-      const { state, view } = editor
-      const tr = state.tr
+      const tr = editor.state.tr
       tr.setNodeMarkup(target.pos, undefined, _attrsWithSetting(target.node.attrs, name, def, value))
       const propagate = def.control && def.control.propagate
       if (propagate) {
@@ -5400,7 +5430,7 @@
           tr.setNodeMarkup(target.pos + 1 + offset, undefined, { ...carried, [name]: value })
         })
       }
-      view.dispatch(tr)
+      _dispatchSetting(tr, target.pos)
     }
 
     // A toggle's on value is the flagClass `when` where there is one and true
@@ -5743,10 +5773,18 @@
       closeHeadingMenu()
     }
 
-    headingButton.addEventListener('click', e => {
-      e.preventDefault()
+    function toggleHeadingMenu() {
       if (headingMenu.classList.contains('visible')) closeHeadingMenu()
       else openHeadingMenu()
+    }
+
+    headingButton.addEventListener('mousedown', e => {
+      e.preventDefault()
+      toggleHeadingMenu()
+    })
+    headingButton.addEventListener('click', e => {
+      e.preventDefault()
+      if (!e.detail) toggleHeadingMenu()
     })
 
     headingMenu.querySelectorAll('[data-heading-level]').forEach(item => {
@@ -7066,10 +7104,10 @@
 
     window.insertDetails = () => {
       if (_isInFootnote()) return false
-      _blockInsertChain().insertContent({
+      _insertContainer({
         type: 'detailsBlock',
         content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
-      }).run()
+      }, 'detailsSummary', 1)
       return true
     }
 

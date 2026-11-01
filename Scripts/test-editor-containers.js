@@ -149,6 +149,22 @@ describe('details block', () => {
     assert.equal(editor.state.doc.child(0).type.name, 'detailsBlock')
   })
 
+  test('the caret lands in the empty summary', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    assert.equal(editor.state.selection.$from.parent.type.name, 'detailsSummary')
+  })
+
+  test('inserting Details from a summary adds a sibling block and seats the caret in its summary', () => {
+    editor.commands.setContent('<p></p>', false)
+    win.insertDetails()
+    win.insertDetails()
+    assert.equal(editor.state.doc.childCount, 2)
+    assert.equal(editor.state.doc.child(1).type.name, 'detailsBlock')
+    assert.ok(editor.state.selection.from > editor.state.doc.child(0).nodeSize)
+    assert.equal(editor.state.selection.$from.parent.type.name, 'detailsSummary')
+  })
+
   test('saves with wp:details delimiters', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertDetails()
@@ -1549,6 +1565,15 @@ describe('editor chrome stays out of saved markup', () => {
     assert.doesNotMatch(save(), /is-collapsed/)
   })
 
+  test('collapsing an item from its header moves a caret in its panel up to the title', () => {
+    editor.commands.setContent(ACCORDION, false)
+    editor.commands.setTextSelection(posInside('accordionPanel', 0) + 2)
+    const heading = win.document.querySelector('#editor .wp-block-accordion-heading')
+    heading.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+    assert.ok(win.document.querySelector('#editor .wp-block-accordion-item.is-collapsed'))
+    assert.equal(editor.state.selection.$from.parent.type.name, 'accordionHeading')
+  })
+
   test('collapsing is a toggle', () => {
     editor.commands.setContent(ACCORDION, false)
     editor.commands.setTextSelection(posInside('accordionHeading', 0))
@@ -2478,6 +2503,7 @@ describe('leaving a container block', () => {
   test('Enter twice still leaves a details body', () => {
     editor.commands.setContent('<p></p>', false)
     win.insertDetails()
+    editor.commands.setTextSelection(editor.state.selection.$from.after() + 1)
     editor.commands.insertContent('body')
     enter(2)
     assert.equal(atTopLevel(), true)

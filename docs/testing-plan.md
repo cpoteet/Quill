@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (147 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (423 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (426 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (37 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -33,7 +33,7 @@ This document is the authoritative reference for Quill's automated test suite an
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (256 tests — live Tiptap editor in jsdom)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (260 tests — live Tiptap editor in jsdom)
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
@@ -4659,7 +4659,7 @@ Run this on a **new local draft**, never a published post.
 ### 7.23 Container blocks & the insert menu
 
 - [ ] The toolbar has a labelled insert button; opening it lists every container block Quill can insert.
-- [ ] Insert each of Columns, Details, Buttons, Accordion, Tabs, Pullquote, Preformatted and Separator → each appears, the caret lands somewhere sensible inside it (the first tab panel, the first column, the accordion title), and the menu closes.
+- [ ] Insert each of Columns, Details, Buttons, Accordion, Tabs, Pullquote, Preformatted and Separator → each appears, the caret lands somewhere sensible inside it (the first tab panel, the first column, the accordion title, the details summary), and the menu closes.
 - [ ] Type into each one, save, reopen → the text is there and the block still renders as a block.
 - [ ] Open each in Gutenberg → no validation warning.
 - [ ] **Delete gesture:** with the caret inside a container, the ✕ appears at the far right of the contextual toolbar row (its tooltip reads "Delete block"). Press it → the block goes, the caret lands in the block after it (or the one before, if nothing follows), and deleting the only block in the post leaves an empty paragraph to type in.
