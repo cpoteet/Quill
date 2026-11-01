@@ -1698,7 +1698,7 @@ public struct PostEditorView: View {
         let run = EvaluationState(searchAvailable: searchAvailable, modelCanSearch: modelCanSearch)
         evaluationSetupError = nil
         evaluation = run
-        editorWebView?.evaluateJavaScript("window.setEvaluating?.(true)", completionHandler: nil)
+        _ = try? await editorWebView?.evaluateJavaScript("window.setEvaluating?.(true)")
         defer { editorWebView?.evaluateJavaScript("window.setEvaluating?.(false)", completionHandler: nil) }
 
         let client = AnthropicClient(apiKey: aiSettings.apiKey)
@@ -1881,7 +1881,7 @@ public struct PostEditorView: View {
                 }
             }
             guard inserted else {
-                webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+                _ = try? await webView.evaluateJavaScript("discardAIResult()")
                 bannerError = EditorBanner(message: "Claude couldn't finish that rewrite. Try again.", source: .ai)
                 return
             }
@@ -1903,7 +1903,7 @@ public struct PostEditorView: View {
             aiResultShowing = true
         } catch {
             guard !Task.isCancelled else { return }
-            webView.evaluateJavaScript("discardAIResult()", completionHandler: nil)
+            _ = try? await webView.evaluateJavaScript("discardAIResult()")
             bannerError = EditorBanner(message: Self.aiFailureMessage(for: error), source: .ai)
         }
     }

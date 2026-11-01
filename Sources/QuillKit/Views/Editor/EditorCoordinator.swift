@@ -369,13 +369,13 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
             guard let media = await fetch(mediaId),
                   let dict = Self.mediaSizesDict(for: media)
             else {
-                wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)", completionHandler: nil)
+                _ = try? await wv.evaluateJavaScript("setMediaSizes(\(mediaId), null)")
                 return
             }
             guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
                   let jsonStr  = String(data: jsonData, encoding: .utf8)
             else { return }
-            wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))", completionHandler: nil)
+            _ = try? await wv.evaluateJavaScript("setMediaSizes(\(mediaId), \(jsonStr))")
         }
     }
 
@@ -385,7 +385,7 @@ public final class EditorCoordinator: NSObject, WKScriptMessageHandler, WKNaviga
         Task {
             let results = await fetch(refs)
             for ref in refs {
-                wv.evaluateJavaScript(Self.syncedPatternJS(generation: generation, ref: ref, result: results[ref] ?? .failed), completionHandler: nil)
+                _ = try? await wv.evaluateJavaScript(Self.syncedPatternJS(generation: generation, ref: ref, result: results[ref] ?? .failed))
             }
         }
     }

@@ -23,7 +23,18 @@ let package = Package(
             ],
             path: "Sources/QuillKit",
             // build.sh copies Resources into the app bundle.
-            exclude: ["Resources"]
+            exclude: [
+                "Resources",
+                "AI/CLAUDE.md",
+                "API/CLAUDE.md",
+                "App/CLAUDE.md",
+                "Views/CLAUDE.md",
+                "Views/AI/CLAUDE.md",
+                "Views/Editor/CLAUDE.md",
+                "Views/Media/CLAUDE.md",
+                "Views/Settings/CLAUDE.md",
+                "Views/Sidebar/CLAUDE.md",
+            ]
         ),
         .testTarget(
             name: "QuillTests",
