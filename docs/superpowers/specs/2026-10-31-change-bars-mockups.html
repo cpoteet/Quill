@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Change bar options</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1a1a; --muted: #737373; --rule: rgba(0,0,0,0.08);
+    --grip: #b4b4b4;
+    --accent: #C77700;
+    --bar-grey: rgba(0,0,0,0.17); --bar-amber: rgba(199,119,0,0.5);
+    --chrome: #f5f5f4; --ctl: #ffffff; --ctl-border: rgba(0,0,0,0.14); --ctl-on: #1a1a1a; --ctl-on-ink: #fff;
+    --figure: linear-gradient(135deg, #c9d6df 0%, #e8e2d0 55%, #d8c3a5 100%);
+  }
+  body.dark {
+    --bg: #1e1e1e; --ink: #f0f0f0; --muted: #9a9a9a; --rule: rgba(255,255,255,0.1);
+    --grip: #636363;
+    --accent: #BF801E;
+    --bar-grey: rgba(255,255,255,0.2); --bar-amber: rgba(240,180,80,0.5);
+    --chrome: #262626; --ctl: #2e2e2e; --ctl-border: rgba(255,255,255,0.14); --ctl-on: #f0f0f0; --ctl-on-ink: #1e1e1e;
+    --figure: linear-gradient(135deg, #34424c 0%, #4a4537 55%, #5a4630 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  #bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+    padding: 12px 16px; background: var(--chrome); border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .group { display: flex; align-items: center; gap: 8px; }
+  .group > span { color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--ctl-border); border-radius: 6px; overflow: hidden; background: var(--ctl); }
+  .seg button {
+    font: inherit; color: var(--ink); background: transparent; border: 0; padding: 5px 12px; cursor: default;
+    border-right: 1px solid var(--ctl-border);
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: var(--ctl-on); color: var(--ctl-on-ink); }
+  .seg button:focus-visible, .act:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .act { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--ctl-border); background: var(--ctl); color: var(--ink); }
+  .act:disabled { opacity: 0.45; }
+  #about { width: 100%; color: var(--muted); line-height: 1.45; }
+  #about strong { color: var(--ink); font-weight: 600; }
+
+  #wrap { flex: 1; overflow-y: auto; padding: 32px 24px; position: relative; }
+  #col {
+    max-width: 38.5em; margin: 0 auto; outline: none;
+    font-size: 16.5px; line-height: 1.66; letter-spacing: -0.003em; caret-color: var(--accent);
+    padding-bottom: 40vh;
+  }
+  #col > * { margin-bottom: 0.9em; }
+  #col h2 { font-size: 1.5em; line-height: 1.3; font-weight: 650; margin-top: 1.1em; }
+  #col h3 { font-size: 1.2em; line-height: 1.35; font-weight: 650; margin-top: 0.8em; }
+  #col blockquote { border-left: 3px solid var(--rule); padding-left: 1em; color: var(--muted); }
+  #col figure .img { height: 220px; border-radius: 4px; background: var(--figure); }
+  #col figcaption { font-size: 0.82em; color: var(--muted); text-align: center; margin-top: 0.4em; }
+
+  #grip {
+    position: absolute; display: none; width: 26px; height: 22px;
+    align-items: center; justify-content: center;
+    color: var(--grip); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; line-height: 1;
+    pointer-events: none;
+  }
+  #grip .caps { font-variant-caps: all-small-caps; font-size: 13px; letter-spacing: 0.04em; }
+  #grip .pilcrow { font-size: 13px; }
+  #grip .quote { font-size: 19px; transform: translateY(3px); }
+
+  #marks { position: absolute; inset: 0 auto auto 0; width: 0; height: 0; transition: opacity 0.35s ease; }
+  #marks.faded { opacity: 0; transition-duration: 0.12s; }
+  .mark { position: absolute; width: 12px; display: flex; justify-content: center; }
+  .mark::before { content: ''; width: 2px; height: 100%; border-radius: 1px; background: var(--bar); }
+  .mark.removed { height: 6px; }
+  .mark.removed::before { width: 6px; border-radius: 50%; }
+  body.grey { --bar: var(--bar-grey); }
+  body.amber { --bar: var(--bar-amber); }
+</style>
+</head>
+<body class="amber">
+  <div id="bar">
+    <div class="group"><span>Position</span>
+      <div class="seg" data-opt="pos" role="radiogroup" aria-label="Position">
+        <button data-v="left" class="on">Beside the text</button>
+        <button data-v="right">Right margin</button>
+      </div>
+    </div>
+    <div class="group"><span>Colour</span>
+      <div class="seg" data-opt="color" role="radiogroup" aria-label="Colour">
+        <button data-v="grey">Grey</button>
+        <button data-v="amber" class="on">Amber</button>
+      </div>
+    </div>
+    <div class="group"><span>Show</span>
+      <div class="seg" data-opt="show" role="radiogroup" aria-label="When to show">
+        <button data-v="always">Always</button>
+        <button data-v="typing" class="on">Hide while typing</button>
+        <button data-v="margin">Pointer in margin</button>
+      </div>
+    </div>
+    <button class="act" id="save">Save</button>
+    <button class="act" id="revert">Revert</button>
+    <div id="about"></div>
+  </div>
+
+  <div id="wrap">
+    <div id="col" contenteditable="true" spellcheck="false">
+      <h2>Packing for the coast</h2>
+      <p>The forecast said rain for three days and sun for one, which on that stretch of coast means you pack for all four seasons and wear most of them at once.</p>
+      <p>I started with a list on the back of a receipt. By the time I reached the car it had grown to both sides and the margins.</p>
+      <figure contenteditable="false"><div class="img"></div><figcaption>The view from the second lookout, before the fog came in.</figcaption></figure>
+      <h3>What I'd leave behind</h3>
+      <p>The second pair of boots. The novel I never opened. Half the chargers, all of the snacks that need a fridge.</p>
+      <blockquote><p>Take half the clothes and twice the money.</p></blockquote>
+      <h3>What I'd bring again</h3>
+      <p>A thermos, a paper map, and a wool hat that has outlived two jackets.</p>
+      <h2>Getting there</h2>
+      <p>The last forty miles are a single lane with passing places. Leave earlier than you think, and let the locals by.</p>
+    </div>
+    <div id="marks"></div>
+    <div id="grip" aria-hidden="true"></div>
+  </div>
+
+<script>
+  const ABOUT = {
+    left: '<strong>Beside the text.</strong> A 2px rule just inside the grip column, so the grip and the bar never overlap. Closest to how printed change bars look. Next to a quote it sits right beside the quote\'s own border.',
+    right: '<strong>Right margin.</strong> Keeps the left side for the grip alone, so the two never compete. Further from where your eye is while reading, which makes it quieter still.',
+  }
+  const SHOW = {
+    always: 'Bars show whenever a block differs from the version you opened.',
+    typing: 'Bars fade out on the first keystroke and come back a second after you stop, so nothing changes beside the line you\'re writing.',
+    margin: 'Bars appear only while the pointer is outside the text column, for example when you reach for a grip.',
+  }
+  const IMG = '<svg width="13" height="11" viewBox="0 0 13 11" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="0.65" y="0.65" width="11.7" height="9.7" rx="1.5"/><path d="M1 9l3.5-3.5 2.5 2.5 2-2L12 9"/></svg>'
+
+  const col = document.getElementById('col')
+  const wrap = document.getElementById('wrap')
+  const marks = document.getElementById('marks')
+  const grip = document.getElementById('grip')
+  const opts = { pos: 'left', color: 'amber', show: 'typing' }
+  let baseline = []
+  let typingTimer = 0
+  let pointerInMargin = false
+
+  const blockKey = el => el.tagName + '\u0000' + el.innerHTML
+
+  function takeBaseline() {
+    baseline = [...col.children].map((el, i) => { el.dataset.k = i; return { k: String(i), html: el.outerHTML, key: blockKey(el) } })
+  }
+
+  function changes() {
+    const byKey = new Map(baseline.map(b => [b.k, b]))
+    const seen = new Set()
+    const changed = []
+    for (const el of col.children) {
+      const k = el.dataset.k
+      const original = k != null && !seen.has(k) ? byKey.get(k) : null
+      if (k != null) seen.add(k)
+      if (!original || original.key !== blockKey(el)) changed.push(el)
+    }
+    const removedAfter = []
+    baseline.forEach((b, i) => {
+      if (seen.has(b.k)) return
+      let prev = null
+      for (let j = i - 1; j >= 0 && !prev; j--) if (seen.has(baseline[j].k)) prev = col.querySelector(`[data-k="${baseline[j].k}"]`)
+      removedAfter.push(prev)
+    })
+    return { changed, removedAfter: [...new Set(removedAfter)] }
+  }
+
+  function render() {
+    const { changed, removedAfter } = changes()
+    const wrapRect = wrap.getBoundingClientRect()
+    const colRect = col.getBoundingClientRect()
+    const x = opts.pos === 'left' ? colRect.left - 9 : colRect.right + 8
+    const toLocal = (left, top) => [left - wrapRect.left + wrap.scrollLeft, top - wrapRect.top + wrap.scrollTop]
+    marks.textContent = ''
+    for (const el of changed) {
+      const r = el.getBoundingClientRect()
+      const [l, t] = toLocal(x - 6, r.top)
+      const m = document.createElement('div')
+      m.className = 'mark'
+      m.title = 'Changed since you opened this post'
+      Object.assign(m.style, { left: l + 'px', top: t + 'px', height: r.height + 'px' })
+      marks.append(m)
+    }
+    for (const prev of removedAfter) {
+      const next = prev ? prev.nextElementSibling : col.firstElementChild
+      const above = prev ? prev.getBoundingClientRect().bottom : colRect.top
+      const below = next ? next.getBoundingClientRect().top : above + 16
+      const [l, t] = toLocal(x - 6, (above + below) / 2 - 3)
+      const m = document.createElement('div')
+      m.className = 'mark removed'
+      m.title = 'A block was removed here'
+      Object.assign(m.style, { left: l + 'px', top: t + 'px' })
+      marks.append(m)
+    }
+    document.getElementById('save').disabled = document.getElementById('revert').disabled = !changed.length && !removedAfter.length
+    applyVisibility()
+  }
+
+  function applyVisibility() {
+    const hidden = (opts.show === 'typing' && typingTimer) || (opts.show === 'margin' && !pointerInMargin)
+    marks.classList.toggle('faded', !!hidden)
+  }
+
+  function markerFor(el) {
+    if (/^H\d$/.test(el.tagName)) return `<span class="caps">${el.tagName.toLowerCase()}</span>`
+    if (el.tagName === 'FIGURE') return IMG
+    if (el.tagName === 'BLOCKQUOTE') return '<span class="quote">”</span>'
+    return '<span class="pilcrow">¶</span>'
+  }
+
+  function showGrip(el) {
+    if (!el) { grip.style.display = 'none'; return }
+    const wrapRect = wrap.getBoundingClientRect()
+    const colRect = col.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    const lh = parseFloat(getComputedStyle(el).lineHeight) || 22
+    grip.innerHTML = markerFor(el)
+    grip.style.left = (colRect.left - wrapRect.left - 26 - 6) + 'px'
+    grip.style.top = (r.top - wrapRect.top + wrap.scrollTop + Math.max(0, (Math.min(lh, r.height) - 22) / 2)) + 'px'
+    grip.style.display = 'flex'
+  }
+
+  wrap.addEventListener('mousemove', e => {
+    const colRect = col.getBoundingClientRect()
+    pointerInMargin = e.clientX < colRect.left || e.clientX > colRect.right
+    applyVisibility()
+    if (typingTimer) return
+    const hit = [...col.children].find(el => { const r = el.getBoundingClientRect(); return e.clientY >= r.top - 6 && e.clientY <= r.bottom + 6 })
+    showGrip(hit)
+  })
+  wrap.addEventListener('mouseleave', () => { pointerInMargin = false; applyVisibility(); showGrip(null) })
+
+  col.addEventListener('input', () => {
+    showGrip(null)
+    clearTimeout(typingTimer)
+    typingTimer = setTimeout(() => { typingTimer = 0; applyVisibility() }, 1000)
+    render()
+  })
+
+  document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return
+    seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b))
+    opts[seg.dataset.opt] = b.dataset.v
+    document.body.classList.toggle('grey', opts.color === 'grey')
+    document.body.classList.toggle('amber', opts.color === 'amber')
+    describe(); render()
+  }))
+
+  document.getElementById('save').onclick = () => { takeBaseline(); render() }
+  document.getElementById('revert').onclick = () => { col.innerHTML = baseline.map(b => b.html).join(''); render() }
+
+  function describe() {
+    const theme = document.body.classList.contains('dark') ? 'light' : 'dark'
+    document.getElementById('about').innerHTML = ABOUT[opts.pos] + ' ' + SHOW[opts.show] +
+      ` Edit any block to see its bar; Save clears them, Revert puts the post back. <a href="#" id="theme" style="color:inherit">Switch to ${theme}</a>`
+    document.getElementById('theme').onclick = e => { e.preventDefault(); document.body.classList.toggle('dark'); describe() }
+  }
+
+  function seedChanges() {
+    const kids = col.children
+    kids[2].textContent = 'I started with a list on the back of a receipt. By the time I reached the car it had grown to both sides, the margins and most of a napkin.'
+    const added = document.createElement('p')
+    added.textContent = 'We stopped twice for the view and once for coffee that tasted mostly of the cup.'
+    kids[3].after(added)
+    col.querySelector('blockquote').remove()
+  }
+
+  takeBaseline()
+  seedChanges()
+  describe()
+  render()
+  addEventListener('resize', render)
+</script>
+</body>
+</html>
