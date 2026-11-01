@@ -1583,3 +1583,63 @@ describe('the second toolbar row divides the groups it shows', () => {
     await assertDivided()
   })
 })
+
+describe('the second toolbar row waits for the mouse button to come up', () => {
+  const row = () => win.document.getElementById('toolbar-row2')
+  const tableGroup = () => win.document.getElementById('table-controls')
+  const mouse =(type, buttons) => editor.view.dom.dispatchEvent(new win.MouseEvent(type, { bubbles: true, button: 0, buttons }))
+  let heading, cell
+
+  function load() {
+    win.setContent('<h3 class="wp-block-heading">Heading</h3><figure class="wp-block-table"><table><tbody><tr><td>a</td></tr></tbody></table></figure>')
+    heading = cell = null
+    editor.state.doc.descendants((node, pos) => {
+      if (heading === null && node.type.name === 'heading') heading = pos
+      if (cell === null && node.type.name === 'tableCell') cell = pos
+    })
+  }
+
+  test('leaving a table during a press keeps the row until release', () => {
+    load()
+    editor.commands.setTextSelection(cell + 2)
+    assert.ok(row().classList.contains('visible'))
+    mouse('mousedown', 1)
+    editor.commands.setTextSelection(heading + 1)
+    assert.ok(row().classList.contains('visible'), 'the row hid while the button was down')
+    assert.equal(tableGroup().style.display, 'inline-flex', 'the row emptied while the button was down')
+    mouse('mouseup', 0)
+    assert.equal(row().classList.contains('visible'), false)
+    assert.equal(tableGroup().style.display, 'none')
+  })
+
+  test('entering a table during a press shows the row on release', () => {
+    load()
+    editor.commands.setTextSelection(heading + 1)
+    assert.equal(row().classList.contains('visible'), false)
+    mouse('mousedown', 1)
+    editor.commands.setTextSelection(cell + 2)
+    assert.equal(row().classList.contains('visible'), false, 'the row showed while the button was down')
+    mouse('mouseup', 0)
+    assert.ok(row().classList.contains('visible'))
+  })
+
+  test('a press that becomes a drag-and-drop is ended by its dragend', () => {
+    load()
+    editor.commands.setTextSelection(heading + 1)
+    mouse('mousedown', 1)
+    editor.view.dom.dispatchEvent(new win.Event('dragend', { bubbles: true }))
+    editor.commands.setTextSelection(cell + 2)
+    assert.ok(row().classList.contains('visible'))
+  })
+
+  test('a press whose mouseup never arrives is ended 100 ms after a buttonless move', async () => {
+    load()
+    editor.commands.setTextSelection(heading + 1)
+    mouse('mousedown', 1)
+    editor.commands.setTextSelection(cell + 2)
+    mouse('mousemove', 0)
+    assert.equal(row().classList.contains('visible'), false, 'the move ended the press before its mouseup could arrive')
+    await new Promise(resolve => setTimeout(resolve, 150))
+    assert.ok(row().classList.contains('visible'))
+  })
+})

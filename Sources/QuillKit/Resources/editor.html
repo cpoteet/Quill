@@ -6018,6 +6018,19 @@
       headingMenu.querySelectorAll('[data-heading-level]').forEach(item => {
         item.classList.toggle('active', item.dataset.headingLevel === headingLevel)
       })
+      // Undo / Redo
+      _undoBtn.disabled = !editor.can().undo()
+      _redoBtn.disabled = !editor.can().redo()
+      // Embed / footnote buttons
+      _embedBtn.disabled = inFootnote
+      _footnoteBtn.disabled = inFootnote
+      _updateRow2()
+    }
+
+    // Row 2 waits out a press in the editor; see docs/editor-gotchas.md.
+    let _row2Pressed = false
+    function _updateRow2() {
+      if (_row2Pressed) return
       // Table controls
       const inTable = editor.isActive('table')
       _tableControls.style.display = inTable ? 'inline-flex' : 'none'
@@ -6064,12 +6077,6 @@
       if (inQuote) {
         _btnToggleCite.classList.toggle('active', editor.isActive('cite'))
       }
-      // Undo / Redo
-      _undoBtn.disabled = !editor.can().undo()
-      _redoBtn.disabled = !editor.can().redo()
-      // Embed / footnote buttons
-      _embedBtn.disabled = inFootnote
-      _footnoteBtn.disabled = inFootnote
       _updateSettingControls()
       // Image alignment controls
       const selNode = editor.state.selection.node
@@ -6091,6 +6098,25 @@
       _row2.classList.toggle('visible',
         _row2Groups.some(el => el && el.style.display !== 'none'))
     }
+    const _row2PressScope = document.getElementById('editor-wrap')
+    let _row2LostRelease = null
+    function _endRow2Press() {
+      clearTimeout(_row2LostRelease)
+      _row2LostRelease = null
+      if (!_row2Pressed) return
+      _row2Pressed = false
+      if (!_toolbarIdle) _updateRow2()
+    }
+    document.addEventListener('mousedown', e => {
+      clearTimeout(_row2LostRelease)
+      _row2LostRelease = null
+      if (e.button === 0 && _row2PressScope.contains(e.target)) _row2Pressed = true
+    }, true)
+    document.addEventListener('mouseup', _endRow2Press, true)
+    document.addEventListener('dragend', _endRow2Press, true)
+    document.addEventListener('mousemove', e => {
+      if (_row2Pressed && !e.buttons && !_row2LostRelease) _row2LostRelease = setTimeout(_endRow2Press, 100)
+    }, true)
 
     function _clearToolbarContext() {
       _toggleBtns.forEach(([, btn]) => { if (btn) btn.classList.remove('active') })

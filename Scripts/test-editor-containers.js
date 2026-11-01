@@ -6,7 +6,7 @@
 // priority against gutenbergPassthrough can't be exercised through the pure
 // editor-transforms.js helpers.
 
-const { test, describe, before, after } = require('node:test')
+const { test, describe, before, after, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM, VirtualConsole } = require('jsdom')
 const fs = require('fs')
@@ -49,6 +49,8 @@ before(async () => {
 })
 
 after(() => { if (win) win.close() })
+// A press dispatched without its mouseup would hold row 2 into the next test.
+afterEach(() => win.document.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true })))
 
 function _depthOf($pos, typeName) {
   for (let d = $pos.depth; d > 0; d--) if ($pos.node(d).type.name === typeName) return d

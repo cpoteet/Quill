@@ -95,6 +95,7 @@ onto it" — its children are still replayed.
 - A decoration that follows the caret cannot double as the display of a stored setting
 - A leaf block in `DELETABLE_BLOCKS` needs `_deletableTarget`, not the ancestor walk
 - Row 2's dividers are marked from JS, not CSS
+- Row 2 must not show or hide while a press in the editor is held
 - The inline image popover writes what core's popover writes, and is tested against core itself
 - Every `#toolbar-row2` group must carry `class="tb-group"`, and an icon-only group `tb-group-icons` too
 - A widget decoration next to the caret makes WebKit drop every keystroke, and jsdom/Chromium never show it
