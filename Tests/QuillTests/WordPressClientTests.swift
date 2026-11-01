@@ -237,6 +237,20 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(query.contains("draft"))
     }
 
+    @Test func listRequestAsksForModifiedGmtAndAuthor() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "[]".data(using: .utf8)!)
+        }
+        _ = try await client.fetchAllPosts()
+        let fields = URLComponents(url: capturedRequest!.url!, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == "_fields" }?.value?.split(separator: ",") ?? []
+        #expect(fields.contains("modified_gmt"))
+        #expect(fields.contains("author"))
+    }
+
     @Test func createPostUsesPostMethodWithJsonContentType() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in
@@ -647,7 +661,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
     @Test func canPostUnfilteredHTMLReadsTheCapabilityThenAPostsActionLink() async throws {
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: Self.unfilteredUser, posts: Self.postWithUnfilteredAction, requests: requests)
-        #expect(try await client.canPostUnfilteredHTML())
+        #expect(try await client.currentUser().canPostUnfilteredHTML)
         #expect(requests.urls.count == 2)
         #expect(requests.urls[0].path.hasSuffix("/users/me"))
         #expect(requests.urls[0].query?.contains("context=edit") == true)
@@ -662,7 +676,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         mockUnfilteredHTML(user: Self.unfilteredUser,
                            posts: #"[{"id":7,"_links":{"https://api.w.org/action-unfiltered-html":[{"href":"x"}]}}]"#,
                            requests: requests)
-        #expect(try await client.canPostUnfilteredHTML())
+        #expect(try await client.currentUser().canPostUnfilteredHTML)
     }
 
     // Multisite non-super-admins and DISALLOW_UNFILTERED_HTML keep the role capability but lose the permission.
@@ -671,13 +685,13 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         mockUnfilteredHTML(user: Self.unfilteredUser,
                            posts: #"[{"id":7,"_links":{"self":[{"href":"x"}],"wp:action-publish":[{"href":"x"}]}}]"#,
                            requests: requests)
-        #expect(try await client.canPostUnfilteredHTML() == false)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == false)
     }
 
     @Test func canPostUnfilteredHTMLFallsBackToTheCapabilityWithNoPosts() async throws {
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: Self.unfilteredUser, posts: "[]", requests: requests)
-        #expect(try await client.canPostUnfilteredHTML())
+        #expect(try await client.currentUser().canPostUnfilteredHTML)
     }
 
     // A plugin on siolon.com adds `can_runPHP` with a string value.
@@ -685,15 +699,48 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: #"{"id":1,"capabilities":{"can_runPHP":"1","unfiltered_html":true}}"#,
                            posts: Self.postWithUnfilteredAction, requests: requests)
-        #expect(try await client.canPostUnfilteredHTML())
+        #expect(try await client.currentUser().canPostUnfilteredHTML)
     }
 
     @Test func canPostUnfilteredHTMLIsFalseWithoutTheCapability() async throws {
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: #"{"id":1,"capabilities":{"edit_posts":true}}"#,
                            posts: Self.postWithUnfilteredAction, requests: requests)
-        #expect(try await client.canPostUnfilteredHTML() == false)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == false)
         #expect(requests.urls.count == 1)
+    }
+
+    @Test func currentUserDecodesIDAndCapability() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: #"{"id":7,"capabilities":{"unfiltered_html":true}}"#,
+                           posts: Self.postWithUnfilteredAction, requests: requests)
+        #expect(try await client.currentUser() == CurrentUserInfo(id: 7, canPostUnfilteredHTML: true))
+    }
+
+    @Test func currentUserKeepsTheIDWithoutTheCapability() async throws {
+        let requests = UnfilteredRequests()
+        mockUnfilteredHTML(user: #"{"id":7,"capabilities":{}}"#, posts: "[]", requests: requests)
+        #expect(try await client.currentUser() == CurrentUserInfo(id: 7, canPostUnfilteredHTML: false))
+    }
+
+    @Test func fetchSiteProfileDecodesTheNameAndIcon() async throws {
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    #"{"name":"Tom &amp; Jerry","site_icon_url":"https:\/\/cdn.example.com\/icon.png"}"#.data(using: .utf8)!)
+        }
+        let profile = try await client.fetchSiteProfile()
+        #expect(profile == SiteProfile(name: "Tom & Jerry", iconURL: URL(string: "https://cdn.example.com/icon.png")))
+        #expect(capturedRequest?.url?.absoluteString == "https://example.com/wp-json/?_fields=name,site_icon_url")
+    }
+
+    @Test func fetchSiteProfileTreatsEmptyAsNil() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+             #"{"name":"","site_icon_url":""}"#.data(using: .utf8)!)
+        }
+        #expect(try await client.fetchSiteProfile() == SiteProfile())
     }
 
     @Test func fetchAllCategoriesHitsCategoriesEndpointWithPerPage100() async throws {

@@ -95,9 +95,14 @@ public struct SiteDiscovery: Sendable {
     }
 
     public func loadIcon(_ url: URL) async -> NSImage? {
+        await loadIconData(url).flatMap(NSImage.init(data:))
+    }
+
+    // Unauthenticated on purpose: a site's icon is often on a CDN, and the site's credentials must not go there.
+    public func loadIconData(_ url: URL) async -> Data? {
         guard let (data, response) = try? await session.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
-        return NSImage(data: data)
+        return data
     }
 
     private static func secureOrNil(_ url: URL) -> URL? {

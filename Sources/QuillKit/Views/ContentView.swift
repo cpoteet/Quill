@@ -31,6 +31,7 @@ public struct ContentView: View {
             loadCredentialsAtLaunch()
         }
         .task(id: appState.aiSettings?.apiKey) { await appState.loadAIModelsIfNeeded() }
+        .task(id: appState.credentials?.siteKey) { await appState.refreshSiteProfile() }
         .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
         .onOpenURL { url in Task { await onboarding.handleCallback(url) } }
     }
@@ -56,10 +57,11 @@ public struct ContentView: View {
                 .controlSize(.small)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .navigationTitle("Quill")
+        } else if appState.sectionIsEmpty && appState.sectionListError != nil {
+            EmptyEditorPlaceholder(section: appState.selectedSection)
+                .navigationTitle("Quill")
         } else {
-            EmptyEditorPlaceholder(section: appState.selectedSection,
-                                   sectionIsEmpty: appState.sectionIsEmpty,
-                                   loadFailed: appState.sectionIsEmpty && appState.sectionListError != nil)
+            MastheadView(section: appState.selectedSection)
                 .navigationTitle("Quill")
         }
     }
@@ -67,26 +69,14 @@ public struct ContentView: View {
 
 struct EmptyEditorPlaceholder: View {
     let section: SidebarSection
-    var sectionIsEmpty: Bool = false
-    var loadFailed: Bool = false
-
-    private var noun: String {
-        switch section {
-        case .posts: return "post"
-        case .pages: return "page"
-        case .localDrafts: return "draft"
-        case .media: return "image"
-        }
-    }
 
     private var message: String {
-        if loadFailed {
-            return section == .media ? "Couldn't load media" : "Couldn't load \(noun)s"
+        switch section {
+        case .posts: return "Couldn't load posts"
+        case .pages: return "Couldn't load pages"
+        case .localDrafts: return "Couldn't load drafts"
+        case .media: return "Couldn't load media"
         }
-        if sectionIsEmpty {
-            return "No \(noun)s yet"
-        }
-        return "Select a \(noun) to edit"
     }
 
     var body: some View {

@@ -205,7 +205,7 @@ struct MediaLibraryView: View {
                 onSpace: { togglePreview() }
             )
         } else if appState.mediaError != nil && !appState.isLoadingMedia {
-            EmptyEditorPlaceholder(section: .media, loadFailed: true)
+            EmptyEditorPlaceholder(section: .media)
         } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
             SectionEmptyState(section: .media,
                               mediaFilter: appState.mediaFilter,

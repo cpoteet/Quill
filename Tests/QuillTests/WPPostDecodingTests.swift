@@ -471,4 +471,16 @@ import Testing
         let post = try decode(head + encoded + "}}")
         #expect(post.footnotes == stored)
     }
+
+    @Test func decodesModifiedGmtAndAuthor() throws {
+        let post = try decode(#"{"id":1,"title":{"rendered":"T"},"status":"draft","date":"d","modified":"m","slug":"s","link":"l","modified_gmt":"2026-10-31T09:00:00","author":3}"#)
+        #expect(post.modifiedGmt == "2026-10-31T09:00:00")
+        #expect(post.author == 3)
+    }
+
+    @Test func modifiedGmtAndAuthorAreOptional() throws {
+        let post = try decode(#"{"id":1,"title":{"rendered":"T"},"status":"draft","date":"d","modified":"m","slug":"s","link":"l"}"#)
+        #expect(post.modifiedGmt == "")
+        #expect(post.author == nil)
+    }
 }

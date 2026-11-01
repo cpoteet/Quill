@@ -133,4 +133,25 @@ import Testing
         #expect(try store.load(site: "https://a.test", postID: 3)?.title == "Newer")
         #expect(try db.db.scalar("SELECT COUNT(*) FROM autosaves WHERE site = ''") as? Int64 == 0)
     }
+
+    @Test func stashTimesListsOnlyThatSite() throws {
+        try store.save(site: "https://a.test", postID: 1, title: "", content: "", serverModified: "m")
+        try store.save(site: "https://a.test", postID: 2, title: "", content: "", serverModified: "m")
+        try store.save(site: "https://b.test", postID: 3, title: "", content: "", serverModified: "m")
+        let times = try store.stashTimes(site: "https://a.test")
+        #expect(times.map(\.postID).sorted() == [1, 2])
+        let saved = try store.load(site: "https://a.test", postID: 1)?.savedAt
+        #expect(times.first { $0.postID == 1 }?.savedAt == saved)
+    }
+
+    @Test func savingAndDeletingAnnounceTheChange() throws {
+        var announcements = 0
+        let observer = NotificationCenter.default.addObserver(forName: .autosavesDidChange, object: store, queue: nil) { _ in
+            announcements += 1
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        try store.save(site: site, postID: 1, title: "", content: "", serverModified: "m")
+        try store.delete(site: site, postID: 1)
+        #expect(announcements == 2)
+    }
 }

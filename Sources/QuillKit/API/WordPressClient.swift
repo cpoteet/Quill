@@ -1,5 +1,10 @@
 import Foundation
 
+public struct CurrentUserInfo: Sendable, Equatable {
+    public let id: Int
+    public let canPostUnfilteredHTML: Bool
+}
+
 public struct WordPressClient: Sendable {
     private let credentials: Credentials
     private let session: URLSession
@@ -39,7 +44,7 @@ public struct WordPressClient: Sendable {
         var all: [WPPost] = []
         var page = 1
         var totalPages = 1
-        let fields = "id,type,title,status,date,date_gmt,modified,slug,link,featured_media,categories,tags,parent,comment_status"
+        let fields = "id,type,title,status,date,date_gmt,modified,modified_gmt,author,slug,link,featured_media,categories,tags,parent,comment_status"
         repeat {
             let url = try endpoint(
                 resource,
@@ -241,14 +246,15 @@ public struct WordPressClient: Sendable {
     // MARK: - Current user
 
     /// Without `unfiltered_html`, WordPress strips `<script>` and `<style>` on save; see API/CLAUDE.md for why a post's action link decides.
-    public func canPostUnfilteredHTML() async throws -> Bool {
+    public func currentUser() async throws -> CurrentUserInfo {
         let user: CurrentUser = try await get(endpoint("users/me", query: ["context": "edit"]))
-        guard user.capabilities.unfilteredHTML else { return false }
+        guard user.capabilities.unfilteredHTML else { return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: false) }
         let posts: [PostActions] = try await get(endpoint("posts", query: [
             "context": "edit", "status": "any", "per_page": "1", "_fields": "id,_links",
         ]))
-        guard let post = posts.first else { return true }
-        return post.links.keys.contains { ["wp:action-unfiltered-html", "https://api.w.org/action-unfiltered-html"].contains($0) }
+        guard let post = posts.first else { return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: true) }
+        let allowed = post.links.keys.contains { ["wp:action-unfiltered-html", "https://api.w.org/action-unfiltered-html"].contains($0) }
+        return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: allowed)
     }
 
     private struct PostActions: Decodable {
@@ -267,7 +273,25 @@ public struct WordPressClient: Sendable {
                 unfilteredHTML = (try? container.decode(Bool.self, forKey: .unfilteredHTML)) ?? false
             }
         }
+        let id: Int
         let capabilities: Capabilities
+    }
+
+    // MARK: - Site
+
+    public func fetchSiteProfile() async throws -> SiteProfile {
+        let index: SiteIndex = try await get(restURL("", query: ["_fields": "name,site_icon_url"]))
+        return SiteProfile(name: index.name.flatMap { $0.isEmpty ? nil : $0.decodingHTMLEntities() },
+                           iconURL: index.siteIconURL.flatMap { $0.isEmpty ? nil : URL(string: $0) })
+    }
+
+    private struct SiteIndex: Decodable {
+        let name: String?
+        let siteIconURL: String?
+        enum CodingKeys: String, CodingKey {
+            case name
+            case siteIconURL = "site_icon_url"
+        }
     }
 
     // MARK: - Taxonomies
@@ -396,9 +420,13 @@ public struct WordPressClient: Sendable {
     // MARK: - Helpers
 
     private func endpoint(_ path: String, query: [String: String] = [:]) throws -> URL {
+        try restURL("wp/v2/\(path)", query: query)
+    }
+
+    private func restURL(_ route: String, query: [String: String] = [:]) throws -> URL {
         var base = credentials.siteURL.absoluteString
         if base.hasSuffix("/") { base = String(base.dropLast()) }
-        guard var components = URLComponents(string: "\(base)/wp-json/wp/v2/\(path)")
+        guard var components = URLComponents(string: "\(base)/wp-json/\(route)")
         else { throw APIError.invalidURL }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }

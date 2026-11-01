@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import QuillKit
@@ -592,6 +593,340 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         await state.connect(otherUser)
 
         #expect(state.canPostUnfilteredHTML == nil)
+    }
+}
+
+// MARK: - Site name
+
+@MainActor @Suite struct SiteProfileRefreshTests {
+    private let siteA = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
+    private let siteB = Credentials(siteURL: URL(string: "https://b.test")!, username: "u", appPassword: "p")
+    private let iconA = URL(string: "https://cdn.test/a.png")!
+    private let iconB = URL(string: "https://cdn.test/b.png")!
+
+    private func state(on site: Credentials) -> AppState {
+        let state = AppState()
+        state.credentials = site
+        return state
+    }
+
+    @Test func refreshShowsStoredNameThenFetched() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "Old"), for: siteA.siteKey)
+        let state = state(on: siteA)
+        var seenDuringFetch: String?
+        await state.refreshSiteProfile(store: store, fetch: { _ in
+            seenDuringFetch = state.siteName
+            return SiteProfile(name: "New")
+        }, loadIcon: { _ in nil })
+        #expect(seenDuringFetch == "Old")
+        #expect(state.siteName == "New")
+        #expect(store.profile(for: siteA.siteKey)?.name == "New")
+    }
+
+    @Test func refreshDropsAResultForAnotherSite() async throws {
+        let store = try makeSiteProfileStore()
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in
+            state.credentials = siteB
+            return SiteProfile(name: "A's name", iconURL: iconA)
+        }, loadIcon: { _ in tinyPNG() })
+        #expect(state.siteName == nil)
+        #expect(state.siteIcon == nil)
+    }
+
+    @Test func aFailedRefreshKeepsTheStoredProfile() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "Old", iconURL: iconA, iconData: tinyPNG()), for: siteA.siteKey)
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in throw URLError(.notConnectedToInternet) },
+                                       loadIcon: { _ in nil })
+        #expect(state.siteName == "Old")
+        #expect(state.siteIcon != nil)
+    }
+
+    @Test func aSiteWhoseNameWasClearedFallsBack() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "Old"), for: siteA.siteKey)
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile() }, loadIcon: { _ in nil })
+        #expect(state.siteName == nil)
+        #expect(store.profile(for: siteA.siteKey)?.name == nil)
+    }
+
+    @Test func aNewIconIsDownloadedShownAndStored() async throws {
+        let store = try makeSiteProfileStore()
+        let state = state(on: siteA)
+        var loaded: [URL] = []
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A", iconURL: iconA) },
+                                       loadIcon: { loaded.append($0); return tinyPNG() })
+        #expect(loaded == [iconA])
+        #expect(state.siteIcon != nil)
+        #expect(store.profile(for: siteA.siteKey)?.iconData == tinyPNG())
+    }
+
+    @Test func anUnchangedIconIsNotDownloadedAgain() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "A", iconURL: iconA, iconData: tinyPNG()), for: siteA.siteKey)
+        let state = state(on: siteA)
+        var loads = 0
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A", iconURL: iconA) },
+                                       loadIcon: { _ in loads += 1; return tinyPNG() })
+        #expect(loads == 0)
+        #expect(state.siteIcon != nil)
+    }
+
+    @Test func aSiteThatDropsItsIconClearsIt() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "A", iconURL: iconA, iconData: tinyPNG()), for: siteA.siteKey)
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A") }, loadIcon: { _ in nil })
+        #expect(state.siteIcon == nil)
+        #expect(store.profile(for: siteA.siteKey)?.iconData == nil)
+    }
+
+    @Test func aFailedDownloadKeepsTheOldIconAndTriesAgainNextTime() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "A", iconURL: iconA, iconData: tinyPNG()), for: siteA.siteKey)
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A", iconURL: iconB) },
+                                       loadIcon: { _ in nil })
+        #expect(state.siteIcon != nil)
+        var loaded: [URL] = []
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A", iconURL: iconB) },
+                                       loadIcon: { loaded.append($0); return tinyPNG() })
+        #expect(loaded == [iconB])
+        #expect(store.profile(for: siteA.siteKey)?.iconURL == iconB)
+    }
+
+    @Test func bytesThatAreNotAnImageCountAsAFailedDownload() async throws {
+        let store = try makeSiteProfileStore()
+        try store.setProfile(SiteProfile(name: "A", iconURL: iconA, iconData: tinyPNG()), for: siteA.siteKey)
+        let state = state(on: siteA)
+        await state.refreshSiteProfile(store: store, fetch: { _ in SiteProfile(name: "A", iconURL: iconB) },
+                                       loadIcon: { _ in Data("<html>Not found</html>".utf8) })
+        #expect(state.siteIcon != nil)
+        #expect(store.profile(for: siteA.siteKey)?.iconURL == iconA)
+        #expect(store.profile(for: siteA.siteKey)?.iconData == tinyPNG())
+    }
+
+    @Test func anotherAccountOnTheSameSiteForgetsTheUserID() async {
+        let state = state(on: siteA)
+        state.currentUserID = 3
+        await state.connect(Credentials(siteURL: URL(string: "https://a.test/")!, username: "author", appPassword: "p"))
+        #expect(state.currentUserID == nil)
+    }
+
+    @Test func connectingToAnotherSiteForgetsTheProfileAndUser() async {
+        let state = state(on: siteA)
+        state.siteName = "A"
+        state.siteIcon = NSImage(data: tinyPNG())
+        state.currentUserID = 3
+        await state.connect(siteB)
+        #expect(state.siteName == nil)
+        #expect(state.siteIcon == nil)
+        #expect(state.currentUserID == nil)
+    }
+}
+
+// MARK: - Opening from the masthead
+
+@MainActor @Suite struct OpenFromMastheadTests {
+    private func waitForSelection(_ state: AppState) async throws {
+        for _ in 0..<100 where state.selectedItem == nil { try await Task.sleep(for: .milliseconds(10)) }
+    }
+
+    @Test func openingALocalDraftFromPostsSwitchesToDrafts() async throws {
+        let state = AppState()
+        let draft = makeDraft(id: 4)
+        state.localDrafts = [draft]
+        state.openFromMasthead(.local(draft), in: .localDrafts)
+        try await waitForSelection(state)
+        #expect(state.selectedSection == .localDrafts)
+        #expect(state.selectedItem == .local(draft))
+    }
+
+    @Test func openingAStashedPageFromPostsSwitchesToPages() async throws {
+        let state = AppState()
+        let page = try makePost(id: 8, type: "page")
+        state.pages = [page]
+        state.openFromMasthead(.remote(page), in: .pages)
+        try await waitForSelection(state)
+        #expect(state.selectedSection == .pages)
+        #expect(state.selectedItem == .remote(page))
+    }
+
+    @Test func openingClearsAFilterThatWouldHideTheItem() async throws {
+        let state = AppState()
+        let draft = try makePost(id: 1, status: "draft")
+        state.posts = [draft, try makePost(id: 2, status: "publish")]
+        state.statusFilter = .publish
+        state.openFromMasthead(.remote(draft), in: .posts)
+        #expect(state.statusFilter == .all)
+        #expect(state.filteredItems.contains { $0.id == "remote-1" })
+    }
+
+    @Test func openingKeepsAFilterThatShowsTheItem() async throws {
+        let state = AppState()
+        let draft = try makePost(id: 1, status: "draft")
+        state.posts = [draft, try makePost(id: 2, status: "publish")]
+        state.statusFilter = .draft
+        state.openFromMasthead(.remote(draft), in: .posts)
+        #expect(state.statusFilter == .draft)
+        #expect(state.selectedItem == .remote(draft))
+    }
+
+    @Test func openingClearsASearchThatWouldHideTheItem() async throws {
+        let state = AppState()
+        let draft = try makePost(id: 1, title: "Packing")
+        state.posts = [draft]
+        state.searchText = "Coast"
+        state.openFromMasthead(.remote(draft), in: .posts)
+        #expect(state.searchText == "")
+    }
+
+    @Test func openingKeepsASearchThatShowsTheItem() async throws {
+        let state = AppState()
+        let draft = try makePost(id: 1, title: "Packing")
+        state.posts = [draft]
+        state.searchText = "Pack"
+        state.openFromMasthead(.remote(draft), in: .posts)
+        #expect(state.searchText == "Pack")
+    }
+}
+
+// MARK: - Missed schedules
+
+@MainActor private final class Gate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    var isWaiting: Bool { continuation != nil }
+    func wait() async { await withCheckedContinuation { continuation = $0 } }
+    func open() { continuation?.resume(); continuation = nil }
+}
+
+@MainActor @Suite struct MissedScheduleTests {
+    private let siteA = Credentials(siteURL: URL(string: "https://a.test")!, username: "u", appPassword: "p")
+    private let siteB = Credentials(siteURL: URL(string: "https://b.test")!, username: "u", appPassword: "p")
+    private let now = PostSettings.parseWPDate("2026-10-31T12:00:00")!
+    private let passed = "2026-10-31T11:00:00"
+
+    private func state(with posts: [WPPost]) -> AppState {
+        let state = AppState()
+        state.credentials = siteA
+        state.posts = posts
+        return state
+    }
+
+    @Test func aStillFutureFetchConfirmsTheMiss() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in post })
+        #expect(state.confirmedMissed == [MissedKey(id: 1, dateGmt: passed)])
+    }
+
+    @Test func aPublishedFetchUpdatesTheListAndDoesNotConfirm() async throws {
+        let state = state(with: [try makePost(id: 1, status: "future", dateGmt: passed)])
+        let published = try makePost(id: 1, status: "publish", dateGmt: passed)
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in published })
+        #expect(state.confirmedMissed.isEmpty)
+        #expect(state.posts[0].status == "publish")
+    }
+
+    @Test func aPublishedPageUpdatesThePagesList() async throws {
+        let state = state(with: [])
+        state.pages = [try makePost(id: 2, status: "future", type: "page", dateGmt: passed)]
+        let published = try makePost(id: 2, status: "publish", type: "page", dateGmt: passed)
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in published })
+        #expect(state.pages[0].status == "publish")
+    }
+
+    @Test func aFailedFetchConfirmsNothing() async throws {
+        let state = state(with: [try makePost(id: 1, status: "future", dateGmt: passed)])
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in throw URLError(.notConnectedToInternet) })
+        #expect(state.confirmedMissed.isEmpty)
+        #expect(state.posts[0].status == "future")
+    }
+
+    @Test func eachPostIsFetchedOnce() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        var fetches = 0
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; throw URLError(.timedOut) })
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return post })
+        #expect(fetches == 1)
+    }
+
+    @Test func aRescheduledPostIsCheckedAgain() async throws {
+        let first = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [first])
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in first })
+        let moved = try makePost(id: 1, status: "future", dateGmt: "2026-10-31T11:30:00")
+        state.posts = [moved]
+        var fetches = 0
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return moved })
+        #expect(fetches == 1)
+        #expect(state.confirmedMissed.contains(MissedKey(id: 1, dateGmt: "2026-10-31T11:30:00")))
+        let rows = Masthead.scheduled(for: .posts, posts: state.posts, pages: [], confirmedMissed: [MissedKey(id: 1, dateGmt: passed)], now: now)
+        #expect(rows.isEmpty)
+    }
+
+    @Test func aPostCrossingTheGraceIsPickedUpOnALaterCall() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: "2026-10-31T11:57:00")
+        let state = state(with: [post])
+        var fetches = 0
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return post })
+        #expect(fetches == 0)
+        await state.confirmMissedSchedules(now: now.addingTimeInterval(360), fetch: { _, _ in fetches += 1; return post })
+        #expect(fetches == 1)
+    }
+
+    @Test func aResultAfterASiteSwitchIsDropped() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in
+            await state.connect(siteB)
+            return try makePost(id: 1, status: "publish", dateGmt: passed)
+        })
+        #expect(state.confirmedMissed.isEmpty)
+        #expect(state.posts.isEmpty)
+    }
+
+    @Test func aCheckFinishesWhenTheTaskThatStartedItIsReplaced() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        let gate = Gate()
+        let replaced = Task { @MainActor in
+            await state.confirmMissedSchedules(now: now, fetch: { _, _ in
+                await gate.wait()
+                try Task.checkCancellation()
+                return post
+            })
+        }
+        while !gate.isWaiting { await Task.yield() }
+        replaced.cancel()
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in post })
+        gate.open()
+        await replaced.value
+        #expect(state.confirmedMissed == [MissedKey(id: 1, dateGmt: passed)])
+    }
+
+    @Test func aLateResponseDoesNotOverwriteANewerListEntry() async throws {
+        let state = state(with: [try makePost(id: 1, title: "Old", status: "future", dateGmt: passed)])
+        let refreshed = try makePost(id: 1, title: "Renamed", status: "draft", dateGmt: passed)
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in
+            state.posts = [refreshed]
+            return try makePost(id: 1, title: "Old", status: "publish", dateGmt: passed)
+        })
+        #expect(state.posts[0].title.rendered == "Renamed")
+        #expect(state.posts[0].status == "draft")
+    }
+
+    @Test func connectingToAnotherSiteForgetsConfirmations() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in post })
+        await state.connect(siteB)
+        #expect(state.confirmedMissed.isEmpty)
     }
 }
 

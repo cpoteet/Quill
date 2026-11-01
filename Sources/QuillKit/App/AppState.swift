@@ -86,6 +86,11 @@ public final class AppState: ObservableObject {
     @Published public var credentials: Credentials?
     /// Asked once per connection, the first time the Custom HTML sheet opens; nil until WordPress answers.
     @Published public var canPostUnfilteredHTML: Bool?
+    @Published public var currentUserID: Int?
+    @Published public var siteName: String?
+    @Published public var siteIcon: NSImage?
+    @Published public var confirmedMissed: Set<MissedKey> = []
+    private var checkedMissed: Set<MissedKey> = []
 
     @Published public var posts: [WPPost] = []
     @Published public var pages: [WPPost] = []
@@ -179,16 +184,86 @@ public final class AppState: ObservableObject {
             pages = []
             mediaItems = []
             selectedMedia = nil
+            siteName = nil
+            siteIcon = nil
+            confirmedMissed = []
+            checkedMissed = []
         }
         credentials = newCredentials
         canPostUnfilteredHTML = nil
+        currentUserID = nil
     }
 
     @MainActor public func loadUnfilteredHTMLCapability() async {
         guard canPostUnfilteredHTML == nil, let creds = credentials else { return }
-        let allowed = try? await WordPressClient(credentials: creds).canPostUnfilteredHTML()
+        let user = try? await WordPressClient(credentials: creds).currentUser()
         guard credentials == creds else { return }
-        canPostUnfilteredHTML = allowed
+        canPostUnfilteredHTML = user?.canPostUnfilteredHTML
+        currentUserID = user?.id
+    }
+
+    // A failed icon download keeps the old icon under its old URL, so the next refresh tries the new one again.
+    @MainActor public func refreshSiteProfile(
+        store: SiteProfileStore = SiteProfileStore(),
+        fetch: (Credentials) async throws -> SiteProfile = { try await WordPressClient(credentials: $0).fetchSiteProfile() },
+        loadIcon: (URL) async -> Data? = { await SiteDiscovery().loadIconData($0) }
+    ) async {
+        guard let creds = credentials else { return }
+        let key = creds.siteKey
+        let stored = store.profile(for: key)
+        show(stored)
+        var fetched: SiteProfile
+        do { fetched = try await fetch(creds) } catch { return }
+        if let url = fetched.iconURL {
+            if url == stored?.iconURL, let data = stored?.iconData {
+                fetched.iconData = data
+            } else if let data = await loadIcon(url), NSImage(data: data) != nil {
+                fetched.iconData = data
+            } else {
+                fetched.iconURL = stored?.iconURL
+                fetched.iconData = stored?.iconData
+            }
+        }
+        guard credentials?.siteKey == key else { return }
+        show(fetched)
+        try? store.setProfile(fetched, for: key)
+    }
+
+    @MainActor private func show(_ profile: SiteProfile?) {
+        siteName = profile?.name
+        siteIcon = profile?.iconData.flatMap(NSImage.init(data:))
+    }
+
+    // The list isn't refreshed on a timer, so a post WP-Cron published on time still reads "future" until it's fetched.
+    @MainActor public func confirmMissedSchedules(
+        now: Date = .now,
+        fetch: @escaping @MainActor (Credentials, WPPost) async throws -> WPPost = { creds, post in
+            let client = WordPressClient(credentials: creds)
+            return post.type == "page" ? try await client.fetchPage(id: post.id) : try await client.fetchPost(id: post.id)
+        }
+    ) async {
+        guard let creds = credentials else { return }
+        let listed = posts + pages
+        var checks: [Task<Void, Never>] = []
+        for key in Masthead.missedCandidates(posts: listed, now: now) where !checkedMissed.contains(key) {
+            guard let post = listed.first(where: { $0.id == key.id }) else { continue }
+            checkedMissed.insert(key)
+            checks.append(Task { @MainActor in await self.confirmMiss(key, of: post, on: creds, fetch: fetch) })
+        }
+        for check in checks { await check.value }
+    }
+
+    // Unstructured, so it finishes even when the view task that started it is replaced; the replacement skips checked keys.
+    @MainActor private func confirmMiss(_ key: MissedKey, of post: WPPost, on creds: Credentials,
+                                        fetch: @MainActor (Credentials, WPPost) async throws -> WPPost) async {
+        guard let fetched = try? await fetch(creds, post), credentials?.siteKey == creds.siteKey else { return }
+        if fetched.status == "future" && fetched.dateGmt == key.dateGmt {
+            confirmedMissed.insert(key)
+        } else if let index = posts.firstIndex(of: post) {
+            posts[index] = fetched
+        } else if let index = pages.firstIndex(of: post) {
+            pages[index] = fetched
+        }
     }
 
     // Looked up by ID after the request, since the list can change while it runs.
@@ -209,6 +284,17 @@ public final class AppState: ObservableObject {
         switchSection(to: .localDrafts) {
             self.searchText = ""
             self.selectedItem = .local(newDraft)
+        }
+    }
+
+    // Clears only the search or filter that would hide the item in the sidebar.
+    @MainActor public func openFromMasthead(_ item: PostItem, in section: SidebarSection) {
+        switchSection(to: section) {
+            if !self.searchText.isEmpty, !item.title.localizedCaseInsensitiveContains(self.searchText) {
+                self.searchText = ""
+            }
+            if case .remote(let post) = item, !self.statusFilter.matches(post) { self.statusFilter = .all }
+            self.selectedItem = item
         }
     }
 

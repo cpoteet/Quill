@@ -1,17 +1,17 @@
-# Masthead empty state
+# Empty state: continue writing
 
-Mockup: `2026-10-31-empty-state-masthead-mockups.html` next to this spec. Chris chose the Front page layout in SF Pro with no feather. The mockup still has the "Other drafts" list and the feather options; where the mockup and this spec differ, the spec wins.
+Mockup: `2026-11-01-empty-state-native-mockups.html` next to this spec, direction C (Grouped list) with the site icon. *(Chris's call, 2026-11-01: the first build used the newspaper masthead from `2026-10-31-empty-state-masthead-mockups.html`, and in the app its size, print styling and small-caps labels felt foreign to Quill. Direction C replaces it.)* Where a mockup and this spec differ, the spec wins.
 
 ## Why
 
 Quill does not restore the open post at launch, and switching sidebar sections clears the selection, so the empty state is the first thing the author sees every time they open the app, and again on every section switch. Today it says "Select a post to edit" beside a large feather. It could instead take them straight back to what they were writing.
 
-The page borrows the layout of a newspaper masthead: the site's name over a double rule, with the date and the address in the rule.
+The page is built from native Mac parts: a header with the site's icon and name, and inset grouped rows like System Settings.
 
 ## Goals
 
-- The site's name as a masthead, with today's date and the site's address in the rule beneath it.
-- **Continue writing:** one item, the thing the author was most recently writing. One click opens it.
+- A header with the site's name and address, and its WordPress Site Icon when it has one.
+- **Continue writing:** up to three items, the things the author was most recently writing, newest first. One click opens one. *(Chris's call, 2026-11-01: the grouped list has room for more than one. On Drafts the three repeat the top of the sidebar, which is sorted the same way; he chose the same count in every section over avoiding that.)*
 - **Scheduled:** up to three posts due in the next two weeks, with their dates.
 - Posts, Pages and Drafts each get a version of the page. Media is unchanged.
 
@@ -19,42 +19,42 @@ The page borrows the layout of a newspaper masthead: the site's name over a doub
 
 - A list of every draft. The sidebar already lists them with their status.
 - Word counts, streaks, stats or anything else that needs post content. The post list request leaves content out, and fetching it for this page is not worth the cost.
-- The site icon. Mastheads are type only, and site icons are often small raster logos that would sit badly at this size.
+- The theme's Site Logo. The REST index gives only its media ID, and it is often a wordmark that repeats the site's name.
 - Restoring the last open post at launch. That would mean the page is seen less, not that it is needed less, and it is a separate decision.
 
 ## Anti-goals
 
 - Repeating the sidebar. Every item on the page must be something the sidebar does not already put in front of the author.
 - Delaying the editor. The page must never block or slow opening a post.
-- A serif, or any typeface Quill does not already use. *(Chris's call, 2026-10-31: he was unsure about bringing a serif into the app and about losing the Quill mark. He then tried the feather in the mockup and dropped it, because it was too faint at masthead sizes. My reasoning for SF: the grip gets its character from print conventions set in the editor's own sans, not from a second typeface.)*
+- A visual language Quill does not already use: display-size type, heavy rules, small caps, dotted leaders, or a second typeface.
+- The Quill feather beside the site's name, where it could read as the site's own logo. *(Chris's call, 2026-11-01.)*
 
 ## Decisions
 
 ### When it shows
 
-- In Posts, Pages and Drafts whenever nothing is selected and the list has loaded. It replaces both "Select a … to edit" and "No …s yet". In a section with no items, the page's empty line ("Start a post with ⌘N") says the same thing as "No posts yet" and still shows the masthead and any local draft. *(Chris's call, 2026-10-31, on my suggestion: a brand-new site with a local draft in progress is exactly when Continue writing helps.)*
+- In Posts, Pages and Drafts whenever nothing is selected and the list has loaded. An empty section still shows the page, since a brand-new site with a local draft in progress is exactly when Continue writing helps. *(Chris's call, 2026-10-31.)*
 - Unchanged: the loading spinner, and "Couldn't load posts" (and its Pages, Drafts and Media versions) when the list fails to load.
 - Media keeps its grid. Its empty state never appears.
 
 ### Layout
 
-One centred column, at most 520pt wide, starting about 72pt from the top. Every colour is a system semantic colour (`.primary`, `.secondary`, `.tertiary`, the accent), so light and dark need no special cases.
+One column, at most 480pt wide, starting about 72pt from the top. Every colour is a system semantic colour or one of Quill's status colours, so light and dark need no special cases.
 
-- **Name:** SF Pro, bold, about 46pt, tracking tightened to about -2.5%, centred. A long name wraps to at most two lines and scales down to fit them (to about 32pt) before it truncates.
-- **Rule:** a 2pt rule in `.primary` above, a hairline in the separator colour below, 7pt of padding between them. Inside: the date on the left (`Date.formatted(date: .complete, time: .omitted)`, in the user's locale) and the site's host on the right, both in `.secondary` at about 12pt.
-- **Section labels:** "continue writing" and "scheduled" in lowercase small caps (`.lowercaseSmallCaps()`), `.secondary`, about 15pt. These echo the grip's small-caps heading markers. Check in the built app that SF draws true small caps here; if SwiftUI synthesises them by scaling capitals, use regular `.secondary` text at 12pt instead and tell Chris.
-- **Continue writing:** the title at about 23pt semibold, then a `.secondary` line saying what it is and when it was last edited (see below).
-- **Scheduled:** one row per post: the title at about 16pt on the left, a dotted leader in `.tertiary` filling the space, and the date on the right ("Tue 3 Nov", tabular figures). A long title truncates before the leader shrinks below about 16pt.
-- **Nothing to show:** if there is no Continue writing item and nothing scheduled, a single `.secondary` line under the rule: "Start a post with ⌘N" in Posts and Drafts, "Start a page with ⇧⌘N" in Pages.
-- No feather. `QuillMark.emptyStateIcon` stays for "Couldn't load".
+- **Header:** the site's name in `.title` bold, with its host beneath in `.secondary`. When the site has a Site Icon, it sits to the left at 40pt with 9pt corners and a hairline `.separator` border, like the site tile on the onboarding waiting panel. With no icon, the header is text only. A long name truncates on one line.
+- **Section labels:** "Continue Writing" and "Scheduled", each a `SectionLabel`.
+- **Rows:** inset grouped rows in a box filled with `.fill.quaternary` at a 10pt radius, divided by separators. Each row is the status symbol (`statusSymbol(_:)`, palette white on `Color.statusColor(_:)`) at about 20pt, the title in `.body` medium on one line, a `.subheadline` `.secondary` line beneath, and a `.tertiary` chevron. On hover the row takes a light `.fill` highlight; the title keeps its colour.
+- **Continue writing:** up to three rows. Each row's second line is its meta line (see below).
+- **Scheduled:** one row per post. The second line is the date and time ("Tue, Nov 3 at 9:00 AM" in the user's locale), or "Missed schedule". A missed row uses the Pending colour with `exclamationmark.circle.fill`, so it stands apart from the blue scheduled rows.
+- **Nothing to show:** if there is no Continue writing item and nothing scheduled, the page is a `ContentUnavailableView` like "Couldn't load posts": the feather (`QuillMark.emptyStateIcon`), the site's name, and one line: "Select a post to edit" (page, draft) when the section has items, "No posts yet" (pages, drafts) when it has none. *(Chris's call, 2026-11-01: the page should not assume the author wants to start something new.)*
 
 ### Interaction
 
-- Each item is a plain button. On hover its title takes the accent colour. With Full Keyboard Access each item is focusable, and Return or Space opens it.
+- Each row is a plain button with the row's hover highlight. With Full Keyboard Access each item is focusable, and Return or Space opens it.
 - Opening an item selects it in its own section. An item from another section switches the sidebar first, the way `AppState.createNewDraft` does with `switchSection(to:then:)`: a local draft opened from the Posts page goes to Drafts, and a remote page with an autosave stash goes to Pages. If the search text or status filter would hide the item in the sidebar, clear them, as `createNewDraft` clears the search.
 - VoiceOver reads each item as one element: the section label, the title, and the meta line, for example "Continue writing, Packing for the coast, draft, edited 2 hours ago".
 
-### Which item is Continue writing
+### Which items are Continue writing
 
 **Candidates:**
 
@@ -72,11 +72,11 @@ The Posts page reaches across sections because it is the page seen at launch, an
 - the stash's `savedAt`, when a remote post has one;
 - `updatedAt`, for a local draft.
 
-The newest candidate wins. These are all absolute times, so comparing them across sources is sound.
+The three newest candidates are shown, newest first. These are all absolute times, so comparing them across sources is sound.
 
 **What counts as a draft:** status `draft` only. A pending post is waiting for an editor, not being written. A published, private or scheduled post qualifies only through an autosave stash.
 
-**The author's drafts:** on a site with several authors, another author's draft must not lead. Filter remote drafts by `author` against the signed-in user's ID. `WordPressClient.canPostUnfilteredHTML()` already fetches `users/me`; decode `id` from that response, not from a new request. Today `AppState.loadUnfilteredHTMLCapability()` runs only once the editor is ready, so the masthead must also start it when it appears (it is guarded to run once per site). Until the ID arrives, don't filter. Stashes and local drafts are this Mac's by definition and are not filtered.
+**The author's drafts:** on a site with several authors, another author's draft must not lead. Filter remote drafts by `author` against the signed-in user's ID. `WordPressClient.canPostUnfilteredHTML()` already fetches `users/me`; decode `id` from that response, not from a new request. Today `AppState.loadUnfilteredHTMLCapability()` runs only once the editor is ready, so the page must also start it when it appears (it is guarded to run once per site). Until the ID arrives, don't filter. Stashes and local drafts are this Mac's by definition and are not filtered.
 
 **Meta line:**
 
@@ -99,7 +99,7 @@ The newest candidate wins. These are all absolute times, so comparing them acros
 
 ### Data the app does not have yet
 
-- **The site's name.** `SiteDiscovery.discover` decodes `name` at sign-in, but nothing stores it. Store it per site (keyed by `siteKey`), and refresh it in the background at launch from the REST index; try `_fields=name` on that request, since the full index lists every route. Do not add it to `Credentials`: `SidebarView` compares `credentials` against `lastLoadedCredentials` to decide when to reload, so a renamed site would trigger a full reload. Until a name is known, or if the site has none, the masthead shows the site's host.
+- **The site's name and icon.** `SiteDiscovery.discover` decodes `name` and `site_icon_url` at sign-in, but nothing stores them. Store both per site (keyed by `siteKey`), and refresh them in the background at launch from the REST index with `_fields=name,site_icon_url`, since the full index lists every route. Keep the icon's bytes too, so the header does not flash empty at launch or go blank offline, and download it again only when its URL changes. The download goes through `SiteDiscovery`'s unauthenticated session: the icon may live on a CDN, and the site's credentials must not go with it. Do not add any of this to `Credentials`: `SidebarView` compares `credentials` against `lastLoadedCredentials` to decide when to reload, so a renamed site would trigger a full reload. Until a name is known, or if the site has none, the header shows the site's host.
 - **The signed-in user's ID**, from the existing `users/me` request (above). It does not need storing.
 - **`modified_gmt` and `author`** on each post: add both to the list request's `_fields` and to `WPPost`. Decode both as optional, so a cached or older response without them still decodes.
 - **Every stash's post ID and `savedAt` for a site:** a new `AutosaveStore` query. A stash for a post that is no longer in the list is ignored.
@@ -118,6 +118,8 @@ The candidate and scheduled rules should be static functions that take the lists
 - Missed schedule: not flagged inside the 5-minute grace period; not flagged until the confirming fetch says `future`; a confirming fetch that returns `publish` updates the list and drops the item; a failed fetch shows nothing; a post is fetched only once.
 - Meta lines and relative times, including the switch to a date after a week.
 - Name fallback: no stored name shows the host.
+- The site icon is downloaded when its URL is new, not again while it is unchanged, cleared when the site drops it, and kept when a download fails.
+- The empty line: "Select a … to edit" with items, "No …s yet" without.
 - `WPPost` decodes with and without `modified_gmt` and `author`.
 - The site name store round-trips and is keyed per site.
 - Another author's draft is not filtered out before the user ID arrives, and is filtered out after.
@@ -129,9 +131,9 @@ Update the counts in `docs/testing-plan.md`.
 
 - Launch: the Posts page shows the post last written; clicking it opens it.
 - A local draft newer than every WordPress draft leads on the Posts page and opens in Drafts.
-- Long site name at the narrowest window with the sidebar open: two lines at most, nothing clipped.
+- Long site name at the narrowest window with the sidebar open: one line, truncated, nothing clipped. A site with a Site Icon shows it; one without shows text only.
 - Light and dark; Full Keyboard Access; VoiceOver reads each item as one element.
-- No masthead in Media; "Couldn't load posts" unchanged when offline.
+- No page in Media; "Couldn't load posts" unchanged when offline.
 
 ## Docs to update
 

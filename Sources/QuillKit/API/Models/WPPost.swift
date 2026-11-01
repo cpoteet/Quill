@@ -10,6 +10,8 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     public var date: String  // ISO8601, server local time
     public var dateGmt: String  // ISO8601, UTC — used for schedule round-trip
     public var modified: String  // ISO8601 — used for conflict detection
+    public var modifiedGmt: String  // "" when the response left it out
+    public var author: Int?
     public var slug: String
     public var link: String
     public var featuredMedia: Int  // media ID, 0 if none
@@ -22,6 +24,8 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, type, title, content, excerpt, status, date, modified, slug, link, parent
         case dateGmt = "date_gmt"
+        case modifiedGmt = "modified_gmt"
+        case author
         case featuredMedia = "featured_media"
         case categories, tags
         case commentStatus = "comment_status"
@@ -43,6 +47,8 @@ public struct WPPost: Identifiable, Codable, Hashable, Sendable {
         date = try c.decode(String.self, forKey: .date)
         dateGmt = try c.decodeIfPresent(String.self, forKey: .dateGmt) ?? ""
         modified = try c.decode(String.self, forKey: .modified)
+        modifiedGmt = try c.decodeIfPresent(String.self, forKey: .modifiedGmt) ?? ""
+        author = try c.decodeIfPresent(Int.self, forKey: .author)
         slug = try c.decode(String.self, forKey: .slug)
         link = try c.decode(String.self, forKey: .link)
         featuredMedia = try c.decodeIfPresent(Int.self, forKey: .featuredMedia) ?? 0

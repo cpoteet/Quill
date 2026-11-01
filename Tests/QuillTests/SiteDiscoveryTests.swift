@@ -25,6 +25,28 @@ import Testing
         }
     }
 
+    // MARK: - icon
+
+    @Test func loadIconDataReturnsTheBytes() async {
+        serve("PNG")
+        #expect(await discovery.loadIconData(URL(string: "https://cdn.example.com/icon.png")!) == Data("PNG".utf8))
+    }
+
+    @Test func loadIconDataSendsNoCredentials() async {
+        var authorization: String?
+        DiscoveryMockURLProtocol.requestHandler = { request in
+            authorization = request.value(forHTTPHeaderField: "Authorization")
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("PNG".utf8))
+        }
+        _ = await discovery.loadIconData(URL(string: "https://cdn.example.com/icon.png")!)
+        #expect(authorization == nil)
+    }
+
+    @Test func loadIconDataIsNilForAMissingIcon() async {
+        serve("", status: 404)
+        #expect(await discovery.loadIconData(URL(string: "https://cdn.example.com/icon.png")!) == nil)
+    }
+
     // MARK: - normalize
 
     @Test func normalizeAddsHTTPSToBareHost() throws {

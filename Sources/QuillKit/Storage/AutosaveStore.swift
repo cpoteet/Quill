@@ -10,6 +10,15 @@ public struct AutosaveSnapshot: Sendable {
     public var serverModified: String
 }
 
+extension Notification.Name {
+    public static let autosavesDidChange = Notification.Name("QuillAutosavesDidChange")
+}
+
+public struct StashTime: Sendable, Equatable {
+    public let postID: Int
+    public let savedAt: Date
+}
+
 public final class AutosaveStore: @unchecked Sendable {
     private let db: AppDatabase
 
@@ -29,6 +38,7 @@ public final class AutosaveStore: @unchecked Sendable {
                 db.autosaveSavedAt <- Date().timeIntervalSince1970,
                 db.autosaveServerModified <- serverModified
             ))
+        announceChange()
     }
 
     public func load(site: String, postID: Int) throws -> AutosaveSnapshot? {
@@ -44,8 +54,20 @@ public final class AutosaveStore: @unchecked Sendable {
         )
     }
 
+    public func stashTimes(site: String) throws -> [StashTime] {
+        let query = db.autosaves.select(db.autosavePostID, db.autosaveSavedAt).filter(db.autosaveSite == site)
+        return try db.db.prepare(query).map {
+            StashTime(postID: $0[db.autosavePostID], savedAt: Date(timeIntervalSince1970: $0[db.autosaveSavedAt]))
+        }
+    }
+
     public func delete(site: String, postID: Int) throws {
         try db.db.run(db.autosaves.filter(db.autosaveSite == site && db.autosavePostID == postID).delete())
+        announceChange()
+    }
+
+    private func announceChange() {
+        NotificationCenter.default.post(name: .autosavesDidChange, object: self)
     }
 
     // A stash already written for the site is newer than an unsited one, so it wins.

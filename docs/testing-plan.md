@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-10-31 — 804 Swift tests + 2,079 JS tests (2,078 pass, 1 skipped), no failures._
+_Last updated: 2026-11-01 — 882 Swift tests + 2,079 JS tests (2,078 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (810 tests)
+1. **Swift tests** — `swift test` (882 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
@@ -119,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (810 tests, 52 suites)
+## Swift test suite (882 tests, 59 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -129,15 +129,15 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 
 | # | Suite | File | Tests | What it covers |
 |---|---|---|---|---|
-| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 41 | `WPPost` JSON decoding, optional-field defaults, `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
+| 1 | `WPPostDecodingTests` | `WPPostDecodingTests.swift` | 43 | `WPPost` JSON decoding, optional-field defaults (incl. `modified_gmt` and `author`), `editorHTML` fallback, wpautop for classic content, HTML entity decoding, `excerptText` plain-text extraction, empty content from `_fields` list fetch, `meta.footnotes` decoding incl. null, non-string and empty-array payloads |
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 26 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 84 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `canPostUnfilteredHTML` (the user's capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 89 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter (incl. `modified_gmt` and `author` on the list request), `fetchSiteProfile`, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `currentUser` (the user's ID and capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
-| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 16 | Autosave CRUD, one-per-post, keyed by site, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
+| 9 | `AutosaveStoreTests` | `AutosaveStoreTests.swift` | 18 | Autosave CRUD, one-per-post, keyed by site, `stashTimes` per site, `autosavesDidChange` on save and delete, unsited rows adopted once, `serverModified`, `savedAt` ordering, footnotes stashed and replaced in step with title and content |
 | 10 | `TaxonomyCacheTests` | `TaxonomyCacheTests.swift` | 12 | Category/tag cache, TTL boundary, replace semantics, collision guard |
 | 11 | `AppDatabaseTests` | `AppDatabaseTests.swift` | 6 | Migration idempotency, old-schema `type` column backfill, `footnotes` column added to existing drafts and autosaves tables, autosaves rebuilt with a site key, drafts and autosaves independent |
 | 12 | `AIPromptBuilderTests` | `AIPromptBuilderTests.swift` | 27 | Generate Post's system prompt (date, the no-invention rule, guide and search paragraphs only when they apply), user prompt and JSON schema; `parseGenerated` (citation wrappers stripped with their words kept, space before `,` and `.` closed and before `; : ! ?` only after a citation, tables normalized, empty or truncated replies rejected); the style-guide sample reduction, header and prompt; `cleanOperationResult`; and `normalizeAITables` — inline styles stripped from every table tag, core's fixed-layout class added, and the tag match stopping at a word boundary so `<table-of-contents>` is left alone |
@@ -162,7 +162,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaUpdateTests` | `AppStateTests.swift` | 4 | `AppState.updateMedia` finds the item by ID after a save, whatever moved meanwhile, does not add back one that left the list, ignores a save from a site other than the connected one, and changes only the saved field |
-| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 35 | `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
+| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 38 | `loadIconData` (bytes, no credentials sent, nil for a missing icon), `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
@@ -181,10 +181,17 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 50 | `SyncedPatternResultTests` | `PostEditorHelpersTests.swift` | 5 | `PostEditorView.syncedPatternResults(for:outcome:)`: a returned pattern is loaded under its ref; a ref WordPress left out, or a pattern with a password, is not found (WordPress renders neither); any error fails every ref; a repeated ref does not trap |
 | 51 | `StretchingFlowLayoutTests` | `StretchingFlowLayoutTests.swift` | 3 | `StretchingFlowLayout.tileSize`: tiles never fall under the 140pt minimum, the row's leftover width is under one point per column, a caption strip is added to the square tile, one column in a narrow view, and the layout's `itemSize` when there is no scroll view |
 | 52 | `AppStateEditorMountedTests` | `AppStateTests.swift` | 3 | `AppState.editorIsMounted`, which disables Paste as Markdown, Find… and Move Block Up/Down: false with no selection and in Media, true with a selected draft. Without it, any of those chosen with no editor left its trigger stuck `true` |
+| 53 | `SiteProfileStoreTests` | `SiteProfileStoreTests.swift` | 2 | `SiteProfileStore`: a site's name, icon URL and icon bytes keyed per `siteKey`; a nil profile removes the entry |
+| 54 | `SiteProfileRefreshTests` | `AppStateTests.swift` | 11 | `AppState.refreshSiteProfile`: the stored name shows first, then the fetched one; a failure keeps the stored profile; a nameless site clears the name; a new icon is downloaded, shown and stored, an unchanged one is not downloaded again, a dropped one is cleared, and a failed download, or bytes that are not an image, keep the old icon and retry next time; a result for another site is dropped; any `connect` forgets the user ID, and another site also the name and icon |
+| 55 | `MissedScheduleTests` | `AppStateTests.swift` | 11 | `AppState.confirmMissedSchedules`: a still-`future` fetch confirms the miss; a published one replaces the post in `posts` or `pages`, but never a newer entry that arrived meanwhile; a failed fetch confirms nothing; each passed schedule is fetched once, a rescheduled post again; a post crossing the 5-minute grace is picked up on a later call; a check finishes when the task that started it is replaced; a result after a site switch is dropped |
+| 56 | `OpenFromMastheadTests` | `AppStateTests.swift` | 6 | `AppState.openFromMasthead`: a local draft opens in Drafts and a stashed page in Pages; a status filter or search that would hide the item is cleared, one that shows it is kept |
+| 57 | `MastheadLeadTests` | `MastheadTests.swift` | 18 | `Masthead.leads`: the newest three Continue writing candidates per section, fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
+| 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 8 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
+| 59 | `MastheadCopyTests` | `MastheadTests.swift` | 4 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `spokenLabel` joins the VoiceOver label with commas |
 
 ---
 
-### 1. Model decoding — `WPPostDecodingTests` (41 tests)
+### 1. Model decoding — `WPPostDecodingTests` (43 tests)
 
 File: `Tests/QuillTests/WPPostDecodingTests.swift`
 
@@ -233,6 +240,8 @@ Guards the `WPPost` decoding path, which contains `decodeIfPresent` defaults tha
 | `nullFootnotesMetaDecodesAsEmpty` | `meta.footnotes: null` → `""` |
 | `nonStringFootnotesMetaDoesNotFailTheDecode` | `meta.footnotes` of the wrong type → `""`, and the post still decodes |
 | `footnotesJSONSurvivesDecodingByteForByte` | The footnotes JSON string is not re-encoded or re-escaped on the way through |
+| `decodesModifiedGmtAndAuthor` | `modified_gmt` and `author` decode onto `modifiedGmt` and `author` |
+| `modifiedGmtAndAuthorAreOptional` | Without them → `modifiedGmt` is `""` and `author` is nil, so an older cached response still decodes |
 
 ---
 
@@ -314,19 +323,22 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (84 tests)
+### 5. Networking — `WordPressClientTests` (89 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 
 `@Suite(.serialized)` — runs sequentially because `MockURLProtocol.requestHandler` is a shared static. Uses `URLSessionConfiguration.ephemeral` with `MockURLProtocol` as the protocol class.
 
-#### URL & request construction (15 tests)
+#### URL & request construction (18 tests)
 
 | Test | What it checks |
 |---|---|
 | `fetchPostsDecodesList` | `fetchPosts` decodes a list of posts |
 | `fetchPostsIncludesRequiredQueryParams` | `per_page`, `page`, `context=edit`, `status=…` all present |
+| `listRequestAsksForModifiedGmtAndAuthor` | The `fetchAllPosts` `_fields` list includes `modified_gmt` and `author`, which the masthead's Continue writing needs |
+| `fetchSiteProfileDecodesTheNameAndIcon` | `GET /wp-json/?_fields=name,site_icon_url`; `Tom &amp; Jerry` → `Tom & Jerry`, and the icon URL decoded |
+| `fetchSiteProfileTreatsEmptyAsNil` | An empty `name` or `site_icon_url` → nil, so the header falls back to the host and shows no icon |
 | `createPostUsesPostMethodWithJsonContentType` | `POST /posts`, `Content-Type: application/json` |
 | `updatePostUsesPutMethodOnPostsId` | `PUT /posts/{id}` |
 | `createPageUsesPostMethodOnPagesEndpoint` | `POST /pages` |
@@ -378,7 +390,7 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `createTagUsesTheExistingTermWhenWordPressSaysItExists` | A 400 `term_exists` (the tag was made elsewhere since the list was cached) fetches `GET /tags/{term_id}` and returns that tag instead of failing the save |
 | `createCategoryRethrowsAnyOtherRejection` | Any other refusal still throws |
 
-#### `canPostUnfilteredHTML` (6 tests)
+#### `currentUser` (8 tests)
 
 Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unfiltered_html` capability is not enough on its own: a multisite non-super-admin, or any user on a site with `DISALLOW_UNFILTERED_HTML`, keeps the role capability but WordPress still strips their scripts and styles. The `wp:action-unfiltered-html` link on a post fetched with `context=edit` is what reflects the real permission (WordPress compacts `https://api.w.org/` relations through its `wp` CURIE; the full URI is accepted too).
 
@@ -390,6 +402,8 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 | `canPostUnfilteredHTMLFallsBackToTheCapabilityWithNoPosts` | A site with no posts to read the link from falls back to the capability |
 | `canPostUnfilteredHTMLIgnoresAPluginCapabilityThatIsNotABool` | siolon.com's `can_runPHP` is a string; decoding every capability as a Bool failed the whole response, so the CSS/JS tabs never showed |
 | `canPostUnfilteredHTMLIsFalseWithoutTheCapability` | No `unfiltered_html` key gives false, and no posts request is made |
+| `currentUserDecodesIDAndCapability` | `users/me` `{"id":7,…}` → `CurrentUserInfo(id: 7, canPostUnfilteredHTML: true)` |
+| `currentUserKeepsTheIDWithoutTheCapability` | The ID is returned even when the capability check stops early |
 
 #### Error mapping (8 tests)
 
@@ -528,7 +542,7 @@ Uses `AppDatabase.inMemory()` — each test gets an isolated DB.
 
 ---
 
-### 9. Storage — `AutosaveStoreTests` (16 tests)
+### 9. Storage — `AutosaveStoreTests` (18 tests)
 
 File: `Tests/QuillTests/AutosaveStoreTests.swift`
 
@@ -552,6 +566,8 @@ Uses `AppDatabase.inMemory()`.
 | `samePostIDOnTwoSitesIsTwoStashes` | Post 7 on site A and post 7 on site B are separate rows; deleting one keeps the other |
 | `unsitedStashesBelongToTheFirstSiteThatAdoptsThem` | A row from before the site key is invisible until `adoptUnsited`, and only the first site to adopt gets it |
 | `adoptionKeepsTheSitedStashWhenBothExist` | When the site already has a stash for that post, the newer sited row wins and the unsited one is dropped |
+| `stashTimesListsOnlyThatSite` | `stashTimes(site:)` returns each of that site's stashes with its `savedAt`, and none from another site |
+| `savingAndDeletingAnnounceTheChange` | `save` and `delete` post `autosavesDidChange`, which the Continue Writing page uses to re-read stash times after the editor's leave-time flush |
 
 ---
 
@@ -1137,12 +1153,15 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `aSaveThatReturnsAfterASiteSwitchLeavesTheNewSiteAlone` | An alt-text save from the old site that returns after a switch changes neither the new site's list nor its selection, even when the IDs match |
 | `aLateTitleSaveKeepsANewerAltText` | A Title save applied after a newer Alt Text save changes only the title, so the newer alt text stays |
 
-### 34. API — `SiteDiscoveryTests` (35 tests)
+### 34. API — `SiteDiscoveryTests` (38 tests)
 
 File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockURLProtocol`. Spec: `docs/superpowers/specs/2026-10-02-first-run-onboarding-design.md`.
 
 | Test | What it checks |
 |---|---|
+| `loadIconDataReturnsTheBytes` | A 200 response's body comes back as the icon's bytes |
+| `loadIconDataSendsNoCredentials` | The icon request carries no `Authorization` header, so a CDN never sees the site's credentials |
+| `loadIconDataIsNilForAMissingIcon` | A 404 gives nil |
 | `normalizeAddsHTTPSToBareHost` | `lanternandink.com` becomes `https://lanternandink.com` |
 | `normalizeTrimsLowercasesAndDropsTrailingSlash` | Whitespace, host case and a trailing slash are cleaned up |
 | `normalizeKeepsSubdirectory` | A WordPress install under `/blog` keeps its path |
@@ -1468,6 +1487,115 @@ File: `Tests/QuillTests/LinkPickerModelTests.swift`
 | `aSearchThatWorksAgainClearsTheErrorAndListsTheResults` | After a failed search, a later search that succeeds lists its results and clears `searchError` |
 | `aFailedSearchEmptiesTheResultsTheLastOneListed` | A failed search empties the results the previous search listed, so the picker never shows old hits next to the error |
 | `typingAURLRemovesTheErrorAndSearchesNothing` | Typing a URL clears `searchError` and runs no search |
+
+### 53. Storage — `SiteProfileStoreTests` (2 tests)
+
+File: `Tests/QuillTests/SiteProfileStoreTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `storesNamesPerSiteKey` | A name set for one `siteKey` is not returned for another |
+| `nilNameRemovesTheEntry` | `setName(nil, for:)` removes that site's name and keeps the others |
+
+### 54. App — `SiteProfileRefreshTests` (11 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `refreshShowsStoredNameThenFetched` | `siteName` holds the stored name while the fetch runs, then the fetched name, which is also saved |
+| `refreshDropsAResultForAnotherSite` | Credentials changed during the fetch → neither the name nor the icon is shown |
+| `aFailedRefreshKeepsTheStoredProfile` | A network failure leaves the stored name and icon showing |
+| `aSiteWhoseNameWasClearedFallsBack` | A fetched nil clears `siteName` and the stored name, so the header shows the host |
+| `aNewIconIsDownloadedShownAndStored` | A new `site_icon_url` is downloaded once, shown as `siteIcon` and its bytes stored |
+| `anUnchangedIconIsNotDownloadedAgain` | The same URL with stored bytes downloads nothing |
+| `aSiteThatDropsItsIconClearsIt` | No `site_icon_url` clears `siteIcon` and the stored bytes |
+| `aFailedDownloadKeepsTheOldIconAndTriesAgainNextTime` | A failed download for a new URL keeps the old icon under its old URL, so the next refresh downloads the new one |
+| `bytesThatAreNotAnImageCountAsAFailedDownload` | A 200 that returns an HTML error page keeps the old icon and URL, so the next refresh tries again |
+| `anotherAccountOnTheSameSiteForgetsTheUserID` | Signing in as someone else on the same site clears `currentUserID`, so the page stops filtering by the old author |
+| `connectingToAnotherSiteForgetsTheProfileAndUser` | `connect` to another site clears `siteName`, `siteIcon` and `currentUserID` |
+
+### 55. App — `MissedScheduleTests` (11 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `aStillFutureFetchConfirmsTheMiss` | A post still `future` with the same `date_gmt` goes into `confirmedMissed` |
+| `aPublishedFetchUpdatesTheListAndDoesNotConfirm` | A post WP-Cron published replaces its row in `posts` |
+| `aPublishedPageUpdatesThePagesList` | The same for `pages` |
+| `aFailedFetchConfirmsNothing` | A thrown fetch leaves the post unconfirmed and the list unchanged |
+| `eachPostIsFetchedOnce` | A second call for the same passed schedule fetches nothing, even after a failure |
+| `aRescheduledPostIsCheckedAgain` | A new `date_gmt` is a new key: it is fetched, and the old key's confirmation does not mark it |
+| `aPostCrossingTheGraceIsPickedUpOnALaterCall` | Inside the 5-minute grace nothing is fetched; 6 minutes later, with the lists unchanged, it is |
+| `aResultAfterASiteSwitchIsDropped` | A fetch that returns after `connect` to another site changes nothing |
+| `aCheckFinishesWhenTheTaskThatStartedItIsReplaced` | The page's task restarts while a check is in flight; the replacement skips the key and the original check still confirms it |
+| `aLateResponseDoesNotOverwriteANewerListEntry` | A refresh that changed the post during the fetch keeps its newer entry |
+| `connectingToAnotherSiteForgetsConfirmations` | `connect` to another site empties `confirmedMissed` |
+
+### 56. App — `OpenFromMastheadTests` (6 tests)
+
+File: `Tests/QuillTests/AppStateTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `openingALocalDraftFromPostsSwitchesToDrafts` | A local draft opens selected in Local Drafts |
+| `openingAStashedPageFromPostsSwitchesToPages` | A remote page opens selected in Pages |
+| `openingClearsAFilterThatWouldHideTheItem` | Published filter, open a draft → the filter goes to All and the draft is listed |
+| `openingKeepsAFilterThatShowsTheItem` | Draft filter, open a draft → the filter stays |
+| `openingClearsASearchThatWouldHideTheItem` | A search that doesn't match the title is cleared |
+| `openingKeepsASearchThatShowsTheItem` | A search that matches the title stays |
+
+### 57. App — `MastheadLeadTests` (18 tests)
+
+File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale.
+
+| Test | What it checks |
+|---|---|
+| `postsLeadPrefersANewerLocalDraft` | On Posts a local draft edited after the WordPress draft leads, in Local Drafts |
+| `postsLeadPrefersANewerWordPressDraft` | And the other way round, with "Draft · edited 1 minute ago" |
+| `aStashedPublishedPostLeadsWithItsMetaLine` | A published post with a newer stash leads with "Published · unsaved changes on this Mac", timed by the stash |
+| `aStashedPageLeadsThePostsPageAndLivesInPages` | A stashed page leads on Posts and opens in Pages |
+| `pageDraftsWithoutAStashStayOffThePostsPage` | Page drafts count on Posts only with a stash |
+| `aStashForAPostNoLongerListedIsIgnored` | A stash whose post is not in the lists is ignored |
+| `anotherAuthorsDraftIsSkippedOnceTheUserIsKnown` | With the user ID known, another author's newer draft does not lead |
+| `anotherAuthorsDraftCountsBeforeTheUserIsKnown` | Before the ID arrives, it does |
+| `pendingPostsNeverLead` | A pending post is not a candidate |
+| `pagesLeadIgnoresLocalDraftsAndPosts` | Pages considers only pages |
+| `draftsLeadIgnoresRemotePosts` | Drafts considers only local drafts, stash or not |
+| `theNewestThreeLeadInOrder` | Five candidates across WordPress and local drafts → the newest three, newest first |
+| `fewerCandidatesGiveFewerRows` | Two candidates give two rows; none give none |
+| `mediaHasNoLead` | Media has no lead |
+| `untitledLocalDraftShowsUntitled` | An empty title reads "Untitled" |
+| `tiesResolveRemoteFirstThenLowerID` | Equal timestamps: remote first, then the lower ID |
+| `localDraftMetaNamesItsType` | "Post draft · on this Mac · edited yesterday" and the Page version |
+| `editedPhraseIsRelativeForAWeekThenADate` | "2 hours ago", "yesterday", then "23 Oct" after a week |
+
+### 58. App — `MastheadScheduledTests` (8 tests)
+
+File: `Tests/QuillTests/MastheadTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `scheduledKeepsTheNextTwoWeeksCappedAtThree` | `future` posts in the next 14 days, earliest first, at most three; drafts and posts further out are left off |
+| `missedComeFirstOnlyWhenConfirmed` | A confirmed miss comes first; an unconfirmed passed post is not shown |
+| `aConfirmationForAnEarlierScheduleDoesNotCarryOver` | A confirmation keyed on an old `date_gmt` does not mark the rescheduled post |
+| `missedCountsTowardTheCapOfThree` | A miss takes one of the three places |
+| `missedWaitsOutTheFiveMinuteGrace` | 4 minutes late is not a candidate and still shows with its date; 6 minutes late is a candidate |
+| `pagesShowScheduledPages` | Pages shows scheduled pages, not posts |
+| `draftsSectionHasNoScheduled` | Drafts shows none |
+| `scheduleDateNamesTheWeekdayAndTime` | "Tue, Nov 3 at 9:00 AM" in en_US and "Tue 3 Nov at 09:00" in en_GB, in UTC |
+
+### 59. App — `MastheadCopyTests` (4 tests)
+
+File: `Tests/QuillTests/MastheadTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `displayNameFallsBackToHost` | No name, or an empty one, shows the host |
+| `emptyLineAsksForASelectionWhenTheSectionHasItems` | "Select a post to edit", and the page and draft versions |
+| `emptyLineSaysTheSectionIsEmpty` | "No posts yet", "No pages yet", "No drafts yet" |
+| `spokenLabelReadsAsOnePhrase` | "Continue writing, Packing for the coast, Draft, edited 2 hours ago": the meta line's " · " becomes a comma |
 
 ---
 
@@ -4002,7 +4130,14 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Media round trip.** Click into the editor body, switch to Media, click a few thumbnails, switch back to Posts and click a row → the row is amber and nothing flickers. `focusPostList()` returns early in Media mode; this checks the return trip still works.
 - [ ] **Settings open.** Open Settings (⌘,) and leave it open, click back on the main window and select a different post → the row is still amber. Clicking the main window makes it key first, so `NSApp.keyWindow` is correct by the time the handler runs.
 - [ ] Collapse the sidebar with the toolbar toggle → the toolbar shows only the sidebar toggle; Refresh and the + menu are gone. Expand it again → the order is toggle, Refresh, +, all above the sidebar. Press ⌘R → the current section still refreshes. The shortcut lives on View → Refresh, not on the toolbar Refresh button, so a collapsed sidebar must not take it away.
-- [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears. The editor empty state says "post", "page", or "draft" depending on the active section.
+- [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears in the sidebar.
+- [ ] **Continue writing at launch.** Launch with nothing open → the editor area shows the site's name and host, with its Site Icon beside them when the site has one. Under Continue Writing, up to three rows, the post last written first; click one → it opens.
+- [ ] **A newer local draft leads on Posts.** File → New Post, then switch to Posts → Continue Writing shows "Untitled", "Post draft · on this Mac · edited now"; click it → Drafts opens with that draft selected.
+- [ ] **Missed schedule.** With WP-Cron disabled on the Studio site (`define('DISABLE_WP_CRON', true)` in `wp-config.php`, restored afterwards), schedule a draft 3 minutes ahead. Leave the page open, without ⌘R or a section switch → it shows under Scheduled with its date and time, then "Missed schedule" in the Pending colour once 5 minutes have passed. With WP-Cron on, a post that publishes on time drops off instead, and its sidebar row reads Published.
+- [ ] **Nothing to show.** In a section with items but nothing to continue or schedule → the feather, the site's name and "Select a post to edit" (page, draft). In an empty section → "No posts yet" (pages, drafts).
+- [ ] **Layout.** Give the site a long name and narrow the window to its minimum with the sidebar open → the name stays on one line and truncates; nothing is clipped. Check light and dark, with and without a Site Icon.
+- [ ] **Accessibility.** With Full Keyboard Access, Tab reaches each row and Return or Space opens it. VoiceOver reads each row as one element, e.g. "Continue writing, Packing for the coast, Draft, edited 2 hours ago".
+- [ ] **Nothing new in Media**, and offline Posts still says "Couldn't load posts" with the feather.
 - [ ] Switch to the Media section → the post list, search bar, and toolbar are replaced by a thumbnail grid.
 - [ ] Scroll to the bottom of the Posts or Media list → more items load automatically; loading stops when all items have been fetched.
 - [ ] The dividers between sidebar/editor and editor/settings panels have no drag cursor — they are fixed boundaries, not resizable splitters.
