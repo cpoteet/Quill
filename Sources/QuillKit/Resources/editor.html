@@ -3806,9 +3806,7 @@
       return true
     }
 
-    // Without this every container answers Enter differently: ProseMirror's
-    // lift escapes only where the schema lets it, so an earlier tab panel
-    // ignored it and a column split itself in half.
+    // ProseMirror's lift alone ignored Enter in a tab panel and split a column in half.
     const UNSPLITTABLE_PARTS = new Set(['columnBlock', 'tabPanel'])
 
     // Core's button Enter: the empty button gives way to a paragraph, splitting the Buttons block around it.
@@ -5300,8 +5298,7 @@
       return typeName === 'tabPanel' ? _panelOfTitle(state) : null
     }
 
-    // A tab's title sits in the tab list, outside its panel, so the panel is
-    // found by position.
+    // A tab's title sits in the tab list, outside its panel, so the panel is found by position.
     function _panelOfTitle(state) {
       const $from = state.selection.$from
       for (let d = $from.depth; d >= 2; d--) {
@@ -6710,7 +6707,6 @@
       editor.view.updateState(editor.state.reconfigure({ plugins }))
     }
 
-    // The doc the live editor would hold after setContent(html, footnotesJSON), built without touching it.
     // Parsed as setContent parses: Tiptap's elementFromString drops these whitespace-only text nodes first.
     function _parseSavedHTML(html) {
       const parser = editor.schema.cached.domParser

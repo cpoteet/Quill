@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-01 — 887 Swift tests + 2,122 JS tests (2,121 pass, 1 skipped), no failures._
+_Last updated: 2026-11-01 — 900 Swift tests + 2,202 JS tests (2,201 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,17 +16,17 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (887 tests)
+1. **Swift tests** — `swift test` (900 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (147 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (151 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (426 tests — live Tiptap editor in jsdom)
-10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (100 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
-11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (37 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (448 tests — live Tiptap editor in jsdom)
+10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
+11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (48 tests — live Tiptap editor in jsdom)
 14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
@@ -37,7 +37,7 @@ This document is the authoritative reference for Quill's automated test suite an
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
-22. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (21 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
+22. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (25 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty-two passed.
 
@@ -119,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (887 tests, 60 suites)
+## Swift test suite (900 tests, 60 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -133,7 +133,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 2 | `WPMediaDecodingTests` | `WPMediaDecodingTests.swift` | 26 | `WPMedia`/`MediaDetails`/`MediaSize` float-dimensions gotcha, `filesize`, `thumbnailURL` fallback, `sizedURL(for:)` size resolution incl. "full" slug and blank-URL fallback, `caption`/`captionText` plain-text decoding, `captionHTML` |
 | 3 | `PostPayloadTests` | `PostPayloadTests.swift` | 16 | `PostPayload` encoding, scheduling key names, nil omission, footnotes sent under `meta` (and an empty array still sent, so deleting the last note clears it) |
 | 4 | `CredentialsTests` | `CredentialsTests.swift` | 5 | `Credentials.basicAuthHeader` base64 encoding; `siteKey` |
-| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 89 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter (incl. `modified_gmt` and `author` on the list request), `fetchSiteProfile`, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `currentUser` (the user's ID and capability, then a post's `action-unfiltered-html` link), `fetchSyncedPatterns` and `syncedPatternEditURL` |
+| 5 | `WordPressClientTests` | `WordPressClientTests.swift` | 94 | URL construction (incl. literal `+` escaped to `%2B` in query values), `_fields` filter (incl. `modified_gmt` and `author` on the list request), `fetchSiteProfile`, HTTP error mapping (incl. a PHP warning ahead of the JSON explained as a plugin or theme problem), `searchLinks`, auth headers, Content-Disposition escaping, media fetch/upload/delete/alt-text/title/caption (incl. the `page`/`per_page`/`offset` paging parameters), `mediaMatchesSearch` (the `include`+`search` recheck of one item), streaming uploads, `currentUser` (the user's ID and capability, then a post's `action-unfiltered-html` link; a failed second request leaves the capability `nil`), `fetchSyncedPatterns` and `syncedPatternEditURL` |
 | 6 | `JSONFileStoreTests` | `JSONFileStoreTests.swift` | 9 | Round-trip, chmod 600, atomic write, nil-on-absent |
 | 7 | `CredentialsStoreTests` | `CredentialsStoreTests.swift` | 10 | Credentials persistence, `AppSupportDirectory`, `AISettingsStore` |
 | 8 | `DraftStoreTests` | `DraftStoreTests.swift` | 19 | Local draft CRUD, ordering, unicode, non-existent ID safety, the `footnotes` column round-trip and erasure |
@@ -147,13 +147,13 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 16 | `AppStateLoadingTests` | `AppStateTests.swift` | 2 | `AppState` initial loading flags (`isLoadingList`, `hasLoadedList`, `isLoadingMedia`, `hasLoadedMedia`) |
 | 17 | `AppStateFilteredItemsTests` | `AppStateTests.swift` | 15 | `AppState.filteredItems` per section, search filtering, a new draft clearing the search and starting with an empty title; `switchSection` closing the inspector first and running the follow-up after the switch, or at once for the section already showing |
 | 18 | `SectionIsEmptyTests` | `AppStateTests.swift` | 5 | `AppState.sectionIsEmpty` per section |
-| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 17 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
+| 19 | `EditorCoordinatorTests` | `EditorCoordinatorTests.swift` | 12 | `isAllowedExternalURL` URL scheme allowlist; `isEditorPage`; `mediaSizesDict(for:)` size-dict construction incl. "full"-entry fallback; `misspelledWords(in:completion:)` returning on the main actor; `PastedImage.decode` and `PastedImage.forgetScript` |
 | 20 | `PostEditorHelpersTests` | `PostEditorHelpersTests.swift` | 61 | `previewURL` query/fragment handling; `PostSettings(post:)` and `plainExcerpt`; `autosaveRestoreBaseline` (the conflict baseline a restored autosave keeps); `stashAfterSave` (what happens to the autosave stash when a save finishes for a post the user has left); `adoptSavedSettings` (status, date and slug from the save response, and what a status or date chosen during the save keeps); `previewOverwritesPost` (which previews run the conflict check); status helpers (`publishButtonTitle`, `publishButtonIcon`, `toastMessage`, `statusDidChange` for future/private/pending, `scheduledDateHasPassed`, `effectiveStatus`, `payloadDate`, a chosen date over the server's, a future server date reset only when publishing); `PostStats` reading time; dropped-image upload progress/summary message builders; a pasted image's file extension |
 | 21 | `UpdateCheckerTests` | `UpdateCheckerTests.swift` | 12 | `isNewer` semantic version comparison: major/minor/patch, equal, older, different segment counts, large numbers; `normalizeVersion` tag-prefix stripping |
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
-| 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 11 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact; `BaselinePushState` and `changeBaselineJS` for the change bars |
+| 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 16 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact; `BaselinePushState` and `changeBaselineJS` for the change bars |
 | 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerated` or `SelectionPrompts.parse` + `cleanOperationResult` make of its JSON `.raw.txt` — the Swift half of the AI output validity suite |
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
 | 28 | `TaxonomyOrderingTests` | `AppStateTests.swift` | 5 | `AppState.categories`/`tags` sort on assignment and stay sorted after `append`; `sortedByName()` is case-insensitive and locale-aware. This is what keeps `PostSettingsPanel` from sorting per render — see `docs/gotchas.md` |
@@ -162,13 +162,13 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 31 | `GalleryEditTests` | `PostEditorHelpersTests.swift` | 33 | The Custom HTML sheet's `CustomHTMLRequest(body:)`, `EditorCoordinator.customHTMLScript` and `CustomHTMLParts`; `GalleryEdit(body:)` decoding of the editor's edit body, `initialSizeSlug` (Mixed), `showsKeepLinks`; `PostEditorView.galleryPayload` for insert (shape unchanged) and edit: untouched keys sent back, `captionHTML` dropped for a changed caption, Mixed and picked sizes, Keep Current Links (also in a full-image and an unlinked gallery) / None / Full Image, an image with no `WPMedia`, an unchanged size keeping each image's own URL, and the sheet's order |
 | 32 | `SiteSwitchTests` | `AppStateTests.swift` | 4 | `AppState.connect`: another site flushes the open post under the old credentials, then clears selection, lists and media; the same site with new credentials, or a first connection, keeps the open post and flushes nothing |
 | 33 | `MediaUpdateTests` | `AppStateTests.swift` | 4 | `AppState.updateMedia` finds the item by ID after a save, whatever moved meanwhile, does not add back one that left the list, ignores a save from a site other than the connected one, and changes only the saved field |
-| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 38 | `loadIconData` (bytes, no credentials sent, nil for a missing icon), `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
+| 34 | `SiteDiscoveryTests` | `SiteDiscoveryTests.swift` | 40 | `loadIconData` (bytes, no credentials sent, nil for a missing icon, plain http only on loopback, 2 MB cap), `SiteDiscovery.normalize` (bare host, pasted admin and login URLs, http only on loopback, credentials and fragment dropped, non-web schemes refused), `profileURL`, and `discover` against the REST index: field mapping, entities decoded in the site name, empty strings and an empty `authentication` array, insecure approval and install URLs dropped, not-WordPress and unreachable errors, redirects (incl. a subdirectory install, an index moved off `/wp-json/`, and a redirect off the site ignored), adopting the `www` or bare form of `home`, `Accept: application/json` sent |
 | 35 | `AppAuthorizationTests` | `AppAuthorizationTests.swift` | 10 | `AppAuthorization`: nonce shape, every approval-URL parameter and its encoding, a unique `app_name` per attempt, and callback parsing (approved with `+` and `%2B`, rejected, and every ignored case) |
 | 36 | `ConnectSiteTests` | `ConnectSiteTests.swift` | 2 | `ConnectSite.verifyAndSave`: credentials are saved only after the check call succeeds |
 | 37 | `OnboardingModelTests` | `OnboardingModelTests.swift` | 29 | `OnboardingModel` state transitions: discovery, browser approval and its callbacks, manual entry (with and without an earlier discovery, and its failures), the optional AI key step, when the panel shows, and the site icon |
-| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 15 | `EditorCoordinator.flushPendingContent`, the `setContent` guard, the `insertImage` call (caption included) and the change-bar baseline and dirty flag, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
+| 38 | `EditorCoordinatorBridgeTests` | `EditorCoordinatorTests.swift` | 16 | `EditorCoordinator.flushPendingContent`, the `setContent` guard, the `insertImage` call (caption included) and the change-bar baseline and dirty flag, driven through a `WKWebView` subclass that scripts `evaluateJavaScript` replies |
 | 39 | `NetworkFailureTests` | `NetworkFailureTests.swift` | 8 | `NetworkFailure.isConnectivity` decides by `URLError` code (incl. one bridged through `NSError`), never by English description text; the `APIError` and `AnthropicError` connectivity messages it drives, incl. `APIError`'s separate message for a Mac with no connection |
-| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 18 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
+| 40 | `ErrorMessageTests` | `ErrorMessageTests.swift` | 19 | `APIError.isFixedInSettings` and `LoadFailure` (which load failures show Open Blog Settings…), `AnthropicError.httpError` read as sentences rather than JSON, `PostEditorView.aiFailureMessage`, `EditorBanner.clearing`, and `ToastStyle.duration` |
 | 41 | `AppStateStatusFilterTests` | `AppStateTests.swift` | 16 | The Posts/Pages status filter: each filter, filter plus search, a separate filter per section, Pending/Private offered only when present and falling back to All (and back again), counts that ignore search, Scheduled sorted soonest first by UTC; `sectionListError` hidden only on Local Drafts |
 | 42 | `FeaturedImageSectionTests` | `FeaturedImageSectionTests.swift` | 3 | `FeaturedImageSection.copyDroppedImage`: the dropped file is copied under its own name, alone in a new temp folder (the caller deletes that folder), each drop gets its own folder, and a provider with no image yields `nil` |
 | 43 | `AISettingsTests` | `AISettingsTests.swift` | 22 | `AISettings` decoding a file written before model selection, the default model (newest Haiku, else `claude-haiku-5-5`), a pinned model, the reasoning options per model kind and their normalization, and `applyingFetchedModels` (a retired pinned model falls back with a notice) |
@@ -183,10 +183,10 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 52 | `AppStateEditorMountedTests` | `AppStateTests.swift` | 3 | `AppState.editorIsMounted`, which disables Paste as Markdown, Find… and Move Block Up/Down: false with no selection and in Media, true with a selected draft. Without it, any of those chosen with no editor left its trigger stuck `true` |
 | 53 | `SiteProfileStoreTests` | `SiteProfileStoreTests.swift` | 2 | `SiteProfileStore`: a site's name, icon URL and icon bytes keyed per `siteKey`; a nil profile removes the entry |
 | 54 | `SiteProfileRefreshTests` | `AppStateTests.swift` | 11 | `AppState.refreshSiteProfile`: the stored name shows first, then the fetched one; a failure keeps the stored profile; a nameless site clears the name; a new icon is downloaded, shown and stored, an unchanged one is not downloaded again, a dropped one is cleared, and a failed download, or bytes that are not an image, keep the old icon and retry next time; a result for another site is dropped; any `connect` forgets the user ID, and another site also the name and icon |
-| 55 | `MissedScheduleTests` | `AppStateTests.swift` | 11 | `AppState.confirmMissedSchedules`: a still-`future` fetch confirms the miss; a published one replaces the post in `posts` or `pages`, but never a newer entry that arrived meanwhile; a failed fetch confirms nothing; each passed schedule is fetched once, a rescheduled post again; a post crossing the 5-minute grace is picked up on a later call; a check finishes when the task that started it is replaced; a result after a site switch is dropped |
+| 55 | `MissedScheduleTests` | `AppStateTests.swift` | 12 | `AppState.confirmMissedSchedules`: a still-`future` fetch confirms the miss; a published one replaces the post in `posts` or `pages`, but never a newer entry that arrived meanwhile; a failed fetch confirms nothing; each passed schedule is fetched once, a rescheduled post again; a post crossing the 5-minute grace is picked up on a later call; a check finishes when the task that started it is replaced; a result after a site switch is dropped |
 | 56 | `OpenFromMastheadTests` | `AppStateTests.swift` | 6 | `AppState.openFromMasthead`: a local draft opens in Drafts and a stashed page in Pages; a status filter or search that would hide the item is cleared, one that shows it is kept |
-| 57 | `MastheadLeadTests` | `MastheadTests.swift` | 18 | `Masthead.leads`: the newest three Continue writing candidates per section, fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
-| 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 8 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
+| 57 | `MastheadLeadTests` | `MastheadTests.swift` | 20 | `Masthead.leads`: the newest three Continue writing candidates per section, fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
+| 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 9 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
 | 59 | `MastheadCopyTests` | `MastheadTests.swift` | 4 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `spokenLabel` joins the VoiceOver label with commas |
 | 60 | `MastheadRecentlyEditedTests` | `MastheadTests.swift` | 5 | `Masthead.recentlyEdited`: the fallback when Continue writing is empty; any status but scheduled, newest `modified_gmt` first, at most three; another author's post left out once the user is known; Posts and Pages stay in their own section, Drafts has none |
 
@@ -324,7 +324,7 @@ File: `Tests/QuillTests/CredentialsTests.swift`
 
 ---
 
-### 5. Networking — `WordPressClientTests` (89 tests)
+### 5. Networking — `WordPressClientTests` (94 tests)
 
 File: `Tests/QuillTests/WordPressClientTests.swift`
 Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
@@ -375,10 +375,12 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `deleteMediaSendsDeleteWithForceTrueQuery` | `DELETE /media/{id}?force=true` (permanent — vs trash's `force=false`) |
 | `createAutosaveSendsToPostAutosavesEndpoint` | `POST /posts/{id}/autosaves` |
 | `createPageAutosaveSendsToPageAutosavesEndpoint` | `POST /pages/{id}/autosaves` |
+| `autosaveSendsTheAuthorizedJSONPayloadAndIgnoresTheReplyBody` | The autosave request carries `Content-Type: application/json`, a Basic `Authorization` header and the title and content in the body; a reply that is not JSON is not an error, since the response is not decoded |
+| `autosaveFailureIsThrown` | A 403 on a page autosave throws `APIError`, so a failed autosave is never reported as saved |
 | `fetchAllPostsRequestIncludesFieldsFilter` | `fetchAllPosts` query includes `_fields=` (list fetch omits content body) |
 | `fetchPostRequestOmitsFieldsFilter` | `fetchPost` has no `_fields=` (full content required for editor) |
 
-#### Taxonomy (8 tests)
+#### Taxonomy (10 tests)
 
 | Test | What it checks |
 |---|---|
@@ -389,9 +391,11 @@ Support: `Tests/QuillTests/Support/MockURLProtocol.swift`
 | `createCategoryUsesPostMethodOnCategoriesEndpoint` | `POST /categories` with `{"name":…}` |
 | `createTagUsesPostMethodOnTagsEndpoint` | `POST /tags` with `{"name":…}` |
 | `createTagUsesTheExistingTermWhenWordPressSaysItExists` | A 400 `term_exists` (the tag was made elsewhere since the list was cached) fetches `GET /tags/{term_id}` and returns that tag instead of failing the save |
+| `createCategoryUsesTheExistingTermWhenWordPressSaysItExists` | The same `term_exists` recovery for categories: `POST /categories`, then `GET /categories/4` from the error's `term_id`, returning that category |
+| `createTagRethrowsTermExistsWithoutATermID` | A `term_exists` error with no `data.term_id` is thrown after one request, not looked up |
 | `createCategoryRethrowsAnyOtherRejection` | Any other refusal still throws |
 
-#### `currentUser` (8 tests)
+#### `currentUser` (9 tests)
 
 Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unfiltered_html` capability is not enough on its own: a multisite non-super-admin, or any user on a site with `DISALLOW_UNFILTERED_HTML`, keeps the role capability but WordPress still strips their scripts and styles. The `wp:action-unfiltered-html` link on a post fetched with `context=edit` is what reflects the real permission (WordPress compacts `https://api.w.org/` relations through its `wp` CURIE; the full URI is accepted too).
 
@@ -405,6 +409,7 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 | `canPostUnfilteredHTMLIsFalseWithoutTheCapability` | No `unfiltered_html` key gives false, and no posts request is made |
 | `currentUserDecodesIDAndCapability` | `users/me` `{"id":7,…}` → `CurrentUserInfo(id: 7, canPostUnfilteredHTML: true)` |
 | `currentUserKeepsTheIDWithoutTheCapability` | The ID is returned even when the capability check stops early |
+| `currentUserKeepsTheIDWhenThePostsCheckFails` | A failing posts request (HTTP 500) no longer fails `currentUser`: the ID is returned with `canPostUnfilteredHTML` `nil` (unknown), so the masthead can still tell the user's drafts from other authors' |
 
 #### Error mapping (8 tests)
 
@@ -808,7 +813,7 @@ Tests the `sectionIsEmpty` computed property on `AppState`, used by `SectionEmpt
 
 ---
 
-### 19. Security — `EditorCoordinatorTests` (17 tests)
+### 19. Security — `EditorCoordinatorTests` (12 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`
 
@@ -826,14 +831,8 @@ Guards the `isAllowedExternalURL` scheme allowlist (linked to the S2 security fi
 | `schemeCheckIsCaseInsensitive` | `HTTPS://` → allowed (lowercased before compare) |
 | `mediaSizesDictAddsFullFallbackWhenSizesOmitsIt` | `media_details.sizes` missing a `"full"` entry gets one synthesized from `source_url`/top-level width/height |
 | `mediaSizesDictPreservesExistingFullEntry` | A server-provided `"full"` entry in `sizes` is not overwritten |
-| `misspelledWordsReturnsOnMainActorWithoutTrapping` | NSSpellChecker's callback, which arrives on its own queue, reaches a main-actor completion without Swift's isolation check trapping the process (the Check Spelling crash) |
 | `mediaSizesDictFallsBackToSourceURLWhenNoSizesAtAll` | No `media_details.sizes` at all still yields a single `"full"` entry from `source_url` |
 | `mediaSizesDictReturnsNilWhenSourceURLIsEmpty` | Empty `source_url` → `nil` (no usable size data) |
-| `pastedImageDecodesDataURL` | A base64 image data URL from the editor decodes to its bytes, MIME type and token |
-| `pastedImageWithoutToken` | A screenshot paste has no token, so it is inserted at the cursor |
-| `pastedImageRefusesOtherURLs` | A non-image, non-base64 or non-data URL is refused |
-| `pastedImageForgetScript` | Every token Swift is done with becomes one `window.forgetPastedImage` call, JSON-encoded (a quote in a token stays escaped), and an empty list makes no call at all, so a pasted image whose upload ended, failed or was rejected can be sent again when pasted again |
-
 ---
 
 ### 20. Editor helpers — `PostEditorHelpersTests` (61 tests)
@@ -1062,9 +1061,9 @@ Covers the banner Quill shows when its tripwire finds that content went missing 
 
 ---
 
-### 25. Editor — `EditorPushDecisionTests` (11 tests)
+### 25. Editor — `EditorPushDecisionTests` (16 tests)
 
-File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
+File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file). The same struct also holds the `changeBaselineJS` and `BaselinePushState` tests, the spell-check main-actor test and the `PastedImage` tests.
 
 `EditorPushState` decides whether a `setContent` into the web view is worth making. Pushing needlessly resets the caret; not pushing when the content genuinely differs loads the wrong post. The dedupe key is the HTML **and** the footnotes together, because footnote bodies live in post meta rather than in the content.
 
@@ -1081,6 +1080,11 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file)
 | `changeBaselineJSEscapesQuotesAndNewlines` | `changeBaselineJS` JSON-encodes the HTML into `window.setChangeBaseline?.(…)` |
 | `changeBaselineJSPassesFootnotesThrough` | Both arguments decode back to what was passed |
 | `firstEmptyBaselineIsSent` | `BaselinePushState`, unlike `EditorPushState`, counts nothing as sent until something is, so a new empty local draft still gets its `""` baseline and its first paragraph a bar |
+| `misspelledWordsReturnsOnMainActorWithoutTrapping` | NSSpellChecker's callback, which arrives on its own queue, reaches a main-actor completion without Swift's isolation check trapping the process (the Check Spelling crash) |
+| `pastedImageDecodesDataURL` | A base64 image data URL from the editor decodes to its bytes, MIME type and token |
+| `pastedImageWithoutToken` | A screenshot paste has no token, so it is inserted at the cursor |
+| `pastedImageRefusesOtherURLs` | A non-image, non-base64 or non-data URL is refused |
+| `pastedImageForgetScript` | Every token Swift is done with becomes one `window.forgetPastedImage` call, JSON-encoded (a quote in a token stays escaped), and an empty list makes no call at all, so a pasted image whose upload ended, failed or was rejected can be sent again when pasted again |
 
 ---
 
@@ -1154,7 +1158,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `aSaveThatReturnsAfterASiteSwitchLeavesTheNewSiteAlone` | An alt-text save from the old site that returns after a switch changes neither the new site's list nor its selection, even when the IDs match |
 | `aLateTitleSaveKeepsANewerAltText` | A Title save applied after a newer Alt Text save changes only the title, so the newer alt text stays |
 
-### 34. API — `SiteDiscoveryTests` (38 tests)
+### 34. API — `SiteDiscoveryTests` (40 tests)
 
 File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockURLProtocol`. Spec: `docs/superpowers/specs/2026-10-02-first-run-onboarding-design.md`.
 
@@ -1163,6 +1167,8 @@ File: `Tests/QuillTests/SiteDiscoveryTests.swift`, with its own `DiscoveryMockUR
 | `loadIconDataReturnsTheBytes` | A 200 response's body comes back as the icon's bytes |
 | `loadIconDataSendsNoCredentials` | The icon request carries no `Authorization` header, so a CDN never sees the site's credentials |
 | `loadIconDataIsNilForAMissingIcon` | A 404 gives nil |
+| `loadIconDataRefusesPlainHTTPExceptOnALocalHost` | A site-supplied icon URL on plain http loads only from a loopback host, so a site can't point Quill at the local network |
+| `loadIconDataRefusesAnOversizedIcon` | A body over 2 MB gives nil, so it never reaches `site_profiles.json` |
 | `normalizeAddsHTTPSToBareHost` | `lanternandink.com` becomes `https://lanternandink.com` |
 | `normalizeTrimsLowercasesAndDropsTrailingSlash` | Whitespace, host case and a trailing slash are cleaned up |
 | `normalizeKeepsSubdirectory` | A WordPress install under `/blog` keeps its path |
@@ -1261,7 +1267,7 @@ File: `Tests/QuillTests/OnboardingModelTests.swift`. Every effect goes through r
 | `theSiteIconShowsWhileWaiting` | The discovered icon is shown on the waiting screen |
 | `anIconThatArrivesAfterCancellingIsDropped` | An icon that loads after Cancel is not shown |
 
-### 38. Editor — `EditorCoordinatorBridgeTests` (15 tests)
+### 38. Editor — `EditorCoordinatorBridgeTests` (16 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass records each script and answers it from canned replies (or holds a `setContent` reply back), and a `WKScriptMessage` subclass delivers `contentChanged`/`footnotesChanged`, so no page loads.
 
@@ -1279,6 +1285,7 @@ File: `Tests/QuillTests/EditorCoordinatorTests.swift`. A `WKWebView` subclass re
 | `aSyncedPatternRequestWithoutAHandlerSendsNothing` | With no `onRequestSyncedPatterns`, no script is run |
 | `aMalformedSyncedPatternRequestIsIgnored` | A body missing `refs` or `generation`, with a string ref, or that is not a dictionary asks the handler nothing and runs no script |
 | `openingASyncedPatternHandsTheRefToTheHandler` | `openSyncedPattern` passes `onOpenSyncedPattern` the ref only when it is an `Int`; a string ref or an empty body is dropped |
+| `setContentCarriesTheSyncFlagOnlyForTheNextPush` | With `syncAfterNextSetContent` set, the next `setContent` is pushed with its sync flag true and a `syncContentToSwift` call follows once; the push after it carries the flag false, so a flag set for one load never leaks into the next |
 | `aRepeatedBaselineOrDirtyFlagIsSentOnce` | `setChangeBaseline` and `setBodyDirty` are deduped on the last value sent |
 | `newContentResendsAnUnchangedBaseline` | A content push resends the baseline even when it is unchanged (Revert), because `window.setContent` drops the editor's copy |
 | `theBaselineWaitsForReadyAndFollowsTheContent` | Before `editorReady` nothing is sent; on ready the scripts run as content, then baseline, then dirty flag |
@@ -1298,7 +1305,7 @@ File: `Tests/QuillTests/NetworkFailureTests.swift`
 | `apiErrorPassesThroughOtherNetworkErrors` | Any other error's own message is shown unchanged |
 | `anthropicErrorShowsFriendlyMessageForConnectivityFailure` | `AnthropicError.networkError(URLError(.notConnectedToInternet))` reads "Couldn't reach the Anthropic API…" |
 
-### 40. Errors — `ErrorMessageTests` (18 tests)
+### 40. Errors — `ErrorMessageTests` (19 tests)
 
 File: `Tests/QuillTests/ErrorMessageTests.swift`
 
@@ -1307,6 +1314,7 @@ File: `Tests/QuillTests/ErrorMessageTests.swift`
 | `settingsFixableErrors` | 400 with no WordPress message, 401, 403, a host that can't be found or times out, an invalid URL, a web page instead of data, and no site connected are fixed in Settings — each of these messages points at the password or the URL |
 | `errorsSettingsCannotFix` | 404, 500, no internet connection, a bad server response and a decoding error are not, so the sidebar offers only Retry |
 | `aRejectedRequestQuotesWordPresssOwnMessageAndDoesNotPointAtSettings` | A 400 whose body is a WordPress error reads "WordPress didn't accept the request: …" with WordPress's message, and does not offer Settings |
+| `aRejectedRequestStripsMarkupAndShortensALongMessage` | WordPress's 400 message has its tags removed and entities decoded (`<strong>Error:</strong> Tom &amp; Jerry` reads "Error: Tom & Jerry"); a 300-character message is cut to 200 characters and ends in "…" |
 | `aRejectedRequestWithoutAMessageKeepsTheGenericText` | A 400 with an HTML body or an empty message keeps the generic text |
 | `onlyTermExistsCarriesAnExistingTermID` | `existingTermID` is set only for `term_exists` with a `data.term_id` |
 | `loadFailureCarriesTheMessageAndTheSettingsFlag` | `LoadFailure` keeps the error's message and `APIError.isFixedInSettings` |
@@ -1495,8 +1503,8 @@ File: `Tests/QuillTests/SiteProfileStoreTests.swift`
 
 | Test | What it checks |
 |---|---|
-| `storesNamesPerSiteKey` | A name set for one `siteKey` is not returned for another |
-| `nilNameRemovesTheEntry` | `setName(nil, for:)` removes that site's name and keeps the others |
+| `storesProfilesPerSiteKey` | A profile (name, icon URL and icon bytes) set for one `siteKey` is not returned for another |
+| `nilProfileRemovesTheEntry` | `setProfile(nil, for:)` removes that site's profile and keeps the others |
 
 ### 54. App — `SiteProfileRefreshTests` (11 tests)
 
@@ -1516,7 +1524,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `anotherAccountOnTheSameSiteForgetsTheUserID` | Signing in as someone else on the same site clears `currentUserID`, so the page stops filtering by the old author |
 | `connectingToAnotherSiteForgetsTheProfileAndUser` | `connect` to another site clears `siteName`, `siteIcon` and `currentUserID` |
 
-### 55. App — `MissedScheduleTests` (11 tests)
+### 55. App — `MissedScheduleTests` (12 tests)
 
 File: `Tests/QuillTests/AppStateTests.swift`
 
@@ -1526,7 +1534,8 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `aPublishedFetchUpdatesTheListAndDoesNotConfirm` | A post WP-Cron published replaces its row in `posts` |
 | `aPublishedPageUpdatesThePagesList` | The same for `pages` |
 | `aFailedFetchConfirmsNothing` | A thrown fetch leaves the post unconfirmed and the list unchanged |
-| `eachPostIsFetchedOnce` | A second call for the same passed schedule fetches nothing, even after a failure |
+| `eachPostIsFetchedOnce` | After a successful fetch, a second call for the same passed schedule fetches nothing |
+| `aFailedFetchIsRetriedOnTheNextCall` | A fetch that throws is not remembered: the next call fetches again, and a still-`future` result then confirms the miss |
 | `aRescheduledPostIsCheckedAgain` | A new `date_gmt` is a new key: it is fetched, and the old key's confirmation does not mark it |
 | `aPostCrossingTheGraceIsPickedUpOnALaterCall` | Inside the 5-minute grace nothing is fetched; 6 minutes later, with the lists unchanged, it is |
 | `aResultAfterASiteSwitchIsDropped` | A fetch that returns after `connect` to another site changes nothing |
@@ -1547,7 +1556,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `openingClearsASearchThatWouldHideTheItem` | A search that doesn't match the title is cleared |
 | `openingKeepsASearchThatShowsTheItem` | A search that matches the title stays |
 
-### 57. App — `MastheadLeadTests` (18 tests)
+### 57. App — `MastheadLeadTests` (20 tests)
 
 File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale.
 
@@ -1570,9 +1579,11 @@ File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale
 | `untitledLocalDraftShowsUntitled` | An empty title reads "Untitled" |
 | `tiesResolveRemoteFirstThenLowerID` | Equal timestamps: remote first, then the lower ID |
 | `localDraftMetaNamesItsType` | "Post draft · on this Mac · edited yesterday" and the Page version |
+| `aClockAheadOfTheDeviceReadsAsNow` | A time an hour ahead of the device clock gives the same phrase as now, not a future time |
+| `aDraftWithoutAModifiedTimeLeadsOnlyThroughItsStash` | A WordPress draft whose `modified_gmt` is empty is not a candidate by itself; with a stash it leads, timed by the stash |
 | `editedPhraseIsRelativeForAWeekThenADate` | "2 hours ago", "yesterday", then "23 Oct" after a week |
 
-### 58. App — `MastheadScheduledTests` (8 tests)
+### 58. App — `MastheadScheduledTests` (9 tests)
 
 File: `Tests/QuillTests/MastheadTests.swift`
 
@@ -1583,6 +1594,7 @@ File: `Tests/QuillTests/MastheadTests.swift`
 | `aConfirmationForAnEarlierScheduleDoesNotCarryOver` | A confirmation keyed on an old `date_gmt` does not mark the rescheduled post |
 | `missedCountsTowardTheCapOfThree` | A miss takes one of the three places |
 | `missedWaitsOutTheFiveMinuteGrace` | 4 minutes late is not a candidate and still shows with its date; 6 minutes late is a candidate |
+| `onlyScheduledPostsCanBeMissed` | `missedCandidates` takes a passed `future` post and skips a passed published post or draft |
 | `pagesShowScheduledPages` | Pages shows scheduled pages, not posts |
 | `draftsSectionHasNoScheduled` | Drafts shows none |
 | `scheduleDateNamesTheWeekdayAndTime` | "Tue, Nov 3 at 9:00 AM" in en_US and "Tue 3 Nov at 09:00" in en_GB, in UTC |
@@ -2030,7 +2042,7 @@ A class-only card is a `wp-block-*` element with no block comment, which loads a
 
 ---
 
-## JS editor tests (286 tests)
+## JS editor tests (290 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -2576,7 +2588,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (18 tests)
+## JS bridge tests (21 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2607,7 +2619,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (147 tests)
+## JS keyboard tests (151 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2875,6 +2887,15 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `a press on the editor itself is left alone` | A press inside `.ProseMirror` is not intercepted |
 | `a secondary button is left alone` | Right-click in the gutter keeps its default |
 
+### `the heading menu button` (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `a press opens the menu and a second press closes it` | `mousedown` on `#heading-button` toggles `#heading-menu` and `aria-expanded` |
+| `the click that ends a mouse press does not toggle it back` | A `click` with `detail` 1 after the `mousedown` is ignored, so the menu does not open and close in one press |
+| `a click with no mouse detail, as a keyboard activation sends, toggles it` | Space or Return on the focused button sends `click` with `detail` 0, which toggles the menu |
+| `the press is cancelled so the editor keeps focus` | The `mousedown` is `preventDefault`ed |
+
 ---
 
 ## JS gallery tests (73 tests)
@@ -3032,7 +3053,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (423 tests)
+## JS container tests (448 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3056,13 +3077,15 @@ Five container blocks are covered end to end — **Columns**, **Details**, **But
 | `-Col removes the current column but never the last one` | `deleteColumnBlock` goes 2 → 1, then refuses to go lower |
 | `passthrough does not claim a columns block` | Class-only `div.wp-block-columns` still parses as `columnsBlock`, not `gutenbergPassthrough` |
 
-### `details block` (4 tests)
+### `details block` (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `inserts a summary and a body` | `insertDetails()` produces a `detailsBlock` whose first child is a `detailsSummary` |
 | `parses WordPress details markup` | `wp:details`-delimited `<details class="wp-block-details">` parses to `detailsBlock` |
 | `saves with wp:details delimiters` | The delimiter pair is emitted on save |
+| `the caret lands in the empty summary` | `insertDetails()` from an empty paragraph leaves the selection in the `detailsSummary`, not the body |
+| `inserting Details from a summary adds a sibling block and seats the caret in its summary` | A second `insertDetails()` with the caret in the first summary makes a second top-level `detailsBlock` after the first, not one nested in it |
 | `summary text stays in the summary on save` | `<summary>Mine</summary>` survives as a summary rather than being hoisted into the body |
 
 ### `buttons block` (22 tests)
@@ -3100,11 +3123,11 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `block inserts from a container title` (75 tests)
+### `block inserts from a container title` (97 tests)
 
 | Test | What it checks |
 |---|---|
-| `<insert> from an empty/a filled <title> goes after the whole container` (66 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title and button, leaves the container and its text unchanged and puts the new block straight after it |
+| `<insert> from an empty/a filled <title> goes after the whole container` (88 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button and details summary, leaves the container and its text unchanged and puts the new block straight after it |
 | `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
 | `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
 | `<Tabs/Accordion/Columns> inserted mid-paragraph takes the caret into the new block` (3 tests) | Inserting in the middle of `abc` puts the caret in the new block, not in the split-off `bc` |
@@ -3288,7 +3311,7 @@ The carrier preserves every attribute the delimiter held, which is what keeps un
 | `turning an owned attribute back on restores it` | The delimiter comes back with `{"autoclose":true}` |
 | `a column width is not owned and survives an edit` | `columnBlock` deliberately does not own `width` — Quill has no UI for it, so the carried value is the only copy |
 
-### `editor chrome stays out of saved markup` (12 tests)
+### `editor chrome stays out of saved markup` (13 tests)
 
 Accordion, tabs and details carry editor-only chrome: a forced-open `<details>`, a collapsed-for-preview class, the active tab. All of it is applied as ProseMirror decorations, which live outside the document — this group is the guard that none of it can reach a save.
 
@@ -3297,6 +3320,7 @@ Accordion, tabs and details carry editor-only chrome: a forced-open `<details>`,
 | `a details block is open in the DOM even when showContent is false` | Forced open so the body stays editable, with no `open` in the save |
 | `showContent true still saves the open attribute` | The real attribute is not suppressed along with the chrome |
 | `collapsing an accordion item changes the DOM and not the document` | The DOM gains `is-collapsed`; the save is byte-identical to before |
+| `collapsing an item from its header moves a caret in its panel up to the title` | A press on the header with the caret in the item's panel collapses the item and moves the caret to the `accordionHeading`, so the caret is never left in the hidden panel |
 | `collapsing is a toggle` | A second press clears it |
 | `collapsing one item leaves its sibling expanded` | Collapse is per-item |
 | `a details block collapses for preview the same way` | Stays `open` in the DOM — CSS does the hiding — and `is-collapsed` never saves |
@@ -3510,7 +3534,7 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 
 ---
 
-## JS block move tests (100 tests)
+## JS block move tests (121 tests)
 
 File: `Scripts/test-editor-block-move.js`
 Editor files: `Sources/QuillKit/Resources/block-move.js`, `block-grip.js`, `editor.html`
@@ -3660,7 +3684,53 @@ From the branch review on 2026-10-31.
 | `a mousedown in the text hides the grip` | A click can open a popover under a still pointer; the grip waits for the next move |
 | `clicking the grip on a codeBlock puts the caret in its text` | And the same for `preformatted`, `blockquote` and `pullquote` (4 tests) |
 
-## JS change bar tests (37 tests)
+### every range, every gap (2 tests)
+
+| Test | What it checks |
+|---|---|
+| `the blocks end up in the order the gap names, and the result points at the first moved block` | In a five-block post, every range of one to five blocks to every gap: a gap inside or touching the range returns null, and the other 40 moves give the expected order, with `start` on the first moved block |
+| `one undo puts any move back` | Four ranges and gaps, including to the end and to the top: one undo restores the original order |
+
+### the drag source mark (4 tests)
+
+| Test | What it checks |
+|---|---|
+| `only the dragged block is marked, and only until the drag ends` | `dragstart` on the grip adds `.block-drag-source` to that block alone; `dragend` removes it |
+| `a section marks every block in it` | ⌘ held at the press marks a heading and the blocks under it |
+| `an edit mid-drag clears the mark` | A change to the document during the drag removes it |
+| `a drop clears the mark` | The drop also ends the active grip drag |
+
+### where a drop leaves the selection (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `a moved paragraph gets the caret at its start` | |
+| `a moved embed is node-selected` | An atom block cannot hold a caret |
+| `a moved Group gets the caret in its first text block` | |
+| `a moved section keeps the caret in its heading` | |
+| `typing after a drop is its own undo step` | One undo removes the typing and leaves the move |
+| `a drop with the find bar open ends the drag and moves nothing` | |
+
+### the drop line and the gaps (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `gapYs: the middle of each space between blocks, and a little beyond the first and last` | With stubbed rects, 6, 40, 95 and 124 for blocks at 10-30, 50-90 and 100-120 |
+| `a drag the grip did not start is left alone` | A `dragover` with no grip drag is not cancelled and draws no line |
+| `the line sits on the gap nearest the pointer` | `dragover` is cancelled and `#block-drop-line` is placed at that gap |
+| `the line is hidden over a gap that would not move the block` | Over the gap directly above the dragged block (a drop that leaves the order unchanged) the line is hidden; over the gap at the end it shows |
+| `leaving the editor hides the line, moving between its children does not` | `dragleave` with a related target inside keeps it; `null` hides it |
+| `the line is gone once the drag ends` | `dragend` hides it |
+
+### autoscroll and the grip tooltip (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `a drag near the top edge scrolls up, the middle does not scroll, and the scrolling stops with the drag` | Edge scrolling of `#editor-wrap` runs only near an edge and stops at the end of the drag |
+| `a drag near the bottom edge scrolls down` | |
+| `the tooltip names the block, and a heading adds the section hint` | "Heading 2 · Drag to move, ⌘ for the section" on a heading, "Paragraph · Drag to move" on a paragraph, shown after a delay and hidden on `mouseleave` |
+
+## JS change bar tests (59 tests)
 
 File: `Scripts/test-editor-change-bars.js`
 Editor files: `Sources/QuillKit/Resources/change-bars.js`, `editor.html` (`_buildChangeBaseline`, `_blockKey`, `_changeKeyOf`, `setChangeBaseline`, `setBodyDirty`, `_changeMarks`), `block-grip.js` (`isGripHidingKey`)
@@ -3734,7 +3804,38 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 
 ---
 
-## JS click seat tests (21 tests)
+### `changedBlocks, where the marks fall` (9 tests)
+
+| Test | What it checks |
+|---|---|
+| `deleting the first block puts the dot above everything` | `removedGaps` is `[0]` and no block is marked |
+| `deleting the last block puts the dot below everything` | |
+| `two removals apart from each other leave two dots` | |
+| `replacing a block marks the new one and leaves no dot` | |
+| `deleting one of two identical paragraphs leaves a dot, not a bar` | |
+| `adding a copy of a paragraph marks one of the two` | |
+| `swapping two neighbours marks exactly one block and leaves one dot` | A block move through `moveTopLevelBlocks` |
+| `a block rewritten and another deleted beside it: one bar, no dot at the rewrite` | |
+| `the footnotes list is a block of its own, and unchanged it is not marked` | |
+
+### `overlay behaviour` (8 tests)
+
+| Test | What it checks |
+|---|---|
+| `an edit redraws the marks on its own` | |
+| `a bar spans its block and a dot sits in the gap where a block was removed` | With stubbed rects |
+| `the bars sit to the right of the text column` | |
+| `hovering a bar names it after a delay, and moving off hides the name` | "Changed since the last save" |
+| `hovering a dot says what it marks` | "Removed since the last save" |
+| `a press-and-drag over a bar names nothing` | |
+| `scrolling hides the name` | |
+| `a fade during typing is drawn fresh when the pointer comes back` | The overlay fades on a keypress and holds its redraw until the pointer moves |
+
+### `every overlay hides the marks and blocks moves` (5 tests)
+
+One test each for `insert-menu`, `embed-menu`, `find-bar`, `table-size-menu` and `inline-image-popover`: while it is visible the layer is empty, `_changeMarks().changed` is empty and `moveBlock('up')` returns false; once it closes the marks return.
+
+## JS click seat tests (25 tests)
 
 File: `Scripts/test-click-seat.js`
 Editor files: `Sources/QuillKit/Resources/click-seat.js`, `editor.html` (`_seatForPress`)
@@ -3769,6 +3870,17 @@ Editor files: `Sources/QuillKit/Resources/click-seat.js`, `editor.html` (`_seatF
 | `a position that lands outside the chosen block seats nothing` | |
 | `beside a block that keeps WebKit's default` (3 tests) | A click on a Buttons block's line, or nearer to it than to the paragraph above, is not seated in that paragraph; one nearer to the paragraph still is |
 | `the seat records the document it was measured against` | `handleClick` applies it only to the same document |
+
+### `the seat taken on mousedown is used by the click that follows` (4 tests)
+
+Drives the `mousedown` handler and `handleClick` together with stubbed geometry, because the click's own coordinates can land on a different line than the press.
+
+| Test | What it checks |
+|---|---|
+| `the click seats the caret where the press measured` | After a press in the gap, `handleClick` returns true and puts the caret at the position the press chose, not the one the click reports |
+| `a seat is used by one click only` | A second click with no new press is left to WebKit |
+| `a seat measured on an earlier document is dropped` | An edit between press and click discards the seat |
+| `a press on a line takes no seat, so the click is WebKit's` | A press where `posAtCoords` returns a position inside a node stores no seat |
 
 ---
 
@@ -4039,7 +4151,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (252 tests)
+## JS block settings tests (260 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4052,8 +4164,8 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `registry-generated attributes` | `accordionItem.openByDefault` parses comment-first, renders `is-open`, and settles the wrapper nesting order |
 | `the delimiter half comes from the registry` | `attrsFromSettings`/`ownedAttrsFor` replace a hand-written `attrsFrom` |
 | `the toolbar control comes from the registry` | A generated control appears only inside its block, reflects the value, and flips it |
-| `block styles` | Button, quote, separator, image and table each keep a style through a save, replace rather than stack, and leave the user's own classes alone |
-| `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block, with the mark suppressed on a lone tab (where it would be noise) and back the moment a second tab exists |
+| `block styles` | Button, quote, separator, image and table each keep a style through a save, replace rather than stack, and leave the user's own classes alone; an image stays selected through a style change (`the image stays selected through a style change, so its toolbar and popover stay`), with its second-row controls still showing |
+| `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block, with the mark suppressed on a lone tab (where it would be noise) and back the moment a second tab exists. With the caret in a tab title the control is on for that title's own tab (`the control is on in a tab title, for the tab the title belongs to`), pressing it with the caret in the second title writes index 1, and a title with no panel behind it neither throws nor offers the control |
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
 | `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
 | `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
@@ -4147,7 +4259,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears in the sidebar.
 - [ ] **Continue writing at launch.** Launch with nothing open → the editor area shows the site's name and host, with its Site Icon beside them when the site has one. Under Continue Writing, up to three rows, the post last written first; click one → it opens.
 - [ ] **A newer local draft leads on Posts.** File → New Post, then switch to Posts → Continue Writing shows "Untitled", "Post draft · on this Mac · edited now"; click it → Drafts opens with that draft selected.
-- [ ] **Missed schedule.** With WP-Cron disabled on the Studio site (`define('DISABLE_WP_CRON', true)` in `wp-config.php`, restored afterwards), schedule a draft 3 minutes ahead. Leave the page open, without ⌘R or a section switch → it shows under Scheduled with its date and time, then "Missed schedule" in the Pending colour once 5 minutes have passed. With WP-Cron on, a post that publishes on time drops off instead, and its sidebar row reads Published.
+- [ ] **Missed schedule.** With WP-Cron disabled on the Studio site (`define('DISABLE_WP_CRON', true)` in `wp-config.php`, restored afterwards), schedule a draft 3 minutes ahead. Leave the page open, without ⌘R or a section switch → it shows under Scheduled with its date and time, then "Missed schedule" in the Pending colour once 5 minutes have passed. With WP-Cron on, a post that publishes on time drops off instead, and its sidebar row reads Published. If Wi-Fi is off when the 5 minutes pass, the post is not marked missed; once Wi-Fi is back and the page is shown again (switch section and return) it is.
 - [ ] **Recently edited.** On Pages, with no page draft of your own and no unsaved changes → a Recently Edited group lists up to three of your pages, last edited first, e.g. "Published · edited 3 days ago"; click one → it opens in Pages. Edit and save a published post, then switch to Posts with no drafts → it leads Recently Edited. Leave one draft → Continue Writing shows and Recently Edited does not.
 - [ ] **Nothing to show.** In a section with items but nothing to continue, recently edited or scheduled → the same header as a page with items (Site Icon, name, host, top-left, no feather) and "Select a post to edit" beneath it (page, draft). In an empty section → "No posts yet" (pages, drafts).
 - [ ] **Layout.** Give the site a long name and narrow the window to its minimum with the sidebar open → the name stays on one line and truncates; nothing is clipped. Check light and dark, with and without a Site Icon.
@@ -4216,6 +4328,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Other drags are unchanged.** Drag selected text within the post → the normal thin drop cursor shows, not the amber line, and the text moves. Grab an embed itself (not its marker) and drop it inside a column → it lands inside the column as before. Drop an image from Finder → it still uploads.
 - [ ] **Clicking in the gutter.** In a post with a few paragraphs, click in the blank area to the left and right of the text column, level with a paragraph, and type → the caret lands at the start (left) or end (right) of that line and the text goes there. A click below the last line puts the caret in the last paragraph. A click on the editor's scroll bar still scrolls.
 - [ ] **⌃⌘F is not Find.** With the caret in the editor, press ⌃⌘F → the find bar does not open (macOS 27 shows full screen as 🌐F; View → Enter Full Screen works). ⌘F still opens it.
+- [ ] **Style menu opens on mouse-down.** Click the Paragraph/Heading button, choose Heading 2, wait 2 s, and click the button once → the menu opens on that first click, as it does on any other single click. Space or Return on the focused button opens and closes it too.
+- [ ] **Undo is empty after a post loads.** Open a post → Edit → Undo is greyed out, and ⌘Z does nothing. Type a word, then open another post → ⌘Z does not bring back the first post's text or empty the editor. After an AI rewrite is accepted, ⌘Z still removes it (§7.11).
 - [ ] **Narrow window.** At the narrowest window with the sidebar and Post Settings open, point at blocks → the marker never covers text.
 - [ ] **Typing hides the marker.** Point at a block, then type → the marker disappears and comes back on the next mouse move. It never shows in code view.
 
@@ -4251,6 +4365,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Click inside an image caption and press Enter → a new paragraph is created below the image; the cursor moves to it. The image and caption remain intact.
 - [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumb, Medium, Full, plus Large when the media has that size). Click each → the image swaps to that size.
 - [ ] Click Reset on an image with sizes loaded → the image returns to its original full-size dimensions. On an image without media sizes, Reset removes custom width/height constraints.
+- [ ] **Reset twice.** Click Reset on an image twice in a row → W and H show the natural size after each click, not blank after the second.
+- [ ] **Style change keeps the image selected.** Select an image, choose Rounded (or Default) in the second row → the image stays selected, its handles and the size popover stay open, and the next control works on the first click.
 - [ ] Click a classic-editor image (no explicit width/height attributes) → the image toolbar shows the image's natural dimensions (not blank fields).
 - [ ] Set image alignment to left, center, and right → text wraps correctly for each. Save and fetch the raw HTML → the figure has `wp-block-image alignleft/aligncenter/alignright`.
 - [ ] With an image selected, scroll the editor → the image toolbar moves with the image. Click elsewhere to deselect → the toolbar disappears.
@@ -4353,6 +4469,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **The title badge follows the saved status.** On a draft, open the Status menu and choose Published without saving → the badge next to the title and its tooltip still say Draft, as does the sidebar row. Publish → both change to Published once the save succeeds.
 - [ ] Type a new category or tag name in the settings panel, then save → the category/tag is created on WordPress, its ID is attached to the post, and it appears in the category/tag list.
 - [ ] If creating a new category or tag fails (e.g. no permission) → the save stops with an error; post content is not lost. Retry the save → any names that already succeeded before the failure are not resubmitted (no "term_exists" error re-blocking the save).
+- [ ] **A term that already exists.** In wp-admin create a tag "Quill probe" after Quill has loaded its lists, then in Quill type "Quill probe" as a new tag and save → the save succeeds and the post carries the existing tag, with no error and no second tag. Repeat with a category.
+- [ ] **WordPress's reason for a rejected save.** Make the Studio site refuse a save with a 400 (a mu-plugin whose `rest_pre_insert_post` filter returns `new WP_Error('quill_probe', 'Title <b>too</b> long', ['status' => 400])`) → the banner reads "WordPress didn't accept the request: Title too long" with the markup removed, and does not point at Settings. Return a message of over 200 characters → it ends in "…" after 200. Remove the plug-in afterwards.
 - [ ] Open a post while offline (or force the full-post fetch to fail) → the editor banner explains the post may be missing content; attempting to save shows "Can't save: this post never finished loading" instead of silently publishing empty content over the real post.
 - [ ] **Share.** A published or private post or page shows a Share button (square with an up arrow) in the editor toolbar. It opens the macOS share menu with the post's public URL and title. A draft, scheduled or pending post and a local draft show no Share button.
 - [ ] On a new post, leave the slug blank → it stays blank (doesn't inherit another post's slug). Edit the slug and save → the slug is sent. On an existing post, leave the slug blank → the server's current slug is preserved (not overwritten with empty).
@@ -4551,6 +4669,8 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Open the gallery sheet, switch appearance while it's open → its Link To and Size pickers follow.
 - [ ] The title field and top border spacing look correct (no extra gaps or overlap).
 - [ ] The app icon appears in the Dock and in the About window.
+- [ ] **About window is centred.** Quill → About Quill, on a few launches and with the window already open and closed → it opens centred horizontally and sits clear of the menu bar, never with its left edge at mid-screen.
+- [ ] **Window position survives a reboot.** Move and resize the main window, quit, reboot the Mac and launch Quill → the window opens where it was. `defaults read com.siolon.quill` shows `NSWindow Frame main-AppWindow-1` and no new key containing `SwiftUI.WindowGroup<`.
 - [ ] On launch, a "Loading editor…" overlay appears briefly and fades out once the editor is ready. It should never stay visible permanently.
 - [ ] In dark mode, links in the editor are visible (light blue on dark background), not unreadable dark blue.
 - [ ] Switch to dark mode while the app is running → open a post → editor, toolbar, and editor-wrap all start in dark colors immediately (no white flash).
@@ -4693,6 +4813,9 @@ Run this on a **new local draft**, never a published post.
 - [ ] **Accordion icons:** change the icon and its position → every heading in the accordion changes with the block, one undo reverses the lot, and an item added afterwards inherits the setting.
 - [ ] **Open in new tab:** on a button with a link, the control appears and writes `target`/`rel`; on a button with no link it is hidden, and it appears the moment a link is set. The same control exists for a prose link.
 - [ ] **Default tab:** with two or more tabs, one is marked as the default and the mark follows the control, not the caret. With a single tab there is no mark. The mark never reaches the saved markup.
+- [ ] **Default tab from a tab title.** With the caret in the second tab's title, the default-tab control in the second row is available; press it → the second tab becomes the default and shows the default mark. A tab title whose panel was deleted in code view does not break the row.
+- [ ] **Collapsing from the header moves the caret.** Put the caret in an accordion item's panel text, then click that item's header row → the item collapses and the caret sits in its title; expanding it again shows one caret. Do the same with a Details block's arrow.
+- [ ] **Details caret.** Insert Details from an empty paragraph → the caret is in the summary. Insert Details again with the caret in a summary → a second Details block appears after the first, not inside it, with the caret in its summary.
 - [ ] **Settings a block has that Quill has no control for** — a column's width, a details `name`, `is-not-stacked-on-mobile` — survive an edit untouched.
 - [ ] Turning a setting **off** actually removes it; it must not come back on the next load.
 - [ ] **Every setting that writes a class has an editor preview.** A class with no rule in `editor.html` saves correctly but looks dead on the canvas. Any `0` in this output is a missing preview:
@@ -4736,6 +4859,7 @@ human is required.
 
 - [ ] Media opens on a gallery in the content column, not a sidebar grid.
 - [ ] The sidebar lists five filters: All Media, Images, Documents, Audio, Video.
+- [ ] **Selected filter is amber.** Click Images, then Documents → the selected row draws in the amber accent, not grey, and a post being edited keeps keyboard focus when an upload resets the filter in the background.
 - [ ] Single-clicking a thumbnail selects it; the inspector shows it if the inspector was already open (with it closed, selecting does not open it).
 - [ ] Arrow keys move the selection left, right, up and down.
 - [ ] The inspector follows the selection and shows the right filename.
@@ -4801,7 +4925,7 @@ window's licence link all point at `quill.siolon.com`, which is published from
 - [ ] File → New Media… (⌘⌥N) opens the file picker and does not create a post.
 - [ ] Edit → **Paste as Markdown** (⌘⇧V) converts Markdown on the clipboard into real blocks (a heading stays a heading, a list stays a list). Plain ⌘V in the same spot is unaffected and still pastes normally.
 - [ ] Edit → Find… (⌘F) opens the find bar; File → Save (⌘S) and Publish (⌘⇧P) match the buttons in the editor.
-- [ ] In Media, and with no post selected, Edit → Paste as Markdown and Find… are greyed out; open a post afterwards → both work at the first try.
+- [ ] In Media, and with no post selected, Edit → Paste as Markdown, Find… and Move Block Up and Down are greyed out; open a post afterwards → all work at the first try. In Media with a post still selected they stay greyed out.
 - [ ] File → Revert to Saved and Preview in Browser are enabled on a remote post and disabled on a local draft.
 - [ ] View → Refresh (⌘R) reloads the current section — including while the sidebar is collapsed.
 
@@ -5141,6 +5265,30 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 271 | Enter on an empty last bullet inside a column or quote left the whole container and kept the empty bullet. `_containerEnter` now leaves a paragraph in a list item to the list keymap, which ends the list | ✅ `test-editor-containers.js` `'Enter on an empty last bullet in a column ends the list, not the column'`, `'…in a quote ends the list, not the quote'` |
 | 272 | A new line in the left column of a Columns block looked like it had left the block: columns were top-aligned, so the separator (the right column's left border) stopped at the right column's last line. Columns now stretch to the tallest one | 👁 §7.23 (layout; jsdom has none). Checked in the browser pane: both columns 68 px after Enter in the left, against 68/27 before |
 | 273 | Enter in a button added another empty button on every press and never left the Buttons block. As in core, Enter in an empty button now removes it and puts a paragraph in its place: after the block for the last button, between two Buttons blocks for a middle one (`_leaveButtons`) | ✅ `test-editor-containers.js` `'Enter twice leaves a Buttons block, dropping the empty button'`, `'Enter in an empty middle button splits the Buttons block around a paragraph'`, `'Enter in the only button, empty, turns the Buttons block into a paragraph'` |
+| 274 | A block drag must move only whole top-level blocks to a gap, leave the saved HTML as it was apart from order (footnotes reordered with it) and be one undo step. A drop after the document changed mid-drag, or with the find bar open, moves nothing; a press in the text hides the grip | ✅ `test-editor-block-move.js` `'a move saves exactly what loading the post in that order saves'`, `'the blocks end up in the order the gap names, and the result points at the first moved block'`, `'one undo puts any move back'`, `'a grip drop after the document changed mid-drag moves nothing'`, `'a drop with the find bar open ends the drag and moves nothing'` + 👁 §7.3 |
+| 275 | The dragged block (or a heading's whole section) is dimmed with `.block-drag-source` from `dragstart` to `dragend`, and an edit mid-drag or the drop clears it. Left on, the dim stays on a block that is no longer being dragged | ✅ `test-editor-block-move.js` `'only the dragged block is marked, and only until the drag ends'`, `'a section marks every block in it'`, `'an edit mid-drag clears the mark'`, `'a drop clears the mark'` + 👁 §7.3 |
+| 276 | After a drop the selection must land where the author can keep working: a caret at the start of a moved paragraph, a node selection on an embed, the caret in a Group's first text block or a section's heading, and typing afterwards is its own undo step, so one ⌘Z removes the typing and not the move | ✅ `test-editor-block-move.js` `'where a drop leaves the selection'` (6 tests) |
+| 277 | The amber drop line sits on the gap nearest the pointer, is hidden over a gap that would not move the block, goes when the pointer leaves the editor or the drag ends, and only a grip drag draws it. The editor autoscrolls near its top and bottom edges and stops when the drag stops | ✅ `test-editor-block-move.js` `'the drop line and the gaps'` (6 tests), `'autoscroll and the grip tooltip'` (3 tests) + 👁 §7.3 (where the line lands needs layout) |
+| 278 | A change bar marks a changed block, and a dot marks where a block was removed, in the right place: above everything for the first block, below for the last, one dot per separate removal, a replaced block a bar and no dot. Two identical paragraphs must not hide a deletion, and a move marks one block and one dot | ✅ `test-editor-change-bars.js` `'changedBlocks, where the marks fall'` (9 tests) + 👁 §7.29 |
+| 279 | The marks draw to the right of the text column, name themselves after a delay on hover, stay quiet during a press-and-drag and on scroll, and are held while faded during typing. Under the insert and embed menus, the find bar, the table size menu and the inline image popover they are hidden and Move Block does nothing | ✅ `test-editor-change-bars.js` `'overlay behaviour'` (8 tests), `'every overlay hides the marks and blocks moves'` (5 tests) + 👁 §7.29 (placement needs layout) |
+| 280 | The Continue Writing page must not lead with a WordPress draft whose `modified_gmt` is empty (it has no edit time to rank by) unless a stash gives it one, and a time ahead of the device clock reads as now, not as a future time | ✅ `MastheadLeadTests` `aDraftWithoutAModifiedTimeLeadsOnlyThroughItsStash`, `aClockAheadOfTheDeviceReadsAsNow` + 👁 §7.2 |
+| 281 | A missed schedule is confirmed against WordPress once per schedule, and only for a post still `future`; a published or draft post is never a candidate. A fetch that fails (offline) must not be remembered as done, or the post is never marked missed until the schedule changes | ✅ `MastheadScheduledTests.onlyScheduledPostsCanBeMissed`, `MissedScheduleTests.eachPostIsFetchedOnce`, `aFailedFetchIsRetriedOnTheNextCall` + 👁 §7.2 |
+| 282 | `currentUser()` must not fail because the second request (one post, for the `unfiltered_html` link) failed. It returns the user's ID with `canPostUnfilteredHTML` `nil`, so `currentUserID` is set and the masthead tells the user's drafts from other authors'. Before, the throw left the ID `nil` and every author's drafts counted as the user's. `nil` is unknown: `AppState.loadUnfilteredHTMLCapability` asks again on its next call | ✅ `WordPressClientTests.currentUserKeepsTheIDWhenThePostsCheckFails` |
+| 283 | The reason WordPress gives for a rejected 400 is shown as plain text: tags removed, entities decoded, cut to 200 characters plus "…". A message with markup or a page of text must not reach the banner raw | ✅ `ErrorMessageTests.aRejectedRequestStripsMarkupAndShortensALongMessage`, `aRejectedRequestQuotesWordPresssOwnMessageAndDoesNotPointAtSettings` + 👁 §7.7 |
+| 284 | A tag or category created elsewhere since the lists were cached comes back as `term_exists`. Creating it adopts the existing term (`GET` on its `term_id`) instead of failing the save; a `term_exists` without a `term_id` is thrown, not looked up | ✅ `WordPressClientTests` `createTagUsesTheExistingTermWhenWordPressSaysItExists`, `createCategoryUsesTheExistingTermWhenWordPressSaysItExists`, `createTagRethrowsTermExistsWithoutATermID` + 👁 §7.7 |
+| 285 | Preview on a published, scheduled, pending or private post must not post an autosave: WordPress renders the permalink from the saved post, so the edits never showed and wp-admin later flagged the autosave as newer. Only a draft preview autosaves; the autosave request carries the authorized JSON payload and its failure is thrown | ✅ `PostEditorHelpersTests.previewOverwritesOnlyADraft`, `WordPressClientTests` `autosaveSendsTheAuthorizedJSONPayloadAndIgnoresTheReplyBody`, `autosaveFailureIsThrown` + 👁 §7.7 |
+| 286 | Loading a post recorded the empty-to-loaded change as an undo step, so Undo was enabled on open and clicking it emptied the editor, and a switch kept the previous post's history. `window.setContent` resets the history; AI results pass `keepHistory` and stay undoable | ✅ `test-editor-bridge.js` `'a freshly loaded post has nothing to undo'`, `'loading another post drops the previous post's undo history'`, `'keepHistory lets a replacement inside the open post be undone'` + 👁 §7.3 |
+| 287 | A click outside every text line is seated by `mousedown` and the click that follows must use that seat once: not twice, not after the document changed, and not for a press that landed on a line (WebKit's own click). The page gutter beside the column seats the caret at the nearest line, with Shift extending and a right-click left alone | ✅ `test-click-seat.js` `'the seat taken on mousedown is used by the click that follows'` (4 tests), `test-editor-keyboard.js` `'a press in the page gutter'` (7 tests) + 👁 §7.3 |
+| 288 | ⌃⌘F is the system's full-screen shortcut on macOS 27 and must not open the find bar; ⌘F still does | ✅ `test-editor-keyboard.js` `'⌃⌘F is left to the system and does not open it'`, `'⌘F opens the find bar'` + 👁 §7.3 |
+| 289 | The second toolbar row sits in the page flow, so showing or hiding it under a pressed pointer moved the post 34 px and WebKit's next mousemove turned a click into a drag or a cell selection. Row 2 now waits for the mouse button to come up (or the `dragend`, or 100 ms after a buttonless move) | ✅ `test-editor-block-settings.js` `'the second toolbar row waits for the mouse button to come up'` (4 tests) + 👁 §7.3 |
+| 290 | A second Reset on an image changes no attribute and loads nothing, so W and H must not be blanked by the handler: the node view's `update()` and load listener fill them | ✅ `test-editor-keyboard.js` `'pressing Reset twice leaves the natural size in the W and H fields'` + 👁 §7.4 |
+| 291 | The Paragraph/Heading menu opens on `mousedown`, so the click after choosing a style is not lost; the `click` that ends a mouse press must not toggle it back, a keyboard click (detail 0) still toggles, and the press is cancelled so the editor keeps focus | ✅ `test-editor-keyboard.js` `'the heading menu button'` (4 tests) + 👁 §7.3 (jsdom cannot press a real button) |
+| 292 | Collapsing an accordion or Details from its header moved nothing out of the hidden panel, leaving a second caret bar; the caret now goes to the title. The default-tab control works with the caret in a tab title, and tolerates a title with no panel. Details seats the caret in its summary, and from a summary adds a sibling | ✅ `test-editor-containers.js` `'collapsing an item from its header moves a caret in its panel up to the title'`, `'the caret lands in the empty summary'`, `'inserting Details from a summary adds a sibling block and seats the caret in its summary'`; `test-editor-block-settings.js` `'the control is on in a tab title, for the tab the title belongs to'`, `'pressing it with the caret in the second tab title writes that index'`, `'a tab title with no panel behind it neither throws nor offers the control'` + 👁 §7.23 |
+| 293 | Changing an image style (Rounded) deselected the image, closing its handles and size popover | ✅ `test-editor-block-settings.js` `'the image stays selected through a style change, so its toolbar and popover stay'` + 👁 §7.4 |
+| 294 | Find… , Paste as Markdown and Move Block Up/Down are disabled while no editor is mounted (Media, or no selection); a command left enabled has a trigger only the editor resets, which then sticks | ✅ `AppStateEditorMountedTests` (3 tests) + 👁 §7.27 |
+| 295 | The main window's position and the sidebar width must survive a reboot (`id: "main"` on the `WindowGroup`), and the About window must open centred, sized to its content before `center()` | 👁 §7.13 (needs a reboot and a real window; see `docs/platform-workarounds.md`) |
+| 296 | The selected media filter draws amber, not grey: choosing a filter gives the sidebar list first responder, only while Media is showing, so a background upload that resets the filter cannot pull focus from the editor | 👁 §7.26 |
+| 297 | A connected site's `site_icon_url` was fetched from any scheme and host at any size and stored whole in `site_profiles.json`. `loadIconData` now takes https (or loopback http) only, up to 2 MB | ✅ `SiteDiscoveryTests.loadIconDataRefusesPlainHTTPExceptOnALocalHost` + `loadIconDataRefusesAnOversizedIcon` |
 
 ---
 

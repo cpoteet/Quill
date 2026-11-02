@@ -451,6 +451,7 @@ describe('block inserts from a container title', () => {
     accordionHeading: () => win.insertAccordion(),
     tabButton: () => win.insertTabs(2),
     buttonBlock: () => win.insertButtons(),
+    detailsSummary: () => win.insertDetails(),
   }
   const caretInto = (host, text) => {
     editor.commands.setContent('<p></p>', false)

@@ -47,6 +47,17 @@ import Testing
         #expect(await discovery.loadIconData(URL(string: "https://cdn.example.com/icon.png")!) == nil)
     }
 
+    @Test func loadIconDataRefusesPlainHTTPExceptOnALocalHost() async {
+        serve("PNG")
+        #expect(await discovery.loadIconData(URL(string: "http://192.168.1.5/icon.png")!) == nil)
+        #expect(await discovery.loadIconData(URL(string: "http://localhost/icon.png")!) == Data("PNG".utf8))
+    }
+
+    @Test func loadIconDataRefusesAnOversizedIcon() async {
+        serve(String(repeating: "a", count: 2_000_001))
+        #expect(await discovery.loadIconData(URL(string: "https://cdn.example.com/icon.png")!) == nil)
+    }
+
     // MARK: - normalize
 
     @Test func normalizeAddsHTTPSToBareHost() throws {

@@ -100,10 +100,14 @@ public struct SiteDiscovery: Sendable {
 
     // Unauthenticated on purpose: a site's icon is often on a CDN, and the site's credentials must not go there.
     public func loadIconData(_ url: URL) async -> Data? {
-        guard let (data, response) = try? await session.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        guard Self.secureOrNil(url) != nil,
+              let (data, response) = try? await session.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              data.count <= Self.maxIconBytes else { return nil }
         return data
     }
+
+    private static let maxIconBytes = 2_000_000
 
     private static func secureOrNil(_ url: URL) -> URL? {
         isSecure(scheme: url.scheme?.lowercased() ?? "", host: url.host() ?? "") ? url : nil

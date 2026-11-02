@@ -194,3 +194,69 @@ describe('seating a press that lands outside every line', () => {
     assert.equal(win._seatForPress(view, press(128)).doc, view.state.doc)
   })
 })
+
+describe('the seat taken on mousedown is used by the click that follows', () => {
+  const view = () => editor.view
+  function stubGeometry() {
+    view().posAtCoords = ({ top }) => (view().posAtCoords.asked++ === 0 ? { pos: 4, inside: -1 } : { pos: top < 140 ? 3 : 7, inside: -1 })
+    view().posAtCoords.asked = 0
+    view().coordsAtPos = pos => (pos <= 3 ? LINES.p1 : LINES.p2)
+    view().nodeDOM = () => ({ getBoundingClientRect: () => ({ left: 0, right: 800 }) })
+  }
+
+  function restoreGeometry() {
+    for (const name of ['posAtCoords', 'coordsAtPos', 'nodeDOM']) delete view()[name]
+  }
+
+  const handleClick = () => view().someProp('handleClick', f => f(view(), 4, { metaKey: false, target: view().dom }))
+  const mousedown = y => view().someProp('handleDOMEvents', handlers => handlers.mousedown?.(view(), {
+    button: 0, detail: 1, clientX: 400, clientY: y, target: win.document.body,
+  }))
+
+  test('the click seats the caret where the press measured', () => {
+    win.setContent('<p>aa</p><p>bb</p>')
+    editor.commands.setTextSelection(1)
+    stubGeometry()
+    try {
+      mousedown(128)
+      assert.equal(handleClick(), true)
+      assert.equal(editor.state.selection.from, 3)
+    } finally { restoreGeometry() }
+  })
+
+  test('a seat is used by one click only', () => {
+    win.setContent('<p>aa</p><p>bb</p>')
+    stubGeometry()
+    try {
+      mousedown(128)
+      handleClick()
+      editor.commands.setTextSelection(1)
+      assert.notEqual(handleClick(), true)
+      assert.equal(editor.state.selection.from, 1)
+    } finally { restoreGeometry() }
+  })
+
+  test('a seat measured on an earlier document is dropped', () => {
+    win.setContent('<p>aa</p><p>bb</p>')
+    stubGeometry()
+    try {
+      mousedown(128)
+      editor.commands.insertContentAt(1, 'x')
+      editor.commands.setTextSelection(1)
+      assert.notEqual(handleClick(), true)
+      assert.equal(editor.state.selection.from, 1)
+    } finally { restoreGeometry() }
+  })
+
+  test('a press on a line takes no seat, so the click is WebKit\'s', () => {
+    win.setContent('<p>aa</p><p>bb</p>')
+    editor.commands.setTextSelection(1)
+    stubGeometry()
+    try {
+      view().posAtCoords = () => ({ pos: 2, inside: 0 })
+      mousedown(110)
+      assert.notEqual(handleClick(), true)
+      assert.equal(editor.state.selection.from, 1)
+    } finally { restoreGeometry() }
+  })
+})

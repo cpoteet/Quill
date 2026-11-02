@@ -2,7 +2,7 @@
 
 // Loads the real editor.html in jsdom and checks the change bars: docs/superpowers/specs/2026-10-31-change-bars-design.md.
 
-const { test, describe, before, after } = require('node:test')
+const { test, describe, before, after, afterEach } = require('node:test')
 const assert = require('node:assert/strict')
 const { JSDOM, VirtualConsole } = require('jsdom')
 const fs = require('fs')
@@ -437,4 +437,213 @@ describe('the WebKit fixture corpus', () => {
     const rows = JSON.parse(JSON.stringify(win.__runFixtureCorpus(JSON.stringify([{ name: 'x', source }]))))
     assert.equal(rows[0].baseline, true)
   })
+})
+
+describe('changedBlocks, where the marks fall', () => {
+  test('deleting the first block puts the dot above everything', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    deleteBlocks(0, 1)
+    assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [0] })
+  })
+
+  test('deleting the last block puts the dot below everything', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    deleteBlocks(2, 3)
+    assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [2] })
+  })
+
+  test('two removals apart from each other leave two dots', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D', 'E'))
+    deleteBlocks(3, 4)
+    deleteBlocks(1, 2)
+    assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1, 2] })
+  })
+
+  test('replacing a block marks the new one and leaves no dot', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    editor.view.dispatch(editor.state.tr.insertText('Z', startOf(1) + 1, startOf(1) + 2))
+    assert.equal(doc().child(1).textContent, 'Z')
+    assert.deepEqual(marksAgainst(baseline), { changed: [1], removedGaps: [] })
+  })
+
+  test('deleting one of two identical paragraphs leaves a dot, not a bar', () => {
+    const baseline = loadWithBaseline(post('Same', 'Same', 'Other'))
+    deleteBlocks(0, 1)
+    const marks = marksAgainst(baseline)
+    assert.deepEqual(marks.changed, [])
+    assert.equal(marks.removedGaps.length, 1)
+  })
+
+  test('adding a copy of a paragraph marks one of the two', () => {
+    const baseline = loadWithBaseline(post('Same', 'Other'))
+    editor.view.dispatch(editor.state.tr.insert(startOf(1), editor.schema.nodes.paragraph.create(null, editor.schema.text('Same'))))
+    const marks = marksAgainst(baseline)
+    assert.equal(marks.changed.length, 1)
+    assert.deepEqual(marks.removedGaps, [])
+    assert.equal(doc().child(marks.changed[0]).textContent, 'Same')
+  })
+
+  test('swapping two neighbours marks exactly one block and leaves one dot', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    const result = win.moveTopLevelBlocks(editor.state, 0, 1, 2, TRAILING())
+    editor.view.dispatch(result.tr)
+    assert.deepEqual(Array.from(doc().content.content, n => n.textContent), ['B', 'A', 'C'])
+    const marks = marksAgainst(baseline)
+    assert.equal(marks.changed.length, 1)
+    assert.equal(marks.removedGaps.length, 1)
+  })
+
+  test('a block rewritten and another deleted beside it: one bar, no dot at the rewrite', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
+    typeInto(0, 'x')
+    deleteBlocks(3, 4)
+    assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [3] })
+  })
+
+  test('the footnotes list is a block of its own, and unchanged it is not marked', () => {
+    const footnotes = JSON.stringify([{ id: FN1, content: 'First.' }, { id: FN2, content: 'Second.' }])
+    const baseline = loadWithBaseline(footnotedPost, footnotes)
+    typeInto(0, 'x')
+    assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [] })
+  })
+})
+
+describe('overlay behaviour', () => {
+  const layer = () => win.document.getElementById('change-bar-layer')
+  const tip = () => win.document.getElementById('change-bar-tooltip')
+  const wrap = () => win.document.getElementById('editor-wrap')
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+  const move = (x, y) => wrap().dispatchEvent(new win.MouseEvent('mousemove', { bubbles: true, buttons: 0, clientX: x, clientY: y }))
+  const stubbed = []
+
+  afterEach(() => {
+    stubbed.splice(0).forEach(el => { delete el.getBoundingClientRect })
+    win.setBodyDirty(false)
+    win._changeBars.redraw()
+  })
+
+  function stub(el, rect) {
+    el.getBoundingClientRect = () => ({ ...rect, width: rect.right - rect.left, height: rect.bottom - rect.top })
+    stubbed.push(el)
+  }
+
+  function arrange() {
+    win.setContent(post('A2', 'B', 'D'), '[]')
+    win.setChangeBaseline(post('A', 'B', 'C', 'D'), '[]')
+    win.setBodyDirty(true)
+    stub(layer(), { top: 0, bottom: 0, left: 0, right: 0 })
+    stub(editor.view.dom, { top: 0, bottom: 300, left: 100, right: 500 })
+    ;[[10, 30], [50, 70], [90, 110]].forEach(([top, bottom], i) => stub(editor.view.nodeDOM(startOf(i)), { top, bottom, left: 100, right: 500 }))
+    win._changeBars.redraw()
+  }
+
+  test('an edit redraws the marks on its own', async () => {
+    win.setContent(post('A', 'B'), '[]')
+    win.setChangeBaseline(post('A', 'B'), '[]')
+    win.setBodyDirty(true)
+    win._changeBars.redraw()
+    assert.equal(layer().children.length, 0)
+    typeInto(1, 'x')
+    await wait(60)
+    assert.equal(layer().querySelectorAll('.change-bar').length, 1)
+  })
+
+  test('a bar spans its block and a dot sits in the gap where a block was removed', () => {
+    arrange()
+    const bar = layer().querySelector('.change-bar')
+    assert.equal(bar.style.top, '10px')
+    assert.equal(bar.style.height, '20px')
+    const dot = layer().querySelector('.change-bar-removed')
+    assert.equal(parseFloat(dot.style.top) + 3, 80)
+    assert.ok(parseFloat(dot.style.left) > parseFloat(bar.style.left) - 4)
+  })
+
+  test('the bars sit to the right of the text column', () => {
+    arrange()
+    assert.ok(parseFloat(layer().querySelector('.change-bar').style.left) >= 500)
+  })
+
+  test('hovering a bar names it after a delay, and moving off hides the name', async () => {
+    arrange()
+    const bar = layer().querySelector('.change-bar')
+    stub(bar, { top: 10, bottom: 30, left: 508, right: 511 })
+    move(509, 20)
+    await wait(300)
+    assert.ok(!tip().classList.contains('visible'), 'too early')
+    await wait(450)
+    assert.equal(tip().textContent, 'Changed since the last save')
+    assert.ok(tip().classList.contains('visible'))
+    move(200, 200)
+    assert.ok(!tip().classList.contains('visible'))
+  })
+
+  test('hovering a dot says what it marks', async () => {
+    arrange()
+    const dot = layer().querySelector('.change-bar-removed')
+    stub(dot, { top: 77, bottom: 83, left: 508, right: 514 })
+    move(511, 80)
+    await wait(750)
+    assert.equal(tip().textContent, 'Removed since the last save')
+    wrap().dispatchEvent(new win.MouseEvent('mouseleave'))
+    assert.ok(!tip().classList.contains('visible'))
+  })
+
+  test('a press-and-drag over a bar names nothing', async () => {
+    arrange()
+    stub(layer().querySelector('.change-bar'), { top: 10, bottom: 30, left: 508, right: 511 })
+    wrap().dispatchEvent(new win.MouseEvent('mousemove', { bubbles: true, buttons: 1, clientX: 509, clientY: 20 }))
+    await wait(750)
+    assert.ok(!tip().classList.contains('visible'))
+  })
+
+  test('scrolling hides the name', async () => {
+    arrange()
+    stub(layer().querySelector('.change-bar'), { top: 10, bottom: 30, left: 508, right: 511 })
+    move(509, 20)
+    await wait(750)
+    assert.ok(tip().classList.contains('visible'))
+    wrap().dispatchEvent(new win.Event('scroll'))
+    assert.ok(!tip().classList.contains('visible'))
+  })
+
+  test('a fade during typing is drawn fresh when the pointer comes back', () => {
+    arrange()
+    win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'a', bubbles: true }))
+    assert.ok(layer().classList.contains('faded'))
+    win.setChangeBaseline(post('A2', 'B', 'D'), '[]')
+    win._changeBars.redraw()
+    assert.equal(layer().querySelectorAll('.change-bar').length, 1, 'redraw is held while faded')
+    move(0, 0)
+    assert.ok(!layer().classList.contains('faded'))
+    assert.equal(layer().children.length, 0)
+  })
+})
+
+describe('every overlay hides the marks and blocks moves', () => {
+  const layer = () => win.document.getElementById('change-bar-layer')
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+  for (const id of ['insert-menu', 'embed-menu', 'find-bar', 'table-size-menu', 'inline-image-popover']) {
+    test(id, async () => {
+      win.setContent(post('A', 'B2'), '[]')
+      win.setChangeBaseline(post('A', 'B'), '[]')
+      win.setBodyDirty(true)
+      win._changeBars.redraw()
+      assert.equal(layer().querySelectorAll('.change-bar').length, 1)
+      const el = win.document.getElementById(id)
+      el.classList.add('visible')
+      try {
+        await wait(20)
+        assert.equal(layer().children.length, 0, 'marks drawn under the overlay')
+        assert.deepEqual([...win._changeMarks().changed], [])
+        editor.commands.setTextSelection(startOf(1) + 1)
+        assert.equal(win.moveBlock('up'), false, 'a block moved under the overlay')
+      } finally {
+        el.classList.remove('visible')
+      }
+      await wait(20)
+      assert.equal(layer().querySelectorAll('.change-bar').length, 1, 'marks back once it closes')
+      win.setBodyDirty(false)
+    })
+  }
 })

@@ -642,6 +642,38 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(capturedRequest?.httpMethod == "POST")
     }
 
+    @Test func autosaveSendsTheAuthorizedJSONPayloadAndIgnoresTheReplyBody() async throws {
+        var capturedRequest: URLRequest?
+        var bodyData = Data()
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            if let stream = request.httpBodyStream {
+                stream.open()
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let n = stream.read(&buffer, maxLength: buffer.count)
+                    if n > 0 { bodyData.append(contentsOf: buffer[..<n]) }
+                }
+                stream.close()
+            }
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    "not json".data(using: .utf8)!)
+        }
+        try await client.createAutosave(postID: 10, payload: minimalPayload)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization")?.hasPrefix("Basic ") == true)
+        let json = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+        #expect(json?["title"] as? String == "T")
+        #expect(json?["content"] as? String == "C")
+    }
+
+    @Test func autosaveFailureIsThrown() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        await #expect(throws: APIError.self) { try await client.createPageAutosave(postID: 20, payload: minimalPayload) }
+    }
+
     private static let unfilteredUser = #"{"id":1,"capabilities":{"edit_posts":true,"unfiltered_html":true}}"#
     // WordPress compacts api.w.org relations through its `wp` CURIE.
     private static let postWithUnfilteredAction =
@@ -661,7 +693,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
     @Test func canPostUnfilteredHTMLReadsTheCapabilityThenAPostsActionLink() async throws {
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: Self.unfilteredUser, posts: Self.postWithUnfilteredAction, requests: requests)
-        #expect(try await client.currentUser().canPostUnfilteredHTML)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == true)
         #expect(requests.urls.count == 2)
         #expect(requests.urls[0].path.hasSuffix("/users/me"))
         #expect(requests.urls[0].query?.contains("context=edit") == true)
@@ -676,7 +708,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         mockUnfilteredHTML(user: Self.unfilteredUser,
                            posts: #"[{"id":7,"_links":{"https://api.w.org/action-unfiltered-html":[{"href":"x"}]}}]"#,
                            requests: requests)
-        #expect(try await client.currentUser().canPostUnfilteredHTML)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == true)
     }
 
     // Multisite non-super-admins and DISALLOW_UNFILTERED_HTML keep the role capability but lose the permission.
@@ -691,7 +723,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
     @Test func canPostUnfilteredHTMLFallsBackToTheCapabilityWithNoPosts() async throws {
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: Self.unfilteredUser, posts: "[]", requests: requests)
-        #expect(try await client.currentUser().canPostUnfilteredHTML)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == true)
     }
 
     // A plugin on siolon.com adds `can_runPHP` with a string value.
@@ -699,7 +731,7 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: #"{"id":1,"capabilities":{"can_runPHP":"1","unfiltered_html":true}}"#,
                            posts: Self.postWithUnfilteredAction, requests: requests)
-        #expect(try await client.currentUser().canPostUnfilteredHTML)
+        #expect(try await client.currentUser().canPostUnfilteredHTML == true)
     }
 
     @Test func canPostUnfilteredHTMLIsFalseWithoutTheCapability() async throws {
@@ -721,6 +753,17 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         let requests = UnfilteredRequests()
         mockUnfilteredHTML(user: #"{"id":7,"capabilities":{}}"#, posts: "[]", requests: requests)
         #expect(try await client.currentUser() == CurrentUserInfo(id: 7, canPostUnfilteredHTML: false))
+    }
+
+    @Test func currentUserKeepsTheIDWhenThePostsCheckFails() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let isUser = request.url!.path.hasSuffix("/users/me")
+            return (HTTPURLResponse(url: request.url!, statusCode: isUser ? 200 : 500, httpVersion: nil, headerFields: nil)!,
+                    (isUser ? Self.unfilteredUser : "").data(using: .utf8)!)
+        }
+        let user = try await client.currentUser()
+        #expect(user.id == 1)
+        #expect(user.canPostUnfilteredHTML == nil)
     }
 
     @Test func fetchSiteProfileDecodesTheNameAndIcon() async throws {
@@ -856,6 +899,34 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         #expect(requests.count == 2)
         #expect(requests.last?.hasPrefix("GET ") == true)
         #expect(requests.last?.hasSuffix("/tags/7") == true)
+    }
+
+    @Test func createCategoryUsesTheExistingTermWhenWordPressSaysItExists() async throws {
+        var requests: [String] = []
+        MockURLProtocol.requestHandler = { request in
+            requests.append("\(request.httpMethod ?? "") \(request.url?.path ?? "")")
+            if request.httpMethod == "POST" {
+                let body = #"{"code":"term_exists","message":"exists","data":{"status":400,"term_id":4}}"#
+                return (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+            }
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    minimalCategoryJSON.data(using: .utf8)!)
+        }
+        let category = try await client.createCategory(name: "tech")
+        #expect(category.name == "Tech")
+        #expect(requests.count == 2)
+        #expect(requests.last?.hasSuffix("/categories/4") == true)
+    }
+
+    @Test func createTagRethrowsTermExistsWithoutATermID() async throws {
+        var requests = 0
+        MockURLProtocol.requestHandler = { request in
+            requests += 1
+            let body = #"{"code":"term_exists","message":"exists","data":{"status":400}}"#
+            return (HTTPURLResponse(url: request.url!, statusCode: 400, httpVersion: nil, headerFields: nil)!, Data(body.utf8))
+        }
+        await #expect(throws: APIError.self) { try await client.createTag(name: "swift") }
+        #expect(requests == 1)
     }
 
     @Test func createCategoryRethrowsAnyOtherRejection() async throws {

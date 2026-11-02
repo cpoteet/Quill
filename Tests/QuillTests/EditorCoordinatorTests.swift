@@ -314,6 +314,17 @@ private final class Box<T>: @unchecked Sendable {
         await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
     }
 
+    @Test func setContentCarriesTheSyncFlagOnlyForTheNextPush() {
+        coordinator.setContent("<p>A</p>", footnotes: "[]")
+        coordinator.syncAfterNextSetContent = true
+        coordinator.setContent("<p>B</p>", footnotes: "[]")
+        coordinator.setContent("<p>C</p>", footnotes: "[]")
+        let pushes = webView.scripts.filter { $0.hasPrefix("setContent(") }
+        #expect(pushes.map { $0.hasSuffix(", false)") } == [true, false, true])
+        #expect(pushes[1].hasSuffix(", true)"))
+        #expect(webView.scripts.filter { $0 == "window.syncContentToSwift?.()" }.count == 1)
+    }
+
     @Test func aRepeatedBaselineOrDirtyFlagIsSentOnce() {
         coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")
         coordinator.setChangeBaseline("<p>A</p>", footnotes: "[]")

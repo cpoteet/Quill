@@ -24,7 +24,7 @@ public enum APIError: Error, LocalizedError {
         case .httpError(let code, let body):
             let friendly = Self.friendlyHTTPMessage(code: code, rawBody: body)
             guard code == 400, let message = wordPressError?.message else { return friendly }
-            return "WordPress didn't accept the request: \(message)"
+            return "WordPress didn't accept the request: \(Self.plainText(message))"
         case .decodingError: return "WordPress sent a reply Quill couldn't read. A plugin or theme may be adding text to it."
         case .networkError(let e):
             let msg = e.localizedDescription
@@ -68,6 +68,12 @@ public enum APIError: Error, LocalizedError {
               !error.message.isEmpty
         else { return nil }
         return error
+    }
+
+    private static func plainText(_ message: String, limit: Int = 200) -> String {
+        let text = message.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .decodingHTMLEntities().trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.count > limit ? String(text.prefix(limit)) + "…" : text
     }
 
     private static func friendlyHTTPMessage(code: Int, rawBody: String) -> String {

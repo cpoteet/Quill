@@ -43,12 +43,12 @@ Runs every Swift and JS test. Current counts, every suite, the test-suite gotcha
 
 `Sources/QuillKit/`, each directory with its own `CLAUDE.md` of file-specific gotchas:
 
-- `App/` — `AppState`, `AppServices`, `QuillApp`, `UpdateChecker`
+- `App/` — `AppState`, `AppServices`, `QuillApp`, `UpdateChecker`, `Masthead` (what the empty-state Continue Writing page lists)
 - `Auth/` — `CredentialsStore` (file-based), `AppAuthorization`, `ConnectSite`
 - `API/` — `WordPressClient` (all REST calls), `SiteDiscovery`, models (`WPPost`, `WPMedia`, `WPTaxonomy`, `WPSyncedPattern`), `ImageConversion`
 - `AI/` — `AnthropicClient`, `AISettings`, prompt builders, `EvaluationState`
-- `Storage/` — `Database`, `DraftStore`, `AutosaveStore`, `TaxonomyCache`
-- `Views/` — `ContentView`, split-view fixes; `Editor/`, `Sidebar/`, `Settings/`, `Media/`, `AI/`, `Onboarding/`
+- `Storage/` — `Database`, `DraftStore`, `AutosaveStore`, `TaxonomyCache`, `SiteProfileStore` (site name and icon, per site)
+- `Views/` — `ContentView`, `MastheadView` (the page shown when nothing is open), split-view fixes; `Editor/`, `Sidebar/`, `Settings/`, `Media/`, `AI/`, `Onboarding/`
 - `Resources/` — `editor.html` (the whole Tiptap editor; JS↔Swift bridge via `window.webkit.messageHandlers.*` and `window.*` globals), `editor-transforms.js`, `block-descriptors.js`, `block-settings.js` (one entry per block setting), `block-parser.js` (checked against WordPress's parser; used for unsupported-block preservation), `block-move.js` (moving top-level blocks), `block-grip.js` (the drag grip beside each block), `change-bars.js` (marks beside blocks that differ from the saved version) and `click-seat.js` (seating a click that lands outside every line)
 - `DesignSystem.swift`
 

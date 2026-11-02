@@ -2,7 +2,7 @@ import Foundation
 
 public struct CurrentUserInfo: Sendable, Equatable {
     public let id: Int
-    public let canPostUnfilteredHTML: Bool
+    public let canPostUnfilteredHTML: Bool?
 }
 
 public struct WordPressClient: Sendable {
@@ -249,9 +249,9 @@ public struct WordPressClient: Sendable {
     public func currentUser() async throws -> CurrentUserInfo {
         let user: CurrentUser = try await get(endpoint("users/me", query: ["context": "edit"]))
         guard user.capabilities.unfilteredHTML else { return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: false) }
-        let posts: [PostActions] = try await get(endpoint("posts", query: [
+        guard let posts: [PostActions] = try? await get(endpoint("posts", query: [
             "context": "edit", "status": "any", "per_page": "1", "_fields": "id,_links",
-        ]))
+        ])) else { return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: nil) }
         guard let post = posts.first else { return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: true) }
         let allowed = post.links.keys.contains { ["wp:action-unfiltered-html", "https://api.w.org/action-unfiltered-html"].contains($0) }
         return CurrentUserInfo(id: user.id, canPostUnfilteredHTML: allowed)

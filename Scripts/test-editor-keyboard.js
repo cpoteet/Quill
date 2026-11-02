@@ -1500,3 +1500,43 @@ describe('a press in the page gutter', () => {
     assert.equal(ev.defaultPrevented, false)
   })
 })
+
+describe('the heading menu button', () => {
+  const button = () => win.document.getElementById('heading-button')
+  const menu = () => win.document.getElementById('heading-menu')
+  const open = () => menu().classList.contains('visible')
+  const mousedown = () => button().dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+  const click = detail => button().dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, detail }))
+
+  test('a press opens the menu and a second press closes it', () => {
+    mousedown()
+    assert.equal(open(), true)
+    assert.equal(button().getAttribute('aria-expanded'), 'true')
+    mousedown()
+    assert.equal(open(), false)
+    assert.equal(button().getAttribute('aria-expanded'), 'false')
+  })
+
+  test('the click that ends a mouse press does not toggle it back', () => {
+    mousedown()
+    click(1)
+    assert.equal(open(), true)
+    mousedown()
+    click(1)
+    assert.equal(open(), false)
+  })
+
+  test('a click with no mouse detail, as a keyboard activation sends, toggles it', () => {
+    click(0)
+    assert.equal(open(), true)
+    click(0)
+    assert.equal(open(), false)
+  })
+
+  test('the press is cancelled so the editor keeps focus', () => {
+    const ev = new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 })
+    button().dispatchEvent(ev)
+    assert.equal(ev.defaultPrevented, true)
+    mousedown()
+  })
+})

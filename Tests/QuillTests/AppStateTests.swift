@@ -851,9 +851,19 @@ private func makeMedia(id: Int, alt: String = "") throws -> WPMedia {
         let post = try makePost(id: 1, status: "future", dateGmt: passed)
         let state = state(with: [post])
         var fetches = 0
-        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; throw URLError(.timedOut) })
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return post })
         await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return post })
         #expect(fetches == 1)
+    }
+
+    @Test func aFailedFetchIsRetriedOnTheNextCall() async throws {
+        let post = try makePost(id: 1, status: "future", dateGmt: passed)
+        let state = state(with: [post])
+        var fetches = 0
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; throw URLError(.timedOut) })
+        await state.confirmMissedSchedules(now: now, fetch: { _, _ in fetches += 1; return post })
+        #expect(fetches == 2)
+        #expect(state.confirmedMissed == [MissedKey(id: 1, dateGmt: passed)])
     }
 
     @Test func aRescheduledPostIsCheckedAgain() async throws {

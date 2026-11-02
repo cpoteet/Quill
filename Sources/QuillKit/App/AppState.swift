@@ -256,7 +256,11 @@ public final class AppState: ObservableObject {
     // Unstructured, so it finishes even when the view task that started it is replaced; the replacement skips checked keys.
     @MainActor private func confirmMiss(_ key: MissedKey, of post: WPPost, on creds: Credentials,
                                         fetch: @MainActor (Credentials, WPPost) async throws -> WPPost) async {
-        guard let fetched = try? await fetch(creds, post), credentials?.siteKey == creds.siteKey else { return }
+        guard let fetched = try? await fetch(creds, post) else {
+            checkedMissed.remove(key)
+            return
+        }
+        guard credentials?.siteKey == creds.siteKey else { return }
         if fetched.status == "future" && fetched.dateGmt == key.dateGmt {
             confirmedMissed.insert(key)
         } else if let index = posts.firstIndex(of: post) {

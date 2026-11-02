@@ -1074,9 +1074,7 @@ public struct PostEditorView: View {
         }
 
         // Create any pending new categories/tags before building the payload.
-        // Remove each name from the pending list as soon as it succeeds — if a later
-        // name fails, retrying must not re-submit already-created names (WordPress
-        // rejects those with "term_exists", wedging the save until the user notices).
+        // Drop each name once it's created, so a retry after a later failure doesn't send it again.
         do {
             while let name = saved.newCategoryNames.first {
                 let cat = try await client.createCategory(name: name)

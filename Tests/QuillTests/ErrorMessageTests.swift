@@ -43,6 +43,15 @@ import Testing
         #expect(!error.isFixedInSettings)
     }
 
+    @Test func aRejectedRequestStripsMarkupAndShortensALongMessage() {
+        let tagged = #"{"code":"rest_invalid","message":"<strong>Error:</strong> Tom &amp; Jerry"}"#
+        #expect(APIError.httpError(statusCode: 400, body: tagged).errorDescription
+                == "WordPress didn't accept the request: Error: Tom & Jerry")
+        let long = #"{"code":"rest_invalid","message":"\#(String(repeating: "a", count: 300))"}"#
+        #expect(APIError.httpError(statusCode: 400, body: long).errorDescription
+                == "WordPress didn't accept the request: \(String(repeating: "a", count: 200))…")
+    }
+
     @Test func aRejectedRequestWithoutAMessageKeepsTheGenericText() {
         let generic = APIError.httpError(statusCode: 400, body: "").errorDescription
         #expect(APIError.httpError(statusCode: 400, body: "<html>Bad Request</html>").errorDescription == generic)

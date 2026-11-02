@@ -146,6 +146,20 @@ private func lead(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPos
                 == "Post draft · on this Mac · edited yesterday")
     }
 
+    @Test func aClockAheadOfTheDeviceReadsAsNow() {
+        #expect(Masthead.editedPhrase(now.addingTimeInterval(3600), now: now, locale: gb)
+                == Masthead.editedPhrase(now, now: now, locale: gb))
+    }
+
+    @Test func aDraftWithoutAModifiedTimeLeadsOnlyThroughItsStash() throws {
+        let json = #"{"id":1,"type":"post","title":{"rendered":"T"},"status":"draft","date":"d","modified":"m","slug":"s","link":"l","author":1}"#
+        let undated = try JSONDecoder().decode(WPPost.self, from: Data(json.utf8))
+        #expect(undated.modifiedGmt == "")
+        #expect(lead(.posts, posts: [undated]) == nil)
+        let stash = StashTime(postID: 1, savedAt: now.addingTimeInterval(-60))
+        #expect(lead(.posts, posts: [undated], stashes: [stash])?.edited == stash.savedAt)
+    }
+
     @Test func editedPhraseIsRelativeForAWeekThenADate() {
         #expect(Masthead.editedPhrase(now.addingTimeInterval(-7200), now: now, locale: gb) == "2 hours ago")
         #expect(Masthead.editedPhrase(now.addingTimeInterval(-86400), now: now, locale: gb) == "yesterday")
@@ -243,6 +257,14 @@ private func lead(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPos
         #expect(rows.map(\.missed) == [false])
         let overdue = try post(2, status: "future", scheduled: -360)
         #expect(Masthead.missedCandidates(posts: [late, overdue], now: now) == [MissedKey(id: 2, dateGmt: overdue.dateGmt)])
+    }
+
+    @Test func onlyScheduledPostsCanBeMissed() throws {
+        let published = try post(1, status: "publish", scheduled: -86400)
+        let draft = try post(2, status: "draft", scheduled: -86400)
+        let missed = try post(3, status: "future", scheduled: -86400)
+        #expect(Masthead.missedCandidates(posts: [published, draft, missed], now: now)
+                == [MissedKey(id: 3, dateGmt: missed.dateGmt)])
     }
 
     @Test func pagesShowScheduledPages() throws {

@@ -955,3 +955,327 @@ describe('review fixes', () => {
     })
   }
 })
+
+describe('every range, every gap', () => {
+  const labels = ['a', 'b', 'c', 'd', 'e']
+  const texts = () => { const out = []; doc().forEach(n => out.push(n.textContent)); return out }
+
+  function expectedOrder(from, to, gap) {
+    const moved = labels.slice(from, to)
+    const rest = labels.filter((_, i) => i < from || i >= to)
+    const at = gap < from ? gap : gap - moved.length
+    return [...rest.slice(0, at), ...moved, ...rest.slice(at)]
+  }
+
+  test('the blocks end up in the order the gap names, and the result points at the first moved block', () => {
+    let moves = 0
+    for (let from = 0; from < labels.length; from++) {
+      for (let to = from + 1; to <= labels.length; to++) {
+        for (let gap = 0; gap <= labels.length; gap++) {
+          load(labels.map(P).join('\n\n'))
+          const result = win.moveTopLevelBlocks(editor.state, from, to, gap, TRAILING())
+          const label = `${from}..${to} to ${gap}`
+          if (gap >= from && gap <= to) {
+            assert.equal(result, null, label)
+            continue
+          }
+          assert.ok(result, label)
+          editor.view.dispatch(result.tr)
+          assert.deepEqual(texts(), expectedOrder(from, to, gap), label)
+          assert.equal(doc().nodeAt(result.start).textContent, labels[from], label)
+          moves++
+        }
+      }
+    }
+    assert.equal(moves, 40)
+  })
+
+  test('one undo puts any move back', () => {
+    for (const [from, to, gap] of [[0, 2, 5], [3, 5, 0], [1, 2, 4], [2, 3, 0]]) {
+      load(labels.map(P).join('\n\n'))
+      move(from, to, gap)
+      editor.commands.undo()
+      assert.deepEqual(texts(), labels, `${from}..${to} to ${gap}`)
+    }
+  })
+})
+
+describe('the drag source mark', () => {
+  const grip = () => win.document.getElementById('block-grip')
+  const marked = () => [...editor.view.dom.querySelectorAll('.block-drag-source')].map(el => el.textContent)
+  const dragstart = (modifiers = {}) => {
+    const e = new win.Event('dragstart', { bubbles: true, cancelable: true })
+    Object.defineProperty(e, 'dataTransfer', { value: { clearData() {}, setData() {}, setDragImage() {} } })
+    for (const [key, value] of Object.entries(modifiers)) Object.defineProperty(e, key, { value })
+    grip().dispatchEvent(e)
+  }
+  const end = () => grip().dispatchEvent(new win.Event('dragend', { bubbles: true }))
+
+  test('only the dragged block is marked, and only until the drag ends', () => {
+    load([P('One'), P('Two'), P('Three')].join('\n\n'))
+    win._blockGrip.showFor(1)
+    dragstart()
+    assert.deepEqual(marked(), ['Two'])
+    end()
+    assert.deepEqual(marked(), [])
+  })
+
+  test('a section marks every block in it', () => {
+    load([P('x'), H(2, 'S'), P('a'), H(2, 'T'), P('t')].join('\n\n'))
+    win._blockGrip.showFor(1)
+    grip().dispatchEvent(new win.MouseEvent('mouseenter'))
+    grip().dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, metaKey: true }))
+    dragstart({ metaKey: true })
+    assert.deepEqual(marked(), ['S', 'a'])
+    end()
+    win.setSectionKey(false)
+    assert.deepEqual(marked(), [])
+  })
+
+  test('an edit mid-drag clears the mark', () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    win._blockGrip.showFor(0)
+    dragstart()
+    assert.deepEqual(marked(), ['One'])
+    editor.commands.setTextSelection(2)
+    editor.commands.insertContent('x')
+    assert.deepEqual(marked(), [])
+    end()
+  })
+
+  test('a drop clears the mark', () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    win._blockGrip.showFor(0)
+    dragstart()
+    const drop = new win.Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'clientY', { value: 100 })
+    win.document.getElementById('editor-wrap').dispatchEvent(drop)
+    assert.deepEqual(marked(), [])
+    assert.equal(win.activeGripDrag(), null)
+  })
+})
+
+describe('where a drop leaves the selection', () => {
+  const transfer = () => ({ clearData() {}, setData() {}, setDragImage() {} })
+  const dropAt = (range, clientY) => {
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, range)
+    const drop = new win.Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'clientY', { value: clientY })
+    win.document.getElementById('editor-wrap').dispatchEvent(drop)
+  }
+
+  test('a moved paragraph gets the caret at its start', () => {
+    load([P('One'), P('Two'), P('Three')].join('\n\n'))
+    dropAt({ from: 0, to: 1 }, 100)
+    assert.equal(editor.state.selection.empty, true)
+    assert.equal(editor.state.selection.$from.parent.textContent, 'One')
+    assert.equal(editor.state.selection.$from.parentOffset, 0)
+  })
+
+  test('a moved embed is node-selected', () => {
+    load([P('A'), SAMPLES.find(s => s.type === 'embedBlock').html, P('B')].join('\n\n'))
+    dropAt({ from: 1, to: 2 }, -100)
+    assert.equal(doc().child(0).type.name, 'embedBlock')
+    assert.equal(editor.state.selection.node?.type.name, 'embedBlock')
+    assert.equal(editor.state.selection.from, 0)
+  })
+
+  test('a moved Group gets the caret in its first text block', () => {
+    load([P('A'), block('group', `<div class="wp-block-group">${P('G1')}\n\n${P('G2')}</div>`), P('B')].join('\n\n'))
+    dropAt({ from: 1, to: 2 }, -100)
+    assert.equal(doc().child(0).type.name, 'groupBlock')
+    assert.equal(editor.state.selection.$from.parent.textContent, 'G1')
+  })
+
+  test('a moved section keeps the caret in its heading', () => {
+    load([P('x'), H(2, 'S'), P('a'), P('y')].join('\n\n'))
+    dropAt({ from: 1, to: 3 }, -100)
+    assert.deepEqual([...Array(doc().childCount).keys()].map(i => doc().child(i).textContent), ['S', 'a', 'x', 'y'])
+    assert.equal(editor.state.selection.$from.parent.type.name, 'heading')
+  })
+
+  test('typing after a drop is its own undo step', () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    dropAt({ from: 0, to: 1 }, 100)
+    editor.commands.insertContent('x')
+    editor.commands.undo()
+    assert.equal(doc().child(1).textContent, 'One')
+  })
+
+  test('a drop with the find bar open ends the drag and moves nothing', () => {
+    load([P('One'), P('Two'), P('Three')].join('\n\n'))
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+    win.openFindBar()
+    const drop = new win.Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'clientY', { value: 100 })
+    win.document.getElementById('editor-wrap').dispatchEvent(drop)
+    assert.deepEqual([0, 1, 2].map(i => doc().child(i).textContent), ['One', 'Two', 'Three'])
+    assert.equal(win.activeGripDrag(), null)
+  })
+})
+
+describe('the drop line and the gaps', () => {
+  const wrap = () => win.document.getElementById('editor-wrap')
+  const line = () => win.document.getElementById('block-drop-line')
+  const grip = () => win.document.getElementById('block-grip')
+  const transfer = () => ({ dropEffect: 'none', clearData() {}, setData() {}, setDragImage() {} })
+  const rect = (top, bottom) => ({ top, bottom, left: 0, right: 600, width: 600, height: bottom - top })
+  let stubbed = []
+
+  afterEach(() => {
+    stubbed.forEach(el => { delete el.getBoundingClientRect })
+    stubbed = []
+    win.endGripDrag(editor.view)
+    line().style.display = 'none'
+  })
+
+  function layout(...rects) {
+    load(rects.map((_, i) => P('Block ' + i)).join('\n\n'))
+    rects.forEach((r, i) => {
+      const dom = editor.view.nodeDOM(win.topLevelPos(doc(), i))
+      dom.getBoundingClientRect = () => r
+      stubbed.push(dom)
+    })
+  }
+
+  const dragover = clientY => {
+    const e = new win.Event('dragover', { bubbles: true, cancelable: true })
+    Object.defineProperty(e, 'clientY', { value: clientY })
+    Object.defineProperty(e, 'dataTransfer', { value: transfer() })
+    wrap().dispatchEvent(e)
+    return e
+  }
+
+  test('gapYs: the middle of each space between blocks, and a little beyond the first and last', () => {
+    layout(rect(10, 30), rect(50, 90), rect(100, 120))
+    assert.deepEqual([...win.gapYs(editor.view)], [6, 40, 95, 124])
+  })
+
+  test('a drag the grip did not start is left alone', () => {
+    layout(rect(10, 30), rect(50, 90))
+    assert.equal(dragover(40).defaultPrevented, false)
+    assert.notEqual(line().style.display, 'block')
+  })
+
+  test('the line sits on the gap nearest the pointer', () => {
+    layout(rect(10, 30), rect(50, 90), rect(100, 120))
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+    assert.equal(dragover(96).defaultPrevented, true)
+    assert.equal(line().style.display, 'block')
+    const layerTop = win.document.getElementById('block-grip-layer').getBoundingClientRect().top
+    assert.equal(parseFloat(line().style.top), 95 - layerTop - 1)
+  })
+
+  test('the line is hidden over a gap that would not move the block', () => {
+    layout(rect(10, 30), rect(50, 90), rect(100, 120))
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 1, to: 2 })
+    dragover(124)
+    assert.equal(line().style.display, 'block')
+    dragover(40)
+    assert.equal(line().style.display, 'none')
+  })
+
+  test('leaving the editor hides the line, moving between its children does not', () => {
+    layout(rect(10, 30), rect(50, 90), rect(100, 120))
+    win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+    dragover(96)
+    const leave = relatedTarget => {
+      const e = new win.Event('dragleave', { bubbles: true })
+      Object.defineProperty(e, 'relatedTarget', { value: relatedTarget })
+      wrap().dispatchEvent(e)
+    }
+    leave(editor.view.dom)
+    assert.equal(line().style.display, 'block')
+    leave(null)
+    assert.equal(line().style.display, 'none')
+  })
+
+  test('the line is gone once the drag ends', () => {
+    layout(rect(10, 30), rect(50, 90), rect(100, 120))
+    win._blockGrip.showFor(0)
+    grip().dispatchEvent(Object.assign(new win.Event('dragstart', { bubbles: true, cancelable: true }), { dataTransfer: transfer() }))
+    dragover(96)
+    assert.equal(line().style.display, 'block')
+    grip().dispatchEvent(new win.Event('dragend', { bubbles: true }))
+    assert.equal(line().style.display, 'none')
+  })
+})
+
+describe('autoscroll and the grip tooltip', () => {
+  const wrap = () => win.document.getElementById('editor-wrap')
+  const grip = () => win.document.getElementById('block-grip')
+  const tip = () => win.document.getElementById('block-grip-tooltip')
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+  const transfer = () => ({ dropEffect: 'none', clearData() {}, setData() {}, setDragImage() {} })
+  const dragover = clientY => {
+    const e = new win.Event('dragover', { bubbles: true, cancelable: true })
+    Object.defineProperty(e, 'clientY', { value: clientY })
+    Object.defineProperty(e, 'dataTransfer', { value: transfer() })
+    wrap().dispatchEvent(e)
+  }
+  const watchScroll = () => {
+    const log = []
+    let top = 0
+    Object.defineProperty(wrap(), 'scrollTop', { configurable: true, get: () => top, set: value => { top = value; log.push(value) } })
+    return log
+  }
+
+  test('a drag near the top edge scrolls up, the middle does not scroll, and the scrolling stops with the drag', async () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    const rect = { top: 100, bottom: 500, left: 0, right: 600, width: 600, height: 400 }
+    wrap().getBoundingClientRect = () => rect
+    const log = watchScroll()
+    try {
+      win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+      dragover(300)
+      await wait(60)
+      assert.equal(log.length, 0, 'the middle of the editor')
+      dragover(100)
+      await wait(60)
+      assert.ok(log.length > 0 && log.at(-1) < 0, 'near the top')
+      win.endGripDrag(editor.view)
+      win.document.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }))
+      await wait(40)
+      const stopped = log.length
+      await wait(60)
+      assert.equal(log.length, stopped, 'scrolling stops with the drag')
+    } finally {
+      delete wrap().scrollTop
+      delete wrap().getBoundingClientRect
+      win.endGripDrag(editor.view)
+    }
+  })
+
+  test('a drag near the bottom edge scrolls down', async () => {
+    load([P('One'), P('Two')].join('\n\n'))
+    wrap().getBoundingClientRect = () => ({ top: 100, bottom: 500, left: 0, right: 600, width: 600, height: 400 })
+    const log = watchScroll()
+    try {
+      win.gripDragStart(editor.view, { dataTransfer: transfer() }, { from: 0, to: 1 })
+      dragover(500)
+      await wait(60)
+      assert.ok(log.length > 0 && log.at(-1) > 0)
+    } finally {
+      delete wrap().scrollTop
+      delete wrap().getBoundingClientRect
+      win.document.dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true }))
+      win.endGripDrag(editor.view)
+    }
+  })
+
+  test('the tooltip names the block, and a heading adds the section hint', async () => {
+    load([H(2, 'Title'), P('Body')].join('\n\n'))
+    win._blockGrip.showFor(0)
+    grip().dispatchEvent(new win.MouseEvent('mouseenter'))
+    await wait(700)
+    assert.equal(tip().textContent, 'Heading 2 · Drag to move, ⌘ for the section')
+    assert.ok(tip().classList.contains('visible'))
+    grip().dispatchEvent(new win.MouseEvent('mouseleave'))
+    assert.ok(!tip().classList.contains('visible'))
+    win._blockGrip.showFor(1)
+    grip().dispatchEvent(new win.MouseEvent('mouseenter'))
+    await wait(700)
+    assert.equal(tip().textContent, 'Paragraph · Drag to move')
+    grip().dispatchEvent(new win.MouseEvent('mouseleave'))
+  })
+})
