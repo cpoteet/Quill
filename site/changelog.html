@@ -49,6 +49,7 @@
       <details class="toc__disclosure" data-collapse-width="760" open>
         <summary class="toc__heading">Releases <span class="toc__count"></span></summary>
         <ul class="toc__list">
+          <li><a href="#v2.6.0" class="toc__link"><span>v2.6.0</span><span class="toc__date">Nov 1</span></a></li>
           <li><a href="#v2.5.0" class="toc__link"><span>v2.5.0</span><span class="toc__date">Oct 24</span></a></li>
           <li><a href="#v2.4.0" class="toc__link"><span>v2.4.0</span><span class="toc__date">Oct 13</span></a></li>
           <li><a href="#v2.3.0" class="toc__link"><span>v2.3.0</span><span class="toc__date">Oct 8</span></a></li>
@@ -73,11 +74,72 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.6.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.6.0</h2>
+          <span class="release__date">November 1, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(3)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Move Blocks by Dragging</h4>
+            <p class="release__body">Each block now has a marker in the left margin that shows what kind of block it is, and dragging it moves the block. Hold ⌘ while you drag a heading's marker to move the heading with its whole section. You can reorder a post without cutting and pasting, and footnotes renumber to match the new order.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Continue Writing Page</h4>
+            <p class="release__body">When nothing is open, the editor area now shows your site's name and icon with the drafts and posts you were last working on, including local drafts and posts with unsaved changes on this Mac. It also lists your next scheduled posts, with any that missed their publish time first, so you can pick up where you left off without searching the sidebar.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Change Bars</h4>
+            <p class="release__body">A thin gray bar in the right margin now marks each block that differs from the last saved version, and a dot marks where a block was deleted. You can see what you changed before you save or revert, including what Quill brought back when it restored unsaved changes.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(5)</span></h3>
+          <ul class="release__list">
+            <li><strong>Move Block Up and Move Block Down</strong> — The Edit menu can move the current block without the mouse.</li>
+            <li><strong>View Post for published posts</strong> — For anything but a draft, the Preview button is now View Post (or View Page) and opens the version saved on WordPress, so it no longer leaves a stray autosave behind.</li>
+            <li><strong>WordPress's own error messages</strong> — When WordPress rejects a request and gives a reason, Quill shows that reason instead of asking you to re-enter your Application Password.</li>
+            <li><strong>Clicks land where you click</strong> — Clicking in the blank space beside the text column or between blocks puts the cursor on the nearest line at the point you clicked, instead of at the start of the next block or nowhere.</li>
+            <li><strong>Wide tables scroll</strong> — A table wider than the editor's column now scrolls sideways inside it instead of spilling into the margin.</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(18)</span></summary>
+          <ul class="release__list">
+            <li>Undo right after opening a post no longer empties the editor, and each post starts with its own undo history.</li>
+            <li>Adding a tag or category that already exists on your site uses the existing one instead of failing.</li>
+            <li>The link picker shows an error when its search fails, for example when you're offline, instead of reporting no results.</li>
+            <li>Pressing Return on an empty line inside a column or tab panel adds a line instead of splitting the Columns or Tabs block.</li>
+            <li>Pressing Return on an empty last bullet inside a column or quote ends the list and keeps the cursor inside the block.</li>
+            <li>Pressing Return in an empty button replaces it with a paragraph, as it does in WordPress.</li>
+            <li>Clicking in the editor while the second toolbar row appears or disappears no longer moves the post under the pointer or turns a click in a table cell into a cell selection.</li>
+            <li>The Paragraph / heading menu opens on the first click after you choose a style.</li>
+            <li>Choosing a style for an image or separator keeps the block selected, so its controls stay open.</li>
+            <li>The Default tab setting is available when the cursor is in a tab's title.</li>
+            <li>A new Details block puts the cursor in its summary, and a block inserted from the summary goes after the Details block.</li>
+            <li>Collapsing an accordion section or Details block by clicking its heading row moves the cursor out of the hidden content.</li>
+            <li>An image's width and height fields stay filled after you click Reset a second time.</li>
+            <li>⌃⌘F no longer opens Find.</li>
+            <li>Code blocks in dark mode no longer shade each line like inline code.</li>
+            <li>The selected Media filter is highlighted in the accent color instead of gray.</li>
+            <li>The About window opens centered on the screen.</li>
+            <li>The window's position and sidebar width are kept after you restart your Mac.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.5.0">
         <header class="release__header">
           <h2 class="release__version">v2.5.0</h2>
           <span class="release__date">October 24, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
