@@ -25,8 +25,8 @@
 
   <nav class="nav">
     <a href="/" class="nav__logo"><img src="images/quill-icon.svg" alt="" class="nav__icon">Quill</a>
-    <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
-    <div class="nav__links" id="nav-links">
+    <button type="button" class="nav__toggle" aria-expanded="false" aria-controls="nav-links"><span class="t-text-swap">Menu</span></button>
+    <div class="nav__links t-dropdown" id="nav-links" data-origin="top-center">
       <a href="docs.html" class="nav__link">User Guide</a>
       <a href="changelog.html" class="nav__link">Changelog</a>
       <a href="https://www.paypal.com/donate?hosted_button_id=25BUE2BS854YN" class="nav__link" target="_blank" rel="noopener">Donate</a>
@@ -41,8 +41,8 @@
         <h1 class="hero__headline">Your WordPress site deserves a <span class="hero__selected">real</span> Mac app.</h1>
         <p class="hero__subline">Write, edit and publish to your self-hosted WordPress site from a native Mac app, without opening the WordPress admin.</p>
         <div class="hero__cta">
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large" id="download">Download for Mac</a>
-          <a href="#tour" class="text-link" data-tour-open>Watch the one-minute tour</a>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large t-morph" data-download id="download">Download for Mac</a>
+          <a href="#tour" class="text-link t-learn" data-tour-open>Watch the one-minute tour<span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span></a>
         </div>
         <p class="hero__facts"><span>Free</span><wbr><span>macOS 27 on Apple Silicon</span><wbr><span>Self-hosted WordPress 7+</span><wbr><span>Notarized by Apple</span></p>
       </div>
@@ -218,8 +218,8 @@
       <h2 class="closing-cta__headline">Quill is free to use.</h2>
       <p class="closing-cta__note">No account, no subscription, no plugin on your site.</p>
       <div class="closing-cta__actions">
-        <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large">Download for Mac</a>
-        <a href="changelog.html" class="text-link">What's new in 2.6 →</a>
+        <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--large t-morph" data-download>Download for Mac</a>
+        <a href="changelog.html" class="text-link t-learn">What's new in 2.6<span class="t-learn-chevron" aria-hidden="true"><svg viewBox="0 0 16 16"><path class="t-learn-arm t-learn-arm-top" d="M6 4L10 8"/><path class="t-learn-arm t-learn-arm-bot" d="M10 8L6 12"/></svg></span></a>
       </div>
     </div>
   </section>
@@ -238,7 +238,7 @@
     </div>
   </footer>
 
-  <dialog class="tour" id="tour" aria-labelledby="tour-title">
+  <dialog class="tour t-modal" id="tour" aria-labelledby="tour-title">
     <div class="tour__bar">
       <h2 class="tour__title" id="tour-title">Quill in one minute</h2>
       <button type="button" class="tour__close" data-tour-close aria-label="Close">
@@ -264,5 +264,7 @@
 
   <script src="nav.js"></script>
   <script src="tour.js"></script>
+  <script src="disclosure.js"></script>
+  <script src="download.js"></script>
 </body>
 </html>

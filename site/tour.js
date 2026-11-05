@@ -1,11 +1,29 @@
 (function () {
   const dialog = document.getElementById('tour');
   const video = dialog.querySelector('video');
+  const closeMs = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--modal-close-dur')
+  ) || 150;
+  let closeTimer;
 
   function open() {
-    if (dialog.open) return;
-    dialog.showModal();
+    if (dialog.open && !dialog.classList.contains('is-closing')) return;
+    clearTimeout(closeTimer);
+    dialog.classList.remove('is-closing');
+    if (!dialog.open) dialog.showModal();
+    void dialog.offsetWidth;
+    dialog.classList.add('is-open');
     video.play().catch(function () {});
+  }
+
+  function close() {
+    if (!dialog.open || dialog.classList.contains('is-closing')) return;
+    dialog.classList.remove('is-open');
+    dialog.classList.add('is-closing');
+    closeTimer = setTimeout(function () {
+      dialog.classList.remove('is-closing');
+      dialog.close();
+    }, closeMs);
   }
 
   document.querySelectorAll('[data-tour-open]').forEach(function (link) {
@@ -15,12 +33,15 @@
     });
   });
 
-  dialog.querySelector('[data-tour-close]').addEventListener('click', function () {
-    dialog.close();
-  });
+  dialog.querySelector('[data-tour-close]').addEventListener('click', close);
 
   dialog.addEventListener('click', function (event) {
-    if (event.target === dialog) dialog.close();
+    if (event.target === dialog) close();
+  });
+
+  dialog.addEventListener('cancel', function (event) {
+    event.preventDefault();
+    close();
   });
 
   dialog.addEventListener('close', function () {

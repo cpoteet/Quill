@@ -178,7 +178,7 @@ Every section title ends in `<span class="release__count">(N)</span>`. N is the 
 
 Check every page in `site/` against the new release:
 
-1. **Version:** `grep -n "What's new in\|Reference ·" site/index.html site/docs.html`. The home page's closing link reads `What's new in <major>.<minor> →` and the User Guide eyebrow reads `Reference · v<version>`. Update both.
+1. **Version:** `grep -n "What's new in\|Reference ·" site/index.html site/docs.html`. The home page's closing link reads `What's new in <major>.<minor>` (the arrow is the `.t-learn-chevron` SVG after it) and the User Guide eyebrow reads `Reference · v<version>`. Update both.
 2. **Download links:** every `Download` link must be exactly `https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip` (`grep -n 'releases/' site/*.html`).
 3. **Stale statements:** for each item in the release notes, `grep -n` the site for the old behavior, labels and names, and correct every hit. Include the install, first-launch, requirements and update sections of `index.html` and `docs.html`.
 4. **Contents links:** every `href="#…"` on a page you edited must still resolve to an `id` on that page.
