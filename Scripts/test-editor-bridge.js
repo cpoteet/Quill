@@ -132,6 +132,77 @@ describe('flushContent', () => {
   })
 })
 
+describe('a code-view edit saves what Quill writes', () => {
+  const src = '<!-- wp:paragraph -->\n<p>Note.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2 class="wp-block-heading">The Value</h2>\n<!-- /wp:heading -->'
+  const saved = '<!-- wp:paragraph {"className":"callout"} -->\n<p class="callout">Note.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2 class="wp-block-heading">The Value</h2>\n<!-- /wp:heading -->'
+  const button = () => win.document.getElementById('btn-code-view')
+  const area = () => win.document.getElementById('code-editor')
+
+  function addClassInCodeView() {
+    win.setContent(src, '')
+    button().click()
+    area().value = area().value.replace('<p>Note.', '<p class="callout">Note.')
+    area().dispatchEvent(new win.Event('input'))
+  }
+
+  test('a save with code view open gets the class into the comment, without the blank lines', () => {
+    addClassInCodeView()
+    const snapshot = win.flushContent()
+    button().click()
+    assert.equal(snapshot.html, saved)
+  })
+
+  test('a save with code view open still flushes once the debounce has posted', async () => {
+    addClassInCodeView()
+    await wait(650)
+    const snapshot = win.flushContent()
+    button().click()
+    assert.ok(snapshot, 'expected a snapshot')
+    assert.equal(snapshot.html, saved)
+  })
+
+  test('the toolbar stays disabled through a save with code view open', () => {
+    addClassInCodeView()
+    win.flushContent()
+    const enabled = Array.from(win.document.getElementById('toolbar').querySelectorAll('button:not(#btn-code-view), select'))
+      .filter(el => !el.disabled).map(el => el.id || el.title || el.className)
+    button().click()
+    assert.deepEqual(enabled, [])
+  })
+
+  test('leaving code view after an edit posts what Quill writes', () => {
+    addClassInCodeView()
+    button().click()
+    assert.equal(sentToSwift.at(-1), saved)
+    assert.equal(win.getContent(), saved)
+  })
+
+  test('a footnote marker deleted and restored in code view keeps its body across saves', () => {
+    const id = 'fn-11111111-2222-4333-8444-555555555555'
+    const marker = `<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup>`
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body${marker}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    button().click()
+    const withMarker = area().value
+    area().value = withMarker.replace(/<sup[\s\S]*?<\/sup>/, '')
+    area().dispatchEvent(new win.Event('input'))
+    win.flushContent()
+    area().value = withMarker
+    area().dispatchEvent(new win.Event('input'))
+    const snapshot = win.flushContent()
+    button().click()
+    assert.deepEqual(JSON.parse(snapshot.footnotes), [{ id, content: 'A note.' }])
+  })
+
+  test('code view opened and closed with no edit keeps the post byte for byte', () => {
+    win.setContent(src, '')
+    button().click()
+    button().click()
+    assert.equal(win.getContent(), src)
+    assert.equal(win.flushContent(), null)
+  })
+})
+
 function _depthOf($pos, typeName) {
   for (let d = $pos.depth; d > 0; d--) if ($pos.node(d).type.name === typeName) return d
   return -1

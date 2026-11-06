@@ -3114,6 +3114,18 @@
       }
     }
 
+    // See "Attribute precedence" in Resources/CLAUDE.md.
+    function classNameFromMarkup(raw, element, nodeName) {
+      const carried = carriedClassName(raw)
+      if (!carried) return raw
+      const tokens = carried.split(/\s+/).filter(Boolean)
+      const kept = tokens.filter(token => element.classList.contains(token))
+      const added = RAW_ATTRS_EXEMPT.has(nodeName) ? []
+        : Array.from(element.classList).filter(token => !tokens.includes(token) && !GENERATED_CLASS.test(token))
+      if (kept.length === tokens.length && !added.length) return raw
+      return _withCarriedAttr(raw, 'className', [...kept, ...added].join(' '))
+    }
+
     function carriedClassName(raw) {
       try {
         const parsed = JSON.parse(raw)
@@ -3317,6 +3329,7 @@
     function withBlockAttrs(extension) {
       return withRawAttrs(withBlockSettings(extension)).extend({
         addAttributes() {
+          const nodeName = this.name
           return {
             ...this.parent?.(),
             blockAttrs: {
@@ -3325,7 +3338,7 @@
               parseHTML: element => {
                 const existing = element.getAttribute('data-quill-block-attrs')
                 if (existing) return existing
-                return blockCommentAttrsJSON(element)
+                return classNameFromMarkup(blockCommentAttrsJSON(element), element, nodeName)
               },
               renderHTML: () => ({}),
             },
@@ -6030,6 +6043,7 @@
     })
 
     function updateToolbar() {
+      if (codeViewActive) return
       if (_toolbarIdle) { _clearToolbarContext(); return }
       const inFootnote = _isInFootnote()
       _toggleBtns.forEach(([cmd, btn]) => {
@@ -6197,6 +6211,11 @@
 
     // Swift calls this before it saves or switches posts, so the last 500ms of typing is not lost.
     window.flushContent = () => {
+      if (codeViewActive && _codeViewEdited()) {
+        _cancelPost()
+        _parseCodeView()
+        return _postContent(toWordPressHTML(editor.getHTML()), true, false)
+      }
       if (!_pendingPost) return null
       const post = _pendingPost
       _cancelPost()
@@ -6521,21 +6540,45 @@
     // ── Code view ─────────────────────────────────────
     let codeViewActive = false
     // Authoritative HTML that bypasses Tiptap's schema parser. Set when content
-    // is loaded from WordPress or when the user edits in code view. Cleared on any
-    // visual edit (onUpdate) so Tiptap becomes the source of truth again.
+    // is loaded from WordPress. Cleared on any visual edit (onUpdate) or code-view
+    // edit, so Tiptap becomes the source of truth again.
     let _rawHTML = null
-    // Last raw HTML set via setContent() or saved from code view. Unlike _rawHTML,
-    // this is never cleared by visual edits — so code view always shows the full
-    // WordPress HTML (including block comments) even after the user has typed in
-    // the visual editor.
+    // The HTML setContent() loaded; code view shows it until the first edit.
     let _rawHTMLOnLoad = null
     // Textarea value when code view was opened. Used to detect whether the user
     // actually edited anything — if unchanged on exit, we skip setContent so
     // Tiptap's visual state is preserved unchanged.
     let _codeViewOriginal = null
+    let _codeViewParsed = null
+    let _codeViewDirty = false
+    // Each parse rewrites _footnotes, so a marker deleted and restored in one session reads its body from here.
+    let _codeViewFootnotes = '[]'
 
     function _codeViewChanged() {
       _schedulePost(send => _postContent(document.getElementById('code-editor').value, false, send))
+    }
+
+    function _codeViewEdited() {
+      return _codeViewDirty || document.getElementById('code-editor').value !== _codeViewOriginal
+    }
+
+    // A code-view edit is saved as Quill writes it, so the parse runs before every save, not only on exit.
+    function _parseCodeView() {
+      const html = document.getElementById('code-editor').value
+      if (html === _codeViewParsed) return
+      _codeViewParsed = html
+      _codeViewDirty = true
+      const split = extractFootnotes(html)
+      _rawHTML = null
+      let stored = split.footnotes
+      if (!split.found) try { stored = JSON.parse(_codeViewFootnotes) } catch (e) { stored = [] }
+      editor.commands.setTextSelection(0)
+      _parsingPaste = false
+      _resetSyncedPatterns()
+      editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), false)
+      editor.commands.setTextSelection(0)
+      _reportBlocksAtRisk(html)
+      _requestSyncedPatterns()
     }
 
     function _enterCodeView() {
@@ -6556,6 +6599,9 @@
         : extractFootnotes(toWordPressHTML(editor.getHTML())).content
       const codeViewHTML = formatHTML(sourceHTML)
       _codeViewOriginal = codeViewHTML
+      _codeViewParsed = codeViewHTML
+      _codeViewDirty = false
+      _codeViewFootnotes = _footnotes
       document.getElementById('code-editor').value = codeViewHTML
       document.getElementById('editor').style.display = 'none'
       document.getElementById('code-editor').style.display = 'block'
@@ -6572,26 +6618,11 @@
     function _exitCodeView() {
       if (!codeViewActive) return
       codeViewActive = false
-      const html = document.getElementById('code-editor').value
       document.getElementById('code-editor').removeEventListener('input', _codeViewChanged)
       _cancelPost()
-      const userEdited = html !== _codeViewOriginal
+      const userEdited = _codeViewEdited()
+      if (userEdited) _parseCodeView()
       _codeViewOriginal = null
-      if (userEdited) {
-        // User changed the HTML — parse it back into Tiptap and update raw stores.
-        const split = extractFootnotes(html)
-        _rawHTML = split.content
-        _rawHTMLOnLoad = split.content
-        let stored = split.footnotes
-        if (!split.found) try { stored = JSON.parse(_footnotes) } catch (e) { stored = [] }
-        editor.commands.setTextSelection(0)
-        _parsingPaste = false
-        _resetSyncedPatterns()
-        editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), false)
-        editor.commands.setTextSelection(0)
-        _reportBlocksAtRisk(html)
-        _requestSyncedPatterns()
-      }
       document.getElementById('editor').style.display = ''
       document.getElementById('code-editor').style.display = 'none'
       document.getElementById('btn-code-view').classList.remove('active')
@@ -6599,7 +6630,7 @@
       editor.commands.focus()
       // Always fire contentChanged so Swift's htmlContent stays current.
       // If not edited, getContent() returns the pre-code-view value unchanged.
-      _postContent(userEdited ? html : window.getContent(), false)
+      _postContent(userEdited ? toWordPressHTML(editor.getHTML()) : window.getContent(), userEdited)
       _postStats()
       window._changeBars.redraw()
     }

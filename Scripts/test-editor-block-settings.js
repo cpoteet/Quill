@@ -94,6 +94,46 @@ describe('className survives on container blocks', () => {
   })
 })
 
+describe('the markup decides which classes a block keeps', () => {
+  const heading = '<!-- wp:heading {"className":"callout"} -->\n<h2 class="wp-block-heading">The Value</h2>\n<!-- /wp:heading -->'
+
+  test('a class missing from the markup is not restored from the comment', () => {
+    const out = save(heading)
+    assert.match(out, /<!-- wp:heading -->\n<h2 class="wp-block-heading">The Value<\/h2>/)
+  })
+
+  test('only the missing class is dropped from the comment', () => {
+    const out = save('<!-- wp:paragraph {"className":"callout wide","dropCap":true} -->\n<p class="has-drop-cap wide">A</p>\n<!-- /wp:paragraph -->')
+    assert.match(out, /<!-- wp:paragraph \{"className":"wide","dropCap":true\} -->/)
+    assert.match(out, /<p class="has-drop-cap wide">A<\/p>/)
+  })
+
+  test('a class added beside an existing className joins it in the comment', () => {
+    const out = save('<!-- wp:paragraph {"className":"wide"} -->\n<p class="wide callout">A</p>\n<!-- /wp:paragraph -->')
+    assert.match(out, /<!-- wp:paragraph \{"className":"wide callout"\} -->\n<p class="wide callout">A<\/p>/)
+  })
+
+  test('a class a block draws for itself is not added to the comment', () => {
+    const out = save('<!-- wp:heading {"className":"wide"} -->\n<h2 class="wp-block-heading has-text-align-center wide">A</h2>\n<!-- /wp:heading -->')
+    assert.match(out, /<!-- wp:heading \{"className":"wide"/)
+  })
+
+  test('a class deleted in code view stays deleted after a visual edit', () => {
+    const toggle = () => win.document.getElementById('btn-code-view')
+      .dispatchEvent(new win.MouseEvent('click', { bubbles: true }))
+    win.setContent('<!-- wp:paragraph {"className":"callout"} -->\n<p class="callout">Note.</p>\n<!-- /wp:paragraph -->\n\n' +
+      '<!-- wp:heading {"className":"callout"} -->\n<h2 class="wp-block-heading callout">The Value</h2>\n<!-- /wp:heading -->')
+    toggle()
+    const ta = win.document.getElementById('code-editor')
+    ta.value = ta.value.replace('wp-block-heading callout', 'wp-block-heading')
+    toggle()
+    editor.commands.insertContentAt(1, 'x')
+    const out = win.getContent()
+    assert.match(out, /<!-- wp:paragraph \{"className":"callout"\} -->\n<p class="callout">xNote.<\/p>/)
+    assert.match(out, /<!-- wp:heading -->\n<h2 class="wp-block-heading">The Value<\/h2>/)
+  })
+})
+
 describe('delimiter attributes survive on core blocks', () => {
   test('a paragraph keeps dropCap', () => {
     const out = save('<!-- wp:paragraph {"dropCap":true} -->\n<p class="has-drop-cap">Hello</p>\n<!-- /wp:paragraph -->')
@@ -205,7 +245,8 @@ describe('registry-generated attributes: accordionItem.openByDefault', () => {
   // withBlockAttrs, so the carried className merges onto a class list the
   // setting has already contributed to rather than replacing it.
   test('a carried className and the setting class land together', () => {
-    const out = save(open.replace('{"openByDefault":true}', '{"openByDefault":true,"className":"mine"}'))
+    const out = save(open.replace('{"openByDefault":true}', '{"openByDefault":true,"className":"mine"}')
+      .replace('wp-block-accordion-item is-open', 'wp-block-accordion-item is-open mine'))
     const m = out.match(/<div class="([^"]*wp-block-accordion-item[^"]*)"/)
     assert.ok(m, 'the item div should still be there')
     const classes = m[1].split(/\s+/)

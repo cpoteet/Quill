@@ -21,7 +21,7 @@ This document is the authoritative reference for Quill's automated test suite an
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (21 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (151 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (448 tests — live Tiptap editor in jsdom)
@@ -33,7 +33,7 @@ This document is the authoritative reference for Quill's automated test suite an
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (260 tests — live Tiptap editor in jsdom)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (265 tests — live Tiptap editor in jsdom)
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
@@ -2588,7 +2588,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (21 tests)
+## JS bridge tests (27 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2604,7 +2604,13 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `returns null once syncContentToSwift has posted the typing` | `syncContentToSwift` cancels the pending post |
 | `the snapshot is exactly what the debounce would have posted` | The flushed HTML equals what `syncContentToSwift` posts for the same document |
 | `the snapshot splits footnotes out: the delimiter in the HTML, the bodies in the meta` | The HTML starts with the edited paragraph and ends with `<!-- wp:footnotes /-->`, holds no list, and the footnotes JSON equals the meta |
-| `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned exactly as typed |
+| `returns a code-view edit the debounce has not posted yet` | The code-view textarea's pending edit is returned, here identical to what was typed because it is already in Quill's shape |
+| `a save with code view open gets the class into the comment, without the blank lines` | A flush in code view parses the textarea and returns `toWordPressHTML`'s output: a class added to a `<p>` lands in its comment, and code view's blank lines are gone |
+| `a save with code view open still flushes once the debounce has posted` | The flush parses a code-view edit even when no post is pending, because the debounce posted the raw textarea |
+| `the toolbar stays disabled through a save with code view open` | The parse a flush runs does not re-enable the toolbar under code view (`updateToolbar` returns while `codeViewActive`) |
+| `leaving code view after an edit posts what Quill writes` | Exit posts, and `getContent` returns, the serialized document rather than the textarea |
+| `a footnote marker deleted and restored in code view keeps its body across saves` | Every parse in one code-view session reads footnote bodies from the snapshot taken on entry (`_codeViewFootnotes`), because a save rewrites `_footnotes` without the deleted footnote |
+| `code view opened and closed with no edit keeps the post byte for byte` | No edit means no parse: `getContent` still returns the loaded HTML and a flush returns null |
 | `links and bold in the caption are kept` | The saved `figcaption` holds the caption's link and `<strong>` as WordPress wrote them |
 | `the caret ends in a paragraph after the image, not in the caption` | The caption insert does not leave the caret in the figcaption |
 | `block markup in a caption stays inside one image` | `<p>One</p><p>Two</p>` becomes inline caption text; the image is not split |
@@ -4151,7 +4157,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (260 tests)
+## JS block settings tests (265 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4161,6 +4167,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | Group | What it checks |
 |---|---|
 | `className survives on container blocks` | The carried class is spliced into the rendered class list and back into the comment, never doubled |
+| `the markup decides which classes a block keeps` | A class in the comment's `className` but not on the element is dropped on load, so a class deleted in code view stays deleted; a custom class on the element joins a `className` the comment already has, and a class the block draws itself (`has-text-align-center`) does not |
 | `registry-generated attributes` | `accordionItem.openByDefault` parses comment-first, renders `is-open`, and settles the wrapper nesting order |
 | `the delimiter half comes from the registry` | `attrsFromSettings`/`ownedAttrsFor` replace a hand-written `attrsFrom` |
 | `the toolbar control comes from the registry` | A generated control appears only inside its block, reflects the value, and flips it |
@@ -5289,6 +5296,9 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 295 | The main window's position and the sidebar width must survive a reboot (`id: "main"` on the `WindowGroup`), and the About window must open centred, sized to its content before `center()` | 👁 §7.13 (needs a reboot and a real window; see `docs/platform-workarounds.md`) |
 | 296 | The selected media filter draws amber, not grey: choosing a filter gives the sidebar list first responder, only while Media is showing, so a background upload that resets the filter cannot pull focus from the editor | 👁 §7.26 |
 | 297 | A connected site's `site_icon_url` was fetched from any scheme and host at any size and stored whole in `site_profiles.json`. `loadIconData` now takes https (or loopback http) only, up to 2 MB | ✅ `SiteDiscoveryTests.loadIconDataRefusesPlainHTTPExceptOnALocalHost` + `loadIconDataRefusesAnOversizedIcon` |
+| 298 | A class in a block comment's `className` but not on the element came back on every save, because the comment won on parse: deleting `callout` from an `<h2>` in code view (or a comment an outside tool wrote) put it back on the heading. `classNameFromMarkup` keeps only the classes the element still carries | ✅ `test-editor-block-settings.js` `'the markup decides which classes a block keeps'` (5 tests) |
+| 299 | A save made after a code-view edit sent the textarea itself: `formatHTML`'s blank lines, and no `className` in the comment for a class added to an element, which Gutenberg flags as invalid. `flushContent` now parses a code-view edit into the document and returns `toWordPressHTML`'s output, exit does the same, and `_rawHTML` is cleared so later saves serialize the document | ✅ `test-editor-bridge.js` `'a code-view edit saves what Quill writes'` (6 tests) |
+| 300 | A class added to an element whose comment already had a `className` stayed out of the comment (`supportAttrs` writes one only when the comment has none). `classNameFromMarkup` adds the element's custom classes too, except on the four figure blocks that rebuild their root (`RAW_ATTRS_EXEMPT`), whose `size-*` and theme classes are not `className` | ✅ `test-editor-block-settings.js` `'a class added beside an existing className joins it in the comment'` |
 
 ---
 

@@ -41,7 +41,11 @@ restating it.
 
 1. The block comment — `blockCommentAttr(el, key)`. Gutenberg's own source of truth.
    A `sourced: true` registry setting skips this step: WordPress reads those back out
-   of the markup, so the comment never holds them.
+   of the markup, so the comment never holds them. `className` is the exception:
+   `classNameFromMarkup` makes the element's own classes win. A class the element no
+   longer carries leaves the comment, so one deleted in code view is not restored;
+   a custom class (not `GENERATED_CLASS`) the element gained joins it, except on the
+   four `RAW_ATTRS_EXEMPT` figure blocks, which rebuild their root.
 2. The markup — `readSettingFromElement`, a node's own `parseHTML`, the `rawAttrs`
    snapshot.
 3. The attribute's declared `default`.
