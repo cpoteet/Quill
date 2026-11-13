@@ -913,6 +913,18 @@ describe('Tiptap 3 migration: saved markup', () => {
     assert.equal(editAndSave(src), '<!-- wp:table {"hasFixedLayout":false} -->\n<figure class="wp-block-table"><table><tbody><tr><td align="center">Xc</td><th align="right">h</th></tr></tbody></table></figure>\n<!-- /wp:table -->')
   })
 
+  test('a table with a colgroup saves no colwidth on its cells', () => {
+    const src = '<!-- wp:table -->\n<figure class="wp-block-table"><table><colgroup><col width="100"><col width="250"></colgroup><tbody><tr><td>a</td><td>b</td></tr></tbody></table></figure>\n<!-- /wp:table -->'
+    assert.equal(editAndSave(src), '<!-- wp:table {"hasFixedLayout":false} -->\n<figure class="wp-block-table"><table><tbody><tr><td>Xa</td><td>b</td></tr></tbody></table></figure>\n<!-- /wp:table -->')
+  })
+
+  test('a table renders in the editor as a bare table, with no node-view wrapper', () => {
+    win.setContent('<!-- wp:table -->\n<figure class="wp-block-table"><table><tbody><tr><td>a</td></tr></tbody></table></figure>\n<!-- /wp:table -->')
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === 'table') at = pos })
+    assert.equal(editor.view.nodeDOM(at).tagName, 'TABLE')
+  })
+
   test('a link title saves as authored', () => {
     const src = '<!-- wp:paragraph -->\n<p><a href="https://example.com" title="A title">link</a></p>\n<!-- /wp:paragraph -->'
     assert.equal(editAndSave(src), src.replace('>link<', '>Xlink<'))

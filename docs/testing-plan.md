@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-12 — 900 Swift tests + 2,232 JS tests (2,231 pass, 1 skipped), no failures._
+_Last updated: 2026-11-13 — 900 Swift tests + 2,235 JS tests (2,234 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -19,10 +19,10 @@ This document is the authoritative reference for Quill's automated test suite an
 1. **Swift tests** — `swift test` (900 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (87 tests — live Tiptap editor in jsdom)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (89 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (165 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (166 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (448 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
@@ -1868,7 +1868,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 
 ---
 
-## JS preservation tests (87 tests)
+## JS preservation tests (89 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2049,7 +2049,9 @@ Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans
 | `an ordered list styled with list-style-type gains no type attribute` | Tiptap 3 derives `type` from `list-style-type`; `OrderedListWithClass` keeps v2's definition so no `type="I"` is written |
 | `an ordered list with type="a" keeps it, in the editor and on save` | The attribute stays in `getHTML()` and in the save |
 | `an ordered list with type="1" keeps it on save` | Tiptap 3 stops rendering `type="1"`; Quill's `renderHTML` still does |
-| `table cell align attributes save as authored` | Tiptap 3's cell `align` attribute would add `style="text-align: …"`; `_withoutCellAlign` removes it |
+| `table cell align attributes save as authored` | Tiptap 3's cell `align` attribute would add `style="text-align: …"`; `_cellAttrsAsV2` removes it |
+| `a table with a colgroup saves no colwidth on its cells` | Tiptap 3 reads a cell's `colwidth` from the table's `<col width>`, so every cell saved `colwidth`, which core/table rejects; `_cellAttrsAsV2` reads only the cell's own, as v2 did |
+| `a table renders in the editor as a bare table, with no node-view wrapper` | Tiptap 3's Table draws through `TableView` (`div.tableWrapper`) even when not resizable; `View: null` keeps v2's bare `<table>` |
 | `a link title saves as authored` | Tiptap 3 models `link.title`; the save is unchanged |
 
 ---
@@ -2637,7 +2639,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (165 tests)
+## JS keyboard tests (166 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2932,6 +2934,7 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 | `Backspace at the start of a paragraph after a quote, then typing` | Joins into the quote as v2 did; Tiptap 3's Blockquote Backspace (which merged the text and put the caret after it) is off |
 | `Backspace at the start of the second paragraph in a quote, then typing` | Joins the two paragraphs as v2 did, instead of splitting the quote |
 | `Backspace at the start of a paragraph after a quote with a citation, then typing` | Pins v2's join into the `cite`, caret before the joined text |
+| `typing the next number below a lettered list continues that list` | `3. ` below `<ol type="a">` with two items joins it, as on v2 (Tiptap 3's rule joins only untyped lists); `4. ` there and `3. ` below a plain list behave as before |
 | `Delete at the end of a list item whose nested item holds two paragraphs` | v2's document; Tiptap 3's `listItemBranchingDeleteKeymap` (which outdented the branch) is off |
 | `Delete at the end of a list item whose nested item holds its own list` | v2's document and node selection |
 
@@ -4400,7 +4403,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Action buttons in dark appearance.** The embed Insert button, the inline image popover's Apply button and the find bar's active toggle show white text on the accent fill (amber), readable in light and in dark, and match the link popover's Apply button.
 - [ ] Disconnect from the network, then try to insert or drag an image → an error message appears; the editor content is not corrupted.
 - [ ] Drag a large file (10+ MB) onto the editor → the UI stays responsive during upload (no freeze). Same check using the Media tab upload button.
-- [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a handle → the image resizes while maintaining its aspect ratio.
+- [ ] Click an image in the editor → resize handles appear on the corners and edges. Drag a corner handle → the image resizes while keeping its aspect ratio (Shift frees it). An edge handle stretches one axis only, by design.
 - [ ] Add a caption to an image, then click the image → resize handles should align to the image edges, not extend down to the bottom of the caption.
 - [ ] Click inside an image caption and press Enter → a new paragraph is created below the image; the cursor moves to it. The image and caption remain intact.
 - [ ] Click an image that was inserted from the media library → the image toolbar shows size buttons (Thumb, Medium, Full, plus Large when the media has that size). Click each → the image swaps to that size.
@@ -4479,7 +4482,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] With the image toolbar or embed menu open, enter code view → both dismiss automatically (no stale floating panels remain).
 
 **Special characters**
-- [ ] Write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view → the HTML shows `&lt;`, `&amp;`, `&quot;` correctly. Switch back to visual → original text is intact. Save and reload → still intact.
+- [ ] Write a paragraph containing `5 < 10`, `a & b`, and a `"quoted"` word. Enter code view → the HTML shows `&lt;` and `&amp;`; the quotes stay a plain `"` in text, which is valid HTML (only attribute values need `&quot;`). Switch back to visual → original text is intact. Save and reload → still intact.
 
 **Block posts/pages** (posts created in the WordPress block editor)
 - [ ] Open a block-based post that uses Gallery or Columns blocks. Enter code view without making any visual edits first → WordPress block comments (`<!-- wp:gallery -->`, etc.) are visible in the textarea.
@@ -4502,7 +4505,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Publish a local draft → a remote post is created on WordPress; the local copy disappears from the Drafts list; the sidebar selection moves to the new remote item in the Posts or Pages section.
 - [ ] A page draft publishes to the pages endpoint; a post draft publishes to the posts endpoint.
 - [ ] Press ⌘S on a remote draft → it updates on WordPress while keeping its "draft" status.
-- [ ] Press ⌘⇧P or click Publish on a remote post → the post publishes. The button label matches the action: "Publish" for drafts, "Update" for published posts, "Schedule" for future-dated posts, "Submit for Review" for pending posts, "Publish Privately" for private posts.
+- [ ] Press ⌘⇧P or click the publish button on a remote post → the post is saved with the status the Status picker shows (on a draft, set Status to Published first; with Status left at Draft, ⌘⇧P saves a draft — see §7.17). The button label matches the action: "Publish" for drafts, "Update" for published posts, "Schedule" for future-dated posts, "Submit for Review" for pending posts, "Publish Privately" for private posts.
 - [ ] Set a future date on a post → status changes to "future" and the post is scheduled. Check on the WordPress server that the scheduled time matches (particularly important for sites in non-UTC timezones).
 - [ ] Close and reopen a scheduled post → the correct future date appears in the settings panel.
 - [ ] **Unscheduling.** On a scheduled post, set Status to Published and click Publish/Update → the post publishes now: WordPress shows it as Published with the current date (not still Scheduled), and the inspector and the sidebar row show Published with that date. Choose a date in the panel first and publish → the chosen date is kept. Set a scheduled post to Private or Pending and save → no date is sent and it does not publish.
@@ -4724,7 +4727,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 
 ### 7.15 Spell check
 
-- [ ] Click the "ABC" toolbar button → misspelled words are highlighted. The highlights clear when you start editing.
+- [ ] Click the "ABC" toolbar button → the words macOS's spell checker flags are highlighted (the system checker decides; it does not flag every typo). Editing a highlighted word clears that word's highlight; the others stay until the next check or until code view rebuilds the document.
 - [ ] Spell check runs without crashing on the current macOS version.
 
 ### 7.16 Stats panel
@@ -4809,7 +4812,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Closing the editor while the banner is up does not write it either.
 - [ ] Autosave is suspended while the banner is up — no new row appears in the `autosaves` table.
 - [ ] Acknowledge the banner → the wording changes, saving is allowed, and the banner stays on screen.
-- [ ] Save → the banner moves to its past-tense stage and points at WordPress revisions as the way back.
+- [ ] Save to WordPress → the banner moves to its past-tense stage and points at WordPress revisions as the way back. Save Locally leaves the acknowledged wording, since a local draft has no revisions.
 - [ ] **Repair the post in code view** (paste the missing block back) and leave code view → the banner clears itself and saving works again, without reopening the post.
 - [ ] Reopen a post that was already saved with a block missing → **no** banner. The loss is already in the saved content, so there is nothing left to warn about.
 - [ ] **A post you have not edited never raises a blocking banner.** Open a post, do not type, press ⌘S → it saves. An untouched post writes its original bytes back, so there is nothing to lose.

@@ -46,7 +46,7 @@ Found during execution (2026-11-12), after the spike:
 
 | Difference in v3 | Status |
 |---|---|
-| Table cells saved `style="text-align:…"` beside `align` | Fixed in Task 4 (`_withoutCellAlign`); test 4 |
+| Table cells saved `style="text-align:…"` beside `align` | Fixed in Task 4 (`_withoutCellAlign`, now `_cellAttrsAsV2`); test 4 |
 | `OrderedList` adds a `handlePaste` plugin that turns plain-text `1. a` / `2. b` into a list | Turned off in Task 4 (`addProseMirrorPlugins() { return [] }`); characterization test written on v2. A candidate below |
 | On v2, `StarterKit.extend({ addExtensions() { this.parent() } })` ignored `configure({ …: false })`, so the eight stock nodes Quill replaces were registered twice (80 keymap plugins vs 75) | v2 bug that v3 fixes. Accepted; block shortcuts added to the manual pass |
 | Input rules are one plugin per extension instead of one global plugin | Accepted. `undoInputRule` walks every plugin; 36-case input-rule test equal to v2 |
@@ -58,6 +58,9 @@ Found during execution (2026-11-12), after the spike:
 | New commands `insertDefaultBlock`, `setTextDirection`, `unsetTextDirection`, `updateDecorations` | From the accepted core extensions; nothing in Quill calls them |
 | Real-WebKit paste: 19 fixture clipboards, plain numbered list, plain URL, two round trips | 22/22 saved identically under v2 and v3 |
 | Pre-existing, same on v2 and v3: typing `---` in a footnote entry splits the footnotes list around a horizontal rule | Out of scope for the migration. Recorded by the input-rule test; worth its own issue |
+| Cells read `colwidth` from the table's `<col width>`, so a classic table with a colgroup saved `colwidth` on every cell (invalid core/table) | Found by the final review. Fixed (`_cellAttrsAsV2`); characterization test from v2 |
+| `Table` renders through `TableView` (`div.tableWrapper`) even when not resizable | Found by the final review. Fixed (`View: null`), live DOM equal to v2; test |
+| `N. ` input rule joins only untyped lists, so `3. ` below a lettered list started a new list | Found by the final review. Fixed (`OrderedListWithClass.addInputRules` wraps the rule with v2's join); test |
 
 ## Global Constraints
 

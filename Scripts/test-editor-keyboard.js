@@ -1718,6 +1718,35 @@ describe('Tiptap 3 migration: keys and clicks', () => {
     assert.equal(doc(), 'blockquote(paragraph("OneXTwo"))')
   })
 
+  // v2's ordered-list input rule joins whenever the typed number follows the list; Tiptap 3's
+  // also requires the list to have no type, so "3. " under a lettered list started a new list.
+  test('typing the next number below a lettered list continues that list', () => {
+    const type = text => {
+      for (const ch of text) {
+        const { from, to } = editor.state.selection
+        if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+      }
+    }
+    const below = (ol, typed) => {
+      editor.commands.setContent(ol + '<p></p>', { emitUpdate: false })
+      let at = null
+      editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph' && n.content.size === 0) at = pos })
+      editor.commands.setTextSelection(at + 1)
+      type(typed)
+      return doc() + ' type=' + editor.state.doc.firstChild.attrs.type
+    }
+    const two = 'orderedList(listItem(paragraph("one")),listItem(paragraph("two"))'
+    assert.deepEqual({
+      lettered: below('<ol type="a"><li><p>one</p></li><li><p>two</p></li></ol>', '3. x'),
+      letteredSkip: below('<ol type="a"><li><p>one</p></li><li><p>two</p></li></ol>', '4. x'),
+      plain: below('<ol><li><p>one</p></li><li><p>two</p></li></ol>', '3. x'),
+    }, {
+      lettered: two + ',listItem(paragraph("x"))) type=a',
+      letteredSkip: two + ') | orderedList(listItem(paragraph("x"))) type=a',
+      plain: two + ',listItem(paragraph("x"))) type=null',
+    })
+  })
+
   test('Backspace at the start of a paragraph after a quote with a citation, then typing', () => {
     win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>Q</p>\n<!-- /wp:paragraph --><cite>Who</cite></blockquote>\n<!-- /wp:quote -->\n\n<!-- wp:paragraph -->\n<p>F</p>\n<!-- /wp:paragraph -->')
     caretBefore('F')

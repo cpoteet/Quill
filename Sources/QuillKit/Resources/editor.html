@@ -1841,6 +1841,25 @@
       },
       // Tiptap 3's only plugin here turns pasted "1. a\n2. b" plain text into a list; v2 pasted paragraphs.
       addProseMirrorPlugins() { return [] },
+      // Tiptap 3's "N. " rule joins the list above only when that list has no type; v2 joined any
+      // ordered list whose next number was typed, so "3. " below a lettered list continued it.
+      addInputRules() {
+        return (this.parent?.() || []).map(rule => {
+          const handler = rule.handler
+          rule.handler = props => {
+            const result = handler(props)
+            if (result === null) return result
+            const { state: { tr }, range, match } = props
+            const $at = tr.doc.resolve(range.from - 1)
+            const before = $at.nodeBefore
+            if (before?.type === this.type && $at.nodeAfter?.type === this.type
+                && before.attrs.type && before.attrs.type !== '1'
+                && before.childCount + before.attrs.start === +match[1]) tr.join(range.from - 1)
+            return result
+          }
+          return rule
+        })
+      },
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
@@ -4610,7 +4629,15 @@
 
     // Tiptap 3 models a cell's `align` and renders it again as style="text-align: …", which Quill
     // never authored. Drop the attribute so the raw-attribute carrier keeps `align` as v2 did.
-    function _withoutCellAlign() { const { align, ...rest } = this.parent?.() || {}; return rest }
+    // Tiptap 3 also reads a cell's colwidth from the table's <col width> when the cell has none,
+    // and saves it on every cell, which core/table rejects. Read only the cell's own, as v2 did.
+    function _cellAttrsAsV2() {
+      const { align, ...rest } = this.parent?.() || {}
+      return {
+        ...rest,
+        colwidth: { ...rest.colwidth, parseHTML: el => { const c = el.getAttribute('colwidth'); return c ? c.split(',').map(w => parseInt(w, 10)) : null } },
+      }
+    }
 
     const editor = new Editor({
       element: document.getElementById('editor'),
@@ -4650,10 +4677,11 @@
         }),
         RawInline,
         InlineImage,
-        withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
+        // Tiptap 3's Table renders through TableView (a div.tableWrapper) even when not resizable; v2 drew a bare table.
+        withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false, View: null }),
         withBlockAttrs(withClassAttr(TableRowWithSection)),
-        withBlockAttrs(withClassAttr(TableHeader.extend({ addAttributes: _withoutCellAlign }))),
-        withBlockAttrs(withClassAttr(TableCell.extend({ addAttributes: _withoutCellAlign }))),
+        withBlockAttrs(withClassAttr(TableHeader.extend({ addAttributes: _cellAttrsAsV2 }))),
+        withBlockAttrs(withClassAttr(TableCell.extend({ addAttributes: _cellAttrsAsV2 }))),
         withBlockAttrs(withClassAttr(HorizontalRule)),
         withBlockAttrs(ResizableImage).configure({ inline: false }),
         withBlockAttrs(EmbedBlock),
