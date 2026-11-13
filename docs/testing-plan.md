@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-01 — 900 Swift tests + 2,202 JS tests (2,201 pass, 1 skipped), no failures._
+_Last updated: 2026-11-12 — 900 Swift tests + 2,232 JS tests (2,231 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -19,10 +19,10 @@ This document is the authoritative reference for Quill's automated test suite an
 1. **Swift tests** — `swift test` (900 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (82 tests — live Tiptap editor in jsdom)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (87 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (151 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (165 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (448 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
@@ -1868,7 +1868,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 
 ---
 
-## JS preservation tests (82 tests)
+## JS preservation tests (87 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2039,6 +2039,18 @@ A class-only card is a `wp-block-*` element with no block comment, which loads a
 | `an edit elsewhere keeps the blank line on both sides of the card` | Issue 22's post: a reusable block, an undelimited Group card and a paragraph. After editing the paragraph, the save is the source byte for byte apart from that edit |
 | `saving twice is idempotent` | A second load and save adds no further blank lines |
 | `two class-only cards in a row are separated from each other` | The card counts as both the end of one block and the start of the next |
+
+### `Tiptap 3 migration: saved markup` (5 tests)
+
+Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans/2026-11-11-tiptap-v3-migration.md`). Each expected value is what Tiptap 2.27.3 saved; a difference on a newer Tiptap is fixed in `editor.html`, never by editing the value.
+
+| Test | What it checks |
+|---|---|
+| `an ordered list styled with list-style-type gains no type attribute` | Tiptap 3 derives `type` from `list-style-type`; `OrderedListWithClass` keeps v2's definition so no `type="I"` is written |
+| `an ordered list with type="a" keeps it, in the editor and on save` | The attribute stays in `getHTML()` and in the save |
+| `an ordered list with type="1" keeps it on save` | Tiptap 3 stops rendering `type="1"`; Quill's `renderHTML` still does |
+| `table cell align attributes save as authored` | Tiptap 3's cell `align` attribute would add `style="text-align: …"`; `_withoutCellAlign` removes it |
+| `a link title saves as authored` | Tiptap 3 models `link.title`; the save is unchanged |
 
 ---
 
@@ -2625,7 +2637,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (151 tests)
+## JS keyboard tests (165 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2901,6 +2913,27 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `the click that ends a mouse press does not toggle it back` | A `click` with `detail` 1 after the `mousedown` is ignored, so the menu does not open and close in one press |
 | `a click with no mouse detail, as a keyboard activation sends, toggles it` | Space or Return on the focused button sends `click` with `detail` 0, which toggles the menu |
 | `the press is cancelled so the editor keeps focus` | The `mousedown` is `preventDefault`ed |
+
+### `Tiptap 3 migration: keys and clicks` (14 tests)
+
+Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were read off Tiptap 2.27.3.
+
+| Test | What it checks |
+|---|---|
+| `Delete at the end of a list item that has a nested list` | Same document as v2 (Tiptap 3's `ListKeymap` would change it; it stays off) |
+| `Backspace at the start of a list item that follows a nested list` | Same document as v2 |
+| `Delete at the end of a footnote entry leaves the list intact` | Same document as v2 |
+| `⌘-click on a link posts openLink once and a plain click posts nothing` | Runs the `handleClick` prop chain with `button: 0`: one `openLink` message, no `window.open`, selection unchanged by the plain click |
+| `a typed URL followed by a space becomes a link` | Autolink fires as on v2 |
+| `a URL pasted over selected text links that text` | Link-on-paste as on v2 |
+| `Enter then Backspace in a footnote entry` | The footnote keyboard guard, nested once per `.extend()` layer on Tiptap 3, gives v2's two documents |
+| `plain text that looks like a numbered list pastes as paragraphs` | Tiptap 3's `OrderedList` paste plugin is off, so `1. one` / `2. two` pastes as two paragraphs |
+| `markdown input rules give the same document in every context` | Eight input rules (`# `, `> `, `- `, `1. `, three backticks, `---`, `**b**`, backtick code) plus Backspace-undo of `- `, in a paragraph, list item, footnote entry and table cell, typed through `handleTextInput` |
+| `Backspace at the start of a paragraph after a quote, then typing` | Joins into the quote as v2 did; Tiptap 3's Blockquote Backspace (which merged the text and put the caret after it) is off |
+| `Backspace at the start of the second paragraph in a quote, then typing` | Joins the two paragraphs as v2 did, instead of splitting the quote |
+| `Backspace at the start of a paragraph after a quote with a citation, then typing` | Pins v2's join into the `cite`, caret before the joined text |
+| `Delete at the end of a list item whose nested item holds two paragraphs` | v2's document; Tiptap 3's `listItemBranchingDeleteKeymap` (which outdented the branch) is off |
+| `Delete at the end of a list item whose nested item holds its own list` | v2's document and node selection |
 
 ---
 

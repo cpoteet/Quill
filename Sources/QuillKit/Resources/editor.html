@@ -1832,13 +1832,23 @@
       },
     })))
     const OrderedListWithClass = withBlockAttrs(withClassAttr(OrderedList.extend({
+      // Tiptap 3 derives `type` from list-style-type and stops rendering type="1"; keep v2's
+      // definition, or a styled list saves type="I", which WordPress rejects.
+      addAttributes() { return { ...this.parent?.(), type: { default: null, parseHTML: el => el.getAttribute('type') } } },
+      renderHTML({ HTMLAttributes }) {
+        const { start, ...rest } = HTMLAttributes
+        return ['ol', start === 1 ? rest : HTMLAttributes, 0]
+      },
+      // Tiptap 3's only plugin here turns pasted "1. a\n2. b" plain text into a list; v2 pasted paragraphs.
+      addProseMirrorPlugins() { return [] },
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
     })))
-    const ListItemWithClass   = withBlockAttrs(withClassAttr(ListItem))
+    // Tiptap 3's ListItem brings listItemBranchingDeleteKeymap, which outdents a nested branch on Delete.
+    const ListItemWithClass   = withBlockAttrs(withClassAttr(ListItem.extend({ addExtensions() { return [] } })))
 
     // ── ImageNodeView ─────────────────────────────────
     class ImageNodeView {
@@ -4328,8 +4338,9 @@
     const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
       content: 'block+ cite?',
       addKeyboardShortcuts() {
-        const orig = this.parent?.()
-        const wrapped = Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+        // Tiptap 3's Blockquote binds Backspace to split or merge at a quote's edge; v2 joined backward.
+        const { Backspace, ...orig } = this.parent?.() || {}
+        const wrapped = Object.fromEntries(Object.entries(orig).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
         return {
           ...wrapped,
@@ -4597,6 +4608,10 @@
       })
     })()
 
+    // Tiptap 3 models a cell's `align` and renders it again as style="text-align: …", which Quill
+    // never authored. Drop the attribute so the raw-attribute carrier keeps `align` as v2 did.
+    function _withoutCellAlign() { const { align, ...rest } = this.parent?.() || {}; return rest }
+
     const editor = new Editor({
       element: document.getElementById('editor'),
       extensions: [
@@ -4614,6 +4629,7 @@
           listItem: false,
           codeBlock: false,
           horizontalRule: false,
+          link: false, underline: false, trailingNode: false, listKeymap: false,
         }),
         withBlockAttrs(withClassAttr(CodeBlock.extend({
           addKeyboardShortcuts() {
@@ -4636,8 +4652,8 @@
         InlineImage,
         withBlockAttrs(withClassAttr(TableWithFigure)).configure({ resizable: false }),
         withBlockAttrs(withClassAttr(TableRowWithSection)),
-        withBlockAttrs(withClassAttr(TableHeader)),
-        withBlockAttrs(withClassAttr(TableCell)),
+        withBlockAttrs(withClassAttr(TableHeader.extend({ addAttributes: _withoutCellAlign }))),
+        withBlockAttrs(withClassAttr(TableCell.extend({ addAttributes: _withoutCellAlign }))),
         withBlockAttrs(withClassAttr(HorizontalRule)),
         withBlockAttrs(ResizableImage).configure({ inline: false }),
         withBlockAttrs(EmbedBlock),
@@ -6575,7 +6591,7 @@
       editor.commands.setTextSelection(0)
       _parsingPaste = false
       _resetSyncedPatterns()
-      editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), false)
+      editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), { emitUpdate: false })
       editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
       _requestSyncedPatterns()
@@ -6860,7 +6876,7 @@
       editor.commands.setTextSelection(0)
       _parsingPaste = false
       _resetSyncedPatterns()
-      editor.commands.setContent(wrapped || '', false)
+      editor.commands.setContent(wrapped || '', { emitUpdate: false })
       if (!keepHistory) _clearHistory()
       // setContent maps the old caret into the new doc, and a landing next to an
       // atom block becomes a NodeSelection that outlines it before any click.

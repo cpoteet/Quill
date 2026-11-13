@@ -357,7 +357,7 @@ describe('image captions', () => {
 
 describe('class preservation through schema round-trip', () => {
   function htmlRoundTrip(html) {
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     return editor.getHTML()
   }
 
@@ -402,7 +402,7 @@ describe('class preservation through schema round-trip', () => {
   })
 
   test('wp-block-image class on figure is filtered from figureClass (not duplicated)', () => {
-    editor.commands.setContent('<figure class="wp-block-image aligncenter size-large my-class"><img src="x.png"><figcaption></figcaption></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image aligncenter size-large my-class"><img src="x.png"><figcaption></figcaption></figure>', { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.figureClass, 'size-large my-class')
     assert.equal(node.attrs.alignment, 'center')
@@ -414,7 +414,7 @@ describe('class preservation through schema round-trip', () => {
   })
 
   test('managed img classes (alignment, wp-image) are not duplicated in imgClass', () => {
-    editor.commands.setContent('<figure class="wp-block-image aligncenter"><img src="x.png" class="wp-image-99 custom"><figcaption></figcaption></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image aligncenter"><img src="x.png" class="wp-image-99 custom"><figcaption></figcaption></figure>', { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.imgClass, 'custom')
     assert.equal(node.attrs.alignment, 'center')
@@ -443,7 +443,7 @@ describe('class preservation through schema round-trip', () => {
   })
 
   test('applyLink preserves existing link classes', () => {
-    editor.commands.setContent('<p><a href="https://old.com" class="btn">Click</a></p>', false)
+    editor.commands.setContent('<p><a href="https://old.com" class="btn">Click</a></p>', { emitUpdate: false })
     editor.commands.setTextSelection(2)
     win.applyLink('https://new.com')
     const out = editor.getHTML()
@@ -460,12 +460,12 @@ describe('image link-to-full-size', () => {
     // link mark silently produces an empty <p></p> instead of parsing the content. The
     // preceding 'applyLink preserves existing link classes' test above exercises exactly
     // that pattern, so absorb the one-shot quirk here before asserting on real content.
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
   })
 
   test('image wrapped in <a> parses to linkTo media with linkHref, and round-trips', () => {
     const html = '<figure class="wp-block-image"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.linkTo, 'media')
     assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
@@ -475,7 +475,7 @@ describe('image link-to-full-size', () => {
 
   test('image without a link wrapper defaults to linkTo none and omits <a> from output', () => {
     const html = '<figure class="wp-block-image"><img src="https://example.com/thumb.jpg"><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.linkTo, 'none')
     assert.equal(node.attrs.linkHref, null)
@@ -485,7 +485,7 @@ describe('image link-to-full-size', () => {
 
   test('linked image preserves alignment, custom class, and mediaId alongside the link', () => {
     const html = '<figure class="wp-block-image alignleft my-figure-class"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg" class="wp-image-42"></a><figcaption>cap</figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.linkTo, 'media')
     assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
@@ -500,7 +500,7 @@ describe('image link-to-full-size', () => {
   })
 
   test('toggling linkTo to media via setNodeMarkup produces the <a> wrapper on save', () => {
-    editor.commands.setContent('<figure class="wp-block-image"><img src="https://example.com/thumb.jpg"><figcaption></figcaption></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><img src="https://example.com/thumb.jpg"><figcaption></figcaption></figure>', { emitUpdate: false })
     const pos = posOfFirst('image')
     const node = editor.state.doc.nodeAt(pos)
     const { state, dispatch } = editor.view
@@ -510,7 +510,7 @@ describe('image link-to-full-size', () => {
   })
 
   test('toggling linkTo back to none via setNodeMarkup clears linkHref too', () => {
-    editor.commands.setContent('<figure class="wp-block-image"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>', { emitUpdate: false })
     const pos = posOfFirst('image')
     const node = editor.state.doc.nodeAt(pos)
     assert.equal(node.attrs.linkTo, 'media')
@@ -524,7 +524,7 @@ describe('image link-to-full-size', () => {
 
   test('classic (non-figure) linked image is detected via the bare img[src] parse rule', () => {
     const html = '<a href="https://example.com/full.jpg"><img src="https://example.com/thumb.jpg"></a>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.linkTo, 'media')
     assert.equal(node.attrs.linkHref, 'https://example.com/full.jpg')
@@ -534,7 +534,7 @@ describe('image link-to-full-size', () => {
 
   test('an <a> wrapper with an empty href is not treated as a full-image link', () => {
     const html = '<figure class="wp-block-image"><a href=""><img src="https://example.com/thumb.jpg"></a><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.linkTo, 'none')
     assert.equal(node.attrs.linkHref, null)
@@ -545,13 +545,13 @@ describe('image marked as decorative (WP 7.1)', () => {
   before(() => {
     // Absorb the pre-existing one-shot setContent quirk documented on the
     // 'image link-to-full-size' block above.
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
   })
 
   test('role="none" on the <img> parses into imgRole and round-trips', () => {
     // Real WP 7.1 save() output: "Mark as decorative" emits role="none" and alt="".
     const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.type.name, 'image')
     assert.equal(node.attrs.imgRole, 'none')
@@ -561,7 +561,7 @@ describe('image marked as decorative (WP 7.1)', () => {
 
   test('role survives the toWordPressHTML save transform', () => {
     const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const out = win.toWordPressHTML(editor.getHTML())
     const doc = new JSDOM('<body>' + out + '</body>').window.document
     const img = doc.querySelector('figure.wp-block-image img')
@@ -573,7 +573,7 @@ describe('image marked as decorative (WP 7.1)', () => {
 
   test('an image with no role attribute emits no role on save', () => {
     const html = '<figure class="wp-block-image"><img src="http://x/p.jpg" alt="A cat"><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     assert.equal(editor.state.doc.firstChild.attrs.imgRole, null)
     const out = win.toWordPressHTML(editor.getHTML())
     assert.doesNotMatch(out, /role=/)
@@ -582,7 +582,7 @@ describe('image marked as decorative (WP 7.1)', () => {
   test('role is preserved on a classic linked image with no figure wrapper', () => {
     // The bare img[src] parse rule has no getAttrs, so imgRole must come from
     // its own per-attribute parseHTML fallback.
-    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', false)
+    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', { emitUpdate: false })
     const imgs = []
     editor.state.doc.descendants(n => { if (n.type.name === 'image') imgs.push(n) })
     assert.equal(imgs.length, 1)
@@ -594,7 +594,7 @@ describe('image marked as decorative (WP 7.1)', () => {
     // The getHTML() assertion above stops short of the save path; role must
     // land on the <img> of the figure toWordPressHTML promotes it into, not
     // on the figure it just created.
-    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', false)
+    editor.commands.setContent('<p><img src="http://x/p.jpg" alt="" role="presentation"></p>', { emitUpdate: false })
     const out = win.toWordPressHTML(editor.getHTML())
     const doc = new JSDOM('<body>' + out + '</body>').window.document
     const fig = doc.querySelector('figure.wp-block-image')
@@ -609,7 +609,7 @@ describe('image marked as decorative (WP 7.1)', () => {
     const html = '<figure class="wp-block-image size-large">' +
       '<a href="http://x/p-full.jpg"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"></a>' +
       '<figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const node = editor.state.doc.firstChild
     assert.equal(node.attrs.imgRole, 'none')
     assert.equal(node.attrs.linkTo, 'media')
@@ -629,7 +629,7 @@ describe('image marked as decorative (WP 7.1)', () => {
     // Mirrors the empty-href handling for linkHref: '' is falsy, so imgRole
     // parses to null and nothing is written back.
     const html = '<figure class="wp-block-image"><img src="http://x/p.jpg" alt="" role=""><figcaption></figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     assert.equal(editor.state.doc.firstChild.attrs.imgRole, null)
     assert.doesNotMatch(win.toWordPressHTML(editor.getHTML()), /role=/)
   })
@@ -637,14 +637,14 @@ describe('image marked as decorative (WP 7.1)', () => {
   test('role="none" sets isDecorative in the wp:image comment attributes', () => {
     // Without it, save() regenerates no role and Gutenberg rejects the block.
     const html = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" role="none"><figcaption>cap</figcaption></figure>'
-    editor.commands.setContent(html, false)
+    editor.commands.setContent(html, { emitUpdate: false })
     const out = win.toWordPressHTML(editor.getHTML())
     assert.equal(JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1]).isDecorative, true)
   })
 })
 
 describe('image dimensions round-trip', () => {
-  before(() => { editor.commands.setContent('<p></p>', false) })
+  before(() => { editor.commands.setContent('<p></p>', { emitUpdate: false }) })
 
   const save = () => win.toWordPressHTML(editor.getHTML())
   const attrsOf = out => JSON.parse(out.match(/<!-- wp:image ([\s\S]*?) -->/)[1])
@@ -656,35 +656,35 @@ describe('image dimensions round-trip', () => {
     + '<figcaption class="wp-element-caption">cap</figcaption></figure>'
 
   test('a style width on the img parses into the width attr', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     assert.equal(editor.state.doc.firstChild.attrs.width, 640)
   })
 
   test('height:auto parses as no height', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     assert.equal(editor.state.doc.firstChild.attrs.height, null)
   })
 
   test('a resized image saves back with its style and is-resized intact', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     const doc = docOf(save())
     assert.equal(doc.querySelector('img').getAttribute('style'), 'width:640px;height:auto')
     assert.ok(doc.querySelector('figure').classList.contains('is-resized'))
   })
 
   test('a resized image saves its dimensions into the comment attributes', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     assert.equal(attrsOf(save()).width, '640px')
   })
 
   test('the saved img carries no width or height attribute', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     const img = docOf(save()).querySelector('img')
     assert.ok(!img.hasAttribute('width') && !img.hasAttribute('height'))
   })
 
   test('is-resized is dropped when the image loses its dimensions', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     const pos = 0
     editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, null, {
       ...editor.state.doc.firstChild.attrs, width: null, height: null,
@@ -695,27 +695,27 @@ describe('image dimensions round-trip', () => {
   })
 
   test('is-resized is not carried as a stale figure class', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     assert.ok(!(editor.state.doc.firstChild.attrs.figureClass || '').includes('is-resized'))
   })
 
   test('a resized image round-trips idempotently', () => {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     const once = save()
-    editor.commands.setContent(once, false)
+    editor.commands.setContent(once, { emitUpdate: false })
     assert.equal(save(), once)
   })
 
   test('legacy width/height attributes are converted to a style on save', () => {
     const legacy = '<figure class="wp-block-image size-large"><img src="http://x/p.jpg" alt="" class="wp-image-99" width="640" height="480"><figcaption></figcaption></figure>'
-    editor.commands.setContent(legacy, false)
+    editor.commands.setContent(legacy, { emitUpdate: false })
     const doc = docOf(save())
     assert.equal(doc.querySelector('img').getAttribute('style'), 'width:640px;height:480px')
     assert.ok(!doc.querySelector('img').hasAttribute('width'))
   })
 
   test('an image inserted by Quill saves no dimensions, as core does', () => {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     win.insertImage('http://x/p.jpg', 99, 'alt text')
     const out = save()
     const img = docOf(out).querySelector('img')
@@ -726,7 +726,7 @@ describe('image dimensions round-trip', () => {
 
   // jsdom lays nothing out, so the drag starts from the handler's 300×200 fallback.
   function drag(handle, dx, dy, natural = [1200, 800]) {
-    editor.commands.setContent('<figure><img src="http://x/p.jpg" alt=""></figure>', false)
+    editor.commands.setContent('<figure><img src="http://x/p.jpg" alt=""></figure>', { emitUpdate: false })
     const img = editor.view.dom.querySelector('.image-frame img')
     Object.defineProperty(img, 'naturalWidth', { value: natural[0] })
     Object.defineProperty(img, 'naturalHeight', { value: natural[1] })
@@ -747,7 +747,7 @@ describe('image dimensions round-trip', () => {
 
   const sizeBtn = slug => win.document.querySelector(`#image-toolbar [data-size="${slug}"]`)
   function withSizes(sizes, fn) {
-    editor.commands.setContent(RESIZED, false)
+    editor.commands.setContent(RESIZED, { emitUpdate: false })
     editor.commands.setNodeSelection(0)
     for (const [slug, data] of Object.entries(sizes)) sizeBtn(slug)._sizeData = data
     try { fn() } finally { for (const slug of Object.keys(sizes)) sizeBtn(slug)._sizeData = null }
@@ -794,8 +794,8 @@ describe('image dimensions round-trip', () => {
   })
 
   function selectWithNaturalSize(html, natural) {
-    editor.commands.setContent('<p></p>', false)
-    editor.commands.setContent(html, false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
+    editor.commands.setContent(html, { emitUpdate: false })
     const img = editor.view.dom.querySelector('.image-frame img')
     Object.defineProperty(img, 'naturalWidth', { value: natural[0], configurable: true })
     Object.defineProperty(img, 'naturalHeight', { value: natural[1], configurable: true })
@@ -838,7 +838,7 @@ describe('image toolbar visibility', () => {
   const wait = ms => new Promise(r => setTimeout(r, ms))
 
   function selectImage() {
-    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', { emitUpdate: false })
     editor.commands.setNodeSelection(0)
     assert.equal(tb().style.display, 'flex')
   }
@@ -912,7 +912,7 @@ describe('image toolbar visibility', () => {
   })
 
   test('W and H update when the new size finishes loading', () => {
-    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/p.jpg" alt=""></figure><p>after</p>', { emitUpdate: false })
     const img = win.document.querySelector('#editor .image-wrapper img')
     setNaturalSize(img, 300, 200)
     editor.commands.setNodeSelection(0)
@@ -934,12 +934,12 @@ describe('image toolbar visibility', () => {
 })
 
 describe('window.insertImage cursor placement', () => {
-  before(() => { editor.commands.setContent('<p></p>', false) })
+  before(() => { editor.commands.setContent('<p></p>', { emitUpdate: false }) })
 
   function selParent() { return editor.state.selection.$from.parent.type.name }
 
   test('inserting into an empty document leaves the cursor in a paragraph below', () => {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     editor.commands.focus()
     win.insertImage('http://x/p.jpg', 42, 'alt text')
     assert.equal(doc(), 'image[] | paragraph()')
@@ -947,7 +947,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inserting after existing text appends the paragraph after the image', () => {
-    editor.commands.setContent('<p>hello</p>', false)
+    editor.commands.setContent('<p>hello</p>', { emitUpdate: false })
     editor.commands.setTextSelection(6)
     editor.commands.focus()
     win.insertImage('http://x/p.jpg')
@@ -956,7 +956,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('the caption is left empty and still holds the image attrs', () => {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     editor.commands.focus()
     win.insertImage('http://x/p.jpg', 42, 'alt text')
     const img = editor.state.doc.firstChild
@@ -971,7 +971,7 @@ describe('window.insertImage cursor placement', () => {
     // The real multi-file drop path: PostEditorView posts one .insertMediaURL
     // per uploaded file, so insertImage runs back to back. Each call must land
     // in the paragraph the previous call created, not stack blank paragraphs.
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     editor.commands.focus()
     win.insertImage('http://x/a.jpg', 1)
     win.insertImage('http://x/b.jpg', 2)
@@ -984,7 +984,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('a multi-image drop saves one wp:image pair per image, in drop order', () => {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     editor.commands.focus()
     win.insertImage('http://x/a.jpg', 1)
     win.insertImage('http://x/b.jpg', 2)
@@ -998,7 +998,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('the saved figure carries no caption and no empty paragraph', () => {
-    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.setContent('<p>before</p>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/r.jpg', 42, 'alt text')
     const out = win.toWordPressHTML(editor.getHTML())
@@ -1012,7 +1012,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('the paragraph below the image accepts typing', () => {
-    editor.commands.setContent('<p>before</p>', false)
+    editor.commands.setContent('<p>before</p>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/r.jpg')
     editor.commands.insertContent('typed')
@@ -1020,7 +1020,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inserting with the cursor in an existing caption appends below, leaving the caption intact', () => {
-    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/o.jpg"><figcaption>cap</figcaption></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/o.jpg"><figcaption>cap</figcaption></figure>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/n.jpg')
     assert.equal(doc(), 'image["cap"] | image[] | paragraph()')
@@ -1028,7 +1028,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inserting while an image node is selected replaces it and still lands below', () => {
-    editor.commands.setContent('<p>a</p><figure class="wp-block-image"><img src="http://x/old.jpg"></figure><p>b</p>', false)
+    editor.commands.setContent('<p>a</p><figure class="wp-block-image"><img src="http://x/old.jpg"></figure><p>b</p>', { emitUpdate: false })
     editor.commands.setNodeSelection(posOfFirst('image'))
     win.insertImage('http://x/new.jpg')
     assert.equal(doc(), 'paragraph("a") | image[] | paragraph() | paragraph("b")')
@@ -1039,7 +1039,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inside a list item the image and its paragraph stay in the item', () => {
-    editor.commands.setContent('<ul><li><p>one</p></li></ul>', false)
+    editor.commands.setContent('<ul><li><p>one</p></li></ul>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/l.jpg')
     assert.equal(doc(), 'bulletList(listItem(paragraph("one"),image[],paragraph()))')
@@ -1048,7 +1048,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inside a blockquote the image and its paragraph stay in the quote', () => {
-    editor.commands.setContent('<blockquote><p>quoted</p></blockquote>', false)
+    editor.commands.setContent('<blockquote><p>quoted</p></blockquote>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/q.jpg')
     assert.equal(doc(), 'blockquote(paragraph("quoted"),image[],paragraph())')
@@ -1057,7 +1057,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inside a table cell the image goes inline in that cell, as core cells hold text', () => {
-    editor.commands.setContent('<table><tbody><tr><td><p>cell</p></td><td><p>b</p></td></tr></tbody></table>', false)
+    editor.commands.setContent('<table><tbody><tr><td><p>cell</p></td><td><p>b</p></td></tr></tbody></table>', { emitUpdate: false })
     // Not focus('end') — a trailing table now carries a paragraph after it.
     editor.commands.setTextSelection(paragraphStarts()[1] + 1)
     win.insertImage('http://x/t.jpg')
@@ -1066,7 +1066,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('from a code block the image lands after the block, leaving the code untouched', () => {
-    editor.commands.setContent('<pre><code>let x = 1</code></pre>', false)
+    editor.commands.setContent('<pre><code>let x = 1</code></pre>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/c2.jpg')
     assert.equal(doc(), 'codeBlock("let x = 1") | image[] | paragraph()')
@@ -1076,7 +1076,7 @@ describe('window.insertImage cursor placement', () => {
   })
 
   test('inside a footnote the insert is refused and the document is unchanged', () => {
-    editor.commands.setContent('<p>text</p>', false)
+    editor.commands.setContent('<p>text</p>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertFootnote()
     const before = doc()
@@ -1091,43 +1091,43 @@ describe('window.insertImage cursor placement', () => {
 
 describe('trailing paragraph after a block that holds no text', () => {
   test('a document ending in a table gains one', () => {
-    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', { emitUpdate: false })
     assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph()')
   })
 
   test('typing in it reaches the document, not the table', () => {
-    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', { emitUpdate: false })
     editor.commands.focus('end')
     editor.commands.insertContent('after')
     assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph("after")')
   })
 
   test('an image figure gains none — its caption is a text position already', () => {
-    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/a.jpg"></figure>', false)
+    editor.commands.setContent('<figure class="wp-block-image"><img src="http://x/a.jpg"></figure>', { emitUpdate: false })
     assert.equal(doc(), 'image[]')
   })
 
   test('a document already ending in a paragraph gains nothing', () => {
-    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p>tail</p>', false)
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p>tail</p>', { emitUpdate: false })
     assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a")))) | paragraph("tail")')
   })
 
   test('the added paragraph is stripped again on save', () => {
-    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td></tr></tbody></table>', { emitUpdate: false })
     const out = win.toWordPressHTML(editor.getHTML())
     assert.ok(!out.includes('<p></p>'), out)
     assert.ok(!out.includes('wp:paragraph'), out)
   })
 
   const tableThenFootnotes = () => {
-    editor.commands.setContent('<p>body</p><table><tbody><tr><td><p>a</p></td></tr></tbody></table>', false)
+    editor.commands.setContent('<p>body</p><table><tbody><tr><td><p>a</p></td></tr></tbody></table>', { emitUpdate: false })
     editor.commands.setTextSelection(5)
     win.insertFootnote()
   }
 
   test('a loaded table followed only by the footnotes list gains one before the list', () => {
     tableThenFootnotes()
-    editor.commands.setContent(editor.getHTML().replace('<p></p>', ''), false)
+    editor.commands.setContent(editor.getHTML().replace('<p></p>', ''), { emitUpdate: false })
     const names = []
     editor.state.doc.forEach(n => names.push(n.type.name + (n.type.name === 'paragraph' ? `(${n.textContent})` : '')))
     assert.deepEqual(names, ['paragraph(body)', 'table', 'paragraph()', 'footnotesList'])
@@ -1141,7 +1141,7 @@ describe('trailing paragraph after a block that holds no text', () => {
   })
 
   test('an empty paragraph the author wrote before the footnotes list is kept on save', () => {
-    editor.commands.setContent('<p>body</p>', false)
+    editor.commands.setContent('<p>body</p>', { emitUpdate: false })
     editor.commands.setTextSelection(5)
     win.insertFootnote()
     const list = editor.state.doc.lastChild
@@ -1153,7 +1153,7 @@ describe('trailing paragraph after a block that holds no text', () => {
   })
 
   test('a footnotes list stays last', () => {
-    editor.commands.setContent('<p>body</p>', false)
+    editor.commands.setContent('<p>body</p>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertFootnote()
     assert.equal(editor.state.doc.lastChild.type.name, 'footnotesList')
@@ -1538,5 +1538,205 @@ describe('the heading menu button', () => {
     button().dispatchEvent(ev)
     assert.equal(ev.defaultPrevented, true)
     mousedown()
+  })
+})
+
+// Pins v2 behaviour for the keys, clicks and link rules Tiptap 3 touches
+// (docs/superpowers/plans/2026-11-11-tiptap-v3-migration.md, Task 2). The doc() values were
+// read off v2; when v3 differs, v3 is changed, never these.
+describe('Tiptap 3 migration: keys and clicks', () => {
+  const textPos = str => {
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.isText && n.text === str) at = pos })
+    return at
+  }
+  const nested = '<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>'
+
+  test('Delete at the end of a list item that has a nested list', () => {
+    editor.commands.setContent(nested, { emitUpdate: false })
+    editor.commands.setTextSelection(textPos('a') + 1)
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("a"),paragraph("b")),listItem(paragraph("c")))')
+  })
+
+  test('Backspace at the start of a list item that follows a nested list', () => {
+    editor.commands.setContent(nested, { emitUpdate: false })
+    editor.commands.setTextSelection(textPos('c'))
+    key(editor.view, 'Backspace')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("a"),bulletList(listItem(paragraph("b"))),paragraph("c")))')
+  })
+
+  test('Delete at the end of a footnote entry leaves the list intact', () => {
+    editor.commands.setContent('<p>body</p>', { emitUpdate: false })
+    editor.commands.setTextSelection(5)
+    win.insertFootnote()
+    editor.commands.insertContent('x')
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'paragraph("body",MARKER) | footnotesList(footnoteItem("x"))')
+  })
+
+  test('⌘-click on a link posts openLink once and a plain click posts nothing', () => {
+    editor.commands.setContent('<p><a href="https://example.com/">l</a></p>', { emitUpdate: false })
+    editor.commands.setTextSelection(1)
+    const calls = []
+    const opened = []
+    const savedWebkit = win.webkit
+    const savedOpen = win.open
+    win.webkit = { messageHandlers: { ...(savedWebkit?.messageHandlers || {}), openLink: { postMessage: href => calls.push(href) } } }
+    win.open = (...args) => { opened.push(args) }
+    try {
+      const anchor = editor.view.dom.querySelector('a')
+      const click = metaKey => editor.view.someProp('handleClick', f => f(editor.view, 2, { button: 0, metaKey, target: anchor, preventDefault() {} }))
+      click(true)
+      const before = editor.state.selection.toJSON()
+      click(false)
+      assert.deepEqual(calls, ['https://example.com/'])
+      assert.deepEqual(opened, [])
+      assert.deepEqual(editor.state.selection.toJSON(), before)
+    } finally {
+      win.webkit = savedWebkit
+      win.open = savedOpen
+    }
+  })
+
+  test('a typed URL followed by a space becomes a link', () => {
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
+    editor.commands.setTextSelection(1)
+    for (const ch of 'see https://example.com ') editor.view.dispatch(editor.state.tr.insertText(ch))
+    assert.equal(win.getContent(), '<!-- wp:paragraph -->\n<p>see <a href="https://example.com">https://example.com</a> </p>\n<!-- /wp:paragraph -->')
+  })
+
+  test('a URL pasted over selected text links that text', () => {
+    editor.commands.setContent('<p>a word here</p>', { emitUpdate: false })
+    editor.commands.setTextSelection({ from: 3, to: 7 })
+    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => (t === 'text/plain' ? 'https://example.com/' : ''), types: ['text/plain'], files: [] } })
+    editor.view.dom.dispatchEvent(ev)
+    assert.equal(win.getContent(), '<!-- wp:paragraph -->\n<p>a <a href="https://example.com/">word</a> here</p>\n<!-- /wp:paragraph -->')
+  })
+  test('Enter then Backspace in a footnote entry', () => {
+    editor.commands.setContent('<p>body</p>', { emitUpdate: false })
+    editor.commands.setTextSelection(5)
+    win.insertFootnote()
+    editor.commands.insertContent('xy')
+    editor.commands.setTextSelection(editor.state.selection.from - 1)
+    key(editor.view, 'Enter')
+    const afterEnter = doc()
+    key(editor.view, 'Backspace')
+    assert.deepEqual([afterEnter, doc()], [
+      'paragraph("body",MARKER) | footnotesList(footnoteItem("x",BR,"y"))',
+      'paragraph("body",MARKER) | footnotesList(footnoteItem("xy"))',
+    ])
+  })
+
+  test('plain text that looks like a numbered list pastes as paragraphs', () => {
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
+    editor.commands.setTextSelection(1)
+    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => (t === 'text/plain' ? '1. one\n2. two' : ''), types: ['text/plain'], files: [] } })
+    editor.view.dom.dispatchEvent(ev)
+    assert.equal(win.getContent(), '<!-- wp:paragraph -->\n<p>1. one</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>2. two</p>\n<!-- /wp:paragraph -->')
+  })
+  // Input rules run from handleTextInput, which tr.insertText never reaches; type the way
+  // ProseMirror's input handler does. Tiptap 3 gives each extension its own input-rule plugin.
+  test('markdown input rules give the same document in every context', () => {
+    const type = text => {
+      for (const ch of text) {
+        const { from, to } = editor.state.selection
+        if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+      }
+    }
+    const contexts = {
+      paragraph: () => { editor.commands.setContent('<p></p>', { emitUpdate: false }); editor.commands.setTextSelection(1) },
+      listItem: () => { editor.commands.setContent('<ul><li><p></p></li></ul>', { emitUpdate: false }); editor.commands.setTextSelection(posOfFirst('paragraph') + 1) },
+      footnote: () => { editor.commands.setContent('<p>body</p>', { emitUpdate: false }); editor.commands.setTextSelection(5); win.insertFootnote() },
+      tableCell: () => { editor.commands.setContent('<table><tbody><tr><td><p></p></td></tr></tbody></table>', { emitUpdate: false }); editor.commands.setTextSelection(posOfFirst('paragraph') + 1) },
+    }
+    const rules = ['# h', '> q', '- b', '1. n', '``` c', '---', '**b** ', '`c` ']
+    const actual = {}
+    for (const [where, setup] of Object.entries(contexts)) {
+      for (const rule of rules) { setup(); type(rule); actual[`${where} ${rule}`] = rule.includes('*') || rule.includes('`c') ? `${(editor.getHTML().match(/<(strong|code)>[^<]*<\/\1>/) || ['no mark'])[0]} in ${doc()}` : doc() }
+      setup(); type('- '); key(editor.view, 'Backspace'); actual[`${where} - then Backspace`] = doc()
+    }
+    assert.deepEqual(actual, {
+      "paragraph # h": "heading(\"h\")",
+      "paragraph > q": "blockquote(paragraph(\"q\"))",
+      "paragraph - b": "bulletList(listItem(paragraph(\"b\")))",
+      "paragraph 1. n": "orderedList(listItem(paragraph(\"n\")))",
+      "paragraph ``` c": "codeBlock(\"c\")",
+      "paragraph ---": "horizontalRule() | paragraph()",
+      "paragraph **b** ": "<strong>b</strong> in paragraph(\"b\",\" \")",
+      "paragraph `c` ": "<code>c</code> in paragraph(\"c\",\" \")",
+      "paragraph - then Backspace": "paragraph(\"- \")",
+      "listItem # h": "bulletList(listItem(paragraph(\"# h\")))",
+      "listItem > q": "bulletList(listItem(paragraph(\"> q\")))",
+      "listItem - b": "bulletList(listItem(paragraph(\"- b\")))",
+      "listItem 1. n": "bulletList(listItem(paragraph(\"1. n\")))",
+      "listItem ``` c": "bulletList(listItem(paragraph(\"``` c\")))",
+      "listItem ---": "bulletList(listItem(paragraph(),horizontalRule(),paragraph()))",
+      "listItem **b** ": "<strong>b</strong> in bulletList(listItem(paragraph(\"b\",\" \")))",
+      "listItem `c` ": "<code>c</code> in bulletList(listItem(paragraph(\"c\",\" \")))",
+      "listItem - then Backspace": "bulletList(listItem(paragraph(\"- \")))",
+      "footnote # h": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"# h\"))",
+      "footnote > q": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"> q\"))",
+      "footnote - b": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"- b\"))",
+      "footnote 1. n": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"1. n\"))",
+      "footnote ``` c": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"``` c\"))",
+      "footnote ---": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem()) | horizontalRule() | paragraph() | footnotesList(footnoteItem())",
+      "footnote **b** ": "<strong>b</strong> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"b\",\" \"))",
+      "footnote `c` ": "<code>c</code> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"c\",\" \"))",
+      "footnote - then Backspace": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"- \"))",
+      "tableCell # h": "table(tableRow(tableCell(heading(\"h\")))) | paragraph()",
+      "tableCell > q": "table(tableRow(tableCell(blockquote(paragraph(\"q\"))))) | paragraph()",
+      "tableCell - b": "table(tableRow(tableCell(bulletList(listItem(paragraph(\"b\")))))) | paragraph()",
+      "tableCell 1. n": "table(tableRow(tableCell(orderedList(listItem(paragraph(\"n\")))))) | paragraph()",
+      "tableCell ``` c": "table(tableRow(tableCell(codeBlock(\"c\")))) | paragraph()",
+      "tableCell ---": "table(tableRow(tableCell(horizontalRule(),paragraph()))) | paragraph()",
+      "tableCell **b** ": "<strong>b</strong> in table(tableRow(tableCell(paragraph(\"b\",\" \")))) | paragraph()",
+      "tableCell `c` ": "<code>c</code> in table(tableRow(tableCell(paragraph(\"c\",\" \")))) | paragraph()",
+      "tableCell - then Backspace": "table(tableRow(tableCell(paragraph(\"- \")))) | paragraph()",
+    })
+  })
+  // Found by review after the swap: Tiptap 3's Blockquote binds Backspace and ListItem brings
+  // listItemBranchingDeleteKeymap, neither of which v2 had. Values read off v2.
+  const typeX = () => editor.view.dispatch(editor.state.tr.insertText('X'))
+  const caretBefore = str => editor.commands.setTextSelection(textPos(str))
+
+  test('Backspace at the start of a paragraph after a quote, then typing', () => {
+    editor.commands.setContent('<blockquote><p>Quote</p></blockquote><p>Following</p>', { emitUpdate: false })
+    caretBefore('Following')
+    key(editor.view, 'Backspace')
+    typeX()
+    assert.equal(doc(), 'blockquote(paragraph("Quote"),paragraph("XFollowing"))')
+  })
+
+  test('Backspace at the start of the second paragraph in a quote, then typing', () => {
+    editor.commands.setContent('<blockquote><p>One</p><p>Two</p></blockquote>', { emitUpdate: false })
+    caretBefore('Two')
+    key(editor.view, 'Backspace')
+    typeX()
+    assert.equal(doc(), 'blockquote(paragraph("OneXTwo"))')
+  })
+
+  test('Backspace at the start of a paragraph after a quote with a citation, then typing', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>Q</p>\n<!-- /wp:paragraph --><cite>Who</cite></blockquote>\n<!-- /wp:quote -->\n\n<!-- wp:paragraph -->\n<p>F</p>\n<!-- /wp:paragraph -->')
+    caretBefore('F')
+    key(editor.view, 'Backspace')
+    typeX()
+    assert.equal(doc(), 'blockquote(paragraph("Q"),cite("WhoXF"))')
+  })
+
+  test('Delete at the end of a list item whose nested item holds two paragraphs', () => {
+    editor.commands.setContent('<ul><li><p>a</p><ul><li><p>b</p><p>c</p></li></ul></li><li><p>d</p></li></ul>', { emitUpdate: false })
+    editor.commands.setTextSelection(textPos('a') + 1)
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("a"),paragraph("b"),bulletList(listItem(paragraph("c")))),listItem(paragraph("d")))')
+  })
+
+  test('Delete at the end of a list item whose nested item holds its own list', () => {
+    editor.commands.setContent('<ul><li><p>a</p><ul><li><p>b</p><ul><li><p>c</p></li></ul></li></ul></li><li><p>d</p></li></ul>', { emitUpdate: false })
+    editor.commands.setTextSelection(textPos('a') + 1)
+    key(editor.view, 'Delete')
+    assert.equal(doc() + ' sel=' + editor.state.selection.toJSON().type, 'bulletList(listItem(paragraph("a"),bulletList(listItem(paragraph("b"),bulletList(listItem(paragraph("c")))))),listItem(paragraph("d"))) sel=node')
   })
 })

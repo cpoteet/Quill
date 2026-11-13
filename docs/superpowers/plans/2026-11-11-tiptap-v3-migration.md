@@ -10,6 +10,8 @@
 
 **Spec:** None. There are no design decisions; the findings below are the evidence this plan argues from.
 
+**Progress:** in progress on branch `tiptap-v3-migration`. The ledger is `.superpowers/sdd/2026-11-11-tiptap-v3-migration/progress.md` (git-ignored): which tasks are complete, every ruling that departs from this plan, and how to resume.
+
 ## Findings from the 2026-11-11 spike
 
 A throwaway worktree was built against 3.33.1. Nothing from it was committed.
@@ -39,6 +41,23 @@ A dump of the schema, extension list and plugin list under both bundles showed t
 | Plugin order differs throughout | Decides which keymap wins at equal priority. Covered by the keyboard suite plus the manual pass in Task 5 |
 | The table node's `figure.wp-block-table` and `caption` parse rules appear five times instead of once; `th` and `td` gain one extra rule | Matches the number of stacked `.extend()` layers, so `this.parent()` appears to re-run per layer. Cause confirmed in Task 4 |
 | Default `colspan="1" rowspan="1"` no longer rendered | Harmless; `toWordPressHTML` already strips them |
+
+Found during execution (2026-11-12), after the spike:
+
+| Difference in v3 | Status |
+|---|---|
+| Table cells saved `style="text-align:…"` beside `align` | Fixed in Task 4 (`_withoutCellAlign`); test 4 |
+| `OrderedList` adds a `handlePaste` plugin that turns plain-text `1. a` / `2. b` into a list | Turned off in Task 4 (`addProseMirrorPlugins() { return [] }`); characterization test written on v2. A candidate below |
+| On v2, `StarterKit.extend({ addExtensions() { this.parent() } })` ignored `configure({ …: false })`, so the eight stock nodes Quill replaces were registered twice (80 keymap plugins vs 75) | v2 bug that v3 fixes. Accepted; block shortcuts added to the manual pass |
+| Input rules are one plugin per extension instead of one global plugin | Accepted. `undoInputRule` walks every plugin; 36-case input-rule test equal to v2 |
+| `codeBlockVSCodeHandler$1` gone | It was v2's duplicate CodeBlock. Accepted |
+| `preserveCellSelectionOnContextMenu$` (table) | Accepted; right-click in a cell selection added to the manual pass |
+| `Blockquote` binds Backspace (lift a non-first child; merge a following paragraph into the quote's last textblock) | Found by the Codex review. Turned off in `CustomBlockquote`; three characterization tests written on v2 |
+| `listItemBranchingDeleteKeymap` outdents a nested branch on Delete when the nested item holds two paragraphs or its own list | Found by the Codex review; tests 6–8 were too shallow to see it. Turned off with `ListItem.extend({ addExtensions() { return [] } })`; two characterization tests written on v2 |
+| `handleClickLink$` returns early unless `openOnClick` or `enableClickSelection` | Inert with Quill's options. Accepted; test 9 now sends `button: 0` so it reaches the plugin |
+| New commands `insertDefaultBlock`, `setTextDirection`, `unsetTextDirection`, `updateDecorations` | From the accepted core extensions; nothing in Quill calls them |
+| Real-WebKit paste: 19 fixture clipboards, plain numbered list, plain URL, two round trips | 22/22 saved identically under v2 and v3 |
+| Pre-existing, same on v2 and v3: typing `---` in a footnote entry splits the footnotes list around a horizontal rule | Out of scope for the migration. Recorded by the input-rule test; worth its own issue |
 
 ## Global Constraints
 
@@ -345,5 +364,6 @@ None of this is part of the plan above. Each would be its own change with its ow
 | **Table: stop stripping default `colspan`/`rowspan`** | v3 no longer renders them | **Leave the strip.** Pasted and classic markup can still carry them |
 | **`onDelete` event for `FootnoteSync`** | The event exists in v3 core | **Unverified.** `FootnoteSync` rebuilds the list in `appendTransaction`, which must stay in the same transaction for undo. An event that fires afterwards likely cannot replace it |
 | **`@tiptap/extension-details`** | MIT in v3 | **No.** `DetailsBlock` writes Gutenberg's exact shape, and the stock extension does not |
+| **Plain-text numbered lists paste as a list** | Found during Task 4: v3's `OrderedList` adds a `handlePaste` plugin that turns `1. a` / `2. b` plain text into an ordered list. Turned off in the migration (`addProseMirrorPlugins() { return [] }`) | **Worth considering.** It is a small user-facing win. Taking it means deleting that override, changing the characterization test, and proving it in the real-WebKit paste harness, since WKWebView rewrites the clipboard first |
 
 What actually makes the migration worth doing is not on this list: v3 is the line that receives ProseMirror updates, and `prosemirror-view` is where WebKit input and selection fixes land. v2 had two releases in 2026, one of them a security backport.

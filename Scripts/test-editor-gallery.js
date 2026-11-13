@@ -498,7 +498,7 @@ describe('galleryBlock — alt and caption round-trip (insert → save → re-pa
   test('alt and caption survive save and re-parse, per image and in order', () => {
     insertViaBridge()
     const saved = win.toWordPressHTML(editor.getHTML())
-    editor.commands.setContent(saved, false)
+    editor.commands.setContent(saved, { emitUpdate: false })
     const got = galleryAttrs().images
     assert.deepEqual(pluck(got, 'id'), [1, 2, 3])
     assert.deepEqual(pluck(got, 'alt'), ['Alt one', '', 'Bob & "Al" <b>'])
@@ -540,19 +540,19 @@ describe('galleryBlock — parsing captions from loaded galleries', () => {
   }
 
   test('a caption on a loaded image figure is extracted into node attrs', () => {
-    editor.commands.setContent(LOADED, false)
+    editor.commands.setContent(LOADED, { emitUpdate: false })
     const attrs = galleryAttrs()
     assert.equal(attrs.images[0].caption, 'Loaded caption')
   })
 
   test('an image with no figcaption parses to an empty caption', () => {
-    editor.commands.setContent(LOADED, false)
+    editor.commands.setContent(LOADED, { emitUpdate: false })
     const attrs = galleryAttrs()
     assert.equal(attrs.images[1].caption, '')
   })
 
   test('a loaded gallery still re-renders verbatim from sourceHTML', () => {
-    editor.commands.setContent(LOADED, false)
+    editor.commands.setContent(LOADED, { emitUpdate: false })
     assert.match(editor.getHTML(), /<figcaption class="wp-element-caption">Loaded caption<\/figcaption>/)
   })
 })
@@ -572,7 +572,7 @@ describe('galleryBlock — captions survive load → edit → save', () => {
     '</figure>'
 
   const saveAfterEdit = () => {
-    editor.commands.setContent('<p>Intro</p>' + LOADED_TWO_CAPTIONS, false)
+    editor.commands.setContent('<p>Intro</p>' + LOADED_TWO_CAPTIONS, { emitUpdate: false })
     editor.commands.focus('start')
     editor.commands.insertContent('X')   // an ordinary visual edit elsewhere in the doc
     return win.toWordPressHTML(editor.getHTML())
@@ -722,7 +722,7 @@ describe('galleryBlock — editing', () => {
   })
 
   test('editGallery resolves each image link and size for a gallery inserted from the sheet', () => {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     win.insertGallery(JSON.stringify({ images: [{ id: 9, url: 'https://x.test/n-300x200.png', fullUrl: 'https://x.test/n.png', alt: '', caption: '' }], columns: 3, cropped: true, linkTo: 'media', sizeSlug: 'medium' }))
     win.editGallery(galleryPos(0))
     const [image] = posted.at(-1).edit.images

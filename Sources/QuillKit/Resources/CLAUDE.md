@@ -93,6 +93,7 @@ onto it" — its children are still replayed.
 - A passthrough card is only byte-for-byte if its markup is stashed out of the way, not just shielded from the comment-strip regex
 - A `<li>` holding two or more paragraphs is left alone on purpose, even though core's rich-text `<li>` will flag it
 - ProseMirror re-serializes any `style` it renders, so a style Quill did not author must never reach it
+- Tiptap 3's OrderedList, TableCell, TableHeader, Blockquote and ListItem bring behaviour v2 lacked, and Quill's subclasses turn it off
 - Delimiter attributes must go through `serializeAttributes`, never `JSON.stringify`
 - A regex over the final HTML string must treat `<` and `>` inside attribute values as data
 - A node with its own node view never sees `renderHTML`, so a block setting can save correctly and still draw nothing
@@ -174,6 +175,8 @@ onto it" — its children are still replayed.
 - A press in the page gutter lands on `#editor` or `#editor-wrap`, outside the contenteditable, so it drops focus and typing goes nowhere
 - The find shortcut must reject ⌃, or ⌃⌘F opens Find instead of reaching the system
 - Change bars compare against Swift's baseline, not the document the editor loaded
+- Tiptap 3's StarterKit adds Link, Underline, TrailingNode and ListKeymap, and all four must stay off
+- In Tiptap 3 an inherited `this.parent()` runs once per `.extend()` layer, so a wrapped extension repeats its own override
 
 ## Cross-cutting gotchas that apply here
 

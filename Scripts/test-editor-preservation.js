@@ -412,7 +412,7 @@ describe('the wrap applies at post_content entry points only', () => {
   test('the AI reject path does not double-wrap', () => {
     win.setContent(SHORTCODE)
     const internal = editor.getHTML()
-    editor.commands.setContent(internal, false)
+    editor.commands.setContent(internal, { emitUpdate: false })
     assert.equal(editor.state.doc.child(0).type.name, 'gutenbergPassthrough')
     assert.equal((editor.getHTML().match(/wp-block-quill-unsupported/g) || []).length, 1)
   })
@@ -874,5 +874,47 @@ describe('a class-only card is separated like any other block', () => {
     editor.commands.setTextSelection(2)
     editor.commands.insertContent('X')
     assert.equal(win.getContent(), src.replace('Opening.', 'OXpening.'))
+  })
+})
+
+// Pins v2 behaviour for everything Tiptap 3 changes in saved markup
+// (docs/superpowers/plans/2026-11-11-tiptap-v3-migration.md, Task 2). Expected values are
+// what v2 saves; when v3 differs, v3 is changed, never these.
+describe('Tiptap 3 migration: saved markup', () => {
+  const editAndSave = src => {
+    win.setContent(src)
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.isText) at = pos })
+    editor.commands.setTextSelection(at)
+    editor.commands.insertContent('X')
+    return win.getContent()
+  }
+  const list = ol => `<!-- wp:list {"ordered":true} -->\n${ol}<!-- wp:list-item -->\n<li>x</li>\n<!-- /wp:list-item --></ol>\n<!-- /wp:list -->`
+
+  test('an ordered list styled with list-style-type gains no type attribute', () => {
+    const src = '<!-- wp:list {"ordered":true,"type":"lower-alpha"} -->\n<ol style="list-style-type:lower-alpha" class="wp-block-list"><!-- wp:list-item -->\n<li>x</li>\n<!-- /wp:list-item --></ol>\n<!-- /wp:list -->'
+    assert.equal(editAndSave(src), src.replace('<li>x</li>', '<li>Xx</li>'))
+  })
+
+  test('an ordered list with type="a" keeps it, in the editor and on save', () => {
+    const src = list('<ol type="a" class="wp-block-list">')
+    win.setContent(src)
+    assert.match(editor.getHTML(), /<ol type="a"/)
+    assert.equal(editAndSave(src), src.replace('<li>x</li>', '<li>Xx</li>'))
+  })
+
+  test('an ordered list with type="1" keeps it on save', () => {
+    const src = list('<ol type="1" class="wp-block-list">')
+    assert.equal(editAndSave(src), src.replace('<li>x</li>', '<li>Xx</li>'))
+  })
+
+  test('table cell align attributes save as authored', () => {
+    const src = '<!-- wp:table -->\n<figure class="wp-block-table"><table><tbody><tr><td align="center">c</td><th align="right">h</th></tr></tbody></table></figure>\n<!-- /wp:table -->'
+    assert.equal(editAndSave(src), '<!-- wp:table {"hasFixedLayout":false} -->\n<figure class="wp-block-table"><table><tbody><tr><td align="center">Xc</td><th align="right">h</th></tr></tbody></table></figure>\n<!-- /wp:table -->')
+  })
+
+  test('a link title saves as authored', () => {
+    const src = '<!-- wp:paragraph -->\n<p><a href="https://example.com" title="A title">link</a></p>\n<!-- /wp:paragraph -->'
+    assert.equal(editAndSave(src), src.replace('>link<', '>Xlink<'))
   })
 })

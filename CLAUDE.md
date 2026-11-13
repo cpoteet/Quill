@@ -31,7 +31,7 @@ Runs every Swift and JS test. Current counts, every suite, the test-suite gotcha
 ## Key decisions
 
 - **Stack:** Swift 6, SwiftUI (macOS 27 only — no availability gates), WKWebView, URLSession async/await
-- **Editor:** Tiptap 2.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources, built by `./Scripts/bundle-tiptap.sh`)
+- **Editor:** Tiptap 3.x inside WKWebView, loaded from a local bundle (`tiptap-bundle.js` in Resources, built by `./Scripts/bundle-tiptap.sh`)
 - **API:** WordPress REST API with Application Passwords (no plugin required)
 - **Login:** WordPress's browser approval (`authorize-application.php`), calling back on `quill://authorize`; manual application-password entry is the fallback
 - **Storage:** SQLite.swift for local drafts/autosaves; credentials as JSON in `~/Library/Application Support/Quill/credentials.json` (chmod 600, not the system keychain — avoids password prompts)

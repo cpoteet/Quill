@@ -14,7 +14,7 @@ Reports what is out of date, decides what should move, and moves it one tool at 
 | Dependency | Where pinned | Ships in Quill.app | Rule |
 |---|---|---|---|
 | SQLite.swift | `Package.swift`, `Package.resolved` | Yes | Update within its major |
-| Tiptap 2.x (16 packages) + ProseMirror via `@tiptap/pm` | `Scripts/tiptap-bundle/` | Yes, as `tiptap-bundle.js` | Stay on v2. v3 is a planned migration, not an update |
+| Tiptap 3.x (14 packages) + ProseMirror via `@tiptap/pm` | `Scripts/tiptap-bundle/` | Yes, as `tiptap-bundle.js` | Update within v3, one minor range at a time. Before and after any update, diff `node Scripts/dump-editor-schema.js`; every changed line needs an explanation |
 | marked | `Scripts/marked-bundle/` | Yes, as `marked-bundle.js` | Update within its major |
 | esbuild | both bundle folders | No, but it writes both bundles | Update both folders together |
 | jsdom | `Scripts/package.json` | No | Update freely, fix the harnesses |
@@ -59,7 +59,6 @@ Then update: test counts in `docs/testing-plan.md` if they moved; `CLAUDE.md` Re
 
 - **The @wordpress packages look outdated on purpose.** npm runs ahead of WordPress; the validator suites must check against the release users run. On 2026-10-08 aligning them meant moving *down*.
 - **A lockfile can hide a broken fresh install.** In 2026-10 newer `@wordpress/rich-text`, `data`, `compose` and `components` moved to `private-apis` 2.x; the pinned packages' `^` ranges pulled them in, two `private-apis` copies loaded, and every validator suite died with "Cannot unlock an object that was not locked before". The fix is the transitive overrides in audit step 4 plus a fresh resolve (delete `Scripts/node_modules` and `Scripts/package-lock.json`).
-- **Tiptap's `mergeAttributes` advisory (GHSA-cp6q-959q-f8rh) is fixed in 2.27.3** despite its range; `npm audit` reports 31 moderate findings for it in `Scripts/tiptap-bundle/` until the range is corrected. Re-check only if Tiptap changes.
 - **jsdom 30:** `FileReader` is ~20× slower, so harnesses wait for a condition, never a fixed delay; and blurring the view no longer keeps ProseMirror's scroll-into-view off `getClientRects`, so container suites stub it (`docs/editor-gotchas.md`).
 - **`swift package clean` after removing a Swift package**, or the test build fails on a stale module such as `_TestingInternals`.
 - **npm may warn about install scripts** (`npm install-scripts`) for esbuild; the platform binary installs through optional dependencies, so the bundles build without approving it.

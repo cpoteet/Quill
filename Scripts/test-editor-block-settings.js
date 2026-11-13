@@ -934,7 +934,7 @@ describe('a prose link opening in a new tab', () => {
   // extendMarkRange over an existing mark poisons exactly the next setContent
   // (see the CLAUDE.md gotcha), so every test absorbs it before loading.
   function load(src) {
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
     win.setContent(src)
     let found = null
     editor.state.doc.descendants((node, pos) => {
@@ -948,7 +948,7 @@ describe('a prose link opening in a new tab', () => {
   test('the control appears only inside a link', () => {
     load(plain)
     assert.equal(controls().style.display, 'inline-flex')
-    editor.commands.setContent('<p>bare</p>', false)
+    editor.commands.setContent('<p>bare</p>', { emitUpdate: false })
     editor.commands.setTextSelection(2)
     assert.equal(controls().style.display, 'none')
   })

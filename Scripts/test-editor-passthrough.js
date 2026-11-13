@@ -310,7 +310,7 @@ describe('gutenbergPassthrough — figure-rooted blocks Quill does not model', (
     // Absorb the pre-existing jsdom/Tiptap one-shot quirk: the first setContent
     // after a doc that is a single atom node silently yields an empty <p>.
     // Reproduces on unmodified editor.html, so it is not caused by these rules.
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
   })
 
   test('a wp:playlist figure parses to gutenbergPassthrough, not shredded into loose nodes', () => {
@@ -370,7 +370,7 @@ describe('gutenbergPassthrough — modeled figures still go to their own nodes',
   before(() => {
     // Same one-shot jsdom quirk as above: the preceding describe leaves the doc
     // as a single atom node, which makes the next setContent no-op.
-    editor.commands.setContent('<p></p>', false)
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
   })
 
   test('a wp-block-image figure still parses as an image', () => {
