@@ -131,6 +131,65 @@ describe('columns block', () => {
   })
 })
 
+// A column and the columns block are isolating, so a replace never widens past them and
+// joins never cross them; without it a paste or Backspace at a column's edge removed a column.
+describe('column boundaries', () => {
+  const TWO = '<div class="wp-block-columns"><div class="wp-block-column"><p>left</p></div><div class="wp-block-column"><p>right</p></div></div>'
+  const shape = () => {
+    const walk = n => n.isText ? JSON.stringify(n.text) : n.type.name + '(' + n.content.content.map(walk).join(',') + ')'
+    return editor.state.doc.content.content.map(walk).join(' | ')
+  }
+  const textPos = word => {
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.isText && n.text === word) at = pos })
+    return at
+  }
+  const caret = (html, word, offset = 0) => {
+    editor.commands.setContent(html, { emitUpdate: false })
+    editor.commands.setTextSelection(textPos(word) + offset)
+  }
+  const press = k => editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+    key: k, code: k, keyCode: { Backspace: 8, Delete: 46 }[k], which: { Backspace: 8, Delete: 46 }[k], bubbles: true, cancelable: true,
+  }))
+  const pasteHTML = html => {
+    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => (t === 'text/html' ? html : t === 'text/plain' ? 'one\ntwo' : ''), types: ['text/html', 'text/plain'], files: [] } })
+    editor.view.dom.dispatchEvent(ev)
+  }
+
+  test('a list pasted at the start of the first column stays in that column', () => {
+    caret(TWO, 'left')
+    pasteHTML('<ol><li>one</li><li>two</li></ol>')
+    assert.equal(shape(), 'columnsBlock(columnBlock(orderedList(listItem(paragraph("one")),listItem(paragraph("twoleft")))),columnBlock(paragraph("right")))')
+  })
+
+  test('the same paste into a saved columns block keeps both columns and their widths', () => {
+    win.setContent(fs.readFileSync(path.resolve(__dirname, 'fixtures/settings-columns.html'), 'utf8'))
+    editor.commands.setTextSelection(3) // the start of the first column's paragraph
+    pasteHTML('<ol><li>one</li><li>two</li></ol>')
+    const out = win.getContent()
+    assert.equal(editor.state.doc.childCount, 1)
+    assert.equal(editor.state.doc.child(0).type.name, 'columnsBlock')
+    assert.equal(editor.state.doc.child(0).childCount, 2)
+    assert.match(out, /"width":"33.33%"[\s\S]*<!-- wp:list \{"ordered":true\} -->[\s\S]*"width":"66.66%"/)
+  })
+
+  test('Backspace and Delete at a column edge leave both columns', () => {
+    const after = {}
+    caret(TWO, 'right'); press('Backspace'); after.backspaceAtSecond = shape()
+    caret(TWO, 'left', 4); press('Delete'); after.deleteAtFirstEnd = shape()
+    caret('<p>before</p>' + TWO, 'left'); press('Backspace'); after.backspaceAtFirstAfterParagraph = shape()
+    caret(TWO + '<p>after</p>', 'after'); press('Backspace'); after.backspaceAfterColumns = shape()
+    const columns = 'columnsBlock(columnBlock(paragraph("left")),columnBlock(paragraph("right")))'
+    assert.deepEqual(after, {
+      backspaceAtSecond: columns,
+      deleteAtFirstEnd: columns,
+      backspaceAtFirstAfterParagraph: 'paragraph("before") | ' + columns,
+      backspaceAfterColumns: columns + ' | paragraph("after")',
+    })
+  })
+})
+
 describe('details block', () => {
   before(() => { editor.commands.setContent('<p></p>', { emitUpdate: false }) })
 

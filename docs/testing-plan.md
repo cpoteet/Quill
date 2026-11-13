@@ -22,14 +22,14 @@ This document is the authoritative reference for Quill's automated test suite an
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (89 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (166 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (165 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (448 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (451 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (48 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (64 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (89 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
@@ -2639,7 +2639,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (166 tests)
+## JS keyboard tests (165 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2916,7 +2916,7 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `a click with no mouse detail, as a keyboard activation sends, toggles it` | Space or Return on the focused button sends `click` with `detail` 0, which toggles the menu |
 | `the press is cancelled so the editor keeps focus` | The `mousedown` is `preventDefault`ed |
 
-### `Tiptap 3 migration: keys and clicks` (14 tests)
+### `Tiptap 3 migration: keys and clicks` (13 tests)
 
 Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were read off Tiptap 2.27.3.
 
@@ -2929,7 +2929,6 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 | `a typed URL followed by a space becomes a link` | Autolink fires as on v2 |
 | `a URL pasted over selected text links that text` | Link-on-paste as on v2 |
 | `Enter then Backspace in a footnote entry` | The footnote keyboard guard, nested once per `.extend()` layer on Tiptap 3, gives v2's two documents |
-| `plain text that looks like a numbered list pastes as paragraphs` | Tiptap 3's `OrderedList` paste plugin is off, so `1. one` / `2. two` pastes as two paragraphs |
 | `markdown input rules give the same document in every context` | Eight input rules (`# `, `> `, `- `, `1. `, three backticks, `---`, `**b**`, backtick code) plus Backspace-undo of `- `, in a paragraph, list item, footnote entry and table cell, typed through `handleTextInput` |
 | `Backspace at the start of a paragraph after a quote, then typing` | Joins into the quote as v2 did; Tiptap 3's Blockquote Backspace (which merged the text and put the caret after it) is off |
 | `Backspace at the start of the second paragraph in a quote, then typing` | Joins the two paragraphs as v2 did, instead of splitting the quote |
@@ -3095,7 +3094,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (448 tests)
+## JS container tests (451 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3118,6 +3117,16 @@ Five container blocks are covered end to end — **Columns**, **Details**, **But
 | `+Col adds a column to the block the cursor is in` | Pressing the real `[data-cmd="addColumnBlock"]` control takes two columns to three |
 | `-Col removes the current column but never the last one` | `deleteColumnBlock` goes 2 → 1, then refuses to go lower |
 | `passthrough does not claim a columns block` | Class-only `div.wp-block-columns` still parses as `columnsBlock`, not `gutenbergPassthrough` |
+
+### `column boundaries` (3 tests)
+
+`columnBlock` and `columnsBlock` are `isolating`, so a replace never widens past them and joins never cross them.
+
+| Test | What it checks |
+|---|---|
+| `a list pasted at the start of the first column stays in that column` | An HTML list pasted with the caret at the start of column 1 goes inside column 1; before, it replaced the column and landed above the columns block |
+| `the same paste into a saved columns block keeps both columns and their widths` | `settings-columns.html`: one top-level block, two columns, and the save keeps both `width`s around the new list |
+| `Backspace and Delete at a column edge leave both columns` | Backspace at column 2's start and Delete at column 1's end no longer merge the columns, Backspace at column 1's start after a paragraph no longer lifts its text out, and Backspace in the paragraph after the block no longer turns it into a third column |
 
 ### `details block` (6 tests)
 
@@ -4046,7 +4055,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (64 tests)
+## JS paste tests (89 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4055,7 +4064,7 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 
 **jsdom caveat:** jsdom has no `DataTransfer`, so the suite hand-builds `event.clipboardData`. It therefore exercises the flavors the tests construct, not what WKWebView actually delivers (RTF, webarchive, Word conditional-comment HTML, syntax-highlighted HTML from code editors). Treat green here as weaker evidence than the keyboard suite, and confirm real pastes in the app.
 
-### `paste into footnotes` (4 tests)
+### `paste into footnotes` (5 tests)
 
 | Test | What it checks |
 |---|---|
@@ -4063,6 +4072,7 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `single-line plain text is inserted unchanged` | Surrounding whitespace is trimmed, text lands in the footnote |
 | `block HTML is flattened into the footnote` | A heading and a list paste in as plain text — the pre-existing `transformPastedHTML` guard |
 | `CRLF and lone-CR line endings collapse the same way` | Windows and old-Mac line endings behave like `\n` |
+| `escaped markup in pasted HTML stays text in the footnote` | `&lt;b&gt;literal&lt;/b&gt;` pastes as the literal text `<b>literal</b>`, not bold: the flatten escapes the text it puts back in as HTML |
 
 ### `paste into the body is unaffected` (4 tests)
 
@@ -4093,11 +4103,39 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `reports empty input without touching the document` | Empty input is reported, not inserted |
 | `inserts at the cursor rather than replacing the document` | Existing content survives the insert |
 
+### `paste into a title, label or caption stays on one line` (15 tests)
+
+A tab label, button, details summary, accordion heading, quote citation and image caption hold inline content only. `_pasteMustBeInline()` makes `transformPastedText` and `transformPastedHTML` flatten a paste there to one line, as they do in a footnote.
+
+| Test | What it checks |
+|---|---|
+| `multi-line plain text pasted into <node> joins with spaces and leaves its block whole` (6 tests) | One test per node: the top-level block count is unchanged, the lines are joined with a space at the caret, and the save passes WordPress's validator |
+| `paragraphs of HTML pasted into <node> become one line that keeps its inline formatting` (6 tests) | The same for two pasted paragraphs, with the bold word still bold |
+| `escaped markup in the pasted HTML stays text, never becomes a tag` | Escaped `<b>` and `<img>` in a tab label stay literal text; unescaped, the image split the tabs block |
+| `one line of plain text keeps its own spaces, non-breaking ones too` | ` by ` with a U+00A0 pasted into a citation keeps every space; only line breaks are collapsed |
+| `a heading still splits into blocks, as in the block editor` | A heading is not one of these, so a paste there still becomes a heading and a paragraph |
+
 ### `paste into a code block preserves line breaks` (1 test)
 
 | Test | What it checks |
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
+
+### `plain text that is a numbered list` (9 tests)
+
+Plain text whose every line carries the next number pastes as a list, through the HTML paste path (cpoteet/Quill#26). Tiptap 3's own `OrderedList` paste plugin stays off: it inserted the list straight from the clipboard, into code blocks, footnotes and headings too. See `docs/paste.md`.
+
+| Test | What it checks |
+|---|---|
+| `pastes into an empty paragraph as one list that saves as a valid core/list` | `1. one` / `2. two` between two paragraphs becomes one `orderedList` in one transaction, and the save passes WordPress's validator |
+| `keeps the first number as the start, and takes 1) markers, CRLF and blank lines` | `3. x` / `4. y` saves `start: 3` (valid); `1)` markers, CRLF and blank lines between items all convert |
+| `item text is text, never markup` | `<b>x</b> & y` in an item stays literal text |
+| `joins the list, quote or column the empty paragraph is in` | An empty item adds the pasted items to its list (also when it is the list's only or first item), an empty nested item to its nested list, and an empty paragraph in a quote, even its only one, or at a column's start gets the list inside it |
+| `at the start of a quote with a citation, the quote and citation stay` | The list lands inside the quote, before the `cite` |
+| `stays one paragraph per line anywhere else` | Pre-change values: one line (`1. Introduction`, `C. Smith`), letters, roman numerals, a skipped number, a line without a marker, mid-paragraph, over selected text, a heading, a code block and a table cell |
+| `a Group holding only an empty paragraph keeps the Group` | A Group is not isolating, so a list there would replace the Group; it is left out of `PLAIN_TEXT_LIST_HOSTS` and the lines stay paragraphs inside it |
+| `in a footnote it stays inline text` | The footnote flattening still applies |
+| `a clipboard that also carries HTML pastes that HTML` | The plain flavour is used only when there is no `text/html` |
 
 ### `where a paste came from` (4 tests)
 
@@ -5335,6 +5373,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 298 | A class in a block comment's `className` but not on the element came back on every save, because the comment won on parse: deleting `callout` from an `<h2>` in code view (or a comment an outside tool wrote) put it back on the heading. `classNameFromMarkup` keeps only the classes the element still carries | ✅ `test-editor-block-settings.js` `'the markup decides which classes a block keeps'` (5 tests) |
 | 299 | A save made after a code-view edit sent the textarea itself: `formatHTML`'s blank lines, and no `className` in the comment for a class added to an element, which Gutenberg flags as invalid. `flushContent` now parses a code-view edit into the document and returns `toWordPressHTML`'s output, exit does the same, and `_rawHTML` is cleared so later saves serialize the document | ✅ `test-editor-bridge.js` `'a code-view edit saves what Quill writes'` (6 tests) |
 | 300 | A class added to an element whose comment already had a `className` stayed out of the comment (`supportAttrs` writes one only when the comment has none). `classNameFromMarkup` adds the element's custom classes too, except on the four figure blocks that rebuild their root (`RAW_ATTRS_EXEMPT`), whose `size-*` and theme classes are not `className` | ✅ `test-editor-block-settings.js` `'a class added beside an existing className joins it in the comment'` |
+| 301 | A list pasted at the start of the first column replaced that column, and Backspace or Delete at a column edge merged two columns or turned the next paragraph into a column. `columnBlock` and `columnsBlock` are `isolating` | ✅ `test-editor-containers.js` `'column boundaries'` (3 tests) |
+| 302 | Multi-line plain text or HTML blocks pasted into a tab label, button, details summary, accordion heading, quote citation or image caption split the block holding it (a tabs block became two around a stray paragraph). `_pasteMustBeInline()` makes both clipboard hooks flatten the paste to one line there, as in a footnote | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (13 tests) |
 
 ---
 

@@ -1629,14 +1629,6 @@ describe('Tiptap 3 migration: keys and clicks', () => {
     ])
   })
 
-  test('plain text that looks like a numbered list pastes as paragraphs', () => {
-    editor.commands.setContent('<p></p>', { emitUpdate: false })
-    editor.commands.setTextSelection(1)
-    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
-    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => (t === 'text/plain' ? '1. one\n2. two' : ''), types: ['text/plain'], files: [] } })
-    editor.view.dom.dispatchEvent(ev)
-    assert.equal(win.getContent(), '<!-- wp:paragraph -->\n<p>1. one</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>2. two</p>\n<!-- /wp:paragraph -->')
-  })
   // Input rules run from handleTextInput, which tr.insertText never reaches; type the way
   // ProseMirror's input handler does. Tiptap 3 gives each extension its own input-rule plugin.
   test('markdown input rules give the same document in every context', () => {

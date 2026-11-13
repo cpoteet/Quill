@@ -1723,7 +1723,7 @@
       Placeholder,
       Plugin, PluginKey,
       DecorationSet, Decoration,
-      Paragraph, Heading, BulletList, OrderedList, ListItem, CodeBlock,
+      Paragraph, Heading, BulletList, OrderedList, ListItem, CodeBlock, parsePlainTextOrderedListPaste,
       HorizontalRule,
     } = TiptapBundle
 
@@ -1839,7 +1839,9 @@
         const { start, ...rest } = HTMLAttributes
         return ['ol', start === 1 ? rest : HTMLAttributes, 0]
       },
-      // Tiptap 3's only plugin here turns pasted "1. a\n2. b" plain text into a list; v2 pasted paragraphs.
+      // Tiptap 3's only plugin here turns pasted "1. a\n2. b" plain text into a list, but inserts it
+      // straight from the clipboard, into code blocks, footnotes and headings too. Quill's handlePaste
+      // uses the same parser and routes the list through its own paste path (_plainTextListHTML).
       addProseMirrorPlugins() { return [] },
       // Tiptap 3's "N. " rule joins the list above only when that list has no type; v2 joined any
       // ordered list whose next number was typed, so "3. " below a lettered list continued it.
@@ -2823,10 +2825,14 @@
 
     // Priority 210 out-ranks gutenbergPassthrough (200) so the catch-all stops
     // claiming these as frozen cards.
+    // Both are isolating: a replace (a paste) widens over every ancestor the caret is at the start
+    // of and stops only at a defining or isolating one, and joins stop there too. Without it a list
+    // pasted at the first column's start replaced that column, and Backspace merged two columns.
     const ColumnBlock = TiptapNode.create({
       name: 'columnBlock',
       group: 'column',
       content: 'block+',
+      isolating: true,
       priority: 210,
       parseHTML() { return [{ tag: 'div.wp-block-column' }] },
       renderHTML() { return ['div', { class: 'wp-block-column' }, 0] },
@@ -2836,6 +2842,7 @@
       name: 'columnsBlock',
       group: 'block',
       content: 'column+',
+      isolating: true,
       priority: 210,
       parseHTML() { return [{ tag: 'div.wp-block-columns' }] },
       renderHTML() { return ['div', { class: 'wp-block-columns' }, 0] },
@@ -4763,7 +4770,7 @@
         },
         handlePaste(view, event, slice) {
           const data = event.clipboardData
-          if (!data || _plainFallbackPastes.has(event)) return false
+          if (!data || _reroutedPastes.has(event)) return false
           if (_isInFootnote() || view.state.selection.$from.parent.type.spec.code) return false
           const text = data.getData('text/plain') || ''
           const html = data.getData('text/html') || ''
@@ -4773,6 +4780,13 @@
             return true
           }
           if (/\ssrc=["']?(?:data:image\/|blob:)/i.test(html)) setTimeout(_uploadInlinePastedImages, 0)
+          // Through the HTML path, so the list is cleaned, merges into a list it lands in, and scrolls, like any pasted list.
+          const listHTML = !html.trim() && _plainTextListHTML(view.state, text)
+          if (listHTML) {
+            _reroutedPastes.add(event)
+            view.pasteHTML(listHTML, event)
+            return true
+          }
           const url = text.trim()
           if (/^https?:\/\/\S+$/.test(url) && detectEmbedProvider(url) && _inEmptyTopLevelParagraph(view.state)) {
             const { $from } = view.state.selection
@@ -4785,7 +4799,7 @@
             const letters = s => (s.match(/[\p{L}\p{N}]/gu) || []).length
             const plain = letters(text)
             if (plain > 0 && letters(slice.content.textBetween(0, slice.content.size, ' ', ' ')) < plain / 2) {
-              _plainFallbackPastes.add(event)
+              _reroutedPastes.add(event)
               view.pasteText(text, event)
               return true
             }
@@ -4803,10 +4817,15 @@
           // carries a text/html flavor; a text/plain paste takes a separate branch
           // that splits on newlines into paragraphs. Without this, multi-line text
           // pasted into a footnote (inline content only) put its first line in the
-          // entry and dropped the rest outside the footnotes list as siblings.
+          // entry and dropped the rest outside the footnotes list as siblings, and
+          // into a title, label or caption it split the block holding it.
           // A whitespace-only line would otherwise become an empty paragraph.
-          if (!_isInFootnote()) return text.replace(/^[ \t\u00a0]+$/gm, '')
-          return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
+          if (!_pasteMustBeInline()) return text.replace(/^[ \t\u00a0]+$/gm, '')
+          if (_isInFootnote()) return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
+          // A title keeps one pasted line as it is, spaces and &nbsp; included; only line breaks
+          // (with the spaces around them) become one space.
+          return text.replace(/^(?:[ \t]*(?:\r\n?|\n))+|(?:(?:\r\n?|\n)[ \t]*)+$/g, '')
+            .replace(/[ \t]*(?:\r\n?|\n)[ \t\r\n]*/g, ' ')
         },
         transformPastedHTML(html) {
           _parsingPaste = true
@@ -4821,7 +4840,7 @@
           } catch (e) {
             console.error('paste cleanup failed', e)
           }
-          if (!_isInFootnote()) return html
+          if (!_pasteMustBeInline()) return html
           const tmp = inertDocument().createElement('div')
           tmp.innerHTML = html
           const BLOCK_TAGS = new Set(['DIV','P','H1','H2','H3','H4','H5','H6',
@@ -4830,7 +4849,8 @@
           function flatten(el) {
             let out = ''
             for (const ch of el.childNodes) {
-              if (ch.nodeType === 3) { out += ch.textContent; continue }
+              // Text goes back in as HTML, so it is escaped, or "&lt;b&gt;" pasted as text became bold.
+              if (ch.nodeType === 3) { out += ch.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); continue }
               if (ch.nodeType !== 1) continue
               if (BLOCK_TAGS.has(ch.tagName)) {
                 out += flatten(ch) + ' '
@@ -4907,7 +4927,17 @@
     }
 
     // ── Paste helpers ─────────────────────────────────
-    const _plainFallbackPastes = new WeakSet()
+    // A paste here is flattened to one line of inline content by both clipboard hooks. Besides a
+    // footnote entry these are the titles, the quote citation and the image caption: pasted lines or
+    // blocks cannot sit in one, so ProseMirror closed the block holding it (a tabs block split in two).
+    // TITLE_CONTAINERS is declared further down, so it is read here at paste time, not at load.
+    function _pasteMustBeInline() {
+      const name = editor.state.selection.$from.parent.type.name
+      return _isInFootnote() || name in TITLE_CONTAINERS || name === 'cite' || name === 'image'
+    }
+
+    // Pastes handlePaste has re-sent through view.pasteText or view.pasteHTML, which call it again.
+    const _reroutedPastes = new WeakSet()
 
     // Every ProseMirror editor marks its copies with data-pm-slice; Quill's own also matches the text it last copied.
     let _lastCopiedText = null
@@ -4987,6 +5017,39 @@
     function _inEmptyTopLevelParagraph(state) {
       const { $from, empty } = state.selection
       return empty && $from.depth === 1 && $from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
+    }
+
+    // A paragraph in one of these, at any depth, takes a plain-text list. A paste widens over every
+    // ancestor the caret is at the start of, so a container is listed only when that cannot replace
+    // it: columns are isolating, and the others always open with a title. A Group is neither, so a
+    // list pasted into a Group holding only an empty paragraph replaced the Group. Never a table cell
+    // (core/table cells hold no list) or a footnote.
+    const PLAIN_TEXT_LIST_HOSTS = new Set(['doc', 'paragraph', 'blockquote', 'bulletList', 'orderedList', 'listItem',
+      'columnsBlock', 'columnBlock', 'detailsBlock', 'tabsBlock', 'tabPanels', 'tabPanel',
+      'accordionBlock', 'accordionItem', 'accordionPanel'])
+
+    // Plain text whose every line carries the next number ("1. a" / "2. b", or "1)") as an <ol>,
+    // for the HTML paste path. Only into an empty paragraph: ProseMirror opens a pasted list at both
+    // ends, so beside text the first item merges into the paragraph and loses its "1. ". One line is
+    // never a list, and letters and roman numerals stay text: cleanPastedHTML strips an <ol>'s type
+    // and style, so they would save as 1, 2, 3.
+    function _plainTextListHTML(state, text) {
+      const { $from, empty } = state.selection
+      if (!empty || $from.parent.type.name !== 'paragraph' || $from.parent.content.size) return null
+      for (let d = 0; d <= $from.depth; d++) {
+        if (!PLAIN_TEXT_LIST_HOSTS.has($from.node(d).type.name)) return null
+      }
+      const list = parsePlainTextOrderedListPaste(text)
+      if (!list || list.content.length < 2 || list.attrs.type) return null
+      const doc = inertDocument()
+      const ol = doc.createElement('ol')
+      if (list.attrs.start) ol.setAttribute('start', list.attrs.start)
+      for (const item of list.content) {
+        const li = doc.createElement('li')
+        li.textContent = item.content[0].content[0].text
+        ol.appendChild(li)
+      }
+      return ol.outerHTML
     }
 
     // Both quote blocks allow a trailing cite, so both get the control.
