@@ -19,12 +19,12 @@ This document is the authoritative reference for Quill's automated test suite an
 1. **Swift tests** — `swift test` (900 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (89 tests — live Tiptap editor in jsdom)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (291 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (530 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (620 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (94 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -1902,10 +1902,11 @@ Loads the **real `editor.html`** in jsdom and drives `window.setContent` / `wind
 | `a bare wrapper still saves its paragraphs as paragraph blocks` | Unwrapping a bare `<div>` still converts its prose to blocks |
 | `an unedited post still round-trips byte-identically` | Opening and saving without an edit changes nothing |
 
-### `Custom HTML insert and edit` (21 tests)
+### `Custom HTML insert and edit` (22 tests)
 
 | Test | What it checks |
 |---|---|
+| `inserted from the middle of a paragraph, the card goes after it and leaves its text whole` | A mid-text caret no longer splits the paragraph around the card |
 | `insert adds one Custom HTML card at the selection` | One labelled card, saved as a `wp:html` block after the paragraph |
 | `editCustomHTML posts the inner HTML` | The sheet receives the HTML without its delimiters |
 | `a replace changes only that card and keeps its comment attributes` | The other block is untouched; the edited one keeps `metadata` |
@@ -3192,11 +3193,11 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `block inserts from a container title` (165 tests)
+### `block inserts from a container title` (194 tests)
 
 | Test | What it checks |
 |---|---|
-| `<insert> from an empty/a filled <title> goes after the whole container` (154 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button, details summary, quote citation, pullquote citation and image caption, leaves the container and its text unchanged and puts the new block straight after it. For a citation the container is the quote or pullquote, for a caption the image (cpoteet/Quill#27) |
+| `<insert> from an empty/a filled <title> goes after the whole container` (182 tests) | Each of the thirteen block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Preformatted, Pullquote, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button, details summary, quote citation, pullquote citation and image caption, leaves the container and its text unchanged and puts the new block straight after it. For a citation the container is the quote or pullquote, for a caption the image (cpoteet/Quill#27) |
 | `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
 | `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
 | `Markdown from the middle of a citation goes after the quote and leaves the citation whole` | The issue's case: `## Heading` plus a paragraph from inside `Who` split the quote in two, a second quote holding `ho` (cpoteet/Quill#27) |
@@ -3205,11 +3206,21 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `<Tabs/Accordion/Columns> inserted inside another … takes the caret into the inner one` (3 tests) | A container inserted inside one of its own kind gets the caret, not the outer one's first child |
 | `one undo removes the insert and its landing paragraph` | The paragraph `_blockInsertChain` adds and the insert are one undo step |
 
-### `block inserts from a table cell` (21 tests)
+### `block inserts from the middle of text` (52 tests)
 
 | Test | What it checks |
 |---|---|
-| `<insert> from a tableHeader/tableCell goes after the table` (18 tests) | Each block insert except Image and Markdown (Table, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Embed), from a header cell and a body cell, leaves the table and its text unchanged and puts the new block straight after it, as the block editor's inserter does; a gallery or embed in a cell is deleted by core's next save |
+| `<insert> from <host> goes after it and leaves its text whole` (48 tests) | Each block insert except Markdown, from the middle of a paragraph, the start of a paragraph, the middle of an H2 and the middle of a preformatted block, puts the new block straight after that block and leaves its text in one piece. ProseMirror split it at the caret, or put the block before it from the start of the line; the block editor's inserter adds after the selected block |
+| `a block inserted with text selected keeps the text` | A selection inside the paragraph is not replaced by the insert |
+| `the caret lands in the new block` | Text typed after Preformatted from mid-heading goes into the new block |
+| `one undo restores the text as it was` | The insert and its landing paragraph are one undo step |
+| `Paste as Markdown still goes in at the caret` | Paste as Markdown is a paste, so it still splits the paragraph at the caret |
+
+### `block inserts from a table cell` (25 tests)
+
+| Test | What it checks |
+|---|---|
+| `<insert> from a tableHeader/tableCell goes after the table` (22 tests) | Each block insert except Image and Markdown (Table, Gallery, Tabs, Accordion, Buttons, Details, Separator, Preformatted, Pullquote, Columns, Embed), from a header cell and a body cell, leaves the table and its text unchanged and puts the new block straight after it, as the block editor's inserter does; a gallery or embed in a cell is deleted by core's next save |
 | `the caret lands in the new block, not the cell it came from` | Tabs, Accordion and Columns inserted from a cell put the caret in the new block's first panel, heading or column |
 | `a gallery inserted with an inline image selected in a cell goes after the table` | A node-selected inline image in a cell does not take the gallery into the cell |
 | `Paste as Markdown stays in the cell` | Markdown pasted in a cell is still inserted at the caret |
@@ -3275,7 +3286,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `+Tab adds a button and a panel together` | Both the tab list and the panel list grow to three — they can never drift out of step |
 | `-Tab removes the pair and never the last tab` | Both drop to one, then a further press is refused |
 
-### `insert menu` (9 tests)
+### `insert menu` (15 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3285,6 +3296,9 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `clicking a menu item label inserts that block` | The label lives in a span, so a real pointer lands on the span rather than the button the previous test clicks |
 | `every menu item uses the heading menu label typography` | All nine items carry a `.heading-menu-label` span |
 | `the insert button is a labelled pill like the heading dropdown` | A text label plus exactly one chevron SVG — no icon glyph |
+| `<preformatted/pullquote> from the menu goes after a heading and leaves it a heading` (2 tests) | With the caret at the end of an H2, the menu item adds an empty block after it and puts the caret inside; the H2 keeps its level and text. They used to convert the block under the caret (`setNode` / `wrapIn`) |
+| `<preformatted/pullquote> from the menu replaces an empty paragraph` (2 tests) | From an empty paragraph the new block takes its place, as the block editor's inserter does |
+| `<preformatted/pullquote> is refused inside a footnote` (2 tests) | `insertPreformatted` / `insertPullquote` return false in a footnote body and insert nothing |
 | `the menu closes after an insertion` | The `visible` class is dropped once a block is inserted |
 
 ### `contextual toolbar row` (13 tests)
@@ -4960,6 +4974,8 @@ Run this on a **new local draft**, never a published post.
 ### 7.23 Container blocks & the insert menu
 
 - [ ] The toolbar has a labelled insert button; opening it lists every container block Quill can insert.
+- [ ] With the caret in a heading with text, insert Preformatted and then Pullquote → the heading stays a heading and each new block appears after it.
+- [ ] With the caret in the middle of a paragraph's text, insert a Separator, a Table and Custom HTML → the paragraph stays in one piece and each new block appears after it.
 - [ ] Insert each of Columns, Details, Buttons, Accordion, Tabs, Pullquote, Preformatted and Separator → each appears, the caret lands somewhere sensible inside it (the first tab panel, the first column, the accordion title, the details summary), and the menu closes.
 - [ ] Type into each one, save, reopen → the text is there and the block still renders as a block.
 - [ ] Open each in Gutenberg → no validation warning.
@@ -4975,7 +4991,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Clicking anywhere on an accordion header row or the details arrow collapses the block; clicking the title text places the caret.
 - [ ] **Cite:** inside a pullquote or a blockquote, the toolbar offers a "Cite" control. Adding one puts the caret in it ready to type; Enter leaves the quote; removing it takes the citation away cleanly. It saves inside the blockquote, where core puts it.
 - [ ] Collapse state, hints and selection chrome never reach the saved markup — check the raw content after collapsing things and saving.
-- [ ] **Inserts from a container title.** With the caret in an accordion heading, a tab title and a button, each both empty and with text, insert Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown and Embed → the container stays whole and the new block lands straight after it. Inserting an Accordion puts the caret in its heading. One ⌘Z removes the insert.
+- [ ] **Inserts from a container title.** With the caret in an accordion heading, a tab title and a button, each both empty and with text, insert Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Preformatted, Pullquote, Columns, Markdown and Embed → the container stays whole and the new block lands straight after it. Inserting an Accordion puts the caret in its heading. One ⌘Z removes the insert.
 
 **Custom HTML**
 - [ ] The insert menu lists Custom HTML after Preformatted. Choose it → the "Custom HTML" sheet opens; type HTML and press Insert (⌘↩) → a "Custom HTML" card appears at the caret. Save → the raw content holds a `<!-- wp:html -->` block, and Gutenberg opens it as a valid Custom HTML block.
@@ -5498,6 +5514,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 322 | The real-WebKit paste harness lost its first case: WebKit had not yet registered the web view as focused, so the editor's `focus()` did nothing and the paste went to the body (cpoteet/Quill#27, item 5). The harness waits for `view.hasFocus()` before the first case | ✅ a harness run whose first case is `hello` saves it |
 | 323 | A lettered or roman list, loaded or pasted, showed 1, 2, 3 in the editor while it saved correctly: its `style` rides as `data-quill-style`, which is never drawn. CSS on `ol[data-quill-style*="lower-alpha"]` and the other three types draws it | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, …'` (computed `list-style-type`) + checked in the app |
 | 324 | A block after the footnotes list saved with the delimiter glued to its opening comment (`<!-- wp:footnotes /--><!-- wp:paragraph -->`), so Gutenberg's first save of the post rewrote the spacing. `extractFootnotes` writes core's blank line after the delimiter when a block follows | ✅ `test-editor.js` `'a block after the list is separated from the delimiter like any block'` |
+| 325 | Preformatted and Pullquote in the + menu converted the block under the caret, so an H2 became a pre or was wrapped into a pullquote, where the block editor's inserter adds a new block. Both go through `_insertContainer` now (`window.insertPreformatted`, `window.insertPullquote`) | ✅ `test-editor-containers.js` `'insert menu'` (6 tests) and both added to `'block inserts from a container title'` / `'from a table cell'` + 👁 §7.23 |
+| 326 | A block inserted from the + menu or toolbar with the caret in the middle of a paragraph, heading or preformatted block split it in two around the new block, and from the start of a line put the block before it. `_blockInsertDepth` now returns the textblock holding the caret whenever it has text, so `_blockInsertChain` adds the block after it; Custom HTML's own insert does the same. Paste as Markdown still lands at the caret | ✅ `test-editor-containers.js` `'block inserts from the middle of text'` (52 tests), `test-editor-preservation.js` `'inserted from the middle of a paragraph, the card goes after it …'` + 👁 §7.23 |
 
 ---
 

@@ -174,6 +174,15 @@ describe('Custom HTML insert and edit', () => {
   })
   beforeEach(() => { posted.length = 0 })
 
+  test('inserted from the middle of a paragraph, the card goes after it and leaves its text whole', () => {
+    editor.commands.setContent('<p>abc</p>', { emitUpdate: false })
+    editor.commands.setTextSelection(2)
+    insert('<p>a</p>')
+    const doc = editor.state.doc
+    assert.equal(doc.child(0).textContent, 'abc')
+    assert.equal(doc.child(1).type.name, 'gutenbergPassthrough')
+  })
+
   test('insert adds one Custom HTML card at the selection', () => {
     win.setContent('<p>Intro</p>')
     editor.commands.setTextSelection(6)

@@ -5480,7 +5480,12 @@
       if (name === 'cite') return _citeHostDepth($from)
       if (name === 'image') return $from.depth
       const container = TITLE_CONTAINERS[name] ?? (intoTableCell ? null : 'table')
-      return container ? _ancestorDepth($from, container) : -1
+      const depth = container ? _ancestorDepth($from, container) : -1
+      // Paste as Markdown (`intoTableCell`) is a paste, and lands at the caret.
+      if (depth !== -1 || intoTableCell) return depth
+      // The block editor's inserter adds a block after the selected one and never splits its text;
+      // ProseMirror split a paragraph or heading at a mid-text caret. An empty one is replaced.
+      return $from.parent.isTextblock && $from.parent.content.size > 0 ? $from.depth : -1
     }
 
     function _blockInsertChain({ intoTableCell = false } = {}) {
@@ -6342,8 +6347,8 @@
       tabs:         () => window.insertTabs(2),
       details:      () => window.insertDetails(),
       buttons:      () => window.insertButtons(),
-      pullquote:    () => editor.chain().focus().setPullquote().run(),
-      preformatted: () => editor.chain().focus().setPreformatted().run(),
+      pullquote:    () => window.insertPullquote(),
+      preformatted: () => window.insertPreformatted(),
       customHTML:   () => window.webkit?.messageHandlers?.customHTML?.postMessage({}),
       separator:    () => window.insertSeparator(),
     }
@@ -7618,7 +7623,9 @@
       const { selection } = editor.state
       const chain = editor.chain().focus()
       const nested = selection.$from.depth > (selection.node ? 0 : 1)
-      const at = nested ? selection.$from.after(1) : (selection.node ? selection.to : null)
+      // From a line with text the card goes after it, like every other insert, rather than splitting it.
+      const inText = !selection.node && selection.$from.parent.content.size > 0
+      const at = nested || inText ? selection.$from.after(1) : (selection.node ? selection.to : null)
       ;(at === null ? chain.insertContent(card) : chain.insertContentAt(at, card)).run()
     }
 
@@ -7687,6 +7694,20 @@
         type: 'detailsBlock',
         content: [{ type: 'detailsSummary' }, { type: 'paragraph' }],
       }, 'detailsSummary', 1)
+      return true
+    }
+
+    // Inserted as new blocks, like the rest of the Insert menu. setPreformatted (setNode) and
+    // setPullquote (wrapIn) convert the block under the caret, which turned an H2 into a pre.
+    window.insertPreformatted = () => {
+      if (_isInFootnote()) return false
+      _insertContainer({ type: 'preformatted' }, 'preformatted', 1)
+      return true
+    }
+
+    window.insertPullquote = () => {
+      if (_isInFootnote()) return false
+      _insertContainer({ type: 'pullquote', content: [{ type: 'paragraph' }] }, 'pullquote', 2)
       return true
     }
 

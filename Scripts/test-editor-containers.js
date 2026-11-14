@@ -549,6 +549,8 @@ const inserts = {
   buttons: [() => win.insertButtons(), 'buttonsBlock'],
   details: [() => win.insertDetails(), 'detailsBlock'],
   separator: [() => win.insertSeparator(), 'horizontalRule'],
+  preformatted: [() => win.insertPreformatted(), 'preformatted'],
+  pullquote: [() => win.insertPullquote(), 'pullquote'],
   columns: [() => win.insertColumns(2), 'columnsBlock'],
   markdown: [() => win.insertMarkdown('- a\n- b'), 'bulletList'],
   embed: [() => {
@@ -665,6 +667,73 @@ describe('block inserts from a container title', () => {
     win.insertTabs(2)
     editor.commands.undo()
     assert.deepEqual(editor.getJSON(), before)
+  })
+})
+
+// The block editor's inserter adds a block after the selected one wherever the caret is in it;
+// it never splits the text. ProseMirror's insertContent split a paragraph or heading at a
+// mid-text caret, and put the block before it from the start of the line.
+describe('block inserts from the middle of text', () => {
+  before(() => { editor.commands.setContent('<p></p>', { emitUpdate: false }) })
+
+  const hosts = {
+    'the middle of a paragraph': ['<p>abc</p>', 'paragraph', 2],
+    'the start of a paragraph': ['<p>abc</p>', 'paragraph', 1],
+    'the middle of a heading': ['<h2>abc</h2>', 'heading', 2],
+    'the middle of a preformatted block': ['<pre class="wp-block-preformatted">abc</pre>', 'preformatted', 2],
+  }
+
+  for (const [where, [html, hostType, at]] of Object.entries(hosts)) {
+    for (const [name, [insert, type]] of Object.entries(inserts)) {
+      if (name === 'markdown') continue
+      test(`${name} from ${where} goes after it and leaves its text whole`, () => {
+        editor.commands.setContent(html, { emitUpdate: false })
+        editor.commands.setTextSelection(at)
+        insert()
+        const doc = editor.state.doc
+        assert.equal(doc.child(0).type.name, hostType)
+        assert.equal(doc.child(0).textContent, 'abc')
+        assert.equal(doc.child(1).type.name, type)
+      })
+    }
+  }
+
+  test('a block inserted with text selected keeps the text', () => {
+    editor.commands.setContent('<p>abcdef</p>', { emitUpdate: false })
+    editor.commands.setTextSelection({ from: 2, to: 5 })
+    win.insertSeparator()
+    assert.equal(editor.state.doc.child(0).textContent, 'abcdef')
+    assert.equal(editor.state.doc.child(1).type.name, 'horizontalRule')
+  })
+
+  test('the caret lands in the new block', () => {
+    editor.commands.setContent('<h2>abc</h2>', { emitUpdate: false })
+    editor.commands.setTextSelection(2)
+    win.insertPreformatted()
+    editor.commands.insertContent('X')
+    assert.equal(editor.state.doc.child(0).textContent, 'abc')
+    assert.equal(editor.state.doc.child(1).textContent, 'X')
+  })
+
+  // win.setContent starts a fresh undo history; editor.commands.setContent would be grouped with the insert.
+  test('one undo restores the text as it was', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>abc</p>\n<!-- /wp:paragraph -->', '[]')
+    const before = editor.getJSON()
+    editor.commands.setTextSelection(2)
+    win.insertDetails()
+    editor.commands.undo()
+    assert.deepEqual(editor.getJSON(), before)
+  })
+
+  // Paste as Markdown is a paste, and a paste lands at the caret.
+  test('Paste as Markdown still goes in at the caret', () => {
+    editor.commands.setContent('<p>abc</p>', { emitUpdate: false })
+    editor.commands.setTextSelection(2)
+    win.insertMarkdown('- x\n- y')
+    const doc = editor.state.doc
+    assert.equal(doc.child(0).textContent, 'a')
+    assert.equal(doc.child(1).type.name, 'bulletList')
+    assert.equal(doc.child(2).textContent, 'bc')
   })
 })
 
@@ -1059,6 +1128,53 @@ describe('insert menu', () => {
     editor.commands.setTextSelection(found)
     assert.equal(win.insertSeparator(), false)
   })
+
+  // The block editor's inserter adds a block; only its Transform menu changes one, and it offers
+  // no Heading → Preformatted at all. These two used to convert the block under the caret, so an
+  // H2 became a pre (setNode) or was wrapped into a pullquote (wrapIn).
+  for (const [item, type, caretIn] of [['preformatted', 'preformatted', 'preformatted'], ['pullquote', 'pullquote', 'paragraph']]) {
+    test(`${item} from the menu goes after a heading and leaves it a heading`, () => {
+      editor.commands.setContent('<h2>Hello</h2>', { emitUpdate: false })
+      editor.commands.setTextSelection(6)
+      openMenu()
+      win.document.querySelector(`#insert-menu [data-insert="${item}"]`).click()
+      const doc = editor.state.doc
+      assert.equal(doc.child(0).type.name, 'heading')
+      assert.equal(doc.child(0).attrs.level, 2)
+      assert.equal(doc.child(0).textContent, 'Hello')
+      assert.equal(doc.child(1).type.name, type)
+      assert.equal(doc.child(1).textContent, '')
+      const $head = editor.state.selection.$head
+      assert.equal($head.parent.type.name, caretIn)
+      assert.equal($head.before(1), doc.child(0).nodeSize, 'caret is in the new block')
+    })
+
+    test(`${item} from the menu replaces an empty paragraph`, () => {
+      editor.commands.setContent('<p></p>', { emitUpdate: false })
+      openMenu()
+      win.document.querySelector(`#insert-menu [data-insert="${item}"]`).click()
+      assert.equal(editor.state.doc.childCount, 1)
+      assert.equal(editor.state.doc.child(0).type.name, type)
+      assert.equal(editor.state.selection.$head.parent.type.name, caretIn)
+    })
+
+    test(`${item} is refused inside a footnote`, () => {
+      const id = 'fn-11111111-2222-4333-8444-555555555555'
+      win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+        JSON.stringify([{ id, content: 'A note.' }]))
+      let found = null
+      editor.state.doc.descendants((node, pos) => {
+        if (found === null && node.isTextblock && node.textContent === 'A note.') found = pos + 1
+      })
+      assert.ok(found !== null, 'no footnote body')
+      editor.commands.setTextSelection(found)
+      const fn = item === 'preformatted' ? win.insertPreformatted : win.insertPullquote
+      assert.equal(fn(), false)
+      let inserted = false
+      editor.state.doc.descendants(n => { if (n.type.name === type) inserted = true })
+      assert.equal(inserted, false)
+    })
+  }
 
   test('the menu closes after an insertion', () => {
     editor.commands.setContent('<p></p>', { emitUpdate: false })
