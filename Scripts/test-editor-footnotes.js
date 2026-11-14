@@ -225,6 +225,193 @@ describe('two footnotes', () => {
   })
 })
 
+// cpoteet/Quill#25. Every copy, cut and paste below goes through the editor's real handlers.
+describe('copying and pasting a footnote marker', () => {
+  const SRC = `<!-- wp:paragraph -->\n<p>One sentence${marker(ID)}.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Other</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`
+  const NOTE = 'A <em>note</em>.'
+  const clipboardEvent = (type, data) => {
+    const ev = new win.Event(type, { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', {
+      value: { setData: (t, v) => { data[t] = v }, getData: t => data[t] || '', clearData: () => {}, types: Object.keys(data), files: [] },
+    })
+    editor.view.dom.dispatchEvent(ev)
+    return data
+  }
+  const copy = type => clipboardEvent(type || 'copy', {})
+  const paste = data => clipboardEvent('paste', data)
+  const firstSentence = () => editor.commands.setTextSelection({ from: 1, to: editor.state.doc.child(0).nodeSize - 1 })
+  const endOfOther = () => {
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph' && n.textContent.startsWith('Other')) at = pos + 1 + n.content.size })
+    editor.commands.setTextSelection(at)
+  }
+  // The save, read as the front end will: each marker's id, its anchor id and its link, and the meta.
+  const saved = () => {
+    win.syncContentToSwift()
+    const content = win.getContent()
+    return {
+      ids: [...content.matchAll(/data-fn="([^"]+)"/g)].map(m => m[1]),
+      anchors: [...content.matchAll(/ id="([^"]+)-link"/g)].map(m => m[1]),
+      links: [...content.matchAll(/href="#([^"]+)"/g)].map(m => m[1]),
+      meta: JSON.parse(win.getFootnotes()),
+    }
+  }
+  const assertSeparateNotes = (s, count) => {
+    assert.equal(new Set(s.ids).size, count, s.ids.join(' '))
+    assert.deepEqual(s.anchors, s.ids)
+    assert.deepEqual(s.links, s.ids)
+    assert.deepEqual(s.meta.map(f => f.id), s.ids)
+  }
+
+  test('a pasted copy gets an id of its own and a copy of the note', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy()
+    endOfOther()
+    paste(clipboard)
+    const s = saved()
+    assertSeparateNotes(s, 2)
+    assert.equal(s.ids[0], ID)
+    assert.deepEqual(s.meta.map(f => f.content), [NOTE, NOTE])
+    assert.match(s.ids[1], /^fn-[0-9a-f-]{36}$/)
+  })
+
+  test('one undo removes the paste and its new note', () => {
+    win.setContent(SRC, META(ID))
+    const before = editor.getJSON()
+    firstSentence()
+    const clipboard = copy()
+    endOfOther()
+    paste(clipboard)
+    editor.commands.undo()
+    assert.deepEqual(editor.getJSON(), before)
+    assert.deepEqual(saved().meta.map(f => f.id), [ID])
+  })
+
+  test('the marker already in the post keeps its id when the copy goes in before it', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy()
+    editor.commands.setTextSelection(1)
+    paste(clipboard)
+    const s = saved()
+    assertSeparateNotes(s, 2)
+    assert.equal(s.ids[1], ID)
+  })
+
+  test('pasting twice gives three separate notes', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy()
+    endOfOther()
+    paste(clipboard)
+    paste(clipboard)
+    const s = saved()
+    assertSeparateNotes(s, 3)
+    assert.deepEqual(s.meta.map(f => f.content), [NOTE, NOTE, NOTE])
+  })
+
+  test('the whole post copied and pasted into itself keeps one footnotes list', () => {
+    win.setContent(SRC, META(ID))
+    editor.commands.selectAll()
+    const clipboard = copy()
+    endOfOther()
+    paste(clipboard)
+    assert.equal(editor.getJSON().content.filter(n => n.type === 'footnotesList').length, 1)
+    assert.equal(editor.state.doc.lastChild.type.name, 'footnotesList')
+    const s = saved()
+    assertSeparateNotes(s, 2)
+    assert.deepEqual(s.meta.map(f => f.content), [NOTE, NOTE])
+  })
+
+  test('a pasted copy of the whole post never replaces the post\'s own list, or a note edited since the copy', () => {
+    const src = `<!-- wp:paragraph -->\n<p>One sentence${marker(ID)}.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->\n\n<!-- wp:paragraph -->\n<p>After</p>\n<!-- /wp:paragraph -->`
+    win.setContent(src, META(ID))
+    editor.commands.selectAll()
+    const clipboard = copy()
+    let item = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'footnoteItem') item = pos + n.nodeSize - 1 })
+    editor.commands.setTextSelection(item)
+    editor.commands.insertContent(' Edited')
+    let after = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph' && n.textContent === 'After') after = pos + 1 + n.content.size })
+    editor.commands.setTextSelection(after)
+    paste(clipboard)
+    assert.equal(editor.getJSON().content.filter(n => n.type === 'footnotesList').length, 1)
+    const content = win.getContent()
+    assert.ok(content.indexOf('<!-- wp:footnotes /-->') < content.indexOf('After'), content)
+    const s = saved()
+    assertSeparateNotes(s, 2)
+    assert.equal(s.meta[0].id, ID)
+    assert.match(s.meta[0].content, /Edited$/)
+  })
+
+  test('a sentence cut and pasted elsewhere keeps its id and its note', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy('cut')
+    endOfOther()
+    paste(clipboard)
+    const s = saved()
+    assert.deepEqual(s.ids, [ID])
+    assert.deepEqual(s.meta, [{ id: ID, content: NOTE }])
+  })
+
+  test('a note cut in one post never comes back in another post', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy('cut')
+    win.setContent('<!-- wp:paragraph -->\n<p>Another post</p>\n<!-- /wp:paragraph -->', '[]')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 1)
+    paste(clipboard)
+    assert.deepEqual(saved().meta, [{ id: ID, content: '' }])
+  })
+
+  test('a marker pasted into a footnote entry is dropped, and the text goes in', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy()
+    let item = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'footnoteItem') item = pos })
+    editor.commands.setTextSelection(item + 2)
+    paste(clipboard)
+    const s = saved()
+    assert.deepEqual(s.ids, [ID])
+    assert.deepEqual(s.meta, [{ id: ID, content: 'AOne sentence. <em>note</em>.' }])
+  })
+
+  // jsdom has no layout, so the drop point comes from a stubbed posAtCoords; the rest is
+  // ProseMirror's own drop handler.
+  test('a dropped copy gets an id of its own too', () => {
+    win.setContent(SRC, META(ID))
+    firstSentence()
+    const clipboard = copy()
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph' && n.textContent === 'Other') at = pos + 6 })
+    const original = editor.view.posAtCoords
+    editor.view.posAtCoords = () => ({ pos: at, inside: -1 })
+    try {
+      const ev = new win.Event('drop', { bubbles: true, cancelable: true })
+      Object.defineProperty(ev, 'dataTransfer', { value: { getData: t => clipboard[t] || '', types: Object.keys(clipboard), files: [] } })
+      editor.view.dom.dispatchEvent(ev)
+    } finally {
+      editor.view.posAtCoords = original
+    }
+    const s = saved()
+    assertSeparateNotes(s, 2)
+    assert.equal(s.ids[0], ID)
+    assert.deepEqual(s.meta.map(f => f.content), [NOTE, NOTE])
+  })
+
+  test('a post that loads with a repeated id saves as it was, and typing leaves the ids alone', () => {
+    const dup = `<!-- wp:paragraph -->\n<p>A${marker(ID)} B${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`
+    win.setContent(dup, META(ID))
+    assert.equal(win.getContent(), dup)
+    editor.commands.insertContentAt(1, 'x')
+    assert.deepEqual(saved().ids, [ID, ID])
+  })
+})
+
 describe('inserting a brand-new footnote', () => {
   test('a post with none gains the delimiter and a meta entry', () => {
     win.setContent('<!-- wp:paragraph -->\n<p>Body</p>\n<!-- /wp:paragraph -->', '')

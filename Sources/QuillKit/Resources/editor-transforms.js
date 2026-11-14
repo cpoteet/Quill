@@ -1330,7 +1330,9 @@ const PASTE_BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
 
 const PASTE_MONO_FONT = /monospace|menlo|monaco|consolas|courier|sf mono|source code|fira code|jetbrains mono/i
 
-function cleanPastedHTML(html, doc) {
+// `keepEdges` leaves whitespace at the two ends: a paste flattened into a title or footnote keeps
+// the spaces at its edges, which a trim would delete, U+00A0 included (cpoteet/Quill#27).
+function cleanPastedHTML(html, doc, { keepEdges = false } = {}) {
   if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
@@ -1365,7 +1367,7 @@ function cleanPastedHTML(html, doc) {
   flattenPastedDivs(root, doc)
   hoistBlockImages(root, doc)
   removeEmptyPastedBlocks(root)
-  return root.innerHTML.trim()
+  return keepEdges ? root.innerHTML : root.innerHTML.trim()
 }
 
 function unwrapElement(el) {

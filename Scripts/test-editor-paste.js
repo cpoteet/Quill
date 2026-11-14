@@ -63,6 +63,17 @@ function paste(data) {
   editor.view.dom.dispatchEvent(ev)
 }
 
+// Copy the current selection through ProseMirror's own copy handler and return the clipboard.
+function copy() {
+  const data = {}
+  const ev = new win.Event('copy', { bubbles: true, cancelable: true })
+  Object.defineProperty(ev, 'clipboardData', {
+    value: { setData: (t, v) => { data[t] = v }, getData: t => data[t] || '', clearData: () => {}, types: [] },
+  })
+  editor.view.dom.dispatchEvent(ev)
+  return data
+}
+
 // Place the cursor inside a footnote entry containing the text "note".
 function focusFootnote() {
   editor.commands.setContent('<p>body</p>')
@@ -114,7 +125,13 @@ describe('paste into footnotes', () => {
   test('single-line plain text is inserted unchanged', () => {
     focusFootnote()
     paste({ 'text/plain': ' just one line ' })
-    assert.equal(doc(), 'paragraph("body",MARKER) | footnotesList(footnoteItem("notejust one line"))')
+    assert.equal(doc(), 'paragraph("body",MARKER) | footnotesList(footnoteItem("note just one line "))')
+  })
+
+  test('one line of HTML keeps the spaces at its edges (cpoteet/Quill#27)', () => {
+    focusFootnote()
+    paste({ 'text/html': '<span> by&nbsp;</span>', 'text/plain': ' by\u00a0' })
+    assert.equal(doc(), 'paragraph("body",MARKER) | footnotesList(footnoteItem("note by\u00a0"))')
   })
 
   test('escaped markup in pasted HTML stays text in the footnote', () => {
@@ -337,11 +354,99 @@ describe('paste into a title, label or caption stays on one line', () => {
     assert.equal(r.text, r.expectedText.replace('line one line two', ' by\u00a0 '))
   })
 
+  // cpoteet/Quill#27: the HTML path trimmed the flattened line, &nbsp; included, and ProseMirror's
+  // parser drops a space at either end of inline content, so " by " went in as "by".
+  for (const type of Object.keys(targets)) {
+    test(`one line of HTML pasted into ${type} keeps the spaces at its edges`, () => {
+      const r = pasteInto(type, { 'text/html': '<span> by </span>', 'text/plain': ' by ' })
+      assert.equal(r.text, r.expectedText.replace('line one line two', ' by '))
+      assert.deepEqual(problems(r.saved), [], r.saved)
+    })
+  }
+
+  test('an edge space counts only when it is in the copied text, not at a block edge or between blocks', () => {
+    const into = html => pasteInto('cite', { 'text/html': html, 'text/plain': 'x' }).text
+    assert.deepEqual({
+      bare: into(' by '),
+      bold: into('<b> by </b>'),
+      nbsp: into('<span>&nbsp;by&nbsp;</span>'),
+      webkit: into('<span><span class="Apple-converted-space">\u00a0</span>by<span class="Apple-converted-space">\u00a0</span></span>'),
+      chrome: into('<meta charset="utf-8"><span> by </span>\n'),
+      openSlice: into('<p data-pm-slice="1 1 []"> by </p>'),
+      closedBlock: into('<p> by </p>'),
+      betweenBlocks: into('\n<p>a </p>\n<p> b</p>\n'),
+    }, {
+      bare: 'Wh by o',
+      bold: 'Wh by o',
+      nbsp: 'Wh\u00a0by\u00a0o',
+      webkit: 'Wh by o',
+      chrome: 'Wh by o',
+      openSlice: 'Wh by o',
+      closedBlock: 'Whbyo',
+      betweenBlocks: 'Wha bo',
+    })
+  })
+
+  // What real WebKit delivers for <span> by </span>: its sanitizer drops the leading space.
+  test('a leading space WebKit dropped from the HTML comes back from the plain text', () => {
+    const r = pasteInto('cite', { 'text/html': '<span>by<span class="Apple-converted-space">\u00a0</span></span>', 'text/plain': ' by ' })
+    assert.equal(r.text, 'Wh by o')
+  })
+
+  test('the plain text adds no space when it is not the same line as the HTML', () => {
+    assert.deepEqual({
+      other: pasteInto('cite', { 'text/html': '<span>by</span>', 'text/plain': ' other ' }).text,
+      lines: pasteInto('cite', { 'text/html': '<span>by</span>', 'text/plain': ' by\n' }).text,
+    }, { other: 'Whbyo', lines: 'Whbyo' })
+  })
+
+  test("Quill's own copy of a phrase pastes into a citation with its spaces", () => {
+    editor.commands.setContent('<p>Painted by Van Gogh</p>', { emitUpdate: false })
+    editor.commands.setTextSelection({ from: 8, to: 12 })
+    const clipboard = copy()
+    assert.equal(clipboard['text/plain'], ' by ')
+    assert.equal(pasteInto('cite', clipboard).text, 'Wh by o')
+  })
+
   test('a heading still splits into blocks, as in the block editor', () => {
     editor.commands.setContent('<h2>Head</h2>', { emitUpdate: false })
     editor.commands.setTextSelection(5)
     paste({ 'text/plain': 'line one\nline two' })
     assert.equal(doc(), 'heading("Headline one") | paragraph("line two")')
+  })
+})
+
+// ProseMirror's parser drops a space at either end of inline content in the body too, so a phrase
+// copied from a page and pasted mid-sentence ran into its neighbours (cpoteet/Quill#27).
+describe('one line of HTML pasted mid-paragraph keeps its edge spaces', () => {
+  const into = data => {
+    editor.commands.setContent('<p>PaintedVan Gogh</p>', { emitUpdate: false })
+    editor.commands.setTextSelection(8)
+    paste(data)
+    return doc()
+  }
+
+  test('as the HTML marks them, or as only the plain text does', () => {
+    assert.deepEqual({
+      span: into({ 'text/html': '<span> by </span>', 'text/plain': ' by ' }),
+      webkit: into({ 'text/html': '<span><span class="Apple-converted-space">\u00a0</span>by<span class="Apple-converted-space">\u00a0</span></span>', 'text/plain': ' by ' }),
+      dropped: into({ 'text/html': '<span>by<span class="Apple-converted-space">\u00a0</span></span>', 'text/plain': ' by ' }),
+      bold: into({ 'text/html': '<b> by </b>', 'text/plain': ' by ' }),
+    }, {
+      span: 'paragraph("Painted by Van Gogh")',
+      webkit: 'paragraph("Painted by Van Gogh")',
+      dropped: 'paragraph("Painted by Van Gogh")',
+      bold: 'paragraph("Painted ","by"," Van Gogh")',
+    })
+  })
+
+  test('block HTML still trims its edges', () => {
+    assert.equal(into({ 'text/html': '<p> by </p>', 'text/plain': ' by ' }), 'paragraph("PaintedbyVan Gogh")')
+  })
+
+  test('the save stays valid', () => {
+    into({ 'text/html': '<span> by </span>', 'text/plain': ' by ' })
+    assert.deepEqual(problems(win.getContent()), [])
   })
 })
 
@@ -438,8 +543,6 @@ describe('plain text that is a numbered list', () => {
     assert.deepEqual({
       oneLine: into('<p></p>', '1. Introduction'),
       romanLooking: into('<p></p>', 'C. Smith'),
-      letters: into('<p></p>', 'a. one\nb. two'),
-      roman: into('<p></p>', 'i. one\nii. two'),
       skipsANumber: into('<p></p>', '1. one\n3. two'),
       notEveryLine: into('<p></p>', '1. one\nplain'),
       midParagraph: at('<p>abcd</p>', 3),
@@ -450,8 +553,6 @@ describe('plain text that is a numbered list', () => {
     }, {
       oneLine: 'paragraph("1. Introduction")',
       romanLooking: 'paragraph("C. Smith")',
-      letters: 'paragraph("a. one") | paragraph("b. two")',
-      roman: 'paragraph("i. one") | paragraph("ii. two")',
       skipsANumber: 'paragraph("1. one") | paragraph("3. two")',
       notEveryLine: 'paragraph("1. one") | paragraph("plain")',
       midParagraph: 'paragraph("ab1. one") | paragraph("2. twocd")',
@@ -460,6 +561,27 @@ describe('plain text that is a numbered list', () => {
       code: 'codeBlock("code1. one\\n2. two")',
       cell: 'table(tableRow(tableCell(paragraph("1. one"),paragraph("2. two")))) | paragraph()',
     })
+  })
+
+  // Core writes a lettered or roman list as list-style-type plus the delimiter's type (cpoteet/Quill#27).
+  test('a lettered or roman list pastes as core writes one, and passes WordPress\'s validator', () => {
+    const saved = text => { into('<p></p>', text); return win.getContent() }
+    for (const [text, type] of [['a. one\nb. two', 'lower-alpha'], ['A. one\nB. two', 'upper-alpha'], ['i. one\nii. two', 'lower-roman'], ['I) one\nII) two', 'upper-roman']]) {
+      const html = saved(text)
+      assert.equal(doc(), 'orderedList(listItem(paragraph("one")),listItem(paragraph("two")))', text)
+      assert.match(html, new RegExp(`<!-- wp:list \\{"ordered":true,"type":"${type}"\\} -->\\n<ol style="list-style-type:${type}" class="wp-block-list">`), html)
+      assert.deepEqual(problems(html), [], html)
+    }
+    // The style rides as data-quill-style, which is never drawn, so the editor's CSS draws the type.
+    into('<p></p>', 'a. one\nb. two')
+    assert.equal(win.getComputedStyle(editor.view.dom.querySelector('ol')).listStyleType, 'lower-alpha')
+    const fromFour = saved('iv. x\nv. y')
+    assert.match(fromFour, /"type":"lower-roman","start":4/)
+    assert.deepEqual(problems(fromFour), [], fromFour)
+  })
+
+  test('a list starting at a letter other than a stays paragraphs', () => {
+    assert.equal(into('<p></p>', 'c. x\nd. y'), 'paragraph("c. x") | paragraph("d. y")')
   })
 
   test('a Group holding only an empty paragraph gets the list inside it', () => {

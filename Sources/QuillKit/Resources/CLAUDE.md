@@ -114,7 +114,7 @@ onto it" — its children are still replayed.
 - ProseMirror's two clipboard branches have separate hooks, and `handlePaste` runs *after* the parse, not before
 - Anything that inserts generated HTML must strip inter-block whitespace text nodes AND pass `parseOptions: { preserveWhitespace: false }`
 - `formatHTML`'s `BLOCK` set changes affect ALL existing content wrapped in that tag, not just the new case motivating the change
-- Every block insert goes through `_blockInsertChain()`, because a block inserted into an accordion heading, tab title or button splits its container
+- Every block insert goes through `_blockInsertChain()`, because a block inserted into an accordion heading, tab title, button, quote citation or image caption splits its container
 - A container a paste or join must not cross is `isolating`, or ProseMirror replaces or merges it
 - An image caption must not be an editing host of its own
 - Gap-cursor styling, not doc-model surgery, for the caret next to atomic block nodes
@@ -147,6 +147,7 @@ onto it" — its children are still replayed.
 - `FootnotesList`/`FootnoteItem`/`FootnoteMarker` need `priority: 110` to beat the generic `ol`/`li` parse rules — do not remove it
 - Footnote numbers in the editor come from CSS counters
 - `FootnoteSync`'s `appendTransaction` rebuilds the list children, so deleting a marker deletes its entry and typed text by design
+- ProseMirror's parser drops the space at either end of pasted inline content, so a one-line paste into a title, citation, caption or footnote needs its edge spaces put back
 - The editor's footnote back-arrow is a NodeView artifact — it is in neither the ProseMirror doc nor the saved HTML, which has its own
 - `_ancestorDepth($pos, typeName)` finds the nearest ancestor by node type name; the two cite paths use `_citeHostDepth($pos)` instead
 - Blockquote's Enter must bail below its depth guard, or `tr.split` at depth > 1 corrupts tables and lists nested inside the quote

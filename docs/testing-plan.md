@@ -24,12 +24,12 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (462 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (530 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
-13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (49 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (89 tests — live Tiptap editor in jsdom)
+13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (105 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
@@ -3101,7 +3101,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (462 tests)
+## JS container tests (530 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3191,13 +3191,15 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 |---|---|
 | `+Button adds a button and -Button never removes the last` | 1 → 2 → 1, then a further press is refused |
 
-### `block inserts from a container title` (97 tests)
+### `block inserts from a container title` (165 tests)
 
 | Test | What it checks |
 |---|---|
-| `<insert> from an empty/a filled <title> goes after the whole container` (88 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button and details summary, leaves the container and its text unchanged and puts the new block straight after it |
+| `<insert> from an empty/a filled <title> goes after the whole container` (154 tests) | Each of the eleven block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button, details summary, quote citation, pullquote citation and image caption, leaves the container and its text unchanged and puts the new block straight after it. For a citation the container is the quote or pullquote, for a caption the image (cpoteet/Quill#27) |
 | `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
 | `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
+| `Markdown from the middle of a citation goes after the quote and leaves the citation whole` | The issue's case: `## Heading` plus a paragraph from inside `Who` split the quote in two, a second quote holding `ho` (cpoteet/Quill#27) |
+| `Markdown from the middle of an image caption keeps the image and its caption whole` | From inside a caption, Paste as Markdown split the image in two, or from an empty caption replaced it (cpoteet/Quill#27) |
 | `<Tabs/Accordion/Columns> inserted mid-paragraph takes the caret into the new block` (3 tests) | Inserting in the middle of `abc` puts the caret in the new block, not in the split-off `bc` |
 | `<Tabs/Accordion/Columns> inserted inside another … takes the caret into the inner one` (3 tests) | A container inserted inside one of its own kind gets the caret, not the outer one's first child |
 | `one undo removes the insert and its landing paragraph` | The paragraph `_blockInsertChain` adds and the insert are one undo step |
@@ -4092,7 +4094,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (89 tests)
+## JS paste tests (105 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4101,12 +4103,13 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 
 **jsdom caveat:** jsdom has no `DataTransfer`, so the suite hand-builds `event.clipboardData`. It therefore exercises the flavors the tests construct, not what WKWebView actually delivers (RTF, webarchive, Word conditional-comment HTML, syntax-highlighted HTML from code editors). Treat green here as weaker evidence than the keyboard suite, and confirm real pastes in the app.
 
-### `paste into footnotes` (5 tests)
+### `paste into footnotes` (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `multi-line plain text stays inside the footnote` | Blank-line-separated text collapses into the one footnote item instead of breaking out into body paragraphs |
-| `single-line plain text is inserted unchanged` | Surrounding whitespace is trimmed, text lands in the footnote |
+| `single-line plain text is inserted unchanged` | One line keeps its own edge spaces, as in a title; only line breaks become spaces (cpoteet/Quill#27) |
+| `one line of HTML keeps the spaces at its edges (cpoteet/Quill#27)` | `<span> by&nbsp;</span>` goes in as ` by` plus U+00A0: the flatten's `.trim()` deleted both |
 | `block HTML is flattened into the footnote` | A heading and a list paste in as plain text — the pre-existing `transformPastedHTML` guard |
 | `CRLF and lone-CR line endings collapse the same way` | Windows and old-Mac line endings behave like `\n` |
 | `escaped markup in pasted HTML stays text in the footnote` | `&lt;b&gt;literal&lt;/b&gt;` pastes as the literal text `<b>literal</b>`, not bold: the flatten escapes the text it puts back in as HTML |
@@ -4140,7 +4143,7 @@ Loads the real `editor.html` in jsdom and drives the live Tiptap editor, coverin
 | `reports empty input without touching the document` | Empty input is reported, not inserted |
 | `inserts at the cursor rather than replacing the document` | Existing content survives the insert |
 
-### `paste into a title, label or caption stays on one line` (15 tests)
+### `paste into a title, label or caption stays on one line` (25 tests)
 
 A tab label, button, details summary, accordion heading, quote citation and image caption hold inline content only. `_pasteMustBeInline()` makes `transformPastedText` and `transformPastedHTML` flatten a paste there to one line, as they do in a footnote.
 
@@ -4150,7 +4153,20 @@ A tab label, button, details summary, accordion heading, quote citation and imag
 | `paragraphs of HTML pasted into <node> become one line that keeps its inline formatting` (6 tests) | The same for two pasted paragraphs, with the bold word still bold |
 | `escaped markup in the pasted HTML stays text, never becomes a tag` | Escaped `<b>` and `<img>` in a tab label stay literal text; unescaped, the image split the tabs block |
 | `one line of plain text keeps its own spaces, non-breaking ones too` | ` by ` with a U+00A0 pasted into a citation keeps every space; only line breaks are collapsed |
+| `one line of HTML pasted into <node> keeps the spaces at its edges` (6 tests) | `<span> by </span>` goes in as ` by ` in every one of these nodes, and the save is valid (cpoteet/Quill#27) |
+| `an edge space counts only when it is in the copied text, not at a block edge or between blocks` | Bare text, bold, `&nbsp;`, WebKit's `Apple-converted-space` spans, a `<meta>` before the text and a block a ProseMirror copy left open (`data-pm-slice`) keep their edge spaces; a closed `<p>`'s edge spaces and the whitespace between blocks do not |
+| `a leading space WebKit dropped from the HTML comes back from the plain text` | What real WebKit delivers for `<span> by </span>` (`by` plus an `Apple-converted-space`, its leading space gone) with plain text ` by ` goes in as ` by ` |
+| `the plain text adds no space when it is not the same line as the HTML` | A plain flavour with other text, or more than one line, adds nothing |
+| `Quill's own copy of a phrase pastes into a citation with its spaces` | ` by ` copied in Quill (`<p data-pm-slice="1 1 []">`, the cleanup skipped) keeps both spaces |
 | `a heading still splits into blocks, as in the block editor` | A heading is not one of these, so a paste there still becomes a heading and a paragraph |
+
+### `one line of HTML pasted mid-paragraph keeps its edge spaces` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `as the HTML marks them, or as only the plain text does` | ` by ` pasted between `Painted` and `Van Gogh` as a bare span, WebKit's `Apple-converted-space` shape, WebKit's shape with the leading space dropped (recovered from the plain text) and bold all keep both spaces (cpoteet/Quill#27) |
+| `block HTML still trims its edges` | `<p> by </p>` goes in as `by`, as before |
+| `the save stays valid` | WordPress's validator passes the result |
 
 ### `paste into a code block preserves line breaks` (1 test)
 
@@ -4158,7 +4174,7 @@ A tab label, button, details summary, accordion heading, quote citation and imag
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
 
-### `plain text that is a numbered list` (9 tests)
+### `plain text that is a numbered list` (10 tests)
 
 Plain text whose every line carries the next number pastes as a list, through the HTML paste path (cpoteet/Quill#26). Tiptap 3's own `OrderedList` paste plugin stays off: it inserted the list straight from the clipboard, into code blocks, footnotes and headings too. See `docs/paste.md`.
 
@@ -4169,7 +4185,9 @@ Plain text whose every line carries the next number pastes as a list, through th
 | `item text is text, never markup` | `<b>x</b> & y` in an item stays literal text |
 | `joins the list, quote or column the empty paragraph is in` | An empty item adds the pasted items to its list (also when it is the list's only or first item), an empty nested item to its nested list, and an empty paragraph in a quote, even its only one, or at a column's start gets the list inside it |
 | `at the start of a quote with a citation, the quote and citation stay` | The list lands inside the quote, before the `cite` |
-| `stays one paragraph per line anywhere else` | Pre-change values: one line (`1. Introduction`, `C. Smith`), letters, roman numerals, a skipped number, a line without a marker, mid-paragraph, over selected text, a heading, a code block and a table cell |
+| `a lettered or roman list pastes as core writes one, and passes WordPress's validator` | `a.`, `A.`, `i.` and `I)` lists save `list-style-type:<type>` plus `"type":"<type>"` in the delimiter, as core and the Word-list conversion write them; `iv.` / `v.` keeps `start: 4`, and the editor draws the letters (cpoteet/Quill#27, item 3) |
+| `a list starting at a letter other than a stays paragraphs` | `c.` / `d.` is not a list to Tiptap's parser, so it stays text |
+| `stays one paragraph per line anywhere else` | Pre-change values: one line (`1. Introduction`, `C. Smith`), a skipped number, a line without a marker, mid-paragraph, over selected text, a heading, a code block and a table cell |
 | `a Group holding only an empty paragraph gets the list inside it` | A Group is `isolating`, so the list stays inside it rather than replacing it |
 | `in a footnote it stays inline text` | The footnote flattening still applies |
 | `a clipboard that also carries HTML pastes that HTML` | The plain flavour is used only when there is no `text/html` |
@@ -4215,7 +4233,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (49 tests)
+## JS footnotes tests (60 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4229,6 +4247,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 | `saving` | 9 | `post_content` carries the delimiter and never the list; `getFootnotes()` matches what core stores; an edited body reaches the meta; the marker keeps core's `<fnId>-link` anchor; no backref is written into `post_content`, because WordPress renders it; an unedited post saves back byte-identically; an unsupported block with single-quoted attributes beside the footnotes is saved byte for byte after an edit (the list is spliced in at the delimiter, not by re-serializing the post); a second load/save cycle is idempotent; deleting the last marker clears the meta rather than stranding it |
 | `migrating a legacy inline list` | 3 | A post written before the move is left exactly as it was until it is edited; the first edit moves the bodies into meta and the list out of the content; the legacy backref anchor does not survive into the meta |
 | `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
+| `copying and pasting a footnote marker` | 11 | A pasted copy of a marker gets an id of its own and a copy of the note, with unique `-link` anchors and links and one meta entry each (cpoteet/Quill#25); one undo removes the paste and the new note; the marker already in the post keeps its id even when the copy goes in before it; two pastes give three notes; the whole post pasted into itself leaves one footnotes list, the post's own, where it was, so a note edited after the copy keeps the edit; a cut and paste keeps the id and the note, but a note cut in one post never comes back in another; a marker pasted into a footnote entry is dropped; a dropped copy is renamed like a pasted one (ProseMirror's own drop handler, with `posAtCoords` stubbed for jsdom); a post that loads with a repeated id saves as it was, and typing does not rename it |
 | `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |
 | `code view shows what will actually be saved` | 8 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards; a list typed in code view sends its bodies to Swift (any ID, not only `fn-<uuid>`), a typed delimiter plus list gives one delimiter and no card, and code view shows the delimiter again afterwards |
 | `backref chrome in the editor` | 9 | A press on a footnote's number (the list marker, left of the item's box) puts the caret after its marker, as the ↩ does; a press on the note's text does not (cpoteet/Quill#24, bug 7). The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
@@ -5427,6 +5446,13 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 314 | Backspace in an empty cite removed it and left the caret after the quote (cpoteet/Quill#24, bug 6) | ✅ `test-editor-keyboard.js` `'Backspace in an empty cite removes it and leaves the caret at the end of the quote'` + 👁 §7.3 |
 | 315 | Backspace at the start of a paragraph after a quote with a cite joined it into the cite, and the cite's own edges joined the quote text or the next paragraph (cpoteet/Quill#24, bug 10) | ✅ `test-editor-keyboard.js` `'Backspace at the start of a paragraph after a quote with a citation, then typing'`, `'a citation keeps its text at either edge'` + 👁 §7.3 |
 | 316 | Once the caption stopped being its own editing host, → or ↓ into an image could leave WebKit's caret beside the frame, where typed text was drawn but never saved. The caret is moved into the caption | ✅ `test-editor-keyboard.js` `'a caret WebKit leaves beside the image frame is moved into the caption'` + 👁 WebKit |
+| 317 | A copied marker pasted into the same post kept its id: two markers, two `-link` anchors and two meta entries shared one id, and both links went to one note (cpoteet/Quill#25). `FootnoteSync` renames each marker a paste or drop brought in whose id is taken, and copies the note. The same pass now keeps one footnotes list when a paste brings a second (⌘A, ⌘C, ⌘V), drops a marker pasted into a note, and gives a cut marker its note back when it is pasted (`_removedFootnotes`) | ✅ `test-editor-footnotes.js` `'copying and pasting a footnote marker'` (11 tests) + the paste harness's `quill` mode in real WebKit |
+| 318 | Paste as Markdown with the caret in a quote citation split the quote, and in an image caption split or replaced the image (cpoteet/Quill#27, item 1). `_blockInsertDepth` puts every block insert from a citation after its quote or pullquote, and from a caption after the image | ✅ `test-editor-containers.js` `'block inserts from a container title'` (citation, pullquote citation and caption hosts) |
+| 319 | One line of HTML pasted into a title, citation, caption or footnote lost its edge spaces: ` by ` went in as `by`, `&nbsp;` included (cpoteet/Quill#27, item 2). `cleanPastedHTML`'s trim, the flatten's trim and ProseMirror's parser each dropped them; `_pastedEdgeSpaces` records them before the parse and `_withEdgeSpaces` puts them back | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (8 tests) + real WebKit via the paste harness |
+| 320 | The same edge spaces were lost in a body paste of one line of HTML, and in real WebKit the leading space of `<span> by </span>` never reached the page. Inline-only body pastes now get their edges put back too, and a one-line paste whose plain text matches the HTML takes its edge spaces from the plain text as well (cpoteet/Quill#27) | ✅ `test-editor-paste.js` `'one line of HTML pasted mid-paragraph keeps its edge spaces'` (3 tests) and `'a leading space WebKit dropped from the HTML comes back from the plain text'` + real WebKit via the paste harness |
+| 321 | Plain-text lettered and roman lists pasted as paragraphs. They now paste as core writes them: `list-style-type` plus the delimiter's `type` (cpoteet/Quill#27, item 3) | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, and passes WordPress\'s validator'` + real WebKit via the paste harness |
+| 322 | The real-WebKit paste harness lost its first case: WebKit had not yet registered the web view as focused, so the editor's `focus()` did nothing and the paste went to the body (cpoteet/Quill#27, item 5). The harness waits for `view.hasFocus()` before the first case | ✅ a harness run whose first case is `hello` saves it |
+| 323 | A lettered or roman list, loaded or pasted, showed 1, 2, 3 in the editor while it saved correctly: its `style` rides as `data-quill-style`, which is never drawn. CSS on `ol[data-quill-style*="lower-alpha"]` and the other three types draws it | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, …'` (computed `list-style-type`) + checked in the app |
 
 ---
 

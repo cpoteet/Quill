@@ -70,9 +70,25 @@ final class Harness: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
                   window.__lastPaste = { types: Array.from(d.types), html: d.getData('text/html'), text: d.getData('text/plain') }
                 }, true); true
                 """
-                self.editor.evaluateJavaScript(install) { _, _ in self.next() }
+                self.editor.evaluateJavaScript(install) { _, _ in
+                    self.window.makeFirstResponder(self.editor)
+                    self.waitForFocus(0)
+                }
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.waitForEditor(attempt + 1) }
+            }
+        }
+    }
+
+    // WebKit learns the web view is focused a moment after it becomes first responder. Until then
+    // the editor's focus() does nothing, so the first case's paste went to the body and was lost.
+    func waitForFocus(_ attempt: Int) {
+        editor.evaluateJavaScript("_tiptapEditor.commands.focus('end'); _tiptapEditor.view.hasFocus()") { v, _ in
+            if v as? Bool == true || attempt > 100 {
+                if attempt > 100 { print("  the editor never took focus") }
+                self.next()
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.waitForFocus(attempt + 1) }
             }
         }
     }
@@ -154,9 +170,9 @@ final class Harness: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
             _tiptapEditor.commands.focus();
             (\((c["select"] as? String) ?? "() => _tiptapEditor.commands.selectAll()"))(); true
             """
+            window.makeFirstResponder(editor)
             editor.evaluateJavaScript(setup) { _, err in
                 if let err { print("setup error \(err)") }
-                self.window.makeFirstResponder(self.editor)
                 self.editor.perform(#selector(NSText.copy(_:)), with: nil)
                 self.waitForPasteboard(before, 0) { self.pasteInto(c) }
             }
@@ -176,9 +192,11 @@ final class Harness: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         let types = NSPasteboard.general.types?.map(\.rawValue) ?? []
         let target = (c["target"] as? String) ?? "<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->"
         uploadMessages = []
-        let prep = "window.__lastPaste = null; if (\(c["mode"] as! String == "quill" ? "false" : "true")) window.__baseline = null; window.setContent(\(jsString(target))); _tiptapEditor.commands.focus('end'); true"
+        // `caret`, a JS function, places the caret in the target; without one the paste goes at its end.
+        let caret = (c["caret"] as? String).map { "(\($0))();" } ?? ""
+        let prep = "window.__lastPaste = null; if (\(c["mode"] as! String == "quill" ? "false" : "true")) window.__baseline = null; window.setContent(\(jsString(target))); _tiptapEditor.commands.focus('end'); \(caret) true"
+        window.makeFirstResponder(editor)
         editor.evaluateJavaScript(prep) { _, _ in
-            self.window.makeFirstResponder(self.editor)
             self.editor.perform(#selector(NSText.paste(_:)), with: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 // Stand in for Swift's upload: answer every token with a hosted URL.

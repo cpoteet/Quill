@@ -702,6 +702,12 @@
     body.cmd-held .ProseMirror a { cursor: pointer; text-decoration: underline; }
     .ProseMirror pre code, body.dark .ProseMirror pre code { background: none; padding: 0; }
     .ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
+    /* A list's own style rides as data-quill-style, which the editor never draws, so a lettered or
+       roman list showed 1, 2, 3 while it saved correctly. These draw core's four list types. */
+    .ProseMirror ol[data-quill-style*="lower-alpha"] { list-style-type: lower-alpha; }
+    .ProseMirror ol[data-quill-style*="upper-alpha"] { list-style-type: upper-alpha; }
+    .ProseMirror ol[data-quill-style*="lower-roman"] { list-style-type: lower-roman; }
+    .ProseMirror ol[data-quill-style*="upper-roman"] { list-style-type: upper-roman; }
     .ProseMirror li { margin: 0.2em 0; }
     .ProseMirror img { max-width: 100%; border-radius: 4px; }
 
@@ -1822,14 +1828,14 @@
 
     const _fnPassthrough = new Set(['Backspace', 'Delete'])
     // Inside a footnote every block shortcut does nothing; ⌘⌥0–⌘⌥6 ran setNode on the note and
-    // emptied it (cpoteet/Quill#24, bug 1).
+    // emptied it (cpoteet/Quill#24, bug 1). Backspace and Delete still reach the next handler.
+    function _footnoteGuarded(shortcuts) {
+      return Object.fromEntries(Object.entries(shortcuts || {}).map(([k, fn]) =>
+        [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
+    }
     function _noBlockKeysInFootnotes(extension) {
       return extension.extend({
-        addKeyboardShortcuts() {
-          const orig = this.parent?.()
-          return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-            [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
-        },
+        addKeyboardShortcuts() { return _footnoteGuarded(this.parent?.()) },
       })
     }
     // A block Markdown rule typed in a one-line block (a footnote, title, button, caption or
@@ -1849,11 +1855,7 @@
     const ParagraphWithClass  = withBlockAttrs(withClassAttr(_noBlockKeysInFootnotes(Paragraph)))
     const HeadingWithClass    = withBlockAttrs(withClassAttr(_noBlockRulesInLines(_noBlockKeysInFootnotes(Heading))))
     const BulletListWithClass = withBlockAttrs(withClassAttr(_noBlockRulesInLines(BulletList).extend({
-      addKeyboardShortcuts() {
-        const orig = this.parent?.()
-        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
-      },
+      addKeyboardShortcuts() { return _footnoteGuarded(this.parent?.()) },
     })))
     const OrderedListWithClass = withBlockAttrs(withClassAttr(_noBlockRulesInLines(OrderedList).extend({
       // Tiptap 3 derives `type` from list-style-type and stops rendering type="1"; keep v2's
@@ -1886,11 +1888,7 @@
           return rule
         })
       },
-      addKeyboardShortcuts() {
-        const orig = this.parent?.()
-        return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
-      },
+      addKeyboardShortcuts() { return _footnoteGuarded(this.parent?.()) },
     })))
     // Tiptap 3's ListItem brings listItemBranchingDeleteKeymap, which outdents a nested branch on Delete.
     const ListItemWithClass   = withBlockAttrs(withClassAttr(ListItem.extend({ addExtensions() { return [] } })))
@@ -3746,12 +3744,63 @@
       }
     }
 
+    // Where a node of the old document is now, or null once a transaction deleted it.
+    function _mappedPos(transactions, pos) {
+      for (const t of transactions) {
+        const r = t.mapping.mapResult(pos, 1)
+        if (r.deletedAfter) return null
+        pos = r.pos
+      }
+      return pos
+    }
+
+    // Gives each marker a paste or drop brought in a new id when its id is already taken, renaming
+    // it in `tr` and in `markers`. A marker that was in the old document keeps its id, wherever it
+    // sits relative to the copy, so links to an existing note never move. Returns new id → old id.
+    function _renameCopiedMarkers(transactions, oldState, newState, markers, tr) {
+      const copiedFrom = new Map()
+      if (!transactions.some(t => ['paste', 'drop'].includes(t.getMeta('uiEvent')))) return copiedFrom
+      const kept = new Set()
+      oldState.doc.descendants((node, pos) => {
+        if (node.type.name === 'footnotesList') return false
+        if (node.type.name !== 'footnoteMarker' || !node.attrs.fnId) return true
+        const at = _mappedPos(transactions, pos)
+        if (at !== null && newState.doc.nodeAt(at)?.attrs.fnId === node.attrs.fnId) kept.add(at)
+        return true
+      })
+      const taken = new Set(markers.filter(m => kept.has(m.pos)).map(m => m.id))
+      for (const m of markers) {
+        if (kept.has(m.pos)) continue
+        if (taken.has(m.id)) {
+          const fnId = 'fn-' + crypto.randomUUID()
+          copiedFrom.set(fnId, m.id)
+          tr.setNodeMarkup(m.pos, null, { ...m.node.attrs, fnId })
+          m.id = fnId
+        }
+        taken.add(m.id)
+      }
+      return copiedFrom
+    }
+
+    // The entry the sync last removed for each id, so a marker cut and pasted back (a sentence
+    // moved) gets its note again. Core keeps the same cache (oldFootnotes in core-data).
+    // window.setContent clears it, so it never reaches across posts.
+    const _removedFootnotes = new Map()
+
     // Keeps the footnotes list consistent with the markers after every doc
     // change: entries follow marker order, orphaned entries are removed,
     // missing entries are created (paste/undo edge cases), and the list
     // itself is removed when the last marker goes. appendTransaction runs
     // again on its own output; the second pass finds everything consistent
     // and returns null, so there is no loop.
+    //
+    // A pasted or dropped copy of a marker already in the post gets an id of
+    // its own and a copy of the note, in the same transaction so one undo
+    // removes both (cpoteet/Quill#25). Only the markers the paste brought in
+    // are renamed, and only on a paste or drop: a post that loads with a
+    // repeated id is left as it was saved. A paste of a whole post brings its
+    // footnotes list along; the post keeps its own list, where it was, and the
+    // pasted one goes.
     const FootnoteSync = Extension.create({
       name: 'footnoteSync',
       addProseMirrorPlugins() {
@@ -3761,48 +3810,63 @@
             appendTransaction(transactions, oldState, newState) {
               if (!transactions.some(tr => tr.docChanged)) return null
 
-              const markerIds = []
-              let listPos = null
-              let listNode = null
+              const markers = []
+              const lists = []
               newState.doc.descendants((node, pos) => {
                 if (node.type.name === 'footnotesList') {
-                  listPos = pos
-                  listNode = node
+                  lists.push({ pos, node })
                   return false  // don't collect markers inside the list
                 }
                 if (node.type.name === 'footnoteMarker' && node.attrs.fnId) {
-                  markerIds.push(node.attrs.fnId)
+                  markers.push({ pos, node, id: node.attrs.fnId })
                 }
                 return true
               })
 
-              if (listPos === null) {
+              const tr = newState.tr
+              const copiedFrom = _renameCopiedMarkers(transactions, oldState, newState, markers, tr)
+              const markerIds = markers.map(m => m.id)
+              const { footnoteItem, footnotesList } = newState.schema.nodes
+
+              // The post's own list is the one the old document had; a pasted list never replaces it,
+              // so a note edited after the copy keeps the edit. With none, the last list stays.
+              let list = lists[lists.length - 1]
+              if (lists.length > 1) {
+                let own = null
+                oldState.doc.forEach((node, offset) => { if (own === null && node.type.name === 'footnotesList') own = offset })
+                const at = own === null ? null : _mappedPos(transactions, own)
+                list = lists.find(l => l.pos === at) || list
+              }
+              // Entries from every list, the kept list's winning.
+              const itemsById = new Map()
+              for (const { node } of [...lists.filter(l => l !== list), list].filter(Boolean)) {
+                node.forEach(child => { if (child.attrs.fnId) itemsById.set(child.attrs.fnId, child) })
+              }
+              const itemFor = id => itemsById.get(id) ||
+                (copiedFrom.has(id) && footnoteItem.create({ fnId: id }, itemsById.get(copiedFrom.get(id))?.content)) ||
+                _removedFootnotes.get(id) || footnoteItem.create({ fnId: id })
+
+              if (!list) {
                 if (markerIds.length === 0) return null
-                const items = markerIds.map(id =>
-                  newState.schema.nodes.footnoteItem.create({ fnId: id }))
-                return newState.tr.insert(
-                  newState.doc.content.size,
-                  newState.schema.nodes.footnotesList.create(null, items)
-                )
+                return tr.insert(newState.doc.content.size, footnotesList.create(null, markerIds.map(itemFor)))
               }
 
               const currentIds = []
-              const itemsById = new Map()
-              listNode.forEach(child => {
-                currentIds.push(child.attrs.fnId)
-                if (child.attrs.fnId) itemsById.set(child.attrs.fnId, child)
-              })
-
-              if (currentIds.length === markerIds.length &&
+              list.node.forEach(child => currentIds.push(child.attrs.fnId))
+              if (lists.length === 1 && currentIds.length === markerIds.length &&
                   currentIds.every((id, i) => id === markerIds[i])) return null
 
-              const tr = newState.tr
+              const referenced = new Set(markerIds)
+              for (const [id, item] of itemsById) if (!referenced.has(id)) _removedFootnotes.set(id, item)
+
+              // Renaming a marker keeps its size, so every position still holds in tr. The other lists
+              // go last first, so each deletion moves nothing still to come but the kept list.
+              for (const other of lists.filter(l => l !== list).reverse()) tr.deleteRange(other.pos, other.pos + other.node.nodeSize)
+              const at = tr.mapping.map(list.pos)
               if (markerIds.length === 0) {
-                tr.delete(listPos, listPos + listNode.nodeSize)
+                tr.delete(at, at + list.node.nodeSize)
               } else {
-                const desired = markerIds.map(id =>
-                  itemsById.get(id) || newState.schema.nodes.footnoteItem.create({ fnId: id }))
-                tr.replaceWith(listPos + 1, listPos + listNode.nodeSize - 1, desired)
+                tr.replaceWith(at + 1, at + list.node.nodeSize - 1, markerIds.map(itemFor))
               }
               return tr
             },
@@ -4538,8 +4602,7 @@
       addKeyboardShortcuts() {
         // Tiptap 3's Blockquote binds Backspace to split or merge at a quote's edge; v2 joined backward.
         const { Backspace, ...orig } = this.parent?.() || {}
-        const wrapped = Object.fromEntries(Object.entries(orig).map(([k, fn]) =>
-          [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
+        const wrapped = _footnoteGuarded(orig)
         return {
           ...wrapped,
           Enter: () => {
@@ -4838,11 +4901,7 @@
           link: false, underline: false, trailingNode: false, listKeymap: false,
         }),
         withBlockAttrs(withClassAttr(_noBlockRulesInLines(CodeBlock).extend({
-          addKeyboardShortcuts() {
-            const orig = this.parent?.()
-            return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
-              [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
-          },
+          addKeyboardShortcuts() { return _footnoteGuarded(this.parent?.()) },
         }))),
         ParagraphWithClass,
         HeadingWithClass.configure({ levels: [1, 2, 3, 4, 5, 6] }),
@@ -4958,6 +5017,7 @@
           const listHTML = !html.trim() && _plainTextListHTML(view.state, text)
           if (listHTML) {
             _reroutedPastes.add(event)
+            _pasteIsOwnHTML = true
             view.pasteHTML(listHTML, event)
             return true
           }
@@ -4983,6 +5043,9 @@
         // Blocks pasted into an empty paragraph replace it, as in the block editor, rather than the first taking its attributes.
         transformPasted(slice, view, plain) {
           _parsingPaste = false
+          const edges = _inlinePasteEdges
+          _inlinePasteEdges = null
+          if (edges && !plain) slice = _withEdgeSpaces(slice, edges)
           if (plain || slice.openStart === 0 || !slice.content.firstChild?.isTextblock || !_inEmptyTopLevelParagraph(view.state)) return slice
           return new slice.constructor(slice.content, 0, slice.openEnd)
         },
@@ -4995,38 +5058,51 @@
           // into a title, label or caption it split the block holding it.
           // A whitespace-only line would otherwise become an empty paragraph.
           if (!_pasteMustBeInline()) return text.replace(/^[ \t\u00a0]+$/gm, '')
-          if (_isInFootnote()) return text.split(/\r\n?|\n/).map(s => s.trim()).filter(Boolean).join(' ')
-          // A title keeps one pasted line as it is, spaces and &nbsp; included; only line breaks
-          // (with the spaces around them) become one space.
+          // A title or footnote keeps one pasted line as it is, spaces and &nbsp; included; only
+          // line breaks (with the spaces around them) become one space.
           return text.replace(/^(?:[ \t]*(?:\r\n?|\n))+|(?:(?:\r\n?|\n)[ \t]*)+$/g, '')
             .replace(/[ \t]*(?:\r\n?|\n)[ \t\r\n]*/g, ' ')
         },
         transformPastedHTML(html) {
           _parsingPaste = true
+          _inlinePasteEdges = null
+          const plainText = _pastePlainText
+          _pastePlainText = null
           // The cleanup must never be the reason a paste fails; unclean beats nothing.
-          const quillCopy = _pasteIsQuillCopy
+          const quillCopy = _pasteIsQuillCopy || _pasteIsOwnHTML
           _pasteIsQuillCopy = false
+          _pasteIsOwnHTML = false
+          const inline = _pasteMustBeInline()
+          // Read before the cleanup, which strips the attribute from a copy that is not Quill's own.
+          const sliceOpen = inline ? _pastedSliceOpen(html) : null
           try {
             if (!quillCopy) {
-              html = cleanPastedHTML(html)
+              html = cleanPastedHTML(html, undefined, { keepEdges: true })
               if (editor.isActive('listItem')) html = pastedBlocksAsListItems(html)
             }
           } catch (e) {
             console.error('paste cleanup failed', e)
           }
-          if (!_pasteMustBeInline()) return html
           const tmp = inertDocument().createElement('div')
           tmp.innerHTML = html
-          const BLOCK_TAGS = new Set(['DIV','P','H1','H2','H3','H4','H5','H6',
-            'BLOCKQUOTE','PRE','TABLE','THEAD','TBODY','TR','TD','TH',
-            'UL','OL','LI','FIGURE','FIGCAPTION','HR','IMG'])
+          // ProseMirror's parser drops a space at either end of inline content, so the spaces at the
+          // paste's own edges are put back in transformPasted, in a title or the body alike. Only
+          // ASCII whitespace is trimmed here: String.trim also deleted a pasted &nbsp; (cpoteet/Quill#27).
+          const asciiTrim = s => s.replace(/^[ \t\r\n\f]+|[ \t\r\n\f]+$/g, '')
+          if (!inline) {
+            if (tmp.querySelector(_PASTE_BLOCK_SELECTOR)) return html.trim()
+            _inlinePasteEdges = _pastedEdgeSpaces(tmp, _PASTE_FLATTEN_BLOCKS, null, plainText)
+            return asciiTrim(html)
+          }
+          // A footnote never holds a footnote; a marker pasted into one went in with the note's own id.
+          if (_isInFootnote()) tmp.querySelectorAll('sup[data-fn]').forEach(sup => sup.remove())
           function flatten(el) {
             let out = ''
             for (const ch of el.childNodes) {
               // Text goes back in as HTML, so it is escaped, or "&lt;b&gt;" pasted as text became bold.
               if (ch.nodeType === 3) { out += ch.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); continue }
               if (ch.nodeType !== 1) continue
-              if (BLOCK_TAGS.has(ch.tagName)) {
+              if (_PASTE_FLATTEN_BLOCKS.has(ch.tagName)) {
                 out += flatten(ch) + ' '
               } else {
                 ch.innerHTML = flatten(ch)
@@ -5035,7 +5111,8 @@
             }
             return out
           }
-          return flatten(tmp).trim()
+          _inlinePasteEdges = _pastedEdgeSpaces(tmp, _PASTE_FLATTEN_BLOCKS, sliceOpen, plainText)
+          return asciiTrim(flatten(tmp))
         },
       },
       onTransaction: ({ transaction }) => {
@@ -5133,12 +5210,85 @@
       return _isInFootnote() || name in TITLE_CONTAINERS || name === 'cite' || name === 'image'
     }
 
+    // The spaces at the two ends of a paste being flattened into a title, caption or footnote, from
+    // transformPastedHTML to transformPasted, which puts back the ones ProseMirror's parser drops.
+    let _inlinePasteEdges = null
+
+    // An end of the paste keeps its space when that space is in the copied text: inline content at
+    // that end, or a block the copy left open there (data-pm-slice "openStart openEnd", which every
+    // ProseMirror copy carries, Quill's own included). A closed block's edge spaces are never drawn,
+    // and whitespace between blocks is layout, so neither counts. ASCII whitespace only: an &nbsp;
+    // is text, and the parser keeps it anyway.
+    const _PASTE_NON_CONTENT = new Set(['META', 'LINK', 'STYLE', 'TITLE', 'SCRIPT', 'TEMPLATE'])
+    // What the flatten for a title or footnote treats as a block, and what makes a body paste more
+    // than one line of inline content.
+    const _PASTE_FLATTEN_BLOCKS = new Set(['DIV','P','H1','H2','H3','H4','H5','H6',
+      'BLOCKQUOTE','PRE','TABLE','THEAD','TBODY','TR','TD','TH',
+      'UL','OL','LI','FIGURE','FIGCAPTION','HR','IMG'])
+    const _PASTE_BLOCK_SELECTOR = [...new Set([..._PASTE_FLATTEN_BLOCKS, ...PASTE_BLOCK_TAGS, 'DETAILS', 'SUMMARY', 'CITE'])]
+      .map(t => t.toLowerCase()).join(',')
+    function _pastedSliceOpen(html) {
+      const tmp = inertDocument().createElement('div')
+      tmp.innerHTML = html
+      const open = /^(\d+) (\d+)/.exec(tmp.querySelector('[data-pm-slice]')?.getAttribute('data-pm-slice') || '')
+      return open ? { start: +open[1], end: +open[2] } : null
+    }
+
+    // WebKit's sanitizer drops the leading space of the HTML before the page sees it, but not of
+    // the plain text, so one line whose plain text matches the HTML's takes edge spaces from both.
+    function _pastedEdgeSpaces(root, blockTags, open, plainText) {
+      const nodes = []
+      const walker = root.ownerDocument.createTreeWalker(root, 5)  // elements and text
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n)
+      const spaceAt = atStart => {
+        for (const n of atStart ? nodes : [...nodes].reverse()) {
+          if (n.nodeType === 1) {
+            if (n.firstChild || _PASTE_NON_CONTENT.has(n.tagName)) continue
+            return false  // an image or line break is the edge
+          }
+          const parent = n.parentNode
+          if (_PASTE_NON_CONTENT.has(parent.tagName)) continue
+          if ((parent === root || blockTags.has(parent.tagName)) && !/[^ \t\r\n\f]/.test(n.data)) continue
+          let blocks = 0
+          for (let el = parent; el !== root; el = el.parentNode) if (blockTags.has(el.tagName)) blocks++
+          if (blocks > (open ? open[atStart ? 'start' : 'end'] : 0)) return false
+          return (atStart ? /^[ \t\r\n\f]/ : /[ \t\r\n\f]$/).test(n.data)
+        }
+        return false
+      }
+      let lead = spaceAt(true), trail = spaceAt(false)
+      if (plainText && !/[\r\n]/.test(plainText) && _sameText(plainText, root.textContent)) {
+        lead = lead || /^[ \t\u00a0]/.test(plainText)
+        trail = trail || /[ \t\u00a0]$/.test(plainText)
+      }
+      return lead || trail ? { lead, trail } : null
+    }
+
+    // Puts one plain space at each end `edges` names, unless the parsed text already has one there.
+    function _withEdgeSpaces(slice, edges) {
+      const add = (fragment, atStart) => {
+        const child = atStart ? fragment.firstChild : fragment.lastChild
+        if (!child) return fragment
+        if (child.isBlock) return fragment.replaceChild(atStart ? 0 : fragment.childCount - 1, child.copy(add(child.content, atStart)))
+        if (!child.isText || (atStart ? /^[ \t\r\n\f\u00a0]/ : /[ \t\r\n\f\u00a0]$/).test(child.text)) return fragment
+        const space = fragment.constructor.from(editor.schema.text(' '))
+        return atStart ? space.append(fragment) : fragment.append(space)
+      }
+      let content = slice.content
+      if (edges.lead) content = add(content, true)
+      if (edges.trail) content = add(content, false)
+      return content === slice.content ? slice : new slice.constructor(content, slice.openStart, slice.openEnd)
+    }
+
     // Pastes handlePaste has re-sent through view.pasteText or view.pasteHTML, which call it again.
     const _reroutedPastes = new WeakSet()
 
     // Every ProseMirror editor marks its copies with data-pm-slice; Quill's own also matches the text it last copied.
     let _lastCopiedText = null
     let _pasteIsQuillCopy = false
+    let _pastePlainText = null
+    // HTML Quill built itself for a paste (a plain-text list), which the cleanup must not touch.
+    let _pasteIsOwnHTML = false
     const _sameText = (a, b) => a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim()
     function _rememberCopy() {
       const slice = editor.state.selection.content()
@@ -5149,6 +5299,7 @@
       const html = event.clipboardData?.getData('text/html') || ''
       const text = event.clipboardData?.getData('text/plain') || ''
       _pasteIsQuillCopy = _lastCopiedText !== null && /\sdata-pm-slice=/.test(html) && _sameText(text, _lastCopiedText)
+      _pastePlainText = text
     }
 
     // A pasted image the site does not host yet: Swift uploads it, then inserts it or swaps it in place.
@@ -5227,8 +5378,10 @@
     // Plain text whose every line carries the next number ("1. a" / "2. b", or "1)") as an <ol>,
     // for the HTML paste path. Only into an empty paragraph: ProseMirror opens a pasted list at both
     // ends, so beside text the first item merges into the paragraph and loses its "1. ". One line is
-    // never a list, and letters and roman numerals stay text: cleanPastedHTML strips an <ol>'s type
-    // and style, so they would save as 1, 2, 3.
+    // never a list. Letters and roman numerals are written the way core writes them, a
+    // list-style-type plus the delimiter's type, as the Word-list conversion does; the list then
+    // skips cleanPastedHTML (_pasteIsOwnHTML), which would strip both (cpoteet/Quill#27).
+    const PLAIN_TEXT_LIST_TYPE = { a: 'lower-alpha', A: 'upper-alpha', i: 'lower-roman', I: 'upper-roman' }
     function _plainTextListHTML(state, text) {
       const { $from, empty } = state.selection
       if (!empty || $from.parent.type.name !== 'paragraph' || $from.parent.content.size) return null
@@ -5236,10 +5389,16 @@
         if (!PLAIN_TEXT_LIST_HOSTS.has($from.node(d).type.name)) return null
       }
       const list = parsePlainTextOrderedListPaste(text)
-      if (!list || list.content.length < 2 || list.attrs.type) return null
+      if (!list || list.content.length < 2) return null
+      const type = list.attrs.type && PLAIN_TEXT_LIST_TYPE[list.attrs.type]
+      if (list.attrs.type && !type) return null
       const doc = inertDocument()
       const ol = doc.createElement('ol')
       if (list.attrs.start) ol.setAttribute('start', list.attrs.start)
+      if (type) {
+        ol.setAttribute('style', `list-style-type:${type}`)
+        ol.setAttribute('data-quill-block-attrs', JSON.stringify({ ordered: true, type }))
+      }
       for (const item of list.content) {
         const li = doc.createElement('li')
         li.textContent = item.content[0].content[0].text
@@ -5269,11 +5428,20 @@
     const TITLE_CONTAINERS = { accordionHeading: 'accordionBlock', detailsSummary: 'detailsBlock', tabButton: 'tabsBlock', buttonBlock: 'buttonsBlock' }
 
     // A table cell holds rich text in the block editor, whose inserter puts a new block after the table.
+    // A quote's citation and an image's caption are titles too: a block inserted in a citation split
+    // the quote, and one inserted in a caption replaced the image (cpoteet/Quill#27).
+    function _blockInsertDepth($from, intoTableCell) {
+      const name = $from.parent.type.name
+      if (name === 'cite') return _citeHostDepth($from)
+      if (name === 'image') return $from.depth
+      const container = TITLE_CONTAINERS[name] ?? (intoTableCell ? null : 'table')
+      return container ? _ancestorDepth($from, container) : -1
+    }
+
     function _blockInsertChain({ intoTableCell = false } = {}) {
       const chain = editor.chain().focus()
       const { $from } = editor.state.selection
-      const container = TITLE_CONTAINERS[$from.parent.type.name] ?? (intoTableCell ? null : 'table')
-      const depth = container ? _ancestorDepth($from, container) : -1
+      const depth = _blockInsertDepth($from, intoTableCell)
       if (depth === -1) return chain
       const after = $from.after(depth)
       return chain.insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1)
@@ -7164,6 +7332,9 @@
       _parsingPaste = false
       _resetSyncedPatterns()
       editor.commands.setContent(wrapped || '', { emitUpdate: false })
+      // After the load, which removes every entry of the last post into the cache: a note
+      // deleted in one post must never come back in another that shares its id.
+      _removedFootnotes.clear()
       if (!keepHistory) _clearHistory()
       // setContent maps the old caret into the new doc, and a landing next to an
       // atom block becomes a NodeSelection that outlines it before any click.

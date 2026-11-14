@@ -43,4 +43,6 @@ swiftc -O Scripts/paste-harness/harness.swift -o /tmp/paste-harness
 - `snapshot` restores every flavor saved in `dir` by `Scripts/paste-harness/pbsnap.swift`.
 - `png` and `file` put an image or a Finder file on the pasteboard.
 
+Before the first case the harness waits until the editor has focus; until WebKit registers the web view as focused, the editor's `focus()` does nothing and the first paste went to the page body (it used to need a throwaway first case). Every case pastes into `target` (default one empty paragraph) with the caret at its end; an optional `caret`, a JS function, puts the caret somewhere else first, such as inside a citation.
+
 The harness uses the system pasteboard, so it replaces whatever you had copied. Each row of `out.json` has the flavors the page saw (`paste`), the saved HTML (`saved`), the document JSON and any `uploads`. Check `saved` with `Scripts/wp-validator.js` (`problems`, and `resaved(html) === html`).

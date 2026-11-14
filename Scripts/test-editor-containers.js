@@ -560,17 +560,26 @@ const inserts = {
 describe('block inserts from a container title', () => {
   before(() => { editor.commands.setContent('<p></p>', { emitUpdate: false }) })
 
+  // A quote's citation and an image's caption are titles too (cpoteet/Quill#27): a block inserted
+  // in a citation split the quote, and one inserted in a caption replaced the image.
+  const quoteWithCite = html => () => editor.commands.setContent(html, { emitUpdate: false })
   const hosts = {
     accordionHeading: () => win.insertAccordion(),
     tabButton: () => win.insertTabs(2),
     buttonBlock: () => win.insertButtons(),
     detailsSummary: () => win.insertDetails(),
+    cite: quoteWithCite('<blockquote class="wp-block-quote"><p>Q</p><cite></cite></blockquote>'),
+    pullquoteCite: quoteWithCite('<figure class="wp-block-pullquote"><blockquote><p>Q</p><cite></cite></blockquote></figure>'),
+    image: () => win.insertImage('http://x/a.jpg', null, ''),
   }
+  const hostType = host => host === 'pullquoteCite' ? 'cite' : host
   const caretInto = (host, text) => {
     editor.commands.setContent('<p></p>', { emitUpdate: false })
     hosts[host]()
     let at = null
-    editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === host) at = pos + 1 + n.content.size })
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === hostType(host)) at = pos + 1 + n.content.size })
+    assert.ok(at !== null, `no ${host} to put the caret in`)
+    if (host === 'pullquoteCite') assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
     editor.commands.setTextSelection(at)
     if (text) editor.commands.insertContent(text)
   }
@@ -604,6 +613,24 @@ describe('block inserts from a container title', () => {
     win.insertMarkdown('Plain **text**')
     assert.equal(editor.state.doc.child(0).textContent, '')
     assert.equal(editor.state.doc.child(1).textContent, 'Plain text')
+  })
+
+  test('Markdown from the middle of a citation goes after the quote and leaves the citation whole', () => {
+    caretInto('cite', 'Who')
+    editor.commands.setTextSelection(editor.state.selection.from - 2)
+    win.insertMarkdown('## Heading\n\nSome text')
+    assert.equal(sig(editor.state.doc), 'doc(blockquote(paragraph(),cite()),heading(),paragraph())')
+    assert.equal(editor.state.doc.child(0).textContent, 'QWho')
+  })
+
+  test('Markdown from the middle of an image caption keeps the image and its caption whole', () => {
+    caretInto('image', 'Cap')
+    editor.commands.setTextSelection(editor.state.selection.from - 2)
+    win.insertMarkdown('just words')
+    assert.equal(editor.state.doc.childCount, 3)
+    assert.equal(editor.state.doc.child(0).type.name, 'image')
+    assert.equal(editor.state.doc.child(0).textContent, 'Cap')
+    assert.equal(editor.state.doc.child(1).textContent, 'just words')
   })
 
   for (const [name, insert, firstOf] of [['Tabs', () => win.insertTabs(2), 'tabPanel'], ['Accordion', () => win.insertAccordion(), 'accordionHeading'], ['Columns', () => win.insertColumns(2), 'columnBlock']]) {
