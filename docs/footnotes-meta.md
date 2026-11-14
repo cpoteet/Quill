@@ -57,6 +57,10 @@ the wire format never sees one.
   counts only when `liesOutsideTags` says it is not inside a tag (an attribute
   value), another comment, or a raw-text element such as `<script>`, so delimiter text in an attribute can never stand in
   for a real delimiter that the pattern does not match (`/--!>`).
+- **Position** — the list is an ordinary block, as `core/footnotes` is in
+  Gutenberg: it sits wherever the delimiter is, and content can follow it (the
+  gap cursor after the list reaches that spot). The delimiter gets core's blank
+  line on both sides.
 - **Save** — `getContent()` returns the content with the delimiter;
   `getFootnotes()` returns the meta JSON. `PostPayload.footnotes` sends it as
   `meta.footnotes`; `nil` omits the key so a payload that never touched

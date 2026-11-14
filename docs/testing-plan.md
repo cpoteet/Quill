@@ -20,7 +20,7 @@ This document is the authoritative reference for Quill's automated test suite an
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (89 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (291 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
@@ -2056,7 +2056,7 @@ Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans
 
 ---
 
-## JS editor tests (290 tests)
+## JS editor tests (291 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -2368,6 +2368,7 @@ The inverse, run on load so the notes are editable in the editor.
 | `materialises the list from meta at the delimiter` | |
 | `restores footnotes in meta order` | |
 | `round-trips with extractFootnotes, the delimiter separated like any block` | The list becomes `<!-- wp:footnotes /-->` after a blank line, as core separates blocks, and inlines back |
+| `a block after the list is separated from the delimiter like any block` | Content after the footnotes (reachable through the gap cursor after the list, and allowed by Gutenberg) gets a blank line after `<!-- wp:footnotes /-->`, as core writes it, not the delimiter glued to its opening comment |
 | `extractFootnotes leaves the rest of the saved markup byte for byte` | The list is spliced out of the string; re-serializing the DOM undid the save's self-closed `<hr/>` and `<img/>` |
 | `empty meta leaves the delimiter alone for the passthrough card` | A delimiter with no meta and no markers is shown as a non-editable card rather than an empty list |
 | `empty meta with markers gives each marker an empty note at the delimiter` | A post whose notes are missing gets one empty, editable note per marker, so the author can write them (run-log issue 12) |
@@ -5496,6 +5497,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 321 | Plain-text lettered and roman lists pasted as paragraphs. They now paste as core writes them: `list-style-type` plus the delimiter's `type` (cpoteet/Quill#27, item 3) | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, and passes WordPress\'s validator'` + real WebKit via the paste harness |
 | 322 | The real-WebKit paste harness lost its first case: WebKit had not yet registered the web view as focused, so the editor's `focus()` did nothing and the paste went to the body (cpoteet/Quill#27, item 5). The harness waits for `view.hasFocus()` before the first case | ✅ a harness run whose first case is `hello` saves it |
 | 323 | A lettered or roman list, loaded or pasted, showed 1, 2, 3 in the editor while it saved correctly: its `style` rides as `data-quill-style`, which is never drawn. CSS on `ol[data-quill-style*="lower-alpha"]` and the other three types draws it | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, …'` (computed `list-style-type`) + checked in the app |
+| 324 | A block after the footnotes list saved with the delimiter glued to its opening comment (`<!-- wp:footnotes /--><!-- wp:paragraph -->`), so Gutenberg's first save of the post rewrote the spacing. `extractFootnotes` writes core's blank line after the delimiter when a block follows | ✅ `test-editor.js` `'a block after the list is separated from the delimiter like any block'` |
 
 ---
 

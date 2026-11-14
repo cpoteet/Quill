@@ -1244,7 +1244,14 @@ function extractFootnotes(html, doc) {
   const before = html.slice(0, at.index)
   const after = html.slice(at.index + at[0].length)
   if (hasDelimiter) return { content: before + after, footnotes, found: true }
-  return { content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + after, footnotes, found: true }
+  // A block after the list (Gutenberg allows one) gets core's blank line too, not the delimiter glued
+  // to its opening comment. ASCII whitespace only: /\s/ would also eat a leading U+00A0.
+  const rest = after.replace(/^[ \t\r\n]+/, '')
+  return {
+    content: before + (before ? '\n\n' : '') + '<!-- wp:footnotes /-->' + (rest ? '\n\n' + rest : after),
+    footnotes,
+    found: true,
+  }
 }
 
 // Rebuilds the editable list from meta, or with an empty note per marker when

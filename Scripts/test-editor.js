@@ -1502,6 +1502,17 @@ describe('inlineFootnotes', () => {
     assert.equal(inline(r.content, r.footnotes), '<p>x</p>\n\n<ol class="wp-block-footnotes"><li id="fn-a">A <em>note</em></li></ol>')
   })
 
+  test('a block after the list is separated from the delimiter like any block', () => {
+    const doc = new JSDOM('<!doctype html><body>').window.document
+    const list = '<ol class="wp-block-footnotes"><li id="fn-a">n</li></ol>'
+    const para = '<!-- wp:paragraph -->\n<p>after</p>\n<!-- /wp:paragraph -->'
+    const want = '<p>x</p>\n\n<!-- wp:footnotes /-->\n\n' + para
+    assert.equal(extractFootnotes('<p>x</p>' + list + para, doc).content, want)
+    assert.equal(extractFootnotes('<p>x</p>' + list + '\n' + para, doc).content, want)
+    assert.equal(extractFootnotes('<p>x</p>' + list + '\n\n' + para, doc).content, want)
+    assert.equal(extractFootnotes('<p>x</p>' + list + '  \n', doc).content, '<p>x</p>\n\n<!-- wp:footnotes /-->  \n')
+  })
+
   test('extractFootnotes leaves the rest of the saved markup byte for byte', () => {
     const html = '<hr class="wp-block-separator"/>\n<p>a<img src="x.png" alt=""/></p><ol class="wp-block-footnotes"><li id="fn-a">n</li></ol>'
     const r = extractFootnotes(html, new JSDOM('<!doctype html><body>').window.document)
