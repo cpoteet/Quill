@@ -178,6 +178,7 @@ onto it" — its children are still replayed.
 - A press in the page gutter lands on `#editor` or `#editor-wrap`, outside the contenteditable, so it drops focus and typing goes nowhere
 - The find shortcut must reject ⌃, or ⌃⌘F opens Find instead of reaching the system
 - Change bars compare against Swift's baseline, not the document the editor loaded
+- Change bars follow each block's saved origin step by step, not by its HTML
 - Tiptap 3's StarterKit adds Link, Underline, TrailingNode and ListKeymap, and all four must stay off
 - In Tiptap 3 an inherited `this.parent()` runs once per `.extend()` layer, so a wrapped extension repeats its own override
 

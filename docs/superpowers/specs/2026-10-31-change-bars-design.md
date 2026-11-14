@@ -35,8 +35,8 @@ On 2026-10-31 Chris accepted my recommendation from the mockup: right margin, gr
 
 - **Position:** right margin, 8px right of the `.ProseMirror` column's right edge. The left margin belongs to the grip, and a bar there sits against a quote's left border and reads as part of it. The right margin is clear at every window width: `#editor-wrap` keeps 24px of right padding, including below 700px, where only the left padding shrinks.
 - **Bar:** 2px wide, 1px corner radius, the full height of the block's box. Grey: `rgba(0,0,0,0.17)` light, `rgba(255,255,255,0.2)` dark. Not amber: amber already means caret, selection, drop line and links, and an amber bar would read as "selected" or as a warning.
-- **Deleted block:** a 6px grey dot in the same column, centred vertically in the gap where the block was. Several blocks deleted from one gap make one dot.
-- **Tooltip:** after a short hover delay, in Quill's existing tooltip style: "Changed since the last save" on a bar, "Removed since the last save" on a dot. The hover area is 12px wide, centred on the mark.
+- **Deleted block:** a grey dash, 10px by 2px, lying across the bar column, centred vertically in the gap where the block was. Several blocks deleted from one gap make one dash. A bar beside the dash stops 6px short of it. *(Amended 2026-11-14: it was a 6px dot, which read as the end of a bar when a deletion sat under a changed block.)*
+- **Tooltip:** after a short hover delay, in Quill's existing tooltip style: "Changed since the last save" on a bar, "Moved since the last save" on a moved block's bar, "Removed since the last save" on a deletion dash. The hover area is 12px wide, centred on the mark.
 - **The marks never take the pointer** (`pointer-events: none`). The page-gutter press handler in `editor.html` acts only when the press lands on `#editor-wrap` itself (`e.target !== wrap` returns early), so a mark that took the pointer would swallow every click beside a changed block. The tooltip is driven from a `mousemove` listener on `#editor-wrap` that hit-tests the marks' positions, the way the grip's row hover works.
 - The marks are `aria-hidden`. The unsaved-changes dot and the window's edited state remain the accessible signal.
 
@@ -44,7 +44,7 @@ On 2026-10-31 Chris accepted my recommendation from the mockup: right margin, gr
 
 - Hidden on any keypress in the editor, and shown again on the next mouse movement, the same rule as the grip (`block-grip.js`). *(My call: the mockup's one-second timer was a stand-in. With the grip's rule, nothing reappears while the author pauses mid-sentence with the mouse still.)*
 - Fade out in about 0.12s and in over about 0.35s.
-- Never while code view is active, while an overlay is open (`_overlayOpen()`), or while a grip drag is in progress. They redraw when the drag ends: a moved block gets a bar at its new place and leaves a dot at its old one.
+- Never while code view is active, while an overlay is open (`_overlayOpen()`), or while a grip drag is in progress. They redraw when the drag ends: a moved block gets a bar at its new place. *(Amended 2026-11-14, cpoteet/Quill#28: the bar says "Moved since the last save" and the old place gets no dot; see `2026-11-14-change-bars-moves-design.md`.)*
 - Never while Swift reports the body as clean (`bodyIsDirty` false), whatever the comparison finds. This guards the anti-goal above if the baseline parse ever differs from the loaded document.
 
 ### What they compare against

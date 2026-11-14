@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-14 — 900 Swift tests + 2,376 JS tests (2,375 pass, 1 skipped), no failures._
+_Last updated: 2026-11-14 — 900 Swift tests + 2,411 JS tests (2,410 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -26,7 +26,7 @@ This document is the authoritative reference for Quill's automated test suite an
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (530 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
-11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
+11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (94 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
 14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (105 tests — live Tiptap editor in jsdom)
@@ -3820,11 +3820,11 @@ From the branch review on 2026-10-31.
 | `a drag near the bottom edge scrolls down` | |
 | `the tooltip names the block, and a heading adds the section hint` | "Heading 2 · Drag to move, ⌘ for the section" on a heading, "Paragraph · Drag to move" on a paragraph, shown after a delay and hidden on `mouseleave` |
 
-## JS change bar tests (59 tests)
+## JS change bar tests (94 tests)
 
 File: `Scripts/test-editor-change-bars.js`
-Editor files: `Sources/QuillKit/Resources/change-bars.js`, `editor.html` (`_buildChangeBaseline`, `_blockKey`, `_changeKeyOf`, `setChangeBaseline`, `setBodyDirty`, `_changeMarks`), `block-grip.js` (`isGripHidingKey`)
-Spec: `docs/superpowers/specs/2026-10-31-change-bars-design.md`
+Editor files: `Sources/QuillKit/Resources/change-bars.js`, `editor.html` (`_buildChangeBaseline`, `_blockKey`, `_changeKeyOf`, `setChangeBaseline`, `setBodyDirty`, `_changeMarks`, `_trackMove`, the `movedBlocks` plugin), `block-grip.js` (`isGripHidingKey`)
+Spec: `docs/superpowers/specs/2026-10-31-change-bars-design.md`; moves: `docs/superpowers/specs/2026-11-14-change-bars-moves-design.md`
 
 jsdom has no layout, so these check which blocks are marked, the gating and the overlay's structure and state, not where the marks land. Placement, the tooltip and the gutter click are checked by hand (§7.29).
 
@@ -3849,7 +3849,7 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 | `inserting at the top marks only the new block` | |
 | `deleting a block leaves a dot and no bars` | |
 | `deleting two adjacent blocks leaves one dot` | |
-| `a moved block: a bar at the new place, a dot at the old` | Moved across three blocks, so the LCS has no tie |
+| `a moved block: a moved bar at the new place and no dot at the old` | Moved across three blocks, so the LCS has no tie; the block is in `moved` |
 | `undo back to the original: no marks` | |
 | `a change inside a Group marks the Group` | |
 | `editing a footnote marks the footnotes list` | |
@@ -3894,7 +3894,7 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 
 ---
 
-### `changedBlocks, where the marks fall` (9 tests)
+### `changedBlocks, where the marks fall` (16 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3904,19 +3904,61 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 | `replacing a block marks the new one and leaves no dot` | |
 | `deleting one of two identical paragraphs leaves a dot, not a bar` | |
 | `adding a copy of a paragraph marks one of the two` | |
-| `swapping two neighbours marks exactly one block and leaves one dot` | A block move through `moveTopLevelBlocks` |
+| `swapping two neighbours with no hint marks one block as moved and leaves no dot` | A block move through `moveTopLevelBlocks`; with no hint the tie goes to the block first in the new order, as before cpoteet/Quill#28 |
+| `a swap marks the block the author moved` | Either neighbour, whichever `known` flags as moved; both flagged falls back to the unflagged result |
+| `blocks the author never moved are matched first` | `C B A` from `A B C` with A and C moved: B, never moved, is not marked |
+| `a two-block run moved past two blocks marks the run the author moved` | An equal-length tie between two runs |
+| `a moved block that is then edited is changed, not moved, and leaves no dot` | With its origin known; without it (no history) the old place gets a dot, as before |
+| `a move and a deletion from the same gap keep the dot` | A move never hides a deletion |
+| `a moved copy of an identical paragraph is still one move` | Pairing is counted per key |
+| `an edit is never a move` | |
 | `a block rewritten and another deleted beside it: one bar, no dot at the rewrite` | |
 | `the footnotes list is a block of its own, and unchanged it is not marked` | |
 
-### `overlay behaviour` (8 tests)
+### `moves through the editor` (26 tests)
+
+Through `window.moveBlock`, a grip drop on `#editor-wrap`, typing, deletion, undo and redo, so the `movedBlocks` plugin (each block's saved origin, followed through every transaction) and `_trackMove` (which blocks the author moved) are in play (cpoteet/Quill#28). Proven to fail with the grip's flag removed, with flags kept for blocks back home, and with the plugin following only a transaction's end state instead of each step (the grouped-undo test).
+
+| Test | What it checks |
+|---|---|
+| `a grip drag of Columns below a Group marks the Columns, not the Group` | The issue's case, with real `wp:columns` and `wp:group` markup |
+| `Move Block Down past one block marks the moved block, not the one it passed` | The same Columns and Group, by ⌃⌘↓ |
+| `Move Block Up marks the moved block` | |
+| `two Move Block Down presses mark only the moved block` | |
+| `a grip drop past one block marks the dragged block` | |
+| `a section moved past two blocks marks each of its blocks` | A heading and its paragraph, one bar each |
+| `editing another block after a move keeps the move mark` | The hint outlives the move transaction |
+| `a block moved back home does not steer a later move` | `_trackMove` unflags blocks back in their saved order |
+| `a move then an undo does not steer a later move` | |
+| `a footnoted paragraph moved past another is moved` | The footnotes list reorders; the paragraph's own key survives the renumbering |
+| `a Group dragged down, a paragraph edited, then moved below the Group: no dot` | The hand-check report of 2026-11-14 |
+| `an edited block moved: a changed bar and no dot` | |
+| `a moved block edited afterwards: a changed bar and no dot` | |
+| `a block the author never moved is never marked as moved` | `A G B`: G dragged below B, then A moved down; B stays unmarked |
+| `undo and redo of a move and an edit give the same marks back` | Redo puts back the same node objects, and the plugin finds their entries again |
+| `one undo that puts a block back and reverses an edit to it keeps its origin` | The undo ends on a node object no doc the plugin saw held; fails if `mapMovedBlocks` maps only `tr.doc` |
+| `a moved paragraph turned into a heading: a changed bar and no dot` | The block's opening is replaced, and it keeps its origin |
+| `a moved paragraph wrapped in a list: a changed bar and no dot` | |
+| `Enter at the start of a block marks only the new empty paragraph` | The origin goes with the text, not the new empty block |
+| `a block edited to read like another saved block does not take its place` | Known origins are reserved before any match by HTML (Codex review, 2026-11-14) |
+| `undoing Enter at the start of a moved block keeps it the moved one` | The text's entry takes the merged block back from the new empty one (Codex review, 2026-11-14) |
+| `a moved and edited block that is then deleted leaves its dot` | |
+| `random moves, edits, deletions, undo and redo keep the marks honest` | 60 seeded sequences of 20 steps, one undo step per action. Actions: moves, grip drops, typing, deletion, undo, redo, heading, list, Enter at the start or middle, join, insert. Set `CHANGE_BAR_SEEDS` and `CHANGE_BAR_STEPS` to run more. Checks: no dot unless a saved block is gone (deleted or merged); an edited paragraph is changed and never moved; an unedited marked block is moved; a never-moved block reading as saved is never marked; a new block is marked; undoing everything leaves no marks. Known gap at 2,000 × 40: edit a block, join it into the block above, undo the join, then move it, and its old place shows a dot (main shows one too) |
+| `undoing a move leaves no marks` | |
+| `a new baseline forgets earlier moves` | After a save, an old hint must not steer a new tie |
+| `loading another post forgets earlier moves` | |
+
+### `overlay behaviour` (10 tests)
 
 | Test | What it checks |
 |---|---|
 | `an edit redraws the marks on its own` | |
-| `a bar spans its block and a dot sits in the gap where a block was removed` | With stubbed rects |
+| `a bar spans its block and a dash lies across the bar column in the gap where a block was removed` | With stubbed rects: the dash is centred on the gap and on the bar column |
+| `a bar stops short of a deletion dash at its end` | At least 6px of clear space, so a bar and a dash never read as one shape |
 | `the bars sit to the right of the text column` | |
 | `hovering a bar names it after a delay, and moving off hides the name` | "Changed since the last save" |
-| `hovering a dot says what it marks` | "Removed since the last save" |
+| `hovering a moved bar says it moved` | "Moved since the last save", class `moved`, and no dot |
+| `hovering a deletion mark says what it marks` | "Removed since the last save" |
 | `a press-and-drag over a bar names nothing` | |
 | `scrolling hides the name` | |
 | `a fade during typing is drawn fresh when the pointer comes back` | The overlay fades on a keypress and holds its redraw until the pointer moves |
@@ -5093,7 +5135,8 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 
 On a new local draft, discarded afterwards, unless the step says otherwise. Spec: `docs/superpowers/specs/2026-10-31-change-bars-design.md`.
 
-- [ ] Edit a paragraph and move the mouse → a thin grey bar appears in the right margin beside that paragraph, 8px clear of the text. Delete a paragraph → a small grey dot sits in the gap where it was. Hover each for a moment → "Changed since the last save" and "Removed since the last save".
+- [ ] Edit a paragraph and move the mouse → a thin grey bar appears in the right margin beside that paragraph, 8px clear of the text. Delete a paragraph → a short grey dash lies across the bar column in the gap where it was, and next to a bar it stays clearly apart from it. Hover each for a moment → "Changed since the last save" and "Removed since the last save".
+- [ ] Put a Columns block above a Group and Save Locally (on an unsaved draft every block is new), then drag the Columns below the Group with its grip → one bar, beside the Columns, saying "Moved since the last save", and no bar on the Group and no dot. Press ⌃⌘↑ on the Columns → no marks. Press ⌃⌘↓ on a paragraph → its bar says "Moved". Type in it → "Changed", and still no dot. Edit another paragraph first, then move it below the Group → one bar on it, no dot where it was. Undo back to the start → no marks; redo → the same marks again.
 - [ ] At the narrowest window with the sidebar and inspector open, the bars stay in the right margin, clear of the text. A wide table, a long code line and a wide or full-width image stay inside the column or scroll within it, and nothing renders past the column into the bars. A 10-column table scrolls sideways inside the column, its right edge fades while there is more to the right, both edges fade partway, and only the left fades at the end. A 2-column table still fills the column's width and has no fade.
 - [ ] Click on a bar, and in the margin beside a changed block → the caret lands on that line.
 - [ ] Type → the bars fade at once. Pause with the mouse still → they stay hidden. Move the mouse → they fade back in.
@@ -5407,8 +5450,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 275 | The dragged block (or a heading's whole section) is dimmed with `.block-drag-source` from `dragstart` to `dragend`, and an edit mid-drag or the drop clears it. Left on, the dim stays on a block that is no longer being dragged | ✅ `test-editor-block-move.js` `'only the dragged block is marked, and only until the drag ends'`, `'a section marks every block in it'`, `'an edit mid-drag clears the mark'`, `'a drop clears the mark'` + 👁 §7.3 |
 | 276 | After a drop the selection must land where the author can keep working: a caret at the start of a moved paragraph, a node selection on an embed, the caret in a Group's first text block or a section's heading, and typing afterwards is its own undo step, so one ⌘Z removes the typing and not the move | ✅ `test-editor-block-move.js` `'where a drop leaves the selection'` (6 tests) |
 | 277 | The amber drop line sits on the gap nearest the pointer, is hidden over a gap that would not move the block, goes when the pointer leaves the editor or the drag ends, and only a grip drag draws it. The editor autoscrolls near its top and bottom edges and stops when the drag stops | ✅ `test-editor-block-move.js` `'the drop line and the gaps'` (6 tests), `'autoscroll and the grip tooltip'` (3 tests) + 👁 §7.3 (where the line lands needs layout) |
-| 278 | A change bar marks a changed block, and a dot marks where a block was removed, in the right place: above everything for the first block, below for the last, one dot per separate removal, a replaced block a bar and no dot. Two identical paragraphs must not hide a deletion, and a move marks one block and one dot | ✅ `test-editor-change-bars.js` `'changedBlocks, where the marks fall'` (9 tests) + 👁 §7.29 |
-| 279 | The marks draw to the right of the text column, name themselves after a delay on hover, stay quiet during a press-and-drag and on scroll, and are held while faded during typing. Under the insert and embed menus, the find bar, the table size menu and the inline image popover they are hidden and Move Block does nothing | ✅ `test-editor-change-bars.js` `'overlay behaviour'` (8 tests), `'every overlay hides the marks and blocks moves'` (5 tests) + 👁 §7.29 (placement needs layout) |
+| 278 | A change bar marks a changed block, and a dot marks where a block was removed, in the right place: above everything for the first block, below for the last, one dot per separate removal, a replaced block a bar and no dot. Two identical paragraphs must not hide a deletion. A move marks the block the author moved (grip or Move Block) with a "Moved" bar and leaves no dot; a block never moved is never marked as moved; moved and edited, in either order, is a plain bar with no dot; undo and redo give the same marks back; a dot means a saved block is gone, and a move or an edited neighbour never hides one (cpoteet/Quill#28) | ✅ `test-editor-change-bars.js` `'changedBlocks, where the marks fall'` (16 tests), `'moves through the editor'` (26 tests) + 👁 §7.29 |
+| 279 | The marks draw to the right of the text column, name themselves after a delay on hover, stay quiet during a press-and-drag and on scroll, and are held while faded during typing. Under the insert and embed menus, the find bar, the table size menu and the inline image popover they are hidden and Move Block does nothing | ✅ `test-editor-change-bars.js` `'overlay behaviour'` (10 tests), `'every overlay hides the marks and blocks moves'` (5 tests) + 👁 §7.29 (placement needs layout) |
 | 280 | The Continue Writing page must not lead with a WordPress draft whose `modified_gmt` is empty (it has no edit time to rank by) unless a stash gives it one, and a time ahead of the device clock reads as now, not as a future time | ✅ `MastheadLeadTests` `aDraftWithoutAModifiedTimeLeadsOnlyThroughItsStash`, `aClockAheadOfTheDeviceReadsAsNow` + 👁 §7.2 |
 | 281 | A missed schedule is confirmed against WordPress once per schedule, and only for a post still `future`; a published or draft post is never a candidate. A fetch that fails (offline) must not be remembered as done, or the post is never marked missed until the schedule changes | ✅ `MastheadScheduledTests.onlyScheduledPostsCanBeMissed`, `MissedScheduleTests.eachPostIsFetchedOnce`, `aFailedFetchIsRetriedOnTheNextCall` + 👁 §7.2 |
 | 282 | `currentUser()` must not fail because the second request (one post, for the `unfiltered_html` link) failed. It returns the user's ID with `canPostUnfilteredHTML` `nil`, so `currentUserID` is set and the masthead tells the user's drafts from other authors'. Before, the throw left the ID `nil` and every author's drafts counted as the user's. `nil` is unknown: `AppState.loadUnfilteredHTMLCapability` asks again on its next call | ✅ `WordPressClientTests.currentUserKeepsTheIDWhenThePostsCheckFails` |

@@ -62,6 +62,16 @@ const marksAgainst = baseline => {
   return { changed: [...result.changed], removedGaps: [...result.removedGaps] }
 }
 const NONE = { changed: [], removedGaps: [] }
+// With the moved list. moves names the blocks the author moved, as [index, index of the saved
+// block it came from]; every other block's origin is left for the saved HTML to find.
+const movesAgainst = (baseline, moves) => {
+  const keyOf = win._changeKeyOf(baseline)
+  const known = moves && new Map(moves.map(([index, origin]) => [index, { origin, moved: true }]))
+  const result = win.changedBlocks(baseline, doc(), TRAILING(), keyOf, known)
+  return { changed: [...result.changed], moved: [...result.moved], removedGaps: [...result.removedGaps] }
+}
+const texts = () => Array.from(doc().content.content, n => n.textContent)
+const move = (from, to, gap) => editor.view.dispatch(win.moveTopLevelBlocks(editor.state, from, to, gap, TRAILING()).tr)
 
 const para = text => `<!-- wp:paragraph -->\n<p>${text}</p>\n<!-- /wp:paragraph -->`
 const post = (...texts) => texts.map(para).join('\n\n')
@@ -181,12 +191,11 @@ describe('changedBlocks', () => {
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1] })
   })
 
-  test('a moved block: a bar at the new place, a dot at the old', () => {
+  test('a moved block: a moved bar at the new place and no dot at the old', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
-    const result = win.moveTopLevelBlocks(editor.state, 0, 1, 4, TRAILING())
-    editor.view.dispatch(result.tr)
+    move(0, 1, 4)
     assert.equal(doc().child(3).textContent, 'A')
-    assert.deepEqual(marksAgainst(baseline), { changed: [3], removedGaps: [0] })
+    assert.deepEqual(movesAgainst(baseline), { changed: [3], moved: [3], removedGaps: [] })
   })
 
   test('undo back to the original: no marks', () => {
@@ -483,14 +492,65 @@ describe('changedBlocks, where the marks fall', () => {
     assert.equal(doc().child(marks.changed[0]).textContent, 'Same')
   })
 
-  test('swapping two neighbours marks exactly one block and leaves one dot', () => {
+  test('swapping two neighbours with no hint marks one block as moved and leaves no dot', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
-    const result = win.moveTopLevelBlocks(editor.state, 0, 1, 2, TRAILING())
-    editor.view.dispatch(result.tr)
-    assert.deepEqual(Array.from(doc().content.content, n => n.textContent), ['B', 'A', 'C'])
-    const marks = marksAgainst(baseline)
+    move(0, 1, 2)
+    assert.deepEqual(texts(), ['B', 'A', 'C'])
+    assert.deepEqual(movesAgainst(baseline), { changed: [0], moved: [0], removedGaps: [] })
+  })
+
+  test('a swap marks the block the author moved', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    move(0, 1, 2)
+    assert.deepEqual(movesAgainst(baseline, [[1, 0]]), { changed: [1], moved: [1], removedGaps: [] }, 'A moved')
+    assert.deepEqual(movesAgainst(baseline, [[0, 1]]), { changed: [0], moved: [0], removedGaps: [] }, 'B moved')
+    assert.deepEqual(movesAgainst(baseline, [[0, 1], [1, 0]]), { changed: [0], moved: [0], removedGaps: [] }, 'both moved: no preference')
+  })
+
+  test('blocks the author never moved are matched first', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    move(0, 1, 2)
+    move(2, 3, 0)
+    assert.deepEqual(texts(), ['C', 'B', 'A'])
+    assert.deepEqual(movesAgainst(baseline, [[0, 2], [2, 0]]), { changed: [0, 2], moved: [0, 2], removedGaps: [] }, 'B was never moved')
+  })
+
+  test('a two-block run moved past two blocks marks the run the author moved', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D', 'E'))
+    move(0, 2, 4)
+    assert.deepEqual(texts(), ['C', 'D', 'A', 'B', 'E'])
+    assert.deepEqual(movesAgainst(baseline, [[2, 0], [3, 1]]), { changed: [2, 3], moved: [2, 3], removedGaps: [] })
+  })
+
+  test('a moved block that is then edited is changed, not moved, and leaves no dot', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
+    move(0, 1, 4)
+    typeInto(3, 'x')
+    assert.deepEqual(movesAgainst(baseline), { changed: [3], moved: [], removedGaps: [0] }, 'not known to be moved: a dot')
+    assert.deepEqual(movesAgainst(baseline, [[3, 0]]), { changed: [3], moved: [], removedGaps: [] }, 'moved from A: no dot')
+  })
+
+  test('a move and a deletion from the same gap keep the dot', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
+    move(0, 1, 4)
+    deleteBlocks(0, 1)
+    assert.deepEqual(texts(), ['C', 'D', 'A'])
+    assert.deepEqual(movesAgainst(baseline), { changed: [2], moved: [2], removedGaps: [0] })
+  })
+
+  test('a moved copy of an identical paragraph is still one move', () => {
+    const baseline = loadWithBaseline(post('Same', 'A', 'B', 'Same'))
+    move(0, 1, 4)
+    const marks = movesAgainst(baseline)
     assert.equal(marks.changed.length, 1)
-    assert.equal(marks.removedGaps.length, 1)
+    assert.deepEqual(marks.moved, marks.changed)
+    assert.deepEqual(marks.removedGaps, [])
+  })
+
+  test('an edit is never a move', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    typeInto(1, 'x')
+    assert.deepEqual(movesAgainst(baseline), { changed: [1], moved: [], removedGaps: [] })
   })
 
   test('a block rewritten and another deleted beside it: one bar, no dot at the rewrite', () => {
@@ -505,6 +565,367 @@ describe('changedBlocks, where the marks fall', () => {
     const baseline = loadWithBaseline(footnotedPost, footnotes)
     typeInto(0, 'x')
     assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [] })
+  })
+})
+
+describe('moves through the editor', () => {
+  const marks = () => {
+    const result = win._changeMarks()
+    return { changed: [...result.changed], moved: [...result.moved], removedGaps: [...result.removedGaps] }
+  }
+  const open = html => {
+    win.setContent(html, '[]')
+    win.setChangeBaseline(html, '[]')
+    win.setBodyDirty(true)
+  }
+  const caretIn = index => editor.commands.setTextSelection(startOf(index) + 1)
+  const gripDrop = (from, to) => {
+    const transfer = { clearData() {}, setData() {}, setDragImage() {} }
+    win.gripDragStart(editor.view, { dataTransfer: transfer }, { from, to })
+    const drop = new win.Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'clientY', { value: 100 })
+    win.document.getElementById('editor-wrap').dispatchEvent(drop)
+  }
+  afterEach(() => win.setBodyDirty(false))
+
+  const columns = `<!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column">${para('Left')}</div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->`
+  const hero = `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">${para('Hero')}</div>\n<!-- /wp:group -->`
+  const names = () => Array.from(doc().content.content, n => n.type.name)
+
+  test('a grip drag of Columns below a Group marks the Columns, not the Group', () => {
+    open([columns, hero].join('\n\n'))
+    const [c, g] = names()
+    gripDrop(0, 1)
+    assert.deepEqual(names(), [g, c])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
+  })
+
+  test('Move Block Down past one block marks the moved block, not the one it passed', () => {
+    open([columns, hero, para('End')].join('\n\n'))
+    const [c, g] = names()
+    caretIn(0)
+    assert.equal(win.moveBlock('down'), true)
+    assert.deepEqual(names().slice(0, 2), [g, c])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
+  })
+
+  test('Move Block Up marks the moved block', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(1)
+    assert.equal(win.moveBlock('up'), true)
+    assert.deepEqual(texts(), ['B', 'A', 'C'])
+    assert.deepEqual(marks(), { changed: [0], moved: [0], removedGaps: [] })
+  })
+
+  test('two Move Block Down presses mark only the moved block', () => {
+    open(post('A', 'B', 'C', 'D'))
+    caretIn(0)
+    win.moveBlock('down')
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['B', 'C', 'A', 'D'])
+    assert.deepEqual(marks(), { changed: [2], moved: [2], removedGaps: [] })
+  })
+
+  test('a grip drop past one block marks the dragged block', () => {
+    open(post('Columns', 'Hero'))
+    gripDrop(0, 1)
+    assert.deepEqual(texts(), ['Hero', 'Columns'])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
+  })
+
+  test('a section moved past two blocks marks each of its blocks', () => {
+    const heading = text => `<!-- wp:heading -->\n<h2 class="wp-block-heading">${text}</h2>\n<!-- /wp:heading -->`
+    open([heading('H'), para('A'), heading('I'), para('B')].join('\n\n'))
+    gripDrop(0, 2)
+    assert.deepEqual(texts(), ['I', 'B', 'H', 'A'])
+    assert.deepEqual(marks(), { changed: [2, 3], moved: [2, 3], removedGaps: [] })
+  })
+
+  test('editing another block after a move keeps the move mark', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    typeInto(2, 'x')
+    assert.deepEqual(marks(), { changed: [1, 2], moved: [1], removedGaps: [] })
+  })
+
+  test('a block moved back home does not steer a later move', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(1)
+    win.moveBlock('up')
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['A', 'B', 'C'])
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['B', 'A', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] }, 'A moved')
+  })
+
+  test('a move then an undo does not steer a later move', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(1)
+    win.moveBlock('up')
+    editor.commands.undo()
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
+  })
+
+  test('a footnoted paragraph moved past another is moved', () => {
+    const html = `${para('One' + marker(FN1))}\n\n${para('Two' + marker(FN2))}\n\n<!-- wp:footnotes /-->`
+    const footnotes = JSON.stringify([{ id: FN1, content: 'First.' }, { id: FN2, content: 'Second.' }])
+    win.setContent(html, footnotes)
+    win.setChangeBaseline(html, footnotes)
+    win.setBodyDirty(true)
+    caretIn(0)
+    win.moveBlock('down')
+    assert.ok(texts()[1].startsWith('One'))
+    const result = marks()
+    assert.deepEqual(result.moved, [1])
+    assert.ok(!result.changed.includes(0), 'the paragraph it passed is not marked')
+    assert.deepEqual(result.removedGaps, [])
+  })
+
+  const editEnd = (index, text) => {
+    const node = doc().child(index)
+    editor.view.dispatch(editor.state.tr.insertText(text, startOf(index) + 1 + node.content.size))
+  }
+
+  test('a Group dragged down, a paragraph edited, then moved below the Group: no dot', () => {
+    open([columns, hero, para('Alpha'), para('Beta')].join('\n\n'))
+    const names0 = names()
+    gripDrop(1, 2)
+    assert.deepEqual(names(), [names0[0], 'paragraph', 'paragraph', names0[1]])
+    assert.deepEqual(marks(), { changed: [3], moved: [3], removedGaps: [] }, 'the Group moved')
+    editEnd(1, 'x')
+    assert.deepEqual(marks(), { changed: [1, 3], moved: [3], removedGaps: [] }, 'Alpha edited')
+    caretIn(1)
+    win.moveBlock('down')
+    win.moveBlock('down')
+    assert.deepEqual(texts().slice(1), ['Beta', 'Hero', 'Alphax'])
+    assert.deepEqual(marks(), { changed: [2, 3], moved: [2], removedGaps: [] }, 'Alpha changed and moved; nothing removed')
+  })
+
+  test('an edited block moved: a changed bar and no dot', () => {
+    open(post('A', 'B', 'C'))
+    editEnd(0, 'x')
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['B', 'Ax', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('a moved block edited afterwards: a changed bar and no dot', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    editEnd(1, 'x')
+    assert.deepEqual(texts(), ['B', 'Ax', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('a block the author never moved is never marked as moved', () => {
+    open(post('A', 'G', 'B'))
+    gripDrop(1, 2)
+    assert.deepEqual(texts(), ['A', 'B', 'G'])
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['B', 'A', 'G'])
+    assert.deepEqual(marks(), { changed: [1, 2], moved: [1, 2], removedGaps: [] }, 'A and G moved, B untouched')
+  })
+
+  test('undo and redo of a move and an edit give the same marks back', () => {
+    open(post('A', 'B', 'C', 'D'))
+    caretIn(0)
+    win.moveBlock('down')
+    win.moveBlock('down')
+    editEnd(2, 'x')
+    const before = marks()
+    assert.deepEqual(before, { changed: [2], moved: [], removedGaps: [] })
+    editor.commands.undo()
+    editor.commands.undo()
+    editor.commands.undo()
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [] })
+    editor.commands.redo()
+    editor.commands.redo()
+    assert.deepEqual(texts(), ['B', 'C', 'A', 'D'])
+    assert.deepEqual(marks(), { changed: [2], moved: [2], removedGaps: [] }, 'redone moves')
+    editor.commands.redo()
+    assert.deepEqual(marks(), before, 'redone edit')
+  })
+
+  test('one undo that puts a block back and reverses an edit to it keeps its origin', () => {
+    open(post('A', 'B', 'C', 'D'))
+    caretIn(1)
+    win.moveBlock('down')
+    editEnd(2, 'x')
+    editor.view.dispatch(editor.state.tr.setMeta('closeHistory$', true))
+    editEnd(2, 'y')
+    deleteBlocks(2, 3)
+    assert.deepEqual(texts(), ['A', 'C', 'D'])
+    editor.commands.undo()
+    assert.deepEqual(texts(), ['A', 'C', 'Bx', 'D'], 'the edit and the deletion were one undo step')
+    assert.deepEqual(marks(), { changed: [2], moved: [], removedGaps: [] })
+  })
+
+  test('a moved paragraph turned into a heading: a changed bar and no dot', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    caretIn(1)
+    editor.commands.setNode('heading', { level: 2 })
+    assert.equal(doc().child(1).type.name, 'heading')
+    assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('a moved paragraph wrapped in a list: a changed bar and no dot', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    caretIn(1)
+    editor.commands.toggleBulletList()
+    assert.equal(doc().child(1).type.name, 'bulletList')
+    assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('Enter at the start of a block marks only the new empty paragraph', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(1)
+    editor.commands.splitBlock()
+    assert.deepEqual(texts(), ['A', '', 'B', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('a block edited to read like another saved block does not take its place', () => {
+    open(post('A', 'B', 'C'))
+    editor.view.dispatch(editor.state.tr.insertText('C', startOf(0) + 1, startOf(0) + 2))
+    editor.view.dispatch(editor.state.tr.insertText('D', startOf(2) + 1, startOf(2) + 2))
+    assert.deepEqual(texts(), ['C', 'B', 'D'])
+    assert.deepEqual(marks(), { changed: [0, 2], moved: [], removedGaps: [] })
+  })
+
+  test('undoing Enter at the start of a moved block keeps it the moved one', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
+    editor.commands.setTextSelection(startOf(1) + 1)
+    editor.commands.splitBlock()
+    editor.view.dispatch(editor.state.tr.setMeta('closeHistory$', true))
+    assert.deepEqual(texts(), ['B', '', 'A', 'C'])
+    editor.commands.undo()
+    assert.deepEqual(texts(), ['B', 'A', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] }, 'after undo')
+    editor.commands.redo()
+    editor.commands.undo()
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] }, 'after redo and undo')
+  })
+
+  test('a moved and edited block that is then deleted leaves its dot', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    editEnd(1, 'x')
+    deleteBlocks(1, 2)
+    assert.deepEqual(texts(), ['B', 'C'])
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [0] })
+  })
+
+  test('random moves, edits, deletions, undo and redo keep the marks honest', () => {
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F']
+    const SEEDS = Number(process.env.CHANGE_BAR_SEEDS || 60)
+    const STEPS = Number(process.env.CHANGE_BAR_STEPS || 20)
+    const ops = ['up', 'down', 'grip', 'edit', 'delete', 'undo', 'redo', 'heading', 'list', 'split-start', 'split-mid', 'join', 'insert']
+    // A block reads as saved when it is a plain paragraph holding one letter and nothing else.
+    const asSaved = i => doc().child(i).type.name === 'paragraph' && /^[A-F]$/.test(doc().child(i).textContent)
+    const idOf = i => (doc().child(i).textContent.match(/[A-F]/) || [''])[0]
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      let state = seed * 2654435761 >>> 0
+      const random = n => { state = (state * 1664525 + 1013904223) >>> 0; return state % n }
+      open(post(...letters))
+      const touched = new Set()
+      const moved = new Set()
+      const log = []
+      for (let step = 0; step < STEPS; step++) {
+        const count = doc().childCount
+        const index = random(count)
+        const id = idOf(index)
+        const op = ops[random(ops.length)]
+        log.push(`${op} ${id || index}`)
+        const start = startOf(index)
+        const isPara = doc().child(index).type.name === 'paragraph'
+        if (op === 'up' || op === 'down') { caretIn(index); if (win.moveBlock(op)) { touched.add(id); moved.add(id) } }
+        else if (op === 'grip') { gripDrop(index, index + 1); touched.add(id); moved.add(id) }
+        else if (op === 'edit' && isPara) { editEnd(index, 'x'); touched.add(id) }
+        else if (op === 'delete' && count > 2) deleteBlocks(index, index + 1)
+        else if (op === 'undo' || op === 'redo') {
+          editor.commands[op]()
+          // Undo and redo can move or edit any block.
+          letters.forEach(l => { touched.add(l); moved.add(l) })
+        } else if (op === 'heading' && isPara) { caretIn(index); editor.commands.setNode('heading', { level: 2 }); touched.add(id) }
+        else if (op === 'list' && isPara) { caretIn(index); editor.commands.toggleBulletList(); touched.add(id) }
+        else if (op === 'split-start' && isPara) { editor.commands.setTextSelection(start + 1); editor.commands.splitBlock() }
+        else if (op === 'split-mid' && isPara && doc().child(index).content.size > 1) {
+          editor.commands.setTextSelection(start + 2); editor.commands.splitBlock(); touched.add(id)
+        } else if (op === 'join' && index > 0 && isPara && doc().child(index - 1).type.name === 'paragraph') {
+          editor.commands.setTextSelection(start + 1); editor.commands.joinBackward()
+          touched.add(id); touched.add(idOf(index - 1))
+        } else if (op === 'insert') {
+          editor.view.dispatch(editor.state.tr.insert(start, editor.schema.nodes.paragraph.create(null, editor.schema.text('new'))))
+        }
+        // One undo step per action, as a person's pauses make them (instant dispatches would merge).
+        editor.view.dispatch(editor.state.tr.setMeta('closeHistory$', true))
+        const where = `seed ${seed}: ${log.join(', ')} → ${texts().map(t => t || '∅').join(' ')}`
+        const m = marks()
+        // Gone: no block starts with the letter any more (deleted, or merged into another block).
+        const blockTexts = texts()
+        const gone = letters.filter(l => !blockTexts.some(t => t.startsWith(l))).length
+        if (!gone) assert.deepEqual(m.removedGaps, [], `a dot with no saved block gone, ${where} marks ${JSON.stringify(m)}`)
+        for (let i = 0; i < doc().childCount; i++) {
+          const t = doc().child(i).textContent
+          if (!asSaved(i) && /^[A-F]x*$/.test(t) && doc().child(i).type.name === 'paragraph') {
+            assert.ok(m.changed.includes(i) && !m.moved.includes(i), `edited ${t} must be changed, not moved, ${where}`)
+          }
+          if (asSaved(i) && m.changed.includes(i)) assert.ok(m.moved.includes(i), `unedited ${t} marked but not as moved, ${where}`)
+          if (asSaved(i) && !moved.has(t)) assert.ok(!m.changed.includes(i), `never-moved ${t} reading as saved is marked, ${where} marks ${JSON.stringify(m)}`)
+          if (!touched.has(t) && /^[A-F]$/.test(t)) assert.ok(!m.changed.includes(i), `untouched ${t} marked, ${where}`)
+          if (t === 'new' || t === '') assert.ok(m.changed.includes(i), `new block ${i} not marked, ${where}`)
+        }
+      }
+      while (editor.can().undo()) editor.commands.undo()
+      assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [] }, `undo all, seed ${seed}`)
+    }
+  })
+
+  test('undoing a move leaves no marks', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    editor.commands.undo()
+    assert.deepEqual(texts(), ['A', 'B', 'C'])
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [] })
+  })
+
+  test('a new baseline forgets earlier moves', () => {
+    open(post('A', 'B', 'C'))
+    caretIn(0)
+    win.moveBlock('down')
+    win.setChangeBaseline(post('B', 'A', 'C'), '[]')
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [] })
+    caretIn(0)
+    win.moveBlock('down')
+    assert.deepEqual(texts(), ['A', 'B', 'C'])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] }, 'B moved, not A from the earlier hint')
+  })
+
+  test('loading another post forgets earlier moves', () => {
+    open(post('A', 'B'))
+    caretIn(0)
+    win.moveBlock('down')
+    open(post('B', 'A'))
+    gripDrop(0, 1)
+    assert.deepEqual(texts(), ['A', 'B'])
+    assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] })
   })
 })
 
@@ -548,14 +969,30 @@ describe('overlay behaviour', () => {
     assert.equal(layer().querySelectorAll('.change-bar').length, 1)
   })
 
-  test('a bar spans its block and a dot sits in the gap where a block was removed', () => {
+  test('a bar spans its block and a dash lies across the bar column in the gap where a block was removed', () => {
     arrange()
     const bar = layer().querySelector('.change-bar')
     assert.equal(bar.style.top, '10px')
     assert.equal(bar.style.height, '20px')
     const dot = layer().querySelector('.change-bar-removed')
-    assert.equal(parseFloat(dot.style.top) + 3, 80)
-    assert.ok(parseFloat(dot.style.left) > parseFloat(bar.style.left) - 4)
+    assert.equal(parseFloat(dot.style.top) + 1, 80, 'centred on the gap')
+    assert.equal(parseFloat(dot.style.left) + 5, parseFloat(bar.style.left) + 1, 'centred on the bar column')
+  })
+
+  test('a bar stops short of a deletion dash at its end', () => {
+    // A moved to the end and D removed: the moved bar ends just above the dash below it.
+    win.setContent(post('B', 'C', 'A'), '[]')
+    win.setChangeBaseline(post('A', 'B', 'C', 'D'), '[]')
+    win.setBodyDirty(true)
+    stub(layer(), { top: 0, bottom: 0, left: 0, right: 0 })
+    stub(editor.view.dom, { top: 0, bottom: 300, left: 100, right: 500 })
+    ;[[10, 30], [50, 70], [90, 110]].forEach(([top, bottom], i) => stub(editor.view.nodeDOM(startOf(i)), { top, bottom, left: 100, right: 500 }))
+    win._changeBars.redraw()
+    const bar = layer().querySelector('.change-bar')
+    const dash = layer().querySelector('.change-bar-removed')
+    assert.ok(bar && dash, 'a bar on A and a dash below it')
+    const barBottom = parseFloat(bar.style.top) + parseFloat(bar.style.height)
+    assert.ok(parseFloat(dash.style.top) + 1 - barBottom >= 6, `clear space between bar (${barBottom}) and dash (${dash.style.top})`)
   })
 
   test('the bars sit to the right of the text column', () => {
@@ -577,11 +1014,29 @@ describe('overlay behaviour', () => {
     assert.ok(!tip().classList.contains('visible'))
   })
 
-  test('hovering a dot says what it marks', async () => {
+  test('hovering a moved bar says it moved', async () => {
+    win.setContent(post('A', 'B'), '[]')
+    win.setChangeBaseline(post('A', 'B'), '[]')
+    win.setBodyDirty(true)
+    editor.commands.setTextSelection(startOf(0) + 1)
+    win.moveBlock('down')
+    stub(layer(), { top: 0, bottom: 0, left: 0, right: 0 })
+    stub(editor.view.dom, { top: 0, bottom: 300, left: 100, right: 500 })
+    win._changeBars.redraw()
+    assert.equal(layer().querySelectorAll('.change-bar-removed').length, 0)
+    const bar = layer().querySelector('.change-bar')
+    assert.ok(bar.classList.contains('moved'))
+    stub(bar, { top: 10, bottom: 30, left: 508, right: 511 })
+    move(509, 20)
+    await wait(750)
+    assert.equal(tip().textContent, 'Moved since the last save')
+  })
+
+  test('hovering a deletion mark says what it marks', async () => {
     arrange()
     const dot = layer().querySelector('.change-bar-removed')
-    stub(dot, { top: 77, bottom: 83, left: 508, right: 514 })
-    move(511, 80)
+    stub(dot, { top: 79, bottom: 81, left: 504, right: 514 })
+    move(509, 80)
     await wait(750)
     assert.equal(tip().textContent, 'Removed since the last save')
     wrap().dispatchEvent(new win.MouseEvent('mouseleave'))
