@@ -9,7 +9,7 @@ The unsaved-changes dot in the close button says that a post has changed, not wh
 ## Goals
 
 - A thin grey bar in the right margin beside every top-level block that differs from the saved version, including new blocks.
-- A small dot in the right margin at each gap where a block was deleted.
+- A short dash in the right margin at each gap where a block was deleted.
 - The bars show which blocks differ from the saved version, the one the unsaved-changes dot and Revert use.
 - Undoing a change back to the saved text removes its bar.
 
@@ -35,7 +35,7 @@ On 2026-10-31 Chris accepted my recommendation from the mockup: right margin, gr
 
 - **Position:** right margin, 8px right of the `.ProseMirror` column's right edge. The left margin belongs to the grip, and a bar there sits against a quote's left border and reads as part of it. The right margin is clear at every window width: `#editor-wrap` keeps 24px of right padding, including below 700px, where only the left padding shrinks.
 - **Bar:** 2px wide, 1px corner radius, the full height of the block's box. Grey: `rgba(0,0,0,0.17)` light, `rgba(255,255,255,0.2)` dark. Not amber: amber already means caret, selection, drop line and links, and an amber bar would read as "selected" or as a warning.
-- **Deleted block:** a grey dash, 10px by 2px, lying across the bar column, centred vertically in the gap where the block was. Several blocks deleted from one gap make one dash. A bar beside the dash stops 6px short of it. *(Amended 2026-11-14: it was a 6px dot, which read as the end of a bar when a deletion sat under a changed block.)*
+- **Deleted block:** a grey dash, 10px by 2px, lying across the bar column, centred vertically in the gap where the block was. Several blocks deleted from one gap make one dash. A bar beside the dash stops 6px short of it. *(Amended 2026-11-14: it was a 6px dash, which read as the end of a bar when a deletion sat under a changed block.)*
 - **Tooltip:** after a short hover delay, in Quill's existing tooltip style: "Changed since the last save" on a bar, "Moved since the last save" on a moved block's bar, "Removed since the last save" on a deletion dash. The hover area is 12px wide, centred on the mark.
 - **The marks never take the pointer** (`pointer-events: none`). The page-gutter press handler in `editor.html` acts only when the press lands on `#editor-wrap` itself (`e.target !== wrap` returns early), so a mark that took the pointer would swallow every click beside a changed block. The tooltip is driven from a `mousemove` listener on `#editor-wrap` that hit-tests the marks' positions, the way the grip's row hover works.
 - The marks are `aria-hidden`. The unsaved-changes dot and the window's edited state remain the accessible signal.
@@ -44,12 +44,12 @@ On 2026-10-31 Chris accepted my recommendation from the mockup: right margin, gr
 
 - Hidden on any keypress in the editor, and shown again on the next mouse movement, the same rule as the grip (`block-grip.js`). *(My call: the mockup's one-second timer was a stand-in. With the grip's rule, nothing reappears while the author pauses mid-sentence with the mouse still.)*
 - Fade out in about 0.12s and in over about 0.35s.
-- Never while code view is active, while an overlay is open (`_overlayOpen()`), or while a grip drag is in progress. They redraw when the drag ends: a moved block gets a bar at its new place. *(Amended 2026-11-14, cpoteet/Quill#28: the bar says "Moved since the last save" and the old place gets no dot; see `2026-11-14-change-bars-moves-design.md`.)*
+- Never while code view is active, while an overlay is open (`_overlayOpen()`), or while a grip drag is in progress. They redraw when the drag ends: a moved block gets a bar at its new place. *(Amended 2026-11-14, cpoteet/Quill#28: the bar says "Moved since the last save" and the old place gets no dash; see `2026-11-14-change-bars-moves-design.md`.)*
 - Never while Swift reports the body as clean (`bodyIsDirty` false), whatever the comparison finds. This guards the anti-goal above if the baseline parse ever differs from the loaded document.
 
 ### What they compare against
 
-The baseline is the post's saved body as Swift holds it: `cleanContent` and `cleanFootnotes` in `PostEditorView`. That is what `isDirty` and Revert use. The two can still disagree in one direction: after an edit is undone, the editor no longer saves from the raw original HTML, so the dot can stay on with no bars showing. That is acceptable; a bar on an unchanged block is not. Comparing against the document as the editor first loaded it would be wrong in one case that matters:
+The baseline is the post's saved body as Swift holds it: `cleanContent` and `cleanFootnotes` in `PostEditorView`. That is what `isDirty` and Revert use. The two can still disagree in one direction: after an edit is undone, the editor no longer saves from the raw original HTML, so the dash can stay on with no bars showing. That is acceptable; a bar on an unchanged block is not. Comparing against the document as the editor first loaded it would be wrong in one case that matters:
 
 - **Restored unsaved changes.** When a remote post loads with an autosave stash, the editor shows the stash's content but `cleanContent` stays the server's. The bars must show the restored changes, so the author sees what the "Unsaved changes restored" toast refers to.
 
@@ -63,11 +63,12 @@ Swift sends the baseline to the editor whenever `cleanContent` or `cleanFootnote
    Not `node.eq`. Saving does not reload the editor, so after a save the baseline is the saved HTML parsed afresh, while the editor still holds the document it had before. A probe on 2026-10-31 (in the Codex review of this spec) appended a paragraph to each of the 36 fixtures, saved, reparsed the output and compared nodes. Images, galleries and accordions in 3 fixtures came back with different attributes (`rawAttrs`, `blockAttrs`), which would put false bars on them after every save. Serializing, reparsing and serializing again gave identical output for all 36, so keys built from saved HTML agree where the nodes do not. Serializing each node on its own also means a footnote renumbered by an edit elsewhere does not mark its paragraph.
 3. Between two matched nodes:
    - every unmatched current node gets a bar;
-   - if there are no unmatched current nodes but there are unmatched baseline nodes, the gap gets a dot.
+   - if there are no unmatched current nodes but there are unmatched baseline nodes, the gap gets a dash.
 
-   So an edited paragraph gets a bar and no dot, and a deleted one gets a dot.
+   So an edited paragraph gets a bar and no dash, and a deleted one gets a dash.
 4. The footnotes list is a top-level node and is compared like any other, so editing a note puts a bar beside the list.
 5. The empty paragraph Quill keeps after a final table, separator or card is ignored on both sides, because the save transform drops it.
+6. A body emptied of every saved block holds one empty paragraph, because ProseMirror cannot hold none. The author wrote none of it, so it gets no bar and the post gets one dash above it. A saved empty paragraph is not that paragraph, unchanged or with only its settings changed. Once the author types in it, it is an ordinary block again: a bar, and no dash (added 2026-11-14, after deleting a post's only image showed a "Changed" bar on the blank line).
 
 ### Placement
 
@@ -82,10 +83,10 @@ Swift sends the baseline to the editor whenever `cleanContent` or `cleanFootnote
 The comparison is a plain function that takes two ProseMirror documents and returns the changed top-level indices and the deletion gaps, so it can be tested without layout.
 
 - **Check first, before the rest of the build:** the baseline reproduces the loaded document. For every post in `Scripts/fixtures`, the baseline built from its HTML and the document `setContent` loads have the same keys. Then, without reloading the editor, edit one block, take the save output, build a baseline from it, and check that every key except the edited block's matches the document still in the editor. That is the state after every save. Add two fixtures for this check if none exist: stored footnotes out of marker order (so `FootnoteSync` reorders them on load), and a synced pattern. If any fixture fails, the bars would show on unchanged blocks; fix the parse or bring the failure back to Chris before going on.
-- Editing a paragraph: one bar, no dot.
+- Editing a paragraph: one bar, no dash.
 - Inserting a block at the top: one bar on the new block, none on the blocks below it.
-- Deleting a block: a dot in that gap and no bars. Deleting two adjacent blocks: one dot.
-- Moving a block with the grip: a bar at the new place and a dot at the old.
+- Deleting a block: a dash in that gap and no bars. Deleting two adjacent blocks: one dash.
+- Moving a block with the grip: a bar at the new place and a dash at the old.
 - Editing, then undoing back to the original: no marks.
 - A change inside a Group or Columns: one bar on the container.
 - Editing a footnote's text: a bar on the footnotes list.

@@ -167,7 +167,7 @@ describe('baseline equals the loaded document', () => {
 })
 
 describe('changedBlocks', () => {
-  test('editing a paragraph: one bar, no dot', () => {
+  test('editing a paragraph: one bar, no dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     typeInto(1, 'x')
     assert.deepEqual(marksAgainst(baseline), { changed: [1], removedGaps: [] })
@@ -179,19 +179,19 @@ describe('changedBlocks', () => {
     assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [] })
   })
 
-  test('deleting a block leaves a dot and no bars', () => {
+  test('deleting a block leaves a dash and no bars', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     deleteBlocks(1, 2)
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1] })
   })
 
-  test('deleting two adjacent blocks leaves one dot', () => {
+  test('deleting two adjacent blocks leaves one dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
     deleteBlocks(1, 3)
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1] })
   })
 
-  test('a moved block: a moved bar at the new place and no dot at the old', () => {
+  test('a moved block: a moved bar at the new place and no dash at the old', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
     move(0, 1, 4)
     assert.equal(doc().child(3).textContent, 'A')
@@ -330,7 +330,7 @@ describe('overlay', () => {
   const wrap = () => win.document.getElementById('editor-wrap')
   const key = k => win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: k, bubbles: true }))
   const move = buttons => wrap().dispatchEvent(new win.MouseEvent('mousemove', { bubbles: true, buttons, clientX: 5, clientY: 5 }))
-  // A edited, C deleted, E deleted: one bar and two dots.
+  // A edited, C deleted, E deleted: one bar and two dashes.
   function drawn() {
     win.setContent(post('A2', 'B', 'D'), '[]')
     win.setChangeBaseline(post('A', 'B', 'C', 'D', 'E'), '[]')
@@ -449,33 +449,54 @@ describe('the WebKit fixture corpus', () => {
 })
 
 describe('changedBlocks, where the marks fall', () => {
-  test('deleting the first block puts the dot above everything', () => {
+  test('deleting the first block puts the dash above everything', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     deleteBlocks(0, 1)
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [0] })
   })
 
-  test('deleting the last block puts the dot below everything', () => {
+  test('deleting the last block puts the dash below everything', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     deleteBlocks(2, 3)
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [2] })
   })
 
-  test('two removals apart from each other leave two dots', () => {
+  test('deleting every block leaves a dash, not a bar on the empty paragraph left behind', () => {
+    const baseline = loadWithBaseline(post('A', 'B'))
+    editor.view.dispatch(editor.state.tr.delete(0, doc().content.size))
+    assert.equal(doc().childCount, 1)
+    assert.equal(doc().child(0).type.name, 'paragraph')
+    assert.equal(doc().child(0).content.size, 0)
+    assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [0] })
+    typeInto(0, 'Z')
+    assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [] }, 'typed into: a bar that stands in for the removal')
+  })
+
+  test('a saved empty paragraph left on its own is not taken for the empty paragraph a deletion leaves', () => {
+    const empty = '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->'
+    let baseline = loadWithBaseline([empty, para('B')].join('\n\n'))
+    deleteBlocks(1, 2)
+    assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1] }, 'B deleted: the dash below the saved empty paragraph')
+    baseline = win._buildChangeBaseline(empty, '[]')
+    win.setContent('<!-- wp:paragraph {"anchor":"x"} -->\n<p id="x"></p>\n<!-- /wp:paragraph -->', '[]')
+    assert.deepEqual(marksAgainst(baseline), { changed: [0], removedGaps: [] }, 'an anchor added: a bar and no dash')
+  })
+
+  test('two removals apart from each other leave two dashes', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D', 'E'))
     deleteBlocks(3, 4)
     deleteBlocks(1, 2)
     assert.deepEqual(marksAgainst(baseline), { changed: [], removedGaps: [1, 2] })
   })
 
-  test('replacing a block marks the new one and leaves no dot', () => {
+  test('replacing a block marks the new one and leaves no dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     editor.view.dispatch(editor.state.tr.insertText('Z', startOf(1) + 1, startOf(1) + 2))
     assert.equal(doc().child(1).textContent, 'Z')
     assert.deepEqual(marksAgainst(baseline), { changed: [1], removedGaps: [] })
   })
 
-  test('deleting one of two identical paragraphs leaves a dot, not a bar', () => {
+  test('deleting one of two identical paragraphs leaves a dash, not a bar', () => {
     const baseline = loadWithBaseline(post('Same', 'Same', 'Other'))
     deleteBlocks(0, 1)
     const marks = marksAgainst(baseline)
@@ -492,7 +513,7 @@ describe('changedBlocks, where the marks fall', () => {
     assert.equal(doc().child(marks.changed[0]).textContent, 'Same')
   })
 
-  test('swapping two neighbours with no hint marks one block as moved and leaves no dot', () => {
+  test('swapping two neighbours with no hint marks one block as moved and leaves no dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C'))
     move(0, 1, 2)
     assert.deepEqual(texts(), ['B', 'A', 'C'])
@@ -522,15 +543,15 @@ describe('changedBlocks, where the marks fall', () => {
     assert.deepEqual(movesAgainst(baseline, [[2, 0], [3, 1]]), { changed: [2, 3], moved: [2, 3], removedGaps: [] })
   })
 
-  test('a moved block that is then edited is changed, not moved, and leaves no dot', () => {
+  test('a moved block that is then edited is changed, not moved, and leaves no dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
     move(0, 1, 4)
     typeInto(3, 'x')
-    assert.deepEqual(movesAgainst(baseline), { changed: [3], moved: [], removedGaps: [0] }, 'not known to be moved: a dot')
-    assert.deepEqual(movesAgainst(baseline, [[3, 0]]), { changed: [3], moved: [], removedGaps: [] }, 'moved from A: no dot')
+    assert.deepEqual(movesAgainst(baseline), { changed: [3], moved: [], removedGaps: [0] }, 'not known to be moved: a dash')
+    assert.deepEqual(movesAgainst(baseline, [[3, 0]]), { changed: [3], moved: [], removedGaps: [] }, 'moved from A: no dash')
   })
 
-  test('a move and a deletion from the same gap keep the dot', () => {
+  test('a move and a deletion from the same gap keep the dash', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
     move(0, 1, 4)
     deleteBlocks(0, 1)
@@ -553,7 +574,7 @@ describe('changedBlocks, where the marks fall', () => {
     assert.deepEqual(movesAgainst(baseline), { changed: [1], moved: [], removedGaps: [] })
   })
 
-  test('a block rewritten and another deleted beside it: one bar, no dot at the rewrite', () => {
+  test('a block rewritten and another deleted beside it: one bar, no dash at the rewrite', () => {
     const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
     typeInto(0, 'x')
     deleteBlocks(3, 4)
@@ -691,7 +712,7 @@ describe('moves through the editor', () => {
     editor.view.dispatch(editor.state.tr.insertText(text, startOf(index) + 1 + node.content.size))
   }
 
-  test('a Group dragged down, a paragraph edited, then moved below the Group: no dot', () => {
+  test('a Group dragged down, a paragraph edited, then moved below the Group: no dash', () => {
     open([columns, hero, para('Alpha'), para('Beta')].join('\n\n'))
     const names0 = names()
     gripDrop(1, 2)
@@ -706,7 +727,7 @@ describe('moves through the editor', () => {
     assert.deepEqual(marks(), { changed: [2, 3], moved: [2], removedGaps: [] }, 'Alpha changed and moved; nothing removed')
   })
 
-  test('an edited block moved: a changed bar and no dot', () => {
+  test('an edited block moved: a changed bar and no dash', () => {
     open(post('A', 'B', 'C'))
     editEnd(0, 'x')
     caretIn(0)
@@ -715,7 +736,7 @@ describe('moves through the editor', () => {
     assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
   })
 
-  test('a moved block edited afterwards: a changed bar and no dot', () => {
+  test('a moved block edited afterwards: a changed bar and no dash', () => {
     open(post('A', 'B', 'C'))
     caretIn(0)
     win.moveBlock('down')
@@ -768,7 +789,7 @@ describe('moves through the editor', () => {
     assert.deepEqual(marks(), { changed: [2], moved: [], removedGaps: [] })
   })
 
-  test('a moved paragraph turned into a heading: a changed bar and no dot', () => {
+  test('a moved paragraph turned into a heading: a changed bar and no dash', () => {
     open(post('A', 'B', 'C'))
     caretIn(0)
     win.moveBlock('down')
@@ -778,7 +799,7 @@ describe('moves through the editor', () => {
     assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
   })
 
-  test('a moved paragraph wrapped in a list: a changed bar and no dot', () => {
+  test('a moved paragraph wrapped in a list: a changed bar and no dash', () => {
     open(post('A', 'B', 'C'))
     caretIn(0)
     win.moveBlock('down')
@@ -786,6 +807,19 @@ describe('moves through the editor', () => {
     editor.commands.toggleBulletList()
     assert.equal(doc().child(1).type.name, 'bulletList')
     assert.deepEqual(marks(), { changed: [1], moved: [], removedGaps: [] })
+  })
+
+  test('Backspace on an image that was the only block leaves a dash, not a bar', () => {
+    const image = '<!-- wp:image {"id":5,"sizeSlug":"large","linkDestination":"none"} -->\n<figure class="wp-block-image size-large"><img src="https://example.com/a.jpg" alt="" class="wp-image-5"/></figure>\n<!-- /wp:image -->'
+    open(image)
+    editor.commands.setNodeSelection(startOf(0))
+    const backspace = new win.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true })
+    assert.ok(editor.view.someProp('handleKeyDown', f => f(editor.view, backspace)), 'Backspace handled')
+    assert.deepEqual(names(), ['paragraph'])
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [0] })
+    editor.commands.undo()
+    assert.deepEqual(names(), ['image'])
+    assert.deepEqual(marks(), { changed: [], moved: [], removedGaps: [] }, 'undone: no marks')
   })
 
   test('Enter at the start of a block marks only the new empty paragraph', () => {
@@ -821,7 +855,7 @@ describe('moves through the editor', () => {
     assert.deepEqual(marks(), { changed: [1], moved: [1], removedGaps: [] }, 'after redo and undo')
   })
 
-  test('a moved and edited block that is then deleted leaves its dot', () => {
+  test('a moved and edited block that is then deleted leaves its dash', () => {
     open(post('A', 'B', 'C'))
     caretIn(0)
     win.moveBlock('down')
@@ -880,7 +914,7 @@ describe('moves through the editor', () => {
         // Gone: no block starts with the letter any more (deleted, or merged into another block).
         const blockTexts = texts()
         const gone = letters.filter(l => !blockTexts.some(t => t.startsWith(l))).length
-        if (!gone) assert.deepEqual(m.removedGaps, [], `a dot with no saved block gone, ${where} marks ${JSON.stringify(m)}`)
+        if (!gone) assert.deepEqual(m.removedGaps, [], `a dash with no saved block gone, ${where} marks ${JSON.stringify(m)}`)
         for (let i = 0; i < doc().childCount; i++) {
           const t = doc().child(i).textContent
           if (!asSaved(i) && /^[A-F]x*$/.test(t) && doc().child(i).type.name === 'paragraph') {
@@ -974,9 +1008,9 @@ describe('overlay behaviour', () => {
     const bar = layer().querySelector('.change-bar')
     assert.equal(bar.style.top, '10px')
     assert.equal(bar.style.height, '20px')
-    const dot = layer().querySelector('.change-bar-removed')
-    assert.equal(parseFloat(dot.style.top) + 1, 80, 'centred on the gap')
-    assert.equal(parseFloat(dot.style.left) + 5, parseFloat(bar.style.left) + 1, 'centred on the bar column')
+    const dash = layer().querySelector('.change-bar-removed')
+    assert.equal(parseFloat(dash.style.top) + 1, 80, 'centred on the gap')
+    assert.equal(parseFloat(dash.style.left) + 5, parseFloat(bar.style.left) + 1, 'centred on the bar column')
   })
 
   test('a bar stops short of a deletion dash at its end', () => {
@@ -1034,8 +1068,8 @@ describe('overlay behaviour', () => {
 
   test('hovering a deletion mark says what it marks', async () => {
     arrange()
-    const dot = layer().querySelector('.change-bar-removed')
-    stub(dot, { top: 79, bottom: 81, left: 504, right: 514 })
+    const dash = layer().querySelector('.change-bar-removed')
+    stub(dash, { top: 79, bottom: 81, left: 504, right: 514 })
     move(509, 80)
     await wait(750)
     assert.equal(tip().textContent, 'Removed since the last save')

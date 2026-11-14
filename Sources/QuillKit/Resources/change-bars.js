@@ -141,7 +141,7 @@ function changedBlocks(baseline, current, trailingAfter, keyOf, known) {
   })
 
   // A saved block that no current block came from was removed. Removals between the same two
-  // unchanged blocks share a gap, which gets one dot unless an edit between those two stands in
+  // unchanged blocks share a gap, which gets one dash unless an edit between those two stands in
   // for them, as before. A block the author moved there stands in for nothing.
   const claimedBy = new Set(origin.filter(i => i >= 0))
   const removedGaps = []
@@ -167,6 +167,13 @@ function changedBlocks(baseline, current, trailingAfter, keyOf, known) {
     origins[entry.index] = origin[j] >= 0 ? before[origin[j]].index : null
     placed[entry.index] = inOrder[j]
   })
+  // A body emptied of every saved block is one empty paragraph, which ProseMirror puts there because
+  // a doc can't hold none. The author wrote none of it, so it stands in for nothing: one dash. A
+  // saved empty paragraph, unchanged or with only its settings changed, is not that paragraph.
+  const isEmptyParagraph = node => node.type.name === 'paragraph' && node.content.size === 0
+  const emptied = after.length === 1 && isEmptyParagraph(current.child(after[0].index)) && edited(0)
+    && (origin[0] < 0 || !isEmptyParagraph(baseline.child(before[origin[0]].index)))
+  if (emptied) return { changed: [], moved: [], removedGaps: [0], origins, placed }
   return { changed, moved, removedGaps, origins, placed }
 }
 
