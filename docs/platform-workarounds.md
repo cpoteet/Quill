@@ -143,6 +143,30 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Detail:** `docs/editor-gotchas.md`, "A click outside every line of a block seats the caret at the block's start or end".
 - **Last checked:** macOS 27.0, 2026-10-31.
 
+### Cut and Copy greyed out over a cell selection
+
+- **Bug:** ProseMirror draws a table cell selection with decorations over a collapsed DOM selection, so WebKit's editor reports nothing to copy and the context menu (and Edit menu) disable Cut and Copy, though ⌘C and ⌘X work.
+- **Code:** the `beforecopy`/`beforecut` listeners next to the copy and paste listeners in `editor.html`: they cancel the event while the focused editor holds a cell selection, which is WebKit's signal that the page handles the command.
+- **Test:** drag across two table cells, right-click inside the selection. Cut and Copy must be enabled, and Copy then paste must bring back the cells.
+- **Detail:** cpoteet/Quill#24, bug 15; `test-editor-containers.js` `'a cell selection enables Cut and Copy; a caret leaves them alone'`.
+- **Last checked:** macOS 27.2, 2026-11-13.
+
+### WebKit's own Backspace and Delete at an isolating edge
+
+- **Bug:** where an isolating node (image, Buttons, tab or accordion panel, column, Group, table cell) leaves ProseMirror's join with nothing to do, the key is not handled and WebKit's native deletion runs across the boundary; beside the image frame it lost the caret.
+- **Code:** `IsolatedEdgeKeys` (priority 1) and the edge rules in `TextblockEdges`, `editor.html`.
+- **Test:** Backspace at the start of an image caption and at the start of the first paragraph in a tab panel, then type. Nothing is deleted and the text lands where the caret was.
+- **Detail:** `docs/editor-gotchas.md`, "A container a paste or join must not cross is `isolating`".
+- **Last checked:** macOS 27.2, 2026-11-13.
+
+### A caret left beside the image frame
+
+- **Bug:** WebKit's arrow keys can put the caret in the image wrapper itself, at the editing boundary beside the `contenteditable=false` frame. ProseMirror reads that as the caption's start or end and never rewrites it, so typed text lands outside the caption, where the node view ignores it, and is never saved.
+- **Code:** the `selectionchange` listener that collapses such a caret into the figcaption, `editor.html`.
+- **Test:** on a draft with a paragraph, an uncaptioned image and a paragraph, press → at the end of the first paragraph, ↓, and ← or ↑ from the start of the last, typing a letter after each. Every letter is in the caption in code view.
+- **Detail:** `docs/editor-gotchas.md`, "An image caption must not be an editing host of its own"; `test-editor-keyboard.js` `'a caret WebKit leaves beside the image frame is moved into the caption'`.
+- **Last checked:** macOS 27.2, 2026-11-13.
+
 ## Retired
 
 - **Custom sidebar-width save** (`sidebarWidth` defaults key, written from `onGeometryChange` in `ContentView`) — removed 2026-10-25 on macOS 27.0, once `id: "main"` gave SwiftUI's own split-view key a stable name. Without it a dragged sidebar came back at its width after a quit, a rebuild and a reboot.

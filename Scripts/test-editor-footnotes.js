@@ -395,6 +395,29 @@ describe('backref chrome in the editor', () => {
     assert.match(source, /body\.cmd-held \.ProseMirror a \{[^}]*text-decoration:\s*underline/)
   })
 
+  // cpoteet/Quill#24 bug 7: the number is the item's list marker, drawn outside the item's box, so
+  // a press on it reaches the li itself left of its content. Only the ↩ had a handler. jsdom gives
+  // every box a zero rect, so a press left of 0 is on the number and one at 5 is on the note.
+  test('a press on a footnote number puts the caret after its marker, a press on the note does not', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Body text</p>\n<!-- /wp:paragraph -->', '')
+    editor.commands.setTextSelection(5)
+    win.insertFootnote()
+    editor.commands.insertContent('Note')
+    let markerEnd = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'footnoteMarker') markerEnd = pos + n.nodeSize })
+    const li = win.document.querySelector('ol.wp-block-footnotes > li')
+    const press = clientX => {
+      const inNote = editor.state.selection.from
+      const ev = new win.MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX, clientY: 0, button: 0 })
+      li.dispatchEvent(ev)
+      return { at: editor.state.selection.from === markerEnd ? 'marker' : editor.state.selection.from === inNote ? 'note' : 'elsewhere', prevented: ev.defaultPrevented }
+    }
+    const onNote = press(5)
+    const onNumber = press(-10)
+    win.document.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true }))
+    assert.deepEqual({ onNote, onNumber }, { onNote: { at: 'note', prevented: false }, onNumber: { at: 'marker', prevented: true } })
+  })
+
   test('the backref is still chrome, never serialized into post_content', () => {
     win.setContent(`<!-- wp:paragraph -->\n<p>B${marker(ID)}</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`, META(ID))
     editor.commands.insertContentAt(1, 'x')

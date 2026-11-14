@@ -711,11 +711,10 @@
       width: fit-content;
       max-width: 100%;
       line-height: 0;
-      -webkit-user-modify: read-only;
     }
-    .image-wrapper figcaption {
-      -webkit-user-modify: read-write;
-    }
+    /* No user-modify rules here: a read-write caption inside a read-only wrapper is an editing
+       host of its own, which takes focus from the editor (cpoteet/Quill#24, bugs 8 and 9). The
+       frame's contenteditable=false keeps the image uneditable. */
     .image-frame {
       position: relative;
       display: inline-block;
@@ -1821,17 +1820,42 @@
       },
     })
 
-    const ParagraphWithClass  = withBlockAttrs(withClassAttr(Paragraph))
-    const HeadingWithClass    = withBlockAttrs(withClassAttr(Heading))
     const _fnPassthrough = new Set(['Backspace', 'Delete'])
-    const BulletListWithClass = withBlockAttrs(withClassAttr(BulletList.extend({
+    // Inside a footnote every block shortcut does nothing; ⌘⌥0–⌘⌥6 ran setNode on the note and
+    // emptied it (cpoteet/Quill#24, bug 1).
+    function _noBlockKeysInFootnotes(extension) {
+      return extension.extend({
+        addKeyboardShortcuts() {
+          const orig = this.parent?.()
+          return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
+            [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
+        },
+      })
+    }
+    // A block Markdown rule typed in a one-line block (a footnote, title, button, caption or
+    // citation) turned it into that block or split its container: "# " in a caption replaced the
+    // image with a heading, "---" split a Tabs block around a rule (cpoteet/Quill#24, bug 11).
+    function _noBlockRulesInLines(extension) {
+      return extension.extend({
+        addInputRules() {
+          return (this.parent?.() || []).map(rule => {
+            const handler = rule.handler
+            rule.handler = props => (_pasteMustBeInline() ? null : handler(props))
+            return rule
+          })
+        },
+      })
+    }
+    const ParagraphWithClass  = withBlockAttrs(withClassAttr(_noBlockKeysInFootnotes(Paragraph)))
+    const HeadingWithClass    = withBlockAttrs(withClassAttr(_noBlockRulesInLines(_noBlockKeysInFootnotes(Heading))))
+    const BulletListWithClass = withBlockAttrs(withClassAttr(_noBlockRulesInLines(BulletList).extend({
       addKeyboardShortcuts() {
         const orig = this.parent?.()
         return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
           [k, (...args) => _isInFootnote() ? !_fnPassthrough.has(k) : fn(...args)]))
       },
     })))
-    const OrderedListWithClass = withBlockAttrs(withClassAttr(OrderedList.extend({
+    const OrderedListWithClass = withBlockAttrs(withClassAttr(_noBlockRulesInLines(OrderedList).extend({
       // Tiptap 3 derives `type` from list-style-type and stops rendering type="1"; keep v2's
       // definition, or a styled list saves type="I", which WordPress rejects.
       addAttributes() { return { ...this.parent?.(), type: { default: null, parseHTML: el => el.getAttribute('type') } } },
@@ -2165,7 +2189,10 @@
     }
 
     // ── ResizableImage extension ──────────────────────
+    // Isolating: the caption is inline content, so ProseMirror joined it with the textblock beside
+    // the figure and one Backspace or Delete deleted the image (cpoteet/Quill#24, bug 2).
     const ResizableImage = TiptapImage.extend({
+      isolating: true,
       addAttributes() {
         return {
           ...this.parent?.(),
@@ -2371,7 +2398,12 @@
             if (!empty) return false
             const node = $from.node($from.depth)
             if (node.type.name !== 'cite' || node.content.size > 0) return false
-            return this.editor.commands.deleteNode('cite')
+            // deleteNode alone left the caret after the quote (cpoteet/Quill#24, bug 6).
+            const at = $from.before()
+            const tr = state.tr.delete(at, at + node.nodeSize)
+            tr.setSelection(state.selection.constructor.near(tr.doc.resolve(at), -1))
+            this.editor.view.dispatch(tr.scrollIntoView())
+            return true
           },
         }
       },
@@ -2931,10 +2963,12 @@
       },
     })
 
+    // Isolating, so a join from outside never pulls a lone button's label out and drops its link.
     const ButtonsBlock = TiptapNode.create({
       name: 'buttonsBlock',
       group: 'block',
       content: 'button+',
+      isolating: true,
       priority: 210,
       parseHTML() { return [{ tag: 'div.wp-block-buttons' }] },
       renderHTML() { return ['div', { class: 'wp-block-buttons' }, 0] },
@@ -2987,6 +3021,7 @@
     const AccordionPanel = TiptapNode.create({
       name: 'accordionPanel',
       content: 'block+',
+      isolating: true,
       priority: 210,
       parseHTML() { return [{ tag: 'div.wp-block-accordion-panel' }] },
       renderHTML() { return ['div', { role: 'region', class: 'wp-block-accordion-panel' }, 0] },
@@ -3052,6 +3087,7 @@
     const TabPanel = TiptapNode.create({
       name: 'tabPanel',
       content: 'block+',
+      isolating: true,
       priority: 210,
       addAttributes() { return { label: { default: '' } } },
       parseHTML() { return [{ tag: 'section.wp-block-tab-panel' }] },
@@ -3661,20 +3697,15 @@
         this.backArrow.setAttribute('aria-label', 'Back to content')
         this.backArrow.addEventListener('mousedown', e => {
           e.preventDefault()
-          const fnId = this.node.attrs.fnId
-          let markerPos = null
-          let markerSize = 0
-          this.editor.state.doc.descendants((n, pos) => {
-            if (n.type.name === 'footnoteMarker' && n.attrs.fnId === fnId) {
-              markerPos = pos
-              markerSize = n.nodeSize
-              return false
-            }
-            return true
-          })
-          if (markerPos !== null) {
-            this.editor.chain().focus().setTextSelection(markerPos + markerSize).scrollIntoView().run()
-          }
+          this._jumpToMarker()
+        })
+        // The number is the item's list marker, drawn outside its box, so a press on it lands on
+        // the li itself, left of the content (cpoteet/Quill#24, bug 7).
+        this.dom.addEventListener('mousedown', e => {
+          if (e.target !== this.dom || e.button !== 0) return
+          if (e.clientX >= this.dom.getBoundingClientRect().left) return
+          e.preventDefault()
+          this._jumpToMarker()
         })
 
         this.dom.appendChild(this.contentDOM)
@@ -3686,6 +3717,17 @@
         this.dom.classList.toggle('fn-item-empty', node.content.size === 0)
       }
 
+      _jumpToMarker() {
+        const fnId = this.node.attrs.fnId
+        let markerEnd = null
+        this.editor.state.doc.descendants((n, pos) => {
+          if (markerEnd !== null) return false
+          if (n.type.name === 'footnoteMarker' && n.attrs.fnId === fnId) markerEnd = pos + n.nodeSize
+          return true
+        })
+        if (markerEnd !== null) this.editor.chain().focus().setTextSelection(markerEnd).scrollIntoView().run()
+      }
+
       update(node) {
         if (node.type.name !== 'footnoteItem') return false
         this.node = node
@@ -3695,7 +3737,7 @@
       }
 
       stopEvent(event) {
-        return event.target === this.backArrow
+        return event.target === this.backArrow || (event.type === 'mousedown' && event.defaultPrevented && event.target === this.dom)
       }
 
       ignoreMutation(mutation) {
@@ -3844,14 +3886,19 @@
     }
 
     // Land the caret in typable space just past the container, making that
-    // paragraph when the container is the last thing there is.
-    function _exitContainerBlock(tr, target) {
+    // paragraph when the container is the last thing there is. Enter's lift-out
+    // (`newLine`) reuses only an empty paragraph, never the start of a heading or
+    // code block, where the next keystrokes would go (cpoteet/Quill#24, bug 5).
+    function _exitContainerBlock(tr, target, { newLine = false } = {}) {
       target = target || _deletableBlockAt(editor.state.selection.$from)
       if (!target) return false
       tr = tr || editor.state.tr
       const after = tr.mapping.map(target.pos + target.node.nodeSize)
       const next = tr.doc.nodeAt(after)
-      if (!next || !next.isTextblock) tr.insert(after, editor.schema.nodes.paragraph.create())
+      const reusable = newLine
+        ? next?.type.name === 'paragraph' && next.content.size === 0
+        : next?.isTextblock
+      if (!reusable) tr.insert(after, editor.schema.nodes.paragraph.create())
       editor.view.dispatch(tr)
       editor.commands.setTextSelection(after + 1)
       editor.commands.focus()
@@ -3886,7 +3933,7 @@
       if ($from.parent.type.name === 'preformatted') {
         if ($from.parentOffset !== $from.parent.content.size) return false
         if (!$from.parent.textContent.endsWith('\n\n')) return false
-        return _exitContainerBlock(editor.state.tr.delete($from.pos - 2, $from.pos))
+        return _exitContainerBlock(editor.state.tr.delete($from.pos - 2, $from.pos), null, { newLine: true })
       }
 
       const target = _deletableBlockAt($from)
@@ -3901,7 +3948,7 @@
           && $from.index(-1) === lastLine) {
         const tr = editor.state.tr
         if (lastLine > 0) tr.delete($from.before(), $from.after())
-        return _exitContainerBlock(tr, target)
+        return _exitContainerBlock(tr, target, { newLine: true })
       }
 
       // The base keymap would split the column or panel itself, and neither can stand alone.
@@ -3946,6 +3993,128 @@
           },
           'Shift-Tab': () => true,
         }
+      },
+    })
+
+    // cpoteet/Quill#24: a title, button label, caption or citation is a textblock ProseMirror joins
+    // with its neighbour like any other, so one key moved its text out of its block: a button lost
+    // its link, two tab titles merged, a citation became quote text. Its edges never join. The image,
+    // the Buttons block and the panels are isolating, which covers joins that start outside them.
+    const EDGE_TEXTBLOCKS = new Set(['buttonBlock', 'tabButton', 'image', 'accordionHeading', 'detailsSummary', 'cite'])
+
+    // ProseMirror's findCutBefore and findCutAfter: where a join at this edge would happen, if anywhere.
+    function _cutBefore($pos) {
+      if ($pos.parent.type.spec.isolating) return null
+      for (let d = $pos.depth - 1; d >= 0; d--) {
+        if ($pos.index(d) > 0) return $pos.doc.resolve($pos.before(d + 1))
+        if ($pos.node(d).type.spec.isolating) return null
+      }
+      return null
+    }
+    function _cutAfter($pos) {
+      if ($pos.parent.type.spec.isolating) return null
+      for (let d = $pos.depth - 1; d >= 0; d--) {
+        if ($pos.indexAfter(d) < $pos.node(d).childCount) return $pos.doc.resolve($pos.after(d + 1))
+        if ($pos.node(d).type.spec.isolating) return null
+      }
+      return null
+    }
+
+    // Only an isolating node stops the cut: at the document's own edge there is nothing to join.
+    function _edgeIsolated($pos, dir) {
+      if ($pos.parent.type.spec.isolating) return true
+      for (let d = $pos.depth - 1; d > 0; d--) {
+        if (dir < 0 ? $pos.index(d) > 0 : $pos.indexAfter(d) < $pos.node(d).childCount) return false
+        if ($pos.node(d).type.spec.isolating) return true
+      }
+      return false
+    }
+
+    // An empty button gives way the way ProseMirror's join would have removed it: the Buttons block
+    // goes with its last button, and the caret lands on the text before.
+    function _deleteEmptyButton($from) {
+      const Sel = editor.state.selection.constructor
+      const buttons = $from.node(-1)
+      const tr = editor.state.tr
+      if (buttons.childCount > 1) {
+        const at = $from.before()
+        tr.delete(at, at + $from.parent.nodeSize)
+        tr.setSelection(Sel.near(tr.doc.resolve(at), $from.index(-1) > 0 ? -1 : 1))
+      } else {
+        const at = $from.before(-1)
+        tr.delete(at, at + buttons.nodeSize)
+        if (tr.doc.resolve(at).parent.content.size === 0) tr.insert(at, editor.schema.nodes.paragraph.create())
+        tr.setSelection(Sel.findFrom(tr.doc.resolve(at), -1, true) || Sel.near(tr.doc.resolve(at), 1))
+      }
+      editor.view.dispatch(tr.scrollIntoView())
+      return true
+    }
+
+    // A line after a quote with a citation joins the quote as its own line before the citation, as it
+    // would with no citation; the join used to append it to the citation.
+    function _intoQuoteBeforeCite($from, $cut) {
+      const quote = $cut.nodeBefore
+      if (!quote || !['blockquote', 'pullquote'].includes(quote.type.name)) return false
+      if (quote.lastChild?.type.name !== 'cite' || $cut.depth !== $from.depth - 1) return false
+      const line = $from.parent, from = $from.before()
+      const beforeCite = $cut.pos - 1 - quote.lastChild.nodeSize
+      editor.view.dispatch(editor.state.tr.delete(from, from + line.nodeSize).insert(beforeCite, line).scrollIntoView())
+      editor.commands.setTextSelection(beforeCite + 1)
+      return true
+    }
+
+    function _edgeBackspace() {
+      const { $from, empty } = editor.state.selection
+      if (!empty || $from.parentOffset > 0 || _isInFootnote()) return false
+      const name = $from.parent.type.name
+      if (EDGE_TEXTBLOCKS.has(name)) {
+        if ($from.parent.content.size === 0 && name === 'cite') return false
+        if (editor.commands.undoInputRule()) return true
+        if ($from.parent.content.size === 0 && name === 'buttonBlock') return _deleteEmptyButton($from)
+        return true
+      }
+      const $cut = _cutBefore($from)
+      if (!$cut) return false
+      // Backspace undoes a Markdown rule typed just before it, ahead of any join.
+      if (editor.commands.undoInputRule()) return true
+      if (_intoQuoteBeforeCite($from, $cut)) return true
+      // A details body's first line follows the summary, a title it must not join.
+      return $cut.nodeBefore?.type.name === 'detailsSummary'
+    }
+
+    function _edgeDelete() {
+      const { $from, empty } = editor.state.selection
+      if (!empty || $from.parentOffset < $from.parent.content.size || _isInFootnote()) return false
+      if (EDGE_TEXTBLOCKS.has($from.parent.type.name)) return true
+      return _cutAfter($from)?.nodeAfter?.type.name === 'cite'
+    }
+
+    const TextblockEdges = Extension.create({
+      name: 'textblockEdges',
+      priority: 260,
+      addKeyboardShortcuts() {
+        return {
+          Backspace: () => _edgeBackspace(),
+          Delete: () => _edgeDelete(),
+          // A tab title with no panel of its own is what a split made; +Tab adds both.
+          Enter: () => !_isInFootnote() && editor.state.selection.$from.parent.type.name === 'tabButton',
+        }
+      },
+    })
+
+    // After every other keymap: where an isolating node leaves the join nothing to do, the key is
+    // still consumed. Unhandled, WebKit runs its own Backspace across the boundary.
+    const IsolatedEdgeKeys = Extension.create({
+      name: 'isolatedEdgeKeys',
+      priority: 1,
+      addKeyboardShortcuts() {
+        const atEdge = dir => {
+          const { $from, empty } = editor.state.selection
+          if (!empty) return false
+          if (dir < 0 ? $from.parentOffset > 0 : $from.parentOffset < $from.parent.content.size) return false
+          return _edgeIsolated($from, dir)
+        }
+        return { Backspace: () => atEdge(-1), Delete: () => atEdge(1) }
       },
     })
 
@@ -4364,7 +4533,7 @@
     })
 
     // Extended blockquote: allows an optional cite as its last child.
-    const CustomBlockquote = withBlockAttrs(withClassAttr(Blockquote.extend({
+    const CustomBlockquote = withBlockAttrs(withClassAttr(_noBlockRulesInLines(Blockquote).extend({
       content: 'block+ cite?',
       addKeyboardShortcuts() {
         // Tiptap 3's Blockquote binds Backspace to split or merge at a quote's edge; v2 joined backward.
@@ -4668,7 +4837,7 @@
           horizontalRule: false,
           link: false, underline: false, trailingNode: false, listKeymap: false,
         }),
-        withBlockAttrs(withClassAttr(CodeBlock.extend({
+        withBlockAttrs(withClassAttr(_noBlockRulesInLines(CodeBlock).extend({
           addKeyboardShortcuts() {
             const orig = this.parent?.()
             return Object.fromEntries(Object.entries(orig || {}).map(([k, fn]) =>
@@ -4692,8 +4861,8 @@
         withBlockAttrs(withClassAttr(TableRowWithSection)),
         withBlockAttrs(withClassAttr(TableHeader.extend({ addAttributes: _cellAttrsAsV2 }))),
         withBlockAttrs(withClassAttr(TableCell.extend({ addAttributes: _cellAttrsAsV2 }))),
-        withBlockAttrs(withClassAttr(HorizontalRule)),
-        withBlockAttrs(ResizableImage).configure({ inline: false }),
+        withBlockAttrs(withClassAttr(_noBlockRulesInLines(HorizontalRule))),
+        withBlockAttrs(_noBlockRulesInLines(ResizableImage)).configure({ inline: false }),
         withBlockAttrs(EmbedBlock),
         withBlockAttrs(GalleryBlock),
         withBlockAttrs(ColumnsBlock),
@@ -4726,7 +4895,9 @@
         Placeholder.configure({ placeholder: 'Start writing…' }),
         ContainerChrome,
         ContainerExit,
+        TextblockEdges,
         TabKey,
+        IsolatedEdgeKeys,
         SpellCheck,
         FindHighlight,
         AIOperation,
@@ -4899,6 +5070,29 @@
     // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
     for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste]]) {
       document.addEventListener(type, event => { if (editor.view.dom.contains(event.target)) handler(event) }, true)
+    }
+    // WebKit's arrow keys can leave the caret in an image wrapper itself, beside the frame: an
+    // editing boundary now that the caption is not its own editing host. ProseMirror reads that as
+    // the caption's start or end, which looks the same to it, so it never rewrites the DOM selection,
+    // and what is typed lands outside the caption, where the node view ignores it and it is never
+    // saved. The caret goes into the caption, where ProseMirror already has it.
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection()
+      if (!sel || !sel.isCollapsed || !sel.anchorNode?.classList?.contains('image-wrapper')) return
+      const wrapper = sel.anchorNode
+      const caption = wrapper.querySelector(':scope > figcaption')
+      if (!caption || !editor.view.dom.contains(wrapper)) return
+      const afterCaption = sel.anchorOffset > Array.prototype.indexOf.call(wrapper.childNodes, caption)
+      sel.collapse(caption, afterCaption ? caption.childNodes.length : 0)
+    })
+    // A cell selection is decorations over a collapsed DOM selection, so WebKit greyed out the
+    // context menu's Cut and Copy. Cancelling beforecopy/beforecut is WebKit's signal that the page
+    // will handle them; ProseMirror's copy and cut then run as for ⌘C (cpoteet/Quill#24, bug 15).
+    // The event targets the DOM selection's node, which may be outside the editor, so it is not checked.
+    for (const type of ['beforecopy', 'beforecut']) {
+      document.addEventListener(type, event => {
+        if (editor.view.hasFocus() && editor.state.selection.$anchorCell) event.preventDefault()
+      }, true)
     }
 
     function setImageAlignment(value) {

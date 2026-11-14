@@ -116,6 +116,7 @@ onto it" — its children are still replayed.
 - `formatHTML`'s `BLOCK` set changes affect ALL existing content wrapped in that tag, not just the new case motivating the change
 - Every block insert goes through `_blockInsertChain()`, because a block inserted into an accordion heading, tab title or button splits its container
 - A container a paste or join must not cross is `isolating`, or ProseMirror replaces or merges it
+- An image caption must not be an editing host of its own
 - Gap-cursor styling, not doc-model surgery, for the caret next to atomic block nodes
 - `marked` is a second, separate IIFE bundle — kept out of `bundle-tiptap.sh` so updating it never touches the editor bundle
 - Tiptap is bundled locally as IIFE — `type="module"`/ES `import` silently fails under `file://` in WKWebView and `editorReady` never fires

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-13 — 900 Swift tests + 2,235 JS tests (2,234 pass, 1 skipped), no failures._
+_Last updated: 2026-11-13 — 900 Swift tests + 2,281 JS tests (2,280 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -22,13 +22,13 @@ This document is the authoritative reference for Quill's automated test suite an
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (89 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (290 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (165 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (454 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (462 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
-13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (48 tests — live Tiptap editor in jsdom)
+13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (49 tests — live Tiptap editor in jsdom)
 14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (89 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
@@ -2639,7 +2639,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (165 tests)
+## JS keyboard tests (172 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2692,7 +2692,7 @@ An unhandled Tab runs WebKit's focus navigation inside the post, which lands on 
 | `Tab in a second list item still nests it` | Guard: the list keymap still runs first |
 | `Tab in a table cell still moves to the next cell` | Guard: the table keymap still runs first |
 
-### `blockquotes & cite` (4 tests)
+### `blockquotes & cite` (11 tests)
 
 | Test | What it checks |
 |---|---|
@@ -2704,6 +2704,9 @@ An unhandled Tab runs WebKit's focus navigation inside the post, which lands on 
 | `Enter on the only, empty paragraph of a quote with a cite leaves the quote and keeps its line` | The quote keeps its one (empty) line, since it needs a body, and the caret leaves to a new paragraph below |
 | `Enter on an empty paragraph just before a pullquote cite leaves the pullquote below the cite` | The same rule for a pullquote, which `_containerEnter` handles (was: each Enter added another empty line) |
 | `Enter on the only, empty paragraph of a pullquote with a cite leaves it and keeps its line` | The pullquote keeps its one (empty) line and the caret leaves to a new paragraph below |
+| `Backspace in an empty cite removes it and leaves the caret at the end of the quote` | Quote and pullquote: typing after the Backspace lands at the end of the quote's last line, not in the block after (cpoteet/Quill#24, bug 6) |
+| `Backspace right after "# " below a quote with a cite undoes the rule` | Backspace's undo of a Markdown rule comes before the join into the quote |
+| `a citation keeps its text at either edge` | Backspace at the cite's start, Delete at its end, and Delete at the end of the quote line before it change nothing and are consumed (they merged the cite into the quote text or pulled the next paragraph in) |
 
 ### `footnotes` (2 tests)
 
@@ -2712,10 +2715,12 @@ An unhandled Tab runs WebKit's focus navigation inside the post, which lands on 
 | `Enter in a footnote entry inserts a soft break and keeps text (regression: cbf3e8d)` | Footnote Enter → hardBreak, not swallowed |
 | `Backspace at the start of a footnote entry does not corrupt the doc (regression: daee820)` | Boundary backspace in footnotes |
 
-### `image captions` (2 tests)
+### `image captions` (4 tests)
 
 | Test | What it checks |
 |---|---|
+| `a caret WebKit leaves beside the image frame is moved into the caption` | A collapsed DOM selection directly in `.image-wrapper` (before the frame, between frame and caption, after the caption) is moved to the caption's start or end on `selectionchange`. Without it, text typed after → or ↓ into an uncaptioned image was drawn beside the frame and never saved. Verified in WebKit 2026-11-13 |
+| `a caption is part of the editor, not an editing host of its own` | No `-webkit-user-modify` rule in `editor.html`, and the image frame is still `contenteditable=false`. A read-write caption in a read-only wrapper was its own editing host: a click focused the figcaption, ProseMirror's `hasFocus()` went false and it ignored ⌘← and →, so Backspace ran natively and dropped the caret (cpoteet/Quill#24, bugs 8 and 9). Rule check only; jsdom has no editing hosts. Verified in WebKit 2026-11-13 |
 | `Enter in an image caption exits to a new paragraph below (regression: 91679d2)` | Caption Enter → paragraph after image |
 | `Enter in an image caption inside a blockquote stays well-formed (no image duplication)` | Nested caption Enter doesn't duplicate image |
 
@@ -2916,7 +2921,7 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `a click with no mouse detail, as a keyboard activation sends, toggles it` | Space or Return on the focused button sends `click` with `detail` 0, which toggles the menu |
 | `the press is cancelled so the editor keeps focus` | The `mousedown` is `preventDefault`ed |
 
-### `Tiptap 3 migration: keys and clicks` (13 tests)
+### `Tiptap 3 migration: keys and clicks` (15 tests)
 
 Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were read off Tiptap 2.27.3.
 
@@ -2929,10 +2934,12 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 | `a typed URL followed by a space becomes a link` | Autolink fires as on v2 |
 | `a URL pasted over selected text links that text` | Link-on-paste as on v2 |
 | `Enter then Backspace in a footnote entry` | The footnote keyboard guard, nested once per `.extend()` layer on Tiptap 3, gives v2's two documents |
-| `markdown input rules give the same document in every context` | Eight input rules (`# `, `> `, `- `, `1. `, three backticks, `---`, `**b**`, backtick code) plus Backspace-undo of `- `, in a paragraph, list item, footnote entry and table cell, typed through `handleTextInput` |
+| `markdown input rules give the same document in every context` | `---` in a footnote now stays text (it split the footnotes list around a rule on v2 too; changed on purpose, cpoteet/Quill#24 bug 11). Eight input rules (`# `, `> `, `- `, `1. `, three backticks, `---`, `**b**`, backtick code) plus Backspace-undo of `- `, in a paragraph, list item, footnote entry and table cell, typed through `handleTextInput` |
 | `Backspace at the start of a paragraph after a quote, then typing` | Joins into the quote as v2 did; Tiptap 3's Blockquote Backspace (which merged the text and put the caret after it) is off |
 | `Backspace at the start of the second paragraph in a quote, then typing` | Joins the two paragraphs as v2 did, instead of splitting the quote |
-| `Backspace at the start of a paragraph after a quote with a citation, then typing` | Pins v2's join into the `cite`, caret before the joined text |
+| `Backspace at the start of a paragraph after a quote with a citation, then typing` | The paragraph joins the quote as a line before the citation, as it does with no citation. v2 joined it into the `cite`; this value was changed on purpose (cpoteet/Quill#24, bug 10) |
+| `block Markdown rules never fire in a title, button, caption or citation` | `---`, `# `, `> `, `- `, `1. `, three backticks and `![a](b.png)` typed in a tab title, button, image caption, cite, accordion heading or details summary give the same document as typing the text plainly (`_noBlockRulesInLines`). They split the container or, in a caption, replaced the image with a heading or code block |
+| `⌘⌥0 to ⌘⌥6 in a footnote leave the note alone` | Paragraph and Heading shortcuts get the footnote guard (`_noBlockKeysInFootnotes`); they emptied the note (cpoteet/Quill#24, bug 1). jsdom is not a Mac, so the test sends Ctrl as ProseMirror's Mod |
 | `typing the next number below a lettered list continues that list` | `3. ` below `<ol type="a">` with two items joins it, as on v2 (Tiptap 3's rule joins only untyped lists); `4. ` there and `3. ` below a plain list behave as before |
 | `Delete at the end of a list item whose nested item holds two paragraphs` | v2's document; Tiptap 3's `listItemBranchingDeleteKeymap` (which outdented the branch) is off |
 | `Delete at the end of a list item whose nested item holds its own list` | v2's document and node selection |
@@ -3094,7 +3101,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (454 tests)
+## JS container tests (462 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3482,6 +3489,7 @@ Esc and double-Enter are the two ways out of a container. Both resolve through t
 | `Esc closes an open menu rather than leaving the block` | The editor keymap runs before the document-level listeners that close menus, so the menu case has to be handled explicitly |
 | `Enter twice leaves the first tab panel / a column / a details body / an accordion panel / a pullquote` | |
 | `Enter twice still lifts out of a blockquote` / `three Enters still leave a code block` | Pre-existing behaviour, unchanged |
+| `Enter on an empty last line leaves the container for a new line, never the block after it` | A quote or details body before a heading or code block: the caret lands in a new empty paragraph after the container, and an empty paragraph already there is reused (cpoteet/Quill#24, bug 5). Esc still lands in the next textblock |
 | `Enter on a panel's only empty paragraph leaves without emptying it` | |
 | `Enter on an empty line mid-column adds a line, never a column` / `…mid-panel adds a line, never a tab panel` | The base keymap's `liftEmptyBlock` would split the column or tab panel at the caret |
 | `Enter on an empty last bullet in a column ends the list, not the column` / `…in a quote ends the list, not the quote` | A paragraph in a list item is left to the list keymap |
@@ -3592,6 +3600,25 @@ The Word-style grid the table button opens instead of inserting a fixed 3×3.
 | `Escape closes it and inserts nothing` / `Escape belongs to the picker before it belongs to the editor` | |
 | `it refuses inside a footnote` | |
 | `the panel is themed for dark mode` | |
+
+### `edges of buttons, captions, titles and tab panels` (6 tests)
+
+cpoteet/Quill#24, bugs 2–4. Each case records the document, the selection type and whether the key was consumed: a key that does nothing must still be `defaultPrevented`, or WebKit runs its own Backspace across the boundary.
+
+| Test | What it checks |
+|---|---|
+| `one Backspace or Delete beside an image never deletes it or moves its caption` | A button, paragraph or uncaptioned image on either side: from outside the key selects the image, from the caption it does nothing |
+| `a button keeps its label and link at either edge, whatever sits beside it` | Tabs or a paragraph before a lone button, a paragraph after it |
+| `Backspace in an empty button still removes it, and the Buttons block with the last one` | Regression guard: the caret lands at the end of the previous button or text |
+| `no key at a tab title or tab panel edge changes how many titles and panels there are` | Enter (end and middle) in a title, Backspace and Delete at every title and panel edge |
+| `an accordion heading and a details summary keep their text at either edge` | Delete at the heading or summary end, Backspace at the start of the panel or body |
+| `joins that belong to ordinary text still happen` | Two paragraphs, two lines in one tab panel, two lines in a details body still join |
+
+### `Cut and Copy for a cell selection` (1 test)
+
+| Test | What it checks |
+|---|---|
+| `a cell selection enables Cut and Copy; a caret leaves them alone` | `beforecopy` and `beforecut` are cancelled only while a focused editor holds a cell selection (cpoteet/Quill#24, bug 15). Last in the file: once the view has had focus, later `chain().focus()` calls scroll, which jsdom cannot measure |
 
 ---
 
@@ -4188,7 +4215,7 @@ Pastes the clipboards in `Scripts/fixtures/paste/` (what WKWebView handed the ed
 
 ---
 
-## JS footnotes tests (48 tests)
+## JS footnotes tests (49 tests)
 
 File: `Scripts/test-editor-footnotes.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4204,7 +4231,7 @@ Loads the real `editor.html` in jsdom. `core/footnotes` is a dynamic block with 
 | `two footnotes` | 3 | Both bodies load in meta order, survive a round trip in order, and the markers renumber 1, 2 |
 | `inserting a brand-new footnote` | 3 | A post with none gains the delimiter and a meta entry, the marker anchors to the id core renders the backref for, and typing reaches the meta body |
 | `code view shows what will actually be saved` | 8 | Code view shows the delimiter rather than the list (`_enterCodeView` builds its own source string, so `getContent`'s extraction had to be duplicated there); entering and leaving without editing keeps the meta; the list comes back in the visual editor afterwards; a list typed in code view sends its bodies to Swift (any ID, not only `fn-<uuid>`), a typed delimiter plus list gives one delimiter and no card, and code view shows the delimiter again afterwards |
-| `backref chrome in the editor` | 8 | The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
+| `backref chrome in the editor` | 9 | A press on a footnote's number (the list marker, left of the item's box) puts the caret after its marker, as the ↩ does; a press on the note's text does not (cpoteet/Quill#24, bug 7). The trailing break stays in layout so an empty item keeps its caret (hiding it makes the item uneditable in WebKit); the backref is hidden through a node-view class rather than a `:has()` on the break, which WebKit does not re-evaluate when the break goes; the class tracks the item emptying and filling; the backref and marker opt out of the ⌘-held underline affordance, specifically enough to beat the rule they override; the backref is never serialized into `post_content` |
 | `code blocks in dark mode` | 1 | A code block's `<code>` has no inline-code shading in dark mode: `body.dark .ProseMirror code` outranked `.ProseMirror pre code` |
 | `link colour is defined once per theme` | 3 | Both themes declared as variables on `:root` and `body.dark`; prose links, footnote markers and backrefs all read the variable; nothing carries a hard-coded colour |
 
@@ -4394,7 +4421,8 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
   - [ ] Leave the cite line blank, save → no empty `<cite>` appears in the saved HTML.
   - [ ] Press Enter inside the cite → cursor exits the blockquote into a new paragraph below.
   - [ ] Press Enter at the end of a paragraph inside a blockquote → a new paragraph is created inside the blockquote (not outside it).
-  - [ ] Press Enter in an empty paragraph inside a blockquote → the empty paragraph exits the blockquote (lift out).
+  - [ ] Press Enter in an empty paragraph inside a blockquote → the empty paragraph exits the blockquote (lift out): the caret is in an empty paragraph right after the quote, even when a heading or code block follows it.
+  - [ ] Backspace at the start of a paragraph right after a quote with a cite → the paragraph becomes the quote's last line, above the cite. Backspace at the start of the cite, or Delete at its end, does nothing.
   - [ ] Press Backspace in an empty cite → the cite is deleted (not the entire blockquote).
   - [ ] Toggle blockquote off → the quote and its cite are removed cleanly.
 - [ ] Write content with curly quotes, emoji, and non-Latin scripts → save and reload → characters are preserved exactly.
@@ -4821,7 +4849,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Delete a footnote marker from the text → its entry is automatically removed from the footnotes list.
 - [ ] Press Enter inside a footnote entry → a line break (soft break) is inserted within the entry; the text is not lost or swallowed.
 - [ ] Type text in a footnote list entry → the text is preserved on save.
-- [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text.
+- [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text (just after it).
 - [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
 - [ ] Save the post → fetch the raw HTML (`?context=edit`). The content ends with `<!-- wp:footnotes /-->` and **no** list; the bodies are in `meta.footnotes`. Markers are `<sup>` elements carrying core's `<fnId>-link` id, and there is no `↩` back-link anywhere in the content — WordPress renders that itself.
 - [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry in the editor.
@@ -5386,6 +5414,19 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 301 | A list pasted at the start of the first column replaced that column, and Backspace or Delete at a column edge merged two columns or turned the next paragraph into a column. `columnBlock` and `columnsBlock` are `isolating` | ✅ `test-editor-containers.js` `'column boundaries'` (3 tests) |
 | 302 | Multi-line plain text or HTML blocks pasted into a tab label, button, details summary, accordion heading, quote citation or image caption split the block holding it (a tabs block became two around a stray paragraph). `_pasteMustBeInline()` makes both clipboard hooks flatten the paste to one line there, as in a footnote | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (13 tests) |
 | 303 | Backspace or Delete at a Group's edge unwrapped it (losing its layout and settings), merged two Groups or pulled the next paragraph in, and a list pasted into a Group holding only an empty paragraph replaced it. `groupBlock` is `isolating` | ✅ `test-editor-containers.js` `'group boundaries'` (3 tests), `test-editor-paste.js` `'a Group holding only an empty paragraph gets the list inside it'` |
+| 304 | One Backspace or Delete next to an image deleted it and moved its caption into the neighbouring text (a paragraph, heading or button), even with an empty caption. The image node is `isolating`, so the key selects the image from outside and does nothing from the caption (cpoteet/Quill#24, bug 2) | ✅ `test-editor-containers.js` `'one Backspace or Delete beside an image never deletes it or moves its caption'` + 👁 WebKit |
+| 305 | Backspace at the start of a lone button, or Delete before it, joined its label into the block before (a hidden tab panel, a paragraph) and dropped its link. `buttonsBlock` is `isolating`; an empty button still gives way on Backspace (cpoteet/Quill#24, bug 3) | ✅ `test-editor-containers.js` `'a button keeps its label and link at either edge, whatever sits beside it'`, `'Backspace in an empty button still removes it, and the Buttons block with the last one'` + 👁 WebKit |
+| 306 | Enter in a tab title added a title with no panel, and Backspace or Delete at a title or panel edge merged two titles or two panels, or selected the whole title list or panels for the next keystroke to replace. Enter in a title does nothing, `tabPanel` and `accordionPanel` are `isolating`, and `TextblockEdges` stops joins at title, summary and heading edges (cpoteet/Quill#24, bug 4) | ✅ `test-editor-containers.js` `'no key at a tab title or tab panel edge changes how many titles and panels there are'`, `'an accordion heading and a details summary keep their text at either edge'` + 👁 WebKit |
+| 307 | A key at an isolating edge that nothing handles falls through to WebKit's own Backspace or Delete, which edits the DOM across the boundary. `IsolatedEdgeKeys` (priority 1) consumes it | ✅ `test-editor-containers.js` edge tests assert `defaultPrevented` |
+| 308 | Backspace at the start of an image caption lost the caret and the next keystrokes, and the second toolbar row showed button controls with the caret in a caption: each caption was its own editing host (`-webkit-user-modify`), so ProseMirror lost focus tracking (cpoteet/Quill#24, bugs 8 and 9) | ✅ `test-editor-keyboard.js` `'a caption is part of the editor, not an editing host of its own'` + 👁 WebKit (selection readout, 2026-11-13) |
+| 309 | Clicking a footnote's number did nothing; it now puts the caret after its marker, as the ↩ does (cpoteet/Quill#24, bug 7) | ✅ `test-editor-footnotes.js` `'a press on a footnote number puts the caret after its marker, a press on the note does not'` + 👁 §7.20 |
+| 310 | With several table cells selected, the context menu greyed out Cut and Copy. Cancelling `beforecopy`/`beforecut` while a cell selection has focus tells WebKit the page handles them (cpoteet/Quill#24, bug 15) | ✅ `test-editor-containers.js` `'a cell selection enables Cut and Copy; a caret leaves them alone'` + 👁 WebKit (menu Copy, then paste) |
+| 311 | ⌘⌥0–⌘⌥6 in a footnote emptied the note (cpoteet/Quill#24, bug 1) | ✅ `test-editor-keyboard.js` `'⌘⌥0 to ⌘⌥6 in a footnote leave the note alone'` + 👁 §7.20 |
+| 312 | Block Markdown rules fired in one-line blocks: `---` split the footnotes list (bug 11), Tabs, Buttons, Accordion and Details blocks around a rule, `![a](b.png)` split them around an image, and `# `, `> ` or three backticks in a caption replaced the image | ✅ `test-editor-keyboard.js` `'block Markdown rules never fire in a title, button, caption or citation'`, `'markdown input rules give the same document in every context'` + 👁 WebKit |
+| 313 | Enter on an empty last line of a quote (and any container) put the caret at the start of the next block, so typing went into a heading or code block. It lands in a new empty line after the container (cpoteet/Quill#24, bug 5) | ✅ `test-editor-containers.js` `'Enter on an empty last line leaves the container for a new line, never the block after it'` + 👁 §7.3 |
+| 314 | Backspace in an empty cite removed it and left the caret after the quote (cpoteet/Quill#24, bug 6) | ✅ `test-editor-keyboard.js` `'Backspace in an empty cite removes it and leaves the caret at the end of the quote'` + 👁 §7.3 |
+| 315 | Backspace at the start of a paragraph after a quote with a cite joined it into the cite, and the cite's own edges joined the quote text or the next paragraph (cpoteet/Quill#24, bug 10) | ✅ `test-editor-keyboard.js` `'Backspace at the start of a paragraph after a quote with a citation, then typing'`, `'a citation keeps its text at either edge'` + 👁 §7.3 |
+| 316 | Once the caption stopped being its own editing host, → or ↓ into an image could leave WebKit's caret beside the frame, where typed text was drawn but never saved. The caret is moved into the caption | ✅ `test-editor-keyboard.js` `'a caret WebKit leaves beside the image frame is moved into the caption'` + 👁 WebKit |
 
 ---
 

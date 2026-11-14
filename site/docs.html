@@ -506,10 +506,10 @@
         <p class="docs-body">Put the cursor where you want the footnote number and click <strong>*</strong> in the toolbar. A numbered marker appears at the cursor, and a matching note is added to the list at the bottom of the post for you to type into.</p>
         <ul class="docs-list">
           <li>Footnotes are numbered in the order they appear. Adding one between two others, or deleting one, renumbers the rest.</li>
-          <li>The <strong>↩︎</strong> button after each note takes you back to its marker in the text.</li>
+          <li>The <strong>↩︎</strong> button after each note, or the note's number, takes you back to its marker in the text.</li>
           <li>To delete a footnote, delete its marker. The note goes with it. You can't delete a note from the list on its own.</li>
           <li>Press Return inside a note to start a new line in the same note.</li>
-          <li>Notes can hold bold, italic, strikethrough, inline code and links, but not images, headings, lists, tables or quotes. Those toolbar buttons are turned off while the cursor is in a note, and pasting into a note keeps only the text and inline formatting.</li>
+          <li>Notes can hold bold, italic, strikethrough, inline code and links, but not images, headings, lists, tables or quotes. Those toolbar buttons and their keyboard shortcuts are turned off while the cursor is in a note, Markdown shortcuts such as <code>---</code> stay as typed text, and pasting into a note keeps only the text and inline formatting.</li>
         </ul>
         <p class="docs-body">Quill saves footnotes the way current WordPress does, with the note text stored alongside the post rather than in its body. On your site they look exactly as they would from the WordPress editor. In <a href="#code-view" class="content-link">code view</a>, the notes aren't part of the HTML; a <code>&lt;!-- wp:footnotes /--&gt;</code> line marks where the list goes. If you type or paste a footnote list (<code>&lt;ol class="wp-block-footnotes"&gt;</code>) in code view, its notes become the post's footnotes.</p>
         <p class="docs-body">Footnotes written by older versions of Quill were stored differently. Quill leaves such a post as it is until you edit it, and the first edit moves the notes to the current format. Nothing is lost either way.</p>

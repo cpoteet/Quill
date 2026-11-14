@@ -308,6 +308,50 @@ describe('blockquotes & cite', () => {
     assert.equal(doc(), 'pullquote(paragraph(),cite("src")) | paragraph()')
     assert.equal(editor.state.selection.$from.depth, 1)
   })
+  // cpoteet/Quill#24 bug 6: the cite's Backspace removed it and left the caret after the quote.
+  test('Backspace in an empty cite removes it and leaves the caret at the end of the quote', () => {
+    for (const html of ['<blockquote><p>Q</p><cite></cite></blockquote><p>After</p>',
+                        '<figure class="wp-block-pullquote"><blockquote><p>Q</p><cite></cite></blockquote></figure><p>After</p>']) {
+      editor.commands.setContent(html, { emitUpdate: false })
+      editor.commands.setTextSelection(posOfFirst('cite') + 1)
+      key(editor.view, 'Backspace')
+      editor.view.dispatch(editor.state.tr.insertText('X'))
+      assert.equal(doc(), (html.includes('pullquote') ? 'pullquote' : 'blockquote') + '(paragraph("QX")) | paragraph("After")')
+    }
+  })
+
+  // The join into the quote must not take the place of Backspace's undo of a Markdown rule.
+  test('Backspace right after "# " below a quote with a cite undoes the rule', () => {
+    editor.commands.setContent('<blockquote><p>Q</p><cite>Who</cite></blockquote><p></p>', { emitUpdate: false })
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph' && n.content.size === 0) at = pos + 1 })
+    editor.commands.setTextSelection(at)
+    for (const ch of '# ') {
+      const { from, to } = editor.state.selection
+      if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+    }
+    const typed = doc()
+    key(editor.view, 'Backspace')
+    assert.deepEqual([typed, doc()], ['blockquote(paragraph("Q"),cite("Who")) | heading()', 'blockquote(paragraph("Q"),cite("Who")) | paragraph("# ")'])
+  })
+
+  // The same issue's mirror cases: a citation's edges never join the quote's text or the next line.
+  test('a citation keeps its text at either edge', () => {
+    const quote = 'blockquote(paragraph("Q"),cite("Who")) | paragraph("After")'
+    const html = '<blockquote><p>Q</p><cite>Who</cite></blockquote><p>After</p>'
+    const press = (pos, k) => {
+      editor.commands.setContent(html, { emitUpdate: false })
+      editor.commands.setTextSelection(pos())
+      const ev = new win.KeyboardEvent('keydown', { key: k, code: k, keyCode: k === 'Delete' ? 46 : 8, bubbles: true, cancelable: true })
+      editor.view.dom.dispatchEvent(ev)
+      return doc() + (ev.defaultPrevented ? '' : ' NOT CONSUMED')
+    }
+    assert.deepEqual({
+      backspaceAtCiteStart: press(() => posOfFirst('cite') + 1, 'Backspace'),
+      deleteAtCiteEnd: press(() => posOfFirst('cite') + 4, 'Delete'),
+      deleteAtQuoteLineEnd: press(() => posOfFirst('paragraph') + 2, 'Delete'),
+    }, { backspaceAtCiteStart: quote, deleteAtCiteEnd: quote, deleteAtQuoteLineEnd: quote })
+  })
 })
 
 describe('footnotes', () => {
@@ -336,6 +380,42 @@ describe('footnotes', () => {
 })
 
 describe('image captions', () => {
+  // cpoteet/Quill#24 bugs 8 and 9: with the wrapper read-only and the caption read-write, every
+  // caption was an editing host of its own, so a click there focused the figcaption instead of the
+  // editor. ProseMirror's hasFocus() was false, it ignored the caret moves (⌘←, →) and kept a stale
+  // selection, and WebKit's own Backspace then ran and dropped the caret. The frame's
+  // contenteditable=false is what keeps the image itself uneditable. jsdom does no editing hosts,
+  // so this asserts the rule; checked in WebKit on 2026-11-13.
+  // With the caption no longer its own editing host, WebKit's arrow keys can park the caret in the
+  // wrapper itself, beside the image frame, where ProseMirror reads it as the caption's start or end
+  // but the node view ignores what is typed: the text was drawn and never saved. The caret is put
+  // back inside the caption. jsdom never moves a caret, so the test places it and fires the event.
+  test('a caret WebKit leaves beside the image frame is moved into the caption', () => {
+    editor.commands.setContent('<p>Alpha</p><figure class="wp-block-image"><img src="x.png"><figcaption>cap</figcaption></figure><p>Omega</p>', { emitUpdate: false })
+    const wrapper = win.document.querySelector('.image-wrapper')
+    const caption = wrapper.querySelector('figcaption')
+    const place = offset => {
+      const range = win.document.createRange()
+      range.setStart(wrapper, offset)
+      range.collapse(true)
+      const sel = win.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(range)
+      win.document.dispatchEvent(new win.Event('selectionchange'))
+      const now = win.getSelection()
+      const inCaption = caption.contains(now.anchorNode)
+      const atEnd = inCaption && now.anchorNode.nodeType === 3 ? now.anchorOffset === now.anchorNode.data.length : now.anchorOffset > 0
+      return inCaption ? (atEnd ? 'caption end' : 'caption start') : 'outside the caption'
+    }
+    assert.deepEqual([place(0), place(1), place(2)], ['caption start', 'caption start', 'caption end'])
+  })
+
+  test('a caption is part of the editor, not an editing host of its own', () => {
+    const source = fs.readFileSync(htmlPath, 'utf8')
+    assert.doesNotMatch(source, /-webkit-user-modify/)
+    assert.match(source, /this\.frame\.contentEditable = 'false'/)
+  })
+
   test('Enter in an image caption exits to a new paragraph below (regression: 91679d2)', () => {
     editor.commands.setContent('<figure class="wp-block-image"><img src="x.png"><figcaption>cap</figcaption></figure>')
     editor.commands.setTextSelection(posOfFirst('image') + 1)
@@ -1674,7 +1754,8 @@ describe('Tiptap 3 migration: keys and clicks', () => {
       "footnote - b": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"- b\"))",
       "footnote 1. n": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"1. n\"))",
       "footnote ``` c": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"``` c\"))",
-      "footnote ---": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem()) | horizontalRule() | paragraph() | footnotesList(footnoteItem())",
+      // cpoteet/Quill#24 bug 11: the rule split the footnotes list around a rule; v2 did the same.
+      "footnote ---": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"---\"))",
       "footnote **b** ": "<strong>b</strong> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"b\",\" \"))",
       "footnote `c` ": "<code>c</code> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"c\",\" \"))",
       "footnote - then Backspace": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"- \"))",
@@ -1689,6 +1770,54 @@ describe('Tiptap 3 migration: keys and clicks', () => {
       "tableCell - then Backspace": "table(tableRow(tableCell(paragraph(\"- \")))) | paragraph()",
     })
   })
+  // cpoteet/Quill#24 (bug 11 and its siblings): a block-level Markdown rule typed in a one-line
+  // block turned it into that block or split its container: "# " in a caption replaced the image
+  // with a heading, "---" split a Tabs block around a rule. In these the typed text stays text.
+  test('block Markdown rules never fire in a title, button, caption or citation', () => {
+    const type = text => {
+      for (const ch of text) {
+        const { from, to } = editor.state.selection
+        if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+      }
+    }
+    const contexts = {
+      tabButton: '<div class="wp-block-tabs"><div role="tablist" class="wp-block-tab-list"><button type="button" role="tab"></button></div><div class="wp-block-tab-panels"><section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p>b</p></section></div></div>',
+      buttonBlock: '<div class="wp-block-buttons"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button"></a></div></div>',
+      image: '<figure class="wp-block-image"><img src="a.jpg"><figcaption></figcaption></figure>',
+      cite: '<blockquote><p>q</p><cite></cite></blockquote>',
+      accordionHeading: '<div role="group" class="wp-block-accordion"><div class="wp-block-accordion-item"><h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title"></span></button></h3><div role="region" class="wp-block-accordion-panel"><p>x</p></div></div></div>',
+      detailsSummary: '<details class="wp-block-details"><summary></summary><p>b</p></details>',
+    }
+    const actual = {}, expected = {}
+    for (const [name, html] of Object.entries(contexts)) {
+      for (const rule of ['---', '# h', '> q', '- b', '1. n', '``` c', '![a](b.png)']) {
+        const setup = () => { editor.commands.setContent(html, { emitUpdate: false }); editor.commands.setTextSelection(posOfFirst(name) + 1) }
+        setup(); type(rule); actual[`${name} ${rule}`] = doc()
+        setup(); editor.view.dispatch(editor.state.tr.insertText(rule)); expected[`${name} ${rule}`] = doc()
+      }
+    }
+    assert.deepEqual(actual, expected)
+  })
+
+  // cpoteet/Quill#24 bug 1: the heading and paragraph keys ran setNode on the footnote and emptied it.
+  test('⌘⌥0 to ⌘⌥6 in a footnote leave the note alone', () => {
+    const notes = []
+    for (const digit of '0123456') {
+      editor.commands.setContent('<p>body</p>', { emitUpdate: false })
+      editor.commands.setTextSelection(5)
+      win.insertFootnote()
+      editor.commands.insertContent('FootText words')
+      editor.commands.setTextSelection(editor.state.selection.from - 4)
+      editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+        // ProseMirror's Mod is ⌘ only on a Mac platform, which jsdom is not.
+        key: digit, code: 'Digit' + digit, keyCode: 48 + +digit, bubbles: true, cancelable: true, altKey: true,
+        metaKey: /Mac/.test(win.navigator.platform), ctrlKey: !/Mac/.test(win.navigator.platform),
+      }))
+      notes.push(doc())
+    }
+    assert.deepEqual(notes, Array(7).fill('paragraph("body",MARKER) | footnotesList(footnoteItem("FootText words"))'))
+  })
+
   // Found by review after the swap: Tiptap 3's Blockquote binds Backspace and ListItem brings
   // listItemBranchingDeleteKeymap, neither of which v2 had. Values read off v2.
   const typeX = () => editor.view.dispatch(editor.state.tr.insertText('X'))
@@ -1744,7 +1873,9 @@ describe('Tiptap 3 migration: keys and clicks', () => {
     caretBefore('F')
     key(editor.view, 'Backspace')
     typeX()
-    assert.equal(doc(), 'blockquote(paragraph("Q"),cite("WhoXF"))')
+    // cpoteet/Quill#24 bug 10: v2 joined the line into the citation; it now joins the quote as a
+    // line before the citation, as it does when the quote has none.
+    assert.equal(doc(), 'blockquote(paragraph("Q"),paragraph("XF"),cite("Who"))')
   })
 
   test('Delete at the end of a list item whose nested item holds two paragraphs', () => {

@@ -2486,6 +2486,31 @@ describe('leaving a container block', () => {
     assert.equal(editor.state.doc.child(0).childCount, 1)
   })
 
+  // cpoteet/Quill#24 bug 5: leaving put the caret at the start of the next block, so the next
+  // keystrokes went into a heading or code block. It lands in a new empty line after the
+  // container, as the testing plan's lift-out says; an empty paragraph already there is reused.
+  test('Enter on an empty last line leaves the container for a new line, never the block after it', () => {
+    const shape = () => editor.state.doc.content.content.map(n => n.type.name + (n.textContent ? `"${n.textContent}"` : '')).join(' | ')
+    const leave = (html, at) => {
+      editor.commands.setContent(html, { emitUpdate: false })
+      editor.commands.setTextSelection(at)
+      enter()
+      editor.view.dispatch(editor.state.tr.insertText('X'))
+      return shape()
+    }
+    assert.deepEqual({
+      quoteBeforeHeading: leave('<blockquote><p>q</p><p></p></blockquote><h2>Next</h2>', 5),
+      quoteBeforeCode: leave('<blockquote><p>q</p><p></p></blockquote><pre><code>code</code></pre>', 5),
+      detailsBeforeHeading: leave('<details class="wp-block-details"><summary>S</summary><p>b</p><p></p></details><h2>Next</h2>', 8),
+      quoteBeforeEmptyLine: leave('<blockquote><p>q</p><p></p></blockquote><p></p><h2>Next</h2>', 5),
+    }, {
+      quoteBeforeHeading: 'blockquote"q" | paragraph"X" | heading"Next"',
+      quoteBeforeCode: 'blockquote"q" | paragraph"X" | codeBlock"code"',
+      detailsBeforeHeading: 'detailsBlock"Sb" | paragraph"X" | heading"Next"',
+      quoteBeforeEmptyLine: 'blockquote"q" | paragraph"X" | heading"Next"',
+    })
+  })
+
   test('three Enters still leave a code block', () => {
     editor.commands.setContent('<pre><code>x</code></pre>', { emitUpdate: false })
     editor.commands.setTextSelection(2)
@@ -3318,5 +3343,200 @@ describe('group label and editing', () => {
     let found = false
     editor.state.doc.descendants(n => { if (n.type.name === 'groupBlock') found = true })
     assert.equal(found, false)
+  })
+})
+
+// cpoteet/Quill#24 (bugs 2–4): a button label, an image caption, a tab title and a tab panel are
+// textblocks or block containers ProseMirror would happily join with whatever sits beside them,
+// so one Backspace or Delete deleted an image, moved a button's label (and lost its link) into
+// the block before, or merged two tab titles or panels. None of these edges joins now; a key
+// that does nothing is still consumed, or WebKit's own Backspace runs beside the image frame.
+describe('edges of buttons, captions, titles and tab panels', () => {
+  const BTN = '<div class="wp-block-buttons"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://example.com">Btn</a></div></div>'
+  const BTN2 = '<div class="wp-block-buttons"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://a.example">One</a></div><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="https://b.example"></a></div></div>'
+  const IMG = cap => `<figure class="wp-block-image"><img src="a.jpg" alt="">${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`
+  const TABS = '<div class="wp-block-tabs"><div role="tablist" class="wp-block-tab-list">' +
+    '<button type="button" role="tab">TabOne</button><button type="button" role="tab">TabTwo</button></div>' +
+    '<div class="wp-block-tab-panels">' +
+    '<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p>BodyOne</p></section>' +
+    '<section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p>BodyTwo</p></section></div></div>'
+  const ACC = '<div role="group" class="wp-block-accordion"><div class="wp-block-accordion-item">' +
+    '<h3 class="wp-block-accordion-heading"><button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">Head</span></button></h3>' +
+    '<div role="region" class="wp-block-accordion-panel"><p>Panel</p></div></div></div>'
+  const DETAILS = '<details class="wp-block-details"><summary>Summ</summary><p>Body</p></details>'
+
+  const shape = () => {
+    const walk = n => n.isText ? JSON.stringify(n.text)
+      : n.type.name + (n.type.name === 'buttonBlock' && n.attrs.href ? '@' : '') + '(' + n.content.content.map(walk).join(',') + ')'
+    return editor.state.doc.content.content.map(walk).join(' | ')
+  }
+  // The nth textblock's start or end; an empty caption has no text to find by.
+  const textblock = (i, side) => {
+    const all = []
+    editor.state.doc.descendants((n, pos) => { if (n.isTextblock) all.push(side === 'start' ? pos + 1 : pos + 1 + n.content.size) })
+    return all[i]
+  }
+  const press = (k, mods = {}) => {
+    const ev = new win.KeyboardEvent('keydown', {
+      key: k, code: k, keyCode: { Backspace: 8, Delete: 46, Enter: 13 }[k], which: { Backspace: 8, Delete: 46, Enter: 13 }[k],
+      bubbles: true, cancelable: true, shiftKey: !!mods.shift,
+    })
+    editor.view.dom.dispatchEvent(ev)
+    return ev.defaultPrevented
+  }
+  // What one key at one edge does: the document, the selection's type, and whether the key was consumed.
+  const at = (html, i, k) => {
+    editor.commands.setContent(html, { emitUpdate: false })
+    editor.commands.setTextSelection(textblock(i, k === 'Backspace' ? 'start' : 'end'))
+    const prevented = press(k)
+    return `${shape()} sel=${editor.state.selection.toJSON().type}${prevented ? '' : ' NOT CONSUMED'}`
+  }
+
+  test('one Backspace or Delete beside an image never deletes it or moves its caption', () => {
+    const image = 'image("Cap")'
+    assert.deepEqual({
+      deleteAtButtonEnd: at(BTN + IMG('Cap'), 0, 'Delete'),
+      backspaceAtCaptionAfterButton: at(BTN + IMG('Cap'), 1, 'Backspace'),
+      deleteBeforeImage: at('<p>Para</p>' + IMG('Cap'), 0, 'Delete'),
+      backspaceAtCaptionAfterParagraph: at('<p>Para</p>' + IMG('Cap'), 1, 'Backspace'),
+      backspaceAfterImage: at(IMG('Cap') + '<p>Para</p>', 1, 'Backspace'),
+      deleteAtCaptionEnd: at(IMG('Cap') + '<p>Para</p>', 0, 'Delete'),
+      deleteBeforeUncaptioned: at('<p>Para</p>' + IMG(''), 0, 'Delete'),
+      backspaceInEmptyCaption: at('<p>Para</p>' + IMG(''), 1, 'Backspace'),
+      backspaceAfterUncaptioned: at(IMG('') + '<p>Para</p>', 1, 'Backspace'),
+      deleteInEmptyCaption: at(IMG('') + '<p>Para</p>', 0, 'Delete'),
+    }, {
+      deleteAtButtonEnd: `buttonsBlock(buttonBlock@("Btn")) | ${image} sel=text`,
+      backspaceAtCaptionAfterButton: `buttonsBlock(buttonBlock@("Btn")) | ${image} sel=text`,
+      deleteBeforeImage: `paragraph("Para") | ${image} sel=node`,
+      backspaceAtCaptionAfterParagraph: `paragraph("Para") | ${image} sel=text`,
+      backspaceAfterImage: `${image} | paragraph("Para") sel=node`,
+      deleteAtCaptionEnd: `${image} | paragraph("Para") sel=text`,
+      deleteBeforeUncaptioned: 'paragraph("Para") | image() sel=node',
+      backspaceInEmptyCaption: 'paragraph("Para") | image() sel=text',
+      backspaceAfterUncaptioned: 'image() | paragraph("Para") sel=node',
+      deleteInEmptyCaption: 'image() | paragraph("Para") sel=text',
+    })
+  })
+
+  test('a button keeps its label and link at either edge, whatever sits beside it', () => {
+    const tabs = 'tabsBlock(tabList(tabButton("TabOne"),tabButton("TabTwo")),tabPanels(tabPanel(paragraph("BodyOne")),tabPanel(paragraph("BodyTwo"))))'
+    const btn = 'buttonsBlock(buttonBlock@("Btn"))'
+    assert.deepEqual({
+      backspaceAtButtonAfterTabs: at(TABS + BTN, 4, 'Backspace'),
+      deleteAtLastPanelEnd: at(TABS + BTN, 3, 'Delete'),
+      backspaceAtButtonAfterParagraph: at('<p>Para</p>' + BTN, 1, 'Backspace'),
+      deleteBeforeButton: at('<p>Para</p>' + BTN, 0, 'Delete'),
+      backspaceAfterButton: at(BTN + '<p>Para</p>', 1, 'Backspace'),
+      deleteAtButtonEndBeforeParagraph: at(BTN + '<p>Para</p>', 0, 'Delete'),
+    }, {
+      backspaceAtButtonAfterTabs: `${tabs} | ${btn} sel=text`,
+      deleteAtLastPanelEnd: `${tabs} | ${btn} sel=text`,
+      backspaceAtButtonAfterParagraph: `paragraph("Para") | ${btn} sel=text`,
+      deleteBeforeButton: `paragraph("Para") | ${btn} sel=node`,
+      backspaceAfterButton: `${btn} | paragraph("Para") sel=node`,
+      deleteAtButtonEndBeforeParagraph: `${btn} | paragraph("Para") sel=text`,
+    })
+  })
+
+  test('Backspace in an empty button still removes it, and the Buttons block with the last one', () => {
+    editor.commands.setContent(BTN2, { emitUpdate: false })
+    editor.commands.setTextSelection(textblock(1, 'start'))
+    press('Backspace')
+    editor.view.dispatch(editor.state.tr.insertText('X'))
+    const second = shape()
+    editor.commands.setContent('<p>Para</p><div class="wp-block-buttons"><div class="wp-block-button"><a class="wp-block-button__link wp-element-button"></a></div></div>', { emitUpdate: false })
+    editor.commands.setTextSelection(textblock(1, 'start'))
+    press('Backspace')
+    editor.view.dispatch(editor.state.tr.insertText('X'))
+    assert.deepEqual([second, shape()], ['buttonsBlock(buttonBlock@("OneX"))', 'paragraph("ParaX")'])
+  })
+
+  test('no key at a tab title or tab panel edge changes how many titles and panels there are', () => {
+    const tabs = 'tabsBlock(tabList(tabButton("TabOne"),tabButton("TabTwo")),tabPanels(tabPanel(paragraph("BodyOne")),tabPanel(paragraph("BodyTwo"))))'
+    const doc = '<p>Para</p>' + TABS + '<p>After</p>'
+    const whole = `paragraph("Para") | ${tabs} | paragraph("After") sel=text`
+    const enterMid = () => {
+      editor.commands.setContent(doc, { emitUpdate: false })
+      editor.commands.setTextSelection(textblock(1, 'start') + 3)
+      return `${press('Enter') ? '' : 'NOT CONSUMED '}${shape()}`
+    }
+    assert.deepEqual({
+      enterAtTitleEnd: at(doc, 1, 'Enter'),
+      enterMidTitle: enterMid(),
+      deleteAtFirstTitleEnd: at(doc, 1, 'Delete'),
+      backspaceAtSecondTitle: at(doc, 2, 'Backspace'),
+      deleteAtLastTitleEnd: at(doc, 2, 'Delete'),
+      backspaceAtFirstTitle: at(doc, 1, 'Backspace'),
+      backspaceAtFirstPanel: at(doc, 3, 'Backspace'),
+      deleteAtFirstPanelEnd: at(doc, 3, 'Delete'),
+      backspaceAtSecondPanel: at(doc, 4, 'Backspace'),
+    }, {
+      enterAtTitleEnd: whole, enterMidTitle: whole.replace(' sel=text', '').replace(/^/, ''),
+      deleteAtFirstTitleEnd: whole, backspaceAtSecondTitle: whole, deleteAtLastTitleEnd: whole,
+      backspaceAtFirstTitle: whole, backspaceAtFirstPanel: whole, deleteAtFirstPanelEnd: whole,
+      backspaceAtSecondPanel: whole,
+    })
+  })
+
+  test('an accordion heading and a details summary keep their text at either edge', () => {
+    const acc = 'accordionBlock(accordionItem(accordionHeading("Head"),accordionPanel(paragraph("Panel"))))'
+    const det = 'detailsBlock(detailsSummary("Summ"),paragraph("Body"))'
+    assert.deepEqual({
+      deleteAtHeadingEnd: at(ACC, 0, 'Delete'),
+      backspaceAtPanelStart: at(ACC, 1, 'Backspace'),
+      deleteAtSummaryEnd: at(DETAILS, 0, 'Delete'),
+      backspaceAtBodyStart: at(DETAILS, 1, 'Backspace'),
+    }, {
+      deleteAtHeadingEnd: `${acc} sel=text`,
+      backspaceAtPanelStart: `${acc} sel=text`,
+      deleteAtSummaryEnd: `${det} sel=text`,
+      backspaceAtBodyStart: `${det} sel=text`,
+    })
+  })
+
+  test('joins that belong to ordinary text still happen', () => {
+    assert.deepEqual({
+      paragraphs: at('<p>One</p><p>Two</p>', 1, 'Backspace'),
+      inPanel: at(TABS.replace('<p>BodyOne</p>', '<p>BodyOne</p><p>More</p>'), 3, 'Backspace'),
+      inDetails: at(DETAILS.replace('<p>Body</p>', '<p>Body</p><p>More</p>'), 2, 'Backspace'),
+    }, {
+      paragraphs: 'paragraph("OneTwo") sel=text',
+      inPanel: 'tabsBlock(tabList(tabButton("TabOne"),tabButton("TabTwo")),tabPanels(tabPanel(paragraph("BodyOneMore")),tabPanel(paragraph("BodyTwo")))) sel=text',
+      inDetails: 'detailsBlock(detailsSummary("Summ"),paragraph("BodyMore")) sel=text',
+    })
+  })
+})
+
+// cpoteet/Quill#24 bug 15: ProseMirror draws a cell selection with decorations, so WebKit sees no
+// DOM selection and greys out the context menu's Cut and Copy, which ⌘C and ⌘X still do. WebKit
+// enables both when the page cancels beforecopy and beforecut; the copy itself is ProseMirror's.
+describe('Cut and Copy for a cell selection', () => {
+  // Last in the file: once the view has had focus, a later chain().focus() scrolls to the
+  // selection, which jsdom cannot measure (blurring again does not undo it).
+  after(() => editor.view.dom.blur())
+  const fire = type => {
+    const ev = new win.Event(type, { bubbles: true, cancelable: true })
+    win.document.body.dispatchEvent(ev)
+    return ev.defaultPrevented
+  }
+  const cells = () => {
+    const at = []
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'tableCell') at.push(pos) })
+    return at
+  }
+
+  test('a cell selection enables Cut and Copy; a caret leaves them alone', () => {
+    editor.commands.setContent('<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table>', { emitUpdate: false })
+    editor.view.dom.focus()
+    const [first, , , last] = cells()
+    editor.commands.setCellSelection({ anchorCell: first, headCell: last })
+    const withCells = { copy: fire('beforecopy'), cut: fire('beforecut'), kind: editor.state.selection.toJSON().type }
+    editor.commands.setTextSelection(first + 2)
+    const withCaret = { copy: fire('beforecopy'), cut: fire('beforecut'), kind: editor.state.selection.toJSON().type }
+    assert.deepEqual({ withCells, withCaret }, {
+      withCells: { copy: true, cut: true, kind: 'cell' },
+      withCaret: { copy: false, cut: false, kind: 'text' },
+    })
   })
 })
