@@ -131,6 +131,60 @@ describe('columns block', () => {
   })
 })
 
+// A Group is isolating for the same reason as a column: without it, Backspace or Delete at its
+// edge unwrapped it (losing its layout and settings) or merged two Groups, and a list pasted into
+// one holding only an empty paragraph replaced it.
+describe('group boundaries', () => {
+  const P = t => `<!-- wp:paragraph -->\n<p>${t}</p>\n<!-- /wp:paragraph -->`
+  const G = inner => `<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group">${inner}</div>\n<!-- /wp:group -->`
+  const shape = () => {
+    const walk = n => n.isText ? JSON.stringify(n.text) : n.type.name + '(' + n.content.content.map(walk).join(',') + ')'
+    return editor.state.doc.content.content.map(walk).join(' | ')
+  }
+  const textPos = word => {
+    let at = null
+    editor.state.doc.descendants((n, pos) => { if (at === null && n.isText && n.text === word) at = pos })
+    return at
+  }
+  const caret = (html, word, offset = 0) => { win.setContent(html); editor.commands.setTextSelection(textPos(word) + offset) }
+  const press = k => editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+    key: k, code: k, keyCode: { Backspace: 8, Delete: 46 }[k], which: { Backspace: 8, Delete: 46 }[k], bubbles: true, cancelable: true,
+  }))
+
+  test('Backspace and Delete at a Group edge leave the Group whole', () => {
+    const after = {}
+    caret(P('before') + G(P('in')), 'in'); press('Backspace'); after.backspaceAtStart = shape()
+    caret(P('before') + G(P('in')), 'before', 6); press('Delete'); after.deleteBefore = shape()
+    caret(G(P('in')) + P('after'), 'after'); press('Backspace'); after.backspaceAfter = shape()
+    caret(G(P('in')) + P('after'), 'in', 2); press('Delete'); after.deleteAtEnd = shape()
+    caret(G(P('a')) + G(P('b')), 'b'); press('Backspace'); after.backspaceAtSecondGroup = shape()
+    caret(G(G(P('x'))), 'x'); press('Backspace'); after.backspaceInNested = shape()
+    assert.deepEqual(after, {
+      backspaceAtStart: 'paragraph("before") | groupBlock(paragraph("in"))',
+      deleteBefore: 'paragraph("before") | groupBlock(paragraph("in"))',
+      backspaceAfter: 'groupBlock(paragraph("in")) | paragraph("after")',
+      deleteAtEnd: 'groupBlock(paragraph("in")) | paragraph("after")',
+      backspaceAtSecondGroup: 'groupBlock(paragraph("a")) | groupBlock(paragraph("b"))',
+      backspaceInNested: 'groupBlock(groupBlock(paragraph("x")))',
+    })
+  })
+
+  test('Backspace between two paragraphs inside a Group still joins them', () => {
+    caret(G(P('one') + P('two')), 'two'); press('Backspace')
+    assert.equal(shape(), 'groupBlock(paragraph("onetwo"))')
+  })
+
+  test('a list pasted into a Group holding only an empty paragraph stays in the Group, which keeps its layout', () => {
+    win.setContent(G(P('')))
+    editor.commands.setTextSelection(2)
+    const ev = new win.Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'clipboardData', { value: { getData: t => (t === 'text/html' ? '<ol><li>one</li><li>two</li></ol>' : t === 'text/plain' ? 'one\ntwo' : ''), types: ['text/html', 'text/plain'], files: [] } })
+    editor.view.dom.dispatchEvent(ev)
+    assert.equal(shape(), 'groupBlock(orderedList(listItem(paragraph("one")),listItem(paragraph("two"))))')
+    assert.match(win.getContent(), /^<!-- wp:group \{"layout":\{"type":"constrained"\}\} -->/)
+  })
+})
+
 // A column and the columns block are isolating, so a replace never widens past them and
 // joins never cross them; without it a paste or Backspace at a column's edge removed a column.
 describe('column boundaries', () => {

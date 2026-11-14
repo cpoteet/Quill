@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (165 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (451 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (454 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (59 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -3094,7 +3094,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (451 tests)
+## JS container tests (454 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3117,6 +3117,16 @@ Five container blocks are covered end to end — **Columns**, **Details**, **But
 | `+Col adds a column to the block the cursor is in` | Pressing the real `[data-cmd="addColumnBlock"]` control takes two columns to three |
 | `-Col removes the current column but never the last one` | `deleteColumnBlock` goes 2 → 1, then refuses to go lower |
 | `passthrough does not claim a columns block` | Class-only `div.wp-block-columns` still parses as `columnsBlock`, not `gutenbergPassthrough` |
+
+### `group boundaries` (3 tests)
+
+`groupBlock` is `isolating`, for the same reason as the column nodes.
+
+| Test | What it checks |
+|---|---|
+| `Backspace and Delete at a Group edge leave the Group whole` | Backspace at a Group's start and Delete at the end of the paragraph before it no longer unwrap the Group (losing its layout); Backspace in the paragraph after it and Delete at its end no longer pull that paragraph in; Backspace at a second Group's start no longer merges the two; a nested Group is no longer unwrapped |
+| `Backspace between two paragraphs inside a Group still joins them` | Joins inside a Group are unchanged |
+| `a list pasted into a Group holding only an empty paragraph stays in the Group, which keeps its layout` | An HTML list lands inside the Group, and the save still opens with the Group's `layout` |
 
 ### `column boundaries` (3 tests)
 
@@ -4133,7 +4143,7 @@ Plain text whose every line carries the next number pastes as a list, through th
 | `joins the list, quote or column the empty paragraph is in` | An empty item adds the pasted items to its list (also when it is the list's only or first item), an empty nested item to its nested list, and an empty paragraph in a quote, even its only one, or at a column's start gets the list inside it |
 | `at the start of a quote with a citation, the quote and citation stay` | The list lands inside the quote, before the `cite` |
 | `stays one paragraph per line anywhere else` | Pre-change values: one line (`1. Introduction`, `C. Smith`), letters, roman numerals, a skipped number, a line without a marker, mid-paragraph, over selected text, a heading, a code block and a table cell |
-| `a Group holding only an empty paragraph keeps the Group` | A Group is not isolating, so a list there would replace the Group; it is left out of `PLAIN_TEXT_LIST_HOSTS` and the lines stay paragraphs inside it |
+| `a Group holding only an empty paragraph gets the list inside it` | A Group is `isolating`, so the list stays inside it rather than replacing it |
 | `in a footnote it stays inline text` | The footnote flattening still applies |
 | `a clipboard that also carries HTML pastes that HTML` | The plain flavour is used only when there is no `text/html` |
 
@@ -5375,6 +5385,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 300 | A class added to an element whose comment already had a `className` stayed out of the comment (`supportAttrs` writes one only when the comment has none). `classNameFromMarkup` adds the element's custom classes too, except on the four figure blocks that rebuild their root (`RAW_ATTRS_EXEMPT`), whose `size-*` and theme classes are not `className` | ✅ `test-editor-block-settings.js` `'a class added beside an existing className joins it in the comment'` |
 | 301 | A list pasted at the start of the first column replaced that column, and Backspace or Delete at a column edge merged two columns or turned the next paragraph into a column. `columnBlock` and `columnsBlock` are `isolating` | ✅ `test-editor-containers.js` `'column boundaries'` (3 tests) |
 | 302 | Multi-line plain text or HTML blocks pasted into a tab label, button, details summary, accordion heading, quote citation or image caption split the block holding it (a tabs block became two around a stray paragraph). `_pasteMustBeInline()` makes both clipboard hooks flatten the paste to one line there, as in a footnote | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (13 tests) |
+| 303 | Backspace or Delete at a Group's edge unwrapped it (losing its layout and settings), merged two Groups or pulled the next paragraph in, and a list pasted into a Group holding only an empty paragraph replaced it. `groupBlock` is `isolating` | ✅ `test-editor-containers.js` `'group boundaries'` (3 tests), `test-editor-paste.js` `'a Group holding only an empty paragraph gets the list inside it'` |
 
 ---
 

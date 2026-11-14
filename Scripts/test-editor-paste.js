@@ -462,11 +462,11 @@ describe('plain text that is a numbered list', () => {
     })
   })
 
-  test('a Group holding only an empty paragraph keeps the Group', () => {
+  test('a Group holding only an empty paragraph gets the list inside it', () => {
     win.setContent('<!-- wp:group {"layout":{"type":"constrained"}} -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->')
     editor.commands.setTextSelection(2)
     paste({ 'text/plain': LIST })
-    assert.equal(doc(), 'groupBlock(paragraph("1. one"),paragraph("2. two"))')
+    assert.equal(doc(), 'groupBlock(orderedList(listItem(paragraph("one")),listItem(paragraph("two"))))')
   })
 
   test('in a footnote it stays inline text', () => {

@@ -2855,10 +2855,13 @@
       return _parsingPaste || alreadyDelimited(el, 'group')
     }
 
+    // Isolating, as the column nodes are and for the same reason: without it Backspace or Delete at
+    // a Group's edge unwrapped it or merged two Groups, and a paste at its start replaced it.
     const GroupBlock = TiptapNode.create({
       name: 'groupBlock',
       group: 'block',
       content: 'block+',
+      isolating: true,
       priority: 210,
       addAttributes() {
         return {
@@ -5021,11 +5024,10 @@
 
     // A paragraph in one of these, at any depth, takes a plain-text list. A paste widens over every
     // ancestor the caret is at the start of, so a container is listed only when that cannot replace
-    // it: columns are isolating, and the others always open with a title. A Group is neither, so a
-    // list pasted into a Group holding only an empty paragraph replaced the Group. Never a table cell
-    // (core/table cells hold no list) or a footnote.
+    // it: columns and Groups are isolating, and the others always open with a title. Never a table
+    // cell (core/table cells hold no list) or a footnote.
     const PLAIN_TEXT_LIST_HOSTS = new Set(['doc', 'paragraph', 'blockquote', 'bulletList', 'orderedList', 'listItem',
-      'columnsBlock', 'columnBlock', 'detailsBlock', 'tabsBlock', 'tabPanels', 'tabPanel',
+      'columnsBlock', 'columnBlock', 'groupBlock', 'detailsBlock', 'tabsBlock', 'tabPanels', 'tabPanel',
       'accordionBlock', 'accordionItem', 'accordionPanel'])
 
     // Plain text whose every line carries the next number ("1. a" / "2. b", or "1)") as an <ol>,
