@@ -10,7 +10,7 @@
 
 **Spec:** None. There are no design decisions; the findings below are the evidence this plan argues from.
 
-**Progress:** in progress on branch `tiptap-v3-migration`. The ledger is `.superpowers/sdd/2026-11-11-tiptap-v3-migration/progress.md` (git-ignored): which tasks are complete, every ruling that departs from this plan, and how to resume.
+**Progress:** complete on branch `tiptap-v3-migration` (`89eb013`, `98766cd`). The branch then took on the fixes from the manual pass and the follow-ups (`7ec1170`–`4cb698f`; cpoteet/Quill#24, #25, #26, #27), so the release no longer ships "with this change alone". The ledger is `.superpowers/sdd/2026-11-11-tiptap-v3-migration/progress.md` (git-ignored): which tasks are complete, every ruling that departs from this plan, and how to resume.
 
 ## Findings from the 2026-11-11 spike
 
@@ -91,7 +91,7 @@ Found during execution (2026-11-12), after the spike:
 **Interfaces:**
 - Produces: `node Scripts/dump-editor-schema.js [path/to/editor.html]` prints one line per fact to stdout and exits 0. The path defaults to `Sources/QuillKit/Resources/editor.html`. Tasks 3, 4 and 6 diff two runs of it.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 It boots `editor.html` in jsdom the way `Scripts/test-editor-inline-formats.js` does in its `before()` (same polyfills, same wait for `win._tiptapEditor`), then prints, in this order:
 
@@ -107,12 +107,12 @@ commands <sorted command names>
 
 Nodes and marks come from `editor.schema.spec`, extensions from `editor.extensionManager.extensions`, plugins from `editor.state.plugins`. Sort node, mark and `ext` lines by name so a reorder does not hide a real change; keep plugin lines in registration order, because order is the fact.
 
-- [ ] **Step 2: Capture the v2 baseline**
+- [x] **Step 2: Capture the v2 baseline**
 
 Run: `node Scripts/dump-editor-schema.js > /tmp/quill-schema-v2.txt && wc -l /tmp/quill-schema-v2.txt`
 Expected: roughly 500 lines, including `plugin … history$ props=handleDOMEvents` and `ext extension history`.
 
-- [ ] **Step 3: Checkpoint** — summarize and wait.
+- [x] **Step 3: Checkpoint** — summarize and wait.
 
 ---
 
@@ -128,7 +128,7 @@ Expected: roughly 500 lines, including `plugin … history$ props=handleDOMEvent
 
 Tests 1–5 share one helper: load `src`, put the caret before the first text node, insert `X`, return `win.getContent()`. If `test-editor-preservation.js` already has an equivalent, use it.
 
-- [ ] **Step 1: Write tests 1–5 in a `describe('Tiptap 3 migration: saved markup')`**
+- [x] **Step 1: Write tests 1–5 in a `describe('Tiptap 3 migration: saved markup')`**
 
 Each asserts `strictEqual(editAndSave(src), expected)`.
 
@@ -144,7 +144,7 @@ Tests 1, 2, 4 and 5 were probed on v2 and produce exactly these values. Test 3 w
 
 Add to test 2: `assert.match(editor.getHTML(), /<ol type="a"/)` before the edit, since v2 keeps the attribute in the editor.
 
-- [ ] **Step 2: Write tests 6–9 in a `describe('Tiptap 3 migration: keys and clicks')`**
+- [x] **Step 2: Write tests 6–9 in a `describe('Tiptap 3 migration: keys and clicks')`**
 
 For 6–8 the expected `doc()` string is whatever v2 produces: run once on v2, read the actual value from the failure, and write it in as the literal. These are characterization tests.
 
@@ -153,12 +153,12 @@ For 6–8 the expected `doc()` string is whatever v2 produces: run once on v2, r
 - Test 8, `Delete at the end of a footnote entry leaves the list intact`: `<p>body</p>`, `win.insertFootnote()`, insert `x`, caret at the end of the footnote text, `key(editor.view, 'Delete')`. The likely v2 value is `paragraph("body",MARKER) | footnotesList(footnoteItem("x"))`, but it was not probed; record what v2 gives.
 - Test 9, `⌘-click on a link posts openLink once and a plain click posts nothing`: content `<p><a href="https://example.com/">l</a></p>`; set `win.webkit = { messageHandlers: { ...existing, openLink: { postMessage: href => calls.push(href) } } }`; also replace `win.open` with a stub that records its calls. A DOM `click` event never reaches ProseMirror's `handleClick` in jsdom (it runs from mouse-up through `posAtCoords`), so run the prop chain directly, as `Scripts/test-click-seat.js` does: `editor.view.someProp('handleClick', f => f(editor.view, 2, event))` with `event = { metaKey: true, target: theAnchor, preventDefault() {} }`, then again with `metaKey: false`. `someProp` walks every plugin's `handleClick` in order and stops at the first that returns true, which is what v3's extra link plugin could change. Assert `calls` equals `['https://example.com/']` and the `win.open` stub was never called.
 
-- [ ] **Step 3: Run both suites on v2**
+- [x] **Step 3: Run both suites on v2**
 
 Run: `node --test Scripts/test-editor-preservation.js Scripts/test-editor-keyboard.js`
 Expected: all pass (82 + 5 and 151 + 4).
 
-- [ ] **Step 4: Checkpoint** — summarize, including any expected value that had to be read off v2, and wait.
+- [x] **Step 4: Checkpoint** — summarize, including any expected value that had to be read off v2, and wait.
 
 ---
 
@@ -173,7 +173,7 @@ Expected: all pass (82 + 5 and 151 + 4).
 **Interfaces:**
 - Produces: `window.TiptapBundle` exporting every name `editor.html` destructures from it today, unchanged.
 
-- [ ] **Step 1: Set the dependencies in `Scripts/tiptap-bundle/package.json`**
+- [x] **Step 1: Set the dependencies in `Scripts/tiptap-bundle/package.json`**
 
 ```json
 "@tiptap/core": "3.33.1",
@@ -197,7 +197,7 @@ Removed: `extension-table-row`, `-table-cell`, `-table-header`, `-task-list`, `-
 
 Then: `cd Scripts/tiptap-bundle && rm package-lock.json && npm install --package-lock-only`
 
-- [ ] **Step 2: Replace the changed lines of `Scripts/tiptap-bundle/entry.js`**
+- [x] **Step 2: Replace the changed lines of `Scripts/tiptap-bundle/entry.js`**
 
 ```js
 export { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
@@ -207,12 +207,12 @@ export { Placeholder }                 from '@tiptap/extensions'
 
 These replace the ten default-export lines for the same names. Every other line stays.
 
-- [ ] **Step 3: Build the bundle**
+- [x] **Step 3: Build the bundle**
 
 Run: `./Scripts/bundle-tiptap.sh`
 Expected: `✓ Bundle written …` at about 440 KB, no `Could not resolve`.
 
-- [ ] **Step 4: Edit `editor.html`**
+- [x] **Step 4: Edit `editor.html`**
 
 In the `StarterKit…configure({ … })` block, after `horizontalRule: false,`:
 
@@ -232,17 +232,17 @@ renderHTML({ HTMLAttributes }) {
 },
 ```
 
-- [ ] **Step 5: Update the tests' `setContent` calls**
+- [x] **Step 5: Update the tests' `setContent` calls**
 
 Run: `sed -i '' "s/commands\.setContent(\(.*\), false)/commands.setContent(\1, { emitUpdate: false })/" Scripts/test-*.js`
 Then: `git diff --stat -- Scripts/test-*.js` — expect six files, 288 lines each way, and `git diff -- Scripts/test-*.js | grep '^[-+]' | grep -v 'setContent\|^+++\|^---'` prints nothing.
 
-- [ ] **Step 6: Run every JS suite**
+- [x] **Step 6: Run every JS suite**
 
 Run: `./test.sh`
 Expected: tests 1–3, 5 and 9 from Task 2 pass, and everything that passed before passes. Tests 4, 6, 7 and 8 may fail; those failures belong to Task 4. Any other failure stops the task.
 
-- [ ] **Step 7: Checkpoint** — summarize with the exact pass and fail counts, and wait.
+- [x] **Step 7: Checkpoint** — summarize with the exact pass and fail counts, and wait.
 
 ---
 
@@ -255,13 +255,13 @@ Expected: tests 1–3, 5 and 9 from Task 2 pass, and everything that passed befo
 **Interfaces:**
 - Consumes: `/tmp/quill-schema-v2.txt` from Task 1, the tests from Task 2.
 
-- [ ] **Step 1: Diff the schema**
+- [x] **Step 1: Diff the schema**
 
 Run: `node Scripts/dump-editor-schema.js > /tmp/quill-schema-v3.txt; diff /tmp/quill-schema-v2.txt /tmp/quill-schema-v3.txt`
 
 Every line of the diff must match a row of the findings table. A line that matches no row stops the task and goes to Chris.
 
-- [ ] **Step 2: Table cell `align` (test 4)**
+- [x] **Step 2: Table cell `align` (test 4)**
 
 If test 4 fails, remove v3's attribute from both `TableCell` and `TableHeader` before they are wrapped, so the raw-attribute carrier keeps handling `align` as it does on v2:
 
@@ -273,15 +273,15 @@ Re-run test 4. Then confirm `editor.getHTML()` for test 4's `src` contains no `s
 
 If test 4 passes untouched, still check the `getHTML()` condition; if the style is there, apply the same removal.
 
-- [ ] **Step 3: The list-item delete keymap (tests 6–8)**
+- [x] **Step 3: The list-item delete keymap (tests 6–8)**
 
 If any of 6–8 fails, remove the extension by overriding `addExtensions() { return [] }` on `ListItem` before it is wrapped, and confirm `ext extension listItemBranchingDeleteKeymap` is gone from the dump. If they all pass, leave it and record it in Step 6.
 
-- [ ] **Step 4: The link click handler (test 9)**
+- [x] **Step 4: The link click handler (test 9)**
 
 If test 9 fails, the cause is `handleClickLink$` consuming the click before `editorProps.handleClick`. Read `clickHandler` in `node_modules/@tiptap/extension-link/dist/index.js` to find the option that keeps it from being registered, set it on `LinkWithRawAttrs.configure`, and confirm the plugin is gone from the dump.
 
-- [ ] **Step 5: Confirm the cause of the duplicated table parse rules**
+- [x] **Step 5: Confirm the cause of the duplicated table parse rules**
 
 Count the `parse table tag=figure.wp-block-table` lines in the v3 dump and the `.extend()` and `.configure()` calls between `Table` and the editor's extension list. If the counts agree, the cause is `this.parent()` re-running per layer. Then check the two places where a repeat would change behaviour rather than add a duplicate rule:
 
@@ -290,16 +290,16 @@ Count the `parse table tag=figure.wp-block-table` lines in the v3 dump and the `
 
 If the counts do not agree, stop and take it to Chris.
 
-- [ ] **Step 6: Record what was accepted**
+- [x] **Step 6: Record what was accepted**
 
 In `docs/editor-gotchas.md`, add one gotcha titled **Tiptap 3's StarterKit adds Link, Underline, TrailingNode and ListKeymap, and all four must stay off**, giving the collision for each (Quill registers its own `link` and `underline`; `TrailingNode` appends after any block and at the very end of the doc, where Quill needs a paragraph only after the five types in `TRAILING_PARAGRAPH_AFTER` and before the footnotes list). Add a second gotcha for the duplicated parse rules with the cause found in Step 5. Index both titles in `Sources/QuillKit/Resources/CLAUDE.md`.
 
-- [ ] **Step 7: Run everything**
+- [x] **Step 7: Run everything**
 
 Run: `./test.sh`
 Expected: every suite passes, including all nine Task 2 tests.
 
-- [ ] **Step 8: Checkpoint** — summarize which of Steps 2–4 needed a change, and wait.
+- [x] **Step 8: Checkpoint** — summarize which of Steps 2–4 needed a change, and wait.
 
 ---
 
@@ -307,16 +307,16 @@ Expected: every suite passes, including all nine Task 2 tests.
 
 **Files:** none modified unless a check fails.
 
-- [ ] **Step 1: Build and run the real-WebKit fixture check**
+- [x] **Step 1: Build and run the real-WebKit fixture check**
 
 Run: `pkill -f "^$PWD/Quill.app/Contents/MacOS/Quill"; sleep 2 && ./build.sh 2>&1 && ./Quill.app/Contents/MacOS/Quill --check-fixtures "$PWD/Scripts/fixtures"`
 Expected: `28/28 passed` and `ok    no script handler ran`.
 
-- [ ] **Step 2: Run the paste harness**
+- [x] **Step 2: Run the paste harness**
 
 Follow `Scripts/fixtures/paste/README.md`. Expected: every captured clipboard matches its recorded result.
 
-- [ ] **Step 3: Run the manual pass**
+- [x] **Step 3: Run the manual pass**
 
 Use the `manual-test-pass` skill for all of `docs/testing-plan.md` §7, on a new local draft. Beyond the checklist, exercise each of these, because plugin order changed and no automated test types into real WebKit:
 
@@ -326,7 +326,7 @@ Use the `manual-test-pass` skill for all of `docs/testing-plan.md` §7, on a new
 - ⌘-click on a link and on a footnote marker.
 - Open a published post and close it without editing: it is not marked dirty.
 
-- [ ] **Step 4: Checkpoint** — report each check with its result, and wait. A failure here is fixed in this branch with a test, not deferred.
+- [x] **Step 4: Checkpoint** — report each check with its result, and wait. A failure here is fixed in this branch with a test, not deferred.
 
 ---
 
@@ -340,16 +340,16 @@ Use the `manual-test-pass` skill for all of `docs/testing-plan.md` §7, on a new
 - Modify: `docs/testing-plan.md` (suite counts)
 - Modify: `NOTICES.md` (Tiptap copyright year, if the v3 `LICENSE.md` differs)
 
-- [ ] **Step 1: Make the edits above**
+- [x] **Step 1: Make the edits above**
 
 In the skill, the Tiptap row's rule becomes: "Update within v3, one minor range at a time. Before and after any update, diff `node Scripts/dump-editor-schema.js`; every changed line needs an explanation." Remove the `mergeAttributes` advisory trap if `npm audit` in `Scripts/tiptap-bundle/` no longer reports it.
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `./Scripts/check-dependencies.sh` — expect it to complete and show every `@tiptap/*` package at 3.33.1.
 Run: `grep -rn "2\.27\.3\|Tiptap 2" CLAUDE.md docs Sources/QuillKit .claude/skills --include='*.md'` — expect only historical records (specs, plans, the changelog).
 
-- [ ] **Step 3: Checkpoint** — summarize and wait. The release itself is `/release <version>`, with this change alone.
+- [x] **Step 3: Checkpoint** — summarize and wait. The release itself is `/release <version>`, with this change alone.
 
 ---
 

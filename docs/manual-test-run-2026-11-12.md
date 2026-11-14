@@ -41,7 +41,7 @@ Needs a person: section ⌘-drag (§7.3), Finder drops onto the editor (§7.4), 
 
 ## Issues
 
-None is a migration failure, and none was fixed on this branch. Issues 1–6 reproduce on v2 in the jsdom probe (same document, same key). Issue 7 is a code read of code the migration did not touch. Issues 8 and 9 reproduce on a Quill build with v2's `editor.html` and bundle, in WebKit.
+None is a migration failure, and none was fixed during this pass. All were fixed later on the branch, in `dc9d71e` (cpoteet/Quill#24). Issues 1–6 reproduce on v2 in the jsdom probe (same document, same key). Issue 7 is a code read of code the migration did not touch. Issues 8 and 9 reproduce on a Quill build with v2's `editor.html` and bundle, in WebKit.
 
 All of these, plus two more found outside the pass (the quote-with-cite join pinned in `Scripts/test-editor-keyboard.js`, and `---` in a footnote), are filed as one tracking issue: https://github.com/cpoteet/Quill/issues/24
 
@@ -124,7 +124,7 @@ The final branch review found three Tiptap 3 regressions, fixed with tests (ledg
 
 ## Test plan edits made
 
-`docs/testing-plan.md` (uncommitted), one line each: §7.4 corner versus edge handles (Observation 2); §7.6 quotes in code view (Observation 4); §7.7 ⌘⇧P follows the Status picker (Observation 6); §7.15 which highlights clear (Observation 15); §7.22 past-tense stage only on Save to WordPress (Observation 3).
+`docs/testing-plan.md` (committed in `98766cd`), one line each: §7.4 corner versus edge handles (Observation 2); §7.6 quotes in code view (Observation 4); §7.7 ⌘⇧P follows the Status picker (Observation 6); §7.15 which highlights clear (Observation 15); §7.22 past-tense stage only on Save to WordPress (Observation 3).
 
 ## Final state
 
@@ -136,5 +136,5 @@ Re-checked at the end of the 2026-11-13 session:
 - Clipboard emptied.
 - Site: post 1026 is byte-identical to its state at the start of the 2026-11-13 session (REST). QA posts 1026, 1029, 1030 (draft), 1028 (published) and media 1034 remain, pending Chris. No mu-plugin, second site or test user. The pass created no application passwords; the newest one on the account ("quill", 2026-11-13 00:17 UTC) dates from before the settings copies were taken and is the one Quill uses.
 - Outside Quill, from 2026-11-12: both Finder drop attempts landed on the Claude desktop app's window, so `photo.jpg` may have been attached there (Observation 9); ⌘-click on a link opened example.com in Safari; one real Anthropic call was made (Rephrase, §7.11).
-- Repo (uncommitted): this log; five one-line wording fixes in `docs/testing-plan.md`; and, after the pass, three fixes from the final branch review (`editor.html`, three new tests, docs). The results above 2026-11-13's "After the final review" section ran on 89eb013, with Tiptap 3's `div.tableWrapper`; the tables were re-checked on the fixed build (below). `Quill.app` is the fixed build (working tree; bundle unchanged from 89eb013). On 2026-11-13 it was also built once more with v2's two editor files and once at 89eb013 for the Issue 10 comparison, and each time the working tree was put back (`editor.html` compared byte for byte with the tested fix; bundle == HEAD).
+- Repo (uncommitted at the time; committed in `98766cd`): this log; five one-line wording fixes in `docs/testing-plan.md`; and, after the pass, three fixes from the final branch review (`editor.html`, three new tests, docs). The results above 2026-11-13's "After the final review" section ran on 89eb013, with Tiptap 3's `div.tableWrapper`; the tables were re-checked on the fixed build (below). `Quill.app` is the fixed build (working tree; bundle unchanged from 89eb013). On 2026-11-13 it was also built once more with v2's two editor files and once at 89eb013 for the Issue 10 comparison, and each time the working tree was put back (`editor.html` compared byte for byte with the tested fix; bundle == HEAD).
 - `local_drafts` emptied again (the "QA v3 final fixes" draft); `autosaves` still the original 5 rows; settings files restored again after the last launch (cmp and sha256 OK); clipboard emptied; Quill not running. The probe scripts live in the git-ignored plan workspace (`.superpowers/sdd/2026-11-11-tiptap-v3-migration/probes/`), which is deleted when the plan finishes — whether to keep one under `Scripts/` is Chris's call.
