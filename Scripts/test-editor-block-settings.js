@@ -1054,10 +1054,16 @@ describe('accordion icons propagate to every heading', () => {
     el.dispatchEvent(new win.Event('change', { bubbles: true }))
   }
 
-  const positionValue = () => (position().textContent === 'Icon left' ? 'left' : 'right')
+  const segment = value => position().querySelector(`button[data-value="${value}"]`)
+  const activeSegments = () => Array.from(position().querySelectorAll('button.active'))
+  const positionValue = () => {
+    const active = activeSegments()
+    assert.equal(active.length, 1, 'exactly one side is highlighted')
+    return active[0].dataset.value
+  }
 
   function setPosition(value) {
-    if (positionValue() !== value) press(position())
+    press(segment(value))
   }
 
   const headingClasses = out => (out.match(/<h3 class="([^"]*)"/g) || []).map(m => m.match(/"([^"]*)"/)[1])
@@ -1065,8 +1071,8 @@ describe('accordion icons propagate to every heading', () => {
   test('both controls are generated for the accordion block', () => {
     assert.ok(group(), 'no generated group for accordionBlock')
     assert.ok(showIcon(), 'no showIcon control')
-    assert.equal(position().tagName, 'BUTTON', 'two options is a switch, not a list')
-    assert.equal(position().classList.contains('active'), false, 'the side shows its value, never a checked state')
+    const segments = Array.from(position().querySelectorAll('button'))
+    assert.deepEqual(segments.map(b => b.textContent), ['Left', 'Right'], 'two options are two segments, not a list')
   })
 
   test('they appear inside an accordion and nowhere else', () => {
@@ -1085,6 +1091,18 @@ describe('accordion icons propagate to every heading', () => {
     win.setContent(two.replace('<!-- wp:accordion -->', '<!-- wp:accordion {"iconPosition":"left"} -->'))
     caretIn('First body')
     assert.equal(positionValue(), 'left')
+  })
+
+  test('the side the icon is on is the highlighted segment', () => {
+    win.setContent(two)
+    caretIn('First body')
+    assert.deepEqual(activeSegments(), [segment('right')])
+    press(segment('left'))
+    assert.deepEqual(activeSegments(), [segment('left')])
+    const before = editor.getHTML()
+    press(segment('left'))
+    assert.equal(editor.getHTML(), before, 'pressing the highlighted side changes nothing')
+    assert.deepEqual(activeSegments(), [segment('left')])
   })
 
   test('the side control is joined to the toggle that gates it', () => {

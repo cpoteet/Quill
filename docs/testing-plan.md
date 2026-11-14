@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-14 — 900 Swift tests + 2,411 JS tests (2,410 pass, 1 skipped), no failures._
+_Last updated: 2026-11-14 — 900 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -33,7 +33,7 @@ This document is the authoritative reference for Quill's automated test suite an
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (265 tests — live Tiptap editor in jsdom)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (266 tests — live Tiptap editor in jsdom)
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
@@ -4329,7 +4329,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (265 tests)
+## JS block settings tests (266 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4347,7 +4347,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | `the tabs default tab` | A control on the panel writing `activeTabIndex` onto the tabs block, with the mark suppressed on a lone tab (where it would be noise) and back the moment a second tab exists. With the caret in a tab title the control is on for that title's own tab (`the control is on in a tab title, for the tab the title belongs to`), pressing it with the caret in the second title writes index 1, and a title with no panel behind it neither throws nor offers the control |
 | `a button / a prose link opening in a new tab` | `target` and `rel` as markup only, with core's own `noopener` append-and-trim |
 | `the New tab control is gated on the link existing` | The one `showWhen` that names the node's own `href` rather than a sibling setting: hidden on an unlinked button, shown the moment a link is set, hidden again when it is cleared, and left standalone rather than paired with the style toggle |
-| `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them |
+| `accordion icons propagate to every heading` | Core stores `showIcon`/`iconPosition` twice, so the control writes the block and every heading in one transaction — one undo reverses the lot, and an item added afterwards inherits them. The side control is Left | Right segments with exactly one highlighted, the side the icon is on; pressing the highlighted one changes nothing (`the side the icon is on is the highlighted segment`) |
 | `the whole settings fixture corpus` | All twenty-four `settings-*.html` come back untouched with no edit, save idempotently once edited, and (except `settings-separator.html`) save byte-identically once edited. `settings-gallery.html` covers a gallery linked to attachment pages at Medium, a gallery caption, an image class, and a gallery of mixed sizes with a custom link and a formatted caption |
 | `an unlinked image keeps the "none" core wrote` | An unlinked image whose comment says `"linkDestination":"none"` keeps it; one that says `"custom"` still loses it (`an unlinked image writes no linkDestination`) |
 | `sibling blocks are separated by a blank line` | Quill now writes core's blank line between sibling blocks inside a container, and a block that already carries its own delimiters is not given a second one |

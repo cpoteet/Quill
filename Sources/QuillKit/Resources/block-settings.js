@@ -46,9 +46,12 @@ const BLOCK_SETTINGS = {
     iconPosition: {
       kind: 'carried',
       default: 'right',
-      control: { type: 'choice', label: 'Icon side', title: 'Put the toggle icon on the left',
+      // Drawn as Left | Right segments, in this order, with the current side
+      // highlighted; each option's title is its segment's tooltip.
+      control: { type: 'choice', label: 'Icon side',
                  propagate: 'accordionHeading', showWhen: 'showIcon',
-                 options: [{ value: 'right', label: 'Icon right' }, { value: 'left', label: 'Icon left' }] },
+                 options: [{ value: 'left', label: 'Left', title: 'Toggle icon on the left' },
+                           { value: 'right', label: 'Right', title: 'Toggle icon on the right' }] },
     },
   },
 

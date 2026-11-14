@@ -159,6 +159,21 @@
       align-items: center;
       gap: var(--tb-gap);
     }
+    /* A hairline frame holds the segments together, so the pair reads as one
+       choice rather than two more toggles. */
+    #toolbar-row2 .setting-segments {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      padding: 1px;
+      border-radius: var(--tb-radius);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.09);
+    }
+    body.dark #toolbar-row2 .setting-segments { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+    #toolbar-row2 .setting-segments button {
+      height: calc(var(--tb-h) - 2px);
+      border-radius: calc(var(--tb-radius) - 1px);
+    }
 
     #toolbar-row2 .setting-select {
       appearance: none;
@@ -639,15 +654,17 @@
       font-style: normal;
       font-size: 0.85em;
       color: #999;
-      text-align: right;
       margin-top: 0.5em;
     }
     body.dark .ProseMirror blockquote cite { color: #666; }
+    /* Plain drops the bar and italics on the site, but drawn that bare here it
+       reads as a paragraph: its edges and citation vanish. A faint dashed bar
+       keeps it a quote while writing; it is CSS only and never saved. */
     .ProseMirror blockquote.is-style-plain {
-      border-left: none;
-      padding-left: 0;
+      border-left: 2px dashed #d4d4d4;
       font-style: normal;
     }
+    body.dark .ProseMirror blockquote.is-style-plain { border-left-color: #4a4a4a; }
 
     /* Core draws the default rule short and centred, so Wide has something to
        differ from; a browser-default hr would look identical to it. The rule is
@@ -1389,11 +1406,13 @@
     /* Buttons */
     .ProseMirror .wp-block-buttons { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
     .ProseMirror .wp-block-button { display: inline-flex; }
+    /* Fill is a tinted face with no visible edge; Outline is an edge with no face,
+       so the two styles read apart at a glance. */
     .ProseMirror .wp-block-button__link {
       display: inline-block;
-      background: rgba(0,0,0,0.012);
+      background: rgba(0,0,0,0.075);
       color: inherit;
-      border: 1px solid rgba(0,0,0,0.085);
+      border: 1px solid transparent;
       padding: 6px 16px;
       border-radius: 6px;
       font-size: 14.5px;
@@ -1402,9 +1421,14 @@
       text-decoration: none;
       cursor: text;
     }
-    body.dark .ProseMirror .wp-block-button__link { background: rgba(255,255,255,0.022); border-color: rgba(255,255,255,0.11); }
+    body.dark .ProseMirror .wp-block-button__link { background: rgba(255,255,255,0.1); }
     .ProseMirror .wp-block-button.is-style-outline .wp-block-button__link {
       background: transparent;
+      border-color: rgba(0,0,0,0.5);
+    }
+    body.dark .ProseMirror .wp-block-button.is-style-outline .wp-block-button__link {
+      background: transparent;
+      border-color: rgba(255,255,255,0.5);
     }
 
     /* Pullquote */
@@ -6014,34 +6038,42 @@
       return editor.schema.nodes.accordionHeading.create({ ...attrs, blockAttrs: carried })
     }
 
-    // Two options is a switch, not a list -- the rule the block styles follow.
-    // It shows the option it is on rather than a checked state: joined to the
-    // toggle that gates it, a second raised segment would read as a second
-    // on/off, and a side is always one value or the other.
-    function _buildSettingChoiceToggle(typeName, name, def) {
-      const [first, second] = def.control.options
-      const btn = document.createElement('button')
-      btn.dataset.setting = name
-      btn.title = def.control.title || def.control.label
-      btn.addEventListener('mousedown', e => {
-        e.preventDefault()
-        const target = _settingBlockAt(editor.state, typeName)
-        if (!target) return
-        const on = _settingValue(target.node, name, def) === second.value
-        _setSettingValue(typeName, name, def, on ? first.value : second.value)
+    // Two options is one segment per option, the current one highlighted. A
+    // single button labelled with its current value ("Icon left") read as a
+    // toggle that was off. Titles are fixed, because initToolbarTooltips moves
+    // each title into its own tooltip once, at startup.
+    function _buildSettingSegments(typeName, name, def) {
+      const wrap = document.createElement('span')
+      wrap.className = 'setting-segments'
+      wrap.dataset.setting = name
+      const buttons = def.control.options.map(option => {
+        const btn = document.createElement('button')
+        btn.dataset.value = option.value
+        btn.textContent = option.label
+        btn.title = option.title || option.label
+        btn.addEventListener('mousedown', e => {
+          e.preventDefault()
+          const target = _settingBlockAt(editor.state, typeName)
+          if (target && _settingValue(target.node, name, def) !== option.value) {
+            _setSettingValue(typeName, name, def, option.value)
+          }
+        })
+        wrap.appendChild(btn)
+        return btn
       })
       return {
         name,
         def,
-        el: btn,
+        el: wrap,
         reflect: node => {
-          btn.textContent = (_settingValue(node, name, def) === second.value ? second : first).label
+          const value = _settingValue(node, name, def)
+          for (const btn of buttons) btn.classList.toggle('active', btn.dataset.value === value)
         },
       }
     }
 
     function _buildSettingChoice(typeName, name, def) {
-      if (def.control.options.length === 2) return _buildSettingChoiceToggle(typeName, name, def)
+      if (def.control.options.length === 2) return _buildSettingSegments(typeName, name, def)
       const select = document.createElement('select')
       select.className = 'setting-select'
       select.dataset.setting = name
