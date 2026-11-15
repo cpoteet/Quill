@@ -18,13 +18,13 @@ This document is the authoritative reference for Quill's automated test suite an
 
 1. **Swift tests** — `swift test` (911 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (153 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (291 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (620 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (723 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (97 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -1733,7 +1733,7 @@ One test per `Scripts/fixtures/*.html`: the slices concatenate to the file byte 
 
 See `Scripts/fixtures/README.md` before changing a fixture — they are recordings of what one WordPress version wrote, never a specification of what core emits now, and `accordion-block.html` deliberately holds the old heading shape.
 
-### `blockNeedsWrapping` (19 tests)
+### `blockNeedsWrapping` (23 tests)
 
 | Test | What it checks |
 |---|---|
@@ -1751,10 +1751,14 @@ See `Scripts/fixtures/README.md` before changing a fixture — they are recordin
 | `a group whose blocks Quill models is left alone` | A Group of modeled blocks is not wrapped; the `groupBlock` node holds it |
 | `a group Quill cannot open is wrapped whole` | An empty Group, and a Group holding `wp:calendar`, take the exact-slice path |
 | `columns holding a group that opens are left alone` | |
-| `columns holding a group that cannot open are wrapped whole` | `holdsUnsupportedGroup` looks through Columns, so the unopenable Group is not rewritten through the Columns node |
+| `columns holding a group that cannot open are wrapped whole` | `holdsBlockItCannotOpen` looks through Columns, so the unopenable Group is not rewritten through the Columns node |
 | `a group holding columns holding a group that cannot open is wrapped whole` | Group > Columns > Group, wrapped when the inner Group cannot open |
 | `a group holding columns holding a group that opens is left alone` | Same nesting, inner Group opens: nothing wraps |
 | `only the group that cannot open is wrapped among its siblings` | A list of three top-level blocks flags only the empty Group |
+| `a pullquote of paragraphs and a citation is left alone` | Two paragraphs and a final `cite` fit the `paragraph+ cite?` node |
+| `a pullquote holding another block is wrapped` | A `<pre>` inside the blockquote, with or without its own block comments, takes the exact-slice path; the node would push it out and turn the citation into a paragraph |
+| `a pullquote whose citation is not last is wrapped` | A `cite` before a paragraph does not fit the node either |
+| `a container holding such a pullquote is wrapped whole` | A Group holding one is wrapped as a whole, as for a Group that cannot open |
 
 ### `wrapUnsupportedBlocks` (19 tests)
 
@@ -2848,7 +2852,7 @@ Every image-toolbar edit and the row-2 alignment buttons go through `_setImageAt
 | `the paragraph below the image accepts typing` | Typed text lands in the paragraph, not the caption |
 | `inserting with the cursor in an existing caption appends below, leaving the caption intact` | Inserting from inside a caption doesn't clobber that caption |
 | `inserting while an image node is selected replaces it and still lands below` | Node-selection replace path also ends below the new image |
-| `inside a list item the image and its paragraph stay in the item` | The figure serializes inside `<li>` — insert doesn't break out of the list |
+| `from a list item the image and its paragraph go after the list` | core/list-item holds only its text and a nested list, so the image and the caret's paragraph go after the whole list, as the block editor's inserter puts them |
 | `inside a blockquote the image and its paragraph stay in the quote` | Insert stays scoped to the blockquote |
 | `inside a table cell the image goes inline in that cell, as core cells hold text` | A cell gets an inline image in its paragraph, not an image block (run-log issue 10) |
 | `from a code block the image lands after the block, leaving the code untouched` | Code block content is not mutated by the insert |
@@ -3216,7 +3220,7 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 
 | Test | What it checks |
 |---|---|
-| `<insert> from an empty/a filled <title> goes after the whole container` (182 tests) | Each of the thirteen block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Preformatted, Pullquote, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button, details summary, quote citation, pullquote citation and image caption, leaves the container and its text unchanged and puts the new block straight after it. For a citation the container is the quote or pullquote, for a caption the image (cpoteet/Quill#27) |
+| `<insert> from an empty/a filled <title> goes after the whole container` (208 tests) | Each of the thirteen block inserts (Table, Image, Gallery, Tabs, Accordion, Buttons, Details, Separator, Preformatted, Pullquote, Columns, Markdown, Embed), from an empty and a filled accordion heading, tab title, button, details summary, quote citation, pullquote citation, pullquote text and image caption, leaves the container and its text unchanged and puts the new block straight after it. For a citation the container is the quote or pullquote, for a pullquote's text the pullquote (core/pullquote holds no inner blocks), for a caption the image (cpoteet/Quill#27) |
 | `the caret lands in the new block, not the container it came from` | Tabs, Accordion and Columns inserted from a tab title put the caret in the new block's first panel, heading or column |
 | `one-line Markdown from a title also goes after the container` | A single pasted Markdown paragraph lands after the container too, rather than splitting it |
 | `Markdown from the middle of a citation goes after the quote and leaves the citation whole` | The issue's case: `## Heading` plus a paragraph from inside `Who` split the quote in two, a second quote holding `ho` (cpoteet/Quill#27) |
@@ -3243,6 +3247,17 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `the caret lands in the new block, not the cell it came from` | Tabs, Accordion and Columns inserted from a cell put the caret in the new block's first panel, heading or column |
 | `a gallery inserted with an inline image selected in a cell goes after the table` | A node-selected inline image in a cell does not take the gallery into the cell |
 | `Paste as Markdown stays in the cell` | Markdown pasted in a cell is still inserted at the caret |
+
+### `block inserts from a list item` (75 tests)
+
+core/list-item holds its own text and a nested core/list, never another block, so the block editor's inserter adds a block after the whole list. WordPress's validator accepts other blocks inside a list item, but anything but an image becomes part of the item's rich text, which the block editor flattens when it is edited.
+
+| Test | What it checks |
+|---|---|
+| `<insert> from <a list item> goes after the whole list` (72 tests) | Each block insert except Markdown, from an empty and a filled bullet, a numbered item, the first of two items and an empty and a filled nested item, leaves the outermost list and its text unchanged and puts the new block straight after it |
+| `Paste as Markdown of a list from a list item nests the list, which a list item may hold` | Markdown that is only lists stays in the item as a nested list |
+| `Paste as Markdown of anything else from a list item goes after the list` | A heading and a paragraph pasted from a nested item go after the outermost list |
+| `the caret lands in the new block` | Typing after a Preformatted insert from a list item goes into the new block, not the item |
 
 ### `the embed card names its provider` (6 tests)
 
@@ -3333,7 +3348,7 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `nested containers show both groups at once` | A button inside a column reveals both `buttons-controls` and `columns-controls` |
 | `the main toolbar keeps the groups that are not cursor-contextual` | The AI group and the insert menu stay in row 1 |
 
-### `pullquote and preformatted` (5 tests)
+### `pullquote and preformatted` (7 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3341,6 +3356,8 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `a pullquote saves with wp:pullquote delimiters` | The delimiter pair is emitted |
 | `setPreformatted produces a preformatted node` | The command creates a `preformatted` node |
 | `preformatted saves with wp:preformatted delimiters` | The delimiter pair is emitted |
+| `a pullquote holds only paragraphs and an optional cite` | The schema is `paragraph+ cite?`, so paste and drop cannot put a Preformatted, heading or quote inside one either |
+| `a pullquote an older Quill saved with a block inside keeps its bytes through an edit` | A pullquote holding a Preformatted and a citation loads as a card and saves byte for byte after an edit elsewhere |
 | `a pullquote is not claimed by passthrough` | `figure.wp-block-pullquote` reaches its own node |
 
 ### `pullquote and preformatted round-trips` (5 tests)
@@ -5466,7 +5483,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 249 | The title badge and its tooltip followed the Status menu, so choosing Published turned it green before anything was saved; a first save of a local draft said "Draft saved" rather than "Saved to WordPress" | 👁 §7.7 — view state in `PostEditorView` has no harness |
 | 250 | After any edit, the save dropped the blank lines on both sides of a class-only card (a `wp-block-*` element with no block comment), because `separateSiblingBlocks` only recognised a block boundary by its comment or the unsupported wrapper. A passthrough element with no `data-quill-passthrough-name` now counts as a whole block, and that attribute is stripped after the separator pass instead of before it (issue 22) | ✅ `test-editor-preservation.js` `'a class-only card is separated like any other block'` (3 tests) |
 | 251 | A copy of a class-only Group Quill cannot open (a `<video>` inside it, no block comments) pasted back as a `groupBlock`, which would have rewritten it. Quill's own copy stays one `gutenbergPassthrough` card, byte for byte, and an outside div Group pasted earlier does not make the next comment-less Group load as an open one | ✅ `test-editor-containers.js` `'pasting Quill\'s own copy of a locked group keeps it a card'`, `'a paste does not make the next load open a group that has no comments'` + 👁 §7.3 |
-| 252 | A Group that cannot open, nested in Columns or in a Group inside Columns, was rewritten through its container's node. `blockNeedsWrapping` also asks `holdsUnsupportedGroup`, so any top-level block holding such a Group at any depth is wrapped whole, and a Group that opens, or one that sits among siblings, is left alone | ✅ `test-block-serializer.js` `'blockNeedsWrapping'` (7 added tests) + `settings-group*.html`, `group-unsupported-children.html` + 👁 `--check-fixtures` |
+| 252 | A Group that cannot open, nested in Columns or in a Group inside Columns, was rewritten through its container's node. `blockNeedsWrapping` also asks `holdsUnsupportedGroup` (now `holdsBlockItCannotOpen`), so any top-level block holding such a Group at any depth is wrapped whole, and a Group that opens, or one that sits among siblings, is left alone | ✅ `test-block-serializer.js` `'blockNeedsWrapping'` (7 added tests) + `settings-group*.html`, `group-unsupported-children.html` + 👁 `--check-fixtures` |
 | 253 | A Group opens for editing only when `groupFullySupported`; one that should open falling back to a card, or a locked one opening, is invisible to the byte-identity tests. `__runFixtureCorpus` reports `cards` per fixture: 0 for every `settings-group*`, above 0 for `group-unsupported-children` | ✅ `test-editor-containers.js` `'the corpus runner reports a card count, zero for every group that opens and non-zero for a locked one'` + 👁 `--check-fixtures` |
 | 254 | A code view edit that produced a Group with comments must open it as a `groupBlock`, and the Group's label (drawn by the node view, outside the content) must not enter the saved markup when its text is edited: `ignoreMutation` on the label | ✅ `test-editor-containers.js` `'a group whose comments are present opens even when its markup came from a code view edit'`, `'editing the label text outside the content does not touch the saved group'` |
 | 255 | The Group label was `#999` light / `#777` dark, below WCAG AA contrast on the page colour. It is `#737373` / `#8f8f8f`, the same as `.passthrough-card-hint` | 👁 §7.3 (CSS colour; no automated test) |
@@ -5541,6 +5558,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 324 | A block after the footnotes list saved with the delimiter glued to its opening comment (`<!-- wp:footnotes /--><!-- wp:paragraph -->`), so Gutenberg's first save of the post rewrote the spacing. `extractFootnotes` writes core's blank line after the delimiter when a block follows | ✅ `test-editor.js` `'a block after the list is separated from the delimiter like any block'` |
 | 325 | Preformatted and Pullquote in the + menu converted the block under the caret, so an H2 became a pre or was wrapped into a pullquote, where the block editor's inserter adds a new block. Both go through `_insertContainer` now (`window.insertPreformatted`, `window.insertPullquote`) | ✅ `test-editor-containers.js` `'insert menu'` (6 tests) and both added to `'block inserts from a container title'` / `'from a table cell'` + 👁 §7.23 |
 | 326 | A block inserted from the + menu or toolbar with the caret in the middle of a paragraph, heading or preformatted block split it in two around the new block, and from the start of a line put the block before it. `_blockInsertDepth` now returns the textblock holding the caret whenever it has text, so `_blockInsertChain` adds the block after it; Custom HTML's own insert does the same. Paste as Markdown still lands at the caret | ✅ `test-editor-containers.js` `'block inserts from the middle of text'` (52 tests), `test-editor-preservation.js` `'inserted from the middle of a paragraph, the card goes after it …'` + 👁 §7.23 |
+| 327 | A block inserted with the caret in a pullquote's text (Preformatted, Table, Columns, …) landed inside the pullquote, which core/pullquote cannot hold (one rich-text value and a citation, no inner blocks). `_blockInsertDepth` treats the whole pullquote as the container, as it already did from its citation, and the schema is `paragraph+ cite?`. A pullquote saved with a block inside before this loads as a card (`holdsBlockItCannotOpen`), since the narrower node would push the block out and turn its citation into a paragraph | ✅ `test-editor-containers.js` `'block inserts from a container title'` (26 `pullquoteText` tests), `'a pullquote holds only paragraphs and an optional cite'`, `'a pullquote an older Quill saved with a block inside keeps its bytes through an edit'`; `test-block-serializer.js` `'blockNeedsWrapping'` (4 pullquote tests) |
+| 328 | A block inserted from a list item (Image, Table, Preformatted, Columns, …) landed inside the `<li>`. WordPress's validator accepts that, but core/list-item allows only a nested list, so its inserter never puts a block there, and anything but an image became part of the item's rich text. `_blockInsertDepth` now returns the outermost list (`_outerListDepth`); Paste as Markdown that is only lists still nests in the item | ✅ `test-editor-containers.js` `'block inserts from a list item'` (75 tests), `test-editor-keyboard.js` `'from a list item the image and its paragraph go after the list'` |
 
 ---
 

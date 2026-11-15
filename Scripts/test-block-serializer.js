@@ -291,6 +291,29 @@ describe('blockNeedsWrapping', () => {
     assert.deepEqual(decide(modeled.join('')), modeled.map(() => false))
   })
 
+  // An older Quill let a block be inserted inside a pullquote. The pullquote node holds only
+  // paragraphs and a citation, so loading one of those would push the block out and turn the
+  // citation into a paragraph; it keeps its exact bytes instead.
+  const PQ = inner => `<!-- wp:pullquote --><figure class="wp-block-pullquote"><blockquote>${inner}</blockquote></figure><!-- /wp:pullquote -->`
+
+  test('a pullquote of paragraphs and a citation is left alone', () => {
+    assert.deepEqual(decide(PQ('<p>a</p><p>b</p><cite>c</cite>')), [false])
+  })
+
+  test('a pullquote holding another block is wrapped', () => {
+    assert.deepEqual(decide(PQ('<p>a</p><pre class="wp-block-preformatted">x</pre><cite>c</cite>')), [true])
+    assert.deepEqual(decide(PQ('<p>a</p><!-- wp:preformatted --><pre class="wp-block-preformatted">x</pre><!-- /wp:preformatted -->')), [true])
+  })
+
+  test('a pullquote whose citation is not last is wrapped', () => {
+    assert.deepEqual(decide(PQ('<cite>c</cite><p>a</p>')), [true])
+  })
+
+  test('a container holding such a pullquote is wrapped whole', () => {
+    const src = '<!-- wp:group --><div class="wp-block-group">' + PQ('<p>a</p><pre class="wp-block-preformatted">x</pre>') + '</div><!-- /wp:group -->'
+    assert.deepEqual(decide(src), [true])
+  })
+
   // A block that saves no markup has no node to live in, whether or not Quill
   // models its name, so the modeled exemption must not reach it.
   test('a modeled block that saves no markup is wrapped', () => {

@@ -3137,7 +3137,8 @@
     const Pullquote = TiptapNode.create({
       name: 'pullquote',
       group: 'block',
-      content: 'block+ cite?',
+      // core/pullquote is one rich-text value and a citation, with no inner blocks.
+      content: 'paragraph+ cite?',
       priority: 210,
       parseHTML() { return [{ tag: 'figure.wp-block-pullquote', contentElement: 'blockquote' }] },
       renderHTML() { return ['figure', { class: 'wp-block-pullquote' }, ['blockquote', {}, 0]] },
@@ -5474,24 +5475,41 @@
 
     // A table cell holds rich text in the block editor, whose inserter puts a new block after the table.
     // A quote's citation and an image's caption are titles too: a block inserted in a citation split
-    // the quote, and one inserted in a caption replaced the image (cpoteet/Quill#27).
-    function _blockInsertDepth($from, intoTableCell) {
+    // the quote, and one inserted in a caption replaced the image (cpoteet/Quill#27). So is a
+    // pullquote's text, since core/pullquote holds no inner blocks: a block landed inside it.
+    function _blockInsertDepth($from, intoTableCell, nestsInList) {
       const name = $from.parent.type.name
       if (name === 'cite') return _citeHostDepth($from)
       if (name === 'image') return $from.depth
+      const pullquote = _ancestorDepth($from, 'pullquote')
+      if (pullquote !== -1) return pullquote
       const container = TITLE_CONTAINERS[name] ?? (intoTableCell ? null : 'table')
       const depth = container ? _ancestorDepth($from, container) : -1
+      if (depth !== -1) return depth
+      // core/list-item holds its own text and a nested list, never another block, so a block goes
+      // after the whole list; only a pasted list (`nestsInList`) may stay in the item.
+      const list = nestsInList ? -1 : _outerListDepth($from)
+      if (list !== -1) return list
       // Paste as Markdown (`intoTableCell`) is a paste, and lands at the caret.
-      if (depth !== -1 || intoTableCell) return depth
+      if (intoTableCell) return -1
       // The block editor's inserter adds a block after the selected one and never splits its text;
       // ProseMirror split a paragraph or heading at a mid-text caret. An empty one is replaced.
       return $from.parent.isTextblock && $from.parent.content.size > 0 ? $from.depth : -1
     }
 
-    function _blockInsertChain({ intoTableCell = false } = {}) {
+    // The outermost list around the caret's list item, or -1: a nested list sits in an item of the one above.
+    function _outerListDepth($pos) {
+      const item = _ancestorDepth($pos, 'listItem')
+      if (item === -1) return -1
+      let list = item - 1
+      while (list > 1 && $pos.node(list - 1).type.name === 'listItem') list -= 2
+      return list
+    }
+
+    function _blockInsertChain({ intoTableCell = false, nestsInList = false } = {}) {
       const chain = editor.chain().focus()
       const { $from } = editor.state.selection
-      const depth = _blockInsertDepth($from, intoTableCell)
+      const depth = _blockInsertDepth($from, intoTableCell, nestsInList)
       if (depth === -1) return chain
       const after = $from.after(depth)
       return chain.insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1)
@@ -7754,7 +7772,11 @@
       const clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
 
-      _blockInsertChain({ intoTableCell: true }).insertContent(clean, {
+      // A list item may hold a nested list, so pasted Markdown that is only lists stays in it.
+      const probe = inertDocument().createElement('div')
+      probe.innerHTML = clean
+      const nestsInList = probe.children.length > 0 && [...probe.children].every(el => el.tagName === 'UL' || el.tagName === 'OL')
+      _blockInsertChain({ intoTableCell: true, nestsInList }).insertContent(clean, {
         parseOptions: { preserveWhitespace: false },
       }).run()
       return 'ok'

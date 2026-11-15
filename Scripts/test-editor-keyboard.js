@@ -1118,13 +1118,15 @@ describe('window.insertImage cursor placement', () => {
     assert.equal(selParent(), 'paragraph')
   })
 
-  test('inside a list item the image and its paragraph stay in the item', () => {
+  // core/list-item holds only its text and a nested list, so the block editor's inserter adds the image after the list.
+  test('from a list item the image and its paragraph go after the list', () => {
     editor.commands.setContent('<ul><li><p>one</p></li></ul>', { emitUpdate: false })
     editor.commands.focus('end')
     win.insertImage('http://x/l.jpg')
-    assert.equal(doc(), 'bulletList(listItem(paragraph("one"),image[],paragraph()))')
+    assert.equal(doc(), 'bulletList(listItem(paragraph("one"))) | image[] | paragraph()')
+    assert.equal(selParent(), 'paragraph')
     const out = win.toWordPressHTML(editor.getHTML())
-    assert.match(out, /<li><p>one<\/p><!-- wp:image -->[\s\S]*<\/figure>\s*<!-- \/wp:image --><p><\/p><\/li>/)
+    assert.match(out, /<\/ul>\s*<!-- \/wp:list -->\s*<!-- wp:image -->/)
   })
 
   test('inside a blockquote the image and its paragraph stay in the quote', () => {

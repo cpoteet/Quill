@@ -572,16 +572,18 @@ describe('block inserts from a container title', () => {
     detailsSummary: () => win.insertDetails(),
     cite: quoteWithCite('<blockquote class="wp-block-quote"><p>Q</p><cite></cite></blockquote>'),
     pullquoteCite: quoteWithCite('<figure class="wp-block-pullquote"><blockquote><p>Q</p><cite></cite></blockquote></figure>'),
+    // core/pullquote holds one rich-text value and a citation, never inner blocks, so its text is a title too.
+    pullquoteText: quoteWithCite('<figure class="wp-block-pullquote"><blockquote><p></p></blockquote></figure>'),
     image: () => win.insertImage('http://x/a.jpg', null, ''),
   }
-  const hostType = host => host === 'pullquoteCite' ? 'cite' : host
+  const hostType = host => ({ pullquoteCite: 'cite', pullquoteText: 'paragraph' })[host] ?? host
   const caretInto = (host, text) => {
     editor.commands.setContent('<p></p>', { emitUpdate: false })
     hosts[host]()
     let at = null
     editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === hostType(host)) at = pos + 1 + n.content.size })
     assert.ok(at !== null, `no ${host} to put the caret in`)
-    if (host === 'pullquoteCite') assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
+    if (host.startsWith('pullquote')) assert.equal(editor.state.doc.child(0).type.name, 'pullquote')
     editor.commands.setTextSelection(at)
     if (text) editor.commands.insertContent(text)
   }
@@ -788,6 +790,66 @@ describe('block inserts from a table cell', () => {
     caretInCell('tableCell')
     win.insertMarkdown('Plain **text**')
     assert.match(editor.state.doc.child(0).textContent, /Plain text/)
+  })
+})
+
+// core/list-item holds its own text and a nested core/list, never another block, so the block
+// editor's inserter puts a new block after the whole list. A block inserted from a list item
+// used to land inside the <li>, which WordPress cannot read back as a block.
+describe('block inserts from a list item', () => {
+  const lists = {
+    'an empty bullet': ['<ul><li><p></p></li></ul>', 0],
+    'a filled bullet': ['<ul><li><p>a</p></li></ul>', 0],
+    'a filled numbered item': ['<ol><li><p>a</p></li></ol>', 0],
+    'the first of two items': ['<ul><li><p>a</p></li><li><p>b</p></li></ul>', 0],
+    'an empty nested item': ['<ul><li><p>a</p><ul><li><p></p></li></ul></li></ul>', 1],
+    'a filled nested item': ['<ul><li><p>a</p><ul><li><p>b</p></li></ul></li></ul>', 1],
+  }
+  // Puts the caret at the end of the nth paragraph.
+  const caretIn = ([html, nth]) => {
+    editor.commands.setContent(html, { emitUpdate: false })
+    const ends = []
+    editor.state.doc.descendants((n, pos) => { if (n.type.name === 'paragraph') ends.push(pos + 1 + n.content.size) })
+    editor.commands.setTextSelection(ends[nth])
+  }
+
+  for (const [where, host] of Object.entries(lists)) {
+    for (const [name, [insert, type]] of Object.entries(inserts)) {
+      if (name === 'markdown') continue
+      test(`${name} from ${where} goes after the whole list`, () => {
+        caretIn(host)
+        const list = sig(editor.state.doc.child(0))
+        const listText = editor.state.doc.child(0).textContent
+        insert()
+        assert.equal(sig(editor.state.doc.child(0)), list)
+        assert.equal(editor.state.doc.child(0).textContent, listText)
+        assert.equal(editor.state.doc.child(1).type.name, type)
+      })
+    }
+  }
+
+  test('Paste as Markdown of a list from a list item nests the list, which a list item may hold', () => {
+    caretIn(lists['a filled bullet'])
+    win.insertMarkdown('- x\n- y')
+    assert.equal(editor.state.doc.childCount, 1)
+    assert.equal(sig(editor.state.doc), 'doc(bulletList(listItem(paragraph(),bulletList(listItem(paragraph()),listItem(paragraph())))))')
+  })
+
+  test('Paste as Markdown of anything else from a list item goes after the list', () => {
+    caretIn(lists['a filled nested item'])
+    const list = sig(editor.state.doc.child(0))
+    win.insertMarkdown('## Heading\n\nSome text')
+    assert.equal(sig(editor.state.doc.child(0)), list)
+    assert.equal(editor.state.doc.child(1).type.name, 'heading')
+    assert.equal(editor.state.doc.child(2).textContent, 'Some text')
+  })
+
+  test('the caret lands in the new block', () => {
+    caretIn(lists['a filled bullet'])
+    win.insertPreformatted()
+    editor.commands.insertContent('X')
+    assert.equal(editor.state.doc.child(0).textContent, 'a')
+    assert.equal(editor.state.doc.child(1).textContent, 'X')
   })
 })
 
@@ -1451,6 +1513,24 @@ describe('pullquote and preformatted', () => {
     editor.commands.setContent('<pre class="wp-block-preformatted">X</pre>', { emitUpdate: false })
     const out = win.toWordPressHTML(editor.getHTML(), win.document)
     assert.match(out, /<!-- wp:preformatted -->/)
+  })
+
+  test('a pullquote holds only paragraphs and an optional cite', () => {
+    const { nodes } = editor.schema
+    const Fragment = editor.state.doc.content.constructor
+    assert.ok(nodes.pullquote.validContent(Fragment.from([nodes.paragraph.create(), nodes.paragraph.create(), nodes.cite.create()])))
+    for (const type of ['preformatted', 'heading', 'blockquote'])
+      assert.ok(!nodes.pullquote.validContent(Fragment.from(nodes[type].create())), type)
+  })
+
+  test('a pullquote an older Quill saved with a block inside keeps its bytes through an edit', () => {
+    const quote = '<!-- wp:pullquote -->\n<figure class="wp-block-pullquote"><blockquote><p>Q</p><pre class="wp-block-preformatted">code</pre><cite>Who</cite></blockquote></figure>\n<!-- /wp:pullquote -->'
+    win.setContent(quote + '\n\n<!-- wp:paragraph -->\n<p>after</p>\n<!-- /wp:paragraph -->', '[]')
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    editor.commands.insertContent('!')
+    const out = win.extractFootnotes(win.toWordPressHTML(editor.getHTML())).content
+    assert.ok(out.includes(quote), out)
+    assert.match(out, /<p>after!<\/p>/)
   })
 
   test('a pullquote is not claimed by passthrough', () => {

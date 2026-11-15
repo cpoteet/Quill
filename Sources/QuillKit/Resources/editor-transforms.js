@@ -340,9 +340,22 @@ function groupFullySupported(block, doc) {
   })
 }
 
-function holdsUnsupportedGroup(block, doc) {
+// The pullquote node holds paragraphs and a final citation only. Anything else in the blockquote (a
+// Preformatted an older Quill let in) would be pushed out and the citation turned into a paragraph.
+function pullquoteFitsNode(block, doc) {
+  if (block.innerBlocks.length) return false
+  const probe = doc.createElement('div')
+  probe.innerHTML = block.innerHTML
+  const quote = probe.querySelector('figure.wp-block-pullquote > blockquote')
+  if (!quote) return true
+  const kids = Array.from(quote.children)
+  return kids.every((el, i) => el.tagName === 'P' || (el.tagName === 'CITE' && i === kids.length - 1))
+}
+
+function holdsBlockItCannotOpen(block, doc) {
   if (block.blockName === 'core/group' && !groupFullySupported(block, doc)) return true
-  return block.innerBlocks.some(inner => holdsUnsupportedGroup(inner, doc))
+  if (block.blockName === 'core/pullquote' && !pullquoteFitsNode(block, doc)) return true
+  return block.innerBlocks.some(inner => holdsBlockItCannotOpen(inner, doc))
 }
 
 // One preservation path per CLAUDE.md: freeform is prose, everything unmodeled wraps.
@@ -351,7 +364,7 @@ function blockNeedsWrapping(slice, doc) {
   if (!blockDescriptorRegistry.modelsBlockName(slice.blockName)) return true
   // A modeled name that saved no markup has nothing for its node to parse.
   if (savesNoMarkup(slice.source, doc)) return true
-  return !!slice.block && holdsUnsupportedGroup(slice.block, doc)
+  return !!slice.block && holdsBlockItCannotOpen(slice.block, doc)
 }
 
 // Every block at every depth: a heading lost from inside a quote is still lost.
