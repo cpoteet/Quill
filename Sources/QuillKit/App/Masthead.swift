@@ -39,7 +39,7 @@ enum Masthead {
             local = localDrafts
         case .pages:
             remote = pages.filter { stashed[$0.id] != nil || isOwnDraft($0, userID: userID) }
-            local = []
+            local = localDrafts.filter { $0.type == "page" }
         case .localDrafts:
             remote = []
             local = localDrafts
@@ -155,6 +155,25 @@ enum Masthead {
     static func emptyLine(for section: SidebarSection, sectionIsEmpty: Bool) -> String {
         let noun = section == .pages ? "page" : section == .localDrafts ? "draft" : "post"
         return sectionIsEmpty ? "No \(noun)s yet" : "Select a \(noun) to edit"
+    }
+
+    /// The line under "No … yet". Every new item starts as a local draft (`AppState.createNewDraft`), so each says where it lives.
+    static func emptyDetail(for section: SidebarSection) -> String {
+        switch section {
+        case .posts: return "A new post stays a draft on this Mac until you save it to WordPress."
+        case .pages: return "A new page stays a draft on this Mac until you save it to WordPress."
+        case .localDrafts, .media: return "Drafts you start in Quill stay on this Mac until you save them to WordPress."
+        }
+    }
+
+    /// The `createNewDraft` types the empty state offers, the prominent one first.
+    static func newItemTypes(for section: SidebarSection) -> [String] {
+        switch section {
+        case .posts: return ["post"]
+        case .pages: return ["page"]
+        case .localDrafts: return ["post", "page"]
+        case .media: return []
+        }
     }
 
     static func spokenLabel(_ heading: String, title: String, detail: String) -> String {

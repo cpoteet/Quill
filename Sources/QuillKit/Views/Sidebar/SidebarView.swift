@@ -450,11 +450,18 @@ struct SidebarErrorRow: View {
     }
 }
 
+/// In the sidebar it is plain text, since the masthead beside it carries the feather and the New Post button.
+/// Media has no masthead, so its gallery passes `onUpload` and gets the feather, the hint and an Upload button.
 struct SectionEmptyState: View {
     let section: SidebarSection
     var mediaFilter: MediaFilter = .all
     var statusFilter: PostStatusFilter = .all
     let isSearching: Bool
+    var onUpload: (() -> Void)?
+
+    private var isFiltered: Bool {
+        (section == .media && mediaFilter != .all) || statusFilter != .all
+    }
 
     private var message: String {
         if section == .media, mediaFilter != .all {
@@ -471,25 +478,20 @@ struct SectionEmptyState: View {
         }
     }
 
-    private var hint: String {
+    private var hint: String? {
         if section == .media, mediaFilter != .all {
             return "Choose All Media to see everything in your library"
         }
         if statusFilter != .all {
             return "Choose \(PostStatusFilter.all.title(in: section)) to see everything"
         }
-        switch section {
-        case .posts: return "Create one from the + menu in the toolbar"
-        case .pages: return "Create one from the + menu in the toolbar"
-        case .localDrafts: return "Use File \u{2192} New Post/Page to start writing"
-        case .media: return "Create one from the + menu in the toolbar"
-        }
+        return section == .media ? "Images and files you upload to your site appear here" : nil
     }
 
     var body: some View {
         if isSearching {
             ContentUnavailableView.search
-        } else {
+        } else if let onUpload {
             ContentUnavailableView {
                 Label {
                     Text(message)
@@ -497,7 +499,20 @@ struct SectionEmptyState: View {
                     QuillMark.emptyStateIcon
                 }
             } description: {
-                Text(hint)
+                if let hint { Text(hint) }
+            } actions: {
+                if !isFiltered {
+                    Button("Upload Media\u{2026}", action: onUpload)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .help("Upload Media (\u{2325}\u{2318}N)")
+                }
+            }
+        } else {
+            ContentUnavailableView {
+                Text(message)
+            } description: {
+                if let hint { Text(hint) }
             }
         }
     }

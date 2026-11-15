@@ -209,7 +209,8 @@ struct MediaLibraryView: View {
         } else if appState.hasLoadedMedia && !appState.isLoadingMedia {
             SectionEmptyState(section: .media,
                               mediaFilter: appState.mediaFilter,
-                              isSearching: !appState.mediaSearchText.isEmpty)
+                              isSearching: !appState.mediaSearchText.isEmpty,
+                              onUpload: { startUpload() })
         } else {
             ProgressView()
                 .controlSize(.small)

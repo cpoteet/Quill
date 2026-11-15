@@ -98,12 +98,21 @@ private func lead(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPos
         #expect(lead(.posts, posts: [try post(1, status: "pending", modified: -60)]) == nil)
     }
 
-    @Test func pagesLeadIgnoresLocalDraftsAndPosts() throws {
+    @Test func pagesLeadIgnoresPostsAndLocalPostDrafts() throws {
         let page = try post(3, type: "page", modified: -7200)
         let result = lead(.pages, posts: [try post(1, modified: -60)], pages: [page],
-                          drafts: [draft(5, type: "page", updated: -60)])
+                          drafts: [draft(5, updated: -60)])
         #expect(result?.item == .remote(page))
         #expect(result?.section == .pages)
+    }
+
+    @Test func pagesLeadTakesALocalPageDraftAndOpensItInDrafts() throws {
+        let page = try post(3, type: "page", modified: -7200)
+        let localPage = draft(6, type: "page", updated: -600)
+        let result = lead(.pages, pages: [page], drafts: [draft(5, updated: -60), localPage])
+        #expect(result?.item == .local(localPage))
+        #expect(result?.section == .localDrafts)
+        #expect(result?.meta == "Page draft · on this Mac · edited 10 minutes ago")
     }
 
     @Test func draftsLeadIgnoresRemotePosts() throws {
@@ -308,5 +317,19 @@ private func lead(_ section: SidebarSection, posts: [WPPost] = [], pages: [WPPos
         #expect(Masthead.emptyLine(for: .posts, sectionIsEmpty: true) == "No posts yet")
         #expect(Masthead.emptyLine(for: .pages, sectionIsEmpty: true) == "No pages yet")
         #expect(Masthead.emptyLine(for: .localDrafts, sectionIsEmpty: true) == "No drafts yet")
+    }
+
+    @Test func emptyDetailSaysNewWorkStaysOnThisMac() {
+        #expect(Masthead.emptyDetail(for: .posts) == "A new post stays a draft on this Mac until you save it to WordPress.")
+        #expect(Masthead.emptyDetail(for: .pages) == "A new page stays a draft on this Mac until you save it to WordPress.")
+        #expect(Masthead.emptyDetail(for: .localDrafts)
+                == "Drafts you start in Quill stay on this Mac until you save them to WordPress.")
+    }
+
+    @Test func newItemTypesOfferTheSectionsOwnTypeFirst() {
+        #expect(Masthead.newItemTypes(for: .posts) == ["post"])
+        #expect(Masthead.newItemTypes(for: .pages) == ["page"])
+        #expect(Masthead.newItemTypes(for: .localDrafts) == ["post", "page"])
+        #expect(Masthead.newItemTypes(for: .media).isEmpty)
     }
 }

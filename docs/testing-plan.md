@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-14 — 908 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
+_Last updated: 2026-11-14 — 911 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (908 tests)
+1. **Swift tests** — `swift test` (911 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
@@ -185,9 +185,9 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 54 | `SiteProfileRefreshTests` | `AppStateTests.swift` | 11 | `AppState.refreshSiteProfile`: the stored name shows first, then the fetched one; a failure keeps the stored profile; a nameless site clears the name; a new icon is downloaded, shown and stored, an unchanged one is not downloaded again, a dropped one is cleared, and a failed download, or bytes that are not an image, keep the old icon and retry next time; a result for another site is dropped; any `connect` forgets the user ID, and another site also the name and icon |
 | 55 | `MissedScheduleTests` | `AppStateTests.swift` | 12 | `AppState.confirmMissedSchedules`: a still-`future` fetch confirms the miss; a published one replaces the post in `posts` or `pages`, but never a newer entry that arrived meanwhile; a failed fetch confirms nothing; each passed schedule is fetched once, a rescheduled post again; a post crossing the 5-minute grace is picked up on a later call; a check finishes when the task that started it is replaced; a result after a site switch is dropped |
 | 56 | `OpenFromMastheadTests` | `AppStateTests.swift` | 6 | `AppState.openFromMasthead`: a local draft opens in Drafts and a stashed page in Pages; a status filter or search that would hide the item is cleared, one that shows it is kept |
-| 57 | `MastheadLeadTests` | `MastheadTests.swift` | 20 | `Masthead.leads`: the newest three Continue writing candidates per section, fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
+| 57 | `MastheadLeadTests` | `MastheadTests.swift` | 21 | `Masthead.leads`: the newest three Continue writing candidates per section (Pages takes local page drafts too), fewer when there are fewer, newest of `modified_gmt`, stash and local `updatedAt`; another author's draft skipped only once the user is known; pending never leads; ties go remote first, then lower ID; the meta lines and `editedPhrase` (named relative time for a week, then the date) |
 | 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 9 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
-| 59 | `MastheadCopyTests` | `MastheadTests.swift` | 4 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `spokenLabel` joins the VoiceOver label with commas |
+| 59 | `MastheadCopyTests` | `MastheadTests.swift` | 6 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `emptyDetail` says new work stays on this Mac; `newItemTypes` gives the empty state's New Post/New Page buttons; `spokenLabel` joins the VoiceOver label with commas |
 | 60 | `MastheadRecentlyEditedTests` | `MastheadTests.swift` | 5 | `Masthead.recentlyEdited`: the fallback when Continue writing is empty; any status but scheduled, newest `modified_gmt` first, at most three; another author's post left out once the user is known; Posts and Pages stay in their own section, Drafts has none |
 | 61 | `TitlebarDoubleClickActionTests` | `TitlebarDoubleClickActionTests.swift` | 8 | `TitlebarDoubleClickAction`: each Desktop & Dock value of `AppleActionOnDoubleClick` (Fill zooms, None does nothing), the legacy `AppleMiniaturizeOnDoubleClick` fallback, and `current(_:)` reading the setting from the defaults it is given |
 
@@ -1557,7 +1557,7 @@ File: `Tests/QuillTests/AppStateTests.swift`
 | `openingClearsASearchThatWouldHideTheItem` | A search that doesn't match the title is cleared |
 | `openingKeepsASearchThatShowsTheItem` | A search that matches the title stays |
 
-### 57. App — `MastheadLeadTests` (20 tests)
+### 57. App — `MastheadLeadTests` (21 tests)
 
 File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale.
 
@@ -1572,7 +1572,8 @@ File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale
 | `anotherAuthorsDraftIsSkippedOnceTheUserIsKnown` | With the user ID known, another author's newer draft does not lead |
 | `anotherAuthorsDraftCountsBeforeTheUserIsKnown` | Before the ID arrives, it does |
 | `pendingPostsNeverLead` | A pending post is not a candidate |
-| `pagesLeadIgnoresLocalDraftsAndPosts` | Pages considers only pages |
+| `pagesLeadIgnoresPostsAndLocalPostDrafts` | Pages skips posts and local post drafts |
+| `pagesLeadTakesALocalPageDraftAndOpensItInDrafts` | A local page draft newer than the WordPress page leads on Pages, opens in Drafts, and reads "Page draft · on this Mac · edited 10 minutes ago" |
 | `draftsLeadIgnoresRemotePosts` | Drafts considers only local drafts, stash or not |
 | `theNewestThreeLeadInOrder` | Five candidates across WordPress and local drafts → the newest three, newest first |
 | `fewerCandidatesGiveFewerRows` | Two candidates give two rows; none give none |
@@ -1600,7 +1601,7 @@ File: `Tests/QuillTests/MastheadTests.swift`
 | `draftsSectionHasNoScheduled` | Drafts shows none |
 | `scheduleDateNamesTheWeekdayAndTime` | "Tue, Nov 3 at 9:00 AM" in en_US and "Tue 3 Nov at 09:00" in en_GB, in UTC |
 
-### 59. App — `MastheadCopyTests` (4 tests)
+### 59. App — `MastheadCopyTests` (6 tests)
 
 File: `Tests/QuillTests/MastheadTests.swift`
 
@@ -1609,6 +1610,8 @@ File: `Tests/QuillTests/MastheadTests.swift`
 | `displayNameFallsBackToHost` | No name, or an empty one, shows the host |
 | `emptyLineAsksForASelectionWhenTheSectionHasItems` | "Select a post to edit", and the page and draft versions |
 | `emptyLineSaysTheSectionIsEmpty` | "No posts yet", "No pages yet", "No drafts yet" |
+| `emptyDetailSaysNewWorkStaysOnThisMac` | The line under the empty title says a new post or page, or a draft, stays on this Mac until it is saved to WordPress |
+| `newItemTypesOfferTheSectionsOwnTypeFirst` | Posts offers a post, Pages a page, Drafts a post then a page, Media none |
 | `spokenLabelReadsAsOnePhrase` | "Continue writing, Packing for the coast, Draft, edited 2 hours ago": the meta line's " · " becomes a comma |
 
 ### 60. App — `MastheadRecentlyEditedTests` (5 tests)
@@ -4469,12 +4472,13 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Media round trip.** Click into the editor body, switch to Media, click a few thumbnails, switch back to Posts and click a row → the row is amber and nothing flickers. `focusPostList()` returns early in Media mode; this checks the return trip still works.
 - [ ] **Settings open.** Open Settings (⌘,) and leave it open, click back on the main window and select a different post → the row is still amber. Clicking the main window makes it key first, so `NSApp.keyWindow` is correct by the time the handler runs.
 - [ ] Collapse the sidebar with the toolbar toggle → the toolbar shows only the sidebar toggle; Refresh and the + menu are gone. Expand it again → the order is toggle, Refresh, +, all above the sidebar. Press ⌘R → the current section still refreshes. The shortcut lives on View → Refresh, not on the toolbar Refresh button, so a collapsed sidebar must not take it away.
-- [ ] When a section is empty (no posts, no pages, no drafts, no media), a descriptive placeholder appears in the sidebar.
+- [ ] When a section is empty (no posts, no pages, no drafts), the sidebar says only "No posts yet" (pages, drafts), with no feather and no hint. An empty Media library shows the feather, "No media yet", "Images and files you upload to your site appear here" and an **Upload Media…** button that opens the file picker; with a type filter on, it names the filter and offers no button.
 - [ ] **Continue writing at launch.** Launch with nothing open → the editor area shows the site's name and host, with its Site Icon beside them when the site has one. Under Continue Writing, up to three rows, the post last written first; click one → it opens.
 - [ ] **A newer local draft leads on Posts.** File → New Post, then switch to Posts → Continue Writing shows "Untitled", "Post draft · on this Mac · edited now"; click it → Drafts opens with that draft selected.
+- [ ] **A local page draft leads on Pages.** File → New Page, then switch to Pages → Continue Writing shows "Untitled", "Page draft · on this Mac · edited now"; click it → Drafts opens with that draft selected. A local post draft never appears on Pages.
 - [ ] **Missed schedule.** With WP-Cron disabled on the Studio site (`define('DISABLE_WP_CRON', true)` in `wp-config.php`, restored afterwards), schedule a draft 3 minutes ahead. Leave the page open, without ⌘R or a section switch → it shows under Scheduled with its date and time, then "Missed schedule" in the Pending colour once 5 minutes have passed. With WP-Cron on, a post that publishes on time drops off instead, and its sidebar row reads Published. If Wi-Fi is off when the 5 minutes pass, the post is not marked missed; once Wi-Fi is back and the page is shown again (switch section and return) it is.
 - [ ] **Recently edited.** On Pages, with no page draft of your own and no unsaved changes → a Recently Edited group lists up to three of your pages, last edited first, e.g. "Published · edited 3 days ago"; click one → it opens in Pages. Edit and save a published post, then switch to Posts with no drafts → it leads Recently Edited. Leave one draft → Continue Writing shows and Recently Edited does not.
-- [ ] **Nothing to show.** In a section with items but nothing to continue, recently edited or scheduled → the same header as a page with items (Site Icon, name, host, top-left, no feather) and "Select a post to edit" beneath it (page, draft). In an empty section → "No posts yet" (pages, drafts).
+- [ ] **Nothing to show.** In a section with items but nothing to continue, recently edited or scheduled → the same header as a page with items (Site Icon, name, host, top-left, no feather) and "Select a post to edit" beneath it (page, draft). In an empty section → below the header, a grey card with the feather, "No posts yet" (pages, drafts), the line about drafts staying on this Mac, and New Post (Posts), New Page (Pages) or New Post and New Page (Drafts); the first is amber when the window is key. Click one → a new local draft of that type opens in Drafts.
 - [ ] **Layout.** Give the site a long name and narrow the window to its minimum with the sidebar open → the name stays on one line and truncates; nothing is clipped. Check light and dark, with and without a Site Icon.
 - [ ] **Accessibility.** With Full Keyboard Access, Tab reaches each row and Return or Space opens it. VoiceOver reads each row as one element, e.g. "Continue writing, Packing for the coast, Draft, edited 2 hours ago".
 - [ ] **Nothing new in Media**, and offline Posts still says "Couldn't load posts" with the feather.

@@ -50,8 +50,8 @@ struct MastheadView: View {
             VStack(alignment: .leading, spacing: 22) {
                 header(name: name, host: credentials.siteURL.host() ?? "")
 
-                if leads.isEmpty && recent.isEmpty && scheduled.isEmpty {
-                    Text(Masthead.emptyLine(for: section, sectionIsEmpty: appState.sectionIsEmpty))
+                if !appState.sectionIsEmpty && leads.isEmpty && recent.isEmpty && scheduled.isEmpty {
+                    Text(Masthead.emptyLine(for: section, sectionIsEmpty: false))
                         .foregroundStyle(.secondary)
                 }
 
@@ -66,6 +66,9 @@ struct MastheadView: View {
                         }
                     }
                 }
+
+                // Last, so Continue Writing (a local draft on an empty Posts) stays on top.
+                if appState.sectionIsEmpty { emptyCard }
             }
             .frame(maxWidth: 480, alignment: .leading)
             .padding(.horizontal, 32)
@@ -96,6 +99,46 @@ struct MastheadView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var emptyCard: some View {
+        VStack(spacing: 14) {
+            QuillMark.view(.quillMark, size: 56)
+                .accessibilityHidden(true)
+            VStack(spacing: 4) {
+                Text(Masthead.emptyLine(for: section, sectionIsEmpty: true))
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text(Masthead.emptyDetail(for: section))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                ForEach(Array(Masthead.newItemTypes(for: section).enumerated()), id: \.element) { index, type in
+                    newItemButton(type: type, prominent: index == 0)
+                }
+            }
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
+        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private func newItemButton(type: String, prominent: Bool) -> some View {
+        let button = Button(type == "page" ? "New Page" : "New Post") {
+            appState.createNewDraft(type: type, draftStore: services.draftStore)
+        }
+        .controlSize(.large)
+        .help(type == "page" ? "New Page (\u{21E7}\u{2318}N)" : "New Post (\u{2318}N)")
+        if prominent {
+            button.buttonStyle(.borderedProminent)
+        } else {
+            button.buttonStyle(.bordered)
+        }
     }
 
     private func group<Rows: View>(_ title: String, @ViewBuilder rows: () -> Rows) -> some View {

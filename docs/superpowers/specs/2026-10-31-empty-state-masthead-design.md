@@ -47,7 +47,8 @@ One column, at most 480pt wide, starting about 72pt from the top. Every colour i
 - **Rows:** inset grouped rows in a box filled with `.fill.quaternary` at a 10pt radius, divided by separators. Each row is the status symbol (`statusSymbol(_:)`, palette white on `Color.statusColor(_:)`) at about 20pt, the title in `.body` medium on one line, a `.subheadline` `.secondary` line beneath, and a `.tertiary` chevron. On hover the row takes a light `.fill` highlight; the title keeps its colour.
 - **Continue writing:** up to three rows. Each row's second line is its meta line (see below).
 - **Scheduled:** one row per post. The second line is the date and time ("Tue, Nov 3 at 9:00 AM" in the user's locale), or "Missed schedule". A missed row uses the Pending colour with `exclamationmark.circle.fill`, so it stands apart from the blue scheduled rows.
-- **Nothing to show:** if there is no Continue writing item, nothing recently edited and nothing scheduled, the page keeps the same header and puts one `.secondary` line where the groups would be: "Select a post to edit" (page, draft) when the section has items, "No posts yet" (pages, drafts) when it has none. *(Chris's call, 2026-11-01: the page should not assume the author wants to start something new.)* No feather: the header's identity stays the site's in every state, and the page does not jump from top-left to centred when its last item goes. *(Chris's call, 2026-11-01.)*
+- **Nothing to show:** if the section has items but there is no Continue writing item, nothing recently edited and nothing scheduled, the page keeps the same header and puts one `.secondary` line where the groups would be: "Select a post to edit" (page, draft).
+- **An empty section:** when Posts, Pages or Drafts has no items, a card goes after any groups, in the same `.fill.quaternary` box at a 10pt radius: the feather (`QuillMark` in `.quillMark`, 56pt), "No posts yet" (pages, drafts) in `.title3` semibold, one `.secondary` line saying where new work lives ("A new post stays a draft on this Mac until you save it to WordPress."; for Drafts, "Drafts you start in Quill stay on this Mac until you save them to WordPress."), and large buttons that call `createNewDraft`: New Post on Posts, New Page on Pages, and New Post then New Page on Drafts, the first one `.borderedProminent`. It goes after the groups so a local draft in progress stays on top. The sidebar beside it says only "No posts yet", with no feather and no hint, so the two panes do not repeat each other. *(Chris's call, 2026-11-14, replacing the 2026-11-01 call for a single line and no feather: the plain line read as drab, and the biggest pane in the window offered nothing to do.)*
 
 ### Interaction
 
@@ -62,10 +63,10 @@ One column, at most 480pt wide, starting about 72pt from the top. Every colour i
 | Page | Candidates |
 |---|---|
 | Posts | The author's post drafts on WordPress; any remote post or page with unsaved changes in Quill (an autosave stash), whatever its status; every local draft, post or page |
-| Pages | The author's page drafts on WordPress; any remote page with an autosave stash |
+| Pages | The author's page drafts on WordPress; any remote page with an autosave stash; every local draft of type `page` |
 | Drafts | Every local draft |
 
-The Posts page reaches across sections because it is the page seen at launch, and the author most likely wants whatever they were last writing, wherever it lives. *(Chris's call, 2026-10-31.)* Pages and Drafts stay inside their own section, because the author got there by clicking that section.
+The Posts page reaches across sections because it is the page seen at launch, and the author most likely wants whatever they were last writing, wherever it lives. *(Chris's call, 2026-10-31.)* Pages and Drafts stay inside their own section, because the author got there by clicking that section. For Pages that section is every page, wherever it lives, so a local page draft counts and opens in Drafts. *(Chris's call, 2026-11-14.)*
 
 **Timestamp:** for each candidate, the latest of:
 
@@ -124,7 +125,7 @@ The candidate and scheduled rules should be static functions that take the lists
 - Posts page: a local draft edited after the newest WordPress draft wins, and vice versa.
 - A published post with a stash newer than every draft wins, with the "Published · unsaved changes on this Mac" line.
 - Another author's newer draft is skipped. A pending post is skipped.
-- Pages page ignores local drafts and post drafts. Drafts page ignores remote posts.
+- Pages page ignores post drafts and local post drafts, and takes a local page draft. Drafts page ignores remote posts.
 - Scheduled: excludes posts more than 14 days out; caps at three, missed ones included; sorts missed first, then earliest first.
 - Missed schedule: not flagged inside the 5-minute grace period; not flagged until the confirming fetch says `future`; a confirming fetch that returns `publish` updates the list and drops the item; a failed fetch shows nothing; a post is fetched only once.
 - Meta lines and relative times, including the switch to a date after a week.
