@@ -22,7 +22,7 @@ Runs every Swift and JS test. Current counts, every suite, the test-suite gotcha
 
 **The only test that runs in real WebKit**, required before release sign-off — jsdom cannot see a WebKit/jsdom divergence, and three have shipped. It also fails if a script handler in post content runs inside the editor (`Scripts/fixtures/script-sinks/`). Needs a current `./build.sh`.
 
-**Skills:** `update-dependencies` (read-only report: `./Scripts/check-dependencies.sh`), `manual-test-pass` (runs `docs/testing-plan.md` §7 against the local Studio site), `/release <version>`. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
+**Skills:** `update-dependencies` (read-only report: `./Scripts/check-dependencies.sh`), `manual-test-pass` (runs `docs/testing-plan.md` §7 against the local Studio site), `site-screenshots` (retakes the public site's light/dark screenshots and og-image against the live site; Chris flips Light/Dark once per shot and frames any shot on request), `/release <version>`. Bundle ID is `com.siolon.quill` (was `com.quill.app` before 2.0.0).
 
 **Requirements:** Swift 6.4, macOS 27, full Xcode (`build.sh` runs `actool`, which the Command Line Tools lack). `node` + `jsdom` are installed in **`Scripts/`**, not the project root, which has no `package.json` — an ad-hoc jsdom probe script must also live in `Scripts/`, or it dies with `Cannot find module 'jsdom'`.
 
