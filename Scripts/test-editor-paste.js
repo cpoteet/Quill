@@ -591,6 +591,27 @@ describe('plain text that is a numbered list', () => {
     assert.equal(doc(), 'groupBlock(orderedList(listItem(paragraph("one")),listItem(paragraph("two"))))')
   })
 
+  // These open with a title, so the paste cannot widen over them. A pullquote holds paragraphs only.
+  test('a details body, a tab panel and an accordion panel take the list; a pullquote keeps paragraphs', () => {
+    const TABS = '<div class="wp-block-tabs"><div role="tablist" class="wp-block-tab-list"><button type="button" role="tab">T</button></div>' +
+      '<div class="wp-block-tab-panels"><section role="tabpanel" tabindex="0" class="wp-block-tab-panel"><p></p></section></div></div>'
+    const ACC = '<div role="group" class="wp-block-accordion"><div class="wp-block-accordion-item"><h3 class="wp-block-accordion-heading">' +
+      '<button type="button" class="wp-block-accordion-heading__toggle"><span class="wp-block-accordion-heading__toggle-title">H</span></button></h3>' +
+      '<div role="region" class="wp-block-accordion-panel"><p></p></div></div></div>'
+    const ol = 'orderedList(listItem(paragraph("one")),listItem(paragraph("two")))'
+    assert.deepEqual({
+      details: into('<details class="wp-block-details"><summary>S</summary><p></p></details>', LIST),
+      tab: into(TABS, LIST),
+      accordion: into(ACC, LIST),
+      pullquote: into('<figure class="wp-block-pullquote"><blockquote><p></p></blockquote></figure>', LIST),
+    }, {
+      details: `detailsBlock(detailsSummary("S"),${ol})`,
+      tab: `tabsBlock(tabList(tabButton("T")),tabPanels(tabPanel(${ol})))`,
+      accordion: `accordionBlock(accordionItem(accordionHeading("H"),accordionPanel(${ol})))`,
+      pullquote: 'pullquote(paragraph("1. one"),paragraph("2. two"))',
+    })
+  })
+
   test('in a footnote it stays inline text', () => {
     focusFootnote()
     paste({ 'text/plain': LIST })

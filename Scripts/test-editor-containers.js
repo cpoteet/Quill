@@ -830,6 +830,25 @@ describe('block inserts from a list item', () => {
     }
   }
 
+  // The outermost list stops at the container around it: the block goes after the list, still in the quote or column.
+  test('from a list inside a quote or a column the block goes after that list and stays in the container', () => {
+    const after = ([html, nth]) => {
+      caretIn([html, nth])
+      win.insertPreformatted()
+      editor.commands.insertContent('X')
+      return sig(editor.state.doc) + ' ' + JSON.stringify(Array.from(editor.state.doc.content.content, n => n.textContent))
+    }
+    assert.deepEqual({
+      quote: after(['<blockquote><ul><li><p>a</p></li></ul><p>q</p></blockquote>', 0]),
+      nestedInQuote: after(['<blockquote><ul><li><p>a</p><ul><li><p>b</p></li></ul></li></ul></blockquote>', 1]),
+      column: after(['<div class="wp-block-columns"><div class="wp-block-column"><ul><li><p>a</p><ul><li><p>b</p></li></ul></li></ul></div><div class="wp-block-column"><p>r</p></div></div>', 1]),
+    }, {
+      quote: 'doc(blockquote(bulletList(listItem(paragraph())),preformatted(),paragraph())) ["aXq"]',
+      nestedInQuote: 'doc(blockquote(bulletList(listItem(paragraph(),bulletList(listItem(paragraph())))),preformatted())) ["abX"]',
+      column: 'doc(columnsBlock(columnBlock(bulletList(listItem(paragraph(),bulletList(listItem(paragraph())))),preformatted()),columnBlock(paragraph()))) ["abXr"]',
+    })
+  })
+
   test('Paste as Markdown of a list from a list item nests the list, which a list item may hold', () => {
     caretIn(lists['a filled bullet'])
     win.insertMarkdown('- x\n- y')
@@ -2736,6 +2755,30 @@ describe('leaving a container block', () => {
     })
   })
 
+  // A preformatted block is left by a third Enter on its two trailing newlines; that lift-out
+  // reuses only an empty paragraph after it, never a line with text or another kind of block.
+  test('three Enters at the end of a preformatted block leave it for a new line, never the block after it', () => {
+    const shape = () => editor.state.doc.content.content.map(n => n.type.name + (n.textContent ? JSON.stringify(n.textContent) : '')).join(' | ')
+    const leave = after => {
+      editor.commands.setContent('<pre class="wp-block-preformatted">x</pre>' + after, { emitUpdate: false })
+      editor.commands.setTextSelection(2)
+      enter(3)
+      editor.view.dispatch(editor.state.tr.insertText('X'))
+      return shape()
+    }
+    assert.deepEqual({
+      beforeHeading: leave('<h2>Next</h2>'),
+      beforeCode: leave('<pre><code>code</code></pre>'),
+      beforeText: leave('<p>para</p>'),
+      beforeEmptyLine: leave('<p></p><h2>Next</h2>'),
+    }, {
+      beforeHeading: 'preformatted"x" | paragraph"X" | heading"Next"',
+      beforeCode: 'preformatted"x" | paragraph"X" | codeBlock"code"',
+      beforeText: 'preformatted"x" | paragraph"X" | paragraph"para"',
+      beforeEmptyLine: 'preformatted"x" | paragraph"X" | heading"Next"',
+    })
+  })
+
   test('three Enters still leave a code block', () => {
     editor.commands.setContent('<pre><code>x</code></pre>', { emitUpdate: false })
     editor.commands.setTextSelection(2)
@@ -3793,6 +3836,8 @@ describe('the Quote button transforms the way WordPress does', () => {
     droppedKeys: block('pullquote', { className: 'is-style-solid-color extra', textColor: 'vivid-red' }, '<figure class="wp-block-pullquote is-style-solid-color extra has-vivid-red-color has-text-color"><blockquote><p>Big idea</p></blockquote></figure>'),
     customColors: block('pullquote', { style: { color: { text: '#112233', background: '#eeeeee' }, elements: { link: { color: { text: '#ff0000' } } } } },
       '<figure class="wp-block-pullquote has-text-color has-background has-link-color" style="color:#112233;background-color:#eeeeee"><blockquote><p>Big idea</p></blockquote></figure>'),
+    gradient: block('pullquote', { style: { color: { gradient: 'linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%)' } } },
+      '<figure class="wp-block-pullquote has-background" style="background:linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%)"><blockquote><p>Big idea</p></blockquote></figure>'),
     border: block('pullquote', { style: { border: { color: '#000000', width: '2px' } } },
       '<figure class="wp-block-pullquote has-border-color" style="border-color:#000000;border-width:2px"><blockquote><p>Big idea</p></blockquote></figure>'),
   }

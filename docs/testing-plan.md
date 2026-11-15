@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-14 — 911 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
+_Last updated: 2026-11-15 — 911 Swift tests + 2,656 JS tests (2,655 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -20,20 +20,20 @@ This document is the authoritative reference for Quill's automated test suite an
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (153 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
-5. **JS editor tests** — `node --test Scripts/test-editor.js` (291 tests via Node's built-in runner + jsdom)
+5. **JS editor tests** — `node --test Scripts/test-editor.js` (295 tests via Node's built-in runner + jsdom)
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (174 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (747 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (750 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
-11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (97 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
+11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (105 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (106 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (266 tests — live Tiptap editor in jsdom)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (268 tests — live Tiptap editor in jsdom)
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
 21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
@@ -2080,7 +2080,7 @@ Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans
 
 ---
 
-## JS editor tests (291 tests)
+## JS editor tests (295 tests)
 
 File: `Scripts/test-editor.js`
 Transforms file: `Sources/QuillKit/Resources/editor-transforms.js`
@@ -2383,7 +2383,7 @@ The split that moves footnote bodies out of the content and into meta on save.
 | `a list beside a delimiter leaves one delimiter` | A delimiter typed along with the list is not doubled |
 | `a list the splice cannot find is swapped through the DOM, beside a delimiter or not` | A single-quoted class takes the DOM path: beside a delimiter the list is removed, alone it becomes the delimiter |
 
-### `inlineFootnotes` (14 tests)
+### `inlineFootnotes` (16 tests)
 
 The inverse, run on load so the notes are editable in the editor.
 
@@ -2404,6 +2404,17 @@ The inverse, run on load so the notes are editable in the editor.
 | `delimiter text in an attribute cannot stand in for a delimiter the pattern misses` | When the real delimiter is one the string pattern does not match (`/--!>`), a match inside an attribute is not used: `liesOutsideTags` skips matches inside a tag or another comment, so the attribute keeps its text and the list replaces the real comment |
 | `a tag-like string inside a script does not hide the delimiter after it` | `liesOutsideTags` skips a raw-text element's contents (`script`, `style`, `textarea`…), so `'<div title="'` in a script cannot open a pretend tag that swallows the real delimiter and drops the save to the re-serializing fallback; the markup around it keeps its exact bytes |
 | `delimiter text inside an attribute is not mistaken for the delimiter` | When the string matches outnumber the real comments, the DOM fallback runs: the attribute keeps its text and the list follows the `<div>` |
+| `a block after the list keeps a leading non-breaking space` | Only ASCII whitespace before the block after the list is consumed; a leading U+00A0 stays as content after the delimiter's blank line |
+
+### `cleanPastedHTML edges` (3 tests)
+
+The title, caption and footnote paste path passes `keepEdges` so the spaces at a pasted line's ends survive the cleanup (cpoteet/Quill#27).
+
+| Test | What it checks |
+|---|---|
+| `by default the cleaned HTML is trimmed` | Leading and trailing whitespace go; a trailing U+00A0, serialized as `&nbsp;`, stays |
+| `keepEdges leaves the whitespace at both ends` | The same inputs keep their spaces, tabs and newlines |
+| `keepEdges changes nothing but the ends` | Trimmed, the `keepEdges` output equals the default output |
 
 ### `toWordPressHTML` — gallery (17 tests)
 
@@ -2664,7 +2675,7 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (172 tests)
+## JS keyboard tests (174 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2946,7 +2957,7 @@ Clicking an inline image opens Width and Alternative text with Apply, as the blo
 | `a click with no mouse detail, as a keyboard activation sends, toggles it` | Space or Return on the focused button sends `click` with `detail` 0, which toggles the menu |
 | `the press is cancelled so the editor keeps focus` | The `mousedown` is `preventDefault`ed |
 
-### `Tiptap 3 migration: keys and clicks` (15 tests)
+### `Tiptap 3 migration: keys and clicks` (18 tests)
 
 Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were read off Tiptap 2.27.3.
 
@@ -2968,6 +2979,8 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 | `typing the next number below a lettered list continues that list` | `3. ` below `<ol type="a">` with two items joins it, as on v2 (Tiptap 3's rule joins only untyped lists); `4. ` there and `3. ` below a plain list behave as before |
 | `Delete at the end of a list item whose nested item holds two paragraphs` | v2's document; Tiptap 3's `listItemBranchingDeleteKeymap` (which outdented the branch) is off |
 | `Delete at the end of a list item whose nested item holds its own list` | v2's document and node selection |
+| `Backspace at the start of a paragraph after a pullquote with a citation, then typing` | The line joins the pullquote before its citation, as in a quote, and saves as `<p>Q</p><p>XF</p><cite>Who</cite>` |
+| `Backspace at the start of a heading, preformatted or code block after a pullquote with a citation` | Exact document and saved pullquote for each: the line joins the pullquote as a paragraph before the citation (`<p>XF</p>`, `<p>XP</p>`, `<p>XC</p>`, and a two-line code block's newline becomes `<br>`: `<p>XC<br>D</p>`), instead of splitting the pullquote in two around it. A pullquote is `paragraph+ cite?`, so `_intoQuoteBeforeCite` converts any line `canReplaceWith` refuses (`_asParagraph`) |
 
 ---
 
@@ -3126,7 +3139,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (530 tests)
+## JS container tests (750 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3248,7 +3261,7 @@ The Link mark also matches `a[href]`, so without a `contentElement` it claimed t
 | `a gallery inserted with an inline image selected in a cell goes after the table` | A node-selected inline image in a cell does not take the gallery into the cell |
 | `Paste as Markdown stays in the cell` | Markdown pasted in a cell is still inserted at the caret |
 
-### `block inserts from a list item` (75 tests)
+### `block inserts from a list item` (76 tests)
 
 core/list-item holds its own text and a nested core/list, never another block, so the block editor's inserter adds a block after the whole list. WordPress's validator accepts other blocks inside a list item, but anything but an image becomes part of the item's rich text, which the block editor flattens when it is edited.
 
@@ -3258,6 +3271,7 @@ core/list-item holds its own text and a nested core/list, never another block, s
 | `Paste as Markdown of a list from a list item nests the list, which a list item may hold` | Markdown that is only lists stays in the item as a nested list |
 | `Paste as Markdown of anything else from a list item goes after the list` | A heading and a paragraph pasted from a nested item go after the outermost list |
 | `the caret lands in the new block` | Typing after a Preformatted insert from a list item goes into the new block, not the item |
+| `from a list inside a quote or a column the block goes after that list and stays in the container` | `_outerListDepth` stops at the quote or column: the new block follows the outermost list inside it, nested lists included, and the text after it stays put |
 
 ### `the embed card names its provider` (6 tests)
 
@@ -3370,14 +3384,14 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `preformatted is not stamped with wp-block-code` | The two blocks stay distinct |
 | `preformatted keeps its whitespace through a save cycle` | Leading indentation survives and the second save matches the first |
 
-### `the Quote button transforms the way WordPress does` (24 tests)
+### `the Quote button transforms the way WordPress does` (25 tests)
 
 WordPress is the oracle: `wp-validator.js`'s `transformed(html, 'core/quote')` runs the block editor's own Transform to Quote (`switchToBlockType`) and serializes the result.
 
 | Test | What it checks |
 |---|---|
-| `every pullquote fixture is one WordPress accepts` | The nine pullquote sources below pass core's validator, so a mismatch is Quill's, not the fixture's |
-| `Quote from a <name> pullquote's <paragraph/cite> saves what WordPress's transform saves` (11 tests) | Plain, cited, a line break, `align` + `fontSize`, an `id`, padding, preset colour + custom class (both dropped, as core drops them), custom text/background/link colours and a border, with the caret in the text and in the citation: the pullquote becomes a quote holding its paragraphs and citation, saved byte for byte as core's `from: core/pullquote` transform saves it |
+| `every pullquote fixture is one WordPress accepts` | The ten pullquote sources below pass core's validator, so a mismatch is Quill's, not the fixture's |
+| `Quote from a <name> pullquote's <paragraph/cite> saves what WordPress's transform saves` (12 tests) | Plain, cited, a line break, `align` + `fontSize`, an `id`, padding, preset colour + custom class (both dropped, as core drops them), custom text/background/link colours, a gradient and a border, with the caret in the text and in the citation: the pullquote becomes a quote holding its paragraphs and citation, saved byte for byte as core's `from: core/pullquote` transform saves it |
 | `the caret stays in the text it was in` | The conversion keeps the selection |
 | `Quote from a pullquote inside a quote converts the pullquote and keeps the outer quote` | The nearest quote decides; the outer quote is not lifted |
 | `a pullquote inserted in a quote stays in it and saves as WordPress accepts` | core/quote takes any inner block, so Insert ▸ Pullquote nests; the save validates and reloads byte for byte |
@@ -3545,7 +3559,7 @@ The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, 
 | `⌘⇧⌫ removes the block the cursor is in` / `…leaves ordinary body text alone` | |
 | `the minus buttons still refuse to remove the last part` | A columns block cannot be emptied of columns |
 
-### `leaving a container block` (34 tests)
+### `leaving a container block` (36 tests)
 
 Esc and double-Enter are the two ways out of a container. Both resolve through the same list as the delete gesture, so every container behaves the same way — and the behaviours deliberately left alone (table Enter, mid-panel splits, preformatted line breaks) are pinned so a future change has to be deliberate.
 
@@ -3568,6 +3582,7 @@ Esc and double-Enter are the two ways out of a container. Both resolve through t
 | `Enter in a table cell still just adds a paragraph` / `Enter mid-panel still splits the paragraph normally` | Deliberately left alone |
 | `Enter in a preformatted block adds a line, not a paragraph` / `three Enters leave a preformatted block, trailing blank lines trimmed` | |
 | `Enter in a pullquote makes a paragraph, never a citation` | |
+| `three Enters at the end of a preformatted block leave it for a new line, never the block after it` | The lift-out on two trailing newlines makes a new paragraph before a heading, a code block or a line with text, and reuses only an empty paragraph |
 
 ### `citation control` (9 tests)
 
@@ -3889,7 +3904,7 @@ From the branch review on 2026-10-31.
 | `a drag near the bottom edge scrolls down` | |
 | `the tooltip names the block, and a heading adds the section hint` | "Heading 2 · Drag to move, ⌘ for the section" on a heading, "Paragraph · Drag to move" on a paragraph, shown after a delay and hidden on `mouseleave` |
 
-## JS change bar tests (97 tests)
+## JS change bar tests (103 tests)
 
 File: `Scripts/test-editor-change-bars.js`
 Editor files: `Sources/QuillKit/Resources/change-bars.js`, `editor.html` (`_buildChangeBaseline`, `_blockKey`, `_changeKeyOf`, `setChangeBaseline`, `setBodyDirty`, `_changeMarks`, `_trackMove`, the `movedBlocks` plugin), `block-grip.js` (`isGripHidingKey`)
@@ -3924,7 +3939,7 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 | `editing a footnote marks the footnotes list` | |
 | `the generated trailing paragraph is never marked` | The empty paragraph after a separator |
 
-### `bridge` (10 tests)
+### `bridge` (12 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3937,6 +3952,8 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 | `no marks with an overlay open` | The find bar |
 | `the first paragraph typed in a new empty draft is marked` | Baseline `""` |
 | `loading another post drops the old baseline until its own arrives` | `window.setContent` clears it, so a frame drawn before Swift's next baseline marks nothing |
+| `an edit in code view marks only what it changed` | Against a saved `A`, `B`, `C`, a code-view edit that deletes the first block gives one dash at 0 and no bar, one that inserts a new first block a bar on 0 only, and one that edits the middle block a bar on 1 only. The reparse is one step that replaces the whole document, which `mapMovedBlocks` does not map (`_replacesWholeDoc`): each block takes its node's last entry, and a new node is paired by HTML; mapped, the first block kept the old first block's origin |
+| `undoing a code-view edit marks only the edit made before it` | Against a saved `A`–`D`: type in `D`, delete `A` in code view (a dash at 0 and a bar on `xD`), then undo the reparse: four blocks and a bar on `D` only. The undo is another whole-document replace, and the restored blocks are the very nodes it replaced, so each takes its own origin back from `seen`. Re-initing origins after the reparse instead put bars on `A` and `B` here |
 | `marks never appear in getContent()` | |
 
 ### `overlay` (11 tests)
@@ -3963,7 +3980,7 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 
 ---
 
-### `changedBlocks, where the marks fall` (18 tests)
+### `changedBlocks, where the marks fall` (20 tests)
 
 | Test | What it checks |
 |---|---|
@@ -3981,10 +3998,12 @@ The gate: if any of these fails, the bars would show on unchanged blocks. Proven
 | `a two-block run moved past two blocks marks the run the author moved` | An equal-length tie between two runs |
 | `a moved block that is then edited is changed, not moved, and leaves no dash` | With its origin known; without it (no history) the old place gets a dash, as before |
 | `a move and a deletion from the same gap keep the dash` | A move never hides a deletion |
-| `a moved copy of an identical paragraph is still one move` | Pairing is counted per key |
+| `a moved copy of an identical paragraph is still one move` | Pairing is counted per key, and the one mark is on a copy of the repeated paragraph |
 | `an edit is never a move` | |
 | `a block rewritten and another deleted beside it: one bar, no dash at the rewrite` | |
 | `the footnotes list is a block of its own, and unchanged it is not marked` | |
+| `origins name the saved block each block came from, and placed the ones still in saved order` | From the saved HTML alone: a new block has no origin, an edit in place pairs with its removal, a moved block takes the saved block with its HTML; `placed` is true for the blocks in saved order and false for the moved one |
+| `known origins decide which saved block a block came from` | With origins from the editor, the block the author moved is the one out of saved order, even when the other reads the same |
 
 ### `moves through the editor` (27 tests)
 
@@ -4020,7 +4039,7 @@ Through `window.moveBlock`, a grip drop on `#editor-wrap`, typing, deletion, und
 | `a new baseline forgets earlier moves` | After a save, an old hint must not steer a new tie |
 | `loading another post forgets earlier moves` | |
 
-### `overlay behaviour` (10 tests)
+### `overlay behaviour` (12 tests)
 
 | Test | What it checks |
 |---|---|
@@ -4034,6 +4053,8 @@ Through `window.moveBlock`, a grip drop on `#editor-wrap`, typing, deletion, und
 | `a press-and-drag over a bar names nothing` | |
 | `scrolling hides the name` | |
 | `a fade during typing is drawn fresh when the pointer comes back` | The overlay fades on a keypress and holds its redraw until the pointer moves |
+| `a bar too short to stop short of a dash keeps its block's full height` | A 5px bar that trimming would leave under 4px keeps its full height |
+| `a bar starts below a dash just above its top` | A dash within 6px above a bar's top pushes the bar's top 6px below it |
 
 ### `every overlay hides the marks and blocks moves` (5 tests)
 
@@ -4208,7 +4229,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (105 tests)
+## JS paste tests (106 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4288,7 +4309,7 @@ A tab label, button, details summary, accordion heading, quote citation and imag
 |---|---|
 | `multi-line plain text keeps its newlines inside a code block` | Newlines are not collapsed into spaces the way they are in a footnote |
 
-### `plain text that is a numbered list` (10 tests)
+### `plain text that is a numbered list` (12 tests)
 
 Plain text whose every line carries the next number pastes as a list, through the HTML paste path (cpoteet/Quill#26). Tiptap 3's own `OrderedList` paste plugin stays off: it inserted the list straight from the clipboard, into code blocks, footnotes and headings too. See `docs/paste.md`.
 
@@ -4305,6 +4326,7 @@ Plain text whose every line carries the next number pastes as a list, through th
 | `a Group holding only an empty paragraph gets the list inside it` | A Group is `isolating`, so the list stays inside it rather than replacing it |
 | `in a footnote it stays inline text` | The footnote flattening still applies |
 | `a clipboard that also carries HTML pastes that HTML` | The plain flavour is used only when there is no `text/html` |
+| `a details body, a tab panel and an accordion panel take the list; a pullquote keeps paragraphs` | The hosts that open with a title take the list inside them; a pullquote, which holds paragraphs only, keeps one paragraph per line |
 
 ### `where a paste came from` (4 tests)
 
@@ -4401,7 +4423,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (266 tests)
+## JS block settings tests (268 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4411,7 +4433,7 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 | Group | What it checks |
 |---|---|
 | `className survives on container blocks` | The carried class is spliced into the rendered class list and back into the comment, never doubled |
-| `the markup decides which classes a block keeps` | A class in the comment's `className` but not on the element is dropped on load, so a class deleted in code view stays deleted; a custom class on the element joins a `className` the comment already has, and a class the block draws itself (`has-text-align-center`) does not |
+| `the markup decides which classes a block keeps` | A class in the comment's `className` but not on the element is dropped on load, so a class deleted in code view stays deleted; a custom class on the element joins a `className` the comment already has, and a class the block draws itself (`has-text-align-center`) does not; a list gains a class added to its markup, while an image (whose figure carries classes it draws itself) drops a missing class but gains none |
 | `registry-generated attributes` | `accordionItem.openByDefault` parses comment-first, renders `is-open`, and settles the wrapper nesting order |
 | `the delimiter half comes from the registry` | `attrsFromSettings`/`ownedAttrsFor` replace a hand-written `attrsFrom` |
 | `the toolbar control comes from the registry` | A generated control appears only inside its block, reflects the value, and flips it |
@@ -4485,6 +4507,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Quit and relaunch → credentials are remembered and lists reload without re-entering them. A spinner appears during loading — the empty-state placeholder does NOT flash before posts arrive.
 - [ ] Change the site URL in settings → lists update to the new site; any saved AI sample posts are cleared.
 - [ ] **Switching sites flushes the open post first.** Edit a post on site A without saving, then connect site B in Settings → reconnect to A and reopen the post: "Unsaved changes restored" shows the edit. While on B: nothing is selected, the lists and Media show only B's items, and opening a B post with the same ID as an A post that has a stash shows no restore toast.
+- [ ] **Switching sites shows loading, not an empty site.** With Posts selected and nothing open, connect another site that has posts → the sidebar shows its spinner until the new posts arrive; neither "No posts yet" nor the start page's New Post card flashes in between. Do the same on Pages.
 - [ ] **A late alt-text save stays on its own site.** Throttle the network, edit an image's alt text on site A and click away, then switch to site B before the save returns → B's Media item with the same ID (if any) keeps its own alt text.
 
 ### 7.2 Sidebar, lists, navigation
@@ -4545,19 +4568,21 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] A post where a styled `<div>` wraps block markup (the `<div class="…">` opens before a `<!-- wp:paragraph -->` and closes after it) loads its blocks normally, with no empty Custom HTML card.
 - [ ] A post containing a Media & Text shows a single-row "Media Text" card reading "Edit in Code View (</>)", with none of its text, and saving without touching it leaves the post byte-identical. A Cover renamed "Hero" in Gutenberg's List View reads "Cover: Hero".
 - [ ] **Groups.** Insert a Twenty Twenty-Five pattern built from headings, paragraphs, lists, images and buttons inside a Group. Open it in Quill → the Group is outlined with a small "Group", "Row", "Stack" or "Grid" label (followed by its custom name, as "Group: Hero") and everything in it is editable. Type one character inside it, save, reopen in Gutenberg → no invalid block, and the Group's colours, spacing and layout are unchanged. A Group holding a Spacer, Cover or any other block Quill does not model stays one locked card.
+- [ ] **A Group's edges hold.** With an open Group between two paragraphs: Backspace at the start of the Group's first line, Delete at the end of the paragraph above, Backspace at the start of the paragraph below and Delete at the end of the Group's last line → each time the Group stays, with its label and layout, and no paragraph moves in or out of it. Backspace between two paragraphs inside the Group still joins them. Two Groups in a row: Backspace at the second's start → they stay two Groups.
 - [ ] **Synced patterns.** In WordPress, create a synced pattern and insert it into a post. Open the post in Quill → the card is one row reading "Synced pattern: {title}", with none of the pattern's text, and "Shared across posts · Edit in WordPress"; the button opens the pattern in the block editor. Trash the pattern, reopen the post → "Synced pattern #{id} (not found)" with no button. Delete it permanently, reopen → the same. Saving the post never changes the `<!-- wp:block … /-->` line.
 - [ ] **Synced pattern added in code view.** Open a post in code view, add `<!-- wp:block {"ref":N} /-->` with the ID of a real synced pattern, and leave code view → the card reads "Synced pattern" while it loads, then "Synced pattern: {title}". Open and close code view without typing → no request goes out and the cards are unchanged.
 - [ ] **Group label colour and pasted Groups.** In light and dark mode, read the small Group, Row, Stack or Grid label above an open Group → it is legible against the page (`#737373` light, `#8f8f8f` dark, the same as a locked card's hint). Click the label text and try to type in it → nothing in the saved post changes. Copy a locked Group (one holding a Spacer or Cover) in Quill and paste it between two paragraphs → it stays one locked card. To observe, not yet judged a bug: copy a Group from the WordPress block editor and paste it into an empty paragraph by itself → note whether it arrives as a Group or flattens to paragraph text (the `groupBlock` node may lack `defining: true`).
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
   - [ ] In a new pullquote with a citation, click Quote (and, separately, press ⌘⇧B) → it becomes a regular quote with the same text and citation. In a list item, nested ones too, click Quote → the whole list goes inside a quote; click Quote again → the list is back as it was. Save, open in Gutenberg → no block is invalid.
-  - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.
+  - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, flush with the quote's text and following its alignment). Click again → the cite is removed.
   - [ ] Type an author name in the cite line, save → `<cite>` persists in the saved HTML.
   - [ ] Leave the cite line blank, save → no empty `<cite>` appears in the saved HTML.
   - [ ] Press Enter inside the cite → cursor exits the blockquote into a new paragraph below.
   - [ ] Press Enter at the end of a paragraph inside a blockquote → a new paragraph is created inside the blockquote (not outside it).
   - [ ] Press Enter in an empty paragraph inside a blockquote → the empty paragraph exits the blockquote (lift out): the caret is in an empty paragraph right after the quote, even when a heading or code block follows it.
   - [ ] Backspace at the start of a paragraph right after a quote with a cite → the paragraph becomes the quote's last line, above the cite. Backspace at the start of the cite, or Delete at its end, does nothing.
+  - [ ] **Backspace into a cited pullquote.** Below a pullquote with a citation, put a paragraph, then a heading, then a Preformatted block, then a code block of two lines, one at a time. Backspace at the start of each → its text becomes the pullquote's last line above the citation, as a plain paragraph (the code block's two lines are one paragraph with a line break), and the pullquote stays one block, not split in two around the line. Save, open in Gutenberg → the Pullquote is valid.
   - [ ] Press Backspace in an empty cite → the cite is deleted (not the entire blockquote).
   - [ ] Toggle blockquote off → the quote and its cite are removed cleanly.
 - [ ] Write content with curly quotes, emoji, and non-Latin scripts → save and reload → characters are preserved exactly.
@@ -4888,6 +4913,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Open the settings panel for a **post** → it shows categories, tags, slug, excerpt, and discussion. For a **page** → it shows parent page, slug, and discussion only (no categories, tags, or excerpt).
 - [ ] In the category list, checked categories appear first (alphabetical), then unchecked (alphabetical). This ordering holds when filtering by search and after toggling a category on/off.
 - [ ] Selected tag chips above the search box are in alphabetical order; unselected tags in the dropdown are also alphabetical.
+- [ ] The empty category field reads "Filter or add categories…" and the empty tag field "Filter or add tags…". Typing in either narrows its list, and Return on a name not in it adds that term.
 - [ ] The amber accent color is used throughout the settings panel.
 - [ ] Preferences opens from both the app menu (⌘,) and any in-app settings button. The sample post picker is populated (not empty).
 - [ ] The post settings, media and writing-check inspectors use Finder-style section headings (small, semibold, secondary, normal case, not uppercase), system rounded-border fields (the excerpt included), and the same 16pt margins. Compare against the sidebar in light and dark.
@@ -4988,6 +5014,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] Click a footnote number in the list → the cursor jumps to the corresponding marker in the text (just after it).
 - [ ] Click the ↩ button at the end of a footnote entry → the cursor jumps to the corresponding marker in the text.
 - [ ] Save the post → fetch the raw HTML (`?context=edit`). The content ends with `<!-- wp:footnotes /-->` and **no** list; the bodies are in `meta.footnotes`. Markers are `<sup>` elements carrying core's `<fnId>-link` id, and there is no `↩` back-link anywhere in the content — WordPress renders that itself.
+- [ ] **A block after the footnotes.** Click just below the footnotes list (the caret shows as a thin vertical bar), type a paragraph and save → the raw content has a blank line between `<!-- wp:footnotes /-->` and the paragraph's `<!-- wp:paragraph -->`, not the two comments glued together. Open the post in Gutenberg, save without editing, and fetch the raw content again → the spacing is unchanged.
 - [ ] Close and reopen the post → footnotes render correctly and are editable; the ↩ button is present in each entry in the editor.
 - [ ] **Preview sends the notes.** On a draft with footnotes, edit a note and click Preview → the preview shows the edited note. Undo the edit back to the saved text and Preview again → the preview, and the draft on the server (`?context=edit`), show the saved note, not the edited one.
 - [ ] View the post on the live WordPress site → footnote numbers are clickable links to the footnote list, exactly one back-arrow per note, and it jumps back to the inline marker.
@@ -5056,6 +5083,7 @@ Run this on a **new local draft**, never a published post.
 **Custom HTML**
 - [ ] The insert menu lists Custom HTML after Preformatted. Choose it → the "Custom HTML" sheet opens; type HTML and press Insert (⌘↩) → a "Custom HTML" card appears at the caret. Save → the raw content holds a `<!-- wp:html -->` block, and Gutenberg opens it as a valid Custom HTML block.
 - [ ] Insert Custom HTML with the caret inside a column or a quote → the card goes after the whole container.
+- [ ] **Inserts from a pullquote or a list.** With the caret in a pullquote's text, insert Preformatted, a Table, Columns and an Image → each lands after the whole pullquote, which stays one valid Pullquote block. With the caret in a list item, a nested one too, insert the same → each lands after the whole list, which stays one list. With the list inside a quote or a column → the block goes after the list and stays in that quote or column. Save, open in Gutenberg → no block is invalid.
 - [ ] Click Edit… on the card, or double-click the card → "Edit Custom HTML" opens with the block's HTML. Change it and Save → only that card changes, and one ⌘Z restores the old HTML.
 - [ ] Click Edit… and Save without changing anything → the post is not marked edited, and a save leaves the raw content byte-identical.
 - [ ] HTML holding `<script>` or an `onerror` handler never runs in the editor.
@@ -5068,6 +5096,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Toggle each style control (button, quote, separator, image, table) → the style applies in the editor, survives a save and a reopen, replaces the previous style rather than stacking, and leaves classes you wrote yourself alone.
 - [ ] Open each in Gutenberg → the style shows there too, and the block is valid.
 - [ ] **Accordion icons:** change the icon and its position → every heading in the accordion changes with the block, one undo reverses the lot, and an item added afterwards inherits the setting.
+- [ ] **Styles read apart in the editor.** A Fill button has a tinted face and no edge; switch it to Outline → an edge and no face. In an accordion's toolbar the icon side is a Left | Right pair with the current side highlighted; click the other → it highlights and every heading's icon moves. Set a quote to Plain → a faint dashed bar stays at its left edge in the editor, and the saved markup has no extra class or style for it. Centre and right-align a quote with a citation → the citation follows the quote's alignment and sits flush with its text, not pinned right. Light and dark.
 - [ ] **Open in new tab:** on a button with a link, the control appears and writes `target`/`rel`; on a button with no link it is hidden, and it appears the moment a link is set. The same control exists for a prose link.
 - [ ] **Default tab:** with two or more tabs, one is marked as the default and the mark follows the control, not the caret. With a single tab there is no mark. The mark never reaches the saved markup.
 - [ ] **Default tab from a tab title.** With the caret in the second tab's title, the default-tab control in the second row is available; press it → the second tab becomes the default and shows the default mark. A tab title whose panel was deleted in code view does not break the row.
@@ -5204,6 +5233,8 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 - [ ] Copy three blocks inside Quill (a list, an accordion and a table) and paste them into another post: they save exactly as the originals.
 - [ ] Paste several paragraphs into a list item: each becomes its own item. Paste a blockquote with a citation, a heading and a nested list into a list item → all of it arrives as items, none dropped. Paste a lone blockquote into a list item → it becomes items too.
 - [ ] Paste a heading, a list and a paragraph into an empty paragraph → the first block replaces the empty paragraph and keeps its own attributes (a centred heading stays centred). Paste the same into a paragraph that already has text → the first block joins that paragraph.
+- [ ] **Plain-text numbered list.** In TextEdit (Format → Make Plain Text) type `1. one`, `2. two`, `3. three` on three lines, copy, and paste into an empty paragraph → one numbered list that Gutenberg opens as a valid List block. Lines `3. x` / `4. y` → a list that starts at 3; `a.` / `b.` → a lettered list. Paste the same three lines into a code block, a heading, a table cell and a footnote → they stay text, one line each (one line in the footnote), with no list. Into an empty paragraph inside a Group or a quote → the list lands inside it and the Group keeps its layout.
+- [ ] **A multi-line paste into a title stays one line.** Copy three lines of plain text and paste them into a tab label, a button, a details summary, an accordion heading, a quote citation and an image caption → each time the lines join with spaces at the caret and the block stays whole. Copy " by " (spaces included) from a web page and paste it between two words in a sentence → both spaces stay. Copy a bulleted list from a web page and paste it with the caret at the start of the first column of a Columns block → the list lands inside that column, and the block keeps both columns and their widths.
 - [ ] Copy a passage from another ProseMirror or Tiptap editor (a Confluence page, a Substack draft, GitLab) and paste it → it is cleaned like any outside paste: no inline styles, foreign classes or `data-pm-slice` in the saved HTML. Then copy a passage inside Quill and paste it back → it comes back exactly as saved, and stays exact after a second copy and paste. Quit and relaunch Quill and paste a copy made before the relaunch → it is treated as an outside paste and cleaned, which is expected.
 - [ ] Paste a screenshot, switch off the network before the upload finishes so it fails, then paste the same screenshot again with the network on → it uploads this time, rather than staying an inline base64 image. Do the same with an image pasted inside HTML from a web page.
 - [ ] Paste an image and wait for the upload to finish, then press ⌘Z once → the whole paste is undone, not just the swap back to the base64 image. Press ⌘⇧Z → the image returns with its uploaded URL, not the base64.
@@ -5221,6 +5252,7 @@ On a new local draft, discarded afterwards, unless the step says otherwise. Spec
 - [ ] Save Locally → the bars go. Make an edit and Revert → the bars go. A published post that has just loaded (look only, do not edit) has none.
 - [ ] Bars follow their blocks while an image above them finishes loading.
 - [ ] Open the insert menu or the find bar, and switch to code view → no bars while they are open.
+- [ ] **After a code-view edit.** On a draft with three paragraphs, Save Locally, then in code view delete the first paragraph's block and leave code view → one dash above the first paragraph and no bar. Save Locally, then in code view add a new paragraph block at the top and leave → one bar, on the new paragraph, and none on the others. Save Locally, then in code view edit only the second paragraph's text and leave → one bar, on that paragraph, and none on the others.
 - [ ] Light and dark.
 - [ ] **Restored unsaved changes** (remote posts only). Send a new local draft to WordPress as a draft, edit two of its paragraphs, switch to another post without saving, switch back → "Unsaved changes restored", and bars sit on exactly those two paragraphs. Delete that draft on WordPress when done.
 
@@ -5528,8 +5560,8 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 275 | The dragged block (or a heading's whole section) is dimmed with `.block-drag-source` from `dragstart` to `dragend`, and an edit mid-drag or the drop clears it. Left on, the dim stays on a block that is no longer being dragged | ✅ `test-editor-block-move.js` `'only the dragged block is marked, and only until the drag ends'`, `'a section marks every block in it'`, `'an edit mid-drag clears the mark'`, `'a drop clears the mark'` + 👁 §7.3 |
 | 276 | After a drop the selection must land where the author can keep working: a caret at the start of a moved paragraph, a node selection on an embed, the caret in a Group's first text block or a section's heading, and typing afterwards is its own undo step, so one ⌘Z removes the typing and not the move | ✅ `test-editor-block-move.js` `'where a drop leaves the selection'` (6 tests) |
 | 277 | The amber drop line sits on the gap nearest the pointer, is hidden over a gap that would not move the block, goes when the pointer leaves the editor or the drag ends, and only a grip drag draws it. The editor autoscrolls near its top and bottom edges and stops when the drag stops | ✅ `test-editor-block-move.js` `'the drop line and the gaps'` (6 tests), `'autoscroll and the grip tooltip'` (3 tests) + 👁 §7.3 (where the line lands needs layout) |
-| 278 | A change bar marks a changed block, and a dash marks where a block was removed, in the right place: above everything for the first block, below for the last, one dash per separate removal, a replaced block a bar and no dash, but a body emptied of every block (one empty paragraph left) a dash and no bar. Two identical paragraphs must not hide a deletion. A move marks the block the author moved (grip or Move Block) with a "Moved" bar and leaves no dash; a block never moved is never marked as moved; moved and edited, in either order, is a plain bar with no dash; undo and redo give the same marks back; a dash means a saved block is gone, and a move or an edited neighbour never hides one (cpoteet/Quill#28) | ✅ `test-editor-change-bars.js` `'changedBlocks, where the marks fall'` (18 tests), `'moves through the editor'` (27 tests) + 👁 §7.29 |
-| 279 | The marks draw to the right of the text column, name themselves after a delay on hover, stay quiet during a press-and-drag and on scroll, and are held while faded during typing. Under the insert and embed menus, the find bar, the table size menu and the inline image popover they are hidden and Move Block does nothing | ✅ `test-editor-change-bars.js` `'overlay behaviour'` (10 tests), `'every overlay hides the marks and blocks moves'` (5 tests) + 👁 §7.29 (placement needs layout) |
+| 278 | A change bar marks a changed block, and a dash marks where a block was removed, in the right place: above everything for the first block, below for the last, one dash per separate removal, a replaced block a bar and no dash, but a body emptied of every block (one empty paragraph left) a dash and no bar. Two identical paragraphs must not hide a deletion. A move marks the block the author moved (grip or Move Block) with a "Moved" bar and leaves no dash; a block never moved is never marked as moved; moved and edited, in either order, is a plain bar with no dash; undo and redo give the same marks back; a dash means a saved block is gone, and a move or an edited neighbour never hides one (cpoteet/Quill#28) | ✅ `test-editor-change-bars.js` `'changedBlocks, where the marks fall'` (20 tests), `'moves through the editor'` (27 tests) + 👁 §7.29 |
+| 279 | The marks draw to the right of the text column, name themselves after a delay on hover, stay quiet during a press-and-drag and on scroll, and are held while faded during typing. Under the insert and embed menus, the find bar, the table size menu and the inline image popover they are hidden and Move Block does nothing | ✅ `test-editor-change-bars.js` `'overlay behaviour'` (12 tests), `'every overlay hides the marks and blocks moves'` (5 tests) + 👁 §7.29 (placement needs layout) |
 | 280 | The Continue Writing page must not lead with a WordPress draft whose `modified_gmt` is empty (it has no edit time to rank by) unless a stash gives it one, and a time ahead of the device clock reads as now, not as a future time | ✅ `MastheadLeadTests` `aDraftWithoutAModifiedTimeLeadsOnlyThroughItsStash`, `aClockAheadOfTheDeviceReadsAsNow` + 👁 §7.2 |
 | 281 | A missed schedule is confirmed against WordPress once per schedule, and only for a post still `future`; a published or draft post is never a candidate. A fetch that fails (offline) must not be remembered as done, or the post is never marked missed until the schedule changes | ✅ `MastheadScheduledTests.onlyScheduledPostsCanBeMissed`, `MissedScheduleTests.eachPostIsFetchedOnce`, `aFailedFetchIsRetriedOnTheNextCall` + 👁 §7.2 |
 | 282 | `currentUser()` must not fail because the second request (one post, for the `unfiltered_html` link) failed. It returns the user's ID with `canPostUnfilteredHTML` `nil`, so `currentUserID` is set and the masthead tells the user's drafts from other authors'. Before, the throw left the ID `nil` and every author's drafts counted as the user's. `nil` is unknown: `AppState.loadUnfilteredHTMLCapability` asks again on its next call | ✅ `WordPressClientTests.currentUserKeepsTheIDWhenThePostsCheckFails` |
@@ -5548,7 +5580,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 295 | The main window's position and the sidebar width must survive a reboot (`id: "main"` on the `WindowGroup`), and the About window must open centred, sized to its content before `center()` | 👁 §7.13 (needs a reboot and a real window; see `docs/platform-workarounds.md`) |
 | 296 | The selected media filter draws amber, not grey: choosing a filter gives the sidebar list first responder, only while Media is showing, so a background upload that resets the filter cannot pull focus from the editor | 👁 §7.26 |
 | 297 | A connected site's `site_icon_url` was fetched from any scheme and host at any size and stored whole in `site_profiles.json`. `loadIconData` now takes https (or loopback http) only, up to 2 MB | ✅ `SiteDiscoveryTests.loadIconDataRefusesPlainHTTPExceptOnALocalHost` + `loadIconDataRefusesAnOversizedIcon` |
-| 298 | A class in a block comment's `className` but not on the element came back on every save, because the comment won on parse: deleting `callout` from an `<h2>` in code view (or a comment an outside tool wrote) put it back on the heading. `classNameFromMarkup` keeps only the classes the element still carries | ✅ `test-editor-block-settings.js` `'the markup decides which classes a block keeps'` (5 tests) |
+| 298 | A class in a block comment's `className` but not on the element came back on every save, because the comment won on parse: deleting `callout` from an `<h2>` in code view (or a comment an outside tool wrote) put it back on the heading. `classNameFromMarkup` keeps only the classes the element still carries | ✅ `test-editor-block-settings.js` `'the markup decides which classes a block keeps'` (7 tests) |
 | 299 | A save made after a code-view edit sent the textarea itself: `formatHTML`'s blank lines, and no `className` in the comment for a class added to an element, which Gutenberg flags as invalid. `flushContent` now parses a code-view edit into the document and returns `toWordPressHTML`'s output, exit does the same, and `_rawHTML` is cleared so later saves serialize the document | ✅ `test-editor-bridge.js` `'a code-view edit saves what Quill writes'` (6 tests) |
 | 300 | A class added to an element whose comment already had a `className` stayed out of the comment (`supportAttrs` writes one only when the comment has none). `classNameFromMarkup` adds the element's custom classes too, except on the four figure blocks that rebuild their root (`RAW_ATTRS_EXEMPT`), whose `size-*` and theme classes are not `className` | ✅ `test-editor-block-settings.js` `'a class added beside an existing className joins it in the comment'` |
 | 301 | A list pasted at the start of the first column replaced that column, and Backspace or Delete at a column edge merged two columns or turned the next paragraph into a column. `columnBlock` and `columnsBlock` are `isolating` | ✅ `test-editor-containers.js` `'column boundaries'` (3 tests) |
@@ -5569,7 +5601,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 316 | Once the caption stopped being its own editing host, → or ↓ into an image could leave WebKit's caret beside the frame, where typed text was drawn but never saved. The caret is moved into the caption | ✅ `test-editor-keyboard.js` `'a caret WebKit leaves beside the image frame is moved into the caption'` + 👁 WebKit |
 | 317 | A copied marker pasted into the same post kept its id: two markers, two `-link` anchors and two meta entries shared one id, and both links went to one note (cpoteet/Quill#25). `FootnoteSync` renames each marker a paste or drop brought in whose id is taken, and copies the note. The same pass now keeps one footnotes list when a paste brings a second (⌘A, ⌘C, ⌘V), drops a marker pasted into a note, and gives a cut marker its note back when it is pasted (`_removedFootnotes`) | ✅ `test-editor-footnotes.js` `'copying and pasting a footnote marker'` (11 tests) + the paste harness's `quill` mode in real WebKit |
 | 318 | Paste as Markdown with the caret in a quote citation split the quote, and in an image caption split or replaced the image (cpoteet/Quill#27, item 1). `_blockInsertDepth` puts every block insert from a citation after its quote or pullquote, and from a caption after the image | ✅ `test-editor-containers.js` `'block inserts from a container title'` (citation, pullquote citation and caption hosts) |
-| 319 | One line of HTML pasted into a title, citation, caption or footnote lost its edge spaces: ` by ` went in as `by`, `&nbsp;` included (cpoteet/Quill#27, item 2). `cleanPastedHTML`'s trim, the flatten's trim and ProseMirror's parser each dropped them; `_pastedEdgeSpaces` records them before the parse and `_withEdgeSpaces` puts them back | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (8 tests) + real WebKit via the paste harness |
+| 319 | One line of HTML pasted into a title, citation, caption or footnote lost its edge spaces: ` by ` went in as `by`, `&nbsp;` included (cpoteet/Quill#27, item 2). `cleanPastedHTML`'s trim, the flatten's trim and ProseMirror's parser each dropped them; `_pastedEdgeSpaces` records them before the parse and `_withEdgeSpaces` puts them back | ✅ `test-editor-paste.js` `'paste into a title, label or caption stays on one line'` (8 tests), `test-editor.js` `'cleanPastedHTML edges'` (3 tests, the `keepEdges` trim) + real WebKit via the paste harness |
 | 320 | The same edge spaces were lost in a body paste of one line of HTML, and in real WebKit the leading space of `<span> by </span>` never reached the page. Inline-only body pastes now get their edges put back too, and a one-line paste whose plain text matches the HTML takes its edge spaces from the plain text as well (cpoteet/Quill#27) | ✅ `test-editor-paste.js` `'one line of HTML pasted mid-paragraph keeps its edge spaces'` (3 tests) and `'a leading space WebKit dropped from the HTML comes back from the plain text'` + real WebKit via the paste harness |
 | 321 | Plain-text lettered and roman lists pasted as paragraphs. They now paste as core writes them: `list-style-type` plus the delimiter's `type` (cpoteet/Quill#27, item 3) | ✅ `test-editor-paste.js` `'a lettered or roman list pastes as core writes one, and passes WordPress\'s validator'` + real WebKit via the paste harness |
 | 322 | The real-WebKit paste harness lost its first case: WebKit had not yet registered the web view as focused, so the editor's `focus()` did nothing and the paste went to the body (cpoteet/Quill#27, item 5). The harness waits for `view.hasFocus()` before the first case | ✅ a harness run whose first case is `hello` saves it |
@@ -5578,8 +5610,10 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 325 | Preformatted and Pullquote in the + menu converted the block under the caret, so an H2 became a pre or was wrapped into a pullquote, where the block editor's inserter adds a new block. Both go through `_insertContainer` now (`window.insertPreformatted`, `window.insertPullquote`) | ✅ `test-editor-containers.js` `'insert menu'` (6 tests) and both added to `'block inserts from a container title'` / `'from a table cell'` + 👁 §7.23 |
 | 326 | A block inserted from the + menu or toolbar with the caret in the middle of a paragraph, heading or preformatted block split it in two around the new block, and from the start of a line put the block before it. `_blockInsertDepth` now returns the textblock holding the caret whenever it has text, so `_blockInsertChain` adds the block after it; Custom HTML's own insert does the same. Paste as Markdown still lands at the caret | ✅ `test-editor-containers.js` `'block inserts from the middle of text'` (52 tests), `test-editor-preservation.js` `'inserted from the middle of a paragraph, the card goes after it …'` + 👁 §7.23 |
 | 327 | A block inserted with the caret in a pullquote's text (Preformatted, Table, Columns, …) landed inside the pullquote, which core/pullquote cannot hold (one rich-text value and a citation, no inner blocks). `_blockInsertDepth` treats the whole pullquote as the container, as it already did from its citation, and the schema is `paragraph+ cite?`. A pullquote saved with a block inside before this loads as a card (`holdsBlockItCannotOpen`), since the narrower node would push the block out and turn its citation into a paragraph | ✅ `test-editor-containers.js` `'block inserts from a container title'` (26 `pullquoteText` tests), `'a pullquote holds only paragraphs and an optional cite'`, `'a pullquote an older Quill saved with a block inside keeps its bytes through an edit'`; `test-block-serializer.js` `'blockNeedsWrapping'` (4 pullquote tests) |
-| 328 | A block inserted from a list item (Image, Table, Preformatted, Columns, …) landed inside the `<li>`. WordPress's validator accepts that, but core/list-item allows only a nested list, so its inserter never puts a block there, and anything but an image became part of the item's rich text. `_blockInsertDepth` now returns the outermost list (`_outerListDepth`); Paste as Markdown that is only lists still nests in the item | ✅ `test-editor-containers.js` `'block inserts from a list item'` (75 tests), `test-editor-keyboard.js` `'from a list item the image and its paragraph go after the list'` |
-| 329 | The Quote button did nothing with the caret in a pullquote's text or a list item, and wrapped a pullquote whole in a quote from its citation: it is a `wrapIn`, and neither a `paragraph+ cite?` pullquote nor a list item can hold a quote. It now does WordPress's Transform to Quote: a pullquote converts to a quote keeping its paragraphs, citation, `align`, `anchor`, `fontSize` and `style`; a list goes inside a new quote. Toggling a quote off lifts the whole quote, so a quoted list comes back out | ✅ `test-editor-containers.js` `'the Quote button transforms the way WordPress does'` (24 tests, against core's own transform) + 👁 §7.3 |
+| 328 | A block inserted from a list item (Image, Table, Preformatted, Columns, …) landed inside the `<li>`. WordPress's validator accepts that, but core/list-item allows only a nested list, so its inserter never puts a block there, and anything but an image became part of the item's rich text. `_blockInsertDepth` now returns the outermost list (`_outerListDepth`); Paste as Markdown that is only lists still nests in the item | ✅ `test-editor-containers.js` `'block inserts from a list item'` (76 tests), `test-editor-keyboard.js` `'from a list item the image and its paragraph go after the list'` |
+| 329 | The Quote button did nothing with the caret in a pullquote's text or a list item, and wrapped a pullquote whole in a quote from its citation: it is a `wrapIn`, and neither a `paragraph+ cite?` pullquote nor a list item can hold a quote. It now does WordPress's Transform to Quote: a pullquote converts to a quote keeping its paragraphs, citation, `align`, `anchor`, `fontSize` and `style`; a list goes inside a new quote. Toggling a quote off lifts the whole quote, so a quoted list comes back out | ✅ `test-editor-containers.js` `'the Quote button transforms the way WordPress does'` (25 tests, against core's own transform) + 👁 §7.3 |
+| 330 | Backspace at the start of a heading, Preformatted or code block right after a pullquote with a citation split the pullquote in two around the line: `_intoQuoteBeforeCite` inserted the line whole before the `cite`, and a `paragraph+ cite?` pullquote cannot hold it, so ProseMirror closed the pullquote around it. The line now joins as a paragraph whenever `canReplaceWith` refuses its type (`_asParagraph`; a code block's newlines become `<br>`), as it does with no citation | ✅ `test-editor-keyboard.js` `'Backspace at the start of a heading, preformatted or code block after a pullquote with a citation'`, `'Backspace at the start of a paragraph after a pullquote with a citation, then typing'` + 👁 §7.3 |
+| 331 | An edit in code view marked the wrong blocks: the reparse is one whole-document `setContent`, which the `movedBlocks` plugin mapped as the first block edited in place, and no new baseline follows a code-view edit, so the new first block kept the old first block's origin and the marks fell on blocks the edit never touched. `mapMovedBlocks` does not map a step that replaces the whole document: each block takes the entry its node last had, and a new one is paired by HTML, so the reparse and its undo both land right | ✅ `test-editor-change-bars.js` `'an edit in code view marks only what it changed'`, `'undoing a code-view edit marks only the edit made before it'` + 👁 §7.29 |
 
 ---
 

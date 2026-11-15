@@ -118,6 +118,19 @@ describe('the markup decides which classes a block keeps', () => {
     assert.match(out, /<!-- wp:heading \{"className":"wide"/)
   })
 
+  test('a list keeps the classes its markup still has and gains the one added there', () => {
+    const out = save('<!-- wp:list {"className":"keep gone"} -->\n<ul class="wp-block-list keep added"><!-- wp:list-item --><li>one</li><!-- /wp:list-item --></ul>\n<!-- /wp:list -->')
+    assert.match(out, /^<!-- wp:list \{"className":"keep added"\} -->\n<ul class="wp-block-list keep added">/)
+  })
+
+  // An image's figure carries classes its own attributes draw (size-large and the like), so a
+  // class there is never added to the comment; one missing from the figure is still dropped.
+  test('an image drops a class its figure lost but gains none from its figure', () => {
+    const image = (comment, figure) => save(`<!-- wp:image {"id":9,"sizeSlug":"large","className":"${comment}"} -->\n<figure class="wp-block-image size-large ${figure}"><img src="https://x.test/a.jpg" alt="" class="wp-image-9"/></figure>\n<!-- /wp:image -->`)
+    assert.match(image('is-style-rounded', 'is-style-rounded extra'), /^<!-- wp:image \{"id":9,"sizeSlug":"large","className":"is-style-rounded"\} -->/)
+    assert.match(image('is-style-rounded gone', 'is-style-rounded'), /^<!-- wp:image \{"id":9,"sizeSlug":"large","className":"is-style-rounded"\} -->/)
+  })
+
   test('a class deleted in code view stays deleted after a visual edit', () => {
     const toggle = () => win.document.getElementById('btn-code-view')
       .dispatchEvent(new win.MouseEvent('click', { bubbles: true }))

@@ -182,6 +182,8 @@ public final class AppState: ObservableObject {
             selectedItem = nil
             posts = []
             pages = []
+            // Until the sidebar's reload starts, the emptied lists would read as an empty site.
+            isLoadingList = true
             mediaItems = []
             selectedMedia = nil
             siteName = nil

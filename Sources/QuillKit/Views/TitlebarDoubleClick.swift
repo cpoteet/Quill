@@ -71,7 +71,7 @@ private final class TitlebarDoubleClickView: NSView {
         guard event.clickCount == 2,
               window.titlebarAppearsTransparent,
               !window.styleMask.contains(.fullScreen),
-              event.locationInWindow.y >= window.contentLayoutRect.maxY,
+              event.locationInWindow.y > window.contentLayoutRect.maxY,
               let hit = window.contentView?.superview?.hitTest(event.locationInWindow)
         else { return false }
         let itemViews = window.toolbar?.items.compactMap(\.view) ?? []

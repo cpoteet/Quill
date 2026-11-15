@@ -5,7 +5,7 @@ const assert = require('node:assert/strict')
 const { JSDOM } = require('jsdom')
 const fs = require('fs')
 const path = require('path')
-const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes } = require('../Sources/QuillKit/Resources/editor-transforms.js')
+const { extractAlignment, toWordPressHTML, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML } = require('../Sources/QuillKit/Resources/editor-transforms.js')
 
 const { document } = new JSDOM('<!DOCTYPE html>').window
 
@@ -1513,6 +1513,14 @@ describe('inlineFootnotes', () => {
     assert.equal(extractFootnotes('<p>x</p>' + list + '  \n', doc).content, '<p>x</p>\n\n<!-- wp:footnotes /-->  \n')
   })
 
+  // Only ASCII whitespace is taken from in front of the block after: a leading U+00A0 is content.
+  test('a block after the list keeps a leading non-breaking space', () => {
+    const doc = new JSDOM('<!doctype html><body>').window.document
+    const list = '<ol class="wp-block-footnotes"><li id="fn-a">n</li></ol>'
+    const out = extractFootnotes('<p>x</p>' + list + '\n <p>after</p>', doc).content
+    assert.equal(out, '<p>x</p>\n\n<!-- wp:footnotes /-->\n\n <p>after</p>')
+  })
+
   test('extractFootnotes leaves the rest of the saved markup byte for byte', () => {
     const html = '<hr class="wp-block-separator"/>\n<p>a<img src="x.png" alt=""/></p><ol class="wp-block-footnotes"><li id="fn-a">n</li></ol>'
     const r = extractFootnotes(html, new JSDOM('<!doctype html><body>').window.document)
@@ -2046,5 +2054,26 @@ describe('unsupported block unwrapping', () => {
   test('a post with no wrappers is unchanged by the pass', () => {
     const out = toWordPressHTML('<p>Hi</p>', document)
     assert.match(out, /<p>Hi<\/p>/)
+  })
+})
+
+// The title, caption and footnote paste path passes keepEdges, so the spaces at a pasted line's
+// two ends survive the cleanup; every other caller still gets the trimmed HTML (cpoteet/Quill#27).
+describe('cleanPastedHTML edges', () => {
+  test('by default the cleaned HTML is trimmed', () => {
+    assert.equal(cleanPastedHTML(' by ', document), 'by')
+    assert.equal(cleanPastedHTML(' <b>by</b> \n', document), '<b>by</b>')
+    assert.equal(cleanPastedHTML('\t<span style="color:red">by</span> ', document), 'by&nbsp;')
+  })
+
+  test('keepEdges leaves the whitespace at both ends', () => {
+    assert.equal(cleanPastedHTML(' by ', document, { keepEdges: true }), ' by ')
+    assert.equal(cleanPastedHTML(' <b>by</b> \n', document, { keepEdges: true }), ' <b>by</b> \n')
+    assert.equal(cleanPastedHTML('\t<span style="color:red">by</span> ', document, { keepEdges: true }), '\tby&nbsp;')
+  })
+
+  test('keepEdges changes nothing but the ends', () => {
+    const html = '<p style="color:red" class="x">a <b>b</b></p><div><p>c</p></div>'
+    assert.equal(cleanPastedHTML(' ' + html + ' ', document, { keepEdges: true }).trim(), cleanPastedHTML(html, document))
   })
 })

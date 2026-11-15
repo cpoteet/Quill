@@ -307,6 +307,47 @@ describe('bridge', () => {
     assert.deepEqual(marks(), { changed: [1], removedGaps: [] })
   })
 
+  // The code-view reparse replaces the whole document and no new baseline follows it, so the blocks
+  // are paired by HTML again; mapped, the first block took the old first block's origin.
+  test('an edit in code view marks only what it changed', () => {
+    const viaCodeView = (...texts) => {
+      win.setContent(post('A', 'B', 'C'), '[]')
+      win.setChangeBaseline(post('A', 'B', 'C'), '[]')
+      win.setBodyDirty(true)
+      const button = win.document.getElementById('btn-code-view')
+      button.click()
+      win.document.getElementById('code-editor').value = post(...texts)
+      button.click()
+      return marks()
+    }
+    assert.deepEqual({
+      deleteFirst: viaCodeView('B', 'C'),
+      insertFirst: viaCodeView('NEW', 'A', 'B', 'C'),
+      editMiddle: viaCodeView('A', 'B2', 'C'),
+    }, {
+      deleteFirst: { changed: [], removedGaps: [0] },
+      insertFirst: { changed: [0], removedGaps: [] },
+      editMiddle: { changed: [1], removedGaps: [] },
+    })
+  })
+
+  // Undoing the reparse puts back the very blocks it replaced, and each takes its own origin again.
+  test('undoing a code-view edit marks only the edit made before it', async () => {
+    win.setContent(post('A', 'B', 'C', 'D'), '[]')
+    win.setChangeBaseline(post('A', 'B', 'C', 'D'), '[]')
+    win.setBodyDirty(true)
+    typeInto(3, 'x')
+    // Past the history's group delay, so the undo below takes back only the reparse.
+    await new Promise(resolve => setTimeout(resolve, 600))
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    win.document.getElementById('code-editor').value = post('B', 'C', 'xD')
+    button.click()
+    assert.deepEqual(marks(), { changed: [2], removedGaps: [0] })
+    editor.commands.undo()
+    assert.deepEqual([doc().childCount, marks()], [4, { changed: [3], removedGaps: [] }])
+  })
+
   test('the first paragraph typed in a new empty draft is marked', () => {
     win.setContent('', '[]')
     win.setChangeBaseline('', '[]')
@@ -571,6 +612,33 @@ describe('changedBlocks, where the marks fall', () => {
     assert.equal(marks.changed.length, 1)
     assert.deepEqual(marks.moved, marks.changed)
     assert.deepEqual(marks.removedGaps, [])
+    assert.equal(doc().child(marks.changed[0]).textContent, 'Same', 'the mark is on a copy of Same, not on A or B')
+  })
+
+  // setChangeBaseline seeds each block's origin from these, and a move unflags the blocks placed in order.
+  test('origins name the saved block each block came from, and placed the ones still in saved order', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C', 'D'))
+    move(0, 1, 4)
+    typeInto(1, 'x')
+    editor.view.dispatch(editor.state.tr.insert(startOf(0), editor.schema.nodes.paragraph.create(null, editor.schema.text('N'))))
+    assert.deepEqual(texts(), ['N', 'B', 'xC', 'D', 'A'])
+    const result = win.changedBlocks(baseline, doc(), TRAILING(), win._changeKeyOf(baseline))
+    assert.deepEqual([...result.origins], [null, 1, 2, 3, 0], 'new N, B, C edited in place, D, and A moved')
+    const placed = [...result.placed]
+    assert.deepEqual([placed[1], placed[3], placed[4]], [true, true, false], 'B and D in saved order, A out of it')
+    assert.deepEqual([...result.changed], [0, 2, 4])
+    assert.deepEqual([...result.moved], [4])
+  })
+
+  test('known origins decide which saved block a block came from', () => {
+    const baseline = loadWithBaseline(post('A', 'B', 'C'))
+    move(0, 1, 2)
+    const keyOf = win._changeKeyOf(baseline)
+    const known = new Map([[0, { origin: 1, moved: true }], [1, { origin: 0, moved: false }], [2, { origin: 2, moved: false }]])
+    const result = win.changedBlocks(baseline, doc(), TRAILING(), keyOf, known)
+    assert.deepEqual([...result.origins], [1, 0, 2])
+    assert.deepEqual([...result.placed], [false, true, true], 'B, the block the author moved, is the one out of order')
+    assert.deepEqual([...result.moved], [0])
   })
 
   test('an edit is never a move', () => {
@@ -1032,6 +1100,38 @@ describe('overlay behaviour', () => {
     assert.ok(bar && dash, 'a bar on A and a dash below it')
     const barBottom = parseFloat(bar.style.top) + parseFloat(bar.style.height)
     assert.ok(parseFloat(dash.style.top) + 1 - barBottom >= 6, `clear space between bar (${barBottom}) and dash (${dash.style.top})`)
+  })
+
+  // The dash below sits 4px under A's bottom. Trimmed, A's 5px bar would be 3px tall.
+  test('a bar too short to stop short of a dash keeps its block\'s full height', () => {
+    win.setContent(post('B', 'C', 'A'), '[]')
+    win.setChangeBaseline(post('A', 'B', 'C', 'D'), '[]')
+    win.setBodyDirty(true)
+    stub(layer(), { top: 0, bottom: 0, left: 0, right: 0 })
+    stub(editor.view.dom, { top: 0, bottom: 300, left: 100, right: 500 })
+    ;[[10, 30], [50, 70], [90, 95]].forEach(([top, bottom], i) => stub(editor.view.nodeDOM(startOf(i)), { top, bottom, left: 100, right: 500 }))
+    win._changeBars.redraw()
+    const bars = layer().querySelectorAll('.change-bar')
+    const dashes = layer().querySelectorAll('.change-bar-removed')
+    assert.deepEqual([bars.length, dashes.length], [1, 1])
+    assert.deepEqual([bars[0].style.top, bars[0].style.height], ['90px', '5px'])
+    assert.equal(parseFloat(dashes[0].style.top) + 1, 99)
+  })
+
+  // X removed between A and a short B; Cx edited just below B. The dash sits midway between A and B.
+  test('a bar starts below a dash just above its top', () => {
+    win.setContent(post('A', 'B', 'Cx'), '[]')
+    win.setChangeBaseline(post('A', 'X', 'B', 'C'), '[]')
+    win.setBodyDirty(true)
+    stub(layer(), { top: 0, bottom: 0, left: 0, right: 0 })
+    stub(editor.view.dom, { top: 0, bottom: 300, left: 100, right: 500 })
+    ;[[10, 30], [32, 34], [36, 60]].forEach(([top, bottom], i) => stub(editor.view.nodeDOM(startOf(i)), { top, bottom, left: 100, right: 500 }))
+    win._changeBars.redraw()
+    const bars = layer().querySelectorAll('.change-bar')
+    const dashes = layer().querySelectorAll('.change-bar-removed')
+    assert.deepEqual([bars.length, dashes.length], [1, 1])
+    assert.equal(parseFloat(dashes[0].style.top) + 1, 31, 'the dash between A and B')
+    assert.deepEqual([bars[0].style.top, bars[0].style.height], ['37px', '23px'], 'Cx\'s bar starts 6px below the dash')
   })
 
   test('the bars sit to the right of the text column', () => {

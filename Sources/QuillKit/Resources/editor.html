@@ -4140,6 +4140,18 @@
       return true
     }
 
+    // A code line's newlines are text; in a paragraph they become line breaks.
+    function _asParagraph(line) {
+      const { paragraph, hardBreak } = editor.schema.nodes
+      if (!line.type.spec.code) return paragraph.create(null, line.content)
+      const parts = []
+      line.textContent.split('\n').forEach((text, i) => {
+        if (i) parts.push(hardBreak.create())
+        if (text) parts.push(editor.schema.text(text))
+      })
+      return paragraph.create(null, parts)
+    }
+
     // A line after a quote with a citation joins the quote as its own line before the citation, as it
     // would with no citation; the join used to append it to the citation.
     function _intoQuoteBeforeCite($from, $cut) {
@@ -4148,7 +4160,11 @@
       if (quote.lastChild?.type.name !== 'cite' || $cut.depth !== $from.depth - 1) return false
       const line = $from.parent, from = $from.before()
       const beforeCite = $cut.pos - 1 - quote.lastChild.nodeSize
-      editor.view.dispatch(editor.state.tr.delete(from, from + line.nodeSize).insert(beforeCite, line).scrollIntoView())
+      // A pullquote holds only paragraphs, so a heading or code line joins it as one, as it would with no
+      // citation; inserted whole, ProseMirror split the pullquote around it.
+      const at = quote.childCount - 1
+      const joined = quote.canReplaceWith(at, at, line.type) ? line : _asParagraph(line)
+      editor.view.dispatch(editor.state.tr.delete(from, from + line.nodeSize).insert(beforeCite, joined).scrollIntoView())
       editor.commands.setTextSelection(beforeCite + 1)
       return true
     }

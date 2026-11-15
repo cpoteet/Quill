@@ -185,11 +185,35 @@ function changedBlocks(baseline, current, trailingAfter, keyOf, known) {
 function mapMovedBlocks(state, tr) {
   if (!state.ready || !tr.docChanged) return state
   let entries = state.entries
-  tr.steps.forEach((_step, k) => {
+  tr.steps.forEach((step, k) => {
     const doc = k + 1 < tr.docs.length ? tr.docs[k + 1] : tr.doc
-    entries = _followStep(entries, tr.mapping.maps[k], doc, state.seen)
+    entries = _replacesWholeDoc(step, tr.docs[k])
+      ? _entriesFromVersions(doc, state.seen)
+      : _followStep(entries, tr.mapping.maps[k], doc, state.seen)
   })
   return { ...state, entries }
+}
+
+// A step that replaces the whole document (the code-view reparse, and its undo) keeps no block's
+// start in any meaningful sense: mapped, the first block would take the old first block's entry.
+function _replacesWholeDoc(step, before) {
+  return 'slice' in step && !('gapFrom' in step) && step.from === 0 && step.to === before.content.size
+}
+
+// Each block takes the entry its node version last had, so an undo puts back exactly the blocks it
+// restores; a block never seen has an unknown origin, which the same-HTML pass then pairs.
+function _entriesFromVersions(doc, seen) {
+  const next = []
+  const used = new Set()
+  doc.forEach((node, offset) => {
+    const known = seen.get(node)
+    const entry = known && (known.origin === null || !used.has(known.origin)) ? known : { origin: null, moved: false }
+    if (entry.origin !== null) used.add(entry.origin)
+    const kept = { pos: offset, origin: entry.origin, moved: entry.moved }
+    seen.set(node, kept)
+    next.push(kept)
+  })
+  return next
 }
 
 // A block keeps its entry while its start survives. One replaced in place (made a heading,

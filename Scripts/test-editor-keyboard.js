@@ -1880,6 +1880,40 @@ describe('Tiptap 3 migration: keys and clicks', () => {
     assert.equal(doc(), 'blockquote(paragraph("Q"),paragraph("XF"),cite("Who"))')
   })
 
+  // The same join into a pullquote, whose node holds paragraphs and a final citation only.
+  test('Backspace at the start of a paragraph after a pullquote with a citation, then typing', () => {
+    win.setContent('<!-- wp:pullquote -->\n<figure class="wp-block-pullquote"><blockquote><p>Q</p><cite>Who</cite></blockquote></figure>\n<!-- /wp:pullquote -->\n\n<!-- wp:paragraph -->\n<p>F</p>\n<!-- /wp:paragraph -->')
+    caretBefore('F')
+    key(editor.view, 'Backspace')
+    typeX()
+    assert.equal(doc(), 'pullquote(paragraph("Q"),paragraph("XF"),cite("Who"))')
+    assert.match(win.getContent(), /<blockquote><p>Q<\/p><p>XF<\/p><cite>Who<\/cite><\/blockquote>/)
+  })
+
+  // A pullquote holds only paragraphs, so a heading, preformatted block or code block joins it as a
+  // paragraph, as it does with no citation; inserting the line whole split the pullquote in two.
+  test('Backspace at the start of a heading, preformatted or code block after a pullquote with a citation', () => {
+    const pullquote = '<!-- wp:pullquote -->\n<figure class="wp-block-pullquote"><blockquote><p>Q</p><cite>Who</cite></blockquote></figure>\n<!-- /wp:pullquote -->\n\n'
+    const join = (block, first) => {
+      win.setContent(pullquote + block)
+      caretBefore(first)
+      key(editor.view, 'Backspace')
+      typeX()
+      return doc() + ' | ' + win.getContent().match(/<figure class="wp-block-pullquote">.*?<\/figure>/s)?.[0]
+    }
+    assert.deepEqual({
+      heading: join('<!-- wp:heading -->\n<h2 class="wp-block-heading">F</h2>\n<!-- /wp:heading -->', 'F'),
+      preformatted: join('<!-- wp:preformatted -->\n<pre class="wp-block-preformatted">P</pre>\n<!-- /wp:preformatted -->', 'P'),
+      code: join('<!-- wp:code -->\n<pre class="wp-block-code"><code>C</code></pre>\n<!-- /wp:code -->', 'C'),
+      codeLines: join('<!-- wp:code -->\n<pre class="wp-block-code"><code>C\nD</code></pre>\n<!-- /wp:code -->', 'C\nD'),
+    }, {
+      codeLines: 'pullquote(paragraph("Q"),paragraph("XC",BR,"D"),cite("Who")) | <figure class="wp-block-pullquote"><blockquote><p>Q</p><p>XC<br>D</p><cite>Who</cite></blockquote></figure>',
+      heading: 'pullquote(paragraph("Q"),paragraph("XF"),cite("Who")) | <figure class="wp-block-pullquote"><blockquote><p>Q</p><p>XF</p><cite>Who</cite></blockquote></figure>',
+      preformatted: 'pullquote(paragraph("Q"),paragraph("XP"),cite("Who")) | <figure class="wp-block-pullquote"><blockquote><p>Q</p><p>XP</p><cite>Who</cite></blockquote></figure>',
+      code: 'pullquote(paragraph("Q"),paragraph("XC"),cite("Who")) | <figure class="wp-block-pullquote"><blockquote><p>Q</p><p>XC</p><cite>Who</cite></blockquote></figure>',
+    })
+  })
+
   test('Delete at the end of a list item whose nested item holds two paragraphs', () => {
     editor.commands.setContent('<ul><li><p>a</p><ul><li><p>b</p><p>c</p></li></ul></li><li><p>d</p></li></ul>', { emitUpdate: false })
     editor.commands.setTextSelection(textPos('a') + 1)

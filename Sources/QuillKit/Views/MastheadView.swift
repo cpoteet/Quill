@@ -112,7 +112,6 @@ struct MastheadView: View {
                 Text(Masthead.emptyDetail(for: section))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 8) {
                 ForEach(Array(Masthead.newItemTypes(for: section).enumerated()), id: \.element) { index, type in
