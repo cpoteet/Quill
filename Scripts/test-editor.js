@@ -1833,8 +1833,9 @@ describe('block delimiters', () => {
     })
 
     test('an angle bracket inside an attribute does not truncate the tag', () => {
+      // WebKit (and jsdom 31+) serialize > in an attribute as &gt;, as core's escapeAttribute does.
       const out = wp('<figure class="wp-block-image"><img src="a.jpg" alt="a > b"></figure>')
-      assert.match(out, /<img src="a\.jpg" alt="a > b"\/>/)
+      assert.match(out, /<img src="a\.jpg" alt="a &gt; b"\/>/)
     })
 
     test('an already self-closed tag does not gain a second slash', () => {

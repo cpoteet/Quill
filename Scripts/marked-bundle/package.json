@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "marked": "18.1.2",
+    "marked": "18.2.0",
     "esbuild": "0.28.2"
   }
 }

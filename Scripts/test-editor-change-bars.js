@@ -425,8 +425,13 @@ describe('overlay', () => {
   test('a table that scrolls fades the edges it hides', () => {
     win.setContent(readFixture('settings-table.html'), '[]')
     const style = win.getComputedStyle(editor.view.dom.querySelector('table'))
-    assert.match(style.getPropertyValue('mask-image'), /--table-fade-start.*--table-fade-end/)
-    assert.equal(style.getPropertyValue('animation-timeline'), 'scroll(x self)')
+    // jsdom 31+ substitutes var() in computed values, so read the declared rule for the fade variables.
+    const rule = Array.from(win.document.styleSheets).flatMap(s => Array.from(s.cssRules))
+      .find(r => r.selectorText === '.ProseMirror table')
+    assert.ok(rule, 'the table rule is in the editor stylesheet')
+    assert.match(rule.style.getPropertyValue('mask-image'), /var\(--table-fade-start\).*var\(--table-fade-end\)/)
+    // Serialized scroller first, as WebKit computes it; the stylesheet writes scroll(x self).
+    assert.equal(style.getPropertyValue('animation-timeline'), 'scroll(self x)')
   })
 
   test('no marks drawn in code view', () => {

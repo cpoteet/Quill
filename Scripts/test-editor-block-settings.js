@@ -1436,7 +1436,8 @@ describe('void elements are written the way core writes them', () => {
 
   test('a < inside an attribute value does not end the tag early', () => {
     const out = save('<!-- wp:image {"id":1} -->\n<figure class="wp-block-image"><img src="https://x.test/a.jpg" alt="a <b> tag" class="wp-image-1"/></figure>\n<!-- /wp:image -->')
-    assert.match(out, /alt="a <b> tag"/)
+    // WebKit (and jsdom 31+) escape < and > in attributes, as core's escapeAttribute does.
+    assert.match(out, /alt="a &lt;b&gt; tag"/)
     assert.doesNotMatch(out, /<b\/>/)
   })
 })
