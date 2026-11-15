@@ -251,7 +251,7 @@ public struct PostSettingsPanel: View {
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Categories")
-            searchField(placeholder: "Filter or add category…", text: $categorySearch, onSubmit: addCategoryFromSearch)
+            searchField(placeholder: "Filter or add categories…", text: $categorySearch, onSubmit: addCategoryFromSearch)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(settings.newCategoryNames, id: \.self) { name in
@@ -346,7 +346,7 @@ public struct PostSettingsPanel: View {
             if !selectedTagNames.isEmpty {
                 TagChipGrid(names: selectedTagNames, onRemove: removeTagName)
             }
-            searchField(placeholder: "Search or add tags…", text: $tagSearch, onSubmit: addTagFromSearch)
+            searchField(placeholder: "Filter or add tags…", text: $tagSearch, onSubmit: addTagFromSearch)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(filteredUnselectedTags) { tag in
