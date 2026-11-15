@@ -89,6 +89,6 @@ Cross-cutting gotchas, full text in `docs/gotchas.md`. Titles that belong to one
 - `docs/editor-gotchas.md` — the `editor.html` gotchas, indexed in `Sources/QuillKit/Resources/CLAUDE.md`
 - `docs/wordpress-release-audit.md` — once per WordPress major release
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` — one spec + plan pair per feature, named by date
-- `site/docs.html` — end-user guide, published on the site; edit it directly (no Markdown source)
+- `site/docs.html` — end-user guide, published on the site; edit it directly (no Markdown source). What belongs in it, and what doesn't, is in `site/CLAUDE.md`; read it before any guide edit
 
 **After major changes:** run `claude-md-management:revise-claude-md`. Keep this file an index — detail belongs in `docs/` or the per-directory `CLAUDE.md` files.

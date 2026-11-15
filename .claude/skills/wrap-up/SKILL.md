@@ -15,7 +15,7 @@ Standard end-of-session checklist for the Quill project. Ensures work is committ
 
 This checklist usually runs over a multi-day branch, so the diff can be large. Cost comes from what sits in the main conversation, because everything there is re-billed on every later turn. Three rules govern every step below:
 
-1. **The main conversation never reads a large file whole.** `docs/testing-plan.md` (~3,300 lines), `site/docs.html` (~860), the `Scripts/test-*.js` suites (up to ~2,600) and `editor.html` (~6,200) are reached by `grep -n` for the relevant section, then `Read` with `offset`/`limit`. A whole-file read there costs its size on *every subsequent turn* of the run, not once. Subagents are different: their context is discarded when they return, so each brief says what that subagent may read whole. Don't cap a subagent's reads to save usage when the cap would make it miss something.
+1. **The main conversation never reads a large file whole.** `docs/testing-plan.md` (~3,300 lines), `site/docs.html` (~680), the `Scripts/test-*.js` suites (up to ~2,600) and `editor.html` (~6,200) are reached by `grep -n` for the relevant section, then `Read` with `offset`/`limit`. A whole-file read there costs its size on *every subsequent turn* of the run, not once. Subagents are different: their context is discarded when they return, so each brief says what that subagent may read whole. Don't cap a subagent's reads to save usage when the cap would make it miss something.
 2. **Broad file sweeps go to a subagent.** When a step needs to survey many files (the test-coverage audit, the multi-section `testing-plan.md` edit), dispatch a subagent with a self-contained brief and take back only its summary. The files never enter the main conversation, so they are never re-billed.
 3. **Review the diff once.** The diff is analyzed in Step 6 and nowhere else. Do not re-read source files in later steps to "double-check" — that is the single largest source of waste in this checklist.
 
@@ -140,14 +140,14 @@ For substantial architectural change, run `claude-md-management:revise-claude-md
 
 **8b — User guide (`site/docs.html`).** Dispatch it on every lane B or C run; the subagent decides whether anything user-visible changed, not the main thread. Brief: the value of `$BASE`, the change summary from Step 2, and this instruction:
 
-> `site/docs.html` is Quill's user guide, published on the site. It has no Markdown source; edit it directly.
+> `site/docs.html` is Quill's user guide, published on the site. It has no Markdown source; edit it directly. Read `site/CLAUDE.md` first: it sets the bar for what goes in the guide, and every edit you make must meet it.
 >
 > 1. Run `git diff "<BASE>" HEAD -- Sources/` and read the whole diff. List every user-visible change in it: new or removed features, button and menu labels, toolbar icons, keyboard shortcuts, alert and sheet wording, block names, settings, defaults, and what gets saved to WordPress. If there are none, report that with a one-line reason per changed file and stop.
-> 2. Otherwise read `site/docs.html` whole. Check every section against your list, not only the sections that look related — the same fact is often stated in several places (the Keyboard Reference, the toolbar tables, the supported and unsupported block lists in Code View and Limitations).
+> 2. Otherwise read `site/docs.html` whole. Check every section against your list, not only the sections that look related — the same fact is often stated in several places (Keyboard Shortcuts, the toolbar tables, the block lists in Block Editor Compatibility).
 > 3. For each changed label, shortcut, and block name, `grep -n` the old and new spellings across the whole file and fix every hit.
-> 4. Add coverage for new capabilities, correct anything that no longer matches, and delete content for things that no longer exist. Write for a new user of the current build; no implementation details. Match the page's existing markup and `docs-*` classes, add a new `h2` to the Contents list, and give a heading an `id` only when something links to it. Every `href="#…"` must still resolve to an `id` on the page.
+> 4. Correct anything that no longer matches, and delete content for things that no longer exist. Add text for a change only if it passes the bar in `site/CLAUDE.md`. Most changes on your list are fixes that make Quill behave as a writer already expects, and need no text at all; a session with many changes and no guide additions is normal.
 >
-> Report back a line per `h2` section: **updated** (what changed) or **checked, no change needed**.
+> Report back a line per `h2` section: **updated** (what changed) or **checked, no change needed**. Then list each change you chose not to document, one line each with the reason, so the main thread can overrule you.
 
 If 8b reports a section as checked but your Step 2 summary names a change that belongs there, send it back to that section.
 
