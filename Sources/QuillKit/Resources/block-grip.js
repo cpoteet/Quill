@@ -205,7 +205,8 @@ function installBlockGrip(editor, hooks) {
     let top = rect.top
     if (node.type.name === 'horizontalRule') {
       top = rect.top + rect.height / 2 - GRIP_H / 2
-    } else if (marker.kind === 'text') {
+    } else if (marker.kind === 'text' || node.type.name === 'blockquote') {
+      // Quote is drawn as a glyph, so it can't be mistaken for the Pullquote mark, but it holds text like one.
       const textPos = firstTextblockPos(doc(), topLevelPos(doc(), index))
       const line = (textPos !== null && view.nodeDOM(textPos - 1)) || dom
       const lineEl = line.nodeType === 1 ? line : dom

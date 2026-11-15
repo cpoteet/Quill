@@ -112,7 +112,7 @@ Placement and the rest:
 - It lives in an overlay element outside the contenteditable, so it can never reach `getHTML()`, the word count or the selection.
 - It hides on any keypress in the editor and comes back on the next mouse movement.
 - The hover area is the whole row, margin included, so moving the pointer left toward the grip does not hide it.
-- Vertical position: aligned with the first line of text for text blocks, and with the top edge for media and cards. For left- or right-aligned (floated) images, it uses the column's left edge, not the image's box.
+- Vertical position: aligned with the first line of text for text blocks, and with the top edge for media and cards (Quote counts as a text block, though its marker is a glyph). For left- or right-aligned (floated) images, it uses the column's left edge, not the image's box.
 - Clicking the grip makes that block current, so Move Up/Down act on it: a block that holds text you type into (paragraph, heading, list, code, preformatted, quote, pullquote) gets the caret at the start of its first line; any other block gets a node selection, as clicking it would. *(My call: a node-selected paragraph would be replaced by the next keypress, and the grip hides on keypress, so the author might not see it happen. Code, preformatted and the quotes were added after the branch review on 2026-10-31, for the same reason, with Chris's agreement. ⇧⌘⌫ still covers only the types in `DELETABLE_BLOCKS`; this feature does not widen it.)*
 - The grip is not in the tab order. Keyboard and VoiceOver users use the menu commands.
 

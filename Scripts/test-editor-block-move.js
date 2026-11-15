@@ -508,6 +508,27 @@ describe('grip overlay', () => {
     assert.equal(win.blockMarker(doc().child(1)).kind, 'text')
   })
 
+  test('the Quote grip sits level with its first line, like Pullquote, not on its top edge', () => {
+    load([B_QUOTE(), B_PULLQUOTE()].join('\n\n'))
+    const layerTop = win.document.getElementById('block-grip-layer').getBoundingClientRect().top
+    for (const i of [0, 1]) {
+      const dom = editor.view.nodeDOM(win.topLevelPos(doc(), i))
+      const line = editor.view.nodeDOM(win.firstTextblockPos(doc(), win.topLevelPos(doc(), i)) - 1)
+      dom.getBoundingClientRect = () => ({ top: 100, bottom: 200, left: 0, right: 600, width: 600, height: 100 })
+      line.getBoundingClientRect = () => ({ top: 130, bottom: 160, left: 0, right: 600, width: 600, height: 30 })
+      try {
+        handle().showFor(i)
+        const style = win.getComputedStyle(line)
+        const inset = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.borderTopWidth) || 0)
+        const expected = 130 + inset + (win._gripLineHeight(line) - 22) / 2 - layerTop
+        assert.equal(parseFloat(grip().style.top), expected, doc().child(i).type.name)
+      } finally {
+        delete dom.getBoundingClientRect
+        delete line.getBoundingClientRect
+      }
+    }
+  })
+
   test('Details and Accordion get different glyphs', () => {
     assert.notEqual(win.blockGlyphSVG('accordion'), win.blockGlyphSVG('chevron'))
     assert.notEqual(win.blockGlyphSVG('accordion'), win.blockGlyphSVG('html'))

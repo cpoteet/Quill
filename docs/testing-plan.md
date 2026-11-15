@@ -25,7 +25,7 @@ This document is the authoritative reference for Quill's automated test suite an
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (174 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (750 tests — live Tiptap editor in jsdom)
-10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
+10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (122 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
@@ -3708,7 +3708,7 @@ cpoteet/Quill#24, bugs 2–4. Each case records the document, the selection type
 
 ---
 
-## JS block move tests (121 tests)
+## JS block move tests (122 tests)
 
 File: `Scripts/test-editor-block-move.js`
 Editor files: `Sources/QuillKit/Resources/block-move.js`, `block-grip.js`, `editor.html`
@@ -3781,6 +3781,7 @@ One test per block: `paragraph`, `H2`, `bulleted list`, `numbered list (start=3)
 | `getContent() never contains block-grip markup after hovering` | |
 | `blockGlyphSVG returns an <svg> for every glyph id blockMarker can return` | |
 | `Quote is drawn, so it cannot be mistaken for the Pullquote mark` | Quote is a glyph, Pullquote a typed ” |
+| `the Quote grip sits level with its first line, like Pullquote, not on its top edge` | Quote is drawn as a glyph but holds text, so its grip follows the first line |
 | `Details and Accordion get different glyphs` | |
 | `the bulleted-list marker has its own size class` | The • is set at 16px; at the grip's 11px it drew about 3px wide |
 | `the grip shows the block marker` | Text marker for a heading, SVG for a table |
