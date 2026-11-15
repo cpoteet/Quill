@@ -19,7 +19,7 @@ function quiet(fn) {
 }
 
 quiet(() => require('@wordpress/block-library').registerCoreBlocks())
-const { parse, serialize, getBlockType } = require('@wordpress/blocks')
+const { parse, serialize, getBlockType, switchToBlockType } = require('@wordpress/blocks')
 
 function blockNames(blocks, into = []) {
   for (const b of blocks) { into.push(b.name); blockNames(b.innerBlocks, into) }
@@ -72,8 +72,13 @@ function namesIn(html) {
   return new Set(blockNames(quiet(() => parse(html))))
 }
 
+// What the block editor's Transform to `name` saves for the first block of `html`.
+function transformed(html, name) {
+  return quiet(() => serialize(switchToBlockType(parse(html)[0], name)))
+}
+
 function close() {
   wpDom.window.close()
 }
 
-module.exports = { problems, resaved, namesIn, attributesOf, commentAttributes, close }
+module.exports = { problems, resaved, namesIn, attributesOf, commentAttributes, transformed, close }

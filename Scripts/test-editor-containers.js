@@ -13,6 +13,8 @@ const fs = require('fs')
 const path = require('path')
 const nodeCrypto = require('crypto')
 
+const { problems, transformed, close: closeValidator } = require('./wp-validator.js')
+
 const htmlPath = path.resolve(__dirname, '../Sources/QuillKit/Resources/editor.html')
 
 let editor
@@ -48,7 +50,7 @@ before(async () => {
   })
 })
 
-after(() => { if (win) win.close() })
+after(() => { if (win) win.close(); closeValidator() })
 // A press dispatched without its mouseup would hold row 2 into the next test.
 afterEach(() => win.document.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true })))
 
@@ -3761,5 +3763,151 @@ describe('Cut and Copy for a cell selection', () => {
       withCells: { copy: true, cut: true, kind: 'cell' },
       withCaret: { copy: false, cut: false, kind: 'text' },
     })
+  })
+})
+
+// The Quote button is the block editor's Transform to Quote: core/quote's `from: core/pullquote`
+// converts a pullquote, and its wildcard wrap puts a list inside a new quote. WordPress is the oracle.
+describe('the Quote button transforms the way WordPress does', () => {
+  const press = cmd => win.document.querySelector(`[data-cmd="${cmd}"]`)
+    .dispatchEvent(new win.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  const block = (name, attrs, html) => `<!-- wp:${name}${attrs ? ' ' + JSON.stringify(attrs) : ''} -->\n${html}\n<!-- /wp:${name} -->`
+  const caretIn = (typeName, nth = 0) => {
+    let at = null, seen = 0
+    editor.state.doc.descendants((n, pos) => {
+      if (at === null && n.type.name === typeName && seen++ === nth) at = pos + 1 + n.content.size
+      return at === null
+    })
+    assert.ok(at !== null, `no ${typeName} for the caret`)
+    editor.commands.setTextSelection(at)
+  }
+
+  const pullquotes = {
+    plain: block('pullquote', null, '<figure class="wp-block-pullquote"><blockquote><p>Big idea</p></blockquote></figure>'),
+    cited: block('pullquote', null, '<figure class="wp-block-pullquote"><blockquote><p>Big idea</p><cite>Someone</cite></blockquote></figure>'),
+    lineBreak: block('pullquote', null, '<figure class="wp-block-pullquote"><blockquote><p>Big<br>idea</p><cite>Someone</cite></blockquote></figure>'),
+    alignAndSize: block('pullquote', { align: 'wide', fontSize: 'large' }, '<figure class="wp-block-pullquote alignwide has-large-font-size"><blockquote><p>Big idea</p></blockquote></figure>'),
+    anchor: block('pullquote', null, '<figure id="pq" class="wp-block-pullquote"><blockquote><p>Big idea</p></blockquote></figure>'),
+    spacing: block('pullquote', { style: { spacing: { padding: { top: '10px' } } } }, '<figure class="wp-block-pullquote" style="padding-top:10px"><blockquote><p>Big idea</p></blockquote></figure>'),
+    // Dropped by the transform: a preset color, a custom class and a block style.
+    droppedKeys: block('pullquote', { className: 'is-style-solid-color extra', textColor: 'vivid-red' }, '<figure class="wp-block-pullquote is-style-solid-color extra has-vivid-red-color has-text-color"><blockquote><p>Big idea</p></blockquote></figure>'),
+    customColors: block('pullquote', { style: { color: { text: '#112233', background: '#eeeeee' }, elements: { link: { color: { text: '#ff0000' } } } } },
+      '<figure class="wp-block-pullquote has-text-color has-background has-link-color" style="color:#112233;background-color:#eeeeee"><blockquote><p>Big idea</p></blockquote></figure>'),
+    border: block('pullquote', { style: { border: { color: '#000000', width: '2px' } } },
+      '<figure class="wp-block-pullquote has-border-color" style="border-color:#000000;border-width:2px"><blockquote><p>Big idea</p></blockquote></figure>'),
+  }
+
+  test('every pullquote fixture is one WordPress accepts', () => {
+    for (const [name, src] of Object.entries(pullquotes)) assert.deepEqual(problems(src), [], name)
+  })
+
+  for (const [name, src] of Object.entries(pullquotes)) for (const caret of ['paragraph', 'cite']) {
+    if (caret === 'cite' && !src.includes('<cite>')) continue
+    test(`Quote from a ${name} pullquote's ${caret} saves what WordPress's transform saves`, () => {
+      win.setContent(src, '[]')
+      caretIn(caret)
+      press('blockquote')
+      assert.equal(editor.state.doc.child(0).type.name, 'blockquote')
+      const out = win.getContent()
+      assert.deepEqual(problems(out), [])
+      assert.equal(out, transformed(src, 'core/quote'))
+    })
+  }
+
+  test('the caret stays in the text it was in', () => {
+    win.setContent(pullquotes.cited, '[]')
+    caretIn('paragraph')
+    const before = editor.state.selection.from
+    press('blockquote')
+    assert.equal(editor.state.selection.from, before)
+    assert.equal(editor.state.selection.$from.parent.textContent, 'Big idea')
+  })
+
+  test('Quote from a pullquote inside a quote converts the pullquote and keeps the outer quote', () => {
+    const src = block('quote', null, `<blockquote class="wp-block-quote">${block('paragraph', null, '<p>Outer</p>')}\n\n${pullquotes.cited}</blockquote>`)
+    assert.deepEqual(problems(src), [])
+    win.setContent(src, '[]')
+    caretIn('paragraph', 1)
+    press('blockquote')
+    assert.equal(sig(editor.state.doc), 'doc(blockquote(paragraph(),blockquote(paragraph(),cite())))')
+    assert.deepEqual(problems(win.getContent()), [])
+  })
+
+  // WordPress lets core/quote hold any block, a pullquote included, so Insert ▸ Pullquote nests it.
+  test('a pullquote inserted in a quote stays in it and saves as WordPress accepts', () => {
+    win.setContent(block('quote', null, `<blockquote class="wp-block-quote">${block('paragraph', null, '<p>Outer</p>')}</blockquote>`), '[]')
+    caretIn('paragraph')
+    win.insertPullquote()
+    editor.commands.insertContent('Inner')
+    assert.equal(sig(editor.state.doc), 'doc(blockquote(paragraph(),pullquote(paragraph())))')
+    const out = win.getContent()
+    assert.deepEqual(problems(out), [])
+    win.setContent(out, '[]')
+    assert.equal(win.getContent(), out)
+  })
+
+  const lists = {
+    flat: block('list', null, `<ul class="wp-block-list">${block('list-item', null, '<li>a</li>')}\n\n${block('list-item', null, '<li>b</li>')}</ul>`),
+    nested: block('list', null, `<ul class="wp-block-list">${block('list-item', null, `<li>a${block('list', null, `<ul class="wp-block-list">${block('list-item', null, '<li>inner</li>')}</ul>`)}</li>`)}</ul>`),
+    ordered: block('list', { ordered: true }, `<ol class="wp-block-list">${block('list-item', null, '<li>a</li>')}</ol>`),
+  }
+
+  for (const [name, src] of Object.entries(lists)) {
+    test(`Quote from a ${name} list wraps the whole list, as WordPress's transform does`, () => {
+      assert.deepEqual(problems(src), [], 'fixture')
+      win.setContent(src, '[]')
+      caretIn('paragraph', name === 'nested' ? 1 : 0)
+      press('blockquote')
+      assert.equal(editor.state.doc.childCount, 1)
+      assert.equal(editor.state.doc.child(0).type.name, 'blockquote')
+      const out = win.getContent()
+      assert.deepEqual(problems(out), [])
+      assert.equal(out, transformed(src, 'core/quote'))
+    })
+  }
+
+  test('Quote in a quote with a citation lifts every block out and drops the citation', () => {
+    editor.commands.setContent('<blockquote><p>one</p><p>two</p><cite>Who</cite></blockquote>', { emitUpdate: false })
+    caretIn('paragraph')
+    press('blockquote')
+    assert.equal(sig(editor.state.doc), 'doc(paragraph(),paragraph())')
+    assert.equal(editor.state.selection.$from.parent.textContent, 'one')
+  })
+
+  test('Quote twice on a list gives the list back', () => {
+    win.setContent(lists.nested, '[]')
+    caretIn('paragraph', 1)
+    press('blockquote')
+    press('blockquote')
+    assert.equal(win.getContent(), lists.nested)
+  })
+
+  // WordPress's multi-block Transform to Quote wraps every selected block in one quote.
+  for (const [name, src] of [['list item', lists.flat], ['pullquote', pullquotes.cited]]) {
+    test(`a selection from a ${name} into the next paragraph wraps both in one quote`, () => {
+      win.setContent(src + '\n\n' + block('paragraph', null, '<p>after</p>'), '[]')
+      caretIn('paragraph')
+      const from = editor.state.selection.from
+      editor.commands.setTextSelection({ from, to: editor.state.doc.content.size - 1 })
+      press('blockquote')
+      assert.equal(editor.state.doc.childCount, 1)
+      assert.equal(editor.state.doc.child(0).type.name, 'blockquote')
+      assert.equal(editor.state.doc.child(0).lastChild.textContent, 'after')
+    })
+  }
+
+  test('⌘⇧B is the Quote button', () => {
+    win.setContent(pullquotes.cited, '[]')
+    caretIn('paragraph')
+    editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'B', code: 'KeyB', keyCode: 66, shiftKey: true, bubbles: true, cancelable: true,
+      metaKey: /Mac/.test(win.navigator.platform), ctrlKey: !/Mac/.test(win.navigator.platform) }))
+    assert.equal(win.getContent(), transformed(pullquotes.cited, 'core/quote'))
+  })
+
+  test('Quote from a list inside a quote still lifts it out of the quote', () => {
+    win.setContent(block('quote', null, `<blockquote class="wp-block-quote">${lists.flat}</blockquote>`), '[]')
+    caretIn('paragraph')
+    press('blockquote')
+    assert.equal(editor.state.doc.child(0).type.name, 'bulletList')
   })
 })

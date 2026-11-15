@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (172 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (723 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (747 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (121 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (97 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -3370,6 +3370,24 @@ Real WP 7.1 structure is `tabs > tab-list` (a button per tab) `+ tab-panels > ta
 | `preformatted is not stamped with wp-block-code` | The two blocks stay distinct |
 | `preformatted keeps its whitespace through a save cycle` | Leading indentation survives and the second save matches the first |
 
+### `the Quote button transforms the way WordPress does` (24 tests)
+
+WordPress is the oracle: `wp-validator.js`'s `transformed(html, 'core/quote')` runs the block editor's own Transform to Quote (`switchToBlockType`) and serializes the result.
+
+| Test | What it checks |
+|---|---|
+| `every pullquote fixture is one WordPress accepts` | The nine pullquote sources below pass core's validator, so a mismatch is Quill's, not the fixture's |
+| `Quote from a <name> pullquote's <paragraph/cite> saves what WordPress's transform saves` (11 tests) | Plain, cited, a line break, `align` + `fontSize`, an `id`, padding, preset colour + custom class (both dropped, as core drops them), custom text/background/link colours and a border, with the caret in the text and in the citation: the pullquote becomes a quote holding its paragraphs and citation, saved byte for byte as core's `from: core/pullquote` transform saves it |
+| `the caret stays in the text it was in` | The conversion keeps the selection |
+| `Quote from a pullquote inside a quote converts the pullquote and keeps the outer quote` | The nearest quote decides; the outer quote is not lifted |
+| `a pullquote inserted in a quote stays in it and saves as WordPress accepts` | core/quote takes any inner block, so Insert ▸ Pullquote nests; the save validates and reloads byte for byte |
+| `Quote from a <flat/nested/ordered> list wraps the whole list, as WordPress's transform does` (3 tests) | From any item, nested ones included, the outermost list goes inside a new quote, saved as core's wildcard transform saves it |
+| `Quote in a quote with a citation lifts every block out and drops the citation` | Toggling off lifts the whole quote, not just the caret's block |
+| `Quote twice on a list gives the list back` | Wrapping and unwrapping a nested list round-trips byte for byte |
+| `Quote from a list inside a quote still lifts it out of the quote` | A list's items cannot leave their list, so the quote's content is lifted as a whole |
+| `a selection from a <list item/pullquote> into the next paragraph wraps both in one quote` (2 tests) | A selection running past the pullquote or list is core's multi-block wrap, so `toggleBlockquote` still takes it |
+| `⌘⇧B is the Quote button` | The shortcut converts a pullquote too; Tiptap's own binding was a bare `toggleBlockquote()` |
+
 ### `block attributes survive an edit` (3 tests)
 
 | Test | What it checks |
@@ -4532,6 +4550,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Group label colour and pasted Groups.** In light and dark mode, read the small Group, Row, Stack or Grid label above an open Group → it is legible against the page (`#737373` light, `#8f8f8f` dark, the same as a locked card's hint). Click the label text and try to type in it → nothing in the saved post changes. Copy a locked Group (one holding a Spacer or Cover) in Quill and paste it between two paragraphs → it stays one locked card. To observe, not yet judged a bug: copy a Group from the WordPress block editor and paste it into an empty paragraph by itself → note whether it arrives as a Group or flattens to paragraph text (the `groupBlock` node may lack `defining: true`).
 - [ ] **Blockquote behavior:**
   - [ ] Toggle blockquote on → text is wrapped in a blockquote.
+  - [ ] In a new pullquote with a citation, click Quote (and, separately, press ⌘⇧B) → it becomes a regular quote with the same text and citation. In a list item, nested ones too, click Quote → the whole list goes inside a quote; click Quote again → the list is back as it was. Save, open in Gutenberg → no block is invalid.
   - [ ] Click the cite toggle button (bookmark icon, appears in toolbar when inside a blockquote) → an empty cite line appears at the bottom (subdued, right-aligned). Click again → the cite is removed.
   - [ ] Type an author name in the cite line, save → `<cite>` persists in the saved HTML.
   - [ ] Leave the cite line blank, save → no empty `<cite>` appears in the saved HTML.
@@ -5560,6 +5579,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 326 | A block inserted from the + menu or toolbar with the caret in the middle of a paragraph, heading or preformatted block split it in two around the new block, and from the start of a line put the block before it. `_blockInsertDepth` now returns the textblock holding the caret whenever it has text, so `_blockInsertChain` adds the block after it; Custom HTML's own insert does the same. Paste as Markdown still lands at the caret | ✅ `test-editor-containers.js` `'block inserts from the middle of text'` (52 tests), `test-editor-preservation.js` `'inserted from the middle of a paragraph, the card goes after it …'` + 👁 §7.23 |
 | 327 | A block inserted with the caret in a pullquote's text (Preformatted, Table, Columns, …) landed inside the pullquote, which core/pullquote cannot hold (one rich-text value and a citation, no inner blocks). `_blockInsertDepth` treats the whole pullquote as the container, as it already did from its citation, and the schema is `paragraph+ cite?`. A pullquote saved with a block inside before this loads as a card (`holdsBlockItCannotOpen`), since the narrower node would push the block out and turn its citation into a paragraph | ✅ `test-editor-containers.js` `'block inserts from a container title'` (26 `pullquoteText` tests), `'a pullquote holds only paragraphs and an optional cite'`, `'a pullquote an older Quill saved with a block inside keeps its bytes through an edit'`; `test-block-serializer.js` `'blockNeedsWrapping'` (4 pullquote tests) |
 | 328 | A block inserted from a list item (Image, Table, Preformatted, Columns, …) landed inside the `<li>`. WordPress's validator accepts that, but core/list-item allows only a nested list, so its inserter never puts a block there, and anything but an image became part of the item's rich text. `_blockInsertDepth` now returns the outermost list (`_outerListDepth`); Paste as Markdown that is only lists still nests in the item | ✅ `test-editor-containers.js` `'block inserts from a list item'` (75 tests), `test-editor-keyboard.js` `'from a list item the image and its paragraph go after the list'` |
+| 329 | The Quote button did nothing with the caret in a pullquote's text or a list item, and wrapped a pullquote whole in a quote from its citation: it is a `wrapIn`, and neither a `paragraph+ cite?` pullquote nor a list item can hold a quote. It now does WordPress's Transform to Quote: a pullquote converts to a quote keeping its paragraphs, citation, `align`, `anchor`, `fontSize` and `style`; a list goes inside a new quote. Toggling a quote off lifts the whole quote, so a quoted list comes back out | ✅ `test-editor-containers.js` `'the Quote button transforms the way WordPress does'` (24 tests, against core's own transform) + 👁 §7.3 |
 
 ---
 

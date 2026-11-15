@@ -4651,6 +4651,8 @@
         const wrapped = _footnoteGuarded(orig)
         return {
           ...wrapped,
+          // The toolbar's Quote, so the shortcut converts a pullquote and wraps a list as it does.
+          'Mod-Shift-b': () => { COMMANDS.blockquote(); return true },
           Enter: () => {
             if (_isInFootnote()) return true
             const { state } = this.editor
@@ -5506,6 +5508,64 @@
       return list
     }
 
+    // core/quote's `from: core/pullquote` transform keeps these keys and drops the rest (className,
+    // preset colours). A pullquote's figure saved them with the same block supports a quote has,
+    // so its classes and inline style for them are the quote's too.
+    const PULLQUOTE_TO_QUOTE_KEYS = ['fontSize', 'align', 'anchor', 'style']
+
+    function _pullquoteToQuote(depth) {
+      const { $from } = editor.state.selection
+      const pullquote = $from.node(depth)
+      let carried = {}
+      try { carried = JSON.parse(pullquote.attrs.blockAttrs || '{}') || {} } catch (e) { carried = {} }
+      let figureAttrs = []
+      try { figureAttrs = JSON.parse(pullquote.attrs.rawAttrs || '{}').attrs || [] } catch (e) { figureAttrs = [] }
+      const figure = Object.fromEntries(figureAttrs)
+      if (figure.id) carried.anchor = figure.id
+      const keys = {}
+      for (const key of PULLQUOTE_TO_QUOTE_KEYS) if (carried[key] !== undefined) keys[key] = carried[key]
+
+      const style = keys.style || {}
+      const figureClasses = (figure.class || '').split(/\s+/)
+      const classes = ['wp-block-quote']
+      if (keys.align) classes.push(`align${keys.align}`)
+      if (style.color?.text) classes.push('has-text-color')
+      if (style.color?.background || style.color?.gradient) classes.push('has-background')
+      if (style.elements?.link?.color?.text) classes.push('has-link-color')
+      if (style.border?.color) classes.push('has-border-color')
+      // The figure wrote the same font-size class for the same slug.
+      if (keys.fontSize) classes.push(...figureClasses.filter(c => /^has-.+-font-size$/.test(c)))
+
+      // Built as a loaded quote's element and parsed by the schema, so the carrier snapshots it as on load.
+      const shell = inertDocument().createElement('blockquote')
+      shell.setAttribute('class', classes.join(' '))
+      if (keys.anchor) shell.setAttribute('id', keys.anchor)
+      const inline = figure.style ?? figure['data-quill-style']
+      if (keys.style && inline) shell.setAttribute('style', inline)
+      if (Object.keys(keys).length) shell.setAttribute('data-quill-block-attrs', JSON.stringify(keys))
+      shell.innerHTML = '<p></p>'
+      const host = inertDocument().createElement('div')
+      host.appendChild(shell)
+      const parsed = editor.schema.cached.domParser.parse(host, { preserveWhitespace: false }).firstChild
+      if (parsed?.type.name !== 'blockquote') return
+      const tr = editor.state.tr.setNodeMarkup($from.before(depth), editor.schema.nodes.blockquote, parsed.attrs)
+      editor.view.dispatch(tr)
+      editor.commands.focus()
+    }
+
+    function _wrapInQuote(listDepth) {
+      const { state } = editor
+      const { $from } = state.selection
+      const list = $from.node(listDepth)
+      const range = state.doc.resolve($from.before(listDepth))
+        .blockRange(state.doc.resolve($from.after(listDepth)), node => node === $from.node(listDepth - 1))
+      const quote = state.schema.nodes.blockquote
+      if (!range || !range.parent.canReplaceWith(range.startIndex, range.endIndex, quote)
+          || !quote.validContent(state.doc.content.constructor.from(list))) return
+      editor.view.dispatch(state.tr.wrap(range, [{ type: quote }]))
+      editor.commands.focus()
+    }
+
     function _blockInsertChain({ intoTableCell = false, nestsInList = false } = {}) {
       const chain = editor.chain().focus()
       const { $from } = editor.state.selection
@@ -5564,27 +5624,40 @@
       code:          () => editor.chain().focus().toggleCode().run(),
       blockquote: () => {
         if (_isInFootnote()) return
+        // The nearest quote decides: a pullquote inside a quote is converted, not the outer quote lifted.
+        // A selection running past the pullquote or list is WordPress's multi-block wrap, toggleBlockquote's.
+        const { $from: $sel, $to: $selEnd } = editor.state.selection
+        const quoteDepth = _citeHostDepth($sel)
+        if (quoteDepth !== -1 && $sel.node(quoteDepth).type.name === 'pullquote' && $selEnd.pos <= $sel.end(quoteDepth)) {
+          _pullquoteToQuote(quoteDepth)
+          return
+        }
         if (editor.isActive('blockquote')) {
           const { $from } = editor.state.selection
           const d = _ancestorDepth($from, 'blockquote')
           if (d === -1) return
+          // The whole quote is lifted, not the caret's block: a list's items cannot leave their list.
+          const tr = editor.state.tr
           const bqNode = $from.node(d)
           const from = $from.before(d)
-          const to = $from.after(d)
           if (bqNode.lastChild?.type.name === 'cite') {
-            const bqStart = $from.start(d)
-            let citeOff = 0
-            bqNode.forEach((child, offset) => { if (child === bqNode.lastChild) citeOff = offset })
-            editor.chain().focus()
-              .command(({ tr }) => { tr.delete(bqStart + citeOff, bqStart + citeOff + bqNode.lastChild.nodeSize); return true })
-              .toggleBlockquote()
-              .run()
-          } else {
-            editor.chain().focus()
-              .setTextSelection({ from: from + 1, to: to - 1 })
-              .toggleBlockquote()
-              .run()
+            const citeAt = from + bqNode.nodeSize - 1 - bqNode.lastChild.nodeSize
+            tr.delete(citeAt, citeAt + bqNode.lastChild.nodeSize)
           }
+          const quote = tr.doc.nodeAt(from)
+          const $start = tr.doc.resolve(from + 1)
+          const range = $start.blockRange(tr.doc.resolve(from + quote.nodeSize - 1), node => node === quote)
+          const index = $start.index(d - 1)
+          if (!range || !$start.node(d - 1).canReplace(index, index + 1, quote.content)) return
+          editor.view.dispatch(tr.lift(range, d - 1))
+          editor.commands.focus()
+          return
+        }
+        // A list item cannot hold a quote, so wrapIn found no wrapping and the button did nothing.
+        // WordPress's Transform to Quote on a list puts the whole list inside the new quote.
+        const list = _outerListDepth($sel)
+        if (list !== -1 && $selEnd.pos <= $sel.end(list)) {
+          _wrapInQuote(list)
           return
         }
         editor.chain().focus().toggleBlockquote().run()
