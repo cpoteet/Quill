@@ -25,6 +25,7 @@ public struct ContentView: View {
         }
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .background(TitlebarDoubleClick().frame(width: 0, height: 0))
         .frame(minWidth: 900, minHeight: 600)
         .onAppear {
             onboarding.appState = appState

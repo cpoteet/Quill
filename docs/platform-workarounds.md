@@ -60,8 +60,18 @@ Run every test with real clicks, with Quill frontmost. Background computer-use c
 - **Bug:** the automatic toolbar backdrop fades in and out on each view-graph update. A post load makes several updates, so the toolbar dimmed for about 200ms twice per open.
 - **Code:** `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` on `ContentView`.
 - **Keep regardless:** this modifier also lets each column's background reach the top of the window, which the design depends on. Removing it changes the look, even if Apple fixes the fade. Test it only if the design itself is changing.
+- **Possibly fixed:** on macOS 27.2 a build without the modifier showed no dim on post open or inspector open (60-frame captures, 2026-11-14). The modifier stays for the look; see the next entry for what that look costs.
 - **Detail:** `Sources/QuillKit/Views/CLAUDE.md`, the `.toolbarBackgroundVisibility` entry.
-- **Last checked:** macOS 27.0, 2026-09-19.
+- **Last checked:** macOS 27.2, 2026-11-14.
+
+### Title-bar double-click does nothing
+
+- **Bug:** the modifier above makes SwiftUI set `titlebarAppearsTransparent`, and a transparent title bar never runs the Desktop & Dock "Double-click a window's title bar" action. Over empty space the click passes through to the content (`NSWindow.h` documents this click-through); the toolbar's flexible spaces take the click and do nothing.
+- **Code:** `TitlebarDoubleClick` in `Views/TitlebarDoubleClick.swift`, attached in `ContentView`. It reads `AppleActionOnDoubleClick` and calls `performMiniaturize` or `performZoom`. Fill zooms, because the Window menu's Fill is the private `_zoomFill:`. It stands aside whenever the title bar is not transparent, so a fix on Apple's side cannot double the action.
+- **Native routes that fail:** removing the modifier gives the native double-click but changes the look: a 1px line under the toolbar over the editor, and the content's title-bar background painting over the inspector's top 52pt. SwiftUI registers an `NSTrackingSeparatorToolbarItem` only at the sidebar divider, never at the inspector's, even with `.inspector` on the `NavigationSplitView`. `.scrollEdgeEffectHidden(true, for: .top)` changes neither. All measured 2026-11-14.
+- **Test:** remove `.background(TitlebarDoubleClick())` from `ContentView`, set Desktop & Dock to Minimize, and double-click empty toolbar space over the sidebar, the main pane and the open Post Settings panel. If the window minimizes every time, the bug is gone.
+- **Detail:** `Sources/QuillKit/Views/CLAUDE.md`, the `TitlebarDoubleClick` entry.
+- **Last checked:** macOS 27.2, 2026-11-14.
 
 ### Main window position and sidebar width are not restored after a reboot
 

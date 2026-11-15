@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-14 — 900 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
+_Last updated: 2026-11-14 — 908 Swift tests + 2,412 JS tests (2,411 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,7 +16,7 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (900 tests)
+1. **Swift tests** — `swift test` (908 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (149 tests — pure Node; `serializeAttributes` compared with WordPress)
 4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
@@ -119,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (900 tests, 60 suites)
+## Swift test suite (908 tests, 61 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -189,6 +189,7 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 58 | `MastheadScheduledTests` | `MastheadTests.swift` | 9 | `Masthead.scheduled` and `missedCandidates`: the next 14 days, capped at three with confirmed misses first; the 5-minute grace; a confirmation for an earlier schedule does not carry over; Pages shows pages and Drafts nothing; `scheduleDate` gives the weekday, date and time |
 | 59 | `MastheadCopyTests` | `MastheadTests.swift` | 4 | `Masthead.displayName` falls back to the host; `emptyLine` asks for a selection, or says the section is empty; `spokenLabel` joins the VoiceOver label with commas |
 | 60 | `MastheadRecentlyEditedTests` | `MastheadTests.swift` | 5 | `Masthead.recentlyEdited`: the fallback when Continue writing is empty; any status but scheduled, newest `modified_gmt` first, at most three; another author's post left out once the user is known; Posts and Pages stay in their own section, Drafts has none |
+| 61 | `TitlebarDoubleClickActionTests` | `TitlebarDoubleClickActionTests.swift` | 8 | `TitlebarDoubleClickAction`: each Desktop & Dock value of `AppleActionOnDoubleClick` (Fill zooms, None does nothing), the legacy `AppleMiniaturizeOnDoubleClick` fallback, and `current(_:)` reading the setting from the defaults it is given |
 
 ---
 
@@ -1621,6 +1622,21 @@ File: `Tests/QuillTests/MastheadTests.swift`. Fixed `now` and the `en_GB` locale
 | `leavesOutScheduledPosts` | A `future` post is left to Scheduled |
 | `leavesOutAnotherAuthorsPostOnceTheUserIsKnown` | Shown before the user's ID arrives, left out after |
 | `staysInsideItsOwnSection` | Posts lists posts, Pages lists pages and opens them in Pages, Drafts lists nothing |
+
+### 61. App — `TitlebarDoubleClickActionTests` (8 tests)
+
+File: `Tests/QuillTests/TitlebarDoubleClickActionTests.swift`. The values are the ones the Desktop & Dock pane writes.
+
+| Test | What it checks |
+|---|---|
+| `minimizeSettingMinimizes` | "Minimize" minimizes |
+| `zoomSettingZooms` | "Maximize" zooms |
+| `fillZoomsBecauseFillHasNoPublicAPI` | "Fill" zooms |
+| `doNothingDoesNothing` | "None" does nothing, even with the legacy flag set |
+| `newSettingWinsOverTheLegacyFlag` | `AppleActionOnDoubleClick` beats `AppleMiniaturizeOnDoubleClick` |
+| `noSettingFallsBackToTheLegacyFlag` | With no setting, the legacy flag picks minimize, otherwise zoom |
+| `unknownValueFallsBackLikeNoSetting` | An unknown value behaves like no setting |
+| `currentReadsTheSettingFromTheDefaultsItIsGiven` | `current(_:)` reads `AppleActionOnDoubleClick` from the defaults it is given. Every check sets that key itself, because a suite falls back to the machine's real Desktop & Dock setting for any key it leaves unset |
 
 ---
 
@@ -4854,6 +4870,7 @@ and the `.toolbarBackgroundVisibility` entry in `Sources/QuillKit/Views/CLAUDE.m
 - [ ] **No blank flash while resizing.** Open a long post and drag the window edge wider and narrower for several seconds, with and without the inspector open → the editor never flashes blank or white (`SplitItemSizePin`), and the text reflows as the window moves.
 - [ ] **One selection colour in the editor.** Select an image, an embed, a gallery, an unsupported-block card, a separator and a range of table cells, and focus the settings dropdown → each draws the same editor-accent outline (`#C77700` light, `#F0B450` dark). The find bar, table-size picker and embed menu use the same accent. Filled buttons (embed Insert, inline-image Apply, the find bar's active toggle) match the link picker's native Apply button: white text on `#C77700` light / `#BF801E` dark. Highlighted table-size cells keep their border in dark mode.
 - [ ] Launch the app and watch through the post list arriving → no flash in the toolbar at any point, including the first second.
+- [ ] **Title-bar double-click.** In Desktop & Dock, set "Double-click a window's title bar to" Minimize. Double-click empty toolbar space over the sidebar, the start page, Media, and a post with Post Settings open (over the panel too) → the window minimizes each time. Double-click Refresh and a word in the editor → no minimize. Set Zoom → the window zooms; set Do Nothing → nothing happens (`TitlebarDoubleClick`).
 - [ ] Select a post, edit it, and save/publish to WordPress → no flash when the request completes.
 - [ ] Switch sections (Posts → Pages → Drafts → Media) → no flash.
 - [ ] Narrow the window to its 900pt minimum with the sidebar open → the editor toolbar keeps every button at full size and scrolls sideways (trackpad or wheel), with a fade on its right edge while more is hidden. Widen it again → the buttons all fit. (There is no overflow menu: the toolbar is `overflow-x: auto` in `editor.html`.)
