@@ -112,6 +112,7 @@ onto it" — its children are still replayed.
 - `gutenbergPassthrough` must opt out of modeled figures by class, not by excluding `<figure>` wholesale
 - A `describe()` whose first test calls `setContent` right after a block that leaves the doc as a single atom node needs a throwaway `setContent('<p></p>', false)` in `before()`
 - ProseMirror's two clipboard branches have separate hooks, and `handlePaste` runs *after* the parse, not before
+- A drop from another app runs the paste hooks, so a hook reads the drop point through `_pasteContext()`, never the selection
 - Anything that inserts generated HTML must strip inter-block whitespace text nodes AND pass `parseOptions: { preserveWhitespace: false }`
 - `formatHTML`'s `BLOCK` set changes affect ALL existing content wrapped in that tag, not just the new case motivating the change
 - Every block insert goes through `_blockInsertChain()`, because a block inserted into an accordion heading, tab title, button, quote citation or image caption splits its container, and one inserted in a pullquote or list item lands where WordPress allows no block

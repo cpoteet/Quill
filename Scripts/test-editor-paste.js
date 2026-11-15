@@ -102,6 +102,14 @@ before(async () => {
   if (!win.matchMedia) win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
   if (!win.requestAnimationFrame) win.requestAnimationFrame = cb => setTimeout(cb, 0)
   if (!win.ResizeObserver) win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+  // jsdom has no layout. ProseMirror's drop focuses the editor, and a focused editor scrolls the
+  // selection into view on every dispatch, which measures text and ranges.
+  const rect = { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 }
+  for (const proto of [win.Text.prototype, win.Range.prototype]) {
+    if (proto.getClientRects) continue
+    proto.getClientRects = () => Object.assign([rect], { item: () => rect })
+    proto.getBoundingClientRect = () => rect
+  }
   win.webkit = { messageHandlers: { contentChanged: { postMessage: html => sentToSwift.push(html) } } }
 
   editor = await new Promise((resolve, reject) => {
@@ -418,6 +426,64 @@ describe('paste into a title, label or caption stays on one line', () => {
 
 // ProseMirror's parser drops a space at either end of inline content in the body too, so a phrase
 // copied from a page and pasted mid-sentence ran into its neighbours (cpoteet/Quill#27).
+// ProseMirror runs the paste hooks for a drop from another app too, with the drop point as the parse
+// context; the hooks read where it lands, not the caret, which a drop leaves where it was.
+describe('a drop is shaped by where it lands, not by the caret', () => {
+  const fixture = f => fs.readFileSync(path.resolve(__dirname, 'fixtures', f), 'utf8')
+  const BODY = '<!-- wp:paragraph -->\n<p>Body text</p>\n<!-- /wp:paragraph -->'
+  const LIST = '<!-- wp:list -->\n<ul class="wp-block-list"><!-- wp:list-item -->\n<li>Item</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->'
+  const TWO_PARAGRAPHS = { 'text/html': '<p>line one</p><p>line two</p>', 'text/plain': 'line one\n\nline two' }
+  // jsdom has no layout, so the drop point comes from a stubbed posAtCoords; the rest is
+  // ProseMirror's own drop handler.
+  function drop(data, at) {
+    const original = editor.view.posAtCoords
+    editor.view.posAtCoords = () => ({ pos: at, inside: -1 })
+    try {
+      const ev = new win.Event('drop', { bubbles: true, cancelable: true })
+      Object.defineProperty(ev, 'dataTransfer', { value: { getData: t => data[t] || '', types: Object.keys(data), files: [] } })
+      editor.view.dom.dispatchEvent(ev)
+    } finally {
+      editor.view.posAtCoords = original
+    }
+  }
+  const find = test => { let found = null; editor.state.doc.descendants((n, pos) => { if (found === null && test(n)) found = { n, pos } }); return found }
+  const tabTitle = () => find(n => n.type.name === 'tabButton')
+  const body = () => find(n => n.type.name === 'paragraph' && n.textContent.startsWith('Body'))
+  const names = () => [...editor.state.doc.content.content].map(n => n.type.name)
+
+  test('dropped into a tab title with the caret in the body, paragraphs join into one line', () => {
+    win.setContent(fixture('tabs-block.html') + '\n\n' + BODY)
+    const before = { blocks: names(), title: tabTitle().n.textContent }
+    editor.commands.setTextSelection(body().pos + 3)
+    drop(TWO_PARAGRAPHS, tabTitle().pos + 1)
+    assert.deepEqual([names(), tabTitle().n.textContent], [before.blocks, 'line one line two' + before.title])
+    assert.deepEqual(problems(win.getContent()), [])
+  })
+
+  test('dropped into the body with the caret in a tab title, paragraphs stay paragraphs', () => {
+    win.setContent(fixture('tabs-block.html') + '\n\n' + BODY)
+    const title = tabTitle()
+    editor.commands.setTextSelection(title.pos + 2)
+    drop(TWO_PARAGRAPHS, body().pos + 1 + 'Body'.length)
+    const texts = [...editor.state.doc.content.content].filter(n => n.type.name === 'paragraph').map(n => n.textContent)
+    assert.deepEqual([tabTitle().n.textContent, texts], [title.n.textContent, ['Bodyline one', 'line two text']])
+  })
+
+  test('dropped into the body with the caret in a list item, paragraphs do not become list items', () => {
+    win.setContent(LIST + '\n\n' + BODY)
+    editor.commands.setTextSelection(find(n => n.type.name === 'listItem').pos + 3)
+    drop(TWO_PARAGRAPHS, body().pos + 1 + 'Body'.length)
+    assert.deepEqual([names(), find(n => n.type.name === 'listItem').n.textContent], [['bulletList', 'paragraph', 'paragraph'], 'Item'])
+  })
+
+  test('plain text dropped into a citation with the caret in the body joins into one line', () => {
+    win.setContent('<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>Q</p>\n<!-- /wp:paragraph --><cite>Who</cite></blockquote>\n<!-- /wp:quote -->\n\n' + BODY)
+    editor.commands.setTextSelection(body().pos + 3)
+    drop({ 'text/plain': 'line one\n\nline two' }, find(n => n.type.name === 'cite').pos + 1)
+    assert.deepEqual([names(), find(n => n.type.name === 'cite').n.textContent], [['blockquote', 'paragraph'], 'line one line twoWho'])
+  })
+})
+
 describe('one line of HTML pasted mid-paragraph keeps its edge spaces', () => {
   const into = data => {
     editor.commands.setContent('<p>PaintedVan Gogh</p>', { emitUpdate: false })

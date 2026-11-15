@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-15 — 911 Swift tests + 2,656 JS tests (2,655 pass, 1 skipped), no failures._
+_Last updated: 2026-11-15 — 911 Swift tests + 2,660 JS tests (2,659 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -29,7 +29,7 @@ This document is the authoritative reference for Quill's automated test suite an
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (106 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (110 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
@@ -4229,7 +4229,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (106 tests)
+## JS paste tests (110 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4294,6 +4294,19 @@ A tab label, button, details summary, accordion heading, quote citation and imag
 | `the plain text adds no space when it is not the same line as the HTML` | A plain flavour with other text, or more than one line, adds nothing |
 | `Quill's own copy of a phrase pastes into a citation with its spaces` | ` by ` copied in Quill (`<p data-pm-slice="1 1 []">`, the cleanup skipped) keeps both spaces |
 | `a heading still splits into blocks, as in the block editor` | A heading is not one of these, so a paste there still becomes a heading and a paragraph |
+
+### `a drop is shaped by where it lands, not by the caret` (4 tests)
+
+ProseMirror runs the clipboard hooks for a drop from another app too, parsing at the drop point, but a drop leaves the caret where it was. Each test drops through ProseMirror's own drop handler with `posAtCoords` stubbed to the drop point (jsdom has no layout). The suite's `before()` stubs `getClientRects` on `Text` and `Range`, because ProseMirror's drop focuses the editor and a focused editor measures the selection on every later dispatch; without the stub every later test's paste threw inside `updateState` and dispatched nothing.
+
+| Test | What it checks |
+|---|---|
+| `dropped into a tab title with the caret in the body, paragraphs join into one line` | Two paragraphs of HTML dropped at a tab title's start: the title reads `line one line twoTab 1`, the top-level blocks are unchanged (the Tabs block is not split) and the save is valid |
+| `dropped into the body with the caret in a tab title, paragraphs stay paragraphs` | The same HTML dropped after `Body`: two paragraphs, `Bodyline one` and `line two text`, not one flattened line, and the tab title is untouched |
+| `dropped into the body with the caret in a list item, paragraphs do not become list items` | Exact top-level blocks `bulletList, paragraph, paragraph` and the list item still `Item`: `pastedBlocksAsListItems` follows the drop point, not the caret |
+| `plain text dropped into a citation with the caret in the body joins into one line` | `transformPastedText`'s flatten follows the drop point: the citation reads `line one line twoWho` and the blocks are unchanged |
+
+Guards: `_recordDropContext` (a capture-phase `drop` listener on `document`, ahead of ProseMirror's handler), `_pasteContext()`, `_pasteMustBeInline`, `_isInFootnote($from)`, the `listItem` check in `transformPastedHTML` and `_isEmptyTopLevelParagraph` in `transformPasted`. Checked in real WebKit with a `WKWebView` probe that dispatches a `DragEvent` carrying a real `DataTransfer` at the on-screen point: before the fix the tab-title drop split the Tabs block and the body drop was flattened; after it, both land as above.
 
 ### `one line of HTML pasted mid-paragraph keeps its edge spaces` (3 tests)
 
@@ -5235,6 +5248,7 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 - [ ] Paste a heading, a list and a paragraph into an empty paragraph → the first block replaces the empty paragraph and keeps its own attributes (a centred heading stays centred). Paste the same into a paragraph that already has text → the first block joins that paragraph.
 - [ ] **Plain-text numbered list.** In TextEdit (Format → Make Plain Text) type `1. one`, `2. two`, `3. three` on three lines, copy, and paste into an empty paragraph → one numbered list that Gutenberg opens as a valid List block. Lines `3. x` / `4. y` → a list that starts at 3; `a.` / `b.` → a lettered list. Paste the same three lines into a code block, a heading, a table cell and a footnote → they stay text, one line each (one line in the footnote), with no list. Into an empty paragraph inside a Group or a quote → the list lands inside it and the Group keeps its layout.
 - [ ] **A multi-line paste into a title stays one line.** Copy three lines of plain text and paste them into a tab label, a button, a details summary, an accordion heading, a quote citation and an image caption → each time the lines join with spaces at the caret and the block stays whole. Copy " by " (spaces included) from a web page and paste it between two words in a sentence → both spaces stay. Copy a bulleted list from a web page and paste it with the caret at the start of the first column of a Columns block → the list lands inside that column, and the block keeps both columns and their widths.
+- [ ] **A drop from another app follows where it lands.** In TextEdit type two paragraphs, select them, and with the caret in a paragraph of the post drag them onto a tab label → one line in the label, and the Tabs block stays whole. Then click into a tab label and drag the same two paragraphs into the middle of a paragraph → two paragraphs, not one line. Drag them onto a quote citation and an image caption with the caret in the body → one line each.
 - [ ] Copy a passage from another ProseMirror or Tiptap editor (a Confluence page, a Substack draft, GitLab) and paste it → it is cleaned like any outside paste: no inline styles, foreign classes or `data-pm-slice` in the saved HTML. Then copy a passage inside Quill and paste it back → it comes back exactly as saved, and stays exact after a second copy and paste. Quit and relaunch Quill and paste a copy made before the relaunch → it is treated as an outside paste and cleaned, which is expected.
 - [ ] Paste a screenshot, switch off the network before the upload finishes so it fails, then paste the same screenshot again with the network on → it uploads this time, rather than staying an inline base64 image. Do the same with an image pasted inside HTML from a web page.
 - [ ] Paste an image and wait for the upload to finish, then press ⌘Z once → the whole paste is undone, not just the swap back to the base64 image. Press ⌘⇧Z → the image returns with its uploaded URL, not the base64.
@@ -5614,6 +5628,7 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 329 | The Quote button did nothing with the caret in a pullquote's text or a list item, and wrapped a pullquote whole in a quote from its citation: it is a `wrapIn`, and neither a `paragraph+ cite?` pullquote nor a list item can hold a quote. It now does WordPress's Transform to Quote: a pullquote converts to a quote keeping its paragraphs, citation, `align`, `anchor`, `fontSize` and `style`; a list goes inside a new quote. Toggling a quote off lifts the whole quote, so a quoted list comes back out | ✅ `test-editor-containers.js` `'the Quote button transforms the way WordPress does'` (25 tests, against core's own transform) + 👁 §7.3 |
 | 330 | Backspace at the start of a heading, Preformatted or code block right after a pullquote with a citation split the pullquote in two around the line: `_intoQuoteBeforeCite` inserted the line whole before the `cite`, and a `paragraph+ cite?` pullquote cannot hold it, so ProseMirror closed the pullquote around it. The line now joins as a paragraph whenever `canReplaceWith` refuses its type (`_asParagraph`; a code block's newlines become `<br>`), as it does with no citation | ✅ `test-editor-keyboard.js` `'Backspace at the start of a heading, preformatted or code block after a pullquote with a citation'`, `'Backspace at the start of a paragraph after a pullquote with a citation, then typing'` + 👁 §7.3 |
 | 331 | An edit in code view marked the wrong blocks: the reparse is one whole-document `setContent`, which the `movedBlocks` plugin mapped as the first block edited in place, and no new baseline follows a code-view edit, so the new first block kept the old first block's origin and the marks fell on blocks the edit never touched. `mapMovedBlocks` does not map a step that replaces the whole document: each block takes the entry its node last had, and a new one is paired by HTML, so the reparse and its undo both land right | ✅ `test-editor-change-bars.js` `'an edit in code view marks only what it changed'`, `'undoing a code-view edit marks only the edit made before it'` + 👁 §7.29 |
+| 332 | Text dropped from another app was shaped by the caret, not the drop point: ProseMirror runs the clipboard hooks for a drop, but Quill's hooks read the selection, which a drop leaves where it was. With the caret in the body, a drop into a tab title split the Tabs block; with the caret in a title, a drop into the body was flattened to one line. `_recordDropContext` records the drop point before ProseMirror's handler runs, and the hooks read it through `_pasteContext()` | ✅ `test-editor-paste.js` `'a drop is shaped by where it lands, not by the caret'` (4 tests) + real-WebKit drop probe + 👁 §7.28 |
 
 ---
 

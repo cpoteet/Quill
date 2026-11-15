@@ -5110,7 +5110,9 @@
           const edges = _inlinePasteEdges
           _inlinePasteEdges = null
           if (edges && !plain) slice = _withEdgeSpaces(slice, edges)
-          if (plain || slice.openStart === 0 || !slice.content.firstChild?.isTextblock || !_inEmptyTopLevelParagraph(view.state)) return slice
+          if (plain || slice.openStart === 0 || !slice.content.firstChild?.isTextblock) return slice
+          const $at = _dropContext
+          if ($at ? !_isEmptyTopLevelParagraph($at) : !_inEmptyTopLevelParagraph(view.state)) return slice
           return new slice.constructor(slice.content, 0, slice.openEnd)
         },
         transformPastedText(text) {
@@ -5142,7 +5144,7 @@
           try {
             if (!quillCopy) {
               html = cleanPastedHTML(html, undefined, { keepEdges: true })
-              if (editor.isActive('listItem')) html = pastedBlocksAsListItems(html)
+              if (_ancestorDepth(_pasteContext(), 'listItem') > 0) html = pastedBlocksAsListItems(html)
             }
           } catch (e) {
             console.error('paste cleanup failed', e)
@@ -5159,7 +5161,7 @@
             return asciiTrim(html)
           }
           // A footnote never holds a footnote; a marker pasted into one went in with the note's own id.
-          if (_isInFootnote()) tmp.querySelectorAll('sup[data-fn]').forEach(sup => sup.remove())
+          if (_isInFootnote(_pasteContext())) tmp.querySelectorAll('sup[data-fn]').forEach(sup => sup.remove())
           function flatten(el) {
             let out = ''
             for (const ch of el.childNodes) {
@@ -5209,9 +5211,16 @@
     // Swift reports ⌘ from AppKit, so the section shows even when the editor lacks keyboard focus.
     window.setSectionKey = down => window._blockGrip.setSectionKey(!!down)
     // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
-    for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste]]) {
-      document.addEventListener(type, event => { if (editor.view.dom.contains(event.target)) handler(event) }, true)
+    for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste], ['drop', _recordDropContext]]) {
+      document.addEventListener(type, event => {
+        _dropContext = null
+        if (editor.view.dom.contains(event.target)) handler(event)
+      }, true)
     }
+    // ProseMirror's drop handler has run by the time the drop bubbles back up; the timer covers a
+    // drop whose propagation something stopped.
+    document.addEventListener('drop', () => { _dropContext = null })
+    document.addEventListener('drop', () => setTimeout(() => { _dropContext = null }), true)
     // WebKit's arrow keys can leave the caret in an image wrapper itself, beside the frame: an
     // editing boundary now that the caption is not its own editing host. ProseMirror reads that as
     // the caption's start or end, which looks the same to it, so it never rewrites the DOM selection,
@@ -5255,8 +5264,7 @@
       return null
     }
 
-    function _isInFootnote() {
-      const $from = editor.state.selection.$from
+    function _isInFootnote($from = editor.state.selection.$from) {
       for (let d = $from.depth; d > 0; d--) {
         const name = $from.node(d).type.name
         if (name === 'footnoteItem' || name === 'footnotesList') return true
@@ -5270,8 +5278,23 @@
     // blocks cannot sit in one, so ProseMirror closed the block holding it (a tabs block split in two).
     // TITLE_CONTAINERS is declared further down, so it is read here at paste time, not at load.
     function _pasteMustBeInline() {
-      const name = editor.state.selection.$from.parent.type.name
-      return _isInFootnote() || name in TITLE_CONTAINERS || name === 'cite' || name === 'image'
+      const $at = _pasteContext()
+      const name = $at.parent.type.name
+      return _isInFootnote($at) || name in TITLE_CONTAINERS || name === 'cite' || name === 'image'
+    }
+
+    // Where a paste or drop lands. ProseMirror runs the clipboard hooks for a drop from another app
+    // too, parsing at the drop point, but a drop leaves the caret where it was: a drop into a tab
+    // title was not flattened and split the Tabs block, and one into the body from a caret in a
+    // title was flattened. The drop point is recorded before ProseMirror's own drop handler runs.
+    let _dropContext = null
+    function _pasteContext() {
+      return _dropContext || editor.state.selection.$from
+    }
+    function _recordDropContext(event) {
+      _dropContext = null
+      const at = editor.view.posAtCoords({ left: event.clientX, top: event.clientY })
+      if (at) _dropContext = editor.state.doc.resolve(at.pos)
     }
 
     // The spaces at the two ends of a paste being flattened into a title, caption or footnote, from
@@ -5427,8 +5450,10 @@
 
     // Where the block editor turns a pasted URL into an embed.
     function _inEmptyTopLevelParagraph(state) {
-      const { $from, empty } = state.selection
-      return empty && $from.depth === 1 && $from.parent.type.name === 'paragraph' && $from.parent.content.size === 0
+      return state.selection.empty && _isEmptyTopLevelParagraph(state.selection.$from)
+    }
+    function _isEmptyTopLevelParagraph($pos) {
+      return $pos.depth === 1 && $pos.parent.type.name === 'paragraph' && $pos.parent.content.size === 0
     }
 
     // A paragraph in one of these, at any depth, takes a plain-text list. A paste widens over every
