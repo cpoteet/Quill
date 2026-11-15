@@ -1541,9 +1541,15 @@ describe('the whole settings fixture corpus', () => {
   const dir = path.resolve(__dirname, 'fixtures')
   const names = fs.readdirSync(dir).filter(n => n.startsWith('settings-') && n.endsWith('.html'))
 
-  test('the corpus is the twenty-eight settings fixtures', () => {
-    assert.equal(names.length, 28)
+  test('the corpus is the twenty-nine settings fixtures', () => {
+    assert.equal(names.length, 29)
   })
+
+  // A fixture whose own markup is broken saves repaired; its .saved sibling is what Quill writes.
+  const expected = name => {
+    const saved = path.join(dir, name.replace(/\.html$/, '.saved'))
+    return fs.existsSync(saved) ? fs.readFileSync(saved, 'utf8') : fixture(name)
+  }
 
   for (const name of names) {
     test(`${name} comes back untouched when nothing is edited`, () => {
@@ -1560,7 +1566,7 @@ describe('the whole settings fixture corpus', () => {
     // cannot meet it yet names why, so the difference is recorded rather than
     // invisible -- remove an entry from KNOWN_DIFFERENCES when it is fixed.
     test(`${name} saves byte-identically once edited`, { skip: KNOWN_DIFFERENCES[name] }, () => {
-      assert.equal(save(fixture(name)), fixture(name))
+      assert.equal(save(fixture(name)), expected(name))
     })
   }
 })

@@ -234,6 +234,41 @@ describe('window.insertMarkdown', () => {
     assert.equal(doc(), 'paragraph("Intro") | image()')
   })
 
+  test('blocks on an empty line after text replace that line instead of leaving it empty above them', () => {
+    editor.commands.setContent('<p>Intro</p><p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('# H1 **bold**\n\npara')
+    assert.equal(doc(), 'paragraph("Intro") | heading("H1 ","bold") | paragraph("para")')
+  })
+
+  // Raw HTML that leaves a tag open, then a line of text after it: the empty line stayed above
+  // the paste, and every block after the raw HTML came out bold.
+  test('raw HTML with an unclosed tag replaces the empty line and bolds nothing after it', () => {
+    editor.commands.setContent('<p>Intro</p><p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('# H1\n\n<div>raw <b>html</div> after\n\nnext para\n\n- item')
+    const blocks = doc().split(' | ')
+    assert.equal(blocks[0], 'paragraph("Intro")')
+    assert.equal(blocks[1], 'heading("H1")')
+    assert.ok(blocks.includes('paragraph("next para")'), doc())
+    assert.ok(blocks.includes('bulletList(listItem(paragraph("item")))'), doc())
+  })
+
+  test('an empty line in the middle is replaced too', () => {
+    editor.commands.setContent('<p>Intro</p><p></p><p>Outro</p>')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize + 1)
+    win.insertMarkdown('- one\n- two')
+    assert.equal(doc(), 'paragraph("Intro") | bulletList(listItem(paragraph("one")),listItem(paragraph("two"))) | paragraph("Outro")')
+  })
+
+  // A blank line splits raw HTML into two tokens; closing the first one off ended the table early.
+  test('a raw table split by a blank line keeps both rows', () => {
+    editor.commands.setContent('<p></p>')
+    editor.commands.focus('end')
+    win.insertMarkdown('<table>\n<tr><td><b>A</b></td></tr>\n\n<tr><td>B</td></tr>\n</table>')
+    assert.equal((doc().match(/tableRow\(/g) || []).length, 2, doc())
+  })
+
   test('an image inside a line of text splits it around the image', () => {
     editor.commands.setContent('<p>Intro</p><p></p>')
     editor.commands.focus('end')
@@ -773,5 +808,99 @@ describe('copy and paste inside Quill', () => {
     const pasted = saved()
     assert.doesNotMatch(pasted, /style="|<span|data-pm-slice/)
     assert.match(pasted, /Red text/)
+  })
+})
+
+// A selection dragged or ⇧↓-extended to the start of the next line ends inside the next block.
+// Pasted over, that block was joined into the last pasted block: a code block became list text,
+// and Tiptap's paste rules then turned its literal **stars** into bold. The block after the
+// selection is left where it was.
+describe('a paste over a selection that ends at the start of the next block', () => {
+  test('leaves the next block and its text alone', () => {
+    editor.commands.setContent('<p>BBB</p><p>CCC</p><pre><code>**not bold** code</code></pre>')
+    const codeStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
+    editor.commands.setTextSelection({ from: 2, to: codeStart })
+    paste({ 'text/html': '<h2>Pasted</h2><ul><li>item</li></ul>', 'text/plain': 'Pasted\nitem' })
+    assert.match(doc(), /codeBlock\("\*\*not bold\*\* code"\)$/)
+    assert.doesNotMatch(doc(), /listItem\(paragraph\("item\*\*not bold/)
+  })
+
+  test('a plain-text paste leaves it alone too', () => {
+    editor.commands.setContent('<p>BBB</p><p>CCC</p><p>DDD</p>')
+    const dddStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
+    editor.commands.setTextSelection({ from: 2, to: dddStart })
+    paste({ 'text/plain': 'one\n\ntwo' })
+    assert.match(doc(), /paragraph\("DDD"\)$/)
+  })
+
+  test('a separator inside the selection survives, being outside what the paste replaces', () => {
+    editor.commands.setContent('<p>BBB</p><hr><p>CCC</p>')
+    const cccStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
+    editor.commands.setTextSelection({ from: 2, to: cccStart })
+    paste({ 'text/plain': 'x' })
+    assert.equal(doc(), 'paragraph("Bx") | horizontalRule() | paragraph("CCC")')
+  })
+
+  test('Paste as Markdown over it leaves the next block alone too', () => {
+    editor.commands.setContent('<p>BBB</p><p>CCC</p><pre><code>**not bold** code</code></pre>')
+    const codeStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
+    editor.commands.setTextSelection({ from: 2, to: codeStart })
+    win.insertMarkdown('## Pasted\n\n- item')
+    assert.match(doc(), /codeBlock\("\*\*not bold\*\* code"\)$/)
+  })
+
+  test('a selection that ends inside the next block still joins it', () => {
+    editor.commands.setContent('<p>BBB</p><p>CCC</p>')
+    editor.commands.setTextSelection({ from: 2, to: editor.state.doc.child(0).nodeSize + 3 })
+    paste({ 'text/plain': 'x' })
+    assert.equal(doc(), 'paragraph("BxC")')
+  })
+})
+
+// Core's table cells are rich text. Blocks pasted into one went in as blocks, so the saved cell
+// held a heading, paragraphs and a list, and a table pasted into a cell nested a table in it.
+// They become lines, as the blocks inside a pasted table's own cells already do.
+describe('blocks pasted into a table cell become lines', () => {
+  const inCell = () => {
+    editor.commands.setContent('<table><tr><td><p>a1</p></td><td><p>b1</p></td></tr></table><p>after</p>')
+    editor.commands.setTextSelection(6)
+  }
+
+  test('a heading, paragraphs and a list become lines with breaks', () => {
+    inCell()
+    paste({ 'text/html': '<h2>Cell heading</h2><p>First</p><ul><li>bullet</li></ul>', 'text/plain': 'Cell heading\nFirst\nbullet' })
+    assert.match(doc(), /tableCell\(paragraph\("a1Cell heading",BR,"First",BR,"bullet"\)\)/)
+    assert.doesNotMatch(doc(), /heading\(|bulletList\(/)
+  })
+
+  // A table on its own is cells: ProseMirror fills the grid from the caret's cell, as before.
+  test('a pasted table still fills the grid from the cell', () => {
+    inCell()
+    paste({ 'text/html': '<table><tr><td>x</td><td>y</td></tr></table>', 'text/plain': 'x\ty' })
+    assert.match(doc(), /^table\(tableRow\(tableCell\(paragraph\("x"\)\),tableCell\(paragraph\("y"\)\)\)\)/)
+  })
+
+  test('a cell range copied in the editor still fills the grid', () => {
+    editor.commands.setContent('<table><tr><td><p>a</p></td><td><p>b</p></td></tr></table><p>gap</p><table><tr><td><p>1</p></td><td><p>2</p></td></tr></table>')
+    const cells = []
+    editor.state.doc.descendants((n, p) => { if (n.type.name === 'tableCell') cells.push(p) })
+    editor.commands.setCellSelection({ anchorCell: cells[0], headCell: cells[1] })
+    const clip = copy()
+    editor.commands.setTextSelection(cells[2] + 2)
+    paste(clip)
+    assert.match(doc(), /paragraph\("gap"\) \| table\(tableRow\(tableCell\(paragraph\("a"\)\),tableCell\(paragraph\("b"\)\)\)\)/)
+  })
+
+  test('Paste as Markdown into a cell writes lines too', () => {
+    inCell()
+    win.insertMarkdown('## Head\n\npara\n\n- item')
+    assert.doesNotMatch(doc(), /heading\(|bulletList\(/)
+    assert.match(doc(), /tableCell\(paragraph\("a1Head",BR,"para",BR,"item"\)\)/)
+  })
+
+  test('one line of inline HTML in a cell is unchanged', () => {
+    inCell()
+    paste({ 'text/html': '<b>bold</b> text', 'text/plain': 'bold text' })
+    assert.match(doc(), /tableCell\(paragraph\("a1","bold"," text"\)\)/)
   })
 })

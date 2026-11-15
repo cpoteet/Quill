@@ -44,12 +44,28 @@ struct TitleTextField: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
 
+    // A title is one line: pasted lines are joined with one space, blank lines and the spaces
+    // around each break dropped, as the editor joins lines pasted into its own titles and captions.
+    // Pasting a whole article put every paragraph, newlines and all, into the post's title.
+    nonisolated static func singleLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
         init(text: Binding<String>) { self.text = text }
         func textDidChange(_ notification: Notification) {
             guard let tv = notification.object as? NSTextView else { return }
             text.wrappedValue = tv.string
+        }
+        func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
+            guard let replacement = replacementString, replacement.rangeOfCharacter(from: .newlines) != nil else { return true }
+            // insertText goes back through this check with the joined line, and keeps undo working.
+            textView.insertText(TitleTextField.singleLine(replacement), replacementRange: range)
+            return false
         }
     }
 }

@@ -132,15 +132,22 @@ public struct WordPressClient: Sendable {
     }
 
     public func trashPost(id: Int) async throws {
-        let url = try endpoint("posts/\(id)", query: ["force": "false"])
-        let request = authorizedRequest(url: url, method: "DELETE")
-        try await performVoid(request)
+        try await trash(endpoint("posts/\(id)", query: ["force": "false"]))
     }
 
     public func trashPage(id: Int) async throws {
-        let url = try endpoint("pages/\(id)", query: ["force": "false"])
-        let request = authorizedRequest(url: url, method: "DELETE")
-        try await performVoid(request)
+        try await trash(endpoint("pages/\(id)", query: ["force": "false"]))
+    }
+
+    // WordPress answers 410 (rest_already_trashed) for a post already in the Trash, which is where
+    // the delete was sending it: trashed elsewhere, the post stayed listed here, and deleting it
+    // reported "The request didn't go through (HTTP 410)" and left the row in place.
+    private func trash(_ url: URL) async throws {
+        do {
+            try await performVoid(authorizedRequest(url: url, method: "DELETE"))
+        } catch APIError.httpError(statusCode: 410, _) {
+            return
+        }
     }
 
     // MARK: - Media

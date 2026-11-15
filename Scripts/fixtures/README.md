@@ -44,6 +44,7 @@ an unedited capture.
 | `settings-group-layouts.html` | Hand-written, checked the same way: a constrained Group, a Row (`flex`, `nowrap`), a Stack (`flex`, vertical) and a Grid |
 | `settings-group-styled.html` | Hand-written, checked the same way: a Group with a background colour, padding, a border, an anchor, an extra class and a custom name, holding a heading, a paragraph and a list |
 | `settings-group-nested.html` | Hand-written, checked the same way: a Group in a Group, and a Group inside a Column |
+| `settings-unclosed-tag.html` | Hand-written: a paragraph that leaves an `<a>` open and a Group paragraph that leaves a `<b>` open, each followed by ordinary blocks. Its `.saved` sibling is what Quill writes once edited: those two blocks closed off, every other block untouched. Both corpora (`test-editor-block-settings.js` and `--check-fixtures`) compare the edited save against a `.saved` file when one exists |
 | `group-unsupported-children.html` | Hand-written: Groups that must stay locked cards, one per reason (a Spacer, a Cover, a shortcode, Custom HTML, a synced pattern, a third-party block, a self-closing dynamic block, no inner blocks, the old inner container, a `nav` tag, a markup-less image, stray text, a stray element), and a Columns whose Column holds a Group with a Spacer. Several fail WordPress's validator on purpose; covered by byte preservation and the "nothing new" rule |
 
 The twelve `settings-*.html` files were captured together from one throwaway

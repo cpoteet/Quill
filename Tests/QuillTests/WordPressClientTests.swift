@@ -121,6 +121,19 @@ private let minimalPayload = PostPayload(title: "T", content: "C", status: "draf
         }
     }
 
+    @Test func trashPostTreatsAlreadyTrashedAsDone() async throws {
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://example.com")!,
+                statusCode: 410, httpVersion: nil, headerFields: nil
+            )!
+            let body = #"{"code":"rest_already_trashed","message":"The post has already been deleted.","data":{"status":410}}"#
+            return (response, Data(body.utf8))
+        }
+        try await client.trashPost(id: 42)
+        try await client.trashPage(id: 42)
+    }
+
     @Test func trashPageSendsDeleteRequest() async throws {
         var capturedRequest: URLRequest?
         MockURLProtocol.requestHandler = { request in

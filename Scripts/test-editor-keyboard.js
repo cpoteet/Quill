@@ -1761,12 +1761,13 @@ describe('Tiptap 3 migration: keys and clicks', () => {
       "footnote **b** ": "<strong>b</strong> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"b\",\" \"))",
       "footnote `c` ": "<code>c</code> in paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"c\",\" \"))",
       "footnote - then Backspace": "paragraph(\"body\",MARKER) | footnotesList(footnoteItem(\"- \"))",
-      "tableCell # h": "table(tableRow(tableCell(heading(\"h\")))) | paragraph()",
-      "tableCell > q": "table(tableRow(tableCell(blockquote(paragraph(\"q\"))))) | paragraph()",
-      "tableCell - b": "table(tableRow(tableCell(bulletList(listItem(paragraph(\"b\")))))) | paragraph()",
-      "tableCell 1. n": "table(tableRow(tableCell(orderedList(listItem(paragraph(\"n\")))))) | paragraph()",
-      "tableCell ``` c": "table(tableRow(tableCell(codeBlock(\"c\")))) | paragraph()",
-      "tableCell ---": "table(tableRow(tableCell(horizontalRule(),paragraph()))) | paragraph()",
+      // Block rules stay text in a cell: 'block Markdown rules never fire in a table cell'.
+      "tableCell # h": "table(tableRow(tableCell(paragraph(\"# h\")))) | paragraph()",
+      "tableCell > q": "table(tableRow(tableCell(paragraph(\"> q\")))) | paragraph()",
+      "tableCell - b": "table(tableRow(tableCell(paragraph(\"- b\")))) | paragraph()",
+      "tableCell 1. n": "table(tableRow(tableCell(paragraph(\"1. n\")))) | paragraph()",
+      "tableCell ``` c": "table(tableRow(tableCell(paragraph(\"``` c\")))) | paragraph()",
+      "tableCell ---": "table(tableRow(tableCell(paragraph(\"---\")))) | paragraph()",
       "tableCell **b** ": "<strong>b</strong> in table(tableRow(tableCell(paragraph(\"b\",\" \")))) | paragraph()",
       "tableCell `c` ": "<code>c</code> in table(tableRow(tableCell(paragraph(\"c\",\" \")))) | paragraph()",
       "tableCell - then Backspace": "table(tableRow(tableCell(paragraph(\"- \")))) | paragraph()",
@@ -1799,6 +1800,31 @@ describe('Tiptap 3 migration: keys and clicks', () => {
       }
     }
     assert.deepEqual(actual, expected)
+  })
+
+  // Core's table cells are rich text, so "- " or "> " typed in one made a list or quote inside the
+  // cell, a shape WordPress has no block for. Inline rules still apply there.
+  test('block Markdown rules never fire in a table cell, and inline ones still do', () => {
+    const type = text => {
+      for (const ch of text) {
+        const { from, to } = editor.state.selection
+        if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+      }
+    }
+    const html = '<table><tr><th><p></p></th></tr><tr><td><p></p></td></tr></table><p>after</p>'
+    const actual = {}, expected = {}
+    for (const cell of ['tableHeader', 'tableCell']) {
+      for (const rule of ['---', '# h', '> q', '- b', '1. n', '``` c', '![a](b.png)']) {
+        const setup = () => { editor.commands.setContent(html, { emitUpdate: false }); editor.commands.setTextSelection(posOfFirst(cell) + 2) }
+        setup(); type(rule); actual[`${cell} ${rule}`] = doc()
+        setup(); editor.view.dispatch(editor.state.tr.insertText(rule)); expected[`${cell} ${rule}`] = doc()
+      }
+    }
+    assert.deepEqual(actual, expected)
+    editor.commands.setContent(html, { emitUpdate: false })
+    editor.commands.setTextSelection(posOfFirst('tableCell') + 2)
+    type('**bold** ')
+    assert.match(JSON.stringify(editor.getJSON()), /"marks":\[\{"type":"bold"/)
   })
 
   // cpoteet/Quill#24 bug 1: the heading and paragraph keys ran setNode on the footnote and emptied it.
@@ -1926,5 +1952,70 @@ describe('Tiptap 3 migration: keys and clicks', () => {
     editor.commands.setTextSelection(textPos('a') + 1)
     key(editor.view, 'Delete')
     assert.equal(doc() + ' sel=' + editor.state.selection.toJSON().type, 'bulletList(listItem(paragraph("a"),bulletList(listItem(paragraph("b"),bulletList(listItem(paragraph("c")))))),listItem(paragraph("d"))) sel=node')
+  })
+})
+
+// Backspace at the start of a line after a block with no text of its own, or Delete at the end of
+// a line before one, deleted the whole block in one keystroke: a separator, an image, or a block
+// only code view can bring back. It is selected instead, and a second key deletes it.
+describe('Backspace and Delete beside a block with no text select it first', () => {
+  const preserved = '<!-- wp:paragraph -->\n<p>Before</p>\n<!-- /wp:paragraph -->\n\n' +
+    '<!-- wp:acme/widget -->\n<div class="acme">Widget</div>\n<!-- /wp:acme/widget -->\n\n' +
+    '<!-- wp:paragraph -->\n<p>After</p>\n<!-- /wp:paragraph -->'
+  const count = name => { let n = 0; editor.state.doc.descendants(node => { if (node.type.name === name) n++ }); return n }
+
+  test('Backspace after a separator selects it, and a second Backspace deletes it', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Backspace')
+    assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
+    assert.equal(count('horizontalRule'), 1)
+    key(editor.view, 'Backspace')
+    assert.equal(count('horizontalRule'), 0)
+  })
+
+  test('a first list item or quote line after a separator still lifts out on Backspace', () => {
+    for (const html of ['<hr><ul><li><p>x</p></li></ul>', '<hr><blockquote><p>x</p></blockquote>']) {
+      editor.commands.setContent(html)
+      editor.commands.setTextSelection(paragraphStarts()[0])
+      key(editor.view, 'Backspace')
+      assert.equal(doc(), 'horizontalRule() | paragraph("x")', html)
+    }
+  })
+
+  test('Delete before a separator selects it', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    editor.commands.setTextSelection(6)
+    key(editor.view, 'Delete')
+    assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
+    assert.equal(count('horizontalRule'), 1)
+  })
+
+  test('Backspace after a preserved block selects it', () => {
+    win.setContent(preserved, '')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Backspace')
+    assert.equal(editor.state.selection.node?.type.name, 'gutenbergPassthrough')
+    assert.match(win.getContent(), /acme\/widget/)
+  })
+
+  test('Delete before a preserved block selects it', () => {
+    win.setContent(preserved, '')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 'Before'.length)
+    key(editor.view, 'Delete')
+    assert.equal(editor.state.selection.node?.type.name, 'gutenbergPassthrough')
+    assert.match(win.getContent(), /acme\/widget/)
+  })
+
+  test('typing over a selected preserved block starts a paragraph after it instead of replacing it', () => {
+    win.setContent(preserved, '')
+    let at = null
+    editor.state.doc.descendants((node, pos) => { if (at === null && node.type.name === 'gutenbergPassthrough') at = pos })
+    editor.commands.setNodeSelection(at)
+    const { from, to } = editor.state.selection
+    const handled = editor.view.someProp('handleTextInput', f => f(editor.view, from, to, 'x'))
+    assert.equal(handled, true)
+    assert.equal(count('gutenbergPassthrough'), 1)
+    assert.match(doc(), /gutenbergPassthrough\(\) \| paragraph\("x"\) \| paragraph\("After"\)/)
   })
 })

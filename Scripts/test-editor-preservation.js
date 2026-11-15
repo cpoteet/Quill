@@ -939,3 +939,78 @@ describe('Tiptap 3 migration: saved markup', () => {
     assert.equal(editAndSave(src), src.replace('>link<', '>Xlink<'))
   })
 })
+
+// The alarm a code-view parse raises belongs to that parse. Undoing it took the lost block out of
+// the document but left the banner up, and Swift then held back every later edit from autosave,
+// the post-switch flush and quit, over a block that no longer existed.
+describe('undoing a code-view parse takes its alarm back', () => {
+  const posted = []
+  const lossy = '<!-- wp:paragraph -->\n<p>orphan open, never closed\n' +
+    '<!-- wp:acme/widget {"x":1} -->\n<div class="acme">custom</div>\n<!-- /wp:acme/widget -->\n'
+  const last = () => posted.length ? Array.from(posted.at(-1).names) : null
+
+  before(() => {
+    win.webkit = win.webkit || {}
+    win.webkit.messageHandlers = Object.assign({}, win.webkit.messageHandlers, {
+      blocksAtRisk: { postMessage: m => posted.push(m) },
+    })
+  })
+
+  function parseLossyInCodeView() {
+    win.setContent('<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->')
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    const area = win.document.getElementById('code-editor')
+    area.value = lossy
+    area.dispatchEvent(new win.Event('input'))
+    button.click()
+  }
+
+  test('the lossy parse raises the alarm', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    assert.deepEqual(last(), ['acme/widget'])
+  })
+
+  test('undo clears it, and redo raises it again', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    editor.commands.undo()
+    assert.match(win.getContent(), /<p>Start<\/p>/)
+    assert.deepEqual(last(), [])
+    editor.commands.redo()
+    assert.deepEqual(last(), ['acme/widget'])
+  })
+
+  test('an edit after the parse keeps the alarm', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    editor.commands.insertContentAt(1, 'x')
+    assert.deepEqual(last(), ['acme/widget'])
+  })
+
+  // A parse that drops a block without changing what is shown leaves two equal documents, so
+  // the document cannot say which side of the parse it is on; the alarm stays up, the safe way.
+  test('a lossy parse that changes nothing visible keeps its alarm through undo and redo', () => {
+    posted.length = 0
+    win.setContent('<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->')
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    const area = win.document.getElementById('code-editor')
+    area.value = '<!-- wp:paragraph -->\n<p>Start<!-- wp:acme/widget /--></p>\n<!-- /wp:paragraph -->'
+    area.dispatchEvent(new win.Event('input'))
+    button.click()
+    const raised = last()
+    editor.commands.undo()
+    editor.commands.redo()
+    if (raised && raised.length) assert.deepEqual(last(), raised)
+  })
+
+  test('a post loaded afterwards is judged on its own', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    win.setContent('<!-- wp:paragraph -->\n<p>Other</p>\n<!-- /wp:paragraph -->')
+    editor.commands.insertContentAt(1, 'x')
+    assert.deepEqual(last(), [])
+  })
+})

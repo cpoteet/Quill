@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-15 — 911 Swift tests + 2,660 JS tests (2,659 pass, 1 skipped), no failures._
+_Last updated: 2026-11-15 — 915 Swift tests + 2,702 JS tests (2,701 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,27 +16,27 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (911 tests)
-2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (75 tests — pure Node, compared against WordPress's own parser)
-3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (153 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (90 tests — live Tiptap editor in jsdom)
+1. **Swift tests** — `swift test` (915 tests)
+2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (76 tests — pure Node, compared against WordPress's own parser)
+3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (154 tests — pure Node; `serializeAttributes` compared with WordPress)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (95 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (295 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (27 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (174 tests — live Tiptap editor in jsdom)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (34 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (181 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (750 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (122 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (110 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (125 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
-18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (268 tests — live Tiptap editor in jsdom)
+18. **JS block settings tests** — `node --test Scripts/test-editor-block-settings.js` (271 tests — live Tiptap editor in jsdom)
 19. **JS AI output validity tests** — `node --test Scripts/test-ai-output-validity.js` (73 tests — checked by WordPress's own block validator)
 20. **JS evaluate tests** — `node --test Scripts/test-editor-evaluate.js` (24 tests — Evaluate's Apply in the live editor; also keeps `Scripts/fixtures/evaluate/post.editor-text.txt` equal to the editor's search text)
-21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (76 tests — same validator, over every fixture)
+21. **JS fixture validity sweep** — `node --test Scripts/test-fixture-validity.js` (78 tests — same validator, over every fixture)
 22. **JS click seat tests** — `node --test Scripts/test-click-seat.js` (25 tests — `click-seat.js` in pure Node, `_seatForPress` in jsdom against a stubbed view)
 
 `test.sh` runs them in that order and stops nothing early — every suite runs, and the summary line reports how many of the twenty-two passed.
@@ -119,7 +119,7 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (908 tests, 61 suites)
+## Swift test suite (915 tests, 62 suites)
 
 One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
 
@@ -417,6 +417,7 @@ Decides whether the Custom HTML sheet shows its CSS and JS tabs. The user's `unf
 | Test | What it checks |
 |---|---|
 | `fetchPostsThrowsOnHTTPError` | Non-2xx → `APIError.httpError` |
+| `trashPostTreatsAlreadyTrashedAsDone` | WordPress's 410 `rest_already_trashed` for a post already in the Trash counts as done, for posts and pages (regression row 342) |
 | `trashPostThrowsOnHTTPError` | DELETE non-2xx → error |
 | `httpErrorPreservesStatusCode` | Status code in `APIError.httpError(statusCode:body:)` |
 | `httpErrorPreservesBodyString` | Body string preserved in error |
@@ -1062,6 +1063,18 @@ Covers the banner Quill shows when its tripwire finds that content went missing 
 
 ---
 
+### 24a. Editor — `TitleTextFieldTests` (3 tests)
+
+File: `Tests/QuillTests/TitleTextFieldTests.swift`
+
+| Test | What it checks |
+|---|---|
+| `pastedLinesBecomeOneLine` | Pasted lines join with one space (regression row 339) |
+| `spacesAroundBreaksAndBlankEdgesGo` | Blank lines and the spaces around each break are dropped |
+| `otherLineSeparatorsCountToo` | U+2028 and U+2029 count as breaks |
+
+---
+
 ### 25. Editor — `EditorPushDecisionTests` (16 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file). The same struct also holds the `changeBaselineJS` and `BaselinePushState` tests, the spell-check main-actor test and the `PastedImage` tests.
@@ -1643,7 +1656,7 @@ File: `Tests/QuillTests/TitlebarDoubleClickActionTests.swift`. The values are th
 
 ---
 
-## JS block parser tests (75 tests)
+## JS block parser tests (76 tests)
 
 File: `Scripts/test-block-parser.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`
@@ -1671,7 +1684,7 @@ Pure Node. Holds Quill's `parseBlocks` to WordPress's own parser: for every inpu
 
 ---
 
-## JS block serializer tests (149 tests)
+## JS block serializer tests (154 tests)
 
 File: `Scripts/test-block-serializer.js`
 Under test: `Sources/QuillKit/Resources/block-parser.js`, `block-descriptors.js`, and `serializeAttributes` and the preservation helpers in `editor-transforms.js`. The file keeps its name from `block-serializer.js`, which was removed on 2026-09-26 along with its GPL-derived code.
@@ -1878,7 +1891,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 | `findingStatus` (1 test) | Reports `ok`, `missing` and `ambiguous` for a list of originals without editing |
 | `the editor search text` (1 test) | `_editorSearchText()` for `Scripts/fixtures/evaluate/post.html` equals `post.editor-text.txt`, the fixture `EvaluationPromptsTests.postTextMatchesEditorText` checks against |
 
-## JS fixture validity sweep (76 tests)
+## JS fixture validity sweep (78 tests)
 
 `Scripts/test-fixture-validity.js` loads each `Scripts/fixtures/*.html`, forces a save through Tiptap, and compares WordPress's validator findings on the save against those on the fixture, then the block-comment attributes WordPress parses from each.
 
@@ -1891,7 +1904,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 
 ---
 
-## JS preservation tests (89 tests)
+## JS preservation tests (95 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2079,6 +2092,17 @@ Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans
 | `a link title saves as authored` | Tiptap 3 models `link.title`; the save is unchanged |
 
 ---
+
+
+### `undoing a code-view parse takes its alarm back` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `the lossy parse raises the alarm` | A code-view parse that loses an unknown block posts its name |
+| `undo clears it, and redo raises it again` | `_riskStep`: the document before the parse posts its own alarm (none), the one after posts the loss (regression row 334) |
+| `an edit after the parse keeps the alarm` | Typing after the parse does not clear it |
+| `a lossy parse that changes nothing visible keeps its alarm through undo and redo` | Equal documents on both sides of the parse are not tracked, so the alarm stays up (Codex review) |
+| `a post loaded afterwards is judged on its own` | `setContent` drops the step |
 
 ## JS editor tests (295 tests)
 
@@ -2638,7 +2662,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (27 tests)
+## JS bridge tests (34 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2675,7 +2699,20 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `loading another post drops the previous post's undo history` | Edits to post A leave no undo available once post B is loaded |
 | `keepHistory lets a replacement inside the open post be undone` | `setContent(html, footnotes, true)` (the AI-generate path) leaves one undo step that restores the previous body |
 
-## JS keyboard tests (174 tests)
+
+### `an unclosed inline tag stays inside its own block` (7 tests)
+
+| Test | What it checks |
+|---|---|
+| `an edit elsewhere saves the later blocks without the link` | A paragraph that leaves `<a>` open: after an edit, only that paragraph gains `</a>`; the heading, paragraph and list item after it carry no link (regression row 333) |
+| `an unedited post still saves byte for byte` | `closeLeakingTags` runs on load only; `_rawHTML` keeps the original bytes |
+| `an unclosed bold typed in code view stays in its block` | The code-view parse gets the same repair |
+| `a preserved block keeps its own unclosed tag, and the block after it is not touched` | A block Quill preserves is skipped and keeps its bytes |
+| `an unclosed comment after the tag does not stop the post loading` | The repair appends closers (`leakingTagClosers`); a DOM probe an unclosed comment swallowed threw and aborted `setContent` (Codex review) |
+| `a block Quill preserves inside a container keeps its inner markup untouched` | The collector stops at any block Quill does not model, at any depth (Codex review) |
+| `an unclosed tag inside a Group stays inside its paragraph` | Leaf blocks inside containers are repaired too |
+
+## JS keyboard tests (181 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2983,6 +3020,20 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 | `Backspace at the start of a heading, preformatted or code block after a pullquote with a citation` | Exact document and saved pullquote for each: the line joins the pullquote as a paragraph before the citation (`<p>XF</p>`, `<p>XP</p>`, `<p>XC</p>`, and a two-line code block's newline becomes `<br>`: `<p>XC<br>D</p>`), instead of splitting the pullquote in two around it. A pullquote is `paragraph+ cite?`, so `_intoQuoteBeforeCite` converts any line `canReplaceWith` refuses (`_asParagraph`) |
 
 ---
+
+
+### `Backspace and Delete beside a block with no text select it first` (6 tests)
+
+| Test | What it checks |
+|---|---|
+| `Backspace after a separator selects it, and a second Backspace deletes it` | `_selectTextlessBlock` (regression row 335) |
+| `a first list item or quote line after a separator still lifts out on Backspace` | The depth guard: only a line directly beside the block selects it |
+| `Delete before a separator selects it` | The forward direction |
+| `Backspace after a preserved block selects it` | A `gutenbergPassthrough` card is selected, not deleted |
+| `Delete before a preserved block selects it` | The forward direction for a card |
+| `typing over a selected preserved block starts a paragraph after it instead of replacing it` | `handleTextInput` |
+
+Also new, in the one-line block-rules group: `block Markdown rules never fire in a table cell, and inline ones still do` (regression row 341); the `tableCell` rows of `markdown input rules give the same document in every context` now expect text.
 
 ## JS gallery tests (73 tests)
 
@@ -4230,7 +4281,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (110 tests)
+## JS paste tests (125 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4359,6 +4410,35 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 
 ---
 
+
+### New in `window.insertMarkdown` (3 tests)
+
+| Test | What it checks |
+|---|---|
+| `blocks on an empty line after text replace that line instead of leaving it empty above them` | The landing line is replaced |
+| `raw HTML with an unclosed tag replaces the empty line and bolds nothing after it` | `_closeRawHTMLBlock` (regression row 338) |
+| `a raw table split by a blank line keeps both rows` | Closers only, never a DOM round trip, since one table can span two raw HTML tokens (Codex review) |
+
+### `a paste over a selection that ends at the start of the next block` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `leaves the next block and its text alone` | `_trimSelectionOffNextBlock`: the code block after the selection is not joined into the paste (regression row 336) |
+| `a plain-text paste leaves it alone too` | The plain-text branch |
+| `a separator inside the selection survives, being outside what the paste replaces` | The trim ends at the last textblock |
+| `Paste as Markdown over it leaves the next block alone too` | `insertMarkdown` trims as well |
+| `a selection that ends inside the next block still joins it` | A real cross-block selection still joins |
+
+### `blocks pasted into a table cell become lines` (5 tests)
+
+| Test | What it checks |
+|---|---|
+| `a heading, paragraphs and a list become lines with breaks` | `_asCellLines` (regression row 337) |
+| `a pasted table still fills the grid from the cell` | A table on its own is cells |
+| `a cell range copied in the editor still fills the grid` | Quill's own cell copy |
+| `Paste as Markdown into a cell writes lines too` | `insertMarkdown` in a cell |
+| `one line of inline HTML in a cell is unchanged` | Inline HTML passes through |
+
 ## JS paste source tests (61 tests)
 
 File: `Scripts/test-editor-paste-sources.js`
@@ -4437,7 +4517,7 @@ Pure Node, no DOM. Guards the registry's own shape before any consumer touches i
 
 ---
 
-## JS block settings tests (268 tests)
+## JS block settings tests (271 tests)
 
 File: `Scripts/test-editor-block-settings.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4469,6 +4549,9 @@ Loads the real `editor.html` in jsdom. The registry generates Tiptap attributes,
 **Blank lines between sibling blocks.** Gutenberg separates sibling blocks with a blank line and Quill now does the same (`sibling blocks are separated by a blank line`). The fixture corpus test still asserts idempotency after an edit rather than byte-identity against the fixture, because several fixtures were captured with single newlines in the gaps.
 
 ---
+
+
+The corpus test counts twenty-nine `settings-*` fixtures. A fixture with a `.saved` sibling (`settings-unclosed-tag`) is compared with that file once edited; `--check-fixtures` does the same.
 
 ## Manual / functional test checklists
 
@@ -5630,6 +5713,16 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 330 | Backspace at the start of a heading, Preformatted or code block right after a pullquote with a citation split the pullquote in two around the line: `_intoQuoteBeforeCite` inserted the line whole before the `cite`, and a `paragraph+ cite?` pullquote cannot hold it, so ProseMirror closed the pullquote around it. The line now joins as a paragraph whenever `canReplaceWith` refuses its type (`_asParagraph`; a code block's newlines become `<br>`), as it does with no citation | ✅ `test-editor-keyboard.js` `'Backspace at the start of a heading, preformatted or code block after a pullquote with a citation'`, `'Backspace at the start of a paragraph after a pullquote with a citation, then typing'` + 👁 §7.3 |
 | 331 | An edit in code view marked the wrong blocks: the reparse is one whole-document `setContent`, which the `movedBlocks` plugin mapped as the first block edited in place, and no new baseline follows a code-view edit, so the new first block kept the old first block's origin and the marks fell on blocks the edit never touched. `mapMovedBlocks` does not map a step that replaces the whole document: each block takes the entry its node last had, and a new one is paired by HTML, so the reparse and its undo both land right | ✅ `test-editor-change-bars.js` `'an edit in code view marks only what it changed'`, `'undoing a code-view edit marks only the edit made before it'` + 👁 §7.29 |
 | 332 | Text dropped from another app was shaped by the caret, not the drop point: ProseMirror runs the clipboard hooks for a drop, but Quill's hooks read the selection, which a drop leaves where it was. With the caret in the body, a drop into a tab title split the Tabs block; with the caret in a title, a drop into the body was flattened to one line. `_recordDropContext` records the drop point before ProseMirror's handler runs, and the hooks read it through `_pasteContext()` | ✅ `test-editor-paste.js` `'a drop is shaped by where it lands, not by the caret'` (4 tests) + real-WebKit drop probe + 👁 §7.28 |
+| 333 | One block that leaves an `<a>` or `<b>` open passed it to every block after it: the post is one HTML parse, so a paragraph with an unclosed link made the next heading, paragraph and list item links, and the first edit saved them that way on WordPress (code view the same). `closeLeakingTags` closes the tag inside each modeled leaf block before `_wrapIncoming`; preserved blocks keep their bytes, and an unedited post saves byte for byte | ✅ `test-editor-bridge.js` `'an unclosed inline tag stays inside its own block'` + `settings-unclosed-tag.html` / `.saved` in both corpora + 👁 `--check-fixtures` |
+| 334 | Undoing a code-view parse that lost a block left its "Saving this post would delete content" banner up, and Swift then held every later edit back from autosave and the flush on a post switch or quit. The documents on either side of the parse remember their own alarm (`_riskStep`), so undo clears it and redo raises it again. The banner now says "from the post", not "from the published post" | ✅ `test-editor-preservation.js` `'undoing a code-view parse takes its alarm back'`, `BlockRiskAlarmTests` + 👁 WebKit (typing after the undo reached SQLite on a switch) |
+| 335 | Backspace at the start of a line after a separator, embed or preserved block, or Delete at the end of a line before one, deleted the whole block in one keystroke (ProseMirror's join deletes an atom outright). It now selects the block, and a second key deletes it; a nested first line (list item, quote) still lifts out. Typing with a preserved block selected replaced it; it now starts a paragraph after it | ✅ `test-editor-keyboard.js` `'Backspace and Delete beside a block with no text select it first'` + 👁 WebKit |
+| 336 | A selection dragged or ⇧↓-extended to the start of the next line ends inside the next block; a paste over it joined that block into the last pasted one (a code block became list text, and Tiptap's paste rules bolded its literal `**stars**`). `_trimSelectionOffNextBlock` pulls the selection back to the end of the line before, for ⌘V and Paste as Markdown | ✅ `test-editor-paste.js` `'a paste over a selection that ends at the start of the next block'` + 👁 real-WebKit paste harness |
+| 337 | Blocks pasted into a table cell went in as blocks (a heading, paragraphs and a list inside `<td>`, or a nested table). HTML paste and Paste as Markdown into a cell now write lines with `<br>`, through the same `flattenPastedCells` a pasted table's own cells use; a table on its own (copied cells) still fills the grid | ✅ `test-editor-paste.js` `'blocks pasted into a table cell become lines'` + 👁 real-WebKit paste harness |
+| 338 | Paste as Markdown: a raw HTML block that left a `<b>` open bolded every block after it, and Markdown landing on an empty line after text left that line empty above the paste. Each block of raw HTML is closed off on its own (`walkTokens`), and the empty line is replaced | ✅ `test-editor-paste.js` `'raw HTML with an unclosed tag replaces the empty line and bolds nothing after it'` + 👁 WebKit |
+| 339 | Pasting several lines into the title kept them, newlines and all (a whole article became a 394 KB title). `TitleTextField` joins pasted lines with one space, as the editor does for its own titles and captions | ✅ `TitleTextFieldTests` + 👁 WebKit |
+| 340 | A Details block's "closed on the site" label ran over a long summary in a narrow column; the summary keeps room for it | 👁 WebKit |
+| 341 | A block Markdown rule typed in a table cell (`- `, `> `, `# `, `1. `, ```` ``` ````, `---`, `![]()`) put a list, quote, heading, code block, rule or image inside the cell, a shape core's rich-text cells cannot hold. `_noBlockRulesInLines` now also stands down in a cell; inline rules (`**bold**`, `` `code` ``) still apply | ✅ `test-editor-keyboard.js` `'block Markdown rules never fire in a table cell, and inline ones still do'` + 👁 WebKit |
+| 342 | Deleting a post that was already trashed outside Quill (still listed until a refresh) showed "Delete Failed — The request didn't go through (HTTP 410)" and left the row. WordPress's 410 `rest_already_trashed` means the post is already where the delete sends it, so `trashPost`/`trashPage` treat it as done and the row goes | ✅ `WordPressClientTests` `trashPostTreatsAlreadyTrashedAsDone` |
 
 ---
 

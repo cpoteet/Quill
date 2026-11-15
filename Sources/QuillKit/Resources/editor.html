@@ -1357,6 +1357,8 @@
     .ProseMirror .wp-block-details.is-collapsed > :not(summary) { display: none; }
     /* showContent is a publishing choice, so it is a label here and never a hidden body. */
     /* On the box, not the summary: summary::after draws the untitled hint. */
+    /* Room for that label, or a long summary in a narrow column ran under it. */
+    .ProseMirror .wp-block-details:not(.shows-content) > summary { padding-right: 128px; }
     .ProseMirror .wp-block-details:not(.shows-content)::after {
       content: 'closed on the site';
       position: absolute;
@@ -1866,12 +1868,13 @@
     // A block Markdown rule typed in a one-line block (a footnote, title, button, caption or
     // citation) turned it into that block or split its container: "# " in a caption replaced the
     // image with a heading, "---" split a Tabs block around a rule (cpoteet/Quill#24, bug 11).
+    // A table cell is rich text in core, so "- " or "> " there made a list or quote in the cell.
     function _noBlockRulesInLines(extension) {
       return extension.extend({
         addInputRules() {
           return (this.parent?.() || []).map(rule => {
             const handler = rule.handler
-            rule.handler = props => (_pasteMustBeInline() ? null : handler(props))
+            rule.handler = props => (_pasteMustBeInline() || _inTableCell(editor.state.selection.$from) ? null : handler(props))
             return rule
           })
         },
@@ -4183,6 +4186,7 @@
       if (!$cut) return false
       // Backspace undoes a Markdown rule typed just before it, ahead of any join.
       if (editor.commands.undoInputRule()) return true
+      if (_selectTextlessBlock($from, $cut, $cut.nodeBefore, $cut.pos - ($cut.nodeBefore?.nodeSize || 0))) return true
       if (_intoQuoteBeforeCite($from, $cut)) return true
       // A details body's first line follows the summary, a title it must not join.
       return $cut.nodeBefore?.type.name === 'detailsSummary'
@@ -4192,7 +4196,21 @@
       const { $from, empty } = editor.state.selection
       if (!empty || $from.parentOffset < $from.parent.content.size || _isInFootnote()) return false
       if (EDGE_TEXTBLOCKS.has($from.parent.type.name)) return true
-      return _cutAfter($from)?.nodeAfter?.type.name === 'cite'
+      const $cut = _cutAfter($from)
+      if ($cut && _selectTextlessBlock($from, $cut, $cut.nodeAfter, $cut.pos)) return true
+      return $cut?.nodeAfter?.type.name === 'cite'
+    }
+
+    // ProseMirror's join deletes a block with no text of its own outright when Backspace or Delete
+    // reaches it from a line that has text: a separator, an embed, or a block only code view can
+    // bring back, gone in one keystroke. The block is selected instead, so the next key deletes it
+    // on purpose. From an empty line ProseMirror already removes the line and selects the block.
+    // Only a line directly beside the block: a first list item or quote line lifts out as before.
+    function _selectTextlessBlock($from, $cut, node, pos) {
+      if (!node || !node.isBlock || !node.isAtom || $from.parent.content.size === 0) return false
+      if ($cut.depth !== $from.depth - 1) return false
+      editor.commands.setNodeSelection(pos)
+      return true
     }
 
     const TextblockEdges = Extension.create({
@@ -5046,6 +5064,18 @@
           }
           return false
         },
+        // A selected block Quill preserves is replaced by whatever is typed over it, and only code
+        // view can bring it back; typing starts a paragraph after it instead.
+        handleTextInput(view, from, to, text) {
+          const node = view.state.selection.node
+          if (!node || node.type.name !== 'gutenbergPassthrough') return false
+          const at = view.state.selection.to
+          const { paragraph } = view.state.schema.nodes
+          view.dispatch(view.state.tr.insert(at, paragraph.create(null, view.state.schema.text(text))))
+          editor.commands.setTextSelection(at + 1 + text.length)
+          view.dispatch(view.state.tr.scrollIntoView())
+          return true
+        },
         handleClick(view, pos, event) {
           const seat = _pendingSeat
           _pendingSeat = null
@@ -5146,6 +5176,7 @@
               html = cleanPastedHTML(html, undefined, { keepEdges: true })
               if (_ancestorDepth(_pasteContext(), 'listItem') > 0) html = pastedBlocksAsListItems(html)
             }
+            if (!inline && _inTableCell(_pasteContext())) html = _asCellLines(html)
           } catch (e) {
             console.error('paste cleanup failed', e)
           }
@@ -5183,6 +5214,7 @@
       },
       onTransaction: ({ transaction }) => {
         if (transaction.docChanged || transaction.selectionSet) _toolbarIdle = false
+        if (transaction.docChanged) _followRiskStep()
         updateToolbar()
       },
       onCreate: () => {
@@ -5211,7 +5243,8 @@
     // Swift reports ⌘ from AppKit, so the section shows even when the editor lacks keyboard focus.
     window.setSectionKey = down => window._blockGrip.setSectionKey(!!down)
     // On document in the capture phase, so both run before ProseMirror's own handlers on the editor, whose cut empties the selection.
-    for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _classifyPaste], ['drop', _recordDropContext]]) {
+    const _onPaste = event => { _trimSelectionOffNextBlock(); _classifyPaste(event) }
+    for (const [type, handler] of [['copy', _rememberCopy], ['cut', _rememberCopy], ['paste', _onPaste], ['drop', _recordDropContext]]) {
       document.addEventListener(type, event => {
         _dropContext = null
         if (editor.view.dom.contains(event.target)) handler(event)
@@ -5281,6 +5314,28 @@
       const $at = _pasteContext()
       const name = $at.parent.type.name
       return _isInFootnote($at) || name in TITLE_CONTAINERS || name === 'cite' || name === 'image'
+    }
+
+    function _inTableCell($at) {
+      return _ancestorDepth($at, 'tableCell') !== -1 || _ancestorDepth($at, 'tableHeader') !== -1
+    }
+
+    // Core's table cells are rich text, so blocks pasted into one went in as blocks: a heading,
+    // paragraphs and a list inside <td>, or a whole table nested in a cell. They become lines, as the
+    // blocks inside a pasted table's own cells do (flattenPastedCells). Inline HTML is left as it is.
+    function _asCellLines(html) {
+      const probe = inertDocument().createElement('div')
+      probe.innerHTML = html
+      if (!probe.querySelector(_PASTE_BLOCK_SELECTOR)) return html
+      // A table on its own is cells, which fill the grid from this cell as ProseMirror pastes them.
+      const elements = [...probe.children]
+      if (elements.length && elements.every(el => el.tagName === 'TABLE')) return html
+      const table = inertDocument().createElement('table')
+      table.innerHTML = '<tbody><tr><td></td></tr></tbody>'
+      const cell = table.querySelector('td')
+      cell.append(...probe.childNodes)
+      flattenPastedCells(table, inertDocument())
+      return cell.innerHTML
     }
 
     // Where a paste or drop lands. ProseMirror runs the clipboard hooks for a drop from another app
@@ -5382,6 +5437,22 @@
       _lastCopiedText = editor.view.someProp('clipboardTextSerializer', f => f(slice, editor.view))
         ?? slice.content.textBetween(0, slice.content.size, '\n\n')
     }
+    // A selection dragged or ⇧↓-extended to the start of the next line ends inside the next block,
+    // though nothing of it is selected. A paste then joined that block into the last pasted one: a
+    // code block became list text, and Tiptap's paste rules turned its literal **stars** into bold.
+    // The selection is pulled back to the end of the line before, so the block after it stays whole.
+    function _trimSelectionOffNextBlock() {
+      const { selection, doc } = editor.state
+      if (selection.empty || selection.node || selection.$anchorCell) return
+      const { $from, $to } = selection
+      if ($to.parentOffset !== 0 || !$to.parent.isTextblock || $from.sameParent($to)) return
+      let end = null
+      doc.nodesBetween($from.pos, $to.before(), (node, pos) => {
+        if (node.isTextblock && pos + node.nodeSize - 1 <= $to.before()) end = pos + node.nodeSize - 1
+      })
+      if (end !== null && end >= $from.pos) editor.commands.setTextSelection({ from: $from.pos, to: end })
+    }
+
     function _classifyPaste(event) {
       const html = event.clipboardData?.getData('text/html') || ''
       const text = event.clipboardData?.getData('text/plain') || ''
@@ -7236,9 +7307,17 @@
       editor.commands.setTextSelection(0)
       _parsingPaste = false
       _resetSyncedPatterns()
+      const before = { doc: editor.state.doc, names: _lastRiskNames }
+      _riskStep = null
       editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), { emitUpdate: false })
       editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
+      // Only a parse that changed the alarm needs following on every edit after it. If the parse
+      // changed nothing visible, the two documents are equal and cannot say which side of it the
+      // editor is on, so the alarm is left up: a stale banner is safe, a cleared real one is not.
+      _riskStep = before.names.join('\n') === _lastRiskNames.join('\n') || before.doc.eq(editor.state.doc)
+        ? null
+        : { before, after: { doc: editor.state.doc, names: _lastRiskNames } }
       _requestSyncedPatterns()
     }
 
@@ -7352,8 +7431,9 @@
     })
 
     // Only the entry points that receive post_content wrap; the AI reject paths swap the saved doc back in.
+    // closeLeakingTags first: a tag one block leaves open must not reach the blocks after it.
     const _wrapIncoming = html =>
-      html ? wrapUnsupportedBlocks(html, parseBlocks) : html
+      html ? wrapUnsupportedBlocks(closeLeakingTags(html, parseBlocks), parseBlocks) : html
 
     // Image, gallery and embed model a block through bespoke passes in
     // toWordPressHTML rather than a descriptor entry, so they need naming here.
@@ -7388,8 +7468,26 @@
       if (!originalHTML) return
       const expected = countBlockNames(parseBlocks(originalHTML))
       // Reported even when empty, or a post the user repaired keeps its banner.
-      const names = unrepresentedBlockNames(expected, _accountedBlockCounts())
+      _postBlocksAtRisk(unrepresentedBlockNames(expected, _accountedBlockCounts()))
+    }
+
+    // var, not let: onTransaction reads these, and the editor is created further up the script.
+    var _lastRiskNames = []
+    function _postBlocksAtRisk(names) {
+      _lastRiskNames = names
       window.webkit?.messageHandlers?.blocksAtRisk?.postMessage({ names })
+    }
+
+    // The alarm a code-view parse raises belongs to that parse, which is one undo step. Undoing it
+    // took the lost block out of the document but left the banner up, and Swift then held back
+    // every later edit from autosave and the flush on a post switch or quit. So the documents on
+    // either side of the parse remember their own alarm, and returning to one restores it.
+    var _riskStep = null
+    function _followRiskStep() {
+      if (!_riskStep) return
+      const doc = editor.state.doc
+      const side = doc.eq(_riskStep.before.doc) ? _riskStep.before : doc.eq(_riskStep.after.doc) ? _riskStep.after : null
+      if (side && side.names.join('\n') !== _lastRiskNames.join('\n')) _postBlocksAtRisk(side.names)
     }
 
     // Dropping and re-adding the history plugin re-initialises its state, which empties the undo stack.
@@ -7546,6 +7644,7 @@
       editor.commands.setTextSelection(0)
       _parsingPaste = false
       _resetSyncedPatterns()
+      _riskStep = null
       editor.commands.setContent(wrapped || '', { emitUpdate: false })
       // After the load, which removes every entry of the last post into the cache: a note
       // deleted in one post must never come back in another that shares its id.
@@ -7569,7 +7668,8 @@
     window.getFootnotes = () => _footnotes
 
     // Debug entry point for --check-fixtures: the jsdom corpus, run in WebKit.
-    window.__runFixtureCorpus = json => JSON.parse(json).map(({ name, source }) => {
+    // `expected` is set only for a fixture whose own markup is broken, which saves repaired.
+    window.__runFixtureCorpus = json => JSON.parse(json).map(({ name, source, expected }) => {
       window.setContent(source)
       let cards = 0
       editor.state.doc.descendants(node => { if (node.type.name === 'gutenbergPassthrough') cards++ })
@@ -7583,7 +7683,7 @@
       const baseline = unmarked(source) && unmarked(edited)
       window.setContent(edited)
       const again = extractFootnotes(toWordPressHTML(editor.getHTML())).content
-      return { name, untouched: untouched === source, identical: edited === source, idempotent: again === edited, baseline, cards, saved: edited }
+      return { name, untouched: untouched === source, identical: edited === (expected ?? source), idempotent: again === edited, baseline, cards, saved: edited }
     })
     // Every path post markup takes through the editor, for FixtureCheck to prove no handler in it runs.
     window.__runScriptSinkProbes = json => JSON.parse(json).forEach(source => {
@@ -7866,6 +7966,19 @@
     // an ordinary ⌘V behaves exactly as it did before this function existed.
     //
     // Returns a status string; EditorCoordinator turns a non-'ok' result into a toast.
+    // A raw HTML block in Markdown that leaves a <b> or <a> open made every block after it bold or
+    // a link, as one unclosed tag does in a post (closeLeakingTags), and left the empty line the
+    // paste landed on behind. Each block of raw HTML is closed off on its own; inline tags are
+    // separate tokens that open and close across text, so only block tokens are touched.
+    // Closers only, never a DOM round trip: a blank line can split one table across two tokens.
+    function _closeRawHTMLBlock(token) {
+      if (token.type !== 'html' || !token.block || !LEAKING_INLINE_TAG.test(token.text)) return
+      const closers = leakingTagClosers(token.text)
+      if (!closers) return
+      const body = token.text.replace(/\s*$/, '')
+      token.text = body + closers + token.text.slice(body.length)
+    }
+
     window.insertMarkdown = (text) => {
       if (typeof text !== 'string' || !text.trim()) return 'empty'
       // Contexts where block-level content cannot go: the raw-HTML textarea, a
@@ -7874,25 +7987,35 @@
       if (codeViewActive) return 'code-view'
       if (_isInFootnote()) return 'footnote'
       if (editor.isActive('codeBlock')) return 'code-block'
+      _trimSelectionOffNextBlock()
 
       let html
       try {
-        html = MarkedBundle.marked.parse(text, { gfm: true })
+        html = MarkedBundle.marked.parse(text, { gfm: true, walkTokens: _closeRawHTMLBlock })
       } catch {
         return 'parse-error'
       }
 
       // Raw HTML in the source, task-list checkboxes, column alignment and <p>-wrapped images: docs/paste.md.
-      const clean = cleanPastedHTML(html)
+      let clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
+      if (_inTableCell(editor.state.selection.$from)) clean = _asCellLines(clean)
 
       // A list item may hold a nested list, so pasted Markdown that is only lists stays in it.
       const probe = inertDocument().createElement('div')
       probe.innerHTML = clean
       const nestsInList = probe.children.length > 0 && [...probe.children].every(el => el.tagName === 'UL' || el.tagName === 'OL')
-      _blockInsertChain({ intoTableCell: true, nestsInList }).insertContent(clean, {
-        parseOptions: { preserveWhitespace: false },
-      }).run()
+      const parseOptions = { preserveWhitespace: false }
+      // An empty line the Markdown lands on is replaced, as it is for any other block insert.
+      // ProseMirror fitted some slices around it instead, and left it empty above the paste.
+      const { $from, empty } = editor.state.selection
+      const host = $from.depth > 1 ? $from.node($from.depth - 1).type.name : 'doc'
+      if (empty && $from.parent.type.name === 'paragraph' && $from.parent.content.size === 0 &&
+          _blockInsertDepth($from, true, nestsInList) === -1 && !['listItem', 'tableCell', 'tableHeader'].includes(host)) {
+        editor.chain().focus().insertContentAt({ from: $from.before(), to: $from.after() }, clean, { parseOptions }).run()
+        return 'ok'
+      }
+      _blockInsertChain({ intoTableCell: true, nestsInList }).insertContent(clean, { parseOptions }).run()
       return 'ok'
     }
     window.showDropOverlay = () => document.getElementById('drop-overlay').classList.add('active')

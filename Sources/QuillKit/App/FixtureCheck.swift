@@ -70,7 +70,10 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
 
         let fixtures: [[String: String]] = names.compactMap { name in
             guard let source = try? String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8) else { return nil }
-            return ["name": name, "source": source]
+            // A fixture whose own markup is broken saves repaired, as its .saved sibling records.
+            let savedURL = dir.appendingPathComponent(name).deletingPathExtension().appendingPathExtension("saved")
+            guard let expected = try? String(contentsOf: savedURL, encoding: .utf8) else { return ["name": name, "source": source] }
+            return ["name": name, "source": source, "expected": expected]
         }
         guard let payload = try? JSONSerialization.data(withJSONObject: fixtures),
               let json = String(data: payload, encoding: .utf8) else { fail("could not encode the fixtures") }
@@ -102,8 +105,10 @@ private final class Runner: NSObject, WKNavigationDelegate, WKScriptMessageHandl
             } else {
                 failures += 1
                 print("  FAIL  \(name) — \(bad.joined(separator: ", "))")
+                let savedURL = dir.appendingPathComponent(name).deletingPathExtension().appendingPathExtension("saved")
                 if let saved = row["saved"] as? String,
-                   let source = try? String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8) {
+                   let source = (try? String(contentsOf: savedURL, encoding: .utf8))
+                    ?? (try? String(contentsOf: dir.appendingPathComponent(name), encoding: .utf8)) {
                     print(firstDifference(source, saved).split(separator: "\n").map { "          \($0)" }.joined(separator: "\n"))
                 }
             }

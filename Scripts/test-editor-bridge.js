@@ -331,3 +331,79 @@ describe('setContent history', () => {
     assert.equal(editor.getText(), 'Original')
   })
 })
+
+// A block whose markup leaves an inline tag open must not hand it to the blocks after it: the
+// whole post is one HTML parse, and the parser reopens an unclosed <a> or <b> in every later
+// block. Gutenberg parses block by block, so only the bad block is invalid there.
+describe('an unclosed inline tag stays inside its own block', () => {
+  const leaky = [
+    '<!-- wp:paragraph -->\n<p>Type here.</p>\n<!-- /wp:paragraph -->',
+    '<!-- wp:paragraph -->\n<p>A sentence with an <a href="https://example.com">unclosed link.</p>\n<!-- /wp:paragraph -->',
+    '<!-- wp:heading -->\n<h2 class="wp-block-heading">A heading after it</h2>\n<!-- /wp:heading -->',
+    '<!-- wp:paragraph -->\n<p>Ordinary paragraph.</p>\n<!-- /wp:paragraph -->',
+    '<!-- wp:list -->\n<ul class="wp-block-list"><!-- wp:list-item -->\n<li>List item</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->',
+  ].join('\n\n')
+
+  test('an edit elsewhere saves the later blocks without the link', () => {
+    win.setContent(leaky, '')
+    editor.commands.insertContentAt(1, 'X')
+    const html = win.flushContent().html
+    assert.match(html, /<p>XType here\.<\/p>/)
+    assert.match(html, /<p>A sentence with an <a href="https:\/\/example\.com">unclosed link\.<\/a><\/p>/)
+    assert.match(html, /<h2 class="wp-block-heading">A heading after it<\/h2>/)
+    assert.match(html, /<p>Ordinary paragraph\.<\/p>/)
+    assert.match(html, /<li>List item<\/li>/)
+  })
+
+  test('an unedited post still saves byte for byte', () => {
+    win.setContent(leaky, '')
+    assert.equal(win.getContent(), leaky)
+  })
+
+  test('an unclosed bold typed in code view stays in its block', () => {
+    win.setContent('<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->', '')
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    const area = win.document.getElementById('code-editor')
+    area.value = '<!-- wp:paragraph -->\n<p><b>leaky bold</p>\n<!-- /wp:paragraph -->\n\n' +
+      '<!-- wp:heading -->\n<h2 class="wp-block-heading">Heading</h2>\n<!-- /wp:heading -->\n\n' +
+      '<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>Quoted</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->'
+    area.dispatchEvent(new win.Event('input'))
+    button.click()
+    const html = win.getContent()
+    assert.match(html, /<p><strong>leaky bold<\/strong><\/p>/)
+    assert.match(html, /<h2 class="wp-block-heading">Heading<\/h2>/)
+    assert.match(html, /<p>Quoted<\/p>/)
+  })
+
+  test('a preserved block keeps its own unclosed tag, and the block after it is not touched', () => {
+    const acme = '<!-- wp:acme/widget -->\n<div class="acme"><b>Widget</div>\n<!-- /wp:acme/widget -->'
+    win.setContent(acme + '\n\n<!-- wp:paragraph -->\n<p>After</p>\n<!-- /wp:paragraph -->', '')
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, '!')
+    const html = win.flushContent().html
+    assert.ok(html.startsWith(acme), html)
+    assert.match(html, /<p>After!<\/p>/)
+  })
+
+  test('an unclosed comment after the tag does not stop the post loading', () => {
+    win.setContent('<!-- wp:paragraph --><p>Before</p><!-- /wp:paragraph -->', '')
+    win.setContent('<!-- wp:paragraph --><p>Bad <b>bold</p><!-- unfinished<!-- /wp:paragraph -->', '')
+    assert.match(editor.getText(), /Bad bold/)
+  })
+
+  test('a block Quill preserves inside a container keeps its inner markup untouched', () => {
+    const nested = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:acme/box --><div class="acme"><!-- wp:paragraph --><p>in <b>widget</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>second</p><!-- /wp:paragraph --></div><!-- /wp:acme/box --></div><!-- /wp:column --></div><!-- /wp:columns -->'
+    assert.equal(win.closeLeakingTags(nested, win.parseBlocks), nested)
+  })
+
+  test('an unclosed tag inside a Group stays inside its paragraph', () => {
+    win.setContent('<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p>In <em>group</p>\n<!-- /wp:paragraph -->\n\n' +
+      '<!-- wp:paragraph -->\n<p>Second</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->\n\n' +
+      '<!-- wp:paragraph -->\n<p>Outside</p>\n<!-- /wp:paragraph -->', '')
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, '!')
+    const html = win.flushContent().html
+    assert.match(html, /<p>In <em>group<\/em><\/p>/)
+    assert.match(html, /<p>Second<\/p>/)
+    assert.match(html, /<p>Outside!<\/p>/)
+  })
+})

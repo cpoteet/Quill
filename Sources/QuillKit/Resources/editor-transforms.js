@@ -465,6 +465,61 @@ function wrapUnsupportedBlocks(html, parse, doc) {
   return wrapped.some((s, i) => s !== slices[i].source) ? wrapped.join('') : html
 }
 
+// The inline tags an HTML parser reopens in every later block when one is left open.
+const LEAKING_INLINE_TAG = /<(?:a|b|big|code|em|font|i|nobr|s|small|strike|strong|tt|u)[\s>/]/i
+
+// The closing tags for the inline tags this markup leaves open, innermost first. Appended at
+// the markup's own end they stop the parser reopening those tags in what follows, and, unlike a
+// DOM round trip, they close nothing else: a table that continues past the markup is untouched.
+function leakingTagClosers(markup) {
+  const open = []
+  for (const m of markup.matchAll(/<(\/?)(a|b|big|code|em|font|i|nobr|s|small|strike|strong|tt|u)[\s>/]/gi)) {
+    const name = m[2].toLowerCase()
+    if (!m[1]) { open.push(name); continue }
+    const at = open.lastIndexOf(name)
+    if (at !== -1) open.splice(at, 1)
+  }
+  return open.reverse().map(name => `</${name}>`).join('')
+}
+
+// The post is parsed as one HTML string, so a block that leaves an <a> or <b> open hands it to
+// every block after it, and the first edit saves the link or bold into all of them. Gutenberg
+// parses block by block, so there only the bad block is invalid. Each modeled leaf block that
+// leaves a tag open has it closed at the block's own end. A block Quill preserves, at any depth,
+// is never descended into: its bytes must not change, and it loads as an attribute nothing
+// leaks out of.
+function closeLeakingTags(html, parse) {
+  if (!html || !LEAKING_INLINE_TAG.test(html)) return html
+  const leaves = []
+  const collect = blocks => {
+    for (const block of blocks) {
+      if (block.blockName && !blockDescriptorRegistry.modelsBlockName(block.blockName)) continue
+      if (block.innerBlocks.length) collect(block.innerBlocks)
+      else if (block.blockName) leaves.push(block)
+    }
+  }
+  for (const slice of blockSourceSlices(html, parse)) {
+    if (slice.blockName && !blockNeedsWrapping(slice, inertDocument())) collect([slice.block])
+  }
+  let out = html
+  for (const block of leaves.reverse()) {
+    const source = html.slice(block.start, block.end)
+    const openerEnd = source.indexOf('-->') + 3
+    if (openerEnd < 3 || source.slice(0, openerEnd).endsWith('/-->')) continue
+    const closerAt = source.lastIndexOf('<!-- /wp:')
+    const innerEnd = closerAt >= openerEnd ? closerAt : source.length
+    const inner = source.slice(openerEnd, innerEnd)
+    const closers = LEAKING_INLINE_TAG.test(inner) ? leakingTagClosers(inner) : ''
+    if (!closers) continue
+    // Before the block's trailing whitespace: a newline after the closed element would itself
+    // reopen the tag before the closer reached it.
+    const body = inner.replace(/\s*$/, '')
+    const at = block.start + openerEnd
+    out = out.slice(0, at) + body + closers + inner.slice(body.length) + out.slice(block.start + innerEnd)
+  }
+  return out
+}
+
 // The element as authored, without the marker ProseMirror adds to copied HTML.
 function sourceHTMLOf(el) {
   if (!el.hasAttribute('data-pm-slice')) return el.outerHTML
@@ -1943,5 +1998,5 @@ function embedClassFor(url) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { groupFullySupported, groupTags, groupLabel, cardLabel, extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
+  module.exports = { groupFullySupported, groupTags, groupLabel, cardLabel, extractAlignment, toWordPressHTML, serializeAttributes, mergeClassNames, mergeCarried, blockSourceSlices, blockNeedsWrapping, wrapUnsupportedBlocks, closeLeakingTags, leakingTagClosers, customHTMLBlock, customHTMLSource, unrepresentedBlockNames, countBlockNames, formatHTML, countStats, findMatches, findMatchesLoose, fuzzyAnchorRegex, detectEmbedProvider, embedClassFor, passthroughLabelFromClass, passthroughLabelFromBlockName, parsePassthroughBlock, isModeledFigure, QUILL_MODELED_FIGURE_CLASSES, extractFootnotes, inlineFootnotes, cleanPastedHTML, embedURLFromFrame, pastedBlocksAsListItems }
 }

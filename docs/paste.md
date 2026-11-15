@@ -60,3 +60,7 @@ Swift releases every token when it is done with it, whatever the outcome: succes
 ## Verifying a change here
 
 `./test.sh` covers the corpus in jsdom. For a change that could depend on WebKit, re-run the real-WebKit harness described in `Scripts/fixtures/paste/README.md`. It puts a clipboard on the system pasteboard, pastes with a native `paste:` into the bundled `editor.html`, and checks the save with WordPress's validator.
+
+- **Blocks pasted into a table cell** become lines separated by `<br>`, as the blocks inside a pasted table's own cells already do: `_asCellLines` runs `flattenPastedCells` over the paste when it lands in a cell, for ⌘V, a drop and Paste as Markdown. One line of inline HTML is left as it is, and so is a table on its own: copied cells fill the grid from the caret's cell.
+- **A selection that ends at the start of the next line** (a drag or ⇧↓ to the line after) is pulled back to the end of the line before by `_trimSelectionOffNextBlock` before a paste or Paste as Markdown runs, so the block after it is not joined into the pasted content.
+- **Paste as Markdown with raw HTML** closes each block of raw HTML on its own (`_closeRawHTMLBlock`, marked's `walkTokens`), so a `<b>` it leaves open stays inside that block. An ordinary ⌘V is not changed: WebKit writes clipboard HTML from the page's live DOM, which is always balanced.

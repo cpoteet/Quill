@@ -31,7 +31,7 @@ struct BlockRiskAlarm: Equatable {
                 ? "A \(displayNames[0]) block didn't survive loading into Quill"
                 : "\(Self.list(displayNames)) blocks didn't survive loading into Quill"
             let object = isSingular ? "it" : "them"
-            return "\(subject), so saving from here would remove \(object) from the published post. "
+            return "\(subject), so saving from here would remove \(object) from the post. "
                 + "This is a Quill limitation, not a problem with your post."
         case .acknowledged:
             return "You chose to save anyway. Quill won't ask again for this post."

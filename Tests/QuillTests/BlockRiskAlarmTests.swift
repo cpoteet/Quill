@@ -6,13 +6,13 @@ import Testing
         let alarm = BlockRiskAlarm(names: ["calendar"], stage: .unacknowledged)
         #expect(alarm.title == "Saving this post would delete content")
         #expect(alarm.body.contains("A Calendar block didn't survive loading into Quill"))
-        #expect(alarm.body.contains("would remove it from the published post"))
+        #expect(alarm.body.contains("would remove it from the post"))
         #expect(alarm.blocksSaving)
     }
 
     @Test func multipleBlocksUsePluralWording() {
         let alarm = BlockRiskAlarm(names: ["calendar", "block"], stage: .unacknowledged)
-        #expect(alarm.body.contains("would remove them from the published post"))
+        #expect(alarm.body.contains("would remove them from the post"))
     }
 
     @Test func bodyNamesEveryAffectedBlock() {
