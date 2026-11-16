@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-15 — 915 Swift tests + 2,702 JS tests (2,701 pass, 1 skipped), no failures._
+_Last updated: 2026-11-16 — 918 Swift tests + 2,736 JS tests (2,735 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -16,20 +16,20 @@ This document is the authoritative reference for Quill's automated test suite an
 
 `test.sh` runs both test layers in sequence and prints a pass/fail summary:
 
-1. **Swift tests** — `swift test` (915 tests)
+1. **Swift tests** — `swift test` (918 tests)
 2. **JS block parser tests** — `node --test Scripts/test-block-parser.js` (76 tests — pure Node, compared against WordPress's own parser)
 3. **JS block serializer tests** — `node --test Scripts/test-block-serializer.js` (154 tests — pure Node; `serializeAttributes` compared with WordPress)
-4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (95 tests — live Tiptap editor in jsdom)
+4. **JS preservation tests** — `node --test Scripts/test-editor-preservation.js` (98 tests — live Tiptap editor in jsdom)
 5. **JS editor tests** — `node --test Scripts/test-editor.js` (295 tests via Node's built-in runner + jsdom)
-6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (34 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption and `window.setContent`'s undo history)
-7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (181 tests — live Tiptap editor in jsdom)
+6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (46 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption, `window.setContent`'s undo history and `closeLeakingTags`)
+7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (183 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
 9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (750 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (122 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
 13. **JS footnote tests** — `node --test Scripts/test-editor-footnotes.js` (60 tests — live Tiptap editor in jsdom)
-14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (125 tests — live Tiptap editor in jsdom)
+14. **JS paste tests** — `node --test Scripts/test-editor-paste.js` (142 tests — live Tiptap editor in jsdom)
 15. **JS paste source tests** — `node --test Scripts/test-editor-paste-sources.js` (61 tests — real clipboards pasted into the live editor, checked by WordPress's own block validator)
 16. **JS inline format tests** — `node --test Scripts/test-editor-inline-formats.js` (24 tests — live Tiptap editor in jsdom)
 17. **JS settings registry tests** — `node --test Scripts/test-block-settings-registry.js` (13 tests — pure Node)
@@ -119,9 +119,9 @@ Requires `node` and the `jsdom` package, installed in **`Scripts/`** (`Scripts/p
 
 ---
 
-## Swift test suite (915 tests, 62 suites)
+## Swift test suite (918 tests, 63 suites)
 
-One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`); each suite gets a row.
+One file can hold more than one suite: `EditorCoordinatorTests.swift` holds four (`EditorCoordinatorTests`, `EditorPushDecisionTests`, `EditorCoordinatorBridgeTests`, `SyncedPatternScriptTests`), and `PostEditorHelpersTests.swift` holds three (`PostEditorHelpersTests`, `GalleryEditTests`, `SyncedPatternResultTests`), and `TitleTextFieldTests.swift` holds two (`TitleTextFieldTests`, `TitleTextFieldCoordinatorTests`); each suite gets a row.
 
 Framework: Swift Testing, from the toolchain (no package dependency). Target: `Tests/QuillTests/`. Support files: `Tests/QuillTests/Support/`.
 
@@ -153,6 +153,8 @@ Framework: Swift Testing, from the toolchain (no package dependency). Target: `T
 | 22 | `MimeTypeTests` | `MimeTypeTests.swift` | 12 | `MimeType.forExtension`/`forFile` UTType-backed lookups, case-insensitivity, unknown/empty extension fallback to `application/octet-stream` |
 | 23 | `ImageConversionTests` | `ImageConversionTests.swift` | 17 | `ImageConversion.prepareForUpload`/`cleanup`: HEIC/HEIF→JPEG conversion, EXIF orientation and pixel dimensions preserved, per-upload temp directory and its cleanup, pass-through for JPEG/PNG/PDF, fallback to the original when ImageIO cannot decode |
 | 24 | `BlockRiskAlarmTests` | `BlockRiskAlarmTests.swift` | 15 | `BlockRiskAlarm`'s three banner stages: title and body copy per stage, singular vs. plural wording, human-readable block display names (incl. Synced Pattern, Page Break, Read More, Custom HTML, and a namespaced third-party block), an em-dash guard across every string in every stage, that only the unacknowledged stage blocks saving, and `PostEditorView.nextAlarm(from:names:)`'s banner lifecycle |
+| 24a | `TitleTextFieldTests` | `TitleTextFieldTests.swift` | 3 | `TitleTextField.singleLine`: pasted lines join with one space, blank lines and the spaces around breaks go, U+2028/U+2029 count as breaks |
+| 24b | `TitleTextFieldCoordinatorTests` | `TitleTextFieldTests.swift` | 3 | `TitleTextField.Coordinator`'s delegate check, through a real text view: text with breaks typed or pasted (over a selection too) goes in as one line at the selection; text without breaks is left to the text view |
 | 25 | `EditorPushDecisionTests` | `EditorCoordinatorTests.swift` | 16 | `EditorPushState`: when a `setContent` push is worth making, keyed on the HTML **and** the footnotes together, and the two half-recording entry points (`recordHTML`, `recordFootnotes`) leaving the other half intact; `BaselinePushState` and `changeBaselineJS` for the change bars |
 | 26 | `AIOutputFixtureTests` | `AIOutputFixtureTests.swift` | 2 | Each `Scripts/fixtures/ai/` sample's `.html` equals what `parseGenerated` or `SelectionPrompts.parse` + `cleanOperationResult` make of its JSON `.raw.txt` — the Swift half of the AI output validity suite |
 | 27 | `MediaFilterTests` | `MediaFilterTests.swift` | 4 | `MediaFilter` → WordPress `media_type` parameter mapping, `matches(_:)` accepting the same set that mapping asks the server for, and that every filter has a title and an icon |
@@ -1075,6 +1077,18 @@ File: `Tests/QuillTests/TitleTextFieldTests.swift`
 
 ---
 
+### 24b. Editor — `TitleTextFieldCoordinatorTests` (3 tests)
+
+File: `Tests/QuillTests/TitleTextFieldTests.swift` (second suite in the file). Drives `TitleTextField.Coordinator`'s `textView(_:shouldChangeTextIn:replacementString:)`, the delegate check that applies `singleLine`, through a real `RestrictedTextView`.
+
+| Test | What it checks |
+|---|---|
+| `textWithLineBreaksGoesInAsOneLineAtTheSelection` | Text with breaks inserted at the caret lands joined, in the field and the binding, with the caret after it |
+| `aPasteReplacingASelectionIsJoinedToo` | A paste from a pasteboard over a selection replaces it with the joined line |
+| `textWithoutLineBreaksIsLeftToTheTextView` | Text with no break, and a deletion, are allowed through unchanged |
+
+---
+
 ### 25. Editor — `EditorPushDecisionTests` (16 tests)
 
 File: `Tests/QuillTests/EditorCoordinatorTests.swift` (second suite in the file). The same struct also holds the `changeBaselineJS` and `BaselinePushState` tests, the spell-check main-actor test and the `PastedImage` tests.
@@ -1904,7 +1918,7 @@ The rule that decides whether a Group opens for editing or stays one locked card
 
 ---
 
-## JS preservation tests (95 tests)
+## JS preservation tests (98 tests)
 
 File: `Scripts/test-editor-preservation.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2094,15 +2108,18 @@ Characterization tests for the Tiptap 2 → 3 migration (`docs/superpowers/plans
 ---
 
 
-### `undoing a code-view parse takes its alarm back` (5 tests)
+### `undoing a code-view parse takes its alarm back` (8 tests)
 
 | Test | What it checks |
 |---|---|
 | `the lossy parse raises the alarm` | A code-view parse that loses an unknown block posts its name |
-| `undo clears it, and redo raises it again` | `_riskStep`: the document before the parse posts its own alarm (none), the one after posts the loss (regression row 334) |
+| `undo clears it, and redo raises it again` | `_riskSides`: the document before the parse posts its own alarm (none), the one after posts the loss (regression row 334) |
 | `an edit after the parse keeps the alarm` | Typing after the parse does not clear it |
-| `a lossy parse that changes nothing visible keeps its alarm through undo and redo` | Equal documents on both sides of the parse are not tracked, so the alarm stays up (Codex review) |
-| `a post loaded afterwards is judged on its own` | `setContent` drops the step |
+| `a lossy parse that changes nothing visible keeps its alarm through undo and redo` | The parse must leave the document equal for the test to count; equal documents on both sides of the parse are not recorded, so the alarm stays up through undo and redo (Codex review) |
+| `an edit after the parse, undone along with the parse, clears the alarm` | Undoing a later edit, made as its own undo step, keeps the alarm; undoing the parse as well restores `Start` and clears it |
+| `two code-view sessions with the same alarm, both undone, clear it` | A second parse that raises the same alarm no longer forgets the first's record; undoing both clears the banner and redo raises it again (regression row 343) |
+| `a later parse that changes nothing visible is not cleared by an earlier clean record` | After an undone lossy parse recorded the shown document as clean, a parse that drops a block without changing that document records its own alarm for it, so typing and undoing the typing keeps the banner up (regression row 343) |
+| `a post loaded afterwards is judged on its own` | Loading a post clears `_riskSides`, so the new post, though it equals the parse's document, posts no alarm, and an edit and undo there raise none |
 
 ## JS editor tests (295 tests)
 
@@ -2662,7 +2679,7 @@ The save side of unsupported-block preservation. Each wrapper element is replace
 | `restores a source containing a dollar sequence` | A shortcode holding `$&` is not mangled by `String.replace`'s substitution syntax, which is why the replacement is a function |
 | `a post with no wrappers is unchanged by the pass` | The selector misses and the pass is a no-op |
 
-## JS bridge tests (34 tests)
+## JS bridge tests (46 tests)
 
 File: `Scripts/test-editor-bridge.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -2707,12 +2724,31 @@ Loads the real `editor.html` in jsdom and checks `window.flushContent`, which Sw
 | `an edit elsewhere saves the later blocks without the link` | A paragraph that leaves `<a>` open: after an edit, only that paragraph gains `</a>`; the heading, paragraph and list item after it carry no link (regression row 333) |
 | `an unedited post still saves byte for byte` | `closeLeakingTags` runs on load only; `_rawHTML` keeps the original bytes |
 | `an unclosed bold typed in code view stays in its block` | The code-view parse gets the same repair |
-| `a preserved block keeps its own unclosed tag, and the block after it is not touched` | A block Quill preserves is skipped and keeps its bytes |
+| `a preserved block keeps its own unclosed tag, and the block after it is not touched` | A top-level block Quill preserves is never descended into and keeps its bytes |
 | `an unclosed comment after the tag does not stop the post loading` | The repair appends closers (`leakingTagClosers`); a DOM probe an unclosed comment swallowed threw and aborted `setContent` (Codex review) |
-| `a block Quill preserves inside a container keeps its inner markup untouched` | The collector stops at any block Quill does not model, at any depth (Codex review) |
+| `a block Quill preserves inside a container keeps its inner markup untouched` | An unmodeled block nested in a Columns block is never descended into: its bytes, inner paragraphs included, are unchanged, and the `<b>` it leaves open is closed just after its closing delimiter (Codex review; wrap-up review) |
 | `an unclosed tag inside a Group stays inside its paragraph` | Leaf blocks inside containers are repaired too |
 
-## JS keyboard tests (181 tests)
+### `leakingTagClosers and closeLeakingTags, exactly` (12 tests)
+
+The two functions `closeLeakingTags` is built from, checked on exact strings: which tags count as left open, the order their closers come in, and where in the block they are written.
+
+| Test | What it checks |
+|---|---|
+| `closers come innermost first, and only for tags still open` | `leakingTagClosers` returns `</a></em></b>` for three open tags, nothing for balanced ones, and only `</i>` when `</b>` closed the outer one |
+| `a stray closer closes nothing, and tag names are matched in any case` | A `</b>` with no opener is ignored; `<B>` is closed as `</b>` |
+| `tags that only start like a leaking one are not counted` | `<br>`, `<abbr>`, `<span>`, `<sup>`, `<sub>`, `<img>`, `<ul>` and `<embed>` are not mistaken for `<b>`, `<a>`, `<s>`, `<u>` or `<em>`, and a closed `<strong>` counts for nothing; an open `<strong>` and `<u>` are closed |
+| `the closers are written after the block’s last element, before its trailing newline` | Exact output: the closers follow `</p>`, ahead of the newline before `<!-- /wp:paragraph -->`; the next block is unchanged |
+| `every leaking block is closed in place, at the top level and inside a Group, and nothing else moves` | Exact output for two top-level paragraphs, a separator and a Group's paragraph |
+| `a tag left open in a quote citation is closed after the quote` | A container's own markup: the `</a>` goes after `</blockquote>`, before `<!-- /wp:quote -->` (regression row 344) |
+| `a tag left open in a Details summary is closed after the Details, inner blocks untouched` | The `</b>` goes after `</details>`; the body paragraph is unchanged |
+| `a list item and the list nested in it are each closed at their own end` | The nested item's `<i>` is closed inside it; the outer item's own `<b>` (its text, not the nested list) after the nested list |
+| `a preserved block nested in a container is closed after its delimiter, its bytes unchanged` | An unmodeled block in a column: `</b>` lands right after `<!-- /wp:acme/widget -->` |
+| `each leak saves closed off once edited: the paragraph after a quote, a Details or a column stays plain` | For each of the three, an edit to the paragraph after saves it without the link or bold |
+| `a post with nothing left open comes back as the same string` | No change when nothing leaks |
+| `an edit saves the leaking block closed off and every other block byte for byte` | The whole saved post: only the leaking paragraph gains `</a>` |
+
+## JS keyboard tests (183 tests)
 
 File: `Scripts/test-editor-keyboard.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3022,16 +3058,18 @@ Characterization tests for the Tiptap 2 → 3 migration. The `doc()` values were
 ---
 
 
-### `Backspace and Delete beside a block with no text select it first` (6 tests)
+### `Backspace and Delete beside a block with no text select it first` (8 tests)
 
 | Test | What it checks |
 |---|---|
 | `Backspace after a separator selects it, and a second Backspace deletes it` | `_selectTextlessBlock` (regression row 335) |
 | `a first list item or quote line after a separator still lifts out on Backspace` | The depth guard: only a line directly beside the block selects it |
-| `Delete before a separator selects it` | The forward direction |
+| `Delete before a separator selects it, and a second Delete deletes it without joining the lines` | The forward direction: the second Delete leaves `hello` and `after` as two paragraphs |
+| `Backspace or Delete on an empty line beside a separator removes the line and selects the separator` | From an empty line ProseMirror's own behaviour is kept: the line goes and the separator is selected, so no empty line is left behind (regression row 345) |
 | `Backspace after a preserved block selects it` | A `gutenbergPassthrough` card is selected, not deleted |
 | `Delete before a preserved block selects it` | The forward direction for a card |
-| `typing over a selected preserved block starts a paragraph after it instead of replacing it` | `handleTextInput` |
+| `typing over a selected preserved block starts a paragraph after it instead of replacing it` | `handleTextInput`: the card stays, the caret ends after the typed character in the new paragraph, and a second character goes on the same line (`xy`) |
+| `typing over a selected separator still replaces it, as before` | Only a preserved block is protected; a selected separator is replaced by the typed text (regression row 345) |
 
 Also new, in the one-line block-rules group: `block Markdown rules never fire in a table cell, and inline ones still do` (regression row 341); the `tableCell` rows of `markdown input rules give the same document in every context` now expect text.
 
@@ -4281,7 +4319,7 @@ A Cover card, top-level or nested in a Column, shows no text from inside it and 
 
 ---
 
-## JS paste tests (125 tests)
+## JS paste tests (142 tests)
 
 File: `Scripts/test-editor-paste.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -4347,7 +4385,7 @@ A tab label, button, details summary, accordion heading, quote citation and imag
 | `Quill's own copy of a phrase pastes into a citation with its spaces` | ` by ` copied in Quill (`<p data-pm-slice="1 1 []">`, the cleanup skipped) keeps both spaces |
 | `a heading still splits into blocks, as in the block editor` | A heading is not one of these, so a paste there still becomes a heading and a paragraph |
 
-### `a drop is shaped by where it lands, not by the caret` (4 tests)
+### `a drop is shaped by where it lands, not by the caret` (10 tests)
 
 ProseMirror runs the clipboard hooks for a drop from another app too, parsing at the drop point, but a drop leaves the caret where it was. Each test drops through ProseMirror's own drop handler with `posAtCoords` stubbed to the drop point (jsdom has no layout). The suite's `before()` stubs `getClientRects` on `Text` and `Range`, because ProseMirror's drop focuses the editor and a focused editor measures the selection on every later dispatch; without the stub every later test's paste threw inside `updateState` and dispatched nothing.
 
@@ -4357,6 +4395,12 @@ ProseMirror runs the clipboard hooks for a drop from another app too, parsing at
 | `dropped into the body with the caret in a tab title, paragraphs stay paragraphs` | The same HTML dropped after `Body`: two paragraphs, `Bodyline one` and `line two text`, not one flattened line, and the tab title is untouched |
 | `dropped into the body with the caret in a list item, paragraphs do not become list items` | Exact top-level blocks `bulletList, paragraph, paragraph` and the list item still `Item`: `pastedBlocksAsListItems` follows the drop point, not the caret |
 | `plain text dropped into a citation with the caret in the body joins into one line` | `transformPastedText`'s flatten follows the drop point: the citation reads `line one line twoWho` and the blocks are unchanged |
+| `dropped on an empty line with the caret in text, the first block replaces the line, class and all` | `_isEmptyTopLevelParagraph` follows the drop point: two paragraphs dropped on an empty `has-x` line replace it, and the first keeps neither the line's `class` nor its `rawAttrs` |
+| `dropped mid-line with the caret on an empty line, a leading heading joins the line` | The reverse: dropped after `Body`, the heading's text joins the line (`BodyHead`) and the empty line the caret was on is untouched |
+| `dropped into a list item with the caret in the body, paragraphs become list items` | `pastedBlocksAsListItems` follows the drop point into the item: `Itemline one`, then `line two` as a second item |
+| `dropped into a table cell with the caret in the body, blocks become lines in the cell` | `_asCellLines` follows the drop point: a heading and a paragraph become `a1Cell heading`, a break, `First` in the cell |
+| `after a drop into a tab title, a Markdown rule typed in the body still fires` | The drop point is forgotten once the drop is over: `# h` typed in the body's last line makes a heading |
+| `a footnote marker dropped into a footnote with the caret in the body is dropped from it` | `_isInFootnote` follows the drop point: the dropped text goes into the note without its marker, and the body's own marker stays |
 
 Guards: `_recordDropContext` (a capture-phase `drop` listener on `document`, ahead of ProseMirror's handler), `_pasteContext()`, `_pasteMustBeInline`, `_isInFootnote($from)`, the `listItem` check in `transformPastedHTML` and `_isEmptyTopLevelParagraph` in `transformPasted`. Checked in real WebKit with a `WKWebView` probe that dispatches a `DragEvent` carrying a real `DataTransfer` at the on-screen point: before the fix the tab-title drop split the Tabs block and the body drop was flattened; after it, both land as above.
 
@@ -4411,25 +4455,31 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 ---
 
 
-### New in `window.insertMarkdown` (3 tests)
+### New in `window.insertMarkdown` (6 tests)
 
 | Test | What it checks |
 |---|---|
 | `blocks on an empty line after text replace that line instead of leaving it empty above them` | The landing line is replaced |
-| `raw HTML with an unclosed tag replaces the empty line and bolds nothing after it` | `_closeRawHTMLBlock` (regression row 338) |
+| `raw HTML with an unclosed tag replaces the empty line and bolds nothing after it` | `_closeRawHTMLBlock` (regression row 338): the raw block keeps its own bold, and the saved HTML from `next para` on, list included, is exactly unbolded |
+| `an empty line in the middle is replaced too` | An empty line between two paragraphs is replaced by the list, not left above it |
+| `an empty line inside a Quote or Group is replaced inside it` | The landing line is replaced in place, so a heading and paragraph typed on an empty line in a Quote, or a heading and raw HTML in a Group, stay inside the container (regression row 346) |
+| `Markdown on an empty line in a list item goes after the list, and in a table cell becomes lines` | A heading has no place in a list item or a cell: from a list item the blocks go after the list, and in a cell they become `Head`, a break, `para` (regression row 346) |
 | `a raw table split by a blank line keeps both rows` | Closers only, never a DOM round trip, since one table can span two raw HTML tokens (Codex review) |
 
-### `a paste over a selection that ends at the start of the next block` (5 tests)
+### `a paste over a selection that ends at the start of the next block` (8 tests)
 
 | Test | What it checks |
 |---|---|
-| `leaves the next block and its text alone` | `_trimSelectionOffNextBlock`: the code block after the selection is not joined into the paste (regression row 336) |
-| `a plain-text paste leaves it alone too` | The plain-text branch |
-| `a separator inside the selection survives, being outside what the paste replaces` | The trim ends at the last textblock |
-| `Paste as Markdown over it leaves the next block alone too` | `insertMarkdown` trims as well |
+| `leaves the next block and its text alone` | `_trimSelectionOffNextBlock`: the code block after the selection is not joined into the paste, and its `**stars**` are not bolded (regression row 336) |
+| `a plain-text paste leaves it alone too` | The plain-text branch: the whole document is `Bone`, `two`, `DDD` |
+| `a separator inside the selection is replaced, and the next block still left alone` | The trim ends after a block atom inside the selection, so a selected separator just before the next line is replaced by the paste; `CCC` is untouched (regression row 347) |
+| `a preserved block inside the selection is replaced too` | The same for a `gutenbergPassthrough` card (regression row 347) |
+| `a separator before the selection starts is not reached` | Only atoms from the selection's start on count: a separator ahead of it stays |
+| `Paste as Markdown over it leaves the next block alone too` | `insertMarkdown` trims as well; the whole document is compared |
+| `a selection of only the break between two lines pastes at the end of the first` | A selection of nothing but the break collapses to the end of the first line, so the paste joins neither (`BBBx`, `CCC`) |
 | `a selection that ends inside the next block still joins it` | A real cross-block selection still joins |
 
-### `blocks pasted into a table cell become lines` (5 tests)
+### `blocks pasted into a table cell become lines` (11 tests)
 
 | Test | What it checks |
 |---|---|
@@ -4437,6 +4487,12 @@ One test per `Scripts/fixtures/*.html`: load it, select all, copy through ProseM
 | `a pasted table still fills the grid from the cell` | A table on its own is cells |
 | `a cell range copied in the editor still fills the grid` | Quill's own cell copy |
 | `Paste as Markdown into a cell writes lines too` | `insertMarkdown` in a cell |
+| `a header cell takes lines too` | The same in a `<th>`; the whole document is compared |
+| `a table pasted with a paragraph does not nest a table in the cell` | Only a paste that is nothing but tables fills the grid; with text around it, the table's cells become text on the cell's lines (`a1Lead`, a break, `x y`) |
+| `a figure with a caption becomes its caption line, with no image block in the cell` | `CELL_LINE_TAGS` makes a `figcaption` a line of its own, and `_asCellLines` turns the image into its alt text first, so the save holds no `wp:image` (regression row 348) |
+| `an image with alt text in a pasted figure keeps the alt as text` | The image becomes the line `A cat` (regression row 348) |
+| `a Details block becomes its summary line and its body` | `summary` is a line of its own: `a1Sum`, a break, `body` (regression row 348) |
+| `blocks copied in Quill and pasted into a cell become lines too` | A heading and paragraph copied through ProseMirror's own copy handler become lines in the cell, and the originals stay |
 | `one line of inline HTML in a cell is unchanged` | Inline HTML passes through |
 
 ## JS paste source tests (61 tests)
@@ -4710,6 +4766,9 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] **Typing hides the marker.** Point at a block, then type → the marker disappears and comes back on the next mouse move. It never shows in code view.
 
 - [ ] **⌘← / ⌘→ beside a card.** Put the caret at the start of a paragraph that follows a gallery, embed or preserved-block card and press ⌘← → the caret stays in the paragraph and the card is not selected. Do the same at the end of a paragraph that precedes a card with ⌘→.
+- [ ] **One key never deletes a block with no text.** On a new local draft with `hello`, a separator and `after`: Backspace at the start of `after` → the separator is selected, not deleted; Backspace again → it goes. Delete at the end of `hello` → the separator is selected; Delete again → it goes and `hello` and `after` stay two paragraphs. Put an empty line between the separator and `after` and press Backspace on it → the empty line goes and the separator is selected (no empty line is left). Select the separator and type a letter → the letter replaces it. Paste a preserved block (an `acme/widget` comment in code view), select its card and type → the card stays and the letter starts a new paragraph after it.
+
+- [ ] **A tag left open stays in its own block.** On a new local draft, in code view, enter a paragraph whose link is never closed (`<p>See <a href="https://example.com">this</p>`) followed by a heading and a paragraph; a quote whose citation leaves a link open (`<cite>By <a href="https://example.com">Someone</cite>`) followed by a paragraph; a Details block whose summary leaves `<b>` open followed by a paragraph; and a Columns block holding an `acme/widget` block that leaves `<b>` open, followed by a paragraph. Leave code view → none of the blocks after the leaking ones is a link or bold, and the citation, summary and widget card look as they did. Type a character in the last paragraph, Save Locally and read the bytes from SQLite → each closer sits at the end of its own block (the widget's after its `<!-- /wp:acme/widget -->`, its bytes otherwise unchanged), and every other block is byte for byte as entered. Gutenberg opens it with no block invalid that was valid before.
 
 ### 7.4 Editor — images
 
@@ -4911,6 +4970,7 @@ Notes from the 2026-10-10 agent run. Its run log, `docs/manual-test-run-2026-10-
 - [ ] Right-click a remote post and choose Move to Trash → a confirmation dialog appears. Confirm → the post moves to WordPress Trash (recoverable, not permanently deleted).
 - [ ] Same test with a page → the page moves to Trash.
 - [ ] Trash the post that is open in the editor → its editor closes; it does not stay open and editable.
+- [ ] **Already trashed elsewhere.** Trash a post in WP Admin while Quill still lists it (no refresh), then Move to Trash in Quill → no "Delete Failed (HTTP 410)" alert; the row goes as if Quill had trashed it.
 - [ ] Delete a local draft → it disappears from the sidebar and is removed from local storage.
 - [ ] Delete a media item → a confirmation dialog warns that deletion is permanent. Confirm → the item is gone from both the grid and the WordPress server.
 - [ ] If deletion fails (e.g. no permission, or offline) → an error alert appears; the item remains in the list.
@@ -5150,6 +5210,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] Acknowledge the banner → the wording changes, saving is allowed, and the banner stays on screen.
 - [ ] Save to WordPress → the banner moves to its past-tense stage and points at WordPress revisions as the way back. Save Locally leaves the acknowledged wording, since a local draft has no revisions.
 - [ ] **Repair the post in code view** (paste the missing block back) and leave code view → the banner clears itself and saving works again, without reopening the post.
+- [ ] **Undo takes the banner back.** Raise the banner as above, then press ⌘Z → the lost block's markup is back and the banner goes; ⌘⇧Z → it returns. **Two code-view sessions:** with the banner up again, wait a second, open code view, add a paragraph and leave code view (the banner stays); press ⌘Z → the paragraph goes and the banner stays; ⌘Z again → the lost block is back and the banner is gone. Type a word and switch to another post → the word reaches the draft in SQLite (autosave is no longer held back).
 - [ ] Reopen a post that was already saved with a block missing → **no** banner. The loss is already in the saved content, so there is nothing left to warn about.
 - [ ] **A post you have not edited never raises a blocking banner.** Open a post, do not type, press ⌘S → it saves. An untouched post writes its original bytes back, so there is nothing to lose.
 - [ ] Switch to another post and back → the banner state belongs to the post, not the window.
@@ -5229,6 +5290,7 @@ Run this on a **new local draft**, never a published post.
 - [ ] The stripes style toggle reflects a loaded style and writes both halves — the class and the comment attribute — when turned on, removing both when turned off.
 - [ ] A table caption written in Gutenberg stays a caption in Quill rather than becoming a paragraph, and comes back inside the figure on save.
 - [ ] A classic bare `<table>` saves as a `core/table` figure and opens cleanly in Gutenberg.
+- [ ] **No block Markdown in a cell.** In a table cell type `- `, `> `, `# `, `1. ` and `---` at the start of a line → each stays literal text; no list, quote, heading or rule appears inside the cell. `**bold**` and `` `code` `` still format.
 - [ ] **Known limit:** a table with explicit head/foot sections *and* a colspanned body cell gains a phantom empty cell in the header and footer. This is upstream of Quill's save; it is recorded, not fixed.
 
 
@@ -5332,7 +5394,11 @@ On a new local draft, connected to a test site (a pasted image uploads to the co
 - [ ] Paste a heading, a list and a paragraph into an empty paragraph → the first block replaces the empty paragraph and keeps its own attributes (a centred heading stays centred). Paste the same into a paragraph that already has text → the first block joins that paragraph.
 - [ ] **Plain-text numbered list.** In TextEdit (Format → Make Plain Text) type `1. one`, `2. two`, `3. three` on three lines, copy, and paste into an empty paragraph → one numbered list that Gutenberg opens as a valid List block. Lines `3. x` / `4. y` → a list that starts at 3; `a.` / `b.` → a lettered list. Paste the same three lines into a code block, a heading, a table cell and a footnote → they stay text, one line each (one line in the footnote), with no list. Into an empty paragraph inside a Group or a quote → the list lands inside it and the Group keeps its layout.
 - [ ] **A multi-line paste into a title stays one line.** Copy three lines of plain text and paste them into a tab label, a button, a details summary, an accordion heading, a quote citation and an image caption → each time the lines join with spaces at the caret and the block stays whole. Copy " by " (spaces included) from a web page and paste it between two words in a sentence → both spaces stay. Copy a bulleted list from a web page and paste it with the caret at the start of the first column of a Columns block → the list lands inside that column, and the block keeps both columns and their widths.
-- [ ] **A drop from another app follows where it lands.** In TextEdit type two paragraphs, select them, and with the caret in a paragraph of the post drag them onto a tab label → one line in the label, and the Tabs block stays whole. Then click into a tab label and drag the same two paragraphs into the middle of a paragraph → two paragraphs, not one line. Drag them onto a quote citation and an image caption with the caret in the body → one line each.
+- [ ] **A drop from another app follows where it lands.** In TextEdit type two paragraphs, select them, and with the caret in a paragraph of the post drag them onto a tab label → one line in the label, and the Tabs block stays whole. Then click into a tab label and drag the same two paragraphs into the middle of a paragraph → two paragraphs, not one line. Drag them onto a quote citation and an image caption with the caret in the body → one line each. With the caret in the body, drag them into a list item → they become list items; into a table cell → they become lines in the cell; onto an empty line → they replace it. After any of these drops, type `# ` on an empty line in the body → it still becomes a heading.
+- [ ] **A paste over a selection stops at the next line.** With `AAA`, `BBB`, a code block holding `**not bold**` below them, drag-select from inside `AAA` to the very start of the code block's line (or ⇧↓ to it) and paste a heading and a list → the code block stays a code block and its stars stay literal. Do the same with a separator between `BBB` and the next line, selected as part of the range, and paste a word → the separator is replaced along with the text, and the line after it is untouched. Repeat with a preserved block's card in place of the separator, and once with Paste as Markdown.
+- [ ] **Blocks pasted into a table cell become lines.** Copy a heading, a paragraph and a list from a web page and paste them into a table cell (and a header cell) → one cell with a line per block, no heading or list inside it. Paste a figure with a caption → the caption is its own line, and no image block lands in the cell; an image with alt text becomes that text. Paste a Details block → its summary and body are two lines. Paste a table on its own → it fills the grid from that cell; paste a paragraph and a table together → their text lands as lines in the one cell, with no table nested in it. Save Locally and check the bytes: the cell holds `<br>`, and Gutenberg reads the table as valid.
+- [ ] **Paste as Markdown on an empty line inside a container.** Paste Markdown with a heading and a paragraph on an empty line inside a Quote and inside a Group → both land inside the container. On an empty list item → they land after the list. On an empty line after text → the empty line is replaced, not left above the paste. Markdown with raw HTML that leaves `<b>` open (`<div>raw <b>html</div>`) followed by more paragraphs → only the raw block is bold.
+- [ ] **A multi-line paste into the post title is one line.** Copy three lines from TextEdit and paste them into the title field, at the caret and over a selected word → the lines join with single spaces where the paste landed, and the title stays one line.
 - [ ] Copy a passage from another ProseMirror or Tiptap editor (a Confluence page, a Substack draft, GitLab) and paste it → it is cleaned like any outside paste: no inline styles, foreign classes or `data-pm-slice` in the saved HTML. Then copy a passage inside Quill and paste it back → it comes back exactly as saved, and stays exact after a second copy and paste. Quit and relaunch Quill and paste a copy made before the relaunch → it is treated as an outside paste and cleaned, which is expected.
 - [ ] Paste a screenshot, switch off the network before the upload finishes so it fails, then paste the same screenshot again with the network on → it uploads this time, rather than staying an inline base64 image. Do the same with an image pasted inside HTML from a web page.
 - [ ] Paste an image and wait for the upload to finish, then press ⌘Z once → the whole paste is undone, not just the swap back to the base64 image. Press ⌘⇧Z → the image returns with its uploaded URL, not the base64.
@@ -5712,17 +5778,23 @@ Each row is a documented gotcha from `CLAUDE.md`. ✅ = automated test, 👁 = m
 | 329 | The Quote button did nothing with the caret in a pullquote's text or a list item, and wrapped a pullquote whole in a quote from its citation: it is a `wrapIn`, and neither a `paragraph+ cite?` pullquote nor a list item can hold a quote. It now does WordPress's Transform to Quote: a pullquote converts to a quote keeping its paragraphs, citation, `align`, `anchor`, `fontSize` and `style`; a list goes inside a new quote. Toggling a quote off lifts the whole quote, so a quoted list comes back out | ✅ `test-editor-containers.js` `'the Quote button transforms the way WordPress does'` (25 tests, against core's own transform) + 👁 §7.3 |
 | 330 | Backspace at the start of a heading, Preformatted or code block right after a pullquote with a citation split the pullquote in two around the line: `_intoQuoteBeforeCite` inserted the line whole before the `cite`, and a `paragraph+ cite?` pullquote cannot hold it, so ProseMirror closed the pullquote around it. The line now joins as a paragraph whenever `canReplaceWith` refuses its type (`_asParagraph`; a code block's newlines become `<br>`), as it does with no citation | ✅ `test-editor-keyboard.js` `'Backspace at the start of a heading, preformatted or code block after a pullquote with a citation'`, `'Backspace at the start of a paragraph after a pullquote with a citation, then typing'` + 👁 §7.3 |
 | 331 | An edit in code view marked the wrong blocks: the reparse is one whole-document `setContent`, which the `movedBlocks` plugin mapped as the first block edited in place, and no new baseline follows a code-view edit, so the new first block kept the old first block's origin and the marks fell on blocks the edit never touched. `mapMovedBlocks` does not map a step that replaces the whole document: each block takes the entry its node last had, and a new one is paired by HTML, so the reparse and its undo both land right | ✅ `test-editor-change-bars.js` `'an edit in code view marks only what it changed'`, `'undoing a code-view edit marks only the edit made before it'` + 👁 §7.29 |
-| 332 | Text dropped from another app was shaped by the caret, not the drop point: ProseMirror runs the clipboard hooks for a drop, but Quill's hooks read the selection, which a drop leaves where it was. With the caret in the body, a drop into a tab title split the Tabs block; with the caret in a title, a drop into the body was flattened to one line. `_recordDropContext` records the drop point before ProseMirror's handler runs, and the hooks read it through `_pasteContext()` | ✅ `test-editor-paste.js` `'a drop is shaped by where it lands, not by the caret'` (4 tests) + real-WebKit drop probe + 👁 §7.28 |
-| 333 | One block that leaves an `<a>` or `<b>` open passed it to every block after it: the post is one HTML parse, so a paragraph with an unclosed link made the next heading, paragraph and list item links, and the first edit saved them that way on WordPress (code view the same). `closeLeakingTags` closes the tag inside each modeled leaf block before `_wrapIncoming`; preserved blocks keep their bytes, and an unedited post saves byte for byte | ✅ `test-editor-bridge.js` `'an unclosed inline tag stays inside its own block'` + `settings-unclosed-tag.html` / `.saved` in both corpora + 👁 `--check-fixtures` |
-| 334 | Undoing a code-view parse that lost a block left its "Saving this post would delete content" banner up, and Swift then held every later edit back from autosave and the flush on a post switch or quit. The documents on either side of the parse remember their own alarm (`_riskStep`), so undo clears it and redo raises it again. The banner now says "from the post", not "from the published post" | ✅ `test-editor-preservation.js` `'undoing a code-view parse takes its alarm back'`, `BlockRiskAlarmTests` + 👁 WebKit (typing after the undo reached SQLite on a switch) |
+| 332 | Text dropped from another app was shaped by the caret, not the drop point: ProseMirror runs the clipboard hooks for a drop, but Quill's hooks read the selection, which a drop leaves where it was. With the caret in the body, a drop into a tab title split the Tabs block; with the caret in a title, a drop into the body was flattened to one line. `_recordDropContext` records the drop point before ProseMirror's handler runs, and the hooks read it through `_pasteContext()`; the empty-line replace, list-item, table-cell and footnote checks follow the drop point too, and the point is forgotten once the drop is over | ✅ `test-editor-paste.js` `'a drop is shaped by where it lands, not by the caret'` (10 tests) + real-WebKit drop probe (the first four cases) + 👁 §7.28 |
+| 333 | One block that leaves an `<a>` or `<b>` open passed it to every block after it: the post is one HTML parse, so a paragraph with an unclosed link made the next heading, paragraph and list item links, and the first edit saved them that way on WordPress (code view the same). `closeLeakingTags` closes the tag at the end of each modeled block's own markup before `_wrapIncoming` (containers too since row 344); preserved blocks keep their bytes, and an unedited post saves byte for byte | ✅ `test-editor-bridge.js` `'an unclosed inline tag stays inside its own block'`, `'leakingTagClosers and closeLeakingTags, exactly'` + `settings-unclosed-tag.html` / `.saved` in both corpora + 👁 `--check-fixtures` |
+| 334 | Undoing a code-view parse that lost a block left its "Saving this post would delete content" banner up, and Swift then held every later edit back from autosave and the flush on a post switch or quit. The documents on either side of the parse remember their own alarm (`_riskSides`, every such parse since the load: row 343), so undo clears it and redo raises it again. The banner now says "from the post", not "from the published post" | ✅ `test-editor-preservation.js` `'undoing a code-view parse takes its alarm back'`, `BlockRiskAlarmTests` + 👁 WebKit (typing after the undo reached SQLite on a switch) |
 | 335 | Backspace at the start of a line after a separator, embed or preserved block, or Delete at the end of a line before one, deleted the whole block in one keystroke (ProseMirror's join deletes an atom outright). It now selects the block, and a second key deletes it; a nested first line (list item, quote) still lifts out. Typing with a preserved block selected replaced it; it now starts a paragraph after it | ✅ `test-editor-keyboard.js` `'Backspace and Delete beside a block with no text select it first'` + 👁 WebKit |
-| 336 | A selection dragged or ⇧↓-extended to the start of the next line ends inside the next block; a paste over it joined that block into the last pasted one (a code block became list text, and Tiptap's paste rules bolded its literal `**stars**`). `_trimSelectionOffNextBlock` pulls the selection back to the end of the line before, for ⌘V and Paste as Markdown | ✅ `test-editor-paste.js` `'a paste over a selection that ends at the start of the next block'` + 👁 real-WebKit paste harness |
-| 337 | Blocks pasted into a table cell went in as blocks (a heading, paragraphs and a list inside `<td>`, or a nested table). HTML paste and Paste as Markdown into a cell now write lines with `<br>`, through the same `flattenPastedCells` a pasted table's own cells use; a table on its own (copied cells) still fills the grid | ✅ `test-editor-paste.js` `'blocks pasted into a table cell become lines'` + 👁 real-WebKit paste harness |
+| 336 | A selection dragged or ⇧↓-extended to the start of the next line ends inside the next block; a paste over it joined that block into the last pasted one (a code block became list text, and Tiptap's paste rules bolded its literal `**stars**`). `_trimSelectionOffNextBlock` pulls the selection back to the end of the line before, or to just after a separator or preserved block selected before it (row 347), for ⌘V and Paste as Markdown | ✅ `test-editor-paste.js` `'a paste over a selection that ends at the start of the next block'` + 👁 real-WebKit paste harness |
+| 337 | Blocks pasted into a table cell went in as blocks (a heading, paragraphs and a list inside `<td>`, or a nested table). HTML paste and Paste as Markdown into a cell now write lines with `<br>`, through the same `flattenPastedCells` a pasted table's own cells use (with captions, summaries and images as lines since row 348); a table on its own (copied cells) still fills the grid, and a table with text around it becomes text | ✅ `test-editor-paste.js` `'blocks pasted into a table cell become lines'` + 👁 real-WebKit paste harness |
 | 338 | Paste as Markdown: a raw HTML block that left a `<b>` open bolded every block after it, and Markdown landing on an empty line after text left that line empty above the paste. Each block of raw HTML is closed off on its own (`walkTokens`), and the empty line is replaced | ✅ `test-editor-paste.js` `'raw HTML with an unclosed tag replaces the empty line and bolds nothing after it'` + 👁 WebKit |
-| 339 | Pasting several lines into the title kept them, newlines and all (a whole article became a 394 KB title). `TitleTextField` joins pasted lines with one space, as the editor does for its own titles and captions | ✅ `TitleTextFieldTests` + 👁 WebKit |
+| 339 | Pasting several lines into the title kept them, newlines and all (a whole article became a 394 KB title). `TitleTextField` joins pasted lines with one space, as the editor does for its own titles and captions | ✅ `TitleTextFieldTests` (`singleLine`), `TitleTextFieldCoordinatorTests` (the delegate check, through a real text view) + 👁 WebKit + §7.28 |
 | 340 | A Details block's "closed on the site" label ran over a long summary in a narrow column; the summary keeps room for it | 👁 WebKit |
-| 341 | A block Markdown rule typed in a table cell (`- `, `> `, `# `, `1. `, ```` ``` ````, `---`, `![]()`) put a list, quote, heading, code block, rule or image inside the cell, a shape core's rich-text cells cannot hold. `_noBlockRulesInLines` now also stands down in a cell; inline rules (`**bold**`, `` `code` ``) still apply | ✅ `test-editor-keyboard.js` `'block Markdown rules never fire in a table cell, and inline ones still do'` + 👁 WebKit |
-| 342 | Deleting a post that was already trashed outside Quill (still listed until a refresh) showed "Delete Failed — The request didn't go through (HTTP 410)" and left the row. WordPress's 410 `rest_already_trashed` means the post is already where the delete sends it, so `trashPost`/`trashPage` treat it as done and the row goes | ✅ `WordPressClientTests` `trashPostTreatsAlreadyTrashedAsDone` |
+| 341 | A block Markdown rule typed in a table cell (`- `, `> `, `# `, `1. `, ```` ``` ````, `---`, `![]()`) put a list, quote, heading, code block, rule or image inside the cell, a shape core's rich-text cells cannot hold. `_noBlockRulesInLines` now also stands down in a cell; inline rules (`**bold**`, `` `code` ``) still apply | ✅ `test-editor-keyboard.js` `'block Markdown rules never fire in a table cell, and inline ones still do'` + 👁 WebKit + §7.25 |
+| 342 | Deleting a post that was already trashed outside Quill (still listed until a refresh) showed "Delete Failed — The request didn't go through (HTTP 410)" and left the row. WordPress's 410 `rest_already_trashed` means the post is already where the delete sends it, so `trashPost`/`trashPage` treat it as done and the row goes | ✅ `WordPressClientTests` `trashPostTreatsAlreadyTrashedAsDone` + 👁 §7.10 |
+| 343 | Row 334's fix kept only the last code-view parse's two sides: a second code-view session that raised the same alarm recorded nothing and forgot the first, so undoing past both left the banner up and Swift again held back autosave. `_riskSides` keeps the (doc, names) records of every code-view parse since the load: the document each parse leaves, and the one before it when the two differ (newest record of a document wins, so a parse that changes nothing visible supersedes an older clean record of that document; capped at `RISK_SIDES_KEPT`, cleared when a post loads), and `_followingRisk` keeps `_followRiskStep` out of the parse's own `setContent` | ✅ `test-editor-preservation.js` `'two code-view sessions with the same alarm, both undone, clear it'`, `'a later parse that changes nothing visible is not cleared by an earlier clean record'`, `'an edit after the parse, undone along with the parse, clears the alarm'` + 👁 §7.22 |
+| 344 | Row 333's fix closed only modeled leaf blocks, so a tag left open in a container's own markup (a quote citation, a Details summary, a list item's text around its nested list) still leaked into every block after the container, and an unmodeled block nested in a modeled container was skipped. `closeLeakingTags` now closes a container's own leak at the container's own end, after its inner blocks are closed at theirs, and closes a nested unmodeled block's leak just after its closing delimiter, never inside its bytes | ✅ `test-editor-bridge.js` `'leakingTagClosers and closeLeakingTags, exactly'` (12 tests, exact strings), `'a block Quill preserves inside a container keeps its inner markup untouched'` + 👁 §7.3 |
+| 345 | Row 335's select-first must not change the keys around it: Backspace or Delete on an *empty* line beside a separator still removes the line and selects the separator (selecting first would leave the empty line behind), the second Delete before a separator does not join the lines either side, and typing over a selected separator still replaces it (only a preserved block is protected) | ✅ `test-editor-keyboard.js` `'Backspace or Delete on an empty line beside a separator removes the line and selects the separator'`, `'typing over a selected separator still replaces it, as before'`, `'Delete before a separator selects it, and a second Delete deletes it without joining the lines'` + 👁 §7.3 |
+| 346 | Row 338's empty-line replace for Paste as Markdown must happen in place: on an empty line inside a Quote or Group the blocks stay inside it, from an empty list item they go after the list, and in a table cell they become lines | ✅ `test-editor-paste.js` `'an empty line inside a Quote or Group is replaced inside it'`, `'Markdown on an empty line in a list item goes after the list, and in a table cell becomes lines'` + 👁 §7.28 |
+| 347 | Row 336's trim pulled the selection back to the last line wholly inside it, so a separator or preserved block selected just before the next line was left out of what the paste replaced and survived it. `_trimSelectionOffNextBlock` now ends after any block atom inside the selection | ✅ `test-editor-paste.js` `'a separator inside the selection is replaced, and the next block still left alone'`, `'a preserved block inside the selection is replaced too'`, `'a separator before the selection starts is not reached'` + 👁 §7.28 |
+| 348 | Row 337's cell flatten treated only block tags as lines: a pasted figure's caption joined the line before it and its image went into the cell as an image block, and a Details summary ran into its body. `CELL_LINE_TAGS` (`PASTE_BLOCK_TAGS` plus `FIGCAPTION`, `SUMMARY`, `DT`, `DD`) makes each a line, and `_asCellLines` turns each image into its alt text before flattening, as `cleanPastedHTML` does for an image already in a pasted cell | ✅ `test-editor-paste.js` `'a figure with a caption becomes its caption line, with no image block in the cell'`, `'an image with alt text in a pasted figure keeps the alt as text'`, `'a Details block becomes its summary line and its body'` + 👁 §7.28 |
 
 ---
 

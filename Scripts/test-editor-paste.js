@@ -247,11 +247,11 @@ describe('window.insertMarkdown', () => {
     editor.commands.setContent('<p>Intro</p><p></p>')
     editor.commands.focus('end')
     win.insertMarkdown('# H1\n\n<div>raw <b>html</div> after\n\nnext para\n\n- item')
-    const blocks = doc().split(' | ')
-    assert.equal(blocks[0], 'paragraph("Intro")')
-    assert.equal(blocks[1], 'heading("H1")')
-    assert.ok(blocks.includes('paragraph("next para")'), doc())
-    assert.ok(blocks.includes('bulletList(listItem(paragraph("item")))'), doc())
+    // doc() drops marks, so the bold is checked on the HTML: the raw block keeps its own bold,
+    // and the blocks after it, in order, carry none.
+    const html = editor.getHTML()
+    assert.ok(html.startsWith('<p>Intro</p><h1>H1</h1><p>raw <strong>html</strong></p>'), html)
+    assert.equal(html.slice(html.indexOf('<p>next para')), '<p>next para</p><ul><li><p>item</p></li></ul>')
   })
 
   test('an empty line in the middle is replaced too', () => {
@@ -259,6 +259,34 @@ describe('window.insertMarkdown', () => {
     editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize + 1)
     win.insertMarkdown('- one\n- two')
     assert.equal(doc(), 'paragraph("Intro") | bulletList(listItem(paragraph("one")),listItem(paragraph("two"))) | paragraph("Outro")')
+  })
+
+  // The empty line is replaced in place, so blocks typed on one inside a Quote or Group stay in it.
+  // Raw HTML with text after it is a slice ProseMirror fits around the empty line rather than
+  // replacing it; the Group case uses it, as it is the one the in-place replace decides.
+  test('an empty line inside a Quote or Group is replaced inside it', () => {
+    editor.commands.setContent('<blockquote><p>q</p><p></p></blockquote><p>end</p>')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 2)
+    win.insertMarkdown('## Head\n\npara')
+    assert.equal(doc(), 'blockquote(paragraph("q"),heading("Head"),paragraph("para")) | paragraph("end")')
+    win.setContent('<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p>g</p>\n<!-- /wp:paragraph -->\n\n' +
+      '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->\n\n<!-- wp:paragraph -->\n<p>end</p>\n<!-- /wp:paragraph -->')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 2)
+    win.insertMarkdown('## Head\n\n<div>raw</div> after\n\nnext')
+    assert.equal(doc(), 'groupBlock(paragraph("g"),heading("Head"),paragraph("raw"),paragraph(" after"),paragraph("next")) | paragraph("end")')
+  })
+
+  // Blocks typed on an empty line in a list item go after the list, and in a table cell become the
+  // cell's lines: a heading in either is a shape WordPress has no block for.
+  test('Markdown on an empty line in a list item goes after the list, and in a table cell becomes lines', () => {
+    editor.commands.setContent('<ul><li><p>one</p></li><li><p></p></li></ul><p>end</p>')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 3)
+    win.insertMarkdown('## Head\n\npara')
+    assert.match(doc(), /^bulletList\(listItem\(paragraph\("one"\)\)[^|]*\) \| heading\("Head"\) \| paragraph\("para"\) \| paragraph\("end"\)$/)
+    editor.commands.setContent('<table><tr><td><p></p></td><td><p>b1</p></td></tr></table><p>after</p>')
+    editor.commands.setTextSelection(4)
+    win.insertMarkdown('## Head\n\npara')
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("Head",BR,"para")),tableCell(paragraph("b1")))) | paragraph("after")')
   })
 
   // A blank line splits raw HTML into two tokens; closing the first one off ended the table early.
@@ -516,6 +544,71 @@ describe('a drop is shaped by where it lands, not by the caret', () => {
     editor.commands.setTextSelection(body().pos + 3)
     drop({ 'text/plain': 'line one\n\nline two' }, find(n => n.type.name === 'cite').pos + 1)
     assert.deepEqual([names(), find(n => n.type.name === 'cite').n.textContent], [['blockquote', 'paragraph'], 'line one line twoWho'])
+  })
+
+  // Blocks pasted onto an empty top-level line replace it rather than the first taking its
+  // attributes, and mid-line they join it. For a drop that is judged at the drop point.
+  const HEADED = { 'text/html': '<h2>Head</h2><p>tail</p>', 'text/plain': 'Head\n\ntail' }
+  test('dropped on an empty line with the caret in text, the first block replaces the line, class and all', () => {
+    editor.commands.setContent('<p>Body text</p><p class="has-x"></p><p>end</p>')
+    assert.equal(editor.state.doc.child(1).attrs.class, 'has-x')
+    editor.commands.setTextSelection(3)
+    drop({ 'text/html': '<p>a</p><p>b</p>', 'text/plain': 'a\n\nb' }, editor.state.doc.child(0).nodeSize + 1)
+    assert.match(doc(), /^paragraph\("Body text"\) \| paragraph\("a"\) \| paragraph\("b"\) \| /)
+    assert.equal(editor.state.doc.child(1).attrs.class, null)
+    assert.equal(editor.state.doc.child(1).attrs.rawAttrs, null)
+  })
+
+  test('dropped mid-line with the caret on an empty line, a leading heading joins the line', () => {
+    editor.commands.setContent('<p>Body text</p><p></p><p>end</p>')
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize + 1)
+    drop(HEADED, 1 + 'Body'.length)
+    assert.equal(doc(), 'paragraph("BodyHead") | paragraph("tail text") | paragraph() | paragraph("end")')
+  })
+
+  test('dropped into a list item with the caret in the body, paragraphs become list items', () => {
+    win.setContent(LIST + '\n\n' + BODY)
+    editor.commands.setTextSelection(body().pos + 3)
+    drop(TWO_PARAGRAPHS, find(n => n.type.name === 'listItem').pos + 2 + 'Item'.length)
+    assert.equal(doc(), 'bulletList(listItem(paragraph("Itemline one")),listItem(paragraph("line two"))) | paragraph("Body text")')
+  })
+
+  test('dropped into a table cell with the caret in the body, blocks become lines in the cell', () => {
+    editor.commands.setContent('<table><tr><td><p>a1</p></td><td><p>b1</p></td></tr></table><p>Body text</p>')
+    editor.commands.setTextSelection(body().pos + 3)
+    drop({ 'text/html': '<h2>Cell heading</h2><p>First</p>', 'text/plain': 'Cell heading\n\nFirst' }, 6)
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a1Cell heading",BR,"First")),tableCell(paragraph("b1")))) | paragraph("Body text")')
+  })
+
+  // The drop point is forgotten once the drop is over: typing afterwards is judged by the caret.
+  test('after a drop into a tab title, a Markdown rule typed in the body still fires', () => {
+    win.setContent(fixture('tabs-block.html') + '\n\n<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph -->')
+    drop({ 'text/plain': 'dropped' }, tabTitle().pos + 1)
+    assert.match(tabTitle().n.textContent, /^dropped/)
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    for (const ch of '# h') {
+      const { from, to } = editor.state.selection
+      if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, ch))) editor.view.dispatch(editor.state.tr.insertText(ch, from, to))
+    }
+    assert.equal(editor.state.doc.lastChild.type.name, 'heading')
+    assert.equal(editor.state.doc.lastChild.textContent, 'h')
+  })
+
+  // A footnote never holds a footnote marker; that is judged where the drop lands, too.
+  test('a footnote marker dropped into a footnote with the caret in the body is dropped from it', () => {
+    const id = 'fn-11111111-2222-4333-8444-555555555555'
+    const other = 'fn-99999999-2222-4333-8444-555555555555'
+    win.setContent(`<!-- wp:paragraph -->\n<p>Body<sup data-fn="${id}" class="fn" id="${id}-link"><a href="#${id}">1</a></sup></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:footnotes /-->`,
+      JSON.stringify([{ id, content: 'A note.' }]))
+    const note = find(n => n.isTextblock && n.textContent === 'A note.')
+    editor.commands.setTextSelection(2)
+    drop({ 'text/html': `<p>see<sup data-fn="${other}" class="fn" id="${other}-link"><a href="#${other}">2</a></sup> this</p>`, 'text/plain': 'see2 this' }, note.pos + 1)
+    const item = find(n => n.type.name === 'footnoteItem')
+    assert.equal(summarize(item.n.toJSON()), '"see thisA note."')
+    let markers = 0
+    item.n.descendants(n => { if (n.type.name === 'footnoteMarker') markers++ })
+    assert.equal(markers, 0)
+    assert.equal(find(n => n.type.name === 'paragraph' && n.textContent.startsWith('Body')).n.childCount, 2)
   })
 })
 
@@ -821,8 +914,8 @@ describe('a paste over a selection that ends at the start of the next block', ()
     const codeStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
     editor.commands.setTextSelection({ from: 2, to: codeStart })
     paste({ 'text/html': '<h2>Pasted</h2><ul><li>item</li></ul>', 'text/plain': 'Pasted\nitem' })
-    assert.match(doc(), /codeBlock\("\*\*not bold\*\* code"\)$/)
-    assert.doesNotMatch(doc(), /listItem\(paragraph\("item\*\*not bold/)
+    assert.equal(doc(), 'paragraph("BPasted") | bulletList(listItem(paragraph("item"))) | codeBlock("**not bold** code")')
+    assert.doesNotMatch(editor.getHTML(), /<strong>not bold/)
   })
 
   test('a plain-text paste leaves it alone too', () => {
@@ -830,15 +923,34 @@ describe('a paste over a selection that ends at the start of the next block', ()
     const dddStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
     editor.commands.setTextSelection({ from: 2, to: dddStart })
     paste({ 'text/plain': 'one\n\ntwo' })
-    assert.match(doc(), /paragraph\("DDD"\)$/)
+    assert.equal(doc(), 'paragraph("Bone") | paragraph("two") | paragraph("DDD")')
   })
 
-  test('a separator inside the selection survives, being outside what the paste replaces', () => {
-    editor.commands.setContent('<p>BBB</p><hr><p>CCC</p>')
+  // The trim ends after the last thing the user selected, not after the last line: a separator or
+  // preserved block just before the next line was left behind when it was pulled back past it.
+  test('a separator inside the selection is replaced, and the next block still left alone', () => {
+    editor.commands.setContent('<p>AAA</p><p>BBB</p><hr><p>CCC</p>')
+    const cccStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + editor.state.doc.child(2).nodeSize + 1
+    editor.commands.setTextSelection({ from: editor.state.doc.child(0).nodeSize + 3, to: cccStart })
+    paste({ 'text/plain': 'X' })
+    assert.equal(doc(), 'paragraph("AAA") | paragraph("BBX") | paragraph("CCC")')
+  })
+
+  test('a preserved block inside the selection is replaced too', () => {
+    editor.commands.setContent('<p>AAA</p><p>BBB</p><div class="wp-block-quill-unsupported" data-quill-unsupported-source="&lt;!-- wp:acme/w /--&gt;" data-quill-unsupported-label="Acme"></div><p>CCC</p>')
+    assert.match(doc(), /gutenbergPassthrough/, 'the card must load for this test to mean anything')
+    const cccStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + editor.state.doc.child(2).nodeSize + 1
+    editor.commands.setTextSelection({ from: editor.state.doc.child(0).nodeSize + 3, to: cccStart })
+    paste({ 'text/plain': 'X' })
+    assert.equal(doc(), 'paragraph("AAA") | paragraph("BBX") | paragraph("CCC")')
+  })
+
+  test('a separator before the selection starts is not reached', () => {
+    editor.commands.setContent('<hr><p>BBB</p><p>CCC</p>')
     const cccStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
-    editor.commands.setTextSelection({ from: 2, to: cccStart })
-    paste({ 'text/plain': 'x' })
-    assert.equal(doc(), 'paragraph("Bx") | horizontalRule() | paragraph("CCC")')
+    editor.commands.setTextSelection({ from: editor.state.doc.child(0).nodeSize + 2, to: cccStart })
+    paste({ 'text/plain': 'X' })
+    assert.equal(doc(), 'horizontalRule() | paragraph("BX") | paragraph("CCC")')
   })
 
   test('Paste as Markdown over it leaves the next block alone too', () => {
@@ -846,7 +958,16 @@ describe('a paste over a selection that ends at the start of the next block', ()
     const codeStart = editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize + 1
     editor.commands.setTextSelection({ from: 2, to: codeStart })
     win.insertMarkdown('## Pasted\n\n- item')
-    assert.match(doc(), /codeBlock\("\*\*not bold\*\* code"\)$/)
+    assert.equal(doc(), 'paragraph("B") | heading("Pasted") | bulletList(listItem(paragraph("item"))) | codeBlock("**not bold** code")')
+  })
+
+  // The selection is pulled back to the end of the last line wholly inside it; a selection of
+  // nothing but the break between two lines collapses there, so the paste joins neither.
+  test('a selection of only the break between two lines pastes at the end of the first', () => {
+    editor.commands.setContent('<p>BBB</p><p>CCC</p>')
+    editor.commands.setTextSelection({ from: 4, to: editor.state.doc.child(0).nodeSize + 1 })
+    paste({ 'text/plain': 'x' })
+    assert.equal(doc(), 'paragraph("BBBx") | paragraph("CCC")')
   })
 
   test('a selection that ends inside the next block still joins it', () => {
@@ -896,6 +1017,54 @@ describe('blocks pasted into a table cell become lines', () => {
     win.insertMarkdown('## Head\n\npara\n\n- item')
     assert.doesNotMatch(doc(), /heading\(|bulletList\(/)
     assert.match(doc(), /tableCell\(paragraph\("a1Head",BR,"para",BR,"item"\)\)/)
+  })
+
+  test('a header cell takes lines too', () => {
+    editor.commands.setContent('<table><tr><th><p>h1</p></th></tr><tr><td><p>a1</p></td></tr></table><p>after</p>')
+    editor.commands.setTextSelection(6)
+    paste({ 'text/html': '<h2>Cell heading</h2><p>First</p><ul><li>bullet</li></ul>', 'text/plain': 'Cell heading\nFirst\nbullet' })
+    assert.equal(doc(), 'table(tableRow(tableHeader(paragraph("h1Cell heading",BR,"First",BR,"bullet"))),tableRow(tableCell(paragraph("a1")))) | paragraph("after")')
+  })
+
+  // Only a paste that is nothing but tables fills the grid; a table with text around it would
+  // nest a table in the cell, so its cells become text on the cell's lines.
+  test('a table pasted with a paragraph does not nest a table in the cell', () => {
+    inCell()
+    paste({ 'text/html': '<p>Lead</p><table><tr><td>x</td><td>y</td></tr></table>', 'text/plain': 'Lead\nx\ty' })
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a1Lead",BR,"x y")),tableCell(paragraph("b1")))) | paragraph("after")')
+  })
+
+  // A caption and a summary are no blocks a paste opens, so they joined the line before them and
+  // went into the cell as an image block and a stray paragraph. Each is a line, and an image in a
+  // cell becomes its alt text, as an image already inside a pasted cell does.
+  test('a figure with a caption becomes its caption line, with no image block in the cell', () => {
+    inCell()
+    paste({ 'text/html': '<p>x</p><figure><img src="https://e.test/a.png"><figcaption>cap</figcaption></figure>', 'text/plain': 'x\ncap' })
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a1x",BR,"cap")),tableCell(paragraph("b1")))) | paragraph("after")')
+    assert.doesNotMatch(win.getContent(), /<!-- wp:image/)
+  })
+
+  test('an image with alt text in a pasted figure keeps the alt as text', () => {
+    inCell()
+    paste({ 'text/html': '<p>x</p><figure><img src="https://e.test/a.png" alt="A cat"></figure>', 'text/plain': 'x' })
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a1x",BR,"A cat")),tableCell(paragraph("b1")))) | paragraph("after")')
+  })
+
+  test('a Details block becomes its summary line and its body', () => {
+    inCell()
+    paste({ 'text/html': '<details><summary>Sum</summary><p>body</p></details>', 'text/plain': 'Sum\nbody' })
+    assert.equal(doc(), 'table(tableRow(tableCell(paragraph("a1Sum",BR,"body")),tableCell(paragraph("b1")))) | paragraph("after")')
+  })
+
+  test('blocks copied in Quill and pasted into a cell become lines too', () => {
+    editor.commands.setContent('<h2>Copied head</h2><p>copied para</p><table><tr><td><p>a1</p></td><td><p>b1</p></td></tr></table>')
+    editor.commands.setTextSelection({ from: 1, to: editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize - 1 })
+    const clip = copy()
+    let cell = null
+    editor.state.doc.descendants((n, p) => { if (cell === null && n.type.name === 'tableCell') cell = p })
+    editor.commands.setTextSelection(cell + 2 + 'a1'.length)
+    paste(clip)
+    assert.match(doc(), /^heading\("Copied head"\) \| paragraph\("copied para"\) \| table\(tableRow\(tableCell\(paragraph\("a1Copied head",BR,"copied para"\)\),tableCell\(paragraph\("b1"\)\)\)\)/)
   })
 
   test('one line of inline HTML in a cell is unchanged', () => {

@@ -1983,12 +1983,29 @@ describe('Backspace and Delete beside a block with no text select it first', () 
     }
   })
 
-  test('Delete before a separator selects it', () => {
+  test('Delete before a separator selects it, and a second Delete deletes it without joining the lines', () => {
     editor.commands.setContent('<p>hello</p><hr><p>after</p>')
     editor.commands.setTextSelection(6)
     key(editor.view, 'Delete')
     assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
-    assert.equal(count('horizontalRule'), 1)
+    assert.equal(doc(), 'paragraph("hello") | horizontalRule() | paragraph("after")')
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'paragraph("hello") | paragraph("after")')
+  })
+
+  // From an empty line ProseMirror removes the line and selects the block itself; selecting the
+  // block first would leave the empty line behind.
+  test('Backspace or Delete on an empty line beside a separator removes the line and selects the separator', () => {
+    editor.commands.setContent('<p>hello</p><hr><p></p><p>after</p>')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Backspace')
+    assert.equal(doc(), 'paragraph("hello") | horizontalRule() | paragraph("after")')
+    assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
+    editor.commands.setContent('<p>hello</p><p></p><hr><p>after</p>')
+    editor.commands.setTextSelection(paragraphStarts()[1])
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'paragraph("hello") | horizontalRule() | paragraph("after")')
+    assert.equal(editor.state.selection.node?.type.name, 'horizontalRule')
   })
 
   test('Backspace after a preserved block selects it', () => {
@@ -2017,5 +2034,20 @@ describe('Backspace and Delete beside a block with no text select it first', () 
     assert.equal(handled, true)
     assert.equal(count('gutenbergPassthrough'), 1)
     assert.match(doc(), /gutenbergPassthrough\(\) \| paragraph\("x"\) \| paragraph\("After"\)/)
+    // The caret is after the typed character, so the next one goes on the same new line.
+    assert.equal(editor.state.selection.empty, true)
+    assert.equal(editor.state.selection.$from.parent.textContent, 'x')
+    assert.equal(editor.state.selection.$from.parentOffset, 1)
+    const { from: f2, to: t2 } = editor.state.selection
+    if (!editor.view.someProp('handleTextInput', f => f(editor.view, f2, t2, 'y'))) editor.view.dispatch(editor.state.tr.insertText('y', f2, t2))
+    assert.equal(doc(), 'paragraph("Before") | gutenbergPassthrough() | paragraph("xy") | paragraph("After")')
+  })
+
+  test('typing over a selected separator still replaces it, as before', () => {
+    editor.commands.setContent('<p>hello</p><hr><p>after</p>')
+    editor.commands.setNodeSelection(editor.state.doc.child(0).nodeSize)
+    const { from, to } = editor.state.selection
+    if (!editor.view.someProp('handleTextInput', f => f(editor.view, from, to, 'x'))) editor.view.dispatch(editor.state.tr.insertText('x', from, to))
+    assert.equal(doc(), 'paragraph("hello") | paragraph("x") | paragraph("after")')
   })
 })

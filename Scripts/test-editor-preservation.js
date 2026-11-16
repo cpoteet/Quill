@@ -994,23 +994,95 @@ describe('undoing a code-view parse takes its alarm back', () => {
   test('a lossy parse that changes nothing visible keeps its alarm through undo and redo', () => {
     posted.length = 0
     win.setContent('<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->')
+    const shown = editor.state.doc
     const button = win.document.getElementById('btn-code-view')
     button.click()
     const area = win.document.getElementById('code-editor')
     area.value = '<!-- wp:paragraph -->\n<p>Start<!-- wp:acme/widget /--></p>\n<!-- /wp:paragraph -->'
     area.dispatchEvent(new win.Event('input'))
     button.click()
+    assert.ok(editor.state.doc.eq(shown), 'the parse must leave the document as it was for this test to mean anything')
     const raised = last()
+    assert.deepEqual(raised, ['acme/widget'])
     editor.commands.undo()
+    assert.deepEqual(last(), raised)
     editor.commands.redo()
-    if (raised && raised.length) assert.deepEqual(last(), raised)
+    assert.deepEqual(last(), raised)
   })
 
+  test('an edit after the parse, undone along with the parse, clears the alarm', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    // Its own undo step, as typing after a pause is; otherwise history folds it into the parse's.
+    editor.chain().command(({ tr }) => { tr.setMeta('closeHistory$', true); return true }).insertContentAt(1, 'x').run()
+    editor.commands.undo()
+    assert.doesNotMatch(win.getContent(), /<p>Start<\/p>/)
+    assert.deepEqual(last(), ['acme/widget'])
+    editor.commands.undo()
+    assert.match(win.getContent(), /<p>Start<\/p>/)
+    assert.deepEqual(last(), [])
+  })
+
+  // A second parse with the same alarm recorded nothing and forgot the first, so undoing both
+  // left the banner up, and Swift then held back every later edit.
+  test('two code-view sessions with the same alarm, both undone, clear it', async () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    // Past history's 500 ms grouping, so the second session is an undo step of its own.
+    await new Promise(r => setTimeout(r, 600))
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    const area = win.document.getElementById('code-editor')
+    area.value = lossy + '<!-- wp:paragraph -->\n<p>more</p>\n<!-- /wp:paragraph -->'
+    area.dispatchEvent(new win.Event('input'))
+    button.click()
+    assert.deepEqual(last(), ['acme/widget'])
+    editor.commands.undo()
+    assert.doesNotMatch(win.getContent(), /<p>more<\/p>/)
+    assert.deepEqual(last(), ['acme/widget'])
+    editor.commands.undo()
+    assert.equal(win.getContent(), '<!-- wp:paragraph -->\n<p>Start</p>\n<!-- /wp:paragraph -->')
+    assert.deepEqual(last(), [])
+    editor.commands.redo()
+    assert.deepEqual(last(), ['acme/widget'])
+  })
+
+  // The first parse, undone, recorded the shown document as clean. The second drops a block
+  // without changing that document, so it must speak for it from then on, or typing and undoing
+  // the typing matched the old clean record and cleared a loss nothing had undone.
+  test('a later parse that changes nothing visible is not cleared by an earlier clean record', () => {
+    posted.length = 0
+    parseLossyInCodeView()
+    editor.commands.undo()
+    assert.deepEqual(last(), [])
+    const shown = editor.state.doc
+    const button = win.document.getElementById('btn-code-view')
+    button.click()
+    const area = win.document.getElementById('code-editor')
+    area.value = '<!-- wp:paragraph -->\n<p>Start<!-- wp:acme/widget /--></p>\n<!-- /wp:paragraph -->'
+    area.dispatchEvent(new win.Event('input'))
+    button.click()
+    assert.ok(editor.state.doc.eq(shown), 'the parse must leave the document as it was for this test to mean anything')
+    assert.deepEqual(last(), ['acme/widget'])
+    editor.chain().command(({ tr }) => { tr.setMeta('closeHistory$', true); return true }).insertContentAt(1, 'x').run()
+    editor.commands.undo()
+    assert.ok(editor.state.doc.eq(shown))
+    assert.deepEqual(last(), ['acme/widget'])
+  })
+
+  // The new post's document is the parse's own "after" document, so a step left over from the
+  // last post would match it on the undo below and raise that post's alarm here.
   test('a post loaded afterwards is judged on its own', () => {
     posted.length = 0
     parseLossyInCodeView()
-    win.setContent('<!-- wp:paragraph -->\n<p>Other</p>\n<!-- /wp:paragraph -->')
+    const parsed = editor.state.doc
+    const saved = win.getContent()
+    win.setContent(saved)
+    assert.ok(editor.state.doc.eq(parsed), 'the new post must load as the parse\'s document')
+    assert.deepEqual(last(), [])
     editor.commands.insertContentAt(1, 'x')
+    editor.commands.undo()
+    assert.ok(editor.state.doc.eq(parsed))
     assert.deepEqual(last(), [])
   })
 })

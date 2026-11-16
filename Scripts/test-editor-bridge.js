@@ -392,8 +392,10 @@ describe('an unclosed inline tag stays inside its own block', () => {
   })
 
   test('a block Quill preserves inside a container keeps its inner markup untouched', () => {
-    const nested = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:acme/box --><div class="acme"><!-- wp:paragraph --><p>in <b>widget</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>second</p><!-- /wp:paragraph --></div><!-- /wp:acme/box --></div><!-- /wp:column --></div><!-- /wp:columns -->'
-    assert.equal(win.closeLeakingTags(nested, win.parseBlocks), nested)
+    // Its bytes stay as they are; the tag it leaves open is closed only after its own delimiter.
+    const box = '<!-- wp:acme/box --><div class="acme"><!-- wp:paragraph --><p>in <b>widget</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>second</p><!-- /wp:paragraph --></div><!-- /wp:acme/box -->'
+    const nested = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">' + box + '</div><!-- /wp:column --></div><!-- /wp:columns -->'
+    assert.equal(win.closeLeakingTags(nested, win.parseBlocks), nested.replace(box, box + '</b>'))
   })
 
   test('an unclosed tag inside a Group stays inside its paragraph', () => {
@@ -405,5 +407,108 @@ describe('an unclosed inline tag stays inside its own block', () => {
     assert.match(html, /<p>In <em>group<\/em><\/p>/)
     assert.match(html, /<p>Second<\/p>/)
     assert.match(html, /<p>Outside!<\/p>/)
+  })
+})
+
+// The two functions closeLeakingTags is built from, checked on exact strings: which tags count as
+// left open, the order their closers come in, and where in the block they are written.
+describe('leakingTagClosers and closeLeakingTags, exactly', () => {
+  const P = inner => `<!-- wp:paragraph -->\n${inner}\n<!-- /wp:paragraph -->`
+
+  test('closers come innermost first, and only for tags still open', () => {
+    assert.equal(win.leakingTagClosers('<p>a <b>b <em>c <a href="x">d</p>'), '</a></em></b>')
+    assert.equal(win.leakingTagClosers('<p><a href="x">l</a> <b>b</b> <i>i</i></p>'), '')
+    assert.equal(win.leakingTagClosers('<p><b><i>x</b> y</p>'), '</i>')
+  })
+
+  test('a stray closer closes nothing, and tag names are matched in any case', () => {
+    assert.equal(win.leakingTagClosers('<p></b><i>x</p>'), '</i>')
+    assert.equal(win.leakingTagClosers('<P><B>x</P>'), '</b>')
+  })
+
+  test('tags that only start like a leaking one are not counted', () => {
+    assert.equal(win.leakingTagClosers('<p>a<br>b<abbr>c</abbr><span>d</span><strong>e</strong><sup>1</sup><sub>2</sub><img src="x"><ul><li>f</li></ul><embed src="y"></p>'), '')
+    assert.equal(win.leakingTagClosers('<p><strong>open<u>u</p>'), '</u></strong>')
+  })
+
+  test('the closers are written after the block’s last element, before its trailing newline', () => {
+    const src = P('<p>x <b>y <em>z</p>') + '\n\n' + P('<p>next</p>')
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks),
+      P('<p>x <b>y <em>z</p></em></b>') + '\n\n' + P('<p>next</p>'))
+  })
+
+  test('every leaking block is closed in place, at the top level and inside a Group, and nothing else moves', () => {
+    const group = '<!-- wp:group -->\n<div class="wp-block-group">' + P('<p>in <i>group</p>') + '\n\n' + P('<p>second</p>') + '</div>\n<!-- /wp:group -->'
+    const src = [P('<p>one <a href="u">link</p>'), '<!-- wp:separator /-->', group, P('<p>last <s>struck</p>')].join('\n\n')
+    const want = [P('<p>one <a href="u">link</p></a>'), '<!-- wp:separator /-->',
+      group.replace('<p>in <i>group</p>', '<p>in <i>group</p></i>'), P('<p>last <s>struck</p></s>')].join('\n\n')
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks), want)
+  })
+
+  // Only leaf blocks were closed, so a tag a container's own markup left open leaked on.
+  test('a tag left open in a quote citation is closed after the quote', () => {
+    const quote = '<!-- wp:quote --><blockquote class="wp-block-quote"><!-- wp:paragraph --><p>Q</p><!-- /wp:paragraph --><cite>By <a href="https://x.test">Someone</cite></blockquote><!-- /wp:quote -->'
+    const src = quote + '\n\n' + P('<p>After</p>')
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks),
+      quote.replace('</blockquote><!-- /wp:quote -->', '</blockquote></a><!-- /wp:quote -->') + '\n\n' + P('<p>After</p>'))
+  })
+
+  test('a tag left open in a Details summary is closed after the Details, inner blocks untouched', () => {
+    const details = '<!-- wp:details --><details class="wp-block-details"><summary><b>T</summary><!-- wp:paragraph --><p>Body</p><!-- /wp:paragraph --></details><!-- /wp:details -->'
+    const src = details + '\n\n' + P('<p>After</p>')
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks),
+      details.replace('</details><!-- /wp:details -->', '</details></b><!-- /wp:details -->') + '\n\n' + P('<p>After</p>'))
+  })
+
+  // The item's own text is everything but its nested list, whose own leak is closed inside it.
+  test('a list item and the list nested in it are each closed at their own end', () => {
+    const src = '<!-- wp:list --><ul class="wp-block-list"><!-- wp:list-item --><li><b>Item<!-- wp:list --><ul class="wp-block-list"><!-- wp:list-item --><li><i>child</li><!-- /wp:list-item --></ul><!-- /wp:list --></li><!-- /wp:list-item --></ul><!-- /wp:list -->'
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks), src
+      .replace('<li><i>child</li><!-- /wp:list-item -->', '<li><i>child</li></i><!-- /wp:list-item -->')
+      .replace('</ul><!-- /wp:list --></li><!-- /wp:list-item -->', '</ul><!-- /wp:list --></li></b><!-- /wp:list-item -->'))
+  })
+
+  // A preserved block nested in a container is parsed from the live markup, so what it leaves
+  // open is closed just after its own delimiter, and its own bytes stay as they were.
+  test('a preserved block nested in a container is closed after its delimiter, its bytes unchanged', () => {
+    const widget = '<!-- wp:acme/widget --><div class="wp-block-acme-widget"><b>Bold</div><!-- /wp:acme/widget -->'
+    const src = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">' + widget +
+      '</div><!-- /wp:column --></div><!-- /wp:columns -->\n\n' + P('<p>After</p>')
+    const out = win.closeLeakingTags(src, win.parseBlocks)
+    assert.equal(out, src.replace(widget, widget + '</b>'))
+  })
+
+  test('each leak saves closed off once edited: the paragraph after a quote, a Details or a column stays plain', () => {
+    const cases = [
+      '<!-- wp:quote --><blockquote class="wp-block-quote"><!-- wp:paragraph --><p>Q</p><!-- /wp:paragraph --><cite>By <a href="https://x.test">Someone</cite></blockquote><!-- /wp:quote -->',
+      '<!-- wp:details --><details class="wp-block-details"><summary><b>T</summary><!-- wp:paragraph --><p>Body</p><!-- /wp:paragraph --></details><!-- /wp:details -->',
+      '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:acme/widget --><div class="wp-block-acme-widget"><b>Bold</div><!-- /wp:acme/widget --></div><!-- /wp:column --></div><!-- /wp:columns -->',
+    ]
+    for (const lead of cases) {
+      win.setContent(lead + '\n\n' + P('<p>After</p>'), '')
+      editor.commands.insertContentAt(editor.state.doc.content.size - 1, 'z')
+      assert.match(win.flushContent().html, /\n<p>Afterz<\/p>\n<!-- \/wp:paragraph -->$/, lead.slice(0, 20))
+    }
+  })
+
+  test('a post with nothing left open comes back as the same string', () => {
+    const src = P('<p>a <b>b</b> <a href="x">c</a></p>') + '\n\n' + P('<p>d</p>')
+    assert.equal(win.closeLeakingTags(src, win.parseBlocks), src)
+  })
+
+  test('an edit saves the leaking block closed off and every other block byte for byte', () => {
+    const blocks = [
+      P('<p>Type here.</p>'),
+      P('<p>A sentence with an <a href="https://example.com">unclosed link.</p>'),
+      '<!-- wp:heading -->\n<h2 class="wp-block-heading">A heading after it</h2>\n<!-- /wp:heading -->',
+      P('<p>Ordinary paragraph.</p>'),
+    ]
+    win.setContent(blocks.join('\n\n'), '')
+    editor.commands.insertContentAt(1, 'X')
+    assert.equal(win.flushContent().html, [
+      P('<p>XType here.</p>'),
+      P('<p>A sentence with an <a href="https://example.com">unclosed link.</a></p>'),
+      blocks[2], blocks[3],
+    ].join('\n\n'))
   })
 })

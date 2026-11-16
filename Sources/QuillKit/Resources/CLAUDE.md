@@ -91,6 +91,8 @@ onto it" — its children are still replayed.
 - Code-type text opts out of smart quotes with a `spellcheck="false"` decoration, never a rendered attribute
 - `/^\s+/` in JavaScript matches U+00A0, so a whitespace strip deletes deliberate `&nbsp;` indentation
 - A passthrough card is only byte-for-byte if its markup is stashed out of the way, not just shielded from the comment-strip regex
+- `closeLeakingTags` closes each block's leak at that block's own end, and never inside a preserved block's bytes
+- The block-risk alarm follows undo by document, and must keep every code-view parse since the load
 - A `<li>` holding two or more paragraphs is left alone on purpose, even though core's rich-text `<li>` will flag it
 - ProseMirror re-serializes any `style` it renders, so a style Quill did not author must never reach it
 - Tiptap 3's OrderedList, TableCell, TableHeader, Blockquote and ListItem bring behaviour v2 lacked, and Quill's subclasses turn it off

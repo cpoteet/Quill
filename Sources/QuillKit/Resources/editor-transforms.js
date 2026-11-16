@@ -484,39 +484,53 @@ function leakingTagClosers(markup) {
 
 // The post is parsed as one HTML string, so a block that leaves an <a> or <b> open hands it to
 // every block after it, and the first edit saves the link or bold into all of them. Gutenberg
-// parses block by block, so there only the bad block is invalid. Each modeled leaf block that
-// leaves a tag open has it closed at the block's own end. A block Quill preserves, at any depth,
-// is never descended into: its bytes must not change, and it loads as an attribute nothing
-// leaks out of.
+// parses block by block, so there only the bad block is invalid. Each modeled block that leaves a
+// tag open in its own markup (a leaf's text, a container's citation, summary or list item text)
+// has it closed at the block's own end, its inner blocks having been closed at theirs. A block
+// Quill preserves is never descended into, since its bytes must not change: at the top level it
+// loads whole as an attribute nothing leaks out of, and nested in a modeled container, where it is
+// parsed from the live markup, the tags it leaves open are closed just after its own delimiter.
 function closeLeakingTags(html, parse) {
   if (!html || !LEAKING_INLINE_TAG.test(html)) return html
-  const leaves = []
-  const collect = blocks => {
-    for (const block of blocks) {
-      if (block.blockName && !blockDescriptorRegistry.modelsBlockName(block.blockName)) continue
-      if (block.innerBlocks.length) collect(block.innerBlocks)
-      else if (block.blockName) leaves.push(block)
+  const inserts = []
+  const closersOf = markup => (LEAKING_INLINE_TAG.test(markup) ? leakingTagClosers(markup) : '')
+  const visit = (block, depth) => {
+    if (!blockDescriptorRegistry.modelsBlockName(block.blockName)) {
+      const closers = closersOf(html.slice(block.start, block.end))
+      if (closers) inserts.push({ at: block.end, closers, depth })
+      return
     }
-  }
-  for (const slice of blockSourceSlices(html, parse)) {
-    if (slice.blockName && !blockNeedsWrapping(slice, inertDocument())) collect([slice.block])
-  }
-  let out = html
-  for (const block of leaves.reverse()) {
     const source = html.slice(block.start, block.end)
     const openerEnd = source.indexOf('-->') + 3
-    if (openerEnd < 3 || source.slice(0, openerEnd).endsWith('/-->')) continue
+    if (openerEnd < 3 || source.slice(0, openerEnd).endsWith('/-->')) return
     const closerAt = source.lastIndexOf('<!-- /wp:')
-    const innerEnd = closerAt >= openerEnd ? closerAt : source.length
-    const inner = source.slice(openerEnd, innerEnd)
-    const closers = LEAKING_INLINE_TAG.test(inner) ? leakingTagClosers(inner) : ''
-    if (!closers) continue
+    const innerEnd = block.start + (closerAt >= openerEnd ? closerAt : source.length)
+    // The block's own markup: everything between its delimiters but its inner blocks.
+    let own = ''
+    let from = block.start + openerEnd
+    for (const child of block.innerBlocks) {
+      if (!child.blockName) continue
+      own += html.slice(from, child.start)
+      from = child.end
+      visit(child, depth + 1)
+    }
+    own += html.slice(from, innerEnd)
+    const closers = closersOf(own)
+    if (!closers) return
     // Before the block's trailing whitespace: a newline after the closed element would itself
     // reopen the tag before the closer reached it.
-    const body = inner.replace(/\s*$/, '')
-    const at = block.start + openerEnd
-    out = out.slice(0, at) + body + closers + inner.slice(body.length) + out.slice(block.start + innerEnd)
+    const trailing = /\s*$/.exec(html.slice(from, innerEnd))[0].length
+    inserts.push({ at: innerEnd - trailing, closers, depth })
   }
+  for (const slice of blockSourceSlices(html, parse)) {
+    if (slice.blockName && !blockNeedsWrapping(slice, inertDocument())) visit(slice.block, 0)
+  }
+  if (!inserts.length) return html
+  // From the end, so earlier offsets hold; at one offset the outer block's closers go in first,
+  // leaving an inner block's closers ahead of them.
+  inserts.sort((a, b) => b.at - a.at || a.depth - b.depth)
+  let out = html
+  for (const { at, closers } of inserts) out = out.slice(0, at) + closers + out.slice(at)
   return out
 }
 
@@ -1756,7 +1770,9 @@ function convertPastedAlignment(root) {
   })
 }
 
-// Core's table cells are rich text, so blocks inside a pasted cell become lines.
+// Core's table cells are rich text, so blocks inside a pasted cell become lines. A caption,
+// summary or definition is a line of its own too, though none of them is a block a paste opens.
+const CELL_LINE_TAGS = new Set([...PASTE_BLOCK_TAGS, 'FIGCAPTION', 'SUMMARY', 'DT', 'DD'])
 function flattenPastedCells(root, doc) {
   const linesOf = container => {
     const lines = []
@@ -1776,7 +1792,7 @@ function flattenPastedCells(root, doc) {
         })
         continue
       }
-      if (PASTE_BLOCK_TAGS.has(node.tagName)) { flush(); lines.push(...linesOf(node)); continue }
+      if (CELL_LINE_TAGS.has(node.tagName)) { flush(); lines.push(...linesOf(node)); continue }
       current.push(node)
     }
     flush()

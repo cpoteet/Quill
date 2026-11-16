@@ -75,18 +75,20 @@ Shift-click selection from inside "BBB" to the line after "CCC" (head at the sta
 - Local QA drafts left in drafts.db: 419, 420, 423, 424, 425, 426 (edited this pass), 427, 428 (418 moved to WordPress as 18549) (Chris's 416 verified byte-identical to the pre-pass backup).
 - Repo: no tracked changes.
 
-## Fixes (uncommitted)
+## Fixes
 | Finding | Fix | Proof |
 |---|---|---|
-| F1 unclosed tag leaks across blocks | `closeLeakingTags` (editor-transforms.js) in `_wrapIncoming`; modeled leaf blocks only | bridge tests, `settings-unclosed-tag.html`/`.saved` in both corpora, `--check-fixtures` 29/29 |
-| F3 stale block-risk banner | `_riskStep` restores each side's alarm on undo/redo; wording "from the post" | preservation tests; in app: typing after undo reached SQLite on a switch |
+| F1 unclosed tag leaks across blocks | `closeLeakingTags` (editor-transforms.js) in `_wrapIncoming`: each modeled block's own markup (a leaf's text, a container's citation, summary or list-item text) is closed at that block's own end, inner blocks first; an unmodeled block is never descended into, and one nested in a modeled container is closed just after its closing delimiter | bridge tests, `settings-unclosed-tag.html`/`.saved` in both corpora, `--check-fixtures` 29/29 |
+| F3 stale block-risk banner | `_riskSides` keeps a (doc, names) record of every code-view parse since the load, both sides when the documents differ, (capped at `RISK_SIDES_KEPT` = 200, reset on post load) and restores the newest matching one on undo/redo; `_followingRisk` keeps the parse's own `setContent` from following it; wording "from the post" | preservation tests; in app: typing after undo reached SQLite on a switch |
 | F7 one-key delete of textless blocks | `_selectTextlessBlock` in `_edgeBackspace`/`_edgeDelete`; `handleTextInput` over a selected preserved block | keyboard tests; in app |
-| F8 paste swallows next block | `_trimSelectionOffNextBlock` before the paste | paste tests; real-WebKit harness |
-| F5 blocks into a table cell | `_asCellLines` (reuses `flattenPastedCells`) for ⌘V/drop and Paste as Markdown | paste tests; real-WebKit harness; validator clean |
+| F8 paste swallows next block | `_trimSelectionOffNextBlock` before the paste: the selection ends at the last line wholly inside it, or after a separator or preserved block inside it, so a selected one is replaced | paste tests; real-WebKit harness |
+| F5 blocks into a table cell | `_asCellLines` (reuses `flattenPastedCells`) for ⌘V/drop and Paste as Markdown; `CELL_LINE_TAGS` makes a caption, summary, `dt` and `dd` lines of their own, and images become their alt text first | paste tests; real-WebKit harness; validator clean |
 | F4 + Markdown leak | `_closeRawHTMLBlock` via marked `walkTokens`; empty landing line replaced | paste tests; in app |
 | F2 title newlines | `TitleTextField.singleLine` via `shouldChangeTextIn` | Swift tests; in app (undo works) |
 | F6 details label overlap | summary `padding-right` when the label shows | in app |
 | F9 block Markdown rules in a table cell (found in the second pass) | `_noBlockRulesInLines` also stands down in a cell | keyboard tests; in app |
+
+The wrap-up review extended F1 (containers' own markup, nested unmodeled blocks), F3 (every parse kept, not just the last), F5 (captions, summaries, images) and F8 (a selected block atom is replaced); the rows above describe the result, and testing-plan rows 343, 344, 347 and 348 record each.
 
 Regressions caught and fixed before hand-off: F7 first selected the block above a nested first list item or quote line (now only a line directly beside the block), and F5 flattened a pasted table or cell range instead of filling the grid (a table on its own is now left to ProseMirror). Both are pinned by tests.
 

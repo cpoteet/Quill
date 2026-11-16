@@ -5334,6 +5334,9 @@
       table.innerHTML = '<tbody><tr><td></td></tr></tbody>'
       const cell = table.querySelector('td')
       cell.append(...probe.childNodes)
+      // As cleanPastedHTML does for an image already in a pasted cell, which it could not see here.
+      // First, so an image with no alt leaves no empty line behind.
+      cell.querySelectorAll('img').forEach(img => img.replaceWith(img.ownerDocument.createTextNode(img.getAttribute('alt') || '')))
       flattenPastedCells(table, inertDocument())
       return cell.innerHTML
     }
@@ -5441,14 +5444,21 @@
     // though nothing of it is selected. A paste then joined that block into the last pasted one: a
     // code block became list text, and Tiptap's paste rules turned its literal **stars** into bold.
     // The selection is pulled back to the end of the line before, so the block after it stays whole.
+    // A separator or preserved block that was selected is the last thing before that block, though,
+    // and the selection then ends just after it, or the paste left behind a block the user selected.
     function _trimSelectionOffNextBlock() {
       const { selection, doc } = editor.state
       if (selection.empty || selection.node || selection.$anchorCell) return
       const { $from, $to } = selection
       if ($to.parentOffset !== 0 || !$to.parent.isTextblock || $from.sameParent($to)) return
+      const limit = $to.before()
       let end = null
-      doc.nodesBetween($from.pos, $to.before(), (node, pos) => {
-        if (node.isTextblock && pos + node.nodeSize - 1 <= $to.before()) end = pos + node.nodeSize - 1
+      doc.nodesBetween($from.pos, limit, (node, pos) => {
+        if (node.isTextblock && pos + node.nodeSize - 1 <= limit) end = Math.max(end ?? 0, pos + node.nodeSize - 1)
+        else if (node.isBlock && node.isAtom && pos >= $from.pos && pos + node.nodeSize <= limit) {
+          end = Math.max(end ?? 0, pos + node.nodeSize)
+          return false
+        }
       })
       if (end !== null && end >= $from.pos) editor.commands.setTextSelection({ from: $from.pos, to: end })
     }
@@ -7308,16 +7318,20 @@
       _parsingPaste = false
       _resetSyncedPatterns()
       const before = { doc: editor.state.doc, names: _lastRiskNames }
-      _riskStep = null
+      _followingRisk = false
       editor.commands.setContent(_wrapIncoming(inlineFootnotes(split.content, stored)), { emitUpdate: false })
       editor.commands.setTextSelection(0)
       _reportBlocksAtRisk(html)
-      // Only a parse that changed the alarm needs following on every edit after it. If the parse
-      // changed nothing visible, the two documents are equal and cannot say which side of it the
-      // editor is on, so the alarm is left up: a stale banner is safe, a cleared real one is not.
-      _riskStep = before.names.join('\n') === _lastRiskNames.join('\n') || before.doc.eq(editor.state.doc)
-        ? null
-        : { before, after: { doc: editor.state.doc, names: _lastRiskNames } }
+      _followingRisk = true
+      // Every parse records the document it leaves and its alarm, and the newest record of a
+      // document wins, so an older record never speaks for a document a later parse judged again.
+      // If the parse changed nothing visible, the two documents are equal and cannot say which
+      // side of it the editor is on, so only the parse's own alarm is recorded and it stays up
+      // through undo: a stale banner is safe, a cleared real one is not.
+      const after = { doc: editor.state.doc, names: _lastRiskNames }
+      if (!before.doc.eq(after.doc)) _riskSides.push(before)
+      _riskSides.push(after)
+      if (_riskSides.length > RISK_SIDES_KEPT) _riskSides.splice(0, _riskSides.length - RISK_SIDES_KEPT)
       _requestSyncedPatterns()
     }
 
@@ -7481,12 +7495,17 @@
     // The alarm a code-view parse raises belongs to that parse, which is one undo step. Undoing it
     // took the lost block out of the document but left the banner up, and Swift then held back
     // every later edit from autosave and the flush on a post switch or quit. So the documents on
-    // either side of the parse remember their own alarm, and returning to one restores it.
-    var _riskStep = null
+    // either side of the parse remember their own alarm, and returning to one restores it. Every
+    // such parse since the load is kept, not only the last, or a second code-view session forgot
+    // the first and undoing past both left the banner up. The newest record of a document wins.
+    var _riskSides = []
+    var _followingRisk = true
+    var RISK_SIDES_KEPT = 200
     function _followRiskStep() {
-      if (!_riskStep) return
+      if (!_followingRisk || !_riskSides.length) return
       const doc = editor.state.doc
-      const side = doc.eq(_riskStep.before.doc) ? _riskStep.before : doc.eq(_riskStep.after.doc) ? _riskStep.after : null
+      let side = null
+      for (let i = _riskSides.length - 1; i >= 0 && !side; i--) if (doc.eq(_riskSides[i].doc)) side = _riskSides[i]
       if (side && side.names.join('\n') !== _lastRiskNames.join('\n')) _postBlocksAtRisk(side.names)
     }
 
@@ -7644,7 +7663,7 @@
       editor.commands.setTextSelection(0)
       _parsingPaste = false
       _resetSyncedPatterns()
-      _riskStep = null
+      _riskSides = []
       editor.commands.setContent(wrapped || '', { emitUpdate: false })
       // After the load, which removes every entry of the last post into the cache: a note
       // deleted in one post must never come back in another that shares its id.
