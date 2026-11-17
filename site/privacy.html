@@ -39,7 +39,7 @@
     <div class="page-header__inner">
       <p class="eyebrow">Legal</p>
       <h1 class="page-header__title">Privacy Policy</h1>
-      <p class="page-header__sub">Last Updated: November 1, 2026</p>
+      <p class="page-header__sub">Last Updated: November 16, 2026</p>
     </div>
   </section>
 
@@ -55,7 +55,7 @@
           <li><strong>site_profiles.json</strong> — your site's name and site icon, so they show while you're offline, also chmod 600.</li>
           <li><strong>drafts.db</strong> — a SQLite database of drafts you've started but not yet saved to WordPress, autosaved versions of posts and pages you're editing, and a copy of your site's categories and tags. It is not synced anywhere.</li>
         </ul>
-        <p class="license-section__body">macOS also keeps a few files for Quill in your Library folder: a preferences file with window sizes, the sidebar width, your site's address, and any update you chose to skip; and caches of images and web content the editor has loaded. They are listed under <a href="#deleting-your-data">Deleting your data</a>.</p>
+        <p class="license-section__body">macOS also keeps a few files for Quill in your Library folder: a preferences file with window sizes, the sidebar width, your site's address, the last folder you chose a file from, and any update you chose to skip; and caches of images and web content the editor has loaded. They are listed under <a href="#deleting-your-data">Deleting your data</a>.</p>
       </div>
 
       <div class="license-section">
@@ -109,7 +109,7 @@
         <ul class="license-list">
           <li>Quit Quill.</li>
           <li>Delete <code>~/Library/Application Support/Quill/</code> — this removes credentials, AI settings, your site's name and icon, and the local draft database.</li>
-          <li>Delete <code>~/Library/Preferences/com.siolon.quill.plist</code>, <code>~/Library/Caches/com.siolon.quill</code>, <code>~/Library/WebKit/com.siolon.quill</code>, and <code>~/Library/HTTPStorages/com.siolon.quill</code>.</li>
+          <li>Delete <code>~/Library/Preferences/com.siolon.quill.plist</code>, <code>~/Library/Caches/com.siolon.quill</code>, <code>~/Library/WebKit/com.siolon.quill</code>, and <code>~/Library/HTTPStorages/com.siolon.quill</code>. If you used Quill before version 2.0, delete the same four items with <code>com.quill.app</code> in place of <code>com.siolon.quill</code>.</li>
           <li>Delete <code>Quill.app</code> from your Applications folder.</li>
         </ul>
         <p class="license-section__body">Deleting these files does not revoke Quill's access to your site. To do that, delete its Application Passwords in WordPress under Users → Profile. Each browser connection creates one named "Quill on" followed by your Mac's name, so there may be more than one.</p>

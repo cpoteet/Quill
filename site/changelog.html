@@ -49,6 +49,7 @@
       <details class="toc__disclosure" data-collapse-width="760" open>
         <summary class="toc__heading">Releases <span class="toc__count"></span></summary>
         <ul class="toc__list">
+          <li><a href="#v2.7.0" class="toc__link"><span>v2.7.0</span><span class="toc__date">Nov 16</span></a></li>
           <li><a href="#v2.6.0" class="toc__link"><span>v2.6.0</span><span class="toc__date">Nov 1</span></a></li>
           <li><a href="#v2.5.0" class="toc__link"><span>v2.5.0</span><span class="toc__date">Oct 24</span></a></li>
           <li><a href="#v2.4.0" class="toc__link"><span>v2.4.0</span><span class="toc__date">Oct 13</span></a></li>
@@ -74,11 +75,82 @@
 
     <main class="releases">
 
+      <article class="release" id="v2.7.0">
+        <header class="release__header">
+          <h2 class="release__version">v2.7.0</h2>
+          <span class="release__date">November 16, 2026</span>
+          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
+        </header>
+
+        <section class="release__section">
+          <h3 class="release__section-title">What's New <span class="release__count">(3)</span></h3>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Editor Moved to Tiptap 3</h4>
+            <p class="release__body">Quill's editor now runs on Tiptap 3, the current major version of the editing framework it is built on, replacing Tiptap 2. Posts load, look and save as they did before: every block was checked against the old editor, and every difference was either undone or fixed. The move keeps Quill on a supported foundation that receives fixes and new editing features.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">Change Bars Show Moved Blocks</h4>
+            <p class="release__body">When you drag a block or use Move Block Up or Move Block Down, the moved block now gets a bar that says it was moved. Before, the bar went on the block it passed, and a "removed" mark appeared at its old place. The mark for a deleted block is now a short dash instead of a dot, so it reads apart from a bar.</p>
+          </div>
+
+          <div class="release__feature">
+            <h4 class="release__feature-title">New Blocks Go After the Current Block</h4>
+            <p class="release__body">A block you add from the + menu now goes after the block the cursor is in, as it does in the WordPress editor. Before, it split the paragraph at the cursor, and Preformatted and Pullquote converted the current block, so a heading could become preformatted text. Blocks added from inside a pullquote, list, quote citation or image caption go after that whole block, so WordPress no longer flags the pullquote as invalid and an image is no longer replaced.</p>
+          </div>
+        </section>
+
+        <section class="release__section">
+          <h3 class="release__section-title">Improvements <span class="release__count">(5)</span></h3>
+          <ul class="release__list">
+            <li><strong>Easier-to-read blocks</strong> — Fill and Outline buttons look different, the accordion's icon side is a Left/Right choice, a Plain quote shows a faint edge, and a quote's citation follows the quote's alignment.</li>
+            <li><strong>Continue Writing</strong> — In Pages, Continue Writing now lists pages you've drafted locally on this Mac, and an empty Posts, Pages or Drafts section shows a card there with New Post and New Page buttons.</li>
+            <li><strong>Backspace and Delete stop at block edges</strong> — One Backspace or Delete at a block's edge now selects an image, separator, embed, Group, column, tab title or button, as WordPress does, instead of deleting, unwrapping or merging it.</li>
+            <li><strong>Numbered lists paste as lists</strong> — Plain text with numbered, lettered or Roman-numeral lines becomes a list when you paste it into an empty paragraph, instead of a stack of paragraphs.</li>
+            <li><strong>Blockquote works like Transform to Quote</strong> — The Blockquote button now turns a pullquote into a quote and puts a whole list inside a quote, matching the WordPress editor, where before it did nothing in a list.</li>
+          </ul>
+        </section>
+
+        <details class="release__fixes">
+          <summary class="release__section-title">Fixes <span class="release__count">(28)</span></summary>
+          <ul class="release__list">
+            <li>A tag left unclosed in one block, such as a link missing its end tag, no longer turns every later block into a link or bold text when you open, edit in code view or Paste as Markdown, and save.</li>
+            <li>Removing a class from a block in code view now stays removed after you save.</li>
+            <li>Saving after an edit in code view sends WordPress the same block markup as the visual editor, instead of code view's text with its extra blank lines.</li>
+            <li>Undoing a code-view edit that put blocks at risk now clears the warning banner, which had stopped autosave and the save when you switched posts.</li>
+            <li>Pasting a list at the start of a column or into an empty Group keeps the column or Group instead of replacing it.</li>
+            <li>Text pasted or dropped into a tab title, button, details summary, accordion heading, quote citation or image caption stays on one line instead of splitting the block around it.</li>
+            <li>Blocks pasted into a table cell become lines of text in that cell, and Markdown shortcuts typed in a cell stay as typed.</li>
+            <li>Pasting over a selection that ends at the start of the next line no longer pulls that next block into the pasted content.</li>
+            <li>Paste as Markdown with the cursor in an image caption or quote citation inserts after the block instead of deleting the image or splitting the quote.</li>
+            <li>Paste as Markdown on an empty line replaces that line instead of leaving an empty paragraph above the pasted content.</li>
+            <li>Pasting from a web page no longer drops images inside bold text or a responsive picture.</li>
+            <li>Text pasted after a block inside a quote no longer becomes the quote's citation.</li>
+            <li>Pasting several lines into the Title field joins them into one line.</li>
+            <li>A footnote marker copied and pasted in the same post becomes a new footnote with a copy of the note, instead of two markers that share one note.</li>
+            <li>Cutting and pasting a sentence with a footnote marker keeps the footnote's note.</li>
+            <li>⌥⌘0 to ⌥⌘6 no longer empty a footnote.</li>
+            <li>Markdown shortcuts such as <code>---</code> and <code># </code> typed in a footnote, caption, citation, button or tab title stay as typed, so <code># </code> in a caption no longer replaces the image.</li>
+            <li>Text typed at the start of an image caption is saved, and the cursor no longer disappears after Backspace there.</li>
+            <li>Return on an empty last line of a quote or other container adds an empty line after it, instead of moving the cursor into the next block.</li>
+            <li>Backspace in an empty quote citation leaves the cursor at the end of the quote.</li>
+            <li>Backspace at the start of a paragraph after a quote with a citation joins the paragraph to the quote's text, not its citation.</li>
+            <li>Return in a tab title no longer adds a title with no panel.</li>
+            <li>Clicking a footnote's number jumps to its marker in the text.</li>
+            <li>Cut and Copy are available in the right-click menu when several table cells are selected.</li>
+            <li>Lettered and Roman-numeral lists show their letters or numerals in the editor instead of 1, 2, 3.</li>
+            <li>The Details block's "closed on the site" label no longer overlaps a long summary.</li>
+            <li>Double-clicking the title bar now minimizes or zooms the window according to your Desktop &amp; Dock setting.</li>
+            <li>Move to Trash on a post that was already trashed on WordPress now removes it from the list instead of failing with HTTP 410.</li>
+          </ul>
+        </details>
+      </article>
+
       <article class="release" id="v2.6.0">
         <header class="release__header">
           <h2 class="release__version">v2.6.0</h2>
           <span class="release__date">November 1, 2026</span>
-          <a href="https://github.com/cpoteet/Quill/releases/latest/download/Quill.zip" class="btn-primary btn-primary--compact">Download</a>
         </header>
 
         <section class="release__section">
