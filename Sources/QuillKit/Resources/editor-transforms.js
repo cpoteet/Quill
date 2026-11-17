@@ -1421,7 +1421,9 @@ const PASTE_MONO_FONT = /monospace|menlo|monaco|consolas|courier|sf mono|source 
 
 // `keepEdges` leaves whitespace at the two ends: a paste flattened into a title or footnote keeps
 // the spaces at its edges, which a trim would delete, U+00A0 included (cpoteet/Quill#27).
-function cleanPastedHTML(html, doc, { keepEdges = false } = {}) {
+// `inline`: the paste is flattened to one line (a title, citation, caption or footnote), so no
+// run is wrapped in a paragraph, whose layout whitespace would cost a trailing space at the edge.
+function cleanPastedHTML(html, doc, { keepEdges = false, inline = false } = {}) {
   if (!doc && typeof document !== 'undefined') doc = inertDocument()
   const root = doc.createElement('div')
   root.innerHTML = html
@@ -1454,6 +1456,7 @@ function cleanPastedHTML(html, doc, { keepEdges = false } = {}) {
   unwrapAll(root, 'span:not([class]):not([style]), font, a:not([href])')
   pushLinksIntoBlocks(root)
   flattenPastedDivs(root, doc)
+  if (!inline) wrapLooseRootRuns(root, doc)
   hoistBlockImages(root, doc)
   removeEmptyPastedBlocks(root)
   return keepEdges ? root.innerHTML : root.innerHTML.trim()
@@ -1922,14 +1925,56 @@ function flattenPastedDivs(root, doc) {
   })
 }
 
+// Text after a block at the paste's own top level was left for ProseMirror to wrap, and in a
+// Quote the first textblock it fits after a block is the citation: the text became the quote's
+// cite, and every block after it was pushed out of the quote. Each such run is a paragraph, as
+// the body already made it. Text before the first block is left as it was, to join the line the
+// paste lands on with its spaces, and a paste with no block at all stays inline. A run with no
+// text, such as a lone image, is left to the parser too. A <picture> is a boundary, never part
+// of a run: hoistBlockImages knows no <picture>, and wrapped in a <p> one was dropped whole.
+const PASTE_ROOT_BLOCK_TAGS = new Set([...PASTE_BLOCK_TAGS, 'IFRAME', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED', 'PICTURE'])
+function wrapLooseRootRuns(root, doc) {
+  const isBlock = n => n.nodeType === 1 && PASTE_ROOT_BLOCK_TAGS.has(n.tagName)
+  let run = []
+  let afterBlock = false
+  // A <br> or whitespace at a run's edge is layout between blocks, which removeEmptyPastedBlocks
+  // drops; moved into the paragraph it began it with a hard break, an empty line.
+  const isEdge = n => n.nodeName === 'BR' || (n.nodeType === 3 && !n.data.trim())
+  const flush = () => {
+    while (run.length && isEdge(run[0])) run.shift()
+    while (run.length && isEdge(run[run.length - 1])) run.pop()
+    if (afterBlock && run.some(n => n.textContent.trim())) {
+      const p = doc.createElement('p')
+      run[0].before(p)
+      p.append(...run)
+    }
+    run = []
+  }
+  for (const node of Array.from(root.childNodes)) {
+    if (isBlock(node)) { flush(); afterBlock = true } else if (node.nodeType === 8) flush()
+    else run.push(node)
+  }
+  flush()
+}
+
 // An image is a block in Quill; left inside a <p>, the parser splits the <p> and leaves an empty one behind.
 function hoistBlockImages(root, doc) {
   root.querySelectorAll('p').forEach(p => {
     if (!p.querySelector('img, figure')) return
     const parts = []
     let run = doc.createElement('p')
+    // A piece with no text was thrown away whole, and an image inside it (in <b> or <picture>,
+    // beside an image hoisted out) with it. Its images are hoisted out on their own, each with the
+    // link around it if it has one; kept as a <p>, the parser split it and left an empty one.
     const flush = () => {
       if (run.textContent.trim()) parts.push(run)
+      else {
+        const images = Array.from(run.querySelectorAll('img')).map(img => {
+          const link = img.closest('a')
+          return link && run.contains(link) ? link : img
+        })
+        parts.push(...new Set(images))
+      }
       run = doc.createElement('p')
     }
     Array.from(p.childNodes).forEach(child => {

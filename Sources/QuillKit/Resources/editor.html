@@ -4186,7 +4186,9 @@
       if (!$cut) return false
       // Backspace undoes a Markdown rule typed just before it, ahead of any join.
       if (editor.commands.undoInputRule()) return true
-      if (_selectTextlessBlock($from, $cut, $cut.nodeBefore, $cut.pos - ($cut.nodeBefore?.nodeSize || 0))) return true
+      // Only from a line directly beside the block: a first list item or quote line lifts out as before.
+      if ($cut.depth === $from.depth - 1 &&
+          _selectTextlessBlock($from, $cut, $cut.nodeBefore, $cut.pos - ($cut.nodeBefore?.nodeSize || 0))) return true
       if (_intoQuoteBeforeCite($from, $cut)) return true
       // A details body's first line follows the summary, a title it must not join.
       return $cut.nodeBefore?.type.name === 'detailsSummary'
@@ -4205,10 +4207,11 @@
     // reaches it from a line that has text: a separator, an embed, or a block only code view can
     // bring back, gone in one keystroke. The block is selected instead, so the next key deletes it
     // on purpose. From an empty line ProseMirror already removes the line and selects the block.
-    // Only a line directly beside the block: a first list item or quote line lifts out as before.
+    // Delete reaches it from the last line of a quote or list item too, where there is nothing to
+    // lift and the join pulled the block into the container; Backspace keeps its own depth guard.
+    // An isolating container, such as a Group, stops the cut, so Delete never gets this far there.
     function _selectTextlessBlock($from, $cut, node, pos) {
       if (!node || !node.isBlock || !node.isAtom || $from.parent.content.size === 0) return false
-      if ($cut.depth !== $from.depth - 1) return false
       editor.commands.setNodeSelection(pos)
       return true
     }
@@ -5173,7 +5176,7 @@
           const sliceOpen = inline ? _pastedSliceOpen(html) : null
           try {
             if (!quillCopy) {
-              html = cleanPastedHTML(html, undefined, { keepEdges: true })
+              html = cleanPastedHTML(html, undefined, { keepEdges: true, inline })
               if (_ancestorDepth(_pasteContext(), 'listItem') > 0) html = pastedBlocksAsListItems(html)
             }
             if (!inline && _inTableCell(_pasteContext())) html = _asCellLines(html)
@@ -8018,7 +8021,20 @@
       // Raw HTML in the source, task-list checkboxes, column alignment and <p>-wrapped images: docs/paste.md.
       let clean = cleanPastedHTML(html)
       if (!clean) return 'empty'
-      if (_inTableCell(editor.state.selection.$from)) clean = _asCellLines(clean)
+      if (_inTableCell(editor.state.selection.$from)) {
+        clean = _asCellLines(clean)
+        // A table on its own fills the grid from this cell, as the same table pasted as HTML does;
+        // only the paste path does that, so it goes that way, already clean. Inserted, it nested.
+        const cells = inertDocument().createElement('div')
+        cells.innerHTML = clean
+        if (cells.children.length && [...cells.children].every(el => el.tagName === 'TABLE')) {
+          _pasteIsOwnHTML = true
+          editor.view.focus()
+          // An event of its own, with no clipboard: handlePaste then leaves it to the table plugin.
+          editor.view.pasteHTML(clean, new Event('paste'))
+          return 'ok'
+        }
+      }
 
       // A list item may hold a nested list, so pasted Markdown that is only lists stays in it.
       const probe = inertDocument().createElement('div')

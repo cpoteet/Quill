@@ -171,6 +171,7 @@ onto it" — its children are still replayed.
 - Outside paste must strip `data-quill-*` before the cleanup adds its own
 - `aria-hidden` text is visible; only visually-hidden classes are chrome
 - Quill's `cite` node is a quote's citation block, so an inline `<cite>` must never reach the parser
+- Text after a block at a paste's top level must be wrapped in a `<p>` by the cleanup, or a Quote makes it its citation
 - Tiptap's code mark excludes every other mark, so a link or bold around inline code was dropped on the first edit
 - `extractFootnotes` splices the list out of the string; re-serializing the DOM undoes the save
 - A tab title is edited as a `span`; WebKit leaves a stale caret behind in an editable `<button>`

@@ -273,7 +273,37 @@ describe('window.insertMarkdown', () => {
       '<!-- wp:paragraph -->\n<p></p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->\n\n<!-- wp:paragraph -->\n<p>end</p>\n<!-- /wp:paragraph -->')
     editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize - 2)
     win.insertMarkdown('## Head\n\n<div>raw</div> after\n\nnext')
-    assert.equal(doc(), 'groupBlock(paragraph("g"),heading("Head"),paragraph("raw"),paragraph(" after"),paragraph("next")) | paragraph("end")')
+    // The text after the raw block is a paragraph of its own, so its leading space goes, as save trims it.
+    assert.equal(doc(), 'groupBlock(paragraph("g"),heading("Head"),paragraph("raw"),paragraph("after"),paragraph("next")) | paragraph("end")')
+  })
+
+  // Text after raw HTML on its line was left beside the blocks, and in a Quote the first textblock
+  // it fits after a block is the citation: it became the quote's cite and pushed the rest out.
+  test('text beside raw HTML in a Quote is a paragraph in the quote, not its citation', () => {
+    editor.commands.setContent('<blockquote><p></p></blockquote><p>end</p>')
+    editor.commands.setTextSelection(2)
+    win.insertMarkdown('# H\n\n<div>raw</div> after\n\nnext')
+    assert.equal(doc(), 'blockquote(heading("H"),paragraph("raw"),paragraph("after"),paragraph("next")) | paragraph("end")')
+    editor.commands.setContent('<blockquote><p>q</p></blockquote><p>end</p>')
+    editor.commands.setTextSelection(3)
+    win.insertMarkdown('# H\n\n<div>raw</div> after\n\nnext')
+    assert.equal(doc(), 'blockquote(paragraph("q"),heading("H"),paragraph("raw"),paragraph("after"),paragraph("next")) | paragraph("end")')
+  })
+
+  // ProseMirror fills the grid from the caret's cell only on the paste path; inserted, it nested.
+  test('a Markdown table pasted into a cell fills the grid, as the same table pasted as HTML does', () => {
+    const md = '| a | b |\n|---|---|\n| 1 | 2 |'
+    const grid = 'table(tableRow(tableHeader(paragraph("a")),tableHeader(paragraph("b"))),tableRow(tableCell(paragraph("1")),tableCell(paragraph("2")))) | paragraph("after")'
+    for (const first of ['<p></p>', '<p>a1</p>']) {
+      editor.commands.setContent(`<table><tr><td>${first}</td><td><p>b1</p></td></tr></table><p>after</p>`)
+      editor.commands.setTextSelection(first === '<p></p>' ? 4 : 6)
+      assert.equal(win.insertMarkdown(md), 'ok')
+      assert.equal(doc(), grid, first)
+      editor.commands.setContent(`<table><tr><td>${first}</td><td><p>b1</p></td></tr></table><p>after</p>`)
+      editor.commands.setTextSelection(first === '<p></p>' ? 4 : 6)
+      paste({ 'text/html': win.MarkedBundle.marked.parse(md, { gfm: true }), 'text/plain': md })
+      assert.equal(doc(), grid, 'the HTML paste must give the same grid: ' + first)
+    }
   })
 
   // Blocks typed on an empty line in a list item go after the list, and in a table cell become the
@@ -975,6 +1005,98 @@ describe('a paste over a selection that ends at the start of the next block', ()
     editor.commands.setTextSelection({ from: 2, to: editor.state.doc.child(0).nodeSize + 3 })
     paste({ 'text/plain': 'x' })
     assert.equal(doc(), 'paragraph("BxC")')
+  })
+})
+
+// Text beside a block at the top level of a paste was left for ProseMirror to wrap; in a Quote the
+// first textblock it fits after a block is the citation, so it became the quote's cite.
+describe('text beside a block in a paste is a paragraph of its own', () => {
+  test('pasted into a Quote, text after a block is a paragraph in it, not its citation', () => {
+    editor.commands.setContent('<blockquote><p>q</p></blockquote><p>after</p>')
+    editor.commands.setTextSelection(3)
+    paste({ 'text/html': '<p>one</p>tail', 'text/plain': 'one\ntail' })
+    assert.equal(doc(), 'blockquote(paragraph("qone"),paragraph("tail")) | paragraph("after")')
+  })
+
+  test('in the body the paste is as before: text first joins the line, text after a block is a paragraph', () => {
+    editor.commands.setContent('<p>q</p><p>after</p>')
+    editor.commands.setTextSelection(2)
+    paste({ 'text/html': 'lead<p>mid</p>tail', 'text/plain': 'lead\nmid\ntail' })
+    assert.equal(doc(), 'paragraph("qlead") | paragraph("mid") | paragraph("tail") | paragraph("after")')
+  })
+
+  test('a paste with no block at all stays inline and joins the line', () => {
+    editor.commands.setContent('<blockquote><p>q</p></blockquote><p>after</p>')
+    editor.commands.setTextSelection(3)
+    paste({ 'text/html': '<b>bold</b> word', 'text/plain': 'bold word' })
+    assert.equal(doc(), 'blockquote(paragraph("q","bold"," word")) | paragraph("after")')
+  })
+
+  test('the cleanup wraps each run beside a block, and leaves whitespace between blocks alone', () => {
+    assert.equal(win.cleanPastedHTML('<p>a</p>tail <b>b</b>'), '<p>a</p><p>tail <b>b</b></p>')
+    assert.equal(win.cleanPastedHTML('<h2>H</h2>mid<p>x</p>end'), '<h2>H</h2><p>mid</p><p>x</p><p>end</p>')
+    assert.equal(win.cleanPastedHTML('<b>x</b> y'), '<b>x</b> y')
+  })
+
+  // Wrapped, a <picture> after a block met hoistBlockImages, which knows no <picture>, and was dropped.
+  test('an image or picture after a block, with no text beside it, is left to the parser', () => {
+    const picture = '<picture><source srcset="https://e.test/a.png" type="image/png"><img src="https://e.test/a.png" alt="pic"></picture>'
+    const clean = win.cleanPastedHTML('<p>a</p>' + picture)
+    assert.match(clean, /^<p>a<\/p><picture>.*<img src="https:\/\/e\.test\/a\.png" alt="pic"><\/picture>$/)
+    editor.commands.setContent('<p>q</p><p>after</p>')
+    editor.commands.setTextSelection(2)
+    paste({ 'text/html': '<p>a</p>' + picture, 'text/plain': 'a' })
+    assert.equal(doc(), 'paragraph("qa") | image() | paragraph("after")')
+  })
+
+  // With an image and text after it the run holds text, so it was wrapped, and the <picture> in it
+  // went into a textless run hoistBlockImages dropped. A <picture> is a boundary, never wrapped.
+  test('a picture in a run with an image and text after a block keeps its image', () => {
+    editor.commands.setContent('<p>q</p><p>after</p>')
+    editor.commands.setTextSelection(2)
+    paste({ 'text/html': '<p>a</p><picture><img src="https://e.test/a.png"></picture><img src="https://e.test/b.png">tail', 'text/plain': 'a tail' })
+    assert.equal(doc(), 'paragraph("qa") | image() | image() | paragraph("tail") | paragraph("after")')
+  })
+
+  // hoistBlockImages kept only pieces with text, so an image inside <b> beside one it hoisted was
+  // dropped: from a pasted paragraph before, and from a wrapped run after a block once runs were wrapped.
+  test('an image inside an inline wrapper beside another image is kept, in a run or a paragraph', () => {
+    for (const html of ['<p>a</p><b><img src="https://e.test/1.png"></b><img src="https://e.test/2.png">tail',
+      '<p>a</p><p><b><img src="https://e.test/1.png"></b><img src="https://e.test/2.png">tail</p>']) {
+      editor.commands.setContent('<p>q</p><p>after</p>')
+      editor.commands.setTextSelection(2)
+      paste({ 'text/html': html, 'text/plain': 'a tail' })
+      assert.equal(doc(), 'paragraph("qa") | image() | image() | paragraph("tail") | paragraph("after")', html)
+    }
+  })
+
+  // A <br> between a block and the text after it is layout; wrapped in, it began the paragraph.
+  test('a break at the edge of the text after a block is dropped, one inside it is kept', () => {
+    editor.commands.setContent('<p>q</p><p>after</p>')
+    editor.commands.setTextSelection(2)
+    paste({ 'text/html': '<p>one</p><br>tail<br>end<br><p>last</p>', 'text/plain': 'one\ntail\nend\nlast' })
+    assert.equal(doc(), 'paragraph("qone") | paragraph("tail",BR,"end") | paragraph("last") | paragraph("after")')
+  })
+
+  // A citation is flattened to one line; wrapped first, the run's trailing space read as a
+  // paragraph's layout whitespace and the separator before the citation's own text was lost.
+  test('pasted into a citation, text after a block keeps its trailing space', () => {
+    editor.commands.setContent('<blockquote><p>q</p><cite>Who</cite></blockquote><p>after</p>')
+    let cite = null
+    editor.state.doc.descendants((n, p) => { if (cite === null && n.type.name === 'cite') cite = p })
+    editor.commands.setTextSelection(cite + 2)
+    paste({ 'text/html': '<p>one</p>tail ', 'text/plain': 'one\ntail ' })
+    assert.equal(doc(), 'blockquote(paragraph("q"),cite("Wone tail ho")) | paragraph("after")')
+  })
+
+  // Before the first block the text joins the line it lands on, in a Quote as in the body, so the
+  // cleanup leaves it unwrapped and untouched.
+  test('text before the first block is left unwrapped, to join the line it lands on', () => {
+    assert.equal(win.cleanPastedHTML(' lead<p>x</p>', undefined, { keepEdges: true }), ' lead<p>x</p>')
+    editor.commands.setContent('<blockquote><p>q</p></blockquote><p>after</p>')
+    editor.commands.setTextSelection(3)
+    paste({ 'text/html': 'lead<p>mid</p>', 'text/plain': 'lead\nmid' })
+    assert.equal(doc(), 'blockquote(paragraph("qlead"),paragraph("mid")) | paragraph("after")')
   })
 })
 

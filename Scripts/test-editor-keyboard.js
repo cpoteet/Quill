@@ -1993,6 +1993,46 @@ describe('Backspace and Delete beside a block with no text select it first', () 
     assert.equal(doc(), 'paragraph("hello") | paragraph("after")')
   })
 
+  // From the last line of a container there is nothing to lift, and the join pulled the separator
+  // into the quote or list item. The separator is selected there as it is beside a top-level line.
+  test('Delete at the end of a quote or list item before a separator selects it, and the second deletes it, outside', () => {
+    const cases = [
+      ['<blockquote><p>quote</p></blockquote><hr><p>after</p>', 'blockquote(paragraph("quote"))'],
+      ['<ul><li><p>item</p></li></ul><hr><p>after</p>', 'bulletList(listItem(paragraph("item")))'],
+      ['<blockquote><p>one</p><p>two</p></blockquote><hr><p>after</p>', 'blockquote(paragraph("one"),paragraph("two"))'],
+    ]
+    for (const [html, container] of cases) {
+      editor.commands.setContent(html)
+      const starts = paragraphStarts()
+      editor.commands.setTextSelection(starts[starts.length - 2] + editor.state.doc.resolve(starts[starts.length - 2]).parent.content.size)
+      key(editor.view, 'Delete')
+      assert.equal(editor.state.selection.node?.type.name, 'horizontalRule', html)
+      assert.equal(doc(), `${container} | horizontalRule() | paragraph("after")`, html)
+      key(editor.view, 'Delete')
+      assert.equal(doc(), `${container} | paragraph("after")`, html)
+    }
+  })
+
+  // A Group is isolating, so Delete never crosses its edge: the separator is neither pulled in nor deleted.
+  test('Delete at the end of a Group’s last line leaves the separator after it alone', () => {
+    win.setContent('<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:paragraph -->\n<p>in group</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->\n\n' +
+      '<!-- wp:separator -->\n<hr class="wp-block-separator has-alpha-channel-opacity"/>\n<!-- /wp:separator -->\n\n' +
+      '<!-- wp:paragraph -->\n<p>after</p>\n<!-- /wp:paragraph -->')
+    const loaded = 'groupBlock(paragraph("in group")) | horizontalRule() | paragraph("after")'
+    assert.equal(doc(), loaded)
+    editor.commands.setTextSelection(paragraphStarts()[0] + 'in group'.length)
+    key(editor.view, 'Delete')
+    key(editor.view, 'Delete')
+    assert.equal(doc(), loaded)
+  })
+
+  test('Delete at the end of a quote line that is not its last still joins the next line', () => {
+    editor.commands.setContent('<blockquote><p>one</p><p>two</p></blockquote><hr><p>after</p>')
+    editor.commands.setTextSelection(paragraphStarts()[0] + 3)
+    key(editor.view, 'Delete')
+    assert.equal(doc(), 'blockquote(paragraph("onetwo")) | horizontalRule() | paragraph("after")')
+  })
+
   // From an empty line ProseMirror removes the line and selects the block itself; selecting the
   // block first would leave the empty line behind.
   test('Backspace or Delete on an empty line beside a separator removes the line and selects the separator', () => {
