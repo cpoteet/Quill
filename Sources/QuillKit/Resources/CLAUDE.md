@@ -101,6 +101,7 @@ onto it" — its children are still replayed.
 - A node with its own node view never sees `renderHTML`, so a block setting can save correctly and still draw nothing
 - A decoration that follows the caret cannot double as the display of a stored setting
 - A leaf block in `DELETABLE_BLOCKS` needs `_deletableTarget`, not the ancestor walk
+- A toolbar icon's SVG is copied into the user guide
 - Row 2's dividers are marked from JS, not CSS
 - Row 2 must not show or hide while a press in the editor is held
 - The inline image popover writes what core's popover writes, and is tested against core itself

@@ -1,6 +1,6 @@
 # Quill — Test Suite Reference
 
-_Last updated: 2026-11-16 — 918 Swift tests + 2,751 JS tests (2,750 pass, 1 skipped), no failures._
+_Last updated: 2026-11-19 — 918 Swift tests + 2,759 JS tests (2,758 pass, 1 skipped), no failures._
 
 This document is the authoritative reference for Quill's automated test suite and manual testing checklists. It covers how to run every test, what each test covers, and which manual checks to run before a release.
 
@@ -24,7 +24,7 @@ This document is the authoritative reference for Quill's automated test suite an
 6. **JS editor bridge tests** — `node --test Scripts/test-editor-bridge.js` (46 tests — live Tiptap editor in jsdom; `window.flushContent`, `window.insertImage`'s caption, `window.setContent`'s undo history and `closeLeakingTags`)
 7. **JS editor keyboard tests** — `node --test Scripts/test-editor-keyboard.js` (186 tests — live Tiptap editor in jsdom)
 8. **JS gallery tests** — `node --test Scripts/test-editor-gallery.js` (73 tests — live Tiptap editor in jsdom)
-9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (750 tests — live Tiptap editor in jsdom)
+9. **JS container tests** — `node --test Scripts/test-editor-containers.js` (758 tests — live Tiptap editor in jsdom)
 10. **JS block move tests** — `node --test Scripts/test-editor-block-move.js` (122 tests — live Tiptap editor in jsdom; `block-move.js`, `block-grip.js` and the moves, grip and drop wiring in `editor.html`)
 11. **JS change bar tests** — `node --test Scripts/test-editor-change-bars.js` (103 tests — live Tiptap editor in jsdom; `change-bars.js` and the baseline, bridge and overlay wiring in `editor.html`)
 12. **JS passthrough tests** — `node --test Scripts/test-editor-passthrough.js` (65 tests — live Tiptap editor in jsdom)
@@ -3231,7 +3231,7 @@ Clearing `sourceHTML` (what an edit does) and saving must lose nothing the node 
 | `double-clicking the card Edit link asks for the sheet once` | The second click and the dblclick on the link are ignored |
 | `a new image sent with an attachment destination saves as an attachment link` | The `blockAttrs` Swift sends for it produce `"linkDestination":"attachment"`, not `custom` |
 
-## JS container tests (750 tests)
+## JS container tests (758 tests)
 
 File: `Scripts/test-editor-containers.js`
 Editor file: `Sources/QuillKit/Resources/editor.html`
@@ -3633,9 +3633,9 @@ An accordion heading, details summary or tab title with no text is zero-width, s
 | `pressing an untitled details summary seats the caret in the summary` | |
 | `the details arrow still collapses an untitled details` | |
 
-### `delete block control` (3 tests) and `a selected separator` (14 tests)
+### `delete block control` (3 tests), `a selected separator` (14 tests) and `an image` (8 tests)
 
-The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, `DELETABLE_BLOCKS`, so teaching Quill a new container gives it all three gestures at once. The separator is the awkward case: it is a leaf, so it is reachable only through the node selection, not the ancestor walk every other container uses.
+The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, `DELETABLE_BLOCKS`, so teaching Quill a new container gives it all three gestures at once. The separator is the awkward case: it is a leaf, so it is reachable only through the node selection, not the ancestor walk every other container uses. An image is reached both ways: selected, through the node selection, and with the caret in its caption, through the walk.
 
 | Test | What it checks |
 |---|---|
@@ -3643,6 +3643,10 @@ The ✕ button, ⌘⇧⌫ and the block selection all resolve through one list, 
 | `the ✕ is hidden in ordinary body text` | |
 | `offers the ✕, named as a separator` / `is removed by the ✕` / `is removed by ⌘⇧⌫ too` | The separator through both gestures |
 | `leaves the surrounding paragraphs alone` | |
+| `selected, offers the ✕, named as an image` / `selected, is removed by the ✕ and leaves its neighbours alone` / `selected, is removed by ⌘⇧⌫ too` | The image through both gestures, from a node selection |
+| `with the caret in its caption, the ✕ removes the image` | The caption reaches the image through the ancestor walk |
+| `Esc in its caption moves the caret out, below the image` | Esc leaves the image the way it leaves a container, and keeps it |
+| `Esc in a caption lands in a new paragraph, not the next image's caption` / `Esc in a caption inside a quote does not move into the citation` / `Esc from a container lands in a new paragraph, not a caption after it` | Esc reuses only an ordinary textblock after the block, never one in `_LINE_TEXTBLOCKS` (a caption, citation or title) |
 | `the ✕ stays hidden with the caret merely next to one` | |
 | `the table group no longer carries its own delete button` | One control, not one per block type |
 | `a nested block is removed before the one holding it` | Innermost first |

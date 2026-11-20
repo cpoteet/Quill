@@ -3930,6 +3930,7 @@
       ['blockquote', 'quote'],
       ['codeBlock', 'code block'],
       ['horizontalRule', 'separator'],
+      ['image', 'image'],
     ])
 
     function _deletableBlockAt($pos) {
@@ -3978,6 +3979,9 @@
       return _OVERLAY_IDS.some(id => document.getElementById(id)?.classList.contains('visible'))
     }
 
+    // Textblocks that belong to the block around them, so Esc never lands in one.
+    const _LINE_TEXTBLOCKS = new Set(['image', 'cite', 'detailsSummary', 'buttonBlock', 'accordionHeading', 'tabButton', 'footnoteItem'])
+
     // Land the caret in typable space just past the container, making that
     // paragraph when the container is the last thing there is. Enter's lift-out
     // (`newLine`) reuses only an empty paragraph, never the start of a heading or
@@ -3990,7 +3994,7 @@
       const next = tr.doc.nodeAt(after)
       const reusable = newLine
         ? next?.type.name === 'paragraph' && next.content.size === 0
-        : next?.isTextblock
+        : next?.isTextblock && !_LINE_TEXTBLOCKS.has(next.type.name)
       if (!reusable) tr.insert(after, editor.schema.nodes.paragraph.create())
       editor.view.dispatch(tr)
       editor.commands.setTextSelection(after + 1)

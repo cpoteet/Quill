@@ -2480,6 +2480,103 @@ describe('delete block control', () => {
     })
   })
 
+  // The one block with second-row controls that once had no ✕: selected by a
+  // click, or reached through its caption, it takes the same three gestures.
+  describe('an image', () => {
+    const IMAGE_HTML = '<p>x</p><figure class="wp-block-image"><img src="a.png" alt=""><figcaption>cap</figcaption></figure><p>y</p>'
+    const imagePos = () => {
+      let at = null
+      editor.state.doc.descendants((n, pos) => { if (at === null && n.type.name === 'image') at = pos })
+      assert.ok(at !== null, 'no image in the document')
+      return at
+    }
+    const hasImage = () => {
+      let found = false
+      editor.state.doc.descendants(n => { if (n.type.name === 'image') found = true })
+      return found
+    }
+
+    test('selected, offers the ✕, named as an image', () => {
+      editor.commands.setContent(IMAGE_HTML, { emitUpdate: false })
+      editor.commands.setNodeSelection(imagePos())
+      assert.notEqual(win.document.getElementById('block-controls').style.display, 'none')
+      assert.match(deleteKey().title, /image/i)
+    })
+
+    test('selected, is removed by the ✕ and leaves its neighbours alone', () => {
+      editor.commands.setContent(IMAGE_HTML, { emitUpdate: false })
+      editor.commands.setNodeSelection(imagePos())
+      press('deleteBlock')
+      assert.equal(hasImage(), false)
+      assert.equal(editor.state.doc.textContent, 'xy')
+    })
+
+    test('selected, is removed by ⌘⇧⌫ too', () => {
+      editor.commands.setContent(IMAGE_HTML, { emitUpdate: false })
+      editor.commands.setNodeSelection(imagePos())
+      editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: 'Backspace', code: 'Backspace', keyCode: 8, which: 8,
+        bubbles: true, cancelable: true, metaKey: true, shiftKey: true,
+      }))
+      assert.equal(hasImage(), false)
+    })
+
+    test('with the caret in its caption, the ✕ removes the image', () => {
+      editor.commands.setContent(IMAGE_HTML, { emitUpdate: false })
+      editor.commands.setTextSelection(imagePos() + 2)
+      assert.notEqual(win.document.getElementById('block-controls').style.display, 'none')
+      press('deleteBlock')
+      assert.equal(hasImage(), false)
+    })
+
+    test('Esc in its caption moves the caret out, below the image', () => {
+      editor.commands.setContent(IMAGE_HTML, { emitUpdate: false })
+      editor.commands.setTextSelection(imagePos() + 2)
+      editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+        key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true,
+      }))
+      const { $from } = editor.state.selection
+      assert.equal($from.parent.type.name, 'paragraph')
+      assert.ok($from.pos > imagePos(), 'the caret should land after the image')
+      assert.equal(hasImage(), true)
+    })
+
+    const pressEscape = () => editor.view.dom.dispatchEvent(new win.KeyboardEvent('keydown', {
+      key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true,
+    }))
+
+    test('Esc in a caption lands in a new paragraph, not the next image\'s caption', () => {
+      editor.commands.setContent('<figure class="wp-block-image"><img src="a.png" alt=""><figcaption>one</figcaption></figure><figure class="wp-block-image"><img src="b.png" alt=""><figcaption>two</figcaption></figure>', { emitUpdate: false })
+      editor.commands.setTextSelection(imagePos() + 2)
+      pressEscape()
+      assert.equal(editor.state.selection.$from.parent.type.name, 'paragraph')
+      assert.equal(editor.state.doc.child(1).type.name, 'paragraph')
+    })
+
+    test('Esc in a caption inside a quote does not move into the citation', () => {
+      editor.commands.setContent('<blockquote><figure class="wp-block-image"><img src="a.png" alt=""><figcaption>cap</figcaption></figure><cite>Someone</cite></blockquote>', { emitUpdate: false })
+      editor.commands.setTextSelection(imagePos() + 2)
+      pressEscape()
+      assert.notEqual(editor.state.selection.$from.parent.type.name, 'cite')
+      assert.equal(editor.state.selection.$from.parent.type.name, 'paragraph')
+    })
+
+    test('Esc from a container lands in a new paragraph, not a caption after it', () => {
+      editor.commands.setContent('<p></p>', { emitUpdate: false })
+      win.insertDetails()
+      const details = editor.state.doc.firstChild.type.name === 'detailsBlock' ? 0 : 1
+      const after = editor.state.doc.child(details).nodeSize + (details ? editor.state.doc.child(0).nodeSize : 0)
+      editor.chain().insertContentAt(after, '<figure class="wp-block-image"><img src="a.png" alt=""><figcaption>cap</figcaption></figure>').run()
+      let inDetails = null
+      editor.state.doc.descendants((n, pos) => { if (inDetails === null && n.type.name === 'paragraph' && editor.state.doc.resolve(pos).parent.type.name === 'detailsBlock') inDetails = pos })
+      assert.ok(inDetails !== null, 'no paragraph inside the details block')
+      editor.commands.setTextSelection(inDetails + 1)
+      pressEscape()
+      assert.equal(editor.state.selection.$from.parent.type.name, 'paragraph')
+      assert.equal(editor.state.selection.$from.node(1).type.name, 'paragraph')
+    })
+  })
+
   test('the table group no longer carries its own delete button', () => {
     assert.equal(win.document.querySelector('#table-controls [data-cmd="deleteTable"]'), null)
   })
