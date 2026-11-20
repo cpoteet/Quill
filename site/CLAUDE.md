@@ -24,6 +24,6 @@ The public site (quill.siolon.com). Plain HTML, no build step.
 - `images/symbols/*.svg` — Apple's SF Symbols for the window toolbar and the status badges, from `swift Scripts/export-symbol-icons.swift` (needs `brew install poppler`).
 - `images/editor/*.svg` — the formatting toolbar's own icons, copied out of `editor.html` by `node Scripts/export-editor-icons.js`. Its buttons drawn as text (B, I, S, A, {}, *, ABC, </>, P) are `.docs-glyph` spans instead.
 
-A new icon is one entry in the right script's list plus one `.docs-icon--NAME` line in `style.css`.
+A new icon is one entry in the right script's list plus one `.docs-icon--NAME` line in `style.css`. In a `docs-table--wide-marks` table (the two formatting-toolbar tables), wrap each row's leading mark in `<span class="docs-mark">` so its label lines up with the others. One button per row: a row with two marks breaks the alignment.
 
 **Markup.** Match the existing `docs-*` classes. A new `h2` goes in the Contents list. Give a heading an `id` only when something links to it. Every `href="#…"` must resolve. Keep the ids linked from outside the page: `#connecting-to-wordpress` (`index.html`), plus `#requirements--installation`, `#saving--publishing` and `#working-with-blocks` (the screenshot draft in `.claude/skills/site-screenshots/quill-draft.md`).

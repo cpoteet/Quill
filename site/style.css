@@ -1591,13 +1591,52 @@ kbd {
 .docs-icon--align-right  { --icon: url(images/editor/align-right.svg); }
 
 /* The toolbar buttons drawn as text, styled the way editor.html draws them
-   (.tb-text-icon, .tb-inline-code, .tb-code-text, .tb-spell-icon). */
+   (.tb-text-icon, .tb-inline-code, .tb-code-text, .tb-spell-icon).
+
+   The box matches a .docs-icon (1.15em of the cell's text), so every label
+   starts at the same place. Each glyph sets its own font-size, so the box
+   can't use em itself: a registered length resolves 1.15em on the cell and
+   hands the glyph that px value. */
+@property --docs-icon-box {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 16px;
+}
+.docs-table td { --docs-icon-box: 1.15em; }
+
+/* A table whose buttons include wider marks (P▾, +▾, ABC, </>) wraps each
+   row's mark in a .docs-mark slot as wide as the widest, so the labels line
+   up. The mark sits at the slot's left, like the other rows' icons. */
+@property --docs-mark-slot {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 24px;
+}
+.docs-table td { --docs-mark-slot: 1.15em; }
+.docs-table--wide-marks td { --docs-mark-slot: 1.7em; }
+.docs-mark {
+  display: inline-block;
+  min-width: var(--docs-mark-slot);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.docs-mark > .docs-icon,
+.docs-mark > .docs-glyph { margin-right: 0; }
+
+/* A label that wraps continues under the label, not under its mark. */
+.docs-table td:first-child:has(> .docs-mark:first-child, > .docs-icon:first-child, > .docs-glyph:first-child) {
+  padding-left: calc(var(--docs-mark-slot) + 6px);
+  text-indent: calc(-1 * (var(--docs-mark-slot) + 6px));
+}
+.docs-table td .docs-mark,
+.docs-table td .docs-icon,
+.docs-table td .docs-glyph { text-indent: 0; }
 .docs-glyph {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.15em;
-  height: 1.15em;
+  min-width: var(--docs-icon-box);
+  height: var(--docs-icon-box);
   margin-right: 6px;
   /* An inline-flex box sits on its text's baseline already. */
   vertical-align: baseline;
@@ -1619,7 +1658,7 @@ kbd {
 }
 .docs-glyph--mono { font-family: "SF Mono", Menlo, monospace; font-size: 11px; }
 .docs-glyph--spell { font-size: 10.5px; font-weight: 700; }
-.docs-glyph--footnote { font-size: 22px; font-weight: 600; position: relative; top: 4px; }
+.docs-glyph--footnote { font-size: 22px; font-weight: 600; position: relative; top: 6px; }
 
 .docs-keys__row {
   display: grid;

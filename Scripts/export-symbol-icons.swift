@@ -14,11 +14,15 @@
 //
 // - `.plain` symbols whose arrow overlaps the base shape (tray.and.arrow.down,
 //   square.and.arrow.up, icloud.and.arrow.up) clear a gap in the base around
-//   the arrow. The script swaps the bitmap for a vector mask: the arrow's
-//   outline, grown by `clearance`, cut out of the base.
+//   the arrow. The script drops the bitmap and cuts the arrow's outline, grown
+//   by `clearance`, out of the base path.
 // - `.cutout` symbols (the *.circle.fill status badges) knock their glyph out
 //   of the filled circle. Drawn in palette mode, the glyph and the circle come
 //   out as two separate paths, and the script cuts one out of the other.
+//
+// Both cuts are CGPath boolean operations, so every icon ships as plain
+// paths. Never an SVG <mask>: WebKit draws one at the SVG's own 18 px size,
+// so masked icons were blurry in Safari on Retina.
 //
 // Anything else that comes out as a bitmap stops the script rather than
 // shipping a raster.
@@ -130,15 +134,50 @@ func number(_ value: Double) -> String {
     return s.replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
 }
 
-/// A white mask with `cut` painted black over it, so `cut` becomes a hole.
-func maskElement(_ id: String, width: String, height: String, cut: String, stroke: String? = nil) -> [String] {
-    let strokeAttrs = stroke.map { #" stroke="black" stroke-width="\#($0)" stroke-linejoin="round""# } ?? ""
-    return [
-        #"<mask id="\#(id)" maskUnits="userSpaceOnUse" x="0" y="0" width="\#(width)" height="\#(height)">"#,
-        #"<rect width="\#(width)" height="\#(height)" fill="white"/>"#,
-        #"<path d="\#(cut)" fill="black"\#(strokeAttrs)/>"#,
-        "</mask>",
-    ]
+/// pdftocairo's path data (absolute M, L, C and Z only) as a CGPath.
+func cgPath(_ d: String) -> CGPath {
+    let path = CGMutablePath()
+    var tokens = d.split(separator: " ").makeIterator()
+    func point() -> CGPoint {
+        guard let x = tokens.next().flatMap({ Double($0) }), let y = tokens.next().flatMap({ Double($0) })
+        else { fail("unreadable path data: \(d.prefix(60))") }
+        return CGPoint(x: x, y: y)
+    }
+    while let op = tokens.next() {
+        switch op {
+        case "M": path.move(to: point())
+        case "L": path.addLine(to: point())
+        case "C": let c1 = point(), c2 = point(); path.addCurve(to: point(), control1: c1, control2: c2)
+        case "Z": path.closeSubpath()
+        default: fail("path command \(op) in pdftocairo output")
+        }
+    }
+    return path
+}
+
+/// A CGPath as SVG path data.
+func svgPathData(_ path: CGPath) -> String {
+    var parts: [String] = []
+    func p(_ pt: CGPoint) -> String { "\(number(pt.x)) \(number(pt.y))" }
+    path.applyWithBlock { element in
+        let pts = element.pointee.points
+        switch element.pointee.type {
+        case .moveToPoint: parts.append("M \(p(pts[0]))")
+        case .addLineToPoint: parts.append("L \(p(pts[0]))")
+        case .addQuadCurveToPoint: parts.append("Q \(p(pts[0])) \(p(pts[1]))")
+        case .addCurveToPoint: parts.append("C \(p(pts[0])) \(p(pts[1])) \(p(pts[2]))")
+        case .closeSubpath: parts.append("Z")
+        @unknown default: fail("unknown CGPath element")
+        }
+    }
+    return parts.joined(separator: " ")
+}
+
+/// `base` with `cut` removed, as one path. The cut is real geometry rather
+/// than an SVG <mask>: WebKit draws a <mask> inside an SVG used as an image at
+/// the SVG's own pixel size, so a masked icon comes out blurry on Retina.
+func cutOut(_ cut: CGPath, from base: CGPath) -> String {
+    svgPathData(base.subtracting(cut, using: .winding))
 }
 
 // Every file is built before any is written, so a failure leaves the old icons in place.
@@ -160,18 +199,19 @@ for (id, name, kind) in symbols {
         let base = shapes.filter { $0.tag.contains(baseFill) }.map(\.d)
         guard !svg.contains("<image"), !glyph.isEmpty, !base.isEmpty, glyph.count + base.count == shapes.count
         else { fail("\(name) did not come out as a separate glyph and base in palette mode") }
-        body += maskElement("cut", width: box[1], height: box[2], cut: glyph.joined(separator: " "))
-        body += base.map { #"<path d="\#($0)" mask="url(#cut)"/>"# }
+        let cut = cutOut(cgPath(glyph.joined(separator: " ")), from: cgPath(base.joined(separator: " ")))
+        body.append(#"<path d="\#(cut)"/>"#)
     case .plain:
         if svg.contains("<image") {
-            // The base layer is the second clip path; the bitmap mask is the gap.
+            // The base layer is the second clip path; the bitmap mask is the gap, rebuilt below as a cut.
             let clips = matches(#"<clipPath id="clip-\d+">\s*<path [^>]*?\bd="([^"]+)""#, in: svg).map { $0[1] }
             guard clips.count == 2, svg.components(separatedBy: "<image").count == 2, !shapes.isEmpty,
                   svg.contains(#"<g mask="url(#mask-0)">"#)
             else { fail("\(name) has a bitmap in a shape this script does not know how to rebuild") }
-            body += maskElement("gap", width: box[1], height: box[2],
-                                cut: shapes.map(\.d).joined(separator: " "), stroke: number(clearance * 2))
-            body.append(#"<path d="\#(clips[1])" mask="url(#gap)"/>"#)
+            let arrow = cgPath(shapes.map(\.d).joined(separator: " "))
+            let grown = arrow.copy(strokingWithWidth: clearance * 2, lineCap: .butt, lineJoin: .round, miterLimit: 10)
+                .union(arrow, using: .winding)
+            body.append(#"<path d="\#(cutOut(grown, from: cgPath(clips[1])))"/>"#)
         } else if shapes.isEmpty {
             fail("\(name) produced no paths")
         }
