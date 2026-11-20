@@ -20,4 +20,10 @@ The public site (quill.siolon.com). Plain HTML, no build step.
 
 **When something changes or is removed,** correct or delete every mention: `grep -n` the old label, shortcut or block name across the whole file. The same fact can appear in the toolbar tables, Keyboard Shortcuts and Block Editor Compatibility.
 
-**Markup.** Match the existing `docs-*` classes. A new `h2` goes in the Contents list. Give a heading an `id` only when something links to it. Every `href="#…"` must resolve. Keep the ids linked from outside the page: `#connecting-to-wordpress` (`index.html`), plus `#requirements--installation`, `#writing--editing` and `#container-blocks` (the screenshot draft in `.claude/skills/site-screenshots/quill-draft.md`).
+**App icons.** The guide shows the app's own icons beside the names of buttons and statuses, drawn with `<span class="docs-icon docs-icon--NAME" aria-hidden="true">` (a CSS mask filled with the text colour, or a status colour) so the name stays the text. Two generated sets; never edit either by hand:
+- `images/symbols/*.svg` — Apple's SF Symbols for the window toolbar and the status badges, from `swift Scripts/export-symbol-icons.swift` (needs `brew install poppler`).
+- `images/editor/*.svg` — the formatting toolbar's own icons, copied out of `editor.html` by `node Scripts/export-editor-icons.js`. Its buttons drawn as text (B, I, S, A, {}, *, ABC, </>, P) are `.docs-glyph` spans instead.
+
+A new icon is one entry in the right script's list plus one `.docs-icon--NAME` line in `style.css`.
+
+**Markup.** Match the existing `docs-*` classes. A new `h2` goes in the Contents list. Give a heading an `id` only when something links to it. Every `href="#…"` must resolve. Keep the ids linked from outside the page: `#connecting-to-wordpress` (`index.html`), plus `#requirements--installation`, `#saving--publishing` and `#working-with-blocks` (the screenshot draft in `.claude/skills/site-screenshots/quill-draft.md`).

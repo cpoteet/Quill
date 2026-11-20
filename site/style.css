@@ -1530,6 +1530,96 @@ kbd {
 
 .docs-table__col--key { width: 100px; }
 .docs-table__col--label { width: 140px; }
+.docs-table__col--wide { width: 175px; }
+
+/* An app icon beside the name of its button or status. The SVG is a mask, so
+   the icon takes the text colour in either theme (a status badge sets its own).
+   images/symbols/ comes from Scripts/export-symbol-icons.swift and
+   images/editor/ from Scripts/export-editor-icons.js; see site/CLAUDE.md. */
+.docs-icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 6px;
+  vertical-align: -0.22em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+/* Inside a sentence: no gap of its own. */
+.docs-icon--inline { margin-right: 0; }
+
+/* Window toolbar (SF Symbols) */
+.docs-icon--sidebar-left   { --icon: url(images/symbols/sidebar-left.svg); }
+.docs-icon--refresh        { --icon: url(images/symbols/refresh.svg); }
+.docs-icon--new            { --icon: url(images/symbols/new.svg); }
+.docs-icon--save-locally   { --icon: url(images/symbols/save-locally.svg); }
+.docs-icon--revert         { --icon: url(images/symbols/revert.svg); }
+.docs-icon--preview        { --icon: url(images/symbols/preview.svg); }
+.docs-icon--share          { --icon: url(images/symbols/share.svg); }
+.docs-icon--publish-draft  { --icon: url(images/symbols/publish-draft.svg); }
+.docs-icon--publish-update { --icon: url(images/symbols/publish-update.svg); }
+.docs-icon--publish        { --icon: url(images/symbols/publish.svg); }
+.docs-icon--sidebar-right  { --icon: url(images/symbols/sidebar-right.svg); }
+.docs-icon--back           { --icon: url(images/symbols/back.svg); }
+
+/* Post status badges (SF Symbols), in Color.statusColor's values */
+.docs-icon--status-draft   { --icon: url(images/symbols/status-draft.svg);   color: #D99A2B; }
+.docs-icon--status-pending { --icon: url(images/symbols/status-pending.svg); color: #CF6B46; }
+.docs-icon--status-publish { --icon: url(images/symbols/status-publish.svg); color: #3E9E63; }
+.docs-icon--status-future  { --icon: url(images/symbols/status-future.svg);  color: #4A8CCE; }
+.docs-icon--status-private { --icon: url(images/symbols/status-private.svg); color: #3E9FA8; }
+.docs-icon--status-local   { --icon: url(images/symbols/status-local.svg);   color: #6C63C9; }
+
+/* Formatting toolbar (Quill's own icons) */
+.docs-icon--undo         { --icon: url(images/editor/undo.svg); }
+.docs-icon--redo         { --icon: url(images/editor/redo.svg); }
+.docs-icon--menu-chevron { --icon: url(images/editor/menu-chevron.svg); width: 0.7em; margin-left: 2px; }
+.docs-icon--link         { --icon: url(images/editor/link.svg); }
+.docs-icon--bullet-list  { --icon: url(images/editor/bullet-list.svg); }
+.docs-icon--number-list  { --icon: url(images/editor/number-list.svg); }
+.docs-icon--blockquote   { --icon: url(images/editor/blockquote.svg); }
+.docs-icon--image        { --icon: url(images/editor/image.svg); }
+.docs-icon--gallery      { --icon: url(images/editor/gallery.svg); }
+.docs-icon--table        { --icon: url(images/editor/table.svg); }
+.docs-icon--embed        { --icon: url(images/editor/embed.svg); }
+.docs-icon--evaluate     { --icon: url(images/editor/evaluate.svg); }
+.docs-icon--generate     { --icon: url(images/editor/generate.svg); }
+.docs-icon--align-left   { --icon: url(images/editor/align-left.svg); }
+.docs-icon--align-center { --icon: url(images/editor/align-center.svg); }
+.docs-icon--align-right  { --icon: url(images/editor/align-right.svg); }
+
+/* The toolbar buttons drawn as text, styled the way editor.html draws them
+   (.tb-text-icon, .tb-inline-code, .tb-code-text, .tb-spell-icon). */
+.docs-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15em;
+  height: 1.15em;
+  margin-right: 6px;
+  /* An inline-flex box sits on its text's baseline already. */
+  vertical-align: baseline;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  color: inherit;
+}
+.docs-glyph--italic { font-style: italic; font-weight: 500; }
+.docs-glyph--strike { text-decoration: line-through; font-weight: 500; }
+.docs-glyph--code {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  background: var(--color-code-bg);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.docs-glyph--mono { font-family: "SF Mono", Menlo, monospace; font-size: 11px; }
+.docs-glyph--spell { font-size: 10.5px; font-weight: 700; }
+.docs-glyph--footnote { font-size: 22px; font-weight: 600; position: relative; top: 4px; }
 
 .docs-keys__row {
   display: grid;

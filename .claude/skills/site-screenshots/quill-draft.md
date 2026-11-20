@@ -2,13 +2,13 @@ Quill is a [native macOS app for writing and managing WordPress content](https:/
 
 ## Writing without a connection
 
-I think a writing tool should not depend on Wi-Fi, and Quill doesn't. [Local drafts are stored in SQLite, so you can write with no internet connection](https://quill.siolon.com/docs.html#writing--editing), and the app autosaves every 30 seconds. Unsaved changes come back on the next launch, which matters more than it sounds like it should. When you're ready, you can push a draft to WordPress, schedule it, or publish directly. If the post was edited on the site in the meantime, Quill's conflict detection flags it rather than quietly overwriting someone's work.
+I think a writing tool should not depend on Wi-Fi, and Quill doesn't. [Local drafts are stored in SQLite, so you can write with no internet connection](https://quill.siolon.com/docs.html#saving--publishing), and the app autosaves every 30 seconds. Unsaved changes come back on the next launch, which matters more than it sounds like it should. When you're ready, you can push a draft to WordPress, schedule it, or publish directly. If the post was edited on the site in the meantime, Quill's conflict detection flags it rather than quietly overwriting someone's work.
 
 Bars in the right margin mark every block that differs from the last save, so you can see what you changed before you send it anywhere.
 
 ## Blocks that edit like text
 
-Headings, lists, tables, images, galleries, footnotes and embeds all work the way you'd expect. [Columns, Tabs, Accordions and Groups](https://quill.siolon.com/docs.html#container-blocks) edit inline like the rest of your text, and posts save in the block editor's format, so you can switch between Quill and the WordPress editor without losing anything.
+Headings, lists, tables, images, galleries, footnotes and embeds all work the way you'd expect. [Columns, Tabs, Accordions and Groups](https://quill.siolon.com/docs.html#working-with-blocks) edit inline like the rest of your text, and posts save in the block editor's format, so you can switch between Quill and the WordPress editor without losing anything.
 
 ## A second pair of eyes
 

@@ -54,7 +54,8 @@
           <li><a href="#connecting-to-wordpress" class="toc__link">Connecting to WordPress</a></li>
           <li><a href="#the-interface" class="toc__link">Quill's Interface</a></li>
           <li><a href="#writing--editing" class="toc__link">Writing and Editing</a></li>
-          <li><a href="#content-elements" class="toc__link">Content Elements</a></li>
+          <li><a href="#working-with-blocks" class="toc__link">Working With Blocks</a></li>
+          <li><a href="#saving--publishing" class="toc__link">Saving and Publishing</a></li>
           <li><a href="#post--page-settings" class="toc__link">Post and Page Settings</a></li>
           <li><a href="#media-library" class="toc__link">Media Library</a></li>
           <li><a href="#ai-writing-features" class="toc__link">AI Writing Features</a></li>
@@ -153,19 +154,21 @@
               <tr><th class="docs-table__col--label">Button</th><th>What it does</th></tr>
             </thead>
             <tbody>
-              <tr><td>Refresh</td><td>Reloads the current section from WordPress (⌘R), and the open post or page if you have no unsaved changes in it</td></tr>
-              <tr><td>+</td><td>A menu with New Post, New Page and Upload Media…</td></tr>
-              <tr><td>Save Locally</td><td>Saves a local draft on your Mac. Nothing is sent to WordPress</td></tr>
-              <tr><td>Revert</td><td>Throws away unsaved changes and reloads the post from WordPress</td></tr>
-              <tr><td>Preview</td><td>Opens the post in your browser. Named <strong>View Post</strong> or <strong>View Page</strong> for anything but a draft. See <a href="#preview" class="content-link">Preview</a></td></tr>
-              <tr><td>Share</td><td>Opens the macOS share menu for a published or private post's link</td></tr>
-              <tr><td>Save or Publish</td><td>Sends the post to WordPress. Its name says what will happen, based on the <a href="#status" class="content-link">Status</a> setting: Save Draft, Publish, Schedule, Update and so on. See <a href="#posts-and-pages-on-wordpress" class="content-link">Saving and Publishing</a></td></tr>
-              <tr><td>Post Settings</td><td>Opens or closes the post settings inspector</td></tr>
-              <tr><td>Media Info</td><td>In the media library, opens or closes the file details inspector</td></tr>
+              <tr><td><span class="docs-icon docs-icon--sidebar-left" aria-hidden="true"></span>Hide Sidebar</td><td>Hides the sidebar, or shows it again (<strong>Show Sidebar</strong>)</td></tr>
+              <tr><td><span class="docs-icon docs-icon--refresh" aria-hidden="true"></span>Refresh</td><td>Reloads the current section from WordPress (⌘R), and the open post or page if you have no unsaved changes in it</td></tr>
+              <tr><td><span class="docs-icon docs-icon--new" aria-hidden="true"></span>New</td><td>A menu with New Post, New Page and Upload Media…</td></tr>
+              <tr><td><span class="docs-icon docs-icon--save-locally" aria-hidden="true"></span>Save Locally</td><td>Saves a local draft on your Mac. Nothing is sent to WordPress. Shown only for local drafts</td></tr>
+              <tr><td><span class="docs-icon docs-icon--revert" aria-hidden="true"></span>Revert</td><td>Throws away unsaved changes and reloads the post from WordPress. Shown only when a post on WordPress has unsaved changes</td></tr>
+              <tr><td><span class="docs-icon docs-icon--preview" aria-hidden="true"></span>Preview</td><td>Opens the post in your browser. Named <strong>View Post</strong> or <strong>View Page</strong> for anything but a draft. See <a href="#preview" class="content-link">Preview</a></td></tr>
+              <tr><td><span class="docs-icon docs-icon--share" aria-hidden="true"></span>Share</td><td>Opens the macOS share menu for a published or private post's link</td></tr>
+              <tr><td><span class="docs-icon docs-icon--publish" aria-hidden="true"></span>Save or Publish</td><td>Sends the post to WordPress. Its name says what will happen, based on the <a href="#status" class="content-link">Status</a> setting: Save Draft, Publish, Schedule, Update and so on. Its icon is a cloud <span class="docs-icon docs-icon--publish-draft docs-icon--inline" aria-hidden="true"></span> for a draft, an arrow in a circle <span class="docs-icon docs-icon--publish-update docs-icon--inline" aria-hidden="true"></span> when it updates a published post, and a paper plane <span class="docs-icon docs-icon--publish docs-icon--inline" aria-hidden="true"></span> for everything else. See <a href="#posts-and-pages-on-wordpress" class="content-link">Saving and Publishing</a></td></tr>
+              <tr><td><span class="docs-icon docs-icon--sidebar-right" aria-hidden="true"></span>Post Settings</td><td>Opens or closes the post settings inspector</td></tr>
+              <tr><td><span class="docs-icon docs-icon--sidebar-right" aria-hidden="true"></span>Media Info</td><td>In the media library, opens or closes the file details inspector</td></tr>
+              <tr><td><span class="docs-icon docs-icon--back" aria-hidden="true"></span>Back to Media</td><td>In the media library's large preview, goes back to the grid</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-body">The icon to the left of the title shows the post's status as last saved to WordPress (see <a href="#status" class="content-link">Status</a>). The editor's buttons are also in the <strong>File</strong> menu: Save (⌘S), Publish (⇧⌘P), Revert to Saved and Preview in Browser.</p>
+        <p class="docs-body">The icon to the left of the title shows the post's status as last saved to WordPress (see <a href="#status" class="content-link">Status</a>). The editor's buttons are also in the <strong>File</strong> menu: Save (⌘S), the publish command (⇧⌘P, named like the button), Revert to Saved, and Preview in Browser (View in Browser for anything but a draft).</p>
         <h3 class="docs-h3">When Nothing Is Open</h3>
         <p class="docs-body">With nothing open, the editor area shows your site's name and two short lists. <strong>Continue Writing</strong> lists the three items you most recently worked on (or <strong>Recently Edited</strong>, when there's nothing to continue), and <strong>Scheduled</strong> lists posts due in the next two weeks. A scheduled post that didn't go out on time is marked <strong>Missed schedule</strong>. Click an item to open it.</p>
       </section>
@@ -186,20 +189,20 @@
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
-              <tr><th class="docs-table__col--label">Button</th><th class="docs-table__col--key">Shortcut</th><th>What it does</th></tr>
+              <tr><th class="docs-table__col--label docs-table__col--wide">Button</th><th class="docs-table__col--key">Shortcut</th><th>What it does</th></tr>
             </thead>
             <tbody>
-              <tr><td>Undo, Redo</td><td>⌘Z, ⇧⌘Z</td><td>Undoes or redoes the last change</td></tr>
-              <tr><td>P (Paragraph / heading)</td><td>⌥⌘0 to ⌥⌘6</td><td>Turns the current block into a paragraph (⌥⌘0) or a heading from Heading 1 (⌥⌘1) to Heading 6</td></tr>
-              <tr><td>B</td><td>⌘B</td><td>Bold</td></tr>
-              <tr><td>I</td><td>⌘I</td><td>Italic</td></tr>
-              <tr><td>S</td><td>⇧⌘S</td><td>Strikethrough</td></tr>
-              <tr><td>A</td><td>⌘E</td><td>Inline code</td></tr>
-              <tr><td>Link</td><td></td><td>Adds, changes or removes a link. See <a href="#links" class="content-link">Links</a></td></tr>
-              <tr><td>Bullet list</td><td>⇧⌘8</td><td>Turns the current block into a bulleted list</td></tr>
-              <tr><td>Number list</td><td>⇧⌘7</td><td>Turns the current block into a numbered list</td></tr>
-              <tr><td>Blockquote</td><td>⇧⌘B</td><td>Turns the current block into a quote, or back. See <a href="#blockquotes" class="content-link">Quotes</a></td></tr>
-              <tr><td>{} (Code)</td><td>⌥⌘C</td><td>Turns the current block into a code block</td></tr>
+              <tr><td><span class="docs-icon docs-icon--undo" aria-hidden="true"></span><span class="docs-icon docs-icon--redo" aria-hidden="true"></span>Undo, Redo</td><td>⌘Z, ⇧⌘Z</td><td>Undoes or redoes the last change</td></tr>
+              <tr><td><span class="docs-glyph" aria-hidden="true">P<span class="docs-icon docs-icon--menu-chevron docs-icon--inline" aria-hidden="true"></span></span>Paragraph / heading</td><td>⌥⌘0 to ⌥⌘6</td><td>Turns the current block into a paragraph (⌥⌘0) or a heading from Heading 1 (⌥⌘1) to Heading 6</td></tr>
+              <tr><td><span class="docs-glyph" aria-hidden="true">B</span>Bold</td><td>⌘B</td><td>Makes text bold</td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--italic" aria-hidden="true">I</span>Italic</td><td>⌘I</td><td>Makes text italic</td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--strike" aria-hidden="true">S</span>Strikethrough</td><td>⇧⌘S</td><td>Strikes text through</td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--code" aria-hidden="true">A</span>Inline code</td><td>⌘E</td><td>Formats text as code, in a monospaced font</td></tr>
+              <tr><td><span class="docs-icon docs-icon--link" aria-hidden="true"></span>Link</td><td></td><td>Adds, changes or removes a link. See <a href="#links" class="content-link">Links</a></td></tr>
+              <tr><td><span class="docs-icon docs-icon--bullet-list" aria-hidden="true"></span>Bullet list</td><td>⇧⌘8</td><td>Turns the current block into a bulleted list</td></tr>
+              <tr><td><span class="docs-icon docs-icon--number-list" aria-hidden="true"></span>Number list</td><td>⇧⌘7</td><td>Turns the current block into a numbered list</td></tr>
+              <tr><td><span class="docs-icon docs-icon--blockquote" aria-hidden="true"></span>Blockquote</td><td>⇧⌘B</td><td>Turns the current block into a quote, or back. See <a href="#quotes" class="content-link">Quotes and Pullquotes</a></td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--mono" aria-hidden="true">{}</span>Code</td><td>⌥⌘C</td><td>Turns the current block into a <a href="#code-blocks" class="content-link">code block</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -208,49 +211,28 @@
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
-              <tr><th class="docs-table__col--label">Button</th><th>What it does</th></tr>
+              <tr><th class="docs-table__col--label docs-table__col--wide">Button</th><th>What it does</th></tr>
             </thead>
             <tbody>
-              <tr><td>Image</td><td>Opens your media library so you can pick an <a href="#images" class="content-link">image</a> to insert</td></tr>
-              <tr><td>Gallery</td><td>Opens the <a href="#gallery" class="content-link">gallery</a> picker</td></tr>
-              <tr><td>Table</td><td>Opens a size grid for a new <a href="#tables" class="content-link">table</a></td></tr>
-              <tr><td>* (Footnote)</td><td>Adds a <a href="#footnotes" class="content-link">footnote</a> at the cursor</td></tr>
-              <tr><td>Embed</td><td>Adds a video, social post or other <a href="#embeds" class="content-link">embed</a> from its URL</td></tr>
-              <tr><td>+ (Additional blocks)</td><td>A menu of the blocks with no button of their own: Columns, Accordion, Tabs, Details, Buttons, Pullquote, Preformatted, Custom HTML and Separator. See <a href="#container-blocks" class="content-link">Container Blocks</a></td></tr>
-              <tr><td>ABC</td><td>Checks <a href="#spell-check" class="content-link">spelling</a></td></tr>
-              <tr><td>&lt;/&gt;</td><td>Switches to <a href="#code-view" class="content-link">code view</a> and back</td></tr>
-              <tr><td>Checkmark in a circle</td><td>Evaluates your writing. Shown only when an Anthropic API key is set. See <a href="#ai-writing-features" class="content-link">AI Writing Features</a></td></tr>
-              <tr><td>Pencil</td><td>Generates a post with AI. Shown only when an Anthropic API key is set</td></tr>
+              <tr><td><span class="docs-icon docs-icon--image" aria-hidden="true"></span>Image</td><td>Opens your media library so you can pick an <a href="#images" class="content-link">image</a> to insert</td></tr>
+              <tr><td><span class="docs-icon docs-icon--gallery" aria-hidden="true"></span>Gallery</td><td>Opens the <a href="#gallery" class="content-link">gallery</a> picker</td></tr>
+              <tr><td><span class="docs-icon docs-icon--table" aria-hidden="true"></span>Table</td><td>Opens a size grid for a new <a href="#tables" class="content-link">table</a></td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--footnote" aria-hidden="true">*</span>Footnote</td><td>Adds a <a href="#footnotes" class="content-link">footnote</a> at the cursor</td></tr>
+              <tr><td><span class="docs-icon docs-icon--embed" aria-hidden="true"></span>Embed</td><td>Adds a video, social post or other <a href="#embeds" class="content-link">embed</a> from its URL</td></tr>
+              <tr><td><span class="docs-glyph" aria-hidden="true">+<span class="docs-icon docs-icon--menu-chevron docs-icon--inline" aria-hidden="true"></span></span>Additional blocks</td><td>A menu of the blocks with no button of their own: Columns, Accordion, Tabs, Details, Buttons, Pullquote, Preformatted, Custom HTML and Separator. See <a href="#working-with-blocks" class="content-link">Working With Blocks</a></td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--spell" aria-hidden="true">ABC</span>Check spelling</td><td>Checks <a href="#spell-check" class="content-link">spelling</a></td></tr>
+              <tr><td><span class="docs-glyph docs-glyph--mono" aria-hidden="true">&lt;/&gt;</span>Code view</td><td>Switches to <a href="#code-view" class="content-link">code view</a> and back</td></tr>
+              <tr><td><span class="docs-icon docs-icon--evaluate" aria-hidden="true"></span>Evaluate</td><td>Evaluates your writing. Shown only when an Anthropic API key is set. See <a href="#ai-writing-features" class="content-link">AI Writing Features</a></td></tr>
+              <tr><td><span class="docs-icon docs-icon--generate" aria-hidden="true"></span>Generate</td><td>Generates a post with AI. Shown only when an Anthropic API key is set</td></tr>
             </tbody>
           </table>
         </div>
         <p class="docs-body">A block you insert goes after the block the cursor is in, as in the WordPress editor, so it never splits a paragraph. On an empty line, it takes that line's place.</p>
-        <h4 class="docs-h4" id="block-settings">The Second Toolbar Row</h4>
-        <p class="docs-body">A second row of controls appears under the toolbar when the cursor is in a block that has options of its own:</p>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--label">Block</th><th class="docs-table__col--label">Controls</th><th>What they do</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Quote, Pullquote</td><td>Cite</td><td>Adds or removes a citation line</td></tr>
-              <tr><td>Image</td><td>Align left, center, right</td><td>Floats the image left or right with text wrapping around it, or centers it</td></tr>
-              <tr><td>Table</td><td>+Row, +Col, −Row, −Col, Header, Footer</td><td>Adds or removes rows and columns, and turns the header and footer rows on or off</td></tr>
-              <tr><td>Columns</td><td>+Col, −Col</td><td>Adds a column, or removes the one the cursor is in</td></tr>
-              <tr><td>Buttons</td><td>+Button, −Button, Link</td><td>Adds a button, removes the current one, or sets where it links to</td></tr>
-              <tr><td>Accordion</td><td>+Item, −Item, Auto-close</td><td>Adds or removes a section. Auto-close closes the other sections when a reader opens one</td></tr>
-              <tr><td>Accordion</td><td>Icon, Icon side (Left, Right)</td><td>Shows or hides the open/close icon, and puts it on the left or right</td></tr>
-              <tr><td>Accordion section, Details</td><td>Open</td><td>Shows that section open when the page loads</td></tr>
-              <tr><td>Tabs</td><td>+Tab, −Tab, Default</td><td>Adds a tab, removes the current one, or makes the current tab the one readers see first</td></tr>
-              <tr><td>Button, Quote, Separator, Image, Table</td><td>Style</td><td>Picks one of the block styles WordPress provides: Outline for a button, Plain for a quote, Wide Line or Dots for a separator, Rounded for an image, Stripes for a table</td></tr>
-              <tr><td>A button with a link, a link in text</td><td>New tab</td><td>Makes the link open in a new browser tab</td></tr>
-              <tr><td>Most blocks you can insert</td><td>✕</td><td>Deletes the block (⇧⌘⌫)</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <h4 class="docs-h4" id="second-toolbar-row">The Second Toolbar Row</h4>
+        <p class="docs-body">When the cursor is in a block that has options of its own, such as a table, an image or a link, a second row of controls appears under the toolbar. Each block's controls are listed in its section under <a href="#working-with-blocks" class="content-link">Working With Blocks</a>.</p>
         <h3 class="docs-h3" id="links">Links</h3>
         <p class="docs-body">Select some text and click the <strong>Link</strong> button to open the link picker. Type to search your site's posts, pages, categories, tags and media by title, or paste any URL, then click a result or press Return. With the cursor on an existing link, the picker also has a <strong>Remove link</strong> button.</p>
-        <p class="docs-body">To follow a link from the editor, hold ⌘ and click it. To make a link open in a new tab, turn on <strong>New tab</strong> in the second toolbar row.</p>
+        <p class="docs-body">To follow a link from the editor, hold ⌘ and click it. To make a link open in a new tab, turn on <strong>New tab</strong> in the <a href="#second-toolbar-row" class="content-link">second toolbar row</a>.</p>
         <h3 class="docs-h3" id="markdown-shortcuts">Markdown Shortcuts</h3>
         <p class="docs-body">The editor turns common Markdown into formatting as you type.</p>
         <h4 class="docs-h4">Blocks</h4>
@@ -318,27 +300,6 @@
           <li>Text copied from a web page or chat app usually pastes better with ⌘V, because it's already formatted.</li>
           <li>A Markdown image (<code>![alt](url)</code>) keeps its original address, so the published post would load it from wherever it lives now. Replace it with an image uploaded to your media library.</li>
         </ul>
-        <h3 class="docs-h3" id="moving-blocks">Moving Blocks</h3>
-        <p class="docs-body">Point at a block and a small marker appears in the margin to its left, showing what kind of block it is. Drag the marker to move the block; an amber line shows where it will land.</p>
-        <p class="docs-body">To move a heading together with everything under it, hold ⌘ with the pointer on the heading's marker. The section is tinted, up to the next heading of the same or a higher level. Keep holding ⌘ and drag.</p>
-        <p class="docs-body">Without the mouse, <strong>Edit → Move Block Up</strong> (⌃⌘↑) and <strong>Move Block Down</strong> (⌃⌘↓) move the top-level block the cursor is in. Each move is one step for ⌘Z, and footnotes are renumbered to follow the new order.</p>
-        <h3 class="docs-h3">Saving and Publishing</h3>
-        <h4 class="docs-h4">Local Drafts</h4>
-        <p class="docs-body">Click <strong>Save Locally</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
-        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Save to WordPress</strong> and creates a draft on WordPress that readers can't see. Set the status to Published first if you want it to go live straight away. Once the draft is on WordPress, it moves from Drafts to Posts or Pages.</p>
-        <h4 class="docs-h4" id="posts-and-pages-on-wordpress">Posts and Pages on WordPress</h4>
-        <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>; on a draft, <strong>Save Draft</strong>. If you set a published post's status back to Draft, the button reads <strong>Switch to Draft</strong>, and saving takes the post off your site.</p>
-        <p class="docs-body"><strong>Revert</strong> throws away your unsaved changes, including changes in Post Settings, and reloads the post from WordPress. <strong>Refresh</strong> (⌘R) picks up edits made in the WordPress editor, as long as you have no unsaved changes in the post.</p>
-        <p class="docs-body">Before saving, Quill checks whether the post has been changed on WordPress since you opened it, for example in the WordPress editor. If it has, a <strong>Conflict Detected</strong> alert gives you three choices: <strong>Keep Local</strong> saves your version over the one on WordPress, <strong>Use Server</strong> throws away your changes for good, including the autosave on your Mac, and loads the WordPress version, and <strong>Cancel</strong> does nothing.</p>
-        <h4 class="docs-h4">Change Bars</h4>
-        <p class="docs-body">A thin grey bar in the right margin marks each block that differs from the last saved version, and a short grey dash marks where a block was deleted. Hover over one to see what it marks. Saving or reverting clears them.</p>
-        <h4 class="docs-h4">Autosave</h4>
-        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item or quit. Nothing is sent to your site. If you reopen a post before saving it to WordPress, even after quitting Quill, your changes come back.</p>
-        <p class="docs-body">Autosave keeps the title, the body and the footnotes, but not <a href="#post--page-settings" class="content-link">Post Settings</a> (apart from a local draft's excerpt). Setting changes you haven't saved to WordPress are lost when you leave the post.</p>
-        <h3 class="docs-h3" id="preview">Preview</h3>
-        <p class="docs-body">Click <strong>Preview</strong> to see a draft in your browser the way it looks on your site, with your unsaved changes. It works only for posts and pages already on WordPress, not for local drafts.</p>
-        <div class="docs-note">Previewing a draft saves your changes into the draft on WordPress, because WordPress keeps no separate preview copy of a draft.</div>
-        <p class="docs-body">For a published, scheduled, pending or private post, the button is <strong>View Post</strong> (<strong>View Page</strong> for a page). It opens the version saved on WordPress, without your unsaved changes. To see your changes on the site, save them first; for a published post, that updates the live post.</p>
         <h3 class="docs-h3">Find and Replace</h3>
         <p class="docs-body">Press ⌘F to open the find bar. Type in <strong>Find</strong> to highlight every match, and press Return or ⇧Return to move between them. Turn on <strong>Aa</strong> to match case. To replace text, type the new text in <strong>Replace</strong>, then click <strong>Replace</strong> for the current match or <strong>All</strong> for every match.</p>
         <h3 class="docs-h3" id="spell-check">Spell Check</h3>
@@ -350,11 +311,39 @@
         <p class="docs-body">Code view is also where you change blocks Quill has no editor for, which appear as cards in the visual editor (see <a href="#block-editor-compatibility" class="content-link">Block Editor Compatibility</a>).</p>
       </section>
 
-      <section class="docs-section" id="content-elements">
-        <h2 class="docs-h2">Content Elements</h2>
+      <section class="docs-section" id="working-with-blocks">
+        <h2 class="docs-h2">Working With Blocks</h2>
+        <p class="docs-body">A post is a series of blocks: paragraphs, headings, lists, images and the rest. Paragraphs, headings and lists come from the <a href="#writing--editing" class="content-link">formatting toolbar</a>. The blocks below each have a toolbar button or an entry in the toolbar's <strong>+</strong> menu, and the controls that appear for them in the <a href="#second-toolbar-row" class="content-link">second toolbar row</a>.</p>
+        <h3 class="docs-h3">Moving and Deleting Blocks</h3>
+        <h4 class="docs-h4" id="moving-blocks">Moving</h4>
+        <p class="docs-body">Point at a block and a small marker appears in the margin to its left, showing what kind of block it is. Drag the marker to move the block; an amber line shows where it will land.</p>
+        <p class="docs-body">To move a heading together with everything under it, hold ⌘ with the pointer on the heading's marker. The section is tinted, up to the next heading of the same or a higher level. Keep holding ⌘ and drag.</p>
+        <p class="docs-body">Without the mouse, <strong>Edit → Move Block Up</strong> (⌃⌘↑) and <strong>Move Block Down</strong> (⌃⌘↓) move the top-level block the cursor is in. Each move is one step for ⌘Z, and footnotes are renumbered to follow the new order.</p>
+        <h4 class="docs-h4">Leaving a Block</h4>
+        <p class="docs-body">Press Esc to move out of a quote, table, code block, image caption or block from the <strong>+</strong> menu, onto a new paragraph after it. In a quote or a block from the <strong>+</strong> menu, Return on an empty last line does the same. This is how you carry on writing after a block at the end of a post.</p>
+        <h4 class="docs-h4">Deleting a Block</h4>
+        <p class="docs-body">Click <strong>✕</strong> at the right end of the second toolbar row, or press ⇧⌘⌫. This works for images, tables, quotes, code blocks, separators, groups and the blocks from the <strong>+</strong> menu other than Custom HTML. Delete other blocks, Custom HTML included, as you would text.</p>
+        <h3 class="docs-h3" id="quotes">Quotes and Pullquotes</h3>
+        <p class="docs-body">Press ⇧⌘B or click <strong>Blockquote</strong> to turn the current block into a quote, and do the same again to turn it back. It works like the WordPress editor's Transform to Quote: with the cursor in a list, the whole list goes inside the quote, and with several blocks selected, they all go into one quote.</p>
+        <p class="docs-body">With the cursor in a quote, the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li><strong>Cite</strong> adds a line at the bottom of the quote for the author or source, or removes it.</li>
+          <li><strong>Plain</strong> switches the quote to WordPress's plain quote style.</li>
+        </ul>
+        <p class="docs-body">Press Return on an empty line to leave the quote.</p>
+        <p class="docs-body">A <strong>Pullquote</strong>, from the <strong>+</strong> menu, is a quote set apart from the text around it. As in WordPress, it holds only text and a citation, and it has a <strong>Cite</strong> button too.</p>
+        <h3 class="docs-h3" id="code-blocks">Code Blocks and Preformatted</h3>
+        <p class="docs-body">Click <strong>{}</strong> or press ⌥⌘C to turn the current block into a code block, or type <code>```</code> and a space on an empty line. Type a language straight after the backticks, such as <code>```js</code>, to set the block's language.</p>
+        <p class="docs-body"><strong>Preformatted</strong>, from the <strong>+</strong> menu, keeps text exactly as typed, including spaces and line breaks, but isn't marked as code.</p>
+        <p class="docs-body">In both, Tab inserts a tab instead of leaving the block.</p>
         <h3 class="docs-h3" id="images">Images</h3>
         <p class="docs-body">Click <strong>Image</strong> in the toolbar and pick an image from your media library. <strong>Upload…</strong> in the same window adds one from your Mac first. You can also drag image files from the Finder onto the editor, or paste them; Quill uploads them to your media library and inserts them.</p>
-        <p class="docs-body">Click an image to select it. An image toolbar appears over it, and the alignment and Style controls appear in the <a href="#block-settings" class="content-link">second toolbar row</a>.</p>
+        <p class="docs-body">Click an image to select it. An image toolbar appears over it, for its size, alt text and link, and the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li>The three alignment buttons, <span class="docs-icon docs-icon--align-left docs-icon--inline" aria-hidden="true"></span> <span class="docs-icon docs-icon--align-center docs-icon--inline" aria-hidden="true"></span> <span class="docs-icon docs-icon--align-right docs-icon--inline" aria-hidden="true"></span>, float the image left with text wrapping around it, center it, or float it right.</li>
+          <li><strong>Rounded</strong> gives the image fully rounded corners.</li>
+          <li><strong>✕</strong> deletes the image (⇧⌘⌫).</li>
+        </ul>
         <h4 class="docs-h4">Size</h4>
         <ul class="docs-list">
           <li>Drag a corner handle to resize the image in proportion, or an edge handle to stretch it.</li>
@@ -381,33 +370,15 @@
           <li><strong>Size:</strong> which of WordPress's image sizes to use: <strong>Thumbnail</strong>, <strong>Medium</strong>, <strong>Large</strong> or <strong>Full Size</strong>.</li>
         </ul>
         <p class="docs-body">Click <strong>Insert Gallery</strong> to add the gallery as a single block. To change it later, double-click it or click <strong>Edit…</strong> under the thumbnails, make your changes and click <strong>Update Gallery</strong>. Galleries made in the WordPress editor can be edited the same way, and settings the picker doesn't show are kept.</p>
-        <h3 class="docs-h3" id="blockquotes">Quotes</h3>
-        <p class="docs-body">Press ⇧⌘B or click <strong>Blockquote</strong> to turn the current block into a quote, and do the same again to turn it back. It works like the WordPress editor's Transform to Quote: with the cursor in a list, the whole list goes inside the quote, and with several blocks selected, they all go into one quote.</p>
-        <p class="docs-body">Click <strong>Cite</strong> in the second toolbar row to add a line at the bottom of the quote for the author or source. Press Return on an empty line to leave the quote.</p>
-        <p class="docs-body">A <strong>Pullquote</strong>, from the <strong>+</strong> menu, is a quote set apart from the text around it. As in WordPress, it holds only text and a citation.</p>
-        <h3 class="docs-h3" id="container-blocks">Container Blocks</h3>
-        <p class="docs-body">Insert these from the <strong>+</strong> menu in the toolbar, then type in them as you would anywhere else:</p>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th class="docs-table__col--label">Block</th><th>What it is</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Columns</td><td>Content in side-by-side columns</td></tr>
-              <tr><td>Details</td><td>A section that opens and closes when the reader clicks its summary line</td></tr>
-              <tr><td>Buttons</td><td>One or more buttons that link somewhere</td></tr>
-              <tr><td>Accordion</td><td>A stack of sections that open and close, each with its own heading</td></tr>
-              <tr><td>Tabs</td><td>Panels with a row of tabs, showing one panel at a time</td></tr>
-              <tr><td>Pullquote</td><td>A quote set apart from the body text</td></tr>
-              <tr><td>Preformatted</td><td>Text kept exactly as typed, including spaces and line breaks</td></tr>
-              <tr><td>Separator</td><td>A horizontal line between sections. You can also type <code>---</code> on an empty line</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="docs-body">The controls for adding and removing columns, buttons, accordion sections and tabs are in the <a href="#block-settings" class="content-link">second toolbar row</a>, along with each block's settings.</p>
-        <p class="docs-body"><strong>Leaving a block.</strong> Press Esc, or Return twice, to move out of a block onto a new paragraph after it. This is how you carry on writing after a block at the end of a post.</p>
-        <p class="docs-body"><strong>Deleting a block.</strong> Click <strong>✕</strong> at the right end of the second toolbar row, or press ⇧⌘⌫. This works for tables, quotes, code blocks, separators, groups and the container blocks.</p>
-        <p class="docs-body" id="custom-html"><strong>Custom HTML.</strong> Choose <strong>Custom HTML</strong> from the <strong>+</strong> menu to add HTML of your own, such as an embed code or a styled box. Type or paste it in the window that opens and click <strong>Insert</strong> (⌘Return). If your WordPress account can add unfiltered HTML (on most sites, administrators and editors), the window also has <strong>CSS</strong> and <strong>JavaScript</strong> tabs. In the editor, the block is a card with a preview of its HTML, which renders only on your site. Double-click the card or click <strong>Edit…</strong> to change it.</p>
+        <h3 class="docs-h3" id="tables">Tables</h3>
+        <p class="docs-body">Click <strong>Table</strong> in the toolbar to open a size grid, and click the size you want. A new table has a header row. With the cursor in a table, the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li><strong>+Row</strong> and <strong>+Col</strong> add a row below or a column to the right. <strong>−Row</strong> and <strong>−Col</strong> remove the ones the cursor is in.</li>
+          <li><strong>Header</strong> and <strong>Footer</strong> turn the header and footer rows on or off.</li>
+          <li><strong>Stripes</strong> shades every other row.</li>
+        </ul>
+        <p class="docs-body">Press Tab to move to the next cell and ⇧Tab to move back. Tab in the last cell adds a new row. <strong>Image</strong> with the cursor in a cell adds a small <a href="#inline-images" class="content-link">inline image</a> to the cell's text.</p>
+        <p class="docs-body">Quill keeps a table caption written in the WordPress editor, but can't add or change one; do that in WordPress.</p>
         <h3 class="docs-h3" id="footnotes">Footnotes</h3>
         <p class="docs-body">Put the cursor where you want the footnote number and click <strong>*</strong> in the toolbar. A numbered marker appears at the cursor, and a matching note is added to the list at the bottom of the post for you to type into.</p>
         <ul class="docs-list">
@@ -417,10 +388,6 @@
           <li>Notes can hold inline formatting and links, but not other blocks.</li>
         </ul>
         <p class="docs-body">Quill saves footnotes the way current WordPress does, so on your site they look exactly as they would from the WordPress editor.</p>
-        <h3 class="docs-h3" id="tables">Tables</h3>
-        <p class="docs-body">Click <strong>Table</strong> in the toolbar to open a size grid, and click the size you want. A new table has a header row. With the cursor in a table, the <a href="#block-settings" class="content-link">second toolbar row</a> adds and removes rows and columns and turns the header and footer rows on or off.</p>
-        <p class="docs-body">Press Tab to move to the next cell and ⇧Tab to move back. Tab in the last cell adds a new row. <strong>Image</strong> with the cursor in a cell adds a small <a href="#inline-images" class="content-link">inline image</a> to the cell's text.</p>
-        <p class="docs-body">Quill keeps a table caption written in the WordPress editor, but can't add or change one; do that in WordPress.</p>
         <h3 class="docs-h3" id="embeds">Embeds</h3>
         <p class="docs-body">Embeds put a video, social post or audio player from another site into your post.</p>
         <ol class="docs-ol">
@@ -431,6 +398,56 @@
         <p class="docs-body">In the editor, an embed shows as a card with the provider's name and the URL. The embed itself appears only on your published site.</p>
         <p class="docs-body">YouTube, Vimeo, X, Instagram, TikTok, Spotify and SoundCloud links are saved the way the WordPress editor saves them. Other URLs are saved as general embeds, and WordPress tries to show them with its own embed support.</p>
         <div class="docs-note">Whether an embed shows correctly on your site depends on the provider, and providers change their embed support without notice. X embeds are known to be unreliable.</div>
+        <h3 class="docs-h3">Columns</h3>
+        <p class="docs-body">Columns put content side by side. Choose <strong>Columns</strong> from the <strong>+</strong> menu to add two, and type in each as you would anywhere else. With the cursor in a column, <strong>+Col</strong> adds a column and <strong>−Col</strong> removes the one the cursor is in.</p>
+        <h3 class="docs-h3">Accordion</h3>
+        <p class="docs-body">An accordion is a stack of sections that open and close, each with its own heading. Choose <strong>Accordion</strong> from the <strong>+</strong> menu to add one with a single section, then type its heading and the text under it. With the cursor in an accordion, the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li><strong>+Item</strong> adds a section, and <strong>−Item</strong> removes the one the cursor is in.</li>
+          <li><strong>Auto-close</strong> closes the other sections when a reader opens one.</li>
+          <li><strong>Icon</strong> shows or hides the open/close icon. While it's on, <strong>Left</strong> and <strong>Right</strong> put it on that side.</li>
+          <li><strong>Open</strong> shows the section the cursor is in open when the page loads.</li>
+        </ul>
+        <h3 class="docs-h3">Tabs</h3>
+        <p class="docs-body">Tabs show one panel at a time, with a row of tabs above to switch between them. Choose <strong>Tabs</strong> from the <strong>+</strong> menu to add two, named Tab 1 and Tab 2. Click a tab to show its panel, and type over its name to rename it. With the cursor in a tab, the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li><strong>+Tab</strong> adds a tab, and <strong>−Tab</strong> removes the current one.</li>
+          <li><strong>Default</strong> makes the current tab the one readers see first.</li>
+        </ul>
+        <h3 class="docs-h3">Details</h3>
+        <p class="docs-body">A Details block is a section that opens and closes when the reader clicks its summary line. Choose <strong>Details</strong> from the <strong>+</strong> menu, type the summary, then the text under it. <strong>Open</strong> in the second toolbar row shows it open when the page loads.</p>
+        <h3 class="docs-h3">Buttons</h3>
+        <p class="docs-body">Choose <strong>Buttons</strong> from the <strong>+</strong> menu to add a button, and type its label. With the cursor in a button, the second toolbar row has:</p>
+        <ul class="docs-list">
+          <li><strong>Link</strong> sets where the button goes, using the same picker as <a href="#links" class="content-link">links</a> in text. Once it has a link, <strong>New tab</strong> makes it open in a new browser tab.</li>
+          <li><strong>+Button</strong> adds another button beside it, and <strong>−Button</strong> removes the current one.</li>
+          <li><strong>Outline</strong> switches the current button from filled to outlined.</li>
+        </ul>
+        <h3 class="docs-h3">Separator</h3>
+        <p class="docs-body">A separator is a horizontal line between sections. Choose <strong>Separator</strong> from the <strong>+</strong> menu, or type <code>---</code> on an empty line. Click it to select it, and use the menu in the second toolbar row to pick <strong>Default</strong>, <strong>Wide Line</strong> or <strong>Dots</strong>.</p>
+        <h3 class="docs-h3" id="custom-html">Custom HTML</h3>
+        <p class="docs-body">Choose <strong>Custom HTML</strong> from the <strong>+</strong> menu to add HTML of your own, such as an embed code or a styled box. Type or paste it in the window that opens and click <strong>Insert</strong> (⌘Return). If your WordPress account can add unfiltered HTML (on most sites, administrators and editors), the window also has <strong>CSS</strong> and <strong>JavaScript</strong> tabs.</p>
+        <p class="docs-body">In the editor, the block is a card with a preview of its HTML, which renders only on your site. Double-click the card or click <strong>Edit…</strong> to change it.</p>
+      </section>
+
+      <section class="docs-section" id="saving--publishing">
+        <h2 class="docs-h2">Saving and Publishing</h2>
+        <h3 class="docs-h3">Local Drafts</h3>
+        <p class="docs-body">Click <strong>Save Locally</strong> or press ⌘S to save a local draft on your Mac. Nothing is sent to WordPress.</p>
+        <p class="docs-body">To send a local draft to WordPress, choose a <a href="#status" class="content-link">Status</a> in Post Settings, then click the publish button or press ⇧⌘P. The button's name tells you what will happen. A new draft's status is Draft, so the button reads <strong>Save to WordPress</strong> and creates a draft on WordPress that readers can't see. Set the status to Published first if you want it to go live straight away. Once the draft is on WordPress, it moves from Drafts to Posts or Pages.</p>
+        <h3 class="docs-h3" id="posts-and-pages-on-wordpress">Posts and Pages on WordPress</h3>
+        <p class="docs-body">⌘S and the publish button both save your changes to WordPress with the post's current status. On a published post, the button reads <strong>Update</strong>; on a draft, <strong>Save Draft</strong>. If you set a published post's status back to Draft, the button reads <strong>Switch to Draft</strong>, and saving takes the post off your site.</p>
+        <p class="docs-body"><strong>Revert</strong> throws away your unsaved changes, including changes in Post Settings, and reloads the post from WordPress. <strong>Refresh</strong> (⌘R) picks up edits made in the WordPress editor, as long as you have no unsaved changes in the post.</p>
+        <p class="docs-body">Before saving, Quill checks whether the post has been changed on WordPress since you opened it, for example in the WordPress editor. If it has, a <strong>Conflict Detected</strong> alert gives you three choices: <strong>Keep Local</strong> saves your version over the one on WordPress, <strong>Use Server</strong> throws away your changes for good, including the autosave on your Mac, and loads the WordPress version, and <strong>Cancel</strong> does nothing.</p>
+        <h3 class="docs-h3">Change Bars</h3>
+        <p class="docs-body">A thin grey bar in the right margin marks each block that differs from the last saved version, and a short grey dash marks where a block was deleted. Hover over one to see what it marks. Saving or reverting clears them.</p>
+        <h3 class="docs-h3">Autosave</h3>
+        <p class="docs-body">Quill saves your work on your Mac 30 seconds after your last change, and again when you switch to another item or quit. Nothing is sent to your site. If you reopen a post before saving it to WordPress, even after quitting Quill, your changes come back.</p>
+        <p class="docs-body">Autosave keeps the title, the body and the footnotes, but not <a href="#post--page-settings" class="content-link">Post Settings</a> (apart from a local draft's excerpt). Setting changes you haven't saved to WordPress are lost when you leave the post.</p>
+        <h3 class="docs-h3" id="preview">Preview</h3>
+        <p class="docs-body">Click <strong>Preview</strong> to see a draft in your browser the way it looks on your site, with your unsaved changes. It works only for posts and pages already on WordPress, not for local drafts.</p>
+        <div class="docs-note">Previewing a draft saves your changes into the draft on WordPress, because WordPress keeps no separate preview copy of a draft.</div>
+        <p class="docs-body">For a published, scheduled, pending or private post, the button is <strong>View Post</strong> (<strong>View Page</strong> for a page). It opens the version saved on WordPress, without your unsaved changes. To see your changes on the site, save them first; for a published post, that updates the live post.</p>
       </section>
 
       <section class="docs-section" id="post--page-settings">
@@ -442,15 +459,15 @@
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
-              <tr><th class="docs-table__col--label">Status</th><th class="docs-table__col--label">Icon</th><th class="docs-table__col--key">Color</th><th>Meaning</th></tr>
+              <tr><th class="docs-table__col--label docs-table__col--wide">Status</th><th>Meaning</th></tr>
             </thead>
             <tbody>
-              <tr><td>Draft</td><td>Pencil</td><td>Amber</td><td>Saved on WordPress but not visible to readers</td></tr>
-              <tr><td>Pending Review</td><td>Ellipsis</td><td>Orange</td><td>Waiting for an editor to approve it</td></tr>
-              <tr><td>Published</td><td>Checkmark</td><td>Green</td><td>Live on your site</td></tr>
-              <tr><td>Scheduled</td><td>Clock</td><td>Blue</td><td>Will be published automatically at the date and time you set</td></tr>
-              <tr><td>Private</td><td>Lock</td><td>Teal</td><td>Published, but visible only to logged-in administrators and editors</td></tr>
-              <tr><td>Local draft</td><td>Tray</td><td>Violet</td><td>Saved only on your Mac; not on WordPress yet</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-draft" aria-hidden="true"></span>Draft</td><td>Saved on WordPress but not visible to readers</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-pending" aria-hidden="true"></span>Pending Review</td><td>Waiting for an editor to approve it</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-publish" aria-hidden="true"></span>Published</td><td>Live on your site</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-future" aria-hidden="true"></span>Scheduled</td><td>Will be published automatically at the date and time you set</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-private" aria-hidden="true"></span>Private</td><td>Published, but visible only to logged-in administrators and editors</td></tr>
+              <tr><td><span class="docs-icon docs-icon--status-local" aria-hidden="true"></span>Local draft</td><td>Saved only on your Mac; not on WordPress yet</td></tr>
             </tbody>
           </table>
         </div>
@@ -513,7 +530,7 @@
           <li>Choose <strong>Quill → Settings</strong> (⌘,) and find the <strong>AI Writing</strong> section.</li>
           <li>Paste the key into <strong>Anthropic API Key</strong> and click <strong>Save</strong>.</li>
         </ol>
-        <p class="docs-body">Once a key is saved, the Generate (pencil) and Evaluate (checkmark) buttons appear in the editor toolbar. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
+        <p class="docs-body">Once a key is saved, the Generate <span class="docs-icon docs-icon--generate docs-icon--inline" aria-hidden="true"></span> and Evaluate <span class="docs-icon docs-icon--evaluate docs-icon--inline" aria-hidden="true"></span> buttons appear in the editor toolbar. To turn the AI features off, delete the key and click <strong>Save</strong>.</p>
         <h3 class="docs-h3" id="model-and-reasoning">Model and Reasoning</h3>
         <p class="docs-body">The <strong>Model</strong> menu lists every Claude model your API key can use, newest first. Until you pick one, Quill uses the newest Claude Haiku, which is fast and inexpensive.</p>
         <p class="docs-body"><strong>Reasoning</strong> sets how long Claude thinks before it answers. Higher levels take more time and cost more. The menu lists only the levels the selected model offers.</p>
@@ -523,11 +540,11 @@
         <h3 class="docs-h3">Web Search</h3>
         <p class="docs-body">With <strong>Web Search</strong> on, which it is to begin with, Claude can search the web for current information while writing a post, and Evaluate checks your facts. Turn it off to work from Claude's own knowledge only, which is faster and costs less.</p>
         <h3 class="docs-h3" id="generating-a-post">Generating a Post</h3>
-        <p class="docs-body">Click the pencil button in the toolbar. Describe what you want, anything from a topic to a detailed brief, and click <strong>Generate</strong> (⌘Return). Quill writes a complete post or page with a title and loads it into the editor, and fills in the post's excerpt. With web search on, Claude looks up anything that may have changed, such as prices and versions, and links each fact it found to its source.</p>
+        <p class="docs-body">Click the Generate button <span class="docs-icon docs-icon--generate docs-icon--inline" aria-hidden="true"></span> in the toolbar. Describe what you want, anything from a topic to a detailed brief, and click <strong>Generate</strong> (⌘Return). Quill writes a complete post or page with a title and loads it into the editor, and fills in the post's excerpt. With web search on, Claude looks up anything that may have changed, such as prices and versions, and links each fact it found to its source.</p>
         <p class="docs-body">Claude writes in your style but doesn't make things up about you: it won't invent your experiences, work or history unless your description mentions them. Add the personal parts yourself.</p>
         <p class="docs-body">If the editor already has content, Quill asks before replacing it. If a long post is cut off before it's finished, <strong>Get Full Version</strong> asks again with a longer limit, which costs more.</p>
         <h3 class="docs-h3">Evaluating Your Writing</h3>
-        <p class="docs-body">Click the checkmark button in the toolbar to have Claude review the current post or page. It needs at least 100 words. The results open in the inspector in place of Post Settings: what works in the post and the two or three changes that would improve it most, then three lists:</p>
+        <p class="docs-body">Click the Evaluate button <span class="docs-icon docs-icon--evaluate docs-icon--inline" aria-hidden="true"></span> in the toolbar to have Claude review the current post or page. It needs at least 100 words. The results open in the inspector in place of Post Settings: what works in the post and the two or three changes that would improve it most, then three lists:</p>
         <ul class="docs-list">
           <li><strong>Fixes</strong> — corrections any copy editor would make: spelling, grammar, punctuation, word choice and inconsistent names or terms.</li>
           <li><strong>Ideas</strong> — judgment calls: a sentence that's hard to follow, wording that could be shorter, a repeated word, or a passage that drifts from your style.</li>
@@ -591,8 +608,8 @@
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘↩︎</kbd></dt><dd class="docs-keys__action">Insert or save, in the Custom HTML window</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘V</kbd></dt><dd class="docs-keys__action">Paste as Markdown</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌘F</kbd></dt><dd class="docs-keys__action">Find and replace</dd></div>
-          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Move out of the block the cursor is in</dd></div>
-          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘⌫</kbd></dt><dd class="docs-keys__action">Delete the block the cursor is in</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>Esc</kbd></dt><dd class="docs-keys__action">Move out of the table, quote, code block, image caption or container block the cursor is in</dd></div>
+          <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⇧⌘⌫</kbd></dt><dd class="docs-keys__action">Delete the image, table, quote, code block or container block the cursor is in</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌃⌘↑</kbd></dt><dd class="docs-keys__action">Move the block up</dd></div>
           <div class="docs-keys__row"><dt class="docs-keys__keys"><kbd>⌃⌘↓</kbd></dt><dd class="docs-keys__action">Move the block down</dd></div>
         </dl>
